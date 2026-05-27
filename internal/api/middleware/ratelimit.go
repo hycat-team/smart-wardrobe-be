@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/domain/apperrors"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"sync"
 	"time"
 
@@ -41,7 +41,7 @@ func (m *RateLimitMiddleware) Handle() gin.HandlerFunc {
 
 		limiter := m.getLimiter(key)
 		if !limiter.Allow() {
-			c.Error(&apperrors.ConflictError{Message: "Vui lòng thử lại sau. Quá nhiều yêu cầu được gửi từ IP của bạn."})
+			c.Error(errorcode.NewTooManyRequest("Vui lòng thử lại sau. Quá nhiều yêu cầu được gửi từ IP của bạn."))
 			c.Abort()
 			return
 		}
