@@ -15,7 +15,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 
 	engine.Use(middleware.GlobalErrorHandler(log))
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
-	engine.Use(middleware.GlobalTimeoutMiddleware(30 * time.Second))
+	engine.Use(middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
 
 	engine.Static("/api-docs", "./docs")

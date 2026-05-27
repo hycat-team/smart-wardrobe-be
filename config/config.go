@@ -9,6 +9,7 @@ type Config struct {
 	Quota    Quota
 	Otp      Otp
 	Email    Email
+	RateLimit RateLimit
 }
 
 type Database struct {
@@ -30,6 +31,7 @@ type Redis struct {
 type Server struct {
 	Port           string
 	FrontEndOrigin string
+	TimeoutSeconds int
 }
 
 type Jwt struct {
@@ -65,4 +67,10 @@ type Email struct {
 	SenderName  string
 	SenderEmail string
 	AppPassword string
+}
+
+type RateLimit struct {
+	TokenLimit           int
+	TokensPerPeriod      int
+	ReplenishmentSeconds int
 }

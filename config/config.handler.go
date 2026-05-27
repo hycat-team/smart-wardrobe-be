@@ -37,6 +37,7 @@ func LoadConfig() *Config {
 		Server: Server{
 			Port:           getEnv("SERVER_PORT", "8080"),
 			FrontEndOrigin: getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
+			TimeoutSeconds: getEnvInt("REQUEST_TIMEOUT_SECONDS", 30),
 		},
 		Jwt: Jwt{
 			Secret:                          getEnv("JWT_SECRET", "default_secret_key_change_me_in_production"),
@@ -67,6 +68,11 @@ func LoadConfig() *Config {
 			SenderName:  getEnv("EMAIL_SENDER_NAME", "SmartWardrobe"),
 			SenderEmail: getEnv("EMAIL_SENDER_EMAIL", ""),
 			AppPassword: getEnv("EMAIL_APP_PASSWORD", ""),
+		},
+		RateLimit: RateLimit{
+			TokenLimit:           getEnvInt("RATE_LIMIT_TOKEN_LIMIT", 100),
+			TokensPerPeriod:      getEnvInt("RATE_LIMIT_TOKENS_PER_PERIOD", 20),
+			ReplenishmentSeconds: getEnvInt("RATE_LIMIT_REPLENISHMENT_SECONDS", 10),
 		},
 	}
 }

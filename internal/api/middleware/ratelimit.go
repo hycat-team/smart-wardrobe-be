@@ -25,9 +25,9 @@ type visitor struct {
 
 func NewRateLimitMiddleware(cfg *config.Config) *RateLimitMiddleware {
 	m := &RateLimitMiddleware{
-		tokenLimit:           100,
-		tokensPerPeriod:      20,
-		replenishmentSeconds: 10,
+		tokenLimit:           cfg.RateLimit.TokenLimit,
+		tokensPerPeriod:      cfg.RateLimit.TokensPerPeriod,
+		replenishmentSeconds: cfg.RateLimit.ReplenishmentSeconds,
 	}
 
 	go m.startCleanupJob(5*time.Minute, 1*time.Minute)
