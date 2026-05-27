@@ -163,6 +163,9 @@ definitions:
     type: object
 info:
   contact: {}
+  description: API docs for Smart Wardrobe.
+  title: Smart Wardrobe API Document
+  version: "1.0"
 paths:
   /api/v1/auth/forgot-password:
     post:

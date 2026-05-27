@@ -3,12 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
     <title>SmartWardrobe BE - Swagger UI</title>
     <link
       rel="stylesheet"
       href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"
     />
     <style>
+      :root {
+        color-scheme: light !important;
+      }
       .swagger-ui .topbar .download-url-wrapper {
         display: flex;
         gap: 10px;
@@ -67,9 +71,30 @@
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
     <script>
+      // Override prefers-color-scheme to force light mode by default
+      if (window.matchMedia) {
+        const originalMatchMedia = window.matchMedia;
+        window.matchMedia = function (query) {
+          if (query && query.includes("prefers-color-scheme: dark")) {
+            return {
+              matches: false,
+              media: query,
+              onchange: null,
+              addListener: function () {},
+              removeListener: function () {},
+              addEventListener: function () {},
+              removeEventListener: function () {},
+            };
+          }
+          return originalMatchMedia(query);
+        };
+      }
+
       window.onload = function () {
         SwaggerUIBundle({
-          url: "/api-docs/swagger.json",
+          urls: [
+            { url: "/api-docs/swagger.json", name: "v1" }
+          ],
           dom_id: "#swagger-ui",
           deepLinking: true,
           presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],

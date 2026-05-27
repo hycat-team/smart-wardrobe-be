@@ -10,6 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title           Smart Wardrobe API Document
+// @version         1.0
+// @description     API docs for Smart Wardrobe.
 func main() {
 	cfg := config.LoadConfig()
 	errorcode.InitErrorMap()
