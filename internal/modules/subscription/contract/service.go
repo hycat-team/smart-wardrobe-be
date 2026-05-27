@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type IBillingModuleContract interface {
+type ISubscriptionModuleContract interface {
 	GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error)
 	IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error)
 }

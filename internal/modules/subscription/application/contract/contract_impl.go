@@ -3,23 +3,23 @@ package contract
 import (
 	"context"
 	"errors"
-	"smart-wardrobe-be/internal/modules/billing/contract"
-	"smart-wardrobe-be/internal/modules/billing/domain/repositories"
+	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
-type BillingModuleContractImpl struct {
+type SubscriptionModuleContractImpl struct {
 	planRepo repositories.ISubscriptionPlanRepository
 }
 
-func NewBillingModuleContractImpl(planRepo repositories.ISubscriptionPlanRepository) contract.IBillingModuleContract {
-	return &BillingModuleContractImpl{
+func NewSubscriptionModuleContractImpl(planRepo repositories.ISubscriptionPlanRepository) contract.ISubscriptionModuleContract {
+	return &SubscriptionModuleContractImpl{
 		planRepo: planRepo,
 	}
 }
 
-func (impl *BillingModuleContractImpl) GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error) {
+func (impl *SubscriptionModuleContractImpl) GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error) {
 	plan, err := impl.planRepo.GetDefaultPlan(ctx)
 	if err != nil {
 		return uuid.Nil, err
@@ -30,7 +30,7 @@ func (impl *BillingModuleContractImpl) GetDefaultSubscriptionPlanID(ctx context.
 	return plan.ID, nil
 }
 
-func (impl *BillingModuleContractImpl) IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error) {
+func (impl *SubscriptionModuleContractImpl) IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error) {
 	plan, err := impl.planRepo.FindByID(ctx, planID)
 	if err != nil {
 		return false, err

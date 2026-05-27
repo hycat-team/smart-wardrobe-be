@@ -8,7 +8,7 @@ import (
 	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/billing"
+	"smart-wardrobe-be/internal/modules/subscription"
 	"smart-wardrobe-be/internal/modules/identity"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
@@ -23,7 +23,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		db.NewRedisConnection,
 
 		identity.ProviderSet,
-		billing.ProviderSet,
+		subscription.ProviderSet,
 
 		middleware.NewAuthMiddleware,
 		middleware.NewRateLimitMiddleware,

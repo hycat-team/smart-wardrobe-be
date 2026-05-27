@@ -13,14 +13,14 @@ import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/billing/application/contract"
-	persistence2 "smart-wardrobe-be/internal/modules/billing/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/application/contract"
+	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
 )
@@ -43,8 +43,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPasswordHasher := security.NewBcryptPasswordHasher()
 	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
 	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
-	iBillingModuleContract := contract.NewBillingModuleContractImpl(iSubscriptionPlanRepository)
-	authUseCase := usecase.NewAuthUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, iBillingModuleContract, cfg)
+	iSubscriptionModuleContract := contract.NewSubscriptionModuleContractImpl(iSubscriptionPlanRepository)
+	authUseCase := usecase.NewAuthUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, iSubscriptionModuleContract, cfg)
 	authHandler := handler.NewAuthHandler(authUseCase, cfg)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
 	authRouter := auth.NewRouter(authHandler, authMiddleware)

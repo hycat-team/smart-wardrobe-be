@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	billing_contract "smart-wardrobe-be/internal/modules/billing/contract"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
@@ -34,7 +34,7 @@ type AuthUseCase struct {
 	emailService          communication.IEmailService
 	passwordHasher        security.IPasswordHasher
 	tokenBlacklistService security.ITokenBlacklistService
-	billingContract       billing_contract.IBillingModuleContract
+	subscriptionContract  subscription_contract.ISubscriptionModuleContract
 	cfg                   *config.Config
 }
 
@@ -45,7 +45,7 @@ func NewAuthUseCase(
 	emailService communication.IEmailService,
 	passwordHasher security.IPasswordHasher,
 	tokenBlacklistService security.ITokenBlacklistService,
-	billingContract billing_contract.IBillingModuleContract,
+	subscriptionContract subscription_contract.ISubscriptionModuleContract,
 	cfg *config.Config,
 ) *AuthUseCase {
 	return &AuthUseCase{
@@ -55,7 +55,7 @@ func NewAuthUseCase(
 		emailService:          emailService,
 		passwordHasher:        passwordHasher,
 		tokenBlacklistService: tokenBlacklistService,
-		billingContract:       billingContract,
+		subscriptionContract:  subscriptionContract,
 		cfg:                   cfg,
 	}
 }
@@ -148,7 +148,7 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 		return false, errorcode.NewConflict(fmt.Sprintf("Username '%s' đã tồn tại.", registerData.Username))
 	}
 
-	defaultPlanID, err := uc.billingContract.GetDefaultSubscriptionPlanID(ctx)
+	defaultPlanID, err := uc.subscriptionContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
 		return false, err
 	}
