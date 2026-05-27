@@ -1,0 +1,43 @@
+# ==========================================================
+# .dockerignore - Tối ưu hóa Docker Build Context
+# Loại bỏ các file rác, file local và tài liệu không cần thiết
+# ==========================================================
+
+# 1. Phiên bản Git & Hướng dẫn sử dụng
+.git
+.gitignore
+README.md
+LICENSE
+
+# 2. Các file cấu hình Docker & Deploy
+Dockerfile
+docker-compose.yml
+.dockerignore
+init-db/
+
+# 3. File môi trường nhạy cảm (Cực kỳ quan trọng để tránh lộ credential)
+.env
+.env.*
+!.env.example
+
+# 4. Thư mục chứa File chạy nhị phân biên dịch ở Local
+bin/
+*.exe
+*.test
+*.prof
+
+# 5. Các thư mục logs & dữ liệu tạm thời ở Local
+logs/
+tmp/
+temp/
+*.log
+
+# 6. Thư mục cấu hình của IDEs / Text Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
