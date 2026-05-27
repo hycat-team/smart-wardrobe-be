@@ -1,50 +1,50 @@
 # 🛠️ SmartWardrobe Backend - Development & Technical Guidelines
 
-Tài liệu này đóng vai trò là **Cẩm nang Kỹ thuật & Chuẩn Phát triển (Development Handbook)** bắt buộc áp dụng cho toàn bộ các lập trình viên khi xây dựng các module và tính năng mới trên hệ thống SmartWardrobe Backend.
+This document serves as the mandatory **Development & Technical Guidelines (Development Handbook)** that all developers and AI agents must follow when building new modules, features, or components for the SmartWardrobe Backend.
 
-Chúng ta lấy **Module Identity** làm chuẩn mực (baseline/gold standard) cho cấu trúc thư mục, quy trình luân chuyển dữ liệu, xử lý lỗi, viết tài liệu API Swagger và Dependency Injection.
+The **Identity Module** is defined as the baseline / gold standard for module directory structure, data flow, error handling, Swagger API documentation annotations, and Dependency Injection patterns.
 
 ---
 
-## 📁 1. Cấu trúc Module Chuẩn (Lấy Identity làm gốc)
+## 📁 1. Standard Module Directory Structure (Identity as Baseline)
 
-Mỗi Module phải được đóng gói gọn gàng bên trong thư mục `internal/modules/<module_name>` và chia thành các tầng độc lập theo nguyên lý Clean Architecture:
+Each module must be encapsulated inside `internal/modules/<module_name>` and partitioned into isolated layers adhering strictly to Clean Architecture principles:
 
 ```text
 📁 internal/modules/identity
 │
-├── 📁 domain                      # 1. Tầng Nghiệp vụ cốt lõi (Domain Layer)
-│    └── 📁 repositories           # Chứa interface định nghĩa các Repository (ví dụ: user_repo.go)
+├── 📁 domain                      # 1. Core Domain Layer (Nghiệp vụ cốt lõi)
+│    └── 📁 repositories           # Repository interfaces defining data persistence contracts (e.g., user_repo.go)
 │
-├── 📁 application                 # 2. Tầng Ứng dụng (Application Layer)
-│    ├── 📁 contract               # Interface & Implementation giao tiếp liên module (Loose Coupling)
+├── 📁 application                 # 2. Application Layer (Tầng Ứng dụng)
+│    ├── 📁 contract               # Cross-module communication interfaces & implementations (Loose Coupling)
 │    ├── 📁 dto                    # Data Transfer Objects (Request/Response structs)
-│    ├── 📁 mapper                 # Chuyển đổi dữ liệu (ví dụ: Mapper Entity <-> DTO)
-│    ├── 📁 usecase                # Nghiệp vụ dòng chảy (AuthUseCase, UserUseCase)
-│    └── 📄 provider.go            # Wire Provider Set của riêng tầng Application
+│    ├── 📁 mapper                 # Data transformers (e.g., Entity <-> DTO mapper mappings)
+│    ├── 📁 usecase                # Core application usecase flows (AuthUseCase, UserUseCase)
+│    └── 📄 provider.go            # Application layer specific Wire Provider Set
 │
-├── 📁 infrastructure              # 3. Tầng Hạ tầng (Infrastructure Layer)
-│    ├── 📁 persistence            # Triển khai thực tế các repository bằng GORM/Postgres DB
-│    ├── 📁 caching                # Triển khai Redis cache (ví dụ: lưu OTP)
-│    ├── 📁 security               # Các dịch vụ bảo mật (Bcrypt hashing, blacklist token)
-│    ├── 📁 communication          # Các dịch vụ gửi Mail SMTP, SMS
-│    └── 📄 provider.go            # Wire Provider Set của riêng tầng Infrastructure
+├── 📁 infrastructure              # 3. Infrastructure Layer (Tầng Hạ tầng)
+│    ├── 📁 persistence            # Concrete GORM repository implementations for Postgres DB
+│    ├── 📁 caching                # Redis caching services (e.g., OTP storage, token blacklisting)
+│    ├── 📁 security               # Security services (e.g., Bcrypt password hashing, token verification)
+│    ├── 📁 communication          # External communication integrations (Gmail SMTP, SMS)
+│    └── 📄 provider.go            # Infrastructure layer specific Wire Provider Set
 │
-├── 📁 presentation                # 4. Tầng Giao tiếp (Presentation Layer)
-│    ├── 📁 handler                # Bộ xử lý Request/Response (AuthHandler, MeHandler)
-│    └── 📄 provider.go            # Wire Provider Set của riêng tầng Presentation
+├── 📁 presentation                # 4. Presentation Layer (Tầng Giao tiếp)
+│    ├── 📁 handler                # Request handlers and routes payload bindings (AuthHandler, MeHandler)
+│    └── 📄 provider.go            # Presentation layer specific Wire Provider Set
 │
-└── 📄 provider.go                 # 5. File gom nhóm Provider toàn module (Outermost Provider Set)
+└── 📄 provider.go                 # 5. Outermost Module Provider (Gom nhóm Provider toàn module)
 ```
 
 ---
 
-## 🏗️ 2. Quy chuẩn Dependency Injection (Google Wire)
+## 🏗️ 2. Dependency Injection Guidelines (Google Wire)
 
-Không khai báo thủ công hay chồng chéo các Provider. Mỗi module phải có cấu trúc Provider phân cấp:
+Do not manually instantiate dependencies or create cyclic provider setups. Each module must implement a structured, hierarchical provider pattern:
 
-1. **Từng Layer con (`application`, `infrastructure`, `presentation`)**: Tự gom nhóm các service của mình vào biến `ProviderSet` tương ứng tại file `provider.go` của layer đó.
-2. **File `provider.go` ngoài cùng của module**: Gom nhóm các `ProviderSet` của từng layer con:
+1. **Sub-Layers (`application`, `infrastructure`, `presentation`)**: Package their internal services into a layer-specific `ProviderSet` variable within their respective `provider.go` files.
+2. **Outermost Module `provider.go`**: Group the sub-layer `ProviderSet`s into a single module-level set:
 
     ```go
     package identity
@@ -63,97 +63,93 @@ Không khai báo thủ công hay chồng chéo các Provider. Mỗi module phả
     )
     ```
 
-3. **DI toàn cục**: Đăng ký `identity.ProviderSet` tại tệp tin `internal/di/wire.go`.
+3. **Global DI registration**: Register the module-level `identity.ProviderSet` inside `internal/di/wire.go`.
 
 ---
 
-## 📡 3. Tiêu chuẩn viết Handler (Presentation Layer)
+## 📡 3. Handler Standards (Presentation Layer)
 
-Đây là chuẩn mực **bắt buộc** khi triển khai các Handler để đảm bảo tính nhất quán của API Response, cơ chế quản lý lỗi tập trung và tự động đồng bộ hóa tài liệu Swagger.
+This is a **mandatory** standard when implementing API Handlers. It guarantees API response consistency, centralized error handling, and robust Swagger auto-generation.
 
-### 🚫 Quy tắc 1: Tuyệt đối KHÔNG sử dụng `c.JSON()` trực tiếp
+### 🚫 Rule 1: Never Call `c.JSON()` Directly
+To ensure all API endpoints return a unified response envelope, Handlers **are strictly prohibited** from calling Gin's `c.JSON(http.StatusOK, ...)` directly. Instead, call the standard presentation functions defined in the `shared_pres` package (`smart-wardrobe-be/internal/shared/presentation`):
 
-Để tránh tình trạng mỗi API trả về một định dạng dữ liệu khác nhau, các Handler **không được phép** tự gọi `c.JSON(http.StatusOK, ...)` của Gin. Thay vào đó, phải gọi các hàm tiện ích đã chuẩn hóa tại package `shared_pres` (`smart-wardrobe-be/internal/shared/presentation`):
-
-- Trả về phản hồi thành công thường (`200 OK`):
+- **Standard Success Response (`200 OK`)**:
     ```go
-    shared_pres.Success(c, "Thông điệp thành công", data)
+    shared_pres.Success(c, "Success message", data)
     ```
-- Trả về phản hồi tạo mới thành công (`211 Created`):
+- **Created Success Response (`201 Created`)**:
     ```go
-    shared_pres.Created(c, "Tạo mới dữ liệu thành công", data)
+    shared_pres.Created(c, "Resource created successfully", data)
     ```
 
-### 🚫 Quy tắc 2: Handler phải trả về `error` & Sử dụng `WrapHandler`
+### 🚫 Rule 2: Handlers Must Return `error` & Use `WrapHandler`
+Every Handler method must comply with the standard signature: `func (h *MyHandler) MyMethod(c *gin.Context) error`.
 
-Mỗi phương thức của Handler phải có signature chuẩn: `func (h *MyHandler) MyMethod(c *gin.Context) error`.
-
-- **Khi thành công**: Trả về `nil` ở cuối hàm sau khi đã gọi `shared_pres.Success`.
-- **Khi có lỗi**: Trả về trực tiếp đối tượng lỗi (`return err`) để hệ thống tự động bắt và xử lý tập trung, tuyệt đối không tự bắt lỗi rồi viết Response tại Handler.
-- **Đăng ký Route**: Phải bọc Handler bằng `shared_pres.WrapHandler`:
+- **On Success**: Return `nil` at the end of the method after calling `shared_pres.Success`.
+- **On Failure**: Return the error object directly (`return err`). Centralized middleware will capture and serialize the error response. Never write an error response or capture errors manually inside a Handler.
+- **Route Registration**: Handlers must be wrapped using `shared_pres.WrapHandler`:
     ```go
     group.POST("/login", shared_pres.WrapHandler(h.authHandler.Login))
     ```
 
 ---
 
-## 📝 4. Tiêu chuẩn viết Swagger Annotations (swag)
+## 📝 4. Swagger Annotations Standards (swag)
 
-Mỗi phương thức Handler phải được viết chú thích Swagger bằng tiếng Việt rõ ràng, đầy đủ các trường thông tin. Cấu trúc chuẩn:
+Every Handler method must include declarative Swagger comments in Vietnamese (or English as requested by team setup) to populate Swagger UI accurately. Follow this template strictly:
 
 ```go
 // Register register a new user account
-// @Summary Đăng ký tài khoản               <- Tóm tắt ngắn gọn tính năng
-// @Description Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email <- Mô tả chi tiết
-// @Tags Auth                               <- Nhóm API (Auth, Me, v.v.)
-// @Accept json                              <- Định dạng request nhận vào
-// @Produce json                             <- Định dạng response trả ra
-// @Param body body dto.RegisterReq true "Thông tin đăng ký"  <- Dữ liệu đầu vào
-// @Success 200 {object} shared_pres.APIResponse <- Định dạng phản hồi khi thành công
-// @Router /api/v1/auth/register [post]     <- Đường dẫn và phương thức HTTP
+// @Summary Đăng ký tài khoản               <- Short functional summary
+// @Description Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email <- Detailed description
+// @Tags Auth                               <- API Grouping tag (Auth, Me, etc.)
+// @Accept json                              <- Request Content-Type
+// @Produce json                             <- Response Content-Type
+// @Param body body dto.RegisterReq true "Thông tin đăng ký"  <- Input payload schema and desc
+// @Success 200 {object} shared_pres.APIResponse <- Success response envelope schema
+// @Router /api/v1/auth/register [post]     <- HTTP method and path mapping
 func (h *AuthHandler) Register(c *gin.Context) error { ... }
 ```
 
 > [!IMPORTANT]
-> Đối với các API có trả về dữ liệu (Data) cụ thể, chú thích `@Success` phải khai báo đúng DTO đại diện để Swagger render cấu trúc dữ liệu chính xác cho Frontend:
-> `// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "Thông tin người dùng"`
+> For endpoints that return specific payload models, the `@Success` annotation must clearly specify the DTO mapping to let Swagger render precise response documentation:
+> `// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "User profile information"`
 
 ---
 
-## ⚠️ 5. Quy chuẩn Xử lý Lỗi & Xác thực dữ liệu (Error Handling & Validation)
+## ⚠️ 5. Error Handling & Validation Standards
 
-### A. Xác thực Dữ liệu Đầu vào (Validation)
-
-Mọi dữ liệu dạng JSON gửi lên từ client phải được validate tại Handler bằng Gin Binding (`c.ShouldBindJSON`). Nếu xảy ra lỗi validate, phải dịch lỗi sang ngôn ngữ dễ hiểu và trả về thông qua hàm tiện ích `validation.TranslateValidationError`:
+### A. Input Payload Validation
+All incoming client JSON payloads must be validated at the Handler layer using Gin's binding tags (`c.ShouldBindJSON`). When validation fails, translate the native errors to user-friendly messages using the custom utility `validation.TranslateValidationError`:
 
 ```go
 var input dto.RegisterReq
 if err := c.ShouldBindJSON(&input); err != nil {
-    // Dịch lỗi và trả trực tiếp lỗi validate về cho WrapHandler xử lý
+    // Translate validation rules into readable validation errors and return to WrapHandler
     return validation.TranslateValidationError(err)
 }
 ```
 
-### B. Trả về Lỗi Nghiệp vụ từ Usecase/Service
+### B. Business / Domain Exception Propagation
+Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions using the structured types provided by the `errorcode` package (`smart-wardrobe-be/internal/shared/application/constants/errorcode`):
 
-Các tầng bên dưới (`Usecase`, `Service`, `Repository`) khi xảy ra lỗi nghiệp vụ phải ném ra lỗi có cấu trúc chuẩn từ gói `errorcode` (`smart-wardrobe-be/internal/shared/application/constants/errorcode`):
+- **Not Found Errors**:
+    ```go
+    return errorcode.NewNotFound("User not found with the provided ID.")
+    ```
+- **Conflict / Already Exists Errors**:
+    ```go
+    return errorcode.NewConflict("This email address is already registered.")
+    ```
+- **Unauthorized / Session Errors**:
+    ```go
+    return errorcode.NewUnauthorized("Session expired. Please log in again.")
+    ```
+- **Bad Request / Validation Errors**:
+    ```go
+    return errorcode.NewBadRequest("Incorrect OTP verification code.")
+    ```
+- *And other types available in the `errorcode` package...*
 
-- Lỗi không tìm thấy dữ liệu:
-    ```go
-    return errorcode.NewNotFound("Không tìm thấy người dùng với ID đã cung cấp.")
-    ```
-- Lỗi dữ liệu xung đột (đã tồn tại):
-    ```go
-    return errorcode.NewConflict("Email này đã được đăng ký trên hệ thống.")
-    ```
-- Lỗi không có quyền truy cập:
-    ```go
-    return errorcode.NewUnauthorized("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.")
-    ```
-- Lỗi dữ liệu không hợp lệ:
-    ```go
-    return errorcode.NewBadRequest("Thông tin xác thực OTP không chính xác.")
-    ```
-- Và các lỗi khác tại gói errorcode...
-
-Hạ tầng `WrapHandler` phối hợp cùng Middleware Xử lý Lỗi toàn cục (`GlobalErrorHandler`) sẽ tự động bắt các lỗi trên, phân tích mã HTTP phù hợp và serialize thành JSON phản hồi đồng bộ cho Client. Người lập trình tuyệt đối không viết code parse thủ công HTTP status tại Handler!
+The underlying `WrapHandler` mechanism working together with the `GlobalErrorHandler` middleware will automatically catch these exceptions, map them to their corresponding HTTP status codes, and serialize them into a unified JSON format for the client. Handlers must never perform manual HTTP status parsing!
