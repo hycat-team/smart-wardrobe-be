@@ -1,7 +1,7 @@
 # ==========================================================
 # STAGE 1: Build stage (Sử dụng Alpine-Go để build tối ưu)
 # ==========================================================
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Cài đặt các công cụ hệ thống cần thiết cho quá trình build
 RUN apk update && apk add --no-cache git ca-certificates tzdata
