@@ -1,0 +1,415 @@
+definitions:
+  smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq:
+    properties:
+      confirmPassword:
+        type: string
+      logoutAllDevices:
+        type: boolean
+      newPassword:
+        minLength: 6
+        type: string
+      oldPassword:
+        type: string
+    required:
+    - confirmPassword
+    - newPassword
+    - oldPassword
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpReq:
+    properties:
+      email:
+        type: string
+      otpCode:
+        type: string
+    required:
+    - email
+    - otpCode
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq:
+    properties:
+      email:
+        type: string
+      otpCode:
+        type: string
+    required:
+    - email
+    - otpCode
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq:
+    properties:
+      loginName:
+        type: string
+      password:
+        type: string
+    required:
+    - loginName
+    - password
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq:
+    properties:
+      address:
+        type: string
+      confirmPassword:
+        type: string
+      dateOfBirth:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      lastName:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        type: string
+    required:
+    - address
+    - confirmPassword
+    - dateOfBirth
+    - email
+    - firstName
+    - password
+    - username
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq:
+    properties:
+      confirmPassword:
+        type: string
+      logoutAllDevices:
+        type: boolean
+      newPassword:
+        minLength: 6
+        type: string
+    required:
+    - confirmPassword
+    - newPassword
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.SendForgotPasswordOtpReq:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq:
+    properties:
+      address:
+        type: string
+      dateOfBirth:
+        type: string
+      firstName:
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      lastName:
+        type: string
+    required:
+    - firstName
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserRes:
+    properties:
+      address:
+        type: string
+      createdAt:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      gender:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+      id:
+        type: string
+      lastName:
+        type: string
+      roleSlug:
+        type: string
+      username:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-varnames:
+    - Unknown
+    - Male
+    - Female
+    - Other
+  smart-wardrobe-be_internal_shared_presentation.APIResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Gửi mã OTP xác thực khôi phục mật khẩu qua email
+      parameters:
+      - description: Email nhận OTP
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.SendForgotPasswordOtpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Yêu cầu khôi phục mật khẩu
+      tags:
+      - Auth
+  /api/v1/auth/forgot-password/confirm-otp:
+    post:
+      consumes:
+      - application/json
+      description: Xác thực mã OTP khôi phục mật khẩu và lưu token tạm thời vào cookie
+      parameters:
+      - description: Mã OTP và Email
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xác thực OTP khôi phục mật khẩu
+      tags:
+      - Auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Đăng nhập hệ thống bằng username hoặc email và password
+      parameters:
+      - description: Thông tin đăng nhập
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: accessToken in data
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      summary: Đăng nhập
+      tags:
+      - Auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Đăng xuất người dùng, vô hiệu hóa token hiện tại và xóa cookie
+        refresh token & access token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đăng xuất
+      tags:
+      - Auth
+  /api/v1/auth/refresh-token:
+    post:
+      consumes:
+      - application/json
+      description: Sử dụng refresh token trong cookie để lấy access token mới và xoay
+        vòng refresh token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: accessToken in data
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+      summary: Xoay vòng token (Refresh Token)
+      tags:
+      - Auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email
+      parameters:
+      - description: Thông tin đăng ký
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đăng ký tài khoản
+      tags:
+      - Auth
+  /api/v1/auth/register/confirm-otp:
+    post:
+      consumes:
+      - application/json
+      description: Xác nhận OTP gửi qua email để kích hoạt tài khoản
+      parameters:
+      - description: Mã OTP xác thực
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xác thực OTP đăng ký
+      tags:
+      - Auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Sử dụng token tạm thời từ cookie để tiến hành đặt mật khẩu mới
+      parameters:
+      - description: Mật khẩu mới và mật khẩu xác nhận
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đặt lại mật khẩu
+      tags:
+      - Auth
+  /api/v1/me:
+    get:
+      consumes:
+      - application/json
+      description: Lấy thông tin chi tiết tài khoản của người dùng hiện tại đang đăng
+        nhập
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thông tin người dùng
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
+      summary: Lấy thông tin cá nhân
+      tags:
+      - Me
+    put:
+      consumes:
+      - application/json
+      description: Cập nhật các trường thông tin của người dùng hiện tại đang đăng
+        nhập
+      parameters:
+      - description: Thông tin cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thông tin người dùng sau khi cập nhật
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
+      summary: Cập nhật thông tin cá nhân
+      tags:
+      - Me
+  /api/v1/me/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Thay đổi mật khẩu cho người dùng hiện tại đang đăng nhập
+      parameters:
+      - description: Mật khẩu cũ và mới
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đổi mật khẩu
+      tags:
+      - Me
+swagger: "2.0"

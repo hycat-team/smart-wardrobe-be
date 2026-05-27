@@ -1,0 +1,642 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "description": "Gửi mã OTP xác thực khôi phục mật khẩu qua email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Yêu cầu khôi phục mật khẩu",
+                "parameters": [
+                    {
+                        "description": "Email nhận OTP",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.SendForgotPasswordOtpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password/confirm-otp": {
+            "post": {
+                "description": "Xác thực mã OTP khôi phục mật khẩu và lưu token tạm thời vào cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Xác thực OTP khôi phục mật khẩu",
+                "parameters": [
+                    {
+                        "description": "Mã OTP và Email",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Đăng nhập hệ thống bằng username hoặc email và password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng nhập",
+                "parameters": [
+                    {
+                        "description": "Thông tin đăng nhập",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "accessToken in data",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "description": "Đăng xuất người dùng, vô hiệu hóa token hiện tại và xóa cookie refresh token \u0026 access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng xuất",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh-token": {
+            "post": {
+                "description": "Sử dụng refresh token trong cookie để lấy access token mới và xoay vòng refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Xoay vòng token (Refresh Token)",
+                "responses": {
+                    "200": {
+                        "description": "accessToken in data",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "description": "Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng ký tài khoản",
+                "parameters": [
+                    {
+                        "description": "Thông tin đăng ký",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/confirm-otp": {
+            "post": {
+                "description": "Xác nhận OTP gửi qua email để kích hoạt tài khoản",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Xác thực OTP đăng ký",
+                "parameters": [
+                    {
+                        "description": "Mã OTP xác thực",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "description": "Sử dụng token tạm thời từ cookie để tiến hành đặt mật khẩu mới",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đặt lại mật khẩu",
+                "parameters": [
+                    {
+                        "description": "Mật khẩu mới và mật khẩu xác nhận",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me": {
+            "get": {
+                "description": "Lấy thông tin chi tiết tài khoản của người dùng hiện tại đang đăng nhập",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Lấy thông tin cá nhân",
+                "responses": {
+                    "200": {
+                        "description": "Thông tin người dùng",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Cập nhật các trường thông tin của người dùng hiện tại đang đăng nhập",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Cập nhật thông tin cá nhân",
+                "parameters": [
+                    {
+                        "description": "Thông tin cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thông tin người dùng sau khi cập nhật",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/change-password": {
+            "put": {
+                "description": "Thay đổi mật khẩu cho người dùng hiện tại đang đăng nhập",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Đổi mật khẩu",
+                "parameters": [
+                    {
+                        "description": "Mật khẩu cũ và mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq": {
+            "type": "object",
+            "required": [
+                "confirmPassword",
+                "newPassword",
+                "oldPassword"
+            ],
+            "properties": {
+                "confirmPassword": {
+                    "type": "string"
+                },
+                "logoutAllDevices": {
+                    "type": "boolean"
+                },
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpReq": {
+            "type": "object",
+            "required": [
+                "email",
+                "otpCode"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otpCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq": {
+            "type": "object",
+            "required": [
+                "email",
+                "otpCode"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otpCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq": {
+            "type": "object",
+            "required": [
+                "loginName",
+                "password"
+            ],
+            "properties": {
+                "loginName": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq": {
+            "type": "object",
+            "required": [
+                "address",
+                "confirmPassword",
+                "dateOfBirth",
+                "email",
+                "firstName",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "confirmPassword": {
+                    "type": "string"
+                },
+                "dateOfBirth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "enum": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender"
+                        }
+                    ]
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq": {
+            "type": "object",
+            "required": [
+                "confirmPassword",
+                "newPassword"
+            ],
+            "properties": {
+                "confirmPassword": {
+                    "type": "string"
+                },
+                "logoutAllDevices": {
+                    "type": "boolean"
+                },
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.SendForgotPasswordOtpReq": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq": {
+            "type": "object",
+            "required": [
+                "firstName"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "dateOfBirth": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "enum": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender"
+                        }
+                    ]
+                },
+                "lastName": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UserRes": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "roleSlug": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_gender.Gender": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "Unknown",
+                "Male",
+                "Female",
+                "Other"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_presentation.APIResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

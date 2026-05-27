@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Xác thực OTP</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333333; text-align: center;">Mã Xác Thực OTP</h2>
+        <p>Chào bạn,</p>
+        <p>Bạn đang thực hiện thao tác đăng ký tài khoản. Vui lòng sử dụng mã OTP dưới đây để hoàn tất:</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #007bff; background-color: #f0f7ff; padding: 10px 25px; border-radius: 5px; border: 1px dashed #007bff;">
+                {{OTP_CODE}}
+            </span>
+        </div>
+
+        <p style="color: #666663;">Mã OTP này có hiệu lực trong vòng <strong>{{EXPIRY_MINUTES}} phút</strong>.</p>
+        <p style="color: #ff3333; font-size: 13px;">* Lưu ý: Không chia sẻ mã này với bất kỳ ai để bảo mật tài khoản.</p>
+        <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #999999; text-align: center;">Đây là email tự động, vui lòng không phản hồi email này.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,68 @@
+package config
+
+type Config struct {
+	Database Database
+	Redis    Redis
+	Server   Server
+	Jwt      Jwt
+	Logger   Logger
+	Quota    Quota
+	Otp      Otp
+	Email    Email
+}
+
+type Database struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	DbName   string
+	SslMode  string
+}
+
+type Redis struct {
+	Host     string
+	Port     int
+	Password string
+	Db       int
+}
+
+type Server struct {
+	Port           string
+	FrontEndOrigin string
+}
+
+type Jwt struct {
+	Secret                            string
+	Issuer                            string
+	Audience                          string
+	AccessExpirationMinutes           int
+	RefreshExpirationDays             int
+	ForgotPasswordExpirationMinutes   int
+}
+
+type Logger struct {
+	LogLevel  string
+	FilePath  string
+	LogToFile bool
+}
+
+type Quota struct {
+	DefaultWardrobeLimit int
+	DefaultAiOutfitLimit int
+	DefaultAiChatLimit   int
+}
+
+type Otp struct {
+	MaxAttempts           int
+	ExpiryMinutes         int
+	ResendIntervalSeconds int
+}
+
+type Email struct {
+	Host        string
+	Port        int
+	SenderName  string
+	SenderEmail string
+	AppPassword string
+}
