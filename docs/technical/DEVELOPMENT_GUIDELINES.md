@@ -13,28 +13,28 @@ Each module must be encapsulated inside `internal/modules/<module_name>` and par
 ```text
 📁 internal/modules/identity
 │
-├── 📁 domain                      # 1. Core Domain Layer (Nghiệp vụ cốt lõi)
+├── 📁 domain                      # 1. Core Domain Layer
 │    └── 📁 repositories           # Repository interfaces defining data persistence contracts (e.g., user_repo.go)
 │
-├── 📁 application                 # 2. Application Layer (Tầng Ứng dụng)
+├── 📁 application                 # 2. Application Layer
 │    ├── 📁 contract               # Cross-module communication interfaces & implementations (Loose Coupling)
 │    ├── 📁 dto                    # Data Transfer Objects (Request/Response structs)
 │    ├── 📁 mapper                 # Data transformers (e.g., Entity <-> DTO mapper mappings)
 │    ├── 📁 usecase                # Core application usecase flows (AuthUseCase, UserUseCase)
 │    └── 📄 provider.go            # Application layer specific Wire Provider Set
 │
-├── 📁 infrastructure              # 3. Infrastructure Layer (Tầng Hạ tầng)
+├── 📁 infrastructure              # 3. Infrastructure Layer
 │    ├── 📁 persistence            # Concrete GORM repository implementations for Postgres DB
 │    ├── 📁 caching                # Redis caching services (e.g., OTP storage, token blacklisting)
 │    ├── 📁 security               # Security services (e.g., Bcrypt password hashing, token verification)
 │    ├── 📁 communication          # External communication integrations (Gmail SMTP, SMS)
 │    └── 📄 provider.go            # Infrastructure layer specific Wire Provider Set
 │
-├── 📁 presentation                # 4. Presentation Layer (Tầng Giao tiếp)
+├── 📁 presentation                # 4. Presentation Layer
 │    ├── 📁 handler                # Request handlers and routes payload bindings (AuthHandler, MeHandler)
 │    └── 📄 provider.go            # Presentation layer specific Wire Provider Set
 │
-└── 📄 provider.go                 # 5. Outermost Module Provider (Gom nhóm Provider toàn module)
+└── 📄 provider.go                 # 5. Outermost Module Provider
 ```
 
 ---
@@ -72,6 +72,7 @@ Do not manually instantiate dependencies or create cyclic provider setups. Each 
 This is a **mandatory** standard when implementing API Handlers. It guarantees API response consistency, centralized error handling, and robust Swagger auto-generation.
 
 ### 🚫 Rule 1: Never Call `c.JSON()` Directly
+
 To ensure all API endpoints return a unified response envelope, Handlers **are strictly prohibited** from calling Gin's `c.JSON(http.StatusOK, ...)` directly. Instead, call the standard presentation functions defined in the `shared_pres` package (`smart-wardrobe-be/internal/shared/presentation`):
 
 - **Standard Success Response (`200 OK`)**:
@@ -84,6 +85,7 @@ To ensure all API endpoints return a unified response envelope, Handlers **are s
     ```
 
 ### 🚫 Rule 2: Handlers Must Return `error` & Use `WrapHandler`
+
 Every Handler method must comply with the standard signature: `func (h *MyHandler) MyMethod(c *gin.Context) error`.
 
 - **On Success**: Return `nil` at the end of the method after calling `shared_pres.Success`.
@@ -97,7 +99,7 @@ Every Handler method must comply with the standard signature: `func (h *MyHandle
 
 ## 📝 4. Swagger Annotations Standards (swag)
 
-Every Handler method must include declarative Swagger comments in Vietnamese (or English as requested by team setup) to populate Swagger UI accurately. Follow this template strictly:
+Every Handler method must include declarative Swagger comments in Vietnamese to populate Swagger UI accurately. Follow this template strictly:
 
 ```go
 // Register register a new user account
@@ -121,6 +123,7 @@ func (h *AuthHandler) Register(c *gin.Context) error { ... }
 ## ⚠️ 5. Error Handling & Validation Standards
 
 ### A. Input Payload Validation
+
 All incoming client JSON payloads must be validated at the Handler layer using Gin's binding tags (`c.ShouldBindJSON`). When validation fails, translate the native errors to user-friendly messages using the custom utility `validation.TranslateValidationError`:
 
 ```go
@@ -132,6 +135,7 @@ if err := c.ShouldBindJSON(&input); err != nil {
 ```
 
 ### B. Business / Domain Exception Propagation
+
 Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions using the structured types provided by the `errorcode` package (`smart-wardrobe-be/internal/shared/application/constants/errorcode`):
 
 - **Not Found Errors**:
@@ -150,6 +154,6 @@ Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions usi
     ```go
     return errorcode.NewBadRequest("Incorrect OTP verification code.")
     ```
-- *And other types available in the `errorcode` package...*
+- _And other types available in the `errorcode` package..._
 
 The underlying `WrapHandler` mechanism working together with the `GlobalErrorHandler` middleware will automatically catch these exceptions, map them to their corresponding HTTP status codes, and serialize them into a unified JSON format for the client. Handlers must never perform manual HTTP status parsing!
