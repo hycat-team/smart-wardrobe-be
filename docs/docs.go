@@ -408,7 +408,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/subscriptions/daily-quota": {
+        "/api/v1/subscriptions/me/daily-quota": {
             "get": {
                 "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
                 "consumes": [
@@ -424,6 +424,200 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Hạn ngạch sử dụng",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me/purchase": {
+            "post": {
+                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Đăng ký mua gói cước trực tiếp",
+                "parameters": [
+                    {
+                        "description": "Thông tin gói cước",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Link thanh toán",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me/toggle-auto-renew": {
+            "patch": {
+                "description": "Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Bật/Tắt tự động gia hạn gói cước",
+                "responses": {
+                    "200": {
+                        "description": "Trạng thái tự động gia hạn mới",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me/wallet": {
+            "get": {
+                "description": "Lấy số dư hiện có trong ví nội bộ của người dùng",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Lấy số dư ví người dùng",
+                "responses": {
+                    "200": {
+                        "description": "Số dư ví",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me/wallet/statements": {
+            "get": {
+                "description": "Lấy nhật ký biến động số dư ví nội bộ của người dùng",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Lấy lịch sử giao dịch ví nội bộ",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách lịch sử giao dịch",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me/wallet/topup": {
+            "post": {
+                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Tạo yêu cầu nạp tiền vào ví nội bộ",
+                "parameters": [
+                    {
+                        "description": "Thông tin nạp tiền",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Link thanh toán",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/payos-webhook": {
+            "post": {
+                "description": "Tiếp nhận và xác thực thông báo IPN từ PayOS khi người dùng thanh toán thành công",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Xử lý Webhook thông báo thanh toán từ PayOS",
+                "parameters": [
+                    {
+                        "description": "Webhook Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kết quả xử lý",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/plans": {
+            "get": {
+                "description": "Lấy danh sách tất cả các gói đăng ký Premium hiện có",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Lấy danh sách các gói Premium",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách gói cước",
                         "schema": {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
                         }
@@ -713,6 +907,89 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "planName": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq": {
+            "type": "object",
+            "required": [
+                "subscriptionPlanID"
+            ],
+            "properties": {
+                "cancelUrl": {
+                    "type": "string"
+                },
+                "returnUrl": {
+                    "type": "string"
+                },
+                "subscriptionPlanID": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookData": {
+            "type": "object",
+            "properties": {
+                "accountNumber": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "orderCode": {
+                    "type": "integer"
+                },
+                "paymentLinkId": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "transactionDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookReq": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "data": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookData"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq": {
+            "type": "object",
+            "required": [
+                "amount"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "cancelUrl": {
+                    "type": "string"
+                },
+                "returnUrl": {
                     "type": "string"
                 }
             }

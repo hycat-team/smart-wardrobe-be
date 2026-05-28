@@ -187,6 +187,60 @@ definitions:
       planName:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq:
+    properties:
+      cancelUrl:
+        type: string
+      returnUrl:
+        type: string
+      subscriptionPlanID:
+        type: string
+    required:
+    - subscriptionPlanID
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookData:
+    properties:
+      accountNumber:
+        type: string
+      amount:
+        type: integer
+      code:
+        type: string
+      desc:
+        type: string
+      description:
+        type: string
+      orderCode:
+        type: integer
+      paymentLinkId:
+        type: string
+      reference:
+        type: string
+      transactionDateTime:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookReq:
+    properties:
+      code:
+        type: string
+      data:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookData'
+      desc:
+        type: string
+      signature:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq:
+    properties:
+      amount:
+        type: number
+      cancelUrl:
+        type: string
+      returnUrl:
+        type: string
+    required:
+    - amount
+    type: object
   smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
     enum:
     - 0
@@ -459,7 +513,7 @@ paths:
       summary: Đổi mật khẩu
       tags:
       - Me
-  /api/v1/subscriptions/daily-quota:
+  /api/v1/subscriptions/me/daily-quota:
     get:
       consumes:
       - application/json
@@ -475,4 +529,134 @@ paths:
       summary: Lấy hạn ngạch sử dụng hàng ngày
       tags:
       - Subscription
+  /api/v1/subscriptions/me/purchase:
+    post:
+      consumes:
+      - application/json
+      description: Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước
+        trực tiếp
+      parameters:
+      - description: Thông tin gói cước
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link thanh toán
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đăng ký mua gói cước trực tiếp
+      tags:
+      - Billing
+  /api/v1/subscriptions/me/toggle-auto-renew:
+    patch:
+      consumes:
+      - application/json
+      description: Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi
+        hết hạn
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Trạng thái tự động gia hạn mới
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Bật/Tắt tự động gia hạn gói cước
+      tags:
+      - Subscription
+  /api/v1/subscriptions/me/wallet:
+    get:
+      consumes:
+      - application/json
+      description: Lấy số dư hiện có trong ví nội bộ của người dùng
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Số dư ví
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lấy số dư ví người dùng
+      tags:
+      - Billing
+  /api/v1/subscriptions/me/wallet/statements:
+    get:
+      consumes:
+      - application/json
+      description: Lấy nhật ký biến động số dư ví nội bộ của người dùng
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách lịch sử giao dịch
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lấy lịch sử giao dịch ví nội bộ
+      tags:
+      - Billing
+  /api/v1/subscriptions/me/wallet/topup:
+    post:
+      consumes:
+      - application/json
+      description: Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào
+        ví
+      parameters:
+      - description: Thông tin nạp tiền
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Link thanh toán
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Tạo yêu cầu nạp tiền vào ví nội bộ
+      tags:
+      - Billing
+  /api/v1/subscriptions/payos-webhook:
+    post:
+      consumes:
+      - application/json
+      description: Tiếp nhận và xác thực thông báo IPN từ PayOS khi người dùng thanh
+        toán thành công
+      parameters:
+      - description: Webhook Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Kết quả xử lý
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xử lý Webhook thông báo thanh toán từ PayOS
+      tags:
+      - Billing
+  /api/v1/subscriptions/plans:
+    get:
+      consumes:
+      - application/json
+      description: Lấy danh sách tất cả các gói đăng ký Premium hiện có
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách gói cước
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lấy danh sách các gói Premium
+      tags:
+      - Billing
 swagger: "2.0"
