@@ -30,11 +30,6 @@ func (RefreshToken) TableName() string {
 	return "refresh_tokens"
 }
 
-// TableName returns table name mapping for PaymentHistory
-func (PaymentHistory) TableName() string {
-	return "payment_histories"
-}
-
 // TableName returns table name mapping for ConversationalContext
 func (ConversationalContext) TableName() string {
 	return "conversational_contexts"

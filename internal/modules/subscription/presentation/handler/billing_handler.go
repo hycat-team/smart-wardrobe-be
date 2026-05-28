@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"io"
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
@@ -13,12 +14,20 @@ import (
 )
 
 type BillingHandler struct {
-	billingUseCase usecase_interfaces.IBillingUseCase
+	walletUseCase         usecase_interfaces.IWalletUseCase
+	subPurchaseUseCase    usecase_interfaces.ISubscriptionPurchaseUseCase
+	paymentWebhookUseCase usecase_interfaces.IPaymentWebhookUseCase
 }
 
-func NewBillingHandler(billingUseCase usecase_interfaces.IBillingUseCase) *BillingHandler {
+func NewBillingHandler(
+	walletUseCase usecase_interfaces.IWalletUseCase,
+	subPurchaseUseCase usecase_interfaces.ISubscriptionPurchaseUseCase,
+	paymentWebhookUseCase usecase_interfaces.IPaymentWebhookUseCase,
+) *BillingHandler {
 	return &BillingHandler{
-		billingUseCase: billingUseCase,
+		walletUseCase:         walletUseCase,
+		subPurchaseUseCase:    subPurchaseUseCase,
+		paymentWebhookUseCase: paymentWebhookUseCase,
 	}
 }
 
@@ -36,7 +45,7 @@ func (h *BillingHandler) GetWallet(c *gin.Context) error {
 		return err
 	}
 
-	walletDTO, err := h.billingUseCase.GetWallet(c.Request.Context(), userID)
+	walletDTO, err := h.walletUseCase.GetWallet(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -59,7 +68,7 @@ func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 		return err
 	}
 
-	statements, err := h.billingUseCase.GetWalletStatements(c.Request.Context(), userID)
+	statements, err := h.walletUseCase.GetWalletStatements(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -88,7 +97,7 @@ func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 		return err
 	}
 
-	paymentLink, err := h.billingUseCase.CreateWalletTopUp(c.Request.Context(), userID, &req)
+	paymentLink, err := h.walletUseCase.CreateWalletTopUp(c.Request.Context(), userID, &req)
 	if err != nil {
 		return err
 	}
@@ -106,7 +115,6 @@ func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 // @Param body body dto.DirectPurchaseReq true "Thông tin gói cước"
 // @Success 200 {object} shared_pres.APIResponse "Link thanh toán"
 // @Router /api/v1/subscriptions/me/purchase [post]
-// @Router /api/v1/subscriptions/me/purchase [post]
 func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -118,12 +126,43 @@ func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 		return err
 	}
 
-	paymentLink, err := h.billingUseCase.CreateDirectPurchase(c.Request.Context(), userID, &req)
+	paymentLink, err := h.subPurchaseUseCase.CreateDirectPurchase(c.Request.Context(), userID, &req)
 	if err != nil {
 		return err
 	}
 
 	shared_pres.Success(c, "Khởi tạo giao dịch đăng ký thành công", paymentLink)
+	return nil
+}
+
+// PurchasePlanWithWallet purchases a subscription plan using internal wallet balance
+// @Summary Đăng ký mua gói cước bằng ví nội bộ
+// @Description Thực hiện mua gói cước bằng cách trừ số dư ví nội bộ của người dùng
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Param body body dto.DirectPurchaseReq false "Thông tin gói cước (chỉ cần planSlug)"
+// @Success 200 {object} shared_pres.APIResponse "Kết quả đăng ký"
+// @Router /api/v1/subscriptions/me/purchase-with-wallet [post]
+func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var req struct {
+		PlanSlug string `json:"planSlug" binding:"required"`
+	}
+	if err := validation.BindJSON(c, &req); err != nil {
+		return err
+	}
+
+	err = h.subPurchaseUseCase.PurchasePlanWithWallet(c.Request.Context(), userID, req.PlanSlug)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Đăng ký gói hội viên thành công", nil)
 	return nil
 }
 
@@ -137,39 +176,23 @@ func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse "Kết quả xử lý"
 // @Router /api/v1/subscriptions/payos-webhook [post]
 func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {
-	var req dto.PayOSWebhookReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		return err
-	}
-
-	rawBytes, err := json.Marshal(req)
+	rawBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		return err
 	}
 
-	err = h.billingUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
+	var req struct {
+		Signature string `json:"signature"`
+	}
+	if err := json.Unmarshal(rawBytes, &req); err != nil {
+		return err
+	}
+
+	err = h.paymentWebhookUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
 	if err != nil {
 		return err
 	}
 
 	shared_pres.Success(c, "Xử lý thông báo thanh toán thành công", nil)
-	return nil
-}
-
-// GetPlans retrieves all subscription plans
-// @Summary Lấy danh sách các gói Premium
-// @Description Lấy danh sách tất cả các gói đăng ký Premium hiện có
-// @Tags Billing
-// @Accept json
-// @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Danh sách gói cước"
-// @Router /api/v1/subscriptions/plans [get]
-func (h *BillingHandler) GetPlans(c *gin.Context) error {
-	plans, err := h.billingUseCase.GetPlans(c.Request.Context())
-	if err != nil {
-		return err
-	}
-
-	shared_pres.Success(c, "Lấy danh sách gói Premium thành công", plans)
 	return nil
 }

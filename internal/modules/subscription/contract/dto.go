@@ -10,6 +10,7 @@ import (
 type UserSubscriptionDTO struct {
 	PlanID               uuid.UUID
 	PlanName             string
+	PlanSlug             string
 	ExpiresAt            *time.Time
 	IsAutoRenewEnabled   bool
 	MaxWardrobeItems     int
@@ -25,6 +26,7 @@ type UserSubscriptionDTO struct {
 type UserSubscriptionOverviewDTO struct {
 	PlanID             uuid.UUID
 	PlanName           string
+	PlanSlug           string
 	ExpiresAt          *time.Time
 	IsAutoRenewEnabled bool
 	MaxWardrobeItems   int

@@ -5,9 +5,9 @@ import "fmt"
 const (
 	PurposeForgotPassword = "forgot-password"
 	PurposeRegistration   = "registration"
-	PurposeTwoFactorAuth   = "2fa"
+	PurposeTwoFactorAuth  = "2fa"
 
-	KeyValue     = "value"
+	KeyValue    = "value"
 	KeyAttempts = "attempts"
 	KeyCooldown = "cooldown"
 	KeyData     = "data"

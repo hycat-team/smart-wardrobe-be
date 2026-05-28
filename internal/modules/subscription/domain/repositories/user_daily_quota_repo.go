@@ -12,4 +12,5 @@ import (
 type IUserDailyQuotaRepository interface {
 	repositories.IGenericRepository[entities.UserDailyQuota, uuid.UUID]
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error)
+	GetByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error)
 }

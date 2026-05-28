@@ -7,15 +7,16 @@ import (
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type GenericRepository[T any, ID any] struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 func NewGenericRepository[T any, ID any](dbConn *gorm.DB) *GenericRepository[T, ID] {
 	return &GenericRepository[T, ID]{
-		DB: dbConn,
+		db: dbConn,
 	}
 }
 
@@ -23,7 +24,7 @@ func (r *GenericRepository[T, ID]) GetDB(ctx context.Context) *gorm.DB {
 	if tx := db.GetTx(ctx); tx != nil {
 		return tx.WithContext(ctx)
 	}
-	return r.DB.WithContext(ctx)
+	return r.db.WithContext(ctx)
 }
 
 func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {
@@ -64,11 +65,11 @@ func (r *GenericRepository[T, ID]) GetAll(ctx context.Context) ([]*T, error) {
 }
 
 func (r *GenericRepository[T, ID]) Create(ctx context.Context, entity *T) error {
-	return r.GetDB(ctx).Create(entity).Error
+	return r.GetDB(ctx).Omit(clause.Associations).Create(entity).Error
 }
 
 func (r *GenericRepository[T, ID]) Update(ctx context.Context, entity *T) error {
-	return r.GetDB(ctx).Save(entity).Error
+	return r.GetDB(ctx).Omit(clause.Associations).Save(entity).Error
 }
 
 func (r *GenericRepository[T, ID]) Delete(ctx context.Context, id ID) error {

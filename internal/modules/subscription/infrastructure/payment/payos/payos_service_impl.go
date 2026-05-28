@@ -10,9 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,28 +43,45 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		return "", errors.New("payos credentials are not fully configured in the environment")
 	}
 
-	rawString := fmt.Sprintf("amount=%d&cancelUrl=%s&description=%s&orderCode=%d&returnUrl=%s",
-		int(req.Amount), req.CancelUrl, req.Description, req.OrderCode, req.ReturnUrl)
-
-	signature := s.generateHMAC256(rawString)
-
-	payload := map[string]any{
+	bodyMap := map[string]any{
 		"orderCode":   req.OrderCode,
-		"amount":      int(req.Amount),
+		"amount":      int64(req.Amount),
 		"description": req.Description,
-		"cancelUrl":   req.CancelUrl,
 		"returnUrl":   req.ReturnUrl,
+		"cancelUrl":   req.CancelUrl,
+	}
+
+	var keys []string
+	for k := range bodyMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", k, bodyMap[k]))
+	}
+	rawStr := strings.Join(parts, "&")
+
+	signature := s.generateHMAC256(rawStr)
+
+	reqPayload := map[string]any{
+		"orderCode":   req.OrderCode,
+		"amount":      int64(req.Amount),
+		"description": req.Description,
+		"returnUrl":   req.ReturnUrl,
+		"cancelUrl":   req.CancelUrl,
 		"signature":   signature,
 	}
 
-	bodyBytes, err := json.Marshal(payload)
+	reqBytes, err := json.Marshal(reqPayload)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize payos payload: %w", err)
+		return "", fmt.Errorf("failed to serialize checkout payload: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api-merchant.payos.vn/v2/payment-requests", bytes.NewBuffer(bodyBytes))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api-merchant.payos.vn/v2/payment-requests", bytes.NewBuffer(reqBytes))
 	if err != nil {
-		return "", fmt.Errorf("failed to create http request for payos: %w", err)
+		return "", fmt.Errorf("failed to create http request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -73,20 +90,26 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 
 	resp, err := s.httpClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("payos API request failed: %w", err)
+		return "", fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read payos response body: %w", err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("payos API returned status code %d: %s", resp.StatusCode, string(respBytes))
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("payos returned non-ok status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
-	var res payOSResponse
+	var res struct {
+		Code string `json:"code"`
+		Desc string `json:"desc"`
+		Data struct {
+			CheckoutUrl string `json:"checkoutUrl"`
+		} `json:"data"`
+	}
 	if err := json.Unmarshal(respBytes, &res); err != nil {
 		return "", fmt.Errorf("failed to parse payos response: %w", err)
 	}
@@ -122,12 +145,12 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signat
 		return nil, errors.New("invalid payos signature")
 	}
 
-	result := make(map[string]any)
-	maps.Copy(result, payload.Data)
-	result["webhook_code"] = payload.Code
-	result["webhook_desc"] = payload.Desc
+	var fullMap map[string]any
+	if err := json.Unmarshal(rawBody, &fullMap); err != nil {
+		return nil, fmt.Errorf("failed to parse complete webhook map: %w", err)
+	}
 
-	return result, nil
+	return fullMap, nil
 }
 
 func (s *PayOSService) VerifyWebhookSignature(dataMap map[string]any, expectedSignature string) bool {
@@ -144,31 +167,7 @@ func (s *PayOSService) VerifyWebhookSignature(dataMap map[string]any, expectedSi
 	var parts []string
 	for _, k := range keys {
 		v := dataMap[k]
-		if v == nil {
-			parts = append(parts, fmt.Sprintf("%s=", k))
-			continue
-		}
-
-		var valStr string
-		switch val := v.(type) {
-		case string:
-			valStr = val
-		case float64:
-			if val == float64(int64(val)) {
-				valStr = fmt.Sprintf("%d", int64(val))
-			} else {
-				valStr = fmt.Sprintf("%g", val)
-			}
-		case int:
-			valStr = fmt.Sprintf("%d", val)
-		case int64:
-			valStr = fmt.Sprintf("%d", val)
-		case bool:
-			valStr = fmt.Sprintf("%t", val)
-		default:
-			valBytes, _ := json.Marshal(val)
-			valStr = string(valBytes)
-		}
+		valStr := formatWebhookValue(v)
 		parts = append(parts, fmt.Sprintf("%s=%s", k, valStr))
 	}
 
@@ -176,6 +175,83 @@ func (s *PayOSService) VerifyWebhookSignature(dataMap map[string]any, expectedSi
 	computedSignature := s.generateHMAC256(rawString)
 
 	return computedSignature == expectedSignature
+}
+
+func formatWebhookValue(v any) string {
+	if v == nil {
+		return ""
+	}
+
+	switch val := v.(type) {
+	case string:
+		if val == "null" || val == "undefined" || val == "NULL" {
+			return ""
+		}
+		return val
+	case bool:
+		return fmt.Sprintf("%t", val)
+	case float64:
+		if val == float64(int64(val)) {
+			return fmt.Sprintf("%.0f", val)
+		}
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case int:
+		return fmt.Sprintf("%d", val)
+	case int64:
+		return fmt.Sprintf("%d", val)
+	case []any:
+		sortedSlice := make([]any, len(val))
+		for i, item := range val {
+			if itemMap, ok := item.(map[string]any); ok {
+				sortedSlice[i] = sortMapKeys(itemMap)
+			} else {
+				sortedSlice[i] = item
+			}
+		}
+		bytes, err := json.Marshal(sortedSlice)
+		if err != nil {
+			return ""
+		}
+		return string(bytes)
+	case map[string]any:
+		sortedMap := sortMapKeys(val)
+		bytes, err := json.Marshal(sortedMap)
+		if err != nil {
+			return ""
+		}
+		return string(bytes)
+	default:
+		bytes, err := json.Marshal(val)
+		if err != nil {
+			return ""
+		}
+		return string(bytes)
+	}
+}
+
+func sortMapKeys(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+	sorted := make(map[string]any)
+	for k, v := range m {
+		if innerMap, ok := v.(map[string]any); ok {
+			sorted[k] = sortMapKeys(innerMap)
+		} else if innerSlice, ok := v.([]any); ok {
+			sortedSlice := make([]any, len(innerSlice))
+			for i, item := range innerSlice {
+				if itemMap, ok := item.(map[string]any); ok {
+					sortedSlice[i] = sortMapKeys(itemMap)
+				} else {
+					sortedSlice[i] = item
+				}
+			}
+			sorted[k] = sortedSlice
+		} else {
+			sorted[k] = v
+		}
+	}
+	return sorted
 }
 
 func (s *PayOSService) generateHMAC256(data string) string {

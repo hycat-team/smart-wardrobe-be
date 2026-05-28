@@ -186,17 +186,19 @@ definitions:
         type: string
       planName:
         type: string
+      planSlug:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq:
     properties:
       cancelUrl:
         type: string
+      planSlug:
+        type: string
       returnUrl:
         type: string
-      subscriptionPlanID:
-        type: string
     required:
-    - subscriptionPlanID
+    - planSlug
     type: object
   smart-wardrobe-be_internal_modules_subscription_application_dto.PayOSWebhookData:
     properties:
@@ -552,6 +554,28 @@ paths:
       summary: Đăng ký mua gói cước trực tiếp
       tags:
       - Billing
+  /api/v1/subscriptions/me/purchase-with-wallet:
+    post:
+      consumes:
+      - application/json
+      description: Thực hiện mua gói cước bằng cách trừ số dư ví nội bộ của người
+        dùng
+      parameters:
+      - description: Thông tin gói cước (chỉ cần planSlug)
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Kết quả đăng ký
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đăng ký mua gói cước bằng ví nội bộ
+      tags:
+      - Billing
   /api/v1/subscriptions/me/toggle-auto-renew:
     patch:
       consumes:
@@ -658,5 +682,5 @@ paths:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Lấy danh sách các gói Premium
       tags:
-      - Billing
+      - Subscription
 swagger: "2.0"

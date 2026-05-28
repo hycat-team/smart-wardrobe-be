@@ -30,11 +30,11 @@ func (r *AuthRouter) Init(group *gin.RouterGroup) {
 		authApi.POST("/forgot-password", shared_pres.WrapHandler(r.authHandler.ForgotPassword))
 		authApi.POST("/forgot-password/confirm-otp", shared_pres.WrapHandler(r.authHandler.ConfirmForgotPasswordOtp))
 		authApi.POST("/reset-password", shared_pres.WrapHandler(r.authHandler.ResetPassword))
+	}
 
-		// Protected auth routes
-		authApi.Use(r.authMiddleware.Handle())
-		{
-			authApi.POST("/logout", shared_pres.WrapHandler(r.authHandler.Logout))
-		}
+	privateAuth := authApi.Group("")
+	privateAuth.Use(r.authMiddleware.Handle())
+	{
+		privateAuth.POST("/logout", shared_pres.WrapHandler(r.authHandler.Logout))
 	}
 }

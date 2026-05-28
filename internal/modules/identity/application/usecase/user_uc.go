@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
-	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
+	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/mapper"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
@@ -40,7 +40,7 @@ func NewUserUseCase(
 func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, input dto.ChangePasswordReq) (bool, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return false, err
+		return false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
 	}
 	if user == nil || user.IsDeleted {
 		return false, errorcode.NewUnauthorized("Người dùng không tồn tại.")
@@ -53,7 +53,7 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)
 	if err != nil {
-		return false, err
+		return false, errorcode.NewInternalError("Lỗi khi băm mật khẩu")
 	}
 
 	user.ChangePasswordHash(newPasswordHash)
@@ -61,13 +61,13 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 	if input.LogoutAllDevices {
 		err = uc.refreshTokenRepo.RevokeAllByUserID(ctx, userID)
 		if err != nil {
-			return false, err
+			return false, errorcode.NewInternalError("Lỗi khi thu hồi các phiên đăng nhập khác")
 		}
 	}
 
 	err = uc.userRepo.Update(ctx, user)
 	if err != nil {
-		return false, err
+		return false, errorcode.NewInternalError("Lỗi khi cập nhật mật khẩu mới")
 	}
 
 	return true, nil
@@ -76,7 +76,7 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, input dto.UpdateProfileReq) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
 	}
 	if user == nil || user.IsDeleted {
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
@@ -99,7 +99,7 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 
 	err = uc.userRepo.Update(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, errorcode.NewInternalError("Lỗi khi cập nhật hồ sơ người dùng")
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
@@ -113,7 +113,7 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
 	}
 	if user == nil || user.IsDeleted {
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")

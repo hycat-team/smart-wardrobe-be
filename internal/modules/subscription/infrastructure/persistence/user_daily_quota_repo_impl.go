@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // UserDailyQuotaRepository implements database actions for daily user resource usage quotas
@@ -27,6 +28,18 @@ func NewUserDailyQuotaRepository(dbConn *gorm.DB) repositories.IUserDailyQuotaRe
 func (r *UserDailyQuotaRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
 	var quota entities.UserDailyQuota
 	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&quota).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &quota, nil
+}
+
+func (r *UserDailyQuotaRepository) GetByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+	var quota entities.UserDailyQuota
+	err := r.GetDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&quota).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

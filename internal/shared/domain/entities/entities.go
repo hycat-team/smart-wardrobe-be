@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 type SubscriptionPlan struct {
 	AuditableEntity
+	Slug               string  `gorm:"type:varchar(100);uniqueIndex;not null"`
 	Name               string  `gorm:"type:varchar(100);not null"`
 	Price              float64 `gorm:"type:numeric(12,2);not null;default:0.00"`
 	MaxWardrobeItems   int     `gorm:"type:int;not null"`
@@ -72,20 +74,6 @@ type RefreshToken struct {
 	Token     string    `gorm:"type:varchar(500);uniqueIndex;not null"`
 	ExpiresAt time.Time `gorm:"type:timestamp with time zone;not null"`
 	IsRevoked bool      `gorm:"type:boolean;not null;default:false"`
-}
-
-type PaymentHistory struct {
-	AuditableEntity
-	UserID               uuid.UUID         `gorm:"type:uuid;not null"`
-	User                 *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	SubscriptionPlanID   uuid.UUID         `gorm:"type:uuid;not null"`
-	SubscriptionPlan     *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:RESTRICT"`
-	TransactionReference string            `gorm:"type:varchar(255);uniqueIndex;not null"`
-	Amount               float64           `gorm:"type:numeric(12,2);not null"`
-	Currency             string            `gorm:"type:varchar(10);not null;default:'VND'"`
-	PaymentMethod        string            `gorm:"type:varchar(50);not null"`
-	Status               int16             `gorm:"type:smallint;not null;default:0"`
-	Description          *string           `gorm:"type:text"`
 }
 
 type ConversationalContext struct {
@@ -208,18 +196,18 @@ type UserWallet struct {
 
 type DepositTransaction struct {
 	AuditableEntity
-	UserID               uuid.UUID         `gorm:"type:uuid;not null"`
-	User                 *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Amount               float64           `gorm:"type:numeric(12,2);not null"`
-	Currency             string            `gorm:"type:varchar(10);not null;default:'VND'"`
-	Status               string            `gorm:"type:varchar(50);not null;default:'PENDING'"` // PENDING, SUCCESS, FAILED
-	TransactionType      string            `gorm:"type:varchar(50);not null"`                   // DIRECT_PURCHASE, WALLET_TOPUP
-	SubscriptionPlanID   *uuid.UUID        `gorm:"type:uuid"`
-	SubscriptionPlan     *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:SET NULL"`
-	OrderCode            int64             `gorm:"type:bigint;autoIncrement;uniqueIndex;not null"`
-	GatewayReference     *string           `gorm:"type:varchar(255);uniqueIndex"` // PayOS payment transaction reference
-	GatewayDetails       *string           `gorm:"type:text"`                    // Raw JSON string payload from gateway
-	PaymentUrl           *string           `gorm:"type:varchar(500)"`
+	UserID             uuid.UUID         `gorm:"type:uuid;not null"`
+	User               *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Amount             float64                     `gorm:"type:numeric(12,2);not null"`
+	Currency           string                      `gorm:"type:varchar(10);not null;default:'VND'"`
+	Status             depositstatus.DepositStatus `gorm:"type:smallint;not null;default:0"` // 0: PENDING, 1: SUCCESS, 2: FAILED
+	TransactionType    string                      `gorm:"type:varchar(50);not null"`        // DIRECT_PURCHASE, WALLET_TOPUP
+	SubscriptionPlanID *uuid.UUID        `gorm:"type:uuid"`
+	SubscriptionPlan   *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:SET NULL"`
+	OrderCode          int64             `gorm:"type:bigint;autoIncrement;uniqueIndex;not null"`
+	GatewayReference   *string           `gorm:"type:varchar(255);uniqueIndex"` // PayOS payment transaction reference
+	GatewayDetails     *string           `gorm:"type:text"`                     // Raw JSON string payload from gateway
+	PaymentUrl         *string           `gorm:"type:varchar(500)"`
 }
 
 type WalletStatement struct {

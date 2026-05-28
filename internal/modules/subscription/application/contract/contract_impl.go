@@ -112,6 +112,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 	return &contract.UserSubscriptionDTO{
 		PlanID:               plan.ID,
 		PlanName:             plan.Name,
+		PlanSlug:             plan.Slug,
 		ExpiresAt:            sub.ExpiresAt,
 		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
 		MaxWardrobeItems:     plan.MaxWardrobeItems,
@@ -149,6 +150,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscriptionOverview(ctx cont
 	return &contract.UserSubscriptionOverviewDTO{
 		PlanID:             plan.ID,
 		PlanName:           plan.Name,
+		PlanSlug:           plan.Slug,
 		ExpiresAt:          sub.ExpiresAt,
 		IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
 		MaxWardrobeItems:   plan.MaxWardrobeItems,
@@ -178,10 +180,10 @@ func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Co
 
 	now := time.Now()
 	lastReset := quota.LastResetDate
-	if now.Year() > lastReset.Year() || 
+	if now.Year() > lastReset.Year() ||
 		(now.Year() == lastReset.Year() && now.Month() > lastReset.Month()) ||
 		(now.Year() == lastReset.Year() && now.Month() == lastReset.Month() && now.Day() > lastReset.Day()) {
-		
+
 		quota.OutfitRecommendCount = 0
 		quota.AiUsageCount = 0
 		quota.LastResetDate = now
@@ -207,6 +209,7 @@ func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Co
 	return &contract.UserSubscriptionDTO{
 		PlanID:               plan.ID,
 		PlanName:             plan.Name,
+		PlanSlug:             plan.Slug,
 		ExpiresAt:            sub.ExpiresAt,
 		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
 		MaxWardrobeItems:     plan.MaxWardrobeItems,

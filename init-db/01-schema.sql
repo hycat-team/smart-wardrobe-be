@@ -3,6 +3,7 @@
 -- ========================================================
 CREATE TABLE subscription_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     price NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     max_wardrobe_items INT NOT NULL,
@@ -87,22 +88,6 @@ CREATE TABLE refresh_tokens (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- ========================================================
--- Bảng lịch sử thanh toán (Payment Histories)
--- ========================================================
-CREATE TABLE payment_histories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    subscription_plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
-    transaction_reference VARCHAR(255) UNIQUE NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL,
-    currency VARCHAR(10) NOT NULL DEFAULT 'VND',
-    payment_method VARCHAR(50) NOT NULL,
-    status SMALLINT NOT NULL DEFAULT 0, -- 0: PENDING, 1: COMPLETED, 2: FAILED
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
 
 -- ========================================================
 -- Bảng quản lý phiên hội thoại Chatbot (Sessions)
@@ -270,7 +255,7 @@ CREATE TABLE deposit_transactions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount NUMERIC(12,2) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'VND',
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    status SMALLINT NOT NULL DEFAULT 0, -- 0: PENDING, 1: SUCCESS, 2: FAILED
     transaction_type VARCHAR(50) NOT NULL,
     subscription_plan_id UUID REFERENCES subscription_plans(id) ON DELETE SET NULL,
     order_code BIGSERIAL NOT NULL UNIQUE,

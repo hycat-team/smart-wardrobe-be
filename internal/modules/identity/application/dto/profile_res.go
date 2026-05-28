@@ -26,6 +26,7 @@ type UserRes struct {
 type UserSubscriptionRes struct {
 	PlanID             uuid.UUID  `json:"planId"`
 	PlanName           string     `json:"planName"`
+	PlanSlug           string     `json:"planSlug"`
 	ExpiresAt          *time.Time `json:"expiresAt,omitempty"`
 	MaxWardrobeItems   int        `json:"maxWardrobeItems"`
 	MaxOutfits         int        `json:"maxOutfits"`

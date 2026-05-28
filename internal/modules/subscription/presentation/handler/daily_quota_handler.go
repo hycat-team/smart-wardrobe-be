@@ -4,6 +4,7 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
+	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,21 +42,29 @@ func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
 	return nil
 }
 
-// ToggleAutoRenew toggles the automatic subscription renewal setting
-// @Summary Bật/Tắt tự động gia hạn gói cước
-// @Description Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn
+// SetAutoRenewStatus updates the automatic subscription renewal setting
+// @Summary Thiết lập tự động gia hạn gói cước
+// @Description Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn
 // @Tags Subscription
 // @Accept json
 // @Produce json
+// @Param body body struct{Enabled bool `json:"enabled"`} true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/toggle-auto-renew [patch]
-func (h *DailyQuotaHandler) ToggleAutoRenew(c *gin.Context) error {
+func (h *DailyQuotaHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	isEnabled, err := h.subscriptionUseCase.ToggleAutoRenew(c.Request.Context(), userID)
+	var req struct {
+		Enabled *bool `json:"enabled" binding:"required"`
+	}
+	if err := validation.BindJSON(c, &req); err != nil {
+		return err
+	}
+
+	isEnabled, err := h.subscriptionUseCase.SetAutoRenewStatus(c.Request.Context(), userID, *req.Enabled)
 	if err != nil {
 		return err
 	}
@@ -63,5 +72,23 @@ func (h *DailyQuotaHandler) ToggleAutoRenew(c *gin.Context) error {
 	shared_pres.Success(c, "Thay đổi trạng thái tự động gia hạn thành công", gin.H{
 		"is_auto_renew_enabled": isEnabled,
 	})
+	return nil
+}
+
+// GetPlans retrieves all subscription plans
+// @Summary Lấy danh sách các gói Premium
+// @Description Lấy danh sách tất cả các gói đăng ký Premium hiện có
+// @Tags Subscription
+// @Accept json
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse "Danh sách gói cước"
+// @Router /api/v1/subscriptions/plans [get]
+func (h *DailyQuotaHandler) GetPlans(c *gin.Context) error {
+	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy danh sách gói Premium thành công", plans)
 	return nil
 }

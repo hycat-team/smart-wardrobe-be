@@ -465,6 +465,39 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/subscriptions/me/purchase-with-wallet": {
+            "post": {
+                "description": "Thực hiện mua gói cước bằng cách trừ số dư ví nội bộ của người dùng",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Đăng ký mua gói cước bằng ví nội bộ",
+                "parameters": [
+                    {
+                        "description": "Thông tin gói cước (chỉ cần planSlug)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kết quả đăng ký",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscriptions/me/toggle-auto-renew": {
             "patch": {
                 "description": "Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
@@ -612,7 +645,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Billing"
+                    "Subscription"
                 ],
                 "summary": "Lấy danh sách các gói Premium",
                 "responses": {
@@ -908,22 +941,25 @@ const docTemplate = `{
                 },
                 "planName": {
                     "type": "string"
+                },
+                "planSlug": {
+                    "type": "string"
                 }
             }
         },
         "smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq": {
             "type": "object",
             "required": [
-                "subscriptionPlanID"
+                "planSlug"
             ],
             "properties": {
                 "cancelUrl": {
                     "type": "string"
                 },
-                "returnUrl": {
+                "planSlug": {
                     "type": "string"
                 },
-                "subscriptionPlanID": {
+                "returnUrl": {
                     "type": "string"
                 }
             }

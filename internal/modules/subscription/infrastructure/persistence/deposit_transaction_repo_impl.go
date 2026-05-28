@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type DepositTransactionRepository struct {
@@ -36,6 +37,18 @@ func (r *DepositTransactionRepository) GetByGatewayReference(ctx context.Context
 func (r *DepositTransactionRepository) GetByOrderCode(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {
 	var tx entities.DepositTransaction
 	err := r.GetDB(ctx).Where("order_code = ?", orderCode).First(&tx).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (r *DepositTransactionRepository) GetByOrderCodeWithLock(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {
+	var tx entities.DepositTransaction
+	err := r.GetDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_code = ?", orderCode).First(&tx).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

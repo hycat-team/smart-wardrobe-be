@@ -31,9 +31,9 @@ type WalletTopUpReq struct {
 }
 
 type DirectPurchaseReq struct {
-	SubscriptionPlanID uuid.UUID `json:"subscriptionPlanID" binding:"required"`
-	ReturnUrl          string    `json:"returnUrl"`
-	CancelUrl          string    `json:"cancelUrl"`
+	PlanSlug  string `json:"planSlug" binding:"required"`
+	ReturnUrl string `json:"returnUrl"`
+	CancelUrl string `json:"cancelUrl"`
 }
 
 type PaymentLinkDTO struct {
@@ -58,4 +58,16 @@ type PayOSWebhookReq struct {
 	Desc      string           `json:"desc"`
 	Data      PayOSWebhookData `json:"data"`
 	Signature string           `json:"signature"`
+}
+
+type SubscriptionPlanDTO struct {
+	ID                 uuid.UUID `json:"id"`
+	Slug               string    `json:"slug"`
+	Name               string    `json:"name"`
+	Price              float64   `json:"price"`
+	MaxWardrobeItems   int       `json:"maxWardrobeItems"`
+	MaxOutfits         int       `json:"maxOutfits"`
+	AiOutfitDailyQuota int       `json:"aiOutfitDailyQuota"`
+	AiChatDailyQuota   int       `json:"aiChatDailyQuota"`
+	DurationDays       *int      `json:"durationDays,omitempty"`
 }

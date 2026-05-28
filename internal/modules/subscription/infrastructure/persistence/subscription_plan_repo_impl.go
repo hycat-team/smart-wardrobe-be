@@ -36,3 +36,19 @@ func (r *SubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*entit
 	}
 	return &plan, nil
 }
+
+func (r *SubscriptionPlanRepository) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
+	var plan entities.SubscriptionPlan
+	err := r.GetDB(ctx).
+		Where("slug = ? AND is_active = ?", slug, true).
+		First(&plan).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &plan, nil
+}

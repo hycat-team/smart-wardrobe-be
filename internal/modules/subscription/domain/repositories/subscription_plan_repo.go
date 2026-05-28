@@ -11,4 +11,5 @@ import (
 type ISubscriptionPlanRepository interface {
 	repositories.IGenericRepository[entities.SubscriptionPlan, uuid.UUID]
 	GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error)
+	GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error)
 }

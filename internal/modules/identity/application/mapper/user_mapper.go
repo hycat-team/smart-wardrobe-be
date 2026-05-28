@@ -46,6 +46,7 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 		res.Subscription = dto.UserSubscriptionRes{
 			PlanID:             sub.PlanID,
 			PlanName:           sub.PlanName,
+			PlanSlug:           sub.PlanSlug,
 			ExpiresAt:          sub.ExpiresAt,
 			MaxWardrobeItems:   sub.MaxWardrobeItems,
 			MaxOutfits:         sub.MaxOutfits,
