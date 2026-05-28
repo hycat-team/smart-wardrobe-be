@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/me"
+	"smart-wardrobe-be/internal/api/routes/subscription"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
@@ -20,7 +21,9 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/application/contract"
+	usecase2 "smart-wardrobe-be/internal/modules/subscription/application/usecase"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
+	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
@@ -48,16 +51,20 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
 	iSubscriptionModuleContract := contract.NewSubscriptionModuleContractImpl(iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserDailyQuotaRepository)
 	iUnitOfWork := db.NewGormUnitOfWork(gormDB)
-	authUseCase := usecase.NewAuthUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, iSubscriptionModuleContract, iUnitOfWork, cfg)
-	authHandler := handler.NewAuthHandler(authUseCase, cfg)
+	iAuthUseCase := usecase.NewAuthUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, iSubscriptionModuleContract, iUnitOfWork, cfg)
+	authHandler := handler.NewAuthHandler(iAuthUseCase, cfg)
 	authMiddleware := middleware.NewAuthMiddleware(cfg)
 	authRouter := auth.NewRouter(authHandler, authMiddleware)
-	userUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionModuleContract)
-	meHandler := handler.NewMeHandler(userUseCase)
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionModuleContract)
+	meHandler := handler.NewMeHandler(iUserUseCase)
 	meRouter := me.NewRouter(meHandler, authMiddleware)
+	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iSubscriptionModuleContract)
+	dailyQuotaHandler := handler2.NewDailyQuotaHandler(iSubscriptionUseCase)
+	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
-		AuthRouter: authRouter,
-		MeRouter:   meRouter,
+		AuthRouter:         authRouter,
+		MeRouter:           meRouter,
+		SubscriptionRouter: subscriptionRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)

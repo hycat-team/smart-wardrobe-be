@@ -23,7 +23,7 @@ func NewIdentityModuleContractImpl(repo repositories.IUserRepository) contract.I
 
 // GetUserByID retrieves core user metadata for external module contexts
 func (impl *IdentityModuleContractImpl) GetUserByID(ctx context.Context, id uuid.UUID) (*contract.PublicUserDTO, error) {
-	user, err := impl.userRepo.FindByID(ctx, id)
+	user, err := impl.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

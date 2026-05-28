@@ -10,7 +10,7 @@ import (
 
 type IRefreshTokenRepository interface {
 	shared_repos.IGenericRepository[entities.RefreshToken, uuid.UUID]
-	FindByToken(ctx context.Context, token string) (*entities.RefreshToken, error)
+	GetByToken(ctx context.Context, token string) (*entities.RefreshToken, error)
 	RevokeToken(ctx context.Context, token string) error
 	RevokeAllByUserID(ctx context.Context, userID uuid.UUID) error
 }

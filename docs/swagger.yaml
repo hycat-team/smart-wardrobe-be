@@ -122,10 +122,33 @@ definitions:
     required:
     - firstName
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes:
+    properties:
+      bodyType:
+        type: string
+      estimatedBodyShape:
+        type: string
+      fitPreference:
+        type: string
+      height:
+        type: number
+      recommendedSize:
+        type: string
+      skinTone:
+        type: string
+      stylingNotes:
+        type: string
+      weight:
+        type: number
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UserRes:
     properties:
       address:
         type: string
+      bodyProfile:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes'
+        description: Quota        *UserQuotaRes       `json:"quota,omitempty"`
       createdAt:
         type: string
       email:
@@ -140,7 +163,28 @@ definitions:
         type: string
       roleSlug:
         type: string
+      status:
+        type: integer
+      subscription:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes'
       username:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes:
+    properties:
+      aiChatDailyQuota:
+        type: integer
+      aiOutfitDailyQuota:
+        type: integer
+      expiresAt:
+        type: string
+      maxOutfits:
+        type: integer
+      maxWardrobeItems:
+        type: integer
+      planId:
+        type: string
+      planName:
         type: string
     type: object
   smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
@@ -415,4 +459,20 @@ paths:
       summary: Đổi mật khẩu
       tags:
       - Me
+  /api/v1/subscriptions/daily-quota:
+    get:
+      consumes:
+      - application/json
+      description: Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong
+        ngày
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Hạn ngạch sử dụng
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lấy hạn ngạch sử dụng hàng ngày
+      tags:
+      - Subscription
 swagger: "2.0"

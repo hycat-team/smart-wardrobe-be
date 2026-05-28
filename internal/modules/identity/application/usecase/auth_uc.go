@@ -9,6 +9,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
+	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
@@ -51,7 +52,7 @@ func NewAuthUseCase(
 	subscriptionContract subscription_contract.ISubscriptionModuleContract,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
-) *AuthUseCase {
+) uc_interfaces.IAuthUseCase {
 	return &AuthUseCase{
 		userRepo:              userRepo,
 		refreshTokenRepo:      refreshTokenRepo,
@@ -262,7 +263,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 		return nil, errorcode.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
 	}
 
-	user, err := uc.userRepo.FindByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +271,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 		return nil, errorcode.NewUnauthorized("Không tìm thấy người dùng này.")
 	}
 
-	existingToken, err := uc.refreshTokenRepo.FindByToken(ctx, input.OldRefreshToken)
+	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +336,7 @@ func (uc *AuthUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, e
 		return false, errorcode.NewUnauthorized("Invalid token payload.")
 	}
 
-	user, err := uc.userRepo.FindByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
 		return false, err
 	}
@@ -423,7 +424,7 @@ func (uc *AuthUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.C
 		return "", errorcode.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
 	}
 
-	user, err := uc.userRepo.FindByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
 		return "", err
 	}
@@ -455,7 +456,7 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswor
 		return false, errorcode.NewUnauthorized("Token không hợp lệ.")
 	}
 
-	user, err := uc.userRepo.FindByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
 		return false, err
 	}

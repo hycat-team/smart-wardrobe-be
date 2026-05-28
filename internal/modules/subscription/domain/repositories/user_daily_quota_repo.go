@@ -11,5 +11,5 @@ import (
 // IUserDailyQuotaRepository handles database operations for user daily quotas
 type IUserDailyQuotaRepository interface {
 	repositories.IGenericRepository[entities.UserDailyQuota, uuid.UUID]
-	FindByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error)
 }

@@ -19,3 +19,14 @@ type UserSubscriptionDTO struct {
 	AiUsageCount         int
 	LastResetDate        time.Time
 }
+
+// UserSubscriptionOverviewDTO aggregates only subscription plan limits without daily quota usage metrics
+type UserSubscriptionOverviewDTO struct {
+	PlanID             uuid.UUID
+	PlanName           string
+	ExpiresAt          *time.Time
+	MaxWardrobeItems   int
+	MaxOutfits         int
+	AiOutfitDailyQuota int
+	AiChatDailyQuota   int
+}

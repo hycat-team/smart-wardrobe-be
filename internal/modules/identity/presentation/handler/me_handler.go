@@ -2,7 +2,7 @@ package handler
 
 import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
-	"smart-wardrobe-be/internal/modules/identity/application/usecase"
+	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -11,10 +11,10 @@ import (
 )
 
 type MeHandler struct {
-	userUseCase *usecase.UserUseCase
+	userUseCase usecase_interfaces.IUserUseCase
 }
 
-func NewMeHandler(uc *usecase.UserUseCase) *MeHandler {
+func NewMeHandler(uc usecase_interfaces.IUserUseCase) *MeHandler {
 	return &MeHandler{
 		userUseCase: uc,
 	}
@@ -34,7 +34,7 @@ func (h *MeHandler) GetCurrentUser(c *gin.Context) error {
 		return err
 	}
 
-	userRes, err := h.userUseCase.GetCurrentUser(c.Request.Context(), userID)
+	userRes, err := h.userUseCase.GetByID(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}

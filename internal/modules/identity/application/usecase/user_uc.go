@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
+	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	"smart-wardrobe-be/internal/modules/identity/application/mapper"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
@@ -27,7 +28,7 @@ func NewUserUseCase(
 	passwordHasher security.IPasswordHasher,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
 	subscriptionContract subscription_contract.ISubscriptionModuleContract,
-) *UserUseCase {
+) uc_interfaces.IUserUseCase {
 	return &UserUseCase{
 		userRepo:             userRepo,
 		passwordHasher:       passwordHasher,
@@ -37,7 +38,7 @@ func NewUserUseCase(
 }
 
 func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, input dto.ChangePasswordReq) (bool, error) {
-	user, err := uc.userRepo.FindByID(ctx, userID)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
@@ -73,7 +74,7 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 }
 
 func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, input dto.UpdateProfileReq) (*dto.UserRes, error) {
-	user, err := uc.userRepo.FindByID(ctx, userID)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 		return nil, err
 	}
 
-	sub, err := uc.subscriptionContract.GetUserSubscription(ctx, userID)
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		sub = nil
 	}
@@ -109,8 +110,8 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 	return mapper.MapToUserRes(user, sub), nil
 }
 
-func (uc *UserUseCase) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
-	user, err := uc.userRepo.FindByID(ctx, userID)
+func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (uc *UserUseCase) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*d
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
-	sub, err := uc.subscriptionContract.GetUserSubscription(ctx, userID)
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		sub = nil
 	}

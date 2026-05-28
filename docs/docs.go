@@ -407,6 +407,29 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/subscriptions/daily-quota": {
+            "get": {
+                "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Lấy hạn ngạch sử dụng hàng ngày",
+                "responses": {
+                    "200": {
+                        "description": "Hạn ngạch sử dụng",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -593,11 +616,48 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes": {
+            "type": "object",
+            "properties": {
+                "bodyType": {
+                    "type": "string"
+                },
+                "estimatedBodyShape": {
+                    "type": "string"
+                },
+                "fitPreference": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "number"
+                },
+                "recommendedSize": {
+                    "type": "string"
+                },
+                "skinTone": {
+                    "type": "string"
+                },
+                "stylingNotes": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "number"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.UserRes": {
             "type": "object",
             "properties": {
                 "address": {
                     "type": "string"
+                },
+                "bodyProfile": {
+                    "description": "Quota        *UserQuotaRes       ` + "`" + `json:\"quota,omitempty\"` + "`" + `",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes"
+                        }
+                    ]
                 },
                 "createdAt": {
                     "type": "string"
@@ -620,7 +680,39 @@ const docTemplate = `{
                 "roleSlug": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "integer"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes"
+                },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes": {
+            "type": "object",
+            "properties": {
+                "aiChatDailyQuota": {
+                    "type": "integer"
+                },
+                "aiOutfitDailyQuota": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "maxOutfits": {
+                    "type": "integer"
+                },
+                "maxWardrobeItems": {
+                    "type": "integer"
+                },
+                "planId": {
+                    "type": "string"
+                },
+                "planName": {
                     "type": "string"
                 }
             }

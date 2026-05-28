@@ -6,7 +6,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
-	"smart-wardrobe-be/internal/modules/identity/application/usecase"
+	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -16,11 +16,11 @@ import (
 )
 
 type AuthHandler struct {
-	authUseCase *usecase.AuthUseCase
+	authUseCase usecase_interfaces.IAuthUseCase
 	cfg         *config.Config
 }
 
-func NewAuthHandler(ac *usecase.AuthUseCase, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(ac usecase_interfaces.IAuthUseCase, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		authUseCase: ac,
 		cfg:         cfg,

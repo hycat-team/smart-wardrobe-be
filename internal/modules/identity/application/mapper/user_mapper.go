@@ -8,7 +8,7 @@ import (
 )
 
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
-func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscriptionDTO) *dto.UserRes {
+func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscriptionOverviewDTO) *dto.UserRes {
 	if user == nil {
 		return nil
 	}
@@ -43,11 +43,6 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 	}
 
 	if sub != nil {
-		res.Quota = dto.UserQuotaRes{
-			OutfitRecommendCount: sub.OutfitRecommendCount,
-			AiUsageCount:         sub.AiUsageCount,
-			LastResetDate:        sub.LastResetDate,
-		}
 		res.Subscription = dto.UserSubscriptionRes{
 			PlanID:             sub.PlanID,
 			PlanName:           sub.PlanName,

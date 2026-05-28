@@ -26,7 +26,7 @@ func (r *GenericRepository[T, ID]) GetDB(ctx context.Context) *gorm.DB {
 	return r.DB.WithContext(ctx)
 }
 
-func (r *GenericRepository[T, ID]) FindByID(ctx context.Context, id ID) (*T, error) {
+func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {
 	var entity T
 	query := r.GetDB(ctx)
 
@@ -46,7 +46,7 @@ func (r *GenericRepository[T, ID]) FindByID(ctx context.Context, id ID) (*T, err
 	return &entity, nil
 }
 
-func (r *GenericRepository[T, ID]) FindAll(ctx context.Context) ([]*T, error) {
+func (r *GenericRepository[T, ID]) GetAll(ctx context.Context) ([]*T, error) {
 	var entities []*T
 	query := r.GetDB(ctx)
 

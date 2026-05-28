@@ -28,8 +28,8 @@ func (r *UserSubscriptionRepository) GetPreloadRelations() []string {
 	return []string{"SubscriptionPlan"}
 }
 
-// FindByUserID retrieves active subscription for a specific user
-func (r *UserSubscriptionRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
+// GetByUserID retrieves active subscription for a specific user
+func (r *UserSubscriptionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
 	var sub entities.UserSubscription
 	query := r.GetDB(ctx)
 

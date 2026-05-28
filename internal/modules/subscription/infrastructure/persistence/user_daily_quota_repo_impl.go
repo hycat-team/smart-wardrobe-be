@@ -23,8 +23,8 @@ func NewUserDailyQuotaRepository(dbConn *gorm.DB) repositories.IUserDailyQuotaRe
 	}
 }
 
-// FindByUserID retrieves daily usage metrics for a specific user
-func (r *UserDailyQuotaRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+// GetByUserID retrieves daily usage metrics for a specific user
+func (r *UserDailyQuotaRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
 	var quota entities.UserDailyQuota
 	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&quota).Error
 	if err != nil {

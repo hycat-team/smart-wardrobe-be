@@ -25,7 +25,7 @@ func (r *RefreshTokenRepository) GetPreloadRelations() []string {
 	return []string{"User"}
 }
 
-func (r *RefreshTokenRepository) FindByToken(ctx context.Context, token string) (*entities.RefreshToken, error) {
+func (r *RefreshTokenRepository) GetByToken(ctx context.Context, token string) (*entities.RefreshToken, error) {
 	var rt entities.RefreshToken
 	err := r.GetDB(ctx).Where("token = ? AND is_revoked = ?", token, false).First(&rt).Error
 	if err != nil {

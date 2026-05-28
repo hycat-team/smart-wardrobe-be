@@ -45,7 +45,7 @@ func (impl *SubscriptionModuleContractImpl) GetDefaultSubscriptionPlanID(ctx con
 
 // IsPremiumPlan checks if plan corresponds to a premium price tier
 func (impl *SubscriptionModuleContractImpl) IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error) {
-	plan, err := impl.planRepo.FindByID(ctx, planID)
+	plan, err := impl.planRepo.GetByID(ctx, planID)
 	if err != nil {
 		return false, err
 	}
@@ -81,7 +81,7 @@ func (impl *SubscriptionModuleContractImpl) InitializeUserSubscription(ctx conte
 
 // GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
 func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := impl.subRepo.FindByUserID(ctx, userID)
+	sub, err := impl.subRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 		return nil, errors.New("user subscription record not found")
 	}
 
-	quota, err := impl.quotaRepo.FindByUserID(ctx, userID)
+	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,100 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 
 	plan := sub.SubscriptionPlan
 	if plan == nil {
-		p, err := impl.planRepo.FindByID(ctx, sub.SubscriptionPlanID)
+		p, err := impl.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			return nil, errors.New("associated subscription plan not found")
+		}
+		plan = p
+	}
+
+	return &contract.UserSubscriptionDTO{
+		PlanID:               plan.ID,
+		PlanName:             plan.Name,
+		ExpiresAt:            sub.ExpiresAt,
+		MaxWardrobeItems:     plan.MaxWardrobeItems,
+		MaxOutfits:           plan.MaxOutfits,
+		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:     plan.AiChatDailyQuota,
+		OutfitRecommendCount: quota.OutfitRecommendCount,
+		AiUsageCount:         quota.AiUsageCount,
+		LastResetDate:        quota.LastResetDate,
+	}, nil
+}
+
+// GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
+func (impl *SubscriptionModuleContractImpl) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
+	sub, err := impl.subRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if sub == nil {
+		return nil, errors.New("user subscription record not found")
+	}
+
+	plan := sub.SubscriptionPlan
+	if plan == nil {
+		p, err := impl.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			return nil, errors.New("associated subscription plan not found")
+		}
+		plan = p
+	}
+
+	return &contract.UserSubscriptionOverviewDTO{
+		PlanID:             plan.ID,
+		PlanName:           plan.Name,
+		ExpiresAt:          sub.ExpiresAt,
+		MaxWardrobeItems:   plan.MaxWardrobeItems,
+		MaxOutfits:         plan.MaxOutfits,
+		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:   plan.AiChatDailyQuota,
+	}, nil
+}
+
+// GetAndResetDailyQuota evaluates daily resets lazily and retrieves the fresh resource counters
+func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+	sub, err := impl.subRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if sub == nil {
+		return nil, errors.New("user subscription record not found")
+	}
+
+	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if quota == nil {
+		return nil, errors.New("user daily quota record not found")
+	}
+
+	now := time.Now()
+	lastReset := quota.LastResetDate
+	if now.Year() > lastReset.Year() || 
+		(now.Year() == lastReset.Year() && now.Month() > lastReset.Month()) ||
+		(now.Year() == lastReset.Year() && now.Month() == lastReset.Month() && now.Day() > lastReset.Day()) {
+		
+		quota.OutfitRecommendCount = 0
+		quota.AiUsageCount = 0
+		quota.LastResetDate = now
+
+		err = impl.quotaRepo.Update(ctx, quota)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	plan := sub.SubscriptionPlan
+	if plan == nil {
+		p, err := impl.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +218,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 
 // UpdateOutfitQuota alters daily recommended outfit generations count
 func (impl *SubscriptionModuleContractImpl) UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error {
-	quota, err := impl.quotaRepo.FindByUserID(ctx, userID)
+	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +235,7 @@ func (impl *SubscriptionModuleContractImpl) UpdateOutfitQuota(ctx context.Contex
 
 // UpdateAiChatQuota alters daily AI chatbot usage count
 func (impl *SubscriptionModuleContractImpl) UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error {
-	quota, err := impl.quotaRepo.FindByUserID(ctx, userID)
+	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -159,7 +252,7 @@ func (impl *SubscriptionModuleContractImpl) UpdateAiChatQuota(ctx context.Contex
 
 // ResetDailyQuotas resets daily usage parameters
 func (impl *SubscriptionModuleContractImpl) ResetDailyQuotas(ctx context.Context, userID uuid.UUID) error {
-	quota, err := impl.quotaRepo.FindByUserID(ctx, userID)
+	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}

@@ -19,8 +19,8 @@ type UserRes struct {
 	Status       int                 `json:"status"`
 	CreatedAt    time.Time           `json:"createdAt"`
 	Subscription UserSubscriptionRes `json:"subscription"`
-	Quota        UserQuotaRes        `json:"quota"`
-	BodyProfile  *UserBodyProfileRes `json:"bodyProfile,omitempty"`
+	// Quota        *UserQuotaRes       `json:"quota,omitempty"`
+	BodyProfile *UserBodyProfileRes `json:"bodyProfile,omitempty"`
 }
 
 type UserSubscriptionRes struct {

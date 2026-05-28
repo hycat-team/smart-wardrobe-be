@@ -11,5 +11,5 @@ import (
 // IUserSubscriptionRepository handles database operations for user subscriptions
 type IUserSubscriptionRepository interface {
 	repositories.IGenericRepository[entities.UserSubscription, uuid.UUID]
-	FindByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error)
 }

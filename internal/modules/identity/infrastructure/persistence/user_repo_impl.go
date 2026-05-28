@@ -28,8 +28,8 @@ func (r *UserRepository) GetPreloadRelations() []string {
 	return []string{}
 }
 
-// FindByEmail searches for a user matching the provided email address
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entities.User, error) {
+// GetByEmail searches for a user matching the provided email address
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	var user entities.User
 	err := r.GetDB(ctx).Where("email = ? AND is_deleted = ?", email, false).First(&user).Error
 	if err != nil {
