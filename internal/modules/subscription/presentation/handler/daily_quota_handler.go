@@ -25,7 +25,7 @@ func NewDailyQuotaHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) *D
 // @Accept json
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse "Hạn ngạch sử dụng"
-// @Router /api/v1/subscriptions/daily-quota [get]
+// @Router /api/v1/subscriptions/me/daily-quota [get]
 func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

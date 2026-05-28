@@ -24,6 +24,6 @@ func (r *SubscriptionRouter) Init(group *gin.RouterGroup) {
 	subApi := group.Group("/subscriptions")
 	subApi.Use(r.authMiddleware.Handle())
 	{
-		subApi.GET("/daily-quota", shared_pres.WrapHandler(r.quotaHandler.GetDailyQuota))
+		subApi.GET("/me/daily-quota", shared_pres.WrapHandler(r.quotaHandler.GetDailyQuota))
 	}
 }
