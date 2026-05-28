@@ -9,16 +9,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// IdentityModuleContractImpl implements external identity lookup functions
 type IdentityModuleContractImpl struct {
 	userRepo repositories.IUserRepository
 }
 
+// NewIdentityModuleContractImpl creates a new IdentityModuleContractImpl instance
 func NewIdentityModuleContractImpl(repo repositories.IUserRepository) contract.IIdentityModuleContract {
 	return &IdentityModuleContractImpl{
 		userRepo: repo,
 	}
 }
 
+// GetUserByID retrieves core user metadata for external module contexts
 func (impl *IdentityModuleContractImpl) GetUserByID(ctx context.Context, id uuid.UUID) (*contract.PublicUserDTO, error) {
 	user, err := impl.userRepo.FindByID(ctx, id)
 	if err != nil {
@@ -29,46 +32,9 @@ func (impl *IdentityModuleContractImpl) GetUserByID(ctx context.Context, id uuid
 	}
 
 	return &contract.PublicUserDTO{
-		ID:                   user.ID,
-		Username:             user.Username,
-		Email:                user.Email,
-		RoleSlug:             user.RoleSlug,
-		SubscriptionPlanID:   user.SubscriptionPlanID,
-		OutfitRecommendCount: user.OutfitRecommendCount,
-		AiUsageCount:         user.AiUsageCount,
-		LastResetDate:        user.LastResetDate,
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		RoleSlug: user.RoleSlug,
 	}, nil
-}
-
-func (impl *IdentityModuleContractImpl) UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error {
-	user, err := impl.userRepo.FindByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if user == nil {
-		return errors.New("user not found")
-	}
-	return impl.userRepo.UpdateOutfitQuota(ctx, user, count, resetDate)
-}
-
-func (impl *IdentityModuleContractImpl) UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error {
-	user, err := impl.userRepo.FindByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if user == nil {
-		return errors.New("user not found")
-	}
-	return impl.userRepo.UpdateAiChatQuota(ctx, user, count, resetDate)
-}
-
-func (impl *IdentityModuleContractImpl) ResetDailyQuotas(ctx context.Context, userID uuid.UUID) error {
-	user, err := impl.userRepo.FindByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if user == nil {
-		return errors.New("user not found")
-	}
-	return impl.userRepo.ResetDailyQuotas(ctx, user)
 }

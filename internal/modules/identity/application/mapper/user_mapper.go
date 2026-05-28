@@ -2,11 +2,13 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
-func MapToUserRes(user *entities.User) *dto.UserRes {
+// MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
+func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscriptionDTO) *dto.UserRes {
 	if user == nil {
 		return nil
 	}
@@ -38,21 +40,22 @@ func MapToUserRes(user *entities.User) *dto.UserRes {
 		Gender:    genderVal,
 		Status:    int(user.Status),
 		CreatedAt: user.CreatedAt,
-		Quota: dto.UserQuotaRes{
-			OutfitRecommendCount: user.OutfitRecommendCount,
-			AiUsageCount:         user.AiUsageCount,
-			LastResetDate:        user.LastResetDate,
-		},
 	}
 
-	if user.SubscriptionPlan != nil {
+	if sub != nil {
+		res.Quota = dto.UserQuotaRes{
+			OutfitRecommendCount: sub.OutfitRecommendCount,
+			AiUsageCount:         sub.AiUsageCount,
+			LastResetDate:        sub.LastResetDate,
+		}
 		res.Subscription = dto.UserSubscriptionRes{
-			PlanID:             user.SubscriptionPlan.ID,
-			PlanName:           user.SubscriptionPlan.Name,
-			ExpiresAt:          user.SubscriptionExpiresAt,
-			MaxWardrobeItems:   user.SubscriptionPlan.MaxWardrobeItems,
-			AiOutfitDailyQuota: user.SubscriptionPlan.AiOutfitDailyQuota,
-			AiChatDailyQuota:   user.SubscriptionPlan.AiChatDailyQuota,
+			PlanID:             sub.PlanID,
+			PlanName:           sub.PlanName,
+			ExpiresAt:          sub.ExpiresAt,
+			MaxWardrobeItems:   sub.MaxWardrobeItems,
+			MaxOutfits:         sub.MaxOutfits,
+			AiOutfitDailyQuota: sub.AiOutfitDailyQuota,
+			AiChatDailyQuota:   sub.AiChatDailyQuota,
 		}
 	}
 

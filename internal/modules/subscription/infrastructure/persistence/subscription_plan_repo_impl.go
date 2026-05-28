@@ -23,7 +23,7 @@ func NewSubscriptionPlanRepository(db *gorm.DB) repositories.ISubscriptionPlanRe
 
 func (r *SubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error) {
 	var plan entities.SubscriptionPlan
-	err := r.DB.WithContext(ctx).
+	err := r.GetDB(ctx).
 		Where("price = ? AND is_active = ?", 0, true).
 		First(&plan).
 		Error

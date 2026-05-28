@@ -6,6 +6,7 @@ CREATE TABLE subscription_plans (
     name VARCHAR(100) NOT NULL,
     price NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     max_wardrobe_items INT NOT NULL,
+    max_outfits INT NOT NULL,
     ai_outfit_daily_quota INT NOT NULL,
     ai_chat_daily_quota INT NOT NULL,
     duration_days INT,
@@ -29,15 +30,6 @@ CREATE TABLE users (
     gender INT,
     role_slug VARCHAR(50) NOT NULL,
     
-    -- Liên kết gói cước
-    subscription_plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
-    subscription_expires_at TIMESTAMP WITH TIME ZONE,
-    
-    -- Bộ đếm sử dụng hàng ngày (Lazy Reset Quota Engine)
-    outfit_recommend_count INT NOT NULL DEFAULT 0,
-    ai_usage_count INT NOT NULL DEFAULT 0,
-    last_reset_date DATE NOT NULL,
-    
     -- Cấu hình thông số AI sinh học
     body_profile JSONB,
     
@@ -48,7 +40,31 @@ CREATE TABLE users (
 );
 
 -- ========================================================
--- Bảng hồ sơ gu thời trang cá nhân (1:1 với Users)
+-- Bảng liên kết gói cước người dùng (User Subscriptions)
+-- ========================================================
+CREATE TABLE user_subscriptions (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    subscription_plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ========================================================
+-- Bảng hạn mức sử dụng hàng ngày (User Daily Quotas)
+-- ========================================================
+CREATE TABLE user_daily_quotas (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    outfit_recommend_count INT NOT NULL DEFAULT 0,
+    ai_usage_count INT NOT NULL DEFAULT 0,
+    last_reset_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ========================================================
+-- Bảng hồ sơ gu thời trang cá nhân (Taste Profiles)
 -- ========================================================
 CREATE TABLE user_style_profiles (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

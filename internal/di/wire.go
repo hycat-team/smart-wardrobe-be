@@ -21,6 +21,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	wire.Build(
 		bootstrap.NewApp,
 		db.NewPostgresConnection,
+		db.NewGormUnitOfWork,
 		caching.NewRedisConnection,
 
 		identity.ProviderSet,

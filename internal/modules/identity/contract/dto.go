@@ -1,18 +1,13 @@
 package contract
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
+// PublicUserDTO holds basic identity information for external system interfaces
 type PublicUserDTO struct {
-	ID                   uuid.UUID
-	Username             string
-	Email                string
-	RoleSlug             string
-	SubscriptionPlanID   uuid.UUID
-	OutfitRecommendCount int
-	AiUsageCount         int
-	LastResetDate        time.Time
+	ID       uuid.UUID
+	Username string
+	Email    string
+	RoleSlug string
 }

@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
@@ -23,6 +24,10 @@ func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
 
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   "",
+			SingularTable: true,
+		},
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), gormConfig)

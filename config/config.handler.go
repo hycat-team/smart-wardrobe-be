@@ -39,6 +39,7 @@ func LoadConfig() *Config {
 			Port:           getEnv("SERVER_PORT", "8080"),
 			FrontEndOrigin: getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
 			TimeoutSeconds: getEnvInt("REQUEST_TIMEOUT_SECONDS", 30),
+			Env:            getEnv("ENV", "development"),
 		},
 		Jwt: Jwt{
 			Secret:                          getEnv("JWT_SECRET", "default_secret_key_change_me_in_production"),

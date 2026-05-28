@@ -27,7 +27,7 @@ func (r *RefreshTokenRepository) GetPreloadRelations() []string {
 
 func (r *RefreshTokenRepository) FindByToken(ctx context.Context, token string) (*entities.RefreshToken, error) {
 	var rt entities.RefreshToken
-	err := r.GenericRepository.DB.WithContext(ctx).Where("token = ? AND is_revoked = ?", token, false).First(&rt).Error
+	err := r.GetDB(ctx).Where("token = ? AND is_revoked = ?", token, false).First(&rt).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -38,13 +38,13 @@ func (r *RefreshTokenRepository) FindByToken(ctx context.Context, token string) 
 }
 
 func (r *RefreshTokenRepository) RevokeToken(ctx context.Context, token string) error {
-	return r.GenericRepository.DB.WithContext(ctx).Model(&entities.RefreshToken{}).
+	return r.GetDB(ctx).Model(&entities.RefreshToken{}).
 		Where("token = ?", token).
 		Update("is_revoked", true).Error
 }
 
 func (r *RefreshTokenRepository) RevokeAllByUserID(ctx context.Context, userID uuid.UUID) error {
-	return r.GenericRepository.DB.WithContext(ctx).Model(&entities.RefreshToken{}).
+	return r.GetDB(ctx).Model(&entities.RefreshToken{}).
 		Where("user_id = ? AND is_revoked = ?", userID, false).
 		Update("is_revoked", true).Error
 }

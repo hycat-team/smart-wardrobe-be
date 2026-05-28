@@ -20,8 +20,8 @@ System enforcement services must dynamically validate action allocations based o
 
 | Business Constraint Metric                 | Free User Tier   | Premium User Tier |
 | ------------------------------------------ | ---------------- | ----------------- |
-| **Max Wardrobe Capacity** (Physical Items) | Max 30 Items     | Max 100 Items     |
-| **Max Saved Outfits Storage** (Lookbook)   | Max 30 Outfits   | Max 100 Outfits   |
+| **Max Wardrobe Capacity** (Physical Items) | Max 50 Items     | Max 150 Items     |
+| **Max Saved Outfits Storage** (Lookbook)   | Max 50 Outfits   | Max 150 Outfits   |
 | **AI Outfit Generation Daily Limit**       | 3 Requests / Day | 28 Requests / Day |
 | **AI Chatbot Consultations Daily Limit**   | 3 Queries / Day  | 30 Queries / Day  |
 

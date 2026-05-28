@@ -33,6 +33,7 @@ type Server struct {
 	Port           string
 	FrontEndOrigin string
 	TimeoutSeconds int
+	Env            string
 }
 
 type Jwt struct {

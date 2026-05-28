@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments (post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_post_id ON likes (post_id) WHERE post_id IS NOT NULL;
 
 -- Tối ưu luồng kiểm tra nhanh hạn mức cấu hình gói cước hoạt động của User khi chạy Quota Engine
-CREATE INDEX IF NOT EXISTS idx_users_subscription_plan_id ON users (subscription_plan_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_plan_id ON user_subscriptions (subscription_plan_id);
 
 -- Tối ưu luồng lấy danh sách đồ trong tủ theo danh mục thời trang phân loại
 CREATE INDEX IF NOT EXISTS idx_wardrobe_items_category_id ON wardrobe_items (category_id);

@@ -36,7 +36,7 @@ func (m *AuthMiddleware) Handle() gin.HandlerFunc {
 		}
 
 		if tokenStr == "" {
-			c.Error(errorcode.ErrInvalidAccessToken)
+			c.Error(errorcode.ErrUnauthorized)
 			c.Abort()
 			return
 		}

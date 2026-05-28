@@ -28,6 +28,7 @@ type UserSubscriptionRes struct {
 	PlanName           string     `json:"planName"`
 	ExpiresAt          *time.Time `json:"expiresAt,omitempty"`
 	MaxWardrobeItems   int        `json:"maxWardrobeItems"`
+	MaxOutfits         int        `json:"maxOutfits"`
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
 }

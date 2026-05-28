@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	"smart-wardrobe-be/internal/modules/identity/application/mapper"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 
@@ -15,20 +16,23 @@ import (
 )
 
 type UserUseCase struct {
-	userRepo         repositories.IUserRepository
-	passwordHasher   security.IPasswordHasher
-	refreshTokenRepo repositories.IRefreshTokenRepository
+	userRepo             repositories.IUserRepository
+	passwordHasher       security.IPasswordHasher
+	refreshTokenRepo     repositories.IRefreshTokenRepository
+	subscriptionContract subscription_contract.ISubscriptionModuleContract
 }
 
 func NewUserUseCase(
 	userRepo repositories.IUserRepository,
 	passwordHasher security.IPasswordHasher,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
+	subscriptionContract subscription_contract.ISubscriptionModuleContract,
 ) *UserUseCase {
 	return &UserUseCase{
-		userRepo:         userRepo,
-		passwordHasher:   passwordHasher,
-		refreshTokenRepo: refreshTokenRepo,
+		userRepo:             userRepo,
+		passwordHasher:       passwordHasher,
+		refreshTokenRepo:     refreshTokenRepo,
+		subscriptionContract: subscriptionContract,
 	}
 }
 
@@ -97,7 +101,12 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 		return nil, err
 	}
 
-	return mapper.MapToUserRes(user), nil
+	sub, err := uc.subscriptionContract.GetUserSubscription(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	return mapper.MapToUserRes(user, sub), nil
 }
 
 func (uc *UserUseCase) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
@@ -109,5 +118,10 @@ func (uc *UserUseCase) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*d
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
-	return mapper.MapToUserRes(user), nil
+	sub, err := uc.subscriptionContract.GetUserSubscription(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	return mapper.MapToUserRes(user, sub), nil
 }

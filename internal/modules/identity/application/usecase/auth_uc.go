@@ -8,18 +8,20 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/domain/constants/otpconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
@@ -35,6 +37,7 @@ type AuthUseCase struct {
 	passwordHasher        security.IPasswordHasher
 	tokenBlacklistService security.ITokenBlacklistService
 	subscriptionContract  subscription_contract.ISubscriptionModuleContract
+	uow                   shared_repos.IUnitOfWork
 	cfg                   *config.Config
 }
 
@@ -46,6 +49,7 @@ func NewAuthUseCase(
 	passwordHasher security.IPasswordHasher,
 	tokenBlacklistService security.ITokenBlacklistService,
 	subscriptionContract subscription_contract.ISubscriptionModuleContract,
+	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 ) *AuthUseCase {
 	return &AuthUseCase{
@@ -56,6 +60,7 @@ func NewAuthUseCase(
 		passwordHasher:        passwordHasher,
 		tokenBlacklistService: tokenBlacklistService,
 		subscriptionContract:  subscriptionContract,
+		uow:                   uow,
 		cfg:                   cfg,
 	}
 }
@@ -148,12 +153,7 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 		return false, errorcode.NewConflict(fmt.Sprintf("Username '%s' đã tồn tại.", registerData.Username))
 	}
 
-	defaultPlanID, err := uc.subscriptionContract.GetDefaultSubscriptionPlanID(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	dob, err := time.Parse("2006-01-02", registerData.DateOfBirth)
+	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
 		return false, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
 	}
@@ -161,23 +161,27 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 	gen := gender.Gender(registerData.Gender)
 
 	newUser := &entities.User{
-		Username:           registerData.Username,
-		Email:              registerData.Email,
-		PasswordHash:       registerData.PasswordHash,
-		FirstName:          &registerData.FirstName,
-		LastName:           &registerData.LastName,
-		DateOfBirth:        &dob,
-		Address:            &registerData.Address,
-		Gender:             &gen,
-		RoleSlug:           "member",
-		SubscriptionPlanID: defaultPlanID,
-		LastResetDate:      time.Now(),
-		Status:             1,
+		Username:     registerData.Username,
+		Email:        registerData.Email,
+		PasswordHash: registerData.PasswordHash,
+		FirstName:    &registerData.FirstName,
+		LastName:     &registerData.LastName,
+		DateOfBirth:  &dob,
+		Address:      &registerData.Address,
+		Gender:       &gen,
+		RoleSlug:     string(roleslug.Member),
+		Status:       1,
 	}
 	newUser.ID = uuid.New()
 	newUser.IsDeleted = false
 
-	err = uc.userRepo.Create(ctx, newUser)
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		err := uc.userRepo.Create(txCtx, newUser)
+		if err != nil {
+			return err
+		}
+		return uc.subscriptionContract.InitializeUserSubscription(txCtx, newUser.ID)
+	})
 	if err != nil {
 		return false, err
 	}

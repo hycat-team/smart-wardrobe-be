@@ -13,6 +13,7 @@ type SubscriptionPlan struct {
 	Name               string  `gorm:"type:varchar(100);not null"`
 	Price              float64 `gorm:"type:numeric(12,2);not null;default:0.00"`
 	MaxWardrobeItems   int     `gorm:"type:int;not null"`
+	MaxOutfits         int     `gorm:"type:int;not null"`
 	AiOutfitDailyQuota int     `gorm:"type:int;not null"`
 	AiChatDailyQuota   int     `gorm:"type:int;not null"`
 	DurationDays       *int    `gorm:"type:int"`
@@ -22,24 +23,37 @@ type SubscriptionPlan struct {
 type User struct {
 	AuditableEntity
 	SoftDeleteEntity
-	Username              string                `gorm:"type:varchar(255);not null"`
-	Email                 string                `gorm:"type:varchar(255);uniqueIndex;not null"`
-	PasswordHash          string                `gorm:"type:varchar(255);not null"`
-	FirstName             *string               `gorm:"type:varchar(255)"`
-	LastName              *string               `gorm:"type:varchar(255)"`
-	DateOfBirth           *time.Time            `gorm:"type:date"`
-	Address               *string               `gorm:"type:varchar(255)"`
-	Gender                *gender.Gender        `gorm:"type:int"`
-	RoleSlug              string                `gorm:"type:varchar(50);not null"`
-	SubscriptionPlanID    uuid.UUID             `gorm:"type:uuid;not null"`
-	SubscriptionPlan      *SubscriptionPlan     `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:RESTRICT"`
-	SubscriptionExpiresAt *time.Time            `gorm:"type:timestamp with time zone"`
-	OutfitRecommendCount  int                   `gorm:"type:int;not null;default:0"`
-	AiUsageCount          int                   `gorm:"type:int;not null;default:0"`
-	LastResetDate         time.Time             `gorm:"type:date;not null"`
-	BodyProfile           *bodyProfile          `gorm:"type:jsonb"`
-	Status                userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
-	StyleProfile          *UserStyleProfile     `gorm:"foreignKey:UserID"`
+	Username     string                `gorm:"type:varchar(255);not null"`
+	Email        string                `gorm:"type:varchar(255);uniqueIndex;not null"`
+	PasswordHash string                `gorm:"type:varchar(255);not null"`
+	FirstName    *string               `gorm:"type:varchar(255)"`
+	LastName     *string               `gorm:"type:varchar(255)"`
+	DateOfBirth  *time.Time            `gorm:"type:date"`
+	Address      *string               `gorm:"type:varchar(255)"`
+	Gender       *gender.Gender        `gorm:"type:int"`
+	RoleSlug     string                `gorm:"type:varchar(50);not null"`
+	BodyProfile  *bodyProfile          `gorm:"type:jsonb"`
+	Status       userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
+	StyleProfile *UserStyleProfile     `gorm:"foreignKey:UserID"`
+}
+
+type UserSubscription struct {
+	UserID             uuid.UUID         `gorm:"type:uuid;primaryKey"`
+	SubscriptionPlanID uuid.UUID         `gorm:"type:uuid;not null"`
+	SubscriptionPlan   *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:RESTRICT"`
+	ExpiresAt          *time.Time        `gorm:"type:timestamp with time zone"`
+	IsActive           bool              `gorm:"type:boolean;not null;default:true"`
+	CreatedAt          time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UpdatedAt          time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
+}
+
+type UserDailyQuota struct {
+	UserID               uuid.UUID `gorm:"type:uuid;primaryKey"`
+	OutfitRecommendCount int       `gorm:"type:int;not null;default:0"`
+	AiUsageCount         int       `gorm:"type:int;not null;default:0"`
+	LastResetDate        time.Time `gorm:"type:date;not null"`
+	CreatedAt            time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UpdatedAt            time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
 }
 
 type UserStyleProfile struct {
