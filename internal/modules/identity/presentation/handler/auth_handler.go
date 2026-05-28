@@ -38,8 +38,8 @@ func NewAuthHandler(ac usecase_interfaces.IAuthUseCase, cfg *config.Config) *Aut
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) error {
 	var input dto.RegisterReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	_, err := h.authUseCase.Register(c.Request.Context(), input)
@@ -62,8 +62,8 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 // @Router /api/v1/auth/register/confirm-otp [post]
 func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 	var input dto.ConfirmRegisterOtpReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	_, err := h.authUseCase.ConfirmRegisterOtp(c.Request.Context(), input)
@@ -86,8 +86,8 @@ func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) error {
 	var input dto.LoginReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	output, err := h.authUseCase.Login(c.Request.Context(), input)
@@ -239,8 +239,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 // @Router /api/v1/auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(c *gin.Context) error {
 	var input dto.SendForgotPasswordOtpReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	_, err := h.authUseCase.SendForgotPasswordOtp(c.Request.Context(), input)
@@ -263,8 +263,8 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) error {
 // @Router /api/v1/auth/forgot-password/confirm-otp [post]
 func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 	var input dto.ConfirmForgotPasswordOtpReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	resetToken, err := h.authUseCase.ConfirmForgotPasswordOtp(c.Request.Context(), input)
@@ -300,8 +300,8 @@ func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 // @Router /api/v1/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 	var input dto.ResetPasswordReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	resetToken, err := c.Cookie(contextutils.CookieForgotPasswordToken)

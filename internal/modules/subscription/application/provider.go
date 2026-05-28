@@ -10,4 +10,5 @@ import (
 var ProviderSet = wire.NewSet(
 	contract.NewSubscriptionModuleContractImpl,
 	usecase.NewSubscriptionUseCase,
+	usecase.NewBillingUseCase,
 )

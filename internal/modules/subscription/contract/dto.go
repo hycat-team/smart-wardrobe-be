@@ -11,6 +11,7 @@ type UserSubscriptionDTO struct {
 	PlanID               uuid.UUID
 	PlanName             string
 	ExpiresAt            *time.Time
+	IsAutoRenewEnabled   bool
 	MaxWardrobeItems     int
 	MaxOutfits           int
 	AiOutfitDailyQuota   int
@@ -25,6 +26,7 @@ type UserSubscriptionOverviewDTO struct {
 	PlanID             uuid.UUID
 	PlanName           string
 	ExpiresAt          *time.Time
+	IsAutoRenewEnabled bool
 	MaxWardrobeItems   int
 	MaxOutfits         int
 	AiOutfitDailyQuota int

@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
@@ -115,4 +116,18 @@ func TranslateValidationError(err error) *errorcode.ErrorResponse {
 		Title:  "Thao tác không thành công",
 		Detail: err.Error(),
 	}
+}
+
+func BindJSON(c *gin.Context, obj any) error {
+	if err := c.ShouldBindJSON(obj); err != nil {
+		return TranslateValidationError(err)
+	}
+	return nil
+}
+
+func BindQuery(c *gin.Context, obj any) error {
+	if err := c.ShouldBindQuery(obj); err != nil {
+		return TranslateValidationError(err)
+	}
+	return nil
 }

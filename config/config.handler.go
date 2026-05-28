@@ -76,6 +76,11 @@ func LoadConfig() *Config {
 			TokensPerPeriod:      getEnvInt("RATE_LIMIT_TOKENS_PER_PERIOD", 20),
 			ReplenishmentSeconds: getEnvInt("RATE_LIMIT_REPLENISHMENT_SECONDS", 10),
 		},
+		PayOS: PayOS{
+			ClientID:    getEnv("PAYOS_CLIENT_ID", ""),
+			ApiKey:      getEnv("PAYOS_API_KEY", ""),
+			ChecksumKey: getEnv("PAYOS_CHECKSUM_KEY", ""),
+		},
 	}
 }
 

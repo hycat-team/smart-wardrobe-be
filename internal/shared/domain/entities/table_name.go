@@ -89,3 +89,18 @@ func (Comment) TableName() string {
 func (Like) TableName() string {
 	return "likes"
 }
+
+// TableName returns table name mapping for UserWallet
+func (UserWallet) TableName() string {
+	return "user_wallets"
+}
+
+// TableName returns table name mapping for DepositTransaction
+func (DepositTransaction) TableName() string {
+	return "deposit_transactions"
+}
+
+// TableName returns table name mapping for WalletStatement
+func (WalletStatement) TableName() string {
+	return "wallet_statements"
+}

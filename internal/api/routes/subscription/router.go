@@ -10,20 +10,38 @@ import (
 
 type SubscriptionRouter struct {
 	quotaHandler   *subscription_handler.DailyQuotaHandler
+	billingHandler *subscription_handler.BillingHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
-func NewRouter(h *subscription_handler.DailyQuotaHandler, m *middleware.AuthMiddleware) *SubscriptionRouter {
+func NewRouter(
+	h *subscription_handler.DailyQuotaHandler,
+	b *subscription_handler.BillingHandler,
+	m *middleware.AuthMiddleware,
+) *SubscriptionRouter {
 	return &SubscriptionRouter{
 		quotaHandler:   h,
+		billingHandler: b,
 		authMiddleware: m,
 	}
 }
 
 func (r *SubscriptionRouter) Init(group *gin.RouterGroup) {
 	subApi := group.Group("/subscriptions")
-	subApi.Use(r.authMiddleware.Handle())
+	
+	// Unauthenticated public payment endpoints
+	subApi.POST("/payos-webhook", shared_pres.WrapHandler(r.billingHandler.ProcessPayOSWebhook))
+	subApi.GET("/plans", shared_pres.WrapHandler(r.billingHandler.GetPlans))
+
+	// Authenticated subscription endpoints
+	authSubApi := subApi.Group("")
+	authSubApi.Use(r.authMiddleware.Handle())
 	{
-		subApi.GET("/me/daily-quota", shared_pres.WrapHandler(r.quotaHandler.GetDailyQuota))
+		authSubApi.GET("/me/daily-quota", shared_pres.WrapHandler(r.quotaHandler.GetDailyQuota))
+		authSubApi.PATCH("/me/toggle-auto-renew", shared_pres.WrapHandler(r.quotaHandler.ToggleAutoRenew))
+		authSubApi.GET("/me/wallet", shared_pres.WrapHandler(r.billingHandler.GetWallet))
+		authSubApi.GET("/me/wallet/statements", shared_pres.WrapHandler(r.billingHandler.GetWalletStatements))
+		authSubApi.POST("/me/wallet/topup", shared_pres.WrapHandler(r.billingHandler.CreateWalletTopUp))
+		authSubApi.POST("/me/purchase", shared_pres.WrapHandler(r.billingHandler.CreateDirectPurchase))
 	}
 }

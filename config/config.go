@@ -10,6 +10,13 @@ type Config struct {
 	Otp       Otp
 	Email     Email
 	RateLimit RateLimit
+	PayOS     PayOS
+}
+
+type PayOS struct {
+	ClientID    string
+	ApiKey      string
+	ChecksumKey string
 }
 
 type Database struct {

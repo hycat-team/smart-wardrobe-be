@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"syscall"
 	"time"
 
@@ -14,14 +15,20 @@ import (
 )
 
 type App struct {
-	Config *config.Config
-	Server *gin.Engine
+	Config        *config.Config
+	Server        *gin.Engine
+	RenewalWorker worker.ISubscriptionRenewalWorker
 }
 
-func NewApp(cfg *config.Config, server *gin.Engine) *App {
+func NewApp(
+	cfg *config.Config,
+	server *gin.Engine,
+	renewalWorker worker.ISubscriptionRenewalWorker,
+) *App {
 	return &App{
-		Config: cfg,
-		Server: server,
+		Config:        cfg,
+		Server:        server,
+		RenewalWorker: renewalWorker,
 	}
 }
 
@@ -38,6 +45,8 @@ func (a *App) Run() error {
 	fmt.Printf("Swagger UI is available at: http://localhost:%s/swagger\n", port)
 	fmt.Println("==========================================================")
 
+	a.RenewalWorker.Start()
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Listen error: %s\n", err)
@@ -49,6 +58,8 @@ func (a *App) Run() error {
 
 	<-quit
 	fmt.Println("\nReceived shutdown signal...")
+
+	a.RenewalWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

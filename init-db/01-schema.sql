@@ -47,6 +47,7 @@ CREATE TABLE user_subscriptions (
     subscription_plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
     expires_at TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_auto_renew_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -248,4 +249,50 @@ CREATE TABLE likes (
         (post_id IS NOT NULL AND comment_id IS NULL) OR
         (post_id IS NULL AND comment_id IS NOT NULL)
     )
+);
+
+-- ========================================================
+-- Bảng lưu trữ ví người dùng (User Wallets)
+-- ========================================================
+CREATE TABLE user_wallets (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    balance NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+    currency VARCHAR(10) NOT NULL DEFAULT 'VND',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ========================================================
+-- Bảng lưu trữ lịch sử giao dịch nạp tiền và đăng ký (Deposit Transactions)
+-- ========================================================
+CREATE TABLE deposit_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount NUMERIC(12,2) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'VND',
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    transaction_type VARCHAR(50) NOT NULL,
+    subscription_plan_id UUID REFERENCES subscription_plans(id) ON DELETE SET NULL,
+    order_code BIGSERIAL NOT NULL UNIQUE,
+    gateway_reference VARCHAR(255) UNIQUE,
+    gateway_details TEXT,
+    payment_url VARCHAR(500) NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ========================================================
+-- Bảng lưu trữ lịch sử biến động số dư ví (Wallet Statements)
+-- ========================================================
+CREATE TABLE wallet_statements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount NUMERIC(12,2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL,
+    previous_balance NUMERIC(12,2) NOT NULL,
+    new_balance NUMERIC(12,2) NOT NULL,
+    reference_id UUID REFERENCES deposit_transactions(id) ON DELETE SET NULL,
+    description VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 
 	"github.com/google/wire"
@@ -11,4 +12,8 @@ var ProviderSet = wire.NewSet(
 	persistence.NewSubscriptionPlanRepository,
 	persistence.NewUserSubscriptionRepository,
 	persistence.NewUserDailyQuotaRepository,
+	persistence.NewUserWalletRepository,
+	persistence.NewDepositTransactionRepository,
+	persistence.NewWalletStatementRepository,
+	payos.NewPayOSService,
 )

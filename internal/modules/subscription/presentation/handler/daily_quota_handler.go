@@ -40,3 +40,28 @@ func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
 	shared_pres.Success(c, "Lấy hạn ngạch sử dụng thành công", quotaDTO)
 	return nil
 }
+
+// ToggleAutoRenew toggles the automatic subscription renewal setting
+// @Summary Bật/Tắt tự động gia hạn gói cước
+// @Description Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn
+// @Tags Subscription
+// @Accept json
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
+// @Router /api/v1/subscriptions/me/toggle-auto-renew [patch]
+func (h *DailyQuotaHandler) ToggleAutoRenew(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	isEnabled, err := h.subscriptionUseCase.ToggleAutoRenew(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Thay đổi trạng thái tự động gia hạn thành công", gin.H{
+		"is_auto_renew_enabled": isEnabled,
+	})
+	return nil
+}

@@ -22,8 +22,10 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/application/contract"
 	usecase2 "smart-wardrobe-be/internal/modules/subscription/application/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
@@ -58,9 +60,15 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionModuleContract)
 	meHandler := handler.NewMeHandler(iUserUseCase)
 	meRouter := me.NewRouter(meHandler, authMiddleware)
-	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iSubscriptionModuleContract)
+	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
+	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
+	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(gormDB, iSubscriptionModuleContract, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository)
 	dailyQuotaHandler := handler2.NewDailyQuotaHandler(iSubscriptionUseCase)
-	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, authMiddleware)
+	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
+	iPaymentGatewayService := payos.NewPayOSService(cfg)
+	iBillingUseCase := usecase2.NewBillingUseCase(gormDB, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserDailyQuotaRepository, iPaymentGatewayService, cfg)
+	billingHandler := handler2.NewBillingHandler(iBillingUseCase)
+	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, billingHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
@@ -68,7 +76,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
-	app := bootstrap.NewApp(cfg, engine)
+	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
+	app := bootstrap.NewApp(cfg, engine, iSubscriptionRenewalWorker)
 	return app, func() {
 	}, nil
 }

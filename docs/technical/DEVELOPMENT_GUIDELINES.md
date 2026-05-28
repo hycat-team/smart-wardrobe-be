@@ -19,8 +19,10 @@ Each module must be encapsulated inside `internal/modules/<module_name>` and par
 ├── 📁 application                 # 2. Application Layer
 │    ├── 📁 contract               # Cross-module communication interfaces & implementations (Loose Coupling)
 │    ├── 📁 dto                    # Data Transfer Objects (Request/Response structs)
+│    ├── 📁 interface              # Abstract layer defining system contracts and interfaces
+│    │    └── 📁 usecase           # Decoupled UseCase interfaces (e.g., IUserUseCase, IAuthUseCase)
 │    ├── 📁 mapper                 # Data transformers (e.g., Entity <-> DTO mapper mappings)
-│    ├── 📁 usecase                # Core application usecase flows (AuthUseCase, UserUseCase)
+│    ├── 📁 usecase                # Concrete application usecase implementations (AuthUseCase, UserUseCase)
 │    └── 📄 provider.go            # Application layer specific Wire Provider Set
 │
 ├── 📁 infrastructure              # 3. Infrastructure Layer
@@ -157,3 +159,28 @@ Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions usi
 - _And other types available in the `errorcode` package..._
 
 The underlying `WrapHandler` mechanism working together with the `GlobalErrorHandler` middleware will automatically catch these exceptions, map them to their corresponding HTTP status codes, and serialize them into a unified JSON format for the client. Handlers must never perform manual HTTP status parsing!
+
+---
+
+## 🧱 6. Core Architectural Guardrails & Coding Conventions
+
+All developments and future refactoring phases must strictly satisfy the following core guardrails:
+
+### A. Usecase Interface Separation
+- The Presentation layer (Handlers/Controllers) must **only** depend on and call Application UseCase interfaces (e.g., `usecase_interfaces.IUserUseCase`). Tight-coupling to concrete implementation structs (e.g., `*UserUseCase`) is strictly prohibited.
+- UseCase interfaces must reside in a separate package/folder under `application/interface/usecase/`, completely isolated from their concrete structs under `application/usecase/`.
+
+### B. Module Boundary Isolation
+- Cross-Module Contracts (e.g., `ISubscriptionModuleContract`) are strictly meant for inter-module integration at the Application/Domain layer.
+- The Presentation layer must **never** reference, import, or call cross-module contracts. Any necessary integration must be wrapped cleanly inside local UseCases.
+
+### C. Authenticated User RESTful Standard
+- Any API endpoint retrieving or mutating data belonging strictly to the currently authenticated user session must explicitly include `/me/` in its URI route path (e.g., `/api/v1/subscriptions/me/daily-quota` instead of `/api/v1/subscriptions/daily-quota`).
+
+### D. Method Naming Conventions
+- Standardize all repository and query lookups by replacing the word `Find` with `Get` (e.g., `GetByID`, `GetByEmail`).
+- Drop redundant entity prefixes in method names when the receiver context is already implicit (e.g., use `userRepo.GetByID` instead of `userRepo.GetUserByID`).
+
+### E. Code Commenting Standards
+- All comments, documentation block headers, or Swagger annotations in source code must use plain text formats only.
+- Absolutely **NO** sequential numbering prefixes (e.g., `1.`, `2.`, `01.`, `02.`) and **NO** visual emojis are allowed inside any source code comments.

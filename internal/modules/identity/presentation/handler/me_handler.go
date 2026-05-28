@@ -59,8 +59,8 @@ func (h *MeHandler) UpdateCurrentUser(c *gin.Context) error {
 	}
 
 	var input dto.UpdateProfileReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	response, err := h.userUseCase.UpdateProfile(c.Request.Context(), userID, input)
@@ -88,8 +88,8 @@ func (h *MeHandler) ChangePassword(c *gin.Context) error {
 	}
 
 	var input dto.ChangePasswordReq
-	if err := c.ShouldBindJSON(&input); err != nil {
-		return validation.TranslateValidationError(err)
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
 	_, err = h.userUseCase.ChangePassword(c.Request.Context(), userID, input)

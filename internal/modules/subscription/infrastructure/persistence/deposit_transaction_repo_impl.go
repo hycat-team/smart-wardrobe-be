@@ -1,0 +1,46 @@
+package persistence
+
+import (
+	"context"
+	"errors"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type DepositTransactionRepository struct {
+	*shared_repos.GenericRepository[entities.DepositTransaction, uuid.UUID]
+}
+
+func NewDepositTransactionRepository(dbConn *gorm.DB) repositories.IDepositTransactionRepository {
+	return &DepositTransactionRepository{
+		GenericRepository: shared_repos.NewGenericRepository[entities.DepositTransaction, uuid.UUID](dbConn),
+	}
+}
+
+func (r *DepositTransactionRepository) GetByGatewayReference(ctx context.Context, reference string) (*entities.DepositTransaction, error) {
+	var tx entities.DepositTransaction
+	err := r.GetDB(ctx).Where("gateway_reference = ?", reference).First(&tx).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (r *DepositTransactionRepository) GetByOrderCode(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {
+	var tx entities.DepositTransaction
+	err := r.GetDB(ctx).Where("order_code = ?", orderCode).First(&tx).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &tx, nil
+}
