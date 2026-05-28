@@ -1,6 +1,8 @@
 package dto
 
-import "smart-wardrobe-be/internal/shared/domain/constants/gender"
+import (
+	"smart-wardrobe-be/internal/shared/domain/constants/gender"
+)
 
 type UpdateProfileReq struct {
 	FirstName   string         `json:"firstName" binding:"required"`

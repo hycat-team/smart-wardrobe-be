@@ -10,13 +10,13 @@ import (
 
 type SubscriptionPlan struct {
 	AuditableEntity
-	Name               string    `gorm:"type:varchar(100);not null"`
-	Price              float64   `gorm:"type:numeric(12,2);not null;default:0.00"`
-	MaxWardrobeItems   int       `gorm:"type:int;not null"`
-	AiOutfitDailyQuota int       `gorm:"type:int;not null"`
-	AiChatDailyQuota   int       `gorm:"type:int;not null"`
-	DurationDays       *int      `gorm:"type:int"`
-	IsActive           bool      `gorm:"type:boolean;not null;default:true"`
+	Name               string  `gorm:"type:varchar(100);not null"`
+	Price              float64 `gorm:"type:numeric(12,2);not null;default:0.00"`
+	MaxWardrobeItems   int     `gorm:"type:int;not null"`
+	AiOutfitDailyQuota int     `gorm:"type:int;not null"`
+	AiChatDailyQuota   int     `gorm:"type:int;not null"`
+	DurationDays       *int    `gorm:"type:int"`
+	IsActive           bool    `gorm:"type:boolean;not null;default:true"`
 }
 
 type User struct {
@@ -37,17 +37,17 @@ type User struct {
 	OutfitRecommendCount  int                   `gorm:"type:int;not null;default:0"`
 	AiUsageCount          int                   `gorm:"type:int;not null;default:0"`
 	LastResetDate         time.Time             `gorm:"type:date;not null"`
-	BodyProfile           *string               `gorm:"type:jsonb"` // Store JSON string
+	BodyProfile           *bodyProfile          `gorm:"type:jsonb"`
 	Status                userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
 	StyleProfile          *UserStyleProfile     `gorm:"foreignKey:UserID"`
 }
 
 type UserStyleProfile struct {
-	UserID          uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	TasteEmbedding  Vector     `gorm:"type:vector(1536)"`
-	PreferredColors *string    `gorm:"type:jsonb"` // Store JSON string
-	UpdatedAt       time.Time  `gorm:"type:timestamp with time zone;not null;default:now()"`
-	User            *User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	UserID          uuid.UUID `gorm:"type:uuid;primaryKey"`
+	TasteEmbedding  Vector    `gorm:"type:vector(1536)"`
+	PreferredColors *string   `gorm:"type:jsonb"`
+	UpdatedAt       time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
+	User            *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }
 
 type RefreshToken struct {
@@ -92,8 +92,8 @@ type Message struct {
 
 type Category struct {
 	AuditableEntity
-	Name      string    `gorm:"type:varchar(100);uniqueIndex;not null"`
-	Slug      string    `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Name string `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Slug string `gorm:"type:varchar(100);uniqueIndex;not null"`
 }
 
 type WardrobeItem struct {
@@ -132,14 +132,14 @@ type OutfitItem struct {
 type Post struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID      uuid.UUID `gorm:"type:uuid;not null"`
-	User        *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	PostType    string    `gorm:"type:varchar(50);not null"`
-	Content     string    `gorm:"type:text;not null"`
-	ContactInfo *string   `gorm:"type:varchar(255)"`
-	TotalPrice  float64   `gorm:"type:decimal(12,2);default:0.00"`
-	LikeCount   int       `gorm:"type:int;default:0"`
-	CommentCount int      `gorm:"type:int;default:0"`
+	UserID       uuid.UUID `gorm:"type:uuid;not null"`
+	User         *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	PostType     string    `gorm:"type:varchar(50);not null"`
+	Content      string    `gorm:"type:text;not null"`
+	ContactInfo  *string   `gorm:"type:varchar(255)"`
+	TotalPrice   float64   `gorm:"type:decimal(12,2);default:0.00"`
+	LikeCount    int       `gorm:"type:int;default:0"`
+	CommentCount int       `gorm:"type:int;default:0"`
 }
 
 type PostScoreSnapshot struct {
@@ -163,13 +163,13 @@ type PostItem struct {
 type Comment struct {
 	AuditableEntity
 	SoftDeleteEntity
-	PostID           uuid.UUID  `gorm:"type:uuid;not null"`
-	Post             *Post      `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE"`
-	UserID           uuid.UUID  `gorm:"type:uuid;not null"`
-	User             *User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	ParentCommentID  *uuid.UUID `gorm:"type:uuid"`
-	ParentComment    *Comment   `gorm:"foreignKey:ParentCommentID;constraint:OnDelete:CASCADE"`
-	Content          string     `gorm:"type:text;not null"`
+	PostID          uuid.UUID  `gorm:"type:uuid;not null"`
+	Post            *Post      `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE"`
+	UserID          uuid.UUID  `gorm:"type:uuid;not null"`
+	User            *User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	ParentCommentID *uuid.UUID `gorm:"type:uuid"`
+	ParentComment   *Comment   `gorm:"foreignKey:ParentCommentID;constraint:OnDelete:CASCADE"`
+	Content         string     `gorm:"type:text;not null"`
 }
 
 type Like struct {
@@ -181,19 +181,3 @@ type Like struct {
 	CommentID *uuid.UUID `gorm:"type:uuid"`
 	Comment   *Comment   `gorm:"foreignKey:CommentID;constraint:OnDelete:CASCADE"`
 }
-
-func (u *User) UpdateProfile(firstName string, lastName *string, dateOfBirth time.Time, gen gender.Gender) {
-	u.FirstName = &firstName
-	u.LastName = lastName
-	u.DateOfBirth = &dateOfBirth
-	u.Gender = &gen
-}
-
-func (u *User) ChangeAddress(newAddress string) {
-	u.Address = &newAddress
-}
-
-func (u *User) ChangePasswordHash(newPasswordHash string) {
-	u.PasswordHash = newPasswordHash
-}
-

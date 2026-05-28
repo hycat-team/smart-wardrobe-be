@@ -1,14 +1,14 @@
 package config
 
 type Config struct {
-	Database Database
-	Redis    Redis
-	Server   Server
-	Jwt      Jwt
-	Logger   Logger
-	Quota    Quota
-	Otp      Otp
-	Email    Email
+	Database  Database
+	Redis     Redis
+	Server    Server
+	Jwt       Jwt
+	Logger    Logger
+	Quota     Quota
+	Otp       Otp
+	Email     Email
 	RateLimit RateLimit
 }
 
@@ -19,6 +19,7 @@ type Database struct {
 	Password string
 	DbName   string
 	SslMode  string
+	TimeZone string
 }
 
 type Redis struct {
@@ -35,12 +36,12 @@ type Server struct {
 }
 
 type Jwt struct {
-	Secret                            string
-	Issuer                            string
-	Audience                          string
-	AccessExpirationMinutes           int
-	RefreshExpirationDays             int
-	ForgotPasswordExpirationMinutes   int
+	Secret                          string
+	Issuer                          string
+	Audience                        string
+	AccessExpirationMinutes         int
+	RefreshExpirationDays           int
+	ForgotPasswordExpirationMinutes int
 }
 
 type Logger struct {

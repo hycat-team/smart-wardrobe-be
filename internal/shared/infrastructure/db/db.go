@@ -1,8 +1,8 @@
 package db
 
 import (
-	"smart-wardrobe-be/config"
 	"fmt"
+	"smart-wardrobe-be/config"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -11,13 +11,14 @@ import (
 )
 
 func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=Asia/Ho_Chi_Minh",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
 		cfg.Database.Host,
 		cfg.Database.User,
 		cfg.Database.Password,
 		cfg.Database.DbName,
 		cfg.Database.Port,
 		cfg.Database.SslMode,
+		cfg.Database.TimeZone,
 	)
 
 	gormConfig := &gorm.Config{

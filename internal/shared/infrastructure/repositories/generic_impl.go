@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	domain_repo "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"gorm.io/gorm"
 )
@@ -19,7 +20,15 @@ func NewGenericRepository[T any, ID any](db *gorm.DB) *GenericRepository[T, ID] 
 
 func (r *GenericRepository[T, ID]) FindByID(ctx context.Context, id ID) (*T, error) {
 	var entity T
-	err := r.DB.WithContext(ctx).First(&entity, "id = ?", id).Error
+	query := r.DB.WithContext(ctx)
+
+	if preloadableRepo, ok := any(r).(domain_repo.IPreloadableRepository); ok {
+		for _, relation := range preloadableRepo.GetPreloadRelations() {
+			query = query.Preload(relation)
+		}
+	}
+
+	err := query.First(&entity, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -31,7 +40,15 @@ func (r *GenericRepository[T, ID]) FindByID(ctx context.Context, id ID) (*T, err
 
 func (r *GenericRepository[T, ID]) FindAll(ctx context.Context) ([]*T, error) {
 	var entities []*T
-	err := r.DB.WithContext(ctx).Find(&entities).Error
+	query := r.DB.WithContext(ctx)
+
+	if preloadableRepo, ok := any(r).(domain_repo.IPreloadableRepository); ok {
+		for _, relation := range preloadableRepo.GetPreloadRelations() {
+			query = query.Preload(relation)
+		}
+	}
+
+	err := query.Find(&entities).Error
 	if err != nil {
 		return nil, err
 	}

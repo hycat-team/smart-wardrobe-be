@@ -8,8 +8,9 @@ import (
 	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/subscription"
 	"smart-wardrobe-be/internal/modules/identity"
+	"smart-wardrobe-be/internal/modules/subscription"
+	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -20,7 +21,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	wire.Build(
 		bootstrap.NewApp,
 		db.NewPostgresConnection,
-		db.NewRedisConnection,
+		caching.NewRedisConnection,
 
 		identity.ProviderSet,
 		subscription.ProviderSet,

@@ -22,6 +22,10 @@ func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
 	}
 }
 
+func (r *UserRepository) GetPreloadRelations() []string {
+	return []string{}
+}
+
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entities.User, error) {
 	var user entities.User
 	err := r.GenericRepository.DB.WithContext(ctx).Where("email = ? AND is_deleted = ?", email, false).First(&user).Error

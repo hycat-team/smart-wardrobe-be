@@ -21,12 +21,13 @@ func LoadConfig() *Config {
 
 	return &Config{
 		Database: Database{
-			Host:     getEnv("POSTGRES_HOST", "localhost"),
-			Port:     getEnvInt("POSTGRES_PORT", 5432),
-			User:     getEnv("POSTGRES_USER", "admin"),
-			Password: getEnv("POSTGRES_PASSWORD", "123456"),
-			DbName:   getEnv("POSTGRES_DB", "smart_wardrobe_db"),
-			SslMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnvInt("DB_PORT", 5432),
+			User:     getEnv("DB_USER", "admin"),
+			Password: getEnv("DB_PASSWORD", "123456"),
+			DbName:   getEnv("DB_NAME", "smart_wardrobe_db"),
+			SslMode:  getEnv("DB_SSLMODE", "disable"),
+			TimeZone: getEnv("DB_TIMEZONE", "Asia/Ho_Chi_Minh"),
 		},
 		Redis: Redis{
 			Host:     getEnv("REDIS_HOST", "localhost"),

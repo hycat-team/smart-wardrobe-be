@@ -14,13 +14,14 @@ import (
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
-	"smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
+	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/application/contract"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
+	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
 )
@@ -34,11 +35,11 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	iUserRepository := persistence.NewUserRepository(gormDB)
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
-	client, err := db.NewRedisConnection(cfg)
+	client, err := caching.NewRedisConnection(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	iOtpService := caching.NewRedisOtpService(client, cfg)
+	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
 	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
