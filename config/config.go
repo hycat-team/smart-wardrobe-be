@@ -17,6 +17,8 @@ type PayOS struct {
 	ClientID    string
 	ApiKey      string
 	ChecksumKey string
+	ReturnUrl   string
+	CancelUrl   string
 }
 
 type Database struct {

@@ -138,11 +138,11 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		returnUrl := req.ReturnUrl
 		if returnUrl == "" {
-			returnUrl = uc.cfg.Server.FrontEndOrigin
+			returnUrl = uc.cfg.PayOS.ReturnUrl
 		}
 		cancelUrl := req.CancelUrl
 		if cancelUrl == "" {
-			cancelUrl = uc.cfg.Server.FrontEndOrigin
+			cancelUrl = uc.cfg.PayOS.CancelUrl
 		}
 
 		description := fmt.Sprintf("Top up wallet sum %d", int(tx.Amount))

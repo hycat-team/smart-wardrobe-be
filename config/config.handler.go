@@ -80,6 +80,8 @@ func LoadConfig() *Config {
 			ClientID:    getEnv("PAYOS_CLIENT_ID", ""),
 			ApiKey:      getEnv("PAYOS_API_KEY", ""),
 			ChecksumKey: getEnv("PAYOS_CHECKSUM_KEY", ""),
+			ReturnUrl:   getEnv("PAYOS_RETURN_URL", "http://localhost:3000"),
+			CancelUrl:   getEnv("PAYOS_CANCEL_URL", "http://localhost:3000"),
 		},
 	}
 }
