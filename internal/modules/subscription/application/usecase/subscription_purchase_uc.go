@@ -55,7 +55,7 @@ func NewSubscriptionPurchaseUseCase(
 func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context, userID uuid.UUID, req *dto.DirectPurchaseReq) (*dto.PaymentLinkDTO, error) {
 	plan, err := uc.planRepo.GetBySlug(ctx, req.PlanSlug)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi tìm kiếm thông tin gói hội viên")
+		return nil, err
 	}
 	if plan == nil {
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
@@ -67,7 +67,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 
 	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi kiểm tra thông tin gói hội viên hiện tại")
+		return nil, err
 	}
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 	if sub != nil && sub.IsActive && sub.SubscriptionPlanID == plan.ID {

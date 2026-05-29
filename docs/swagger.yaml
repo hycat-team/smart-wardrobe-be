@@ -243,6 +243,13 @@ definitions:
     required:
     - amount
     type: object
+  smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq:
+    properties:
+      enabled:
+        type: boolean
+    required:
+    - enabled
+    type: object
   smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
     enum:
     - 0
@@ -580,8 +587,15 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi
-        hết hạn
+      description: Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví
+        nội bộ khi hết hạn
+      parameters:
+      - description: Trạng thái thiết lập tự động gia hạn
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq'
       produces:
       - application/json
       responses:
@@ -589,7 +603,7 @@ paths:
           description: Trạng thái tự động gia hạn mới
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Bật/Tắt tự động gia hạn gói cước
+      summary: Thiết lập tự động gia hạn gói cước
       tags:
       - Subscription
   /api/v1/subscriptions/me/wallet:

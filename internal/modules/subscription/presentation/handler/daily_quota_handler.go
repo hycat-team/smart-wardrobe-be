@@ -2,6 +2,7 @@ package handler
 
 import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -48,7 +49,7 @@ func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Param body body struct{Enabled bool `json:"enabled"`} true "Trạng thái thiết lập tự động gia hạn"
+// @Param body body dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/toggle-auto-renew [patch]
 func (h *DailyQuotaHandler) SetAutoRenewStatus(c *gin.Context) error {
@@ -57,9 +58,7 @@ func (h *DailyQuotaHandler) SetAutoRenewStatus(c *gin.Context) error {
 		return err
 	}
 
-	var req struct {
-		Enabled *bool `json:"enabled" binding:"required"`
-	}
+	var req dto.SetAutoRenewReq
 	if err := validation.BindJSON(c, &req); err != nil {
 		return err
 	}

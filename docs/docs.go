@@ -500,7 +500,7 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/toggle-auto-renew": {
             "patch": {
-                "description": "Bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
+                "description": "Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
                 "consumes": [
                     "application/json"
                 ],
@@ -510,7 +510,18 @@ const docTemplate = `{
                 "tags": [
                     "Subscription"
                 ],
-                "summary": "Bật/Tắt tự động gia hạn gói cước",
+                "summary": "Thiết lập tự động gia hạn gói cước",
+                "parameters": [
+                    {
+                        "description": "Trạng thái thiết lập tự động gia hạn",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Trạng thái tự động gia hạn mới",
@@ -1027,6 +1038,17 @@ const docTemplate = `{
                 },
                 "returnUrl": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq": {
+            "type": "object",
+            "required": [
+                "enabled"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },

@@ -166,7 +166,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error) {
 	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin gói hội viên của người dùng")
+		return false, err
 	}
 	if sub == nil {
 		return false, errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng.")
@@ -181,7 +181,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 
 	err = uc.userSubRepo.Update(ctx, sub)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi cập nhật thông tin gói hội viên của người dùng")
+		return false, err
 	}
 
 	return sub.IsAutoRenewEnabled, nil
@@ -190,7 +190,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
 	plans, err := uc.planRepo.GetAll(ctx)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi lấy danh sách gói hội viên")
+		return nil, err
 	}
 
 	dtoPlans := make([]*dto.SubscriptionPlanDTO, 0, len(plans))

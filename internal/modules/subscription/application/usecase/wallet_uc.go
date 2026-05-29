@@ -48,7 +48,7 @@ func NewWalletUseCase(
 func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.WalletDTO, error) {
 	wallet, err := uc.walletRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi truy vấn thông tin ví người dùng")
+		return nil, err
 	}
 
 	if wallet == nil {
@@ -95,7 +95,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UUID) ([]*dto.WalletStatementDTO, error) {
 	statements, err := uc.statementRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi truy vấn lịch sử biến động số dư ví")
+		return nil, err
 	}
 
 	dtos := make([]*dto.WalletStatementDTO, 0, len(statements))

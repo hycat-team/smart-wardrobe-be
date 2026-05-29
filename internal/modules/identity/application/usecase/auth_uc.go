@@ -68,7 +68,7 @@ func NewAuthUseCase(
 func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (bool, error) {
 	usernameExists, err := uc.userRepo.IsUsernameExists(ctx, input.Username)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi kiểm tra tài khoản tồn tại")
+		return false, err
 	}
 	if usernameExists {
 		return false, errorcode.NewConflict(fmt.Sprintf("Tài khoản '%s' đã tồn tại.", input.Username))
@@ -76,7 +76,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (boo
 
 	emailExists, err := uc.userRepo.IsEmailExists(ctx, input.Email)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi kiểm tra email tồn tại")
+		return false, err
 	}
 	if emailExists {
 		return false, errorcode.NewConflict(fmt.Sprintf("Email '%s' đã tồn tại.", input.Email))
@@ -84,7 +84,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (boo
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeRegistration)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi kiểm tra thời gian chờ gửi OTP")
+		return false, err
 	}
 	if isCooldown {
 		return false, errorcode.NewTooManyRequest("Vui lòng đợi 1 phút trước khi yêu cầu OTP mới.")
@@ -92,7 +92,14 @@ func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (boo
 
 	hashedPass, err := uc.passwordHasher.HashPassword(input.Password)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi băm mật khẩu")
+		return false, err
+	}
+
+	if input.DateOfBirth != "" {
+		_, err := time.Parse(time.DateOnly, input.DateOfBirth)
+		if err != nil {
+			return false, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
+		}
 	}
 
 	var genVal gender.Gender
@@ -118,7 +125,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (boo
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeRegistration)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi sinh mã OTP")
+		return false, err
 	}
 
 	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
@@ -132,7 +139,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, input dto.RegisterReq) (boo
 func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.ConfirmRegisterOtpReq) (bool, error) {
 	tempUserDataJson, err := uc.otpService.VerifyOtp(ctx, input.Email, input.OtpCode, otpconstants.PurposeRegistration)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi xác thực mã OTP")
+		return false, err
 	}
 
 	if len(tempUserDataJson) == 0 {
@@ -145,13 +152,6 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 		return false, errorcode.NewBadRequest("Thông tin đăng ký không hợp lệ.")
 	}
 
-	usernameExists, err := uc.userRepo.IsUsernameExists(ctx, registerData.Username)
-	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi kiểm tra tài khoản tồn tại")
-	}
-	if usernameExists {
-		return false, errorcode.NewConflict(fmt.Sprintf("Tài khoản '%s' đã tồn tại.", registerData.Username))
-	}
 
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
@@ -192,7 +192,7 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 func (uc *AuthUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.TokenRes, error) {
 	user, err := uc.userRepo.GetByUsernameOrEmail(ctx, input.LoginName)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi kiểm tra tài khoản đăng nhập")
+		return nil, err
 	}
 	if user == nil {
 		return nil, errorcode.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
@@ -236,7 +236,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.Toke
 
 	err = uc.refreshTokenRepo.Create(ctx, rt)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi lưu Refresh Token")
+		return nil, err
 	}
 
 	return &dto.TokenRes{
@@ -264,7 +264,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
+		return nil, err
 	}
 	if user == nil || user.IsDeleted {
 		return nil, errorcode.NewUnauthorized("Không tìm thấy người dùng này.")
@@ -272,7 +272,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 
 	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi truy vấn Refresh Token")
+		return nil, err
 	}
 	if existingToken == nil || existingToken.IsRevoked {
 		return nil, errorcode.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
@@ -302,7 +302,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 
 	err = uc.refreshTokenRepo.RevokeToken(ctx, input.OldRefreshToken)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi hủy Refresh Token cũ")
+		return nil, err
 	}
 
 	rt := &entities.RefreshToken{
@@ -315,7 +315,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 
 	err = uc.refreshTokenRepo.Create(ctx, rt)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi lưu Refresh Token mới")
+		return nil, err
 	}
 
 	return &dto.TokenRes{
@@ -337,7 +337,7 @@ func (uc *AuthUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, e
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
+		return false, err
 	}
 	if user == nil || user.IsDeleted {
 		return false, errorcode.NewUnauthorized("Không tìm thấy người dùng.")
@@ -345,7 +345,7 @@ func (uc *AuthUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, e
 
 	err = uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi thu hồi Refresh Token")
+		return false, err
 	}
 
 	// Calculate remaining access token lifetime
@@ -366,7 +366,7 @@ func (uc *AuthUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, e
 func (uc *AuthUseCase) SendForgotPasswordOtp(ctx context.Context, input dto.SendForgotPasswordOtpReq) (bool, error) {
 	user, err := uc.userRepo.GetByUsernameOrEmail(ctx, input.Email)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
+		return false, err
 	}
 	if user == nil {
 		return false, errorcode.NewNotFound("Email này chưa được đăng ký trong hệ thống.")
@@ -374,7 +374,7 @@ func (uc *AuthUseCase) SendForgotPasswordOtp(ctx context.Context, input dto.Send
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeForgotPassword)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi kiểm tra thời gian cooldown OTP")
+		return false, err
 	}
 	if isCooldown {
 		return false, errorcode.NewBadRequest("Vui lòng đợi một lát trước khi yêu cầu mã mới.")
@@ -391,7 +391,7 @@ func (uc *AuthUseCase) SendForgotPasswordOtp(ctx context.Context, input dto.Send
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeForgotPassword)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi sinh mã OTP khôi phục mật khẩu")
+		return false, err
 	}
 
 	err = uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
@@ -405,7 +405,7 @@ func (uc *AuthUseCase) SendForgotPasswordOtp(ctx context.Context, input dto.Send
 func (uc *AuthUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.ConfirmForgotPasswordOtpReq) (string, error) {
 	tempUserDataJson, err := uc.otpService.VerifyOtp(ctx, input.Email, input.OtpCode, otpconstants.PurposeForgotPassword)
 	if err != nil {
-		return "", errorcode.NewInternalError("Lỗi khi xác thực mã OTP")
+		return "", err
 	}
 
 	if len(tempUserDataJson) == 0 {
@@ -425,7 +425,7 @@ func (uc *AuthUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.C
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
-		return "", errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
+		return "", err
 	}
 	if user == nil || user.IsDeleted {
 		return "", errorcode.NewUnauthorized("Người dùng không tồn tại.")
@@ -457,7 +457,7 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswor
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin người dùng")
+		return false, err
 	}
 	if user == nil || user.IsDeleted {
 		return false, errorcode.NewUnauthorized("Người dùng không tồn tại.")
@@ -465,7 +465,7 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswor
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi mã hóa mật khẩu mới")
+		return false, err
 	}
 
 	user.ChangePasswordHash(newPasswordHash)
@@ -473,13 +473,13 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswor
 	if input.LogoutAllDevices {
 		err = uc.refreshTokenRepo.RevokeAllByUserID(ctx, userId)
 		if err != nil {
-			return false, errorcode.NewInternalError("Lỗi khi thu hồi các phiên đăng nhập khác")
+			return false, err
 		}
 	}
 
 	err = uc.userRepo.Update(ctx, user)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi cập nhật mật khẩu mới")
+		return false, err
 	}
 
 	return true, nil
