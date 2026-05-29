@@ -1,9 +1,11 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
@@ -30,16 +32,38 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("2006/01/02 - 15:04:05"))
+	}
+
+	// Đặt khoảng trắng làm dấu phân cách mặc định giữa các thành phần
+	encoderConfig.ConsoleSeparator = " "
 
 	var core zapcore.Core
-
 	consoleWriteSyncer := zapcore.AddSync(os.Stdout)
-
 	var consoleEncoder zapcore.Encoder
+
 	if env == "Development" || env == "dev" {
-		encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		// Bọc sát dấu | vào hai bên chữ level và giữ nguyên màu sắc hiển thị
+		encoderConfig.EncodeLevel = func(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+			var s string
+			switch l {
+			case zapcore.DebugLevel:
+				s = "\x1b[35mDEBUG\x1b[0m"
+			case zapcore.InfoLevel:
+				s = "\x1b[34mINFO\x1b[0m"
+			case zapcore.WarnLevel:
+				s = "\x1b[33mWARN\x1b[0m"
+			case zapcore.ErrorLevel:
+				s = "\x1b[31mERROR\x1b[0m"
+			case zapcore.FatalLevel:
+				s = "\x1b[31mFATAL\x1b[0m"
+			default:
+				s = l.CapitalString()
+			}
+			enc.AppendString(fmt.Sprintf("|%s|", s))
+		}
 		consoleEncoder = zapcore.NewConsoleEncoder(encoderConfig)
 	} else {
 		encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
@@ -65,7 +89,10 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 		fileWriteSyncer := zapcore.AddSync(lumberjackLogger)
 
 		fileEncoderConfig := encoderConfig
-		fileEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+		fileEncoderConfig.EncodeLevel = func(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+			enc.AppendString(fmt.Sprintf("|%s|", l.CapitalString()))
+		}
+		fileEncoderConfig.ConsoleSeparator = " "
 		fileEncoder := zapcore.NewJSONEncoder(fileEncoderConfig)
 
 		fileCore := zapcore.NewCore(fileEncoder, fileWriteSyncer, level)
@@ -75,7 +102,6 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 		core = consoleCore
 	}
 
-	// zapLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	zapLogger := zap.New(core)
 
 	return &Logger{
