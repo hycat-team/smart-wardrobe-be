@@ -152,7 +152,6 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 		return false, errorcode.NewBadRequest("Thông tin đăng ký không hợp lệ.")
 	}
 
-
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
 		return false, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
@@ -213,7 +212,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.Toke
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi sinh mã Access Token")
+		return nil, errorcode.NewInternalError("Lỗi khi cấp phiên làm việc")
 	}
 
 	refreshToken, err := jwtutils.GenerateToken(
@@ -223,7 +222,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.Toke
 		refreshExpiry,
 	)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi sinh mã Refresh Token")
+		return nil, errorcode.NewInternalError("Lỗi khi cấp phiên làm việc")
 	}
 
 	rt := &entities.RefreshToken{
@@ -287,7 +286,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi tái sinh Access Token")
+		return nil, errorcode.NewInternalError("Lỗi khi cấp phiên làm việc")
 	}
 
 	newRefreshToken, err := jwtutils.GenerateToken(
@@ -297,7 +296,7 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenR
 		remainingTime,
 	)
 	if err != nil {
-		return nil, errorcode.NewInternalError("Lỗi khi tái sinh Refresh Token")
+		return nil, errorcode.NewInternalError("Lỗi khi cấp phiên làm việc")
 	}
 
 	err = uc.refreshTokenRepo.RevokeToken(ctx, input.OldRefreshToken)
@@ -438,7 +437,7 @@ func (uc *AuthUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.C
 		time.Duration(uc.cfg.Jwt.ForgotPasswordExpirationMinutes)*time.Minute,
 	)
 	if err != nil {
-		return "", errorcode.NewInternalError("Lỗi khi sinh mã Token khôi phục mật khẩu")
+		return "", errorcode.NewInternalError("Lỗi khi cấp mã khôi phục mật khẩu")
 	}
 
 	return resetToken, nil

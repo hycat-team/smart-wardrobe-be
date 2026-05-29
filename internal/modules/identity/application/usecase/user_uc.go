@@ -82,7 +82,7 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
-	dob, err := time.Parse("2006-01-02", input.DateOfBirth)
+	dob, err := time.Parse(time.DateOnly, input.DateOfBirth)
 	if err != nil {
 		return nil, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
 	}

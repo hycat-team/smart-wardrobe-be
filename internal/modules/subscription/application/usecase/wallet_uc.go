@@ -79,7 +79,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 		if err != nil {
 			wallet, err = uc.walletRepo.GetByUserID(ctx, userID)
 			if err != nil || wallet == nil {
-				return nil, errorcode.NewInternalError("Lỗi khi khởi tạo hoặc truy vấn ví người dùng")
+				return nil, errorcode.NewNotFound("Không tìm thấy ví người dùng")
 			}
 		}
 	}
