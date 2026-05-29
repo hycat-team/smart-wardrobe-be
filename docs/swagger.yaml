@@ -101,6 +101,16 @@ definitions:
     required:
     - email
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UpdateAvatarReq:
+    properties:
+      avatarPublicId:
+        type: string
+      avatarUrl:
+        type: string
+    required:
+    - avatarPublicId
+    - avatarUrl
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq:
     properties:
       address:
@@ -144,6 +154,10 @@ definitions:
   smart-wardrobe-be_internal_modules_identity_application_dto.UserRes:
     properties:
       address:
+        type: string
+      avatarPublicId:
+        type: string
+      avatarUrl:
         type: string
       bodyProfile:
         allOf:
@@ -249,6 +263,19 @@ definitions:
         type: boolean
     required:
     - enabled
+    type: object
+  smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult:
+    properties:
+      apiKey:
+        type: string
+      folder:
+        type: string
+      publicId:
+        type: string
+      signature:
+        type: string
+      timestamp:
+        type: integer
     type: object
   smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
     enum:
@@ -498,6 +525,52 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
               type: object
       summary: Cập nhật thông tin cá nhân
+      tags:
+      - Me
+  /api/v1/me/avatar:
+    put:
+      consumes:
+      - application/json
+      description: Cập nhật URL ảnh đại diện và public ID của người dùng
+      parameters:
+      - description: Thông tin ảnh đại diện mới
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateAvatarReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thông tin người dùng sau khi cập nhật
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
+      summary: Cập nhật ảnh đại diện
+      tags:
+      - Me
+  /api/v1/me/avatar-signature:
+    get:
+      description: Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh đại
+        diện lên
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chữ ký và thông tin upload
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult'
+              type: object
+      summary: Lấy chữ ký tải ảnh đại diện
       tags:
       - Me
   /api/v1/me/change-password:

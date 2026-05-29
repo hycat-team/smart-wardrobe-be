@@ -1,14 +1,18 @@
 package application
 
 import (
-	"smart-wardrobe-be/internal/modules/identity/application/contract"
+	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
+	"smart-wardrobe-be/internal/modules/identity/contract"
 
 	"github.com/google/wire"
 )
 
 var ProviderSet = wire.NewSet(
 	usecase.NewUserUseCase,
-	usecase.NewAuthUseCase,
-	contract.NewIdentityModuleContractImpl,
+	wire.Bind(new(contract.IUserContract), new(uc_interfaces.IUserUseCase)),
+
+	usecase.NewRegisterUseCase,
+	usecase.NewSessionUseCase,
+	usecase.NewPasswordRecoveryUseCase,
 )

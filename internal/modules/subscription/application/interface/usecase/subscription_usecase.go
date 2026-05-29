@@ -13,4 +13,6 @@ type ISubscriptionUseCase interface {
 	ProcessScheduledRenewals(ctx context.Context) error
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error)
+
+	contract.IUserSubscriptionContract
 }

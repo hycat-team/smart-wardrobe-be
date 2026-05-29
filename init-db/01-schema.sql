@@ -36,6 +36,8 @@ CREATE TABLE users (
     
     status SMALLINT NOT NULL DEFAULT 0, -- 0: Active, 1: Inactive
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    avatar_url VARCHAR(500),
+    avatar_public_id VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -132,6 +134,7 @@ CREATE TABLE wardrobe_items (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
     image_url VARCHAR(500) NOT NULL,
+    image_public_id VARCHAR(255),
     color VARCHAR(50),
     style VARCHAR(100),
     status SMALLINT NOT NULL DEFAULT 0, -- 'in_wardrobe', 'selling', 'sold'

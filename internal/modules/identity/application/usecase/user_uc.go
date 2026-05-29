@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
@@ -11,6 +12,8 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 
 	"github.com/google/uuid"
@@ -20,20 +23,26 @@ type UserUseCase struct {
 	userRepo             repositories.IUserRepository
 	passwordHasher       security.IPasswordHasher
 	refreshTokenRepo     repositories.IRefreshTokenRepository
-	subscriptionContract subscription_contract.ISubscriptionModuleContract
+	subscriptionContract subscription_contract.IUserSubscriptionContract
+	mediaService         media.IMediaService
+	cfg                  *config.Config
 }
 
 func NewUserUseCase(
 	userRepo repositories.IUserRepository,
 	passwordHasher security.IPasswordHasher,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
-	subscriptionContract subscription_contract.ISubscriptionModuleContract,
+	subscriptionContract subscription_contract.IUserSubscriptionContract,
+	mediaService media.IMediaService,
+	cfg *config.Config,
 ) uc_interfaces.IUserUseCase {
 	return &UserUseCase{
 		userRepo:             userRepo,
 		passwordHasher:       passwordHasher,
 		refreshTokenRepo:     refreshTokenRepo,
 		subscriptionContract: subscriptionContract,
+		mediaService:         mediaService,
+		cfg:                  cfg,
 	}
 }
 
@@ -117,6 +126,37 @@ func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.User
 	}
 	if user == nil || user.IsDeleted {
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
+	}
+
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	return mapper.MapToUserRes(user, sub), nil
+}
+
+func (uc *UserUseCase) GetAvatarSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
+	params := shared_dto.UploadSignatureParams{
+		Folder:   uc.cfg.Cloudinary.AvatarFolder,
+		PublicID: userID.String(),
+	}
+	return uc.mediaService.GenerateUploadSignature(ctx, params)
+}
+
+func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserRes, error) {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.IsDeleted {
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
+	}
+
+	user.UpdateAvatar(input.AvatarUrl, input.AvatarPublicID)
+	err = uc.userRepo.Update(ctx, user)
+	if err != nil {
+		return nil, err
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)

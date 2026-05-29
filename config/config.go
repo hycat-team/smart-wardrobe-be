@@ -11,6 +11,14 @@ type Config struct {
 	Email     Email
 	RateLimit RateLimit
 	PayOS     PayOS
+	Cloudinary Cloudinary
+}
+
+type Cloudinary struct {
+	CloudName    string
+	ApiKey       string
+	ApiSecret    string
+	AvatarFolder string
 }
 
 type PayOS struct {

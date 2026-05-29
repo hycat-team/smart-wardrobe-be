@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
@@ -20,7 +21,6 @@ import (
 
 type SubscriptionUseCase struct {
 	uow           shared_repos.IUnitOfWork
-	subContract   contract.ISubscriptionModuleContract
 	userSubRepo   repositories.IUserSubscriptionRepository
 	planRepo      repositories.ISubscriptionPlanRepository
 	walletRepo    repositories.IUserWalletRepository
@@ -28,11 +28,13 @@ type SubscriptionUseCase struct {
 	quotaRepo     repositories.IUserDailyQuotaRepository
 	cfg           *config.Config
 	l             logger.Interface
+
+	planContract  contract.ISubscriptionPlanContract
+	quotaContract contract.IUserQuotaContract
 }
 
 func NewSubscriptionUseCase(
 	uow shared_repos.IUnitOfWork,
-	subContract contract.ISubscriptionModuleContract,
 	userSubRepo repositories.IUserSubscriptionRepository,
 	planRepo repositories.ISubscriptionPlanRepository,
 	walletRepo repositories.IUserWalletRepository,
@@ -40,10 +42,11 @@ func NewSubscriptionUseCase(
 	quotaRepo repositories.IUserDailyQuotaRepository,
 	cfg *config.Config,
 	l logger.Interface,
+	planContract contract.ISubscriptionPlanContract,
+	quotaContract contract.IUserQuotaContract,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:           uow,
-		subContract:   subContract,
 		userSubRepo:   userSubRepo,
 		planRepo:      planRepo,
 		walletRepo:    walletRepo,
@@ -51,11 +54,36 @@ func NewSubscriptionUseCase(
 		quotaRepo:     quotaRepo,
 		cfg:           cfg,
 		l:             l,
+		planContract:  planContract,
+		quotaContract: quotaContract,
 	}
 }
 
 func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	return uc.subContract.GetAndResetDailyQuota(ctx, userID)
+	return uc.quotaContract.GetAndResetDailyQuota(ctx, userID)
+}
+
+func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
+	plans, err := uc.planRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dtoPlans := make([]*dto.SubscriptionPlanDTO, 0, len(plans))
+	for _, plan := range plans {
+		dtoPlans = append(dtoPlans, &dto.SubscriptionPlanDTO{
+			ID:                 plan.ID,
+			Slug:               plan.Slug,
+			Name:               plan.Name,
+			Price:              plan.Price,
+			MaxWardrobeItems:   plan.MaxWardrobeItems,
+			MaxOutfits:         plan.MaxOutfits,
+			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
+			AiChatDailyQuota:   plan.AiChatDailyQuota,
+			DurationDays:       plan.DurationDays,
+		})
+	}
+	return dtoPlans, nil
 }
 
 func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) error {
@@ -65,7 +93,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 		return errorcode.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
 	}
 
-	freePlanID, err := uc.subContract.GetDefaultSubscriptionPlanID(ctx)
+	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
 		return errorcode.NewInternalError("Lỗi khi tải thông tin cấu hình gói hội viên mặc định")
 	}
@@ -190,25 +218,107 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	return sub.IsAutoRenewEnabled, nil
 }
 
-func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
-	plans, err := uc.planRepo.GetAll(ctx)
+// InitializeUserSubscription sets up default free plan subscription and daily quota records
+func (uc *SubscriptionUseCase) InitializeUserSubscription(ctx context.Context, userID uuid.UUID) error {
+	defaultPlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
+	if err != nil {
+		return err
+	}
+
+	newSub := &entities.UserSubscription{
+		UserID:             userID,
+		SubscriptionPlanID: defaultPlanID,
+		IsActive:           true,
+	}
+	err = uc.userSubRepo.Create(ctx, newSub)
+	if err != nil {
+		return err
+	}
+
+	newQuota := &entities.UserDailyQuota{
+		UserID:        userID,
+		LastResetDate: time.Now(),
+	}
+	return uc.quotaRepo.Create(ctx, newQuota)
+}
+
+// GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
+func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-
-	dtoPlans := make([]*dto.SubscriptionPlanDTO, 0, len(plans))
-	for _, plan := range plans {
-		dtoPlans = append(dtoPlans, &dto.SubscriptionPlanDTO{
-			ID:                 plan.ID,
-			Slug:               plan.Slug,
-			Name:               plan.Name,
-			Price:              plan.Price,
-			MaxWardrobeItems:   plan.MaxWardrobeItems,
-			MaxOutfits:         plan.MaxOutfits,
-			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-			AiChatDailyQuota:   plan.AiChatDailyQuota,
-			DurationDays:       plan.DurationDays,
-		})
+	if sub == nil {
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
-	return dtoPlans, nil
+
+	quota, err := uc.quotaRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if quota == nil {
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
+	}
+
+	plan := sub.SubscriptionPlan
+	if plan == nil {
+		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+		}
+		plan = p
+	}
+
+	return &contract.UserSubscriptionDTO{
+		PlanID:               plan.ID,
+		PlanName:             plan.Name,
+		PlanSlug:             plan.Slug,
+		ExpiresAt:            sub.ExpiresAt,
+		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
+		MaxWardrobeItems:     plan.MaxWardrobeItems,
+		MaxOutfits:           plan.MaxOutfits,
+		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:     plan.AiChatDailyQuota,
+		OutfitRecommendCount: quota.OutfitRecommendCount,
+		AiUsageCount:         quota.AiUsageCount,
+		LastResetDate:        quota.LastResetDate,
+	}, nil
+}
+
+// GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
+	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if sub == nil {
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+	}
+
+	plan := sub.SubscriptionPlan
+	if plan == nil {
+		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+		}
+		plan = p
+	}
+
+	return &contract.UserSubscriptionOverviewDTO{
+		PlanID:             plan.ID,
+		PlanName:           plan.Name,
+		PlanSlug:           plan.Slug,
+		ExpiresAt:          sub.ExpiresAt,
+		IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
+		MaxWardrobeItems:   plan.MaxWardrobeItems,
+		MaxOutfits:         plan.MaxOutfits,
+		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:   plan.AiChatDailyQuota,
+	}, nil
 }

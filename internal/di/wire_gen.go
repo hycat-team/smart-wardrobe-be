@@ -14,20 +14,20 @@ import (
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/api/routes/subscription"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/identity/application/usecase"
+	usecase2 "smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
-	"smart-wardrobe-be/internal/modules/subscription/application/contract"
-	usecase2 "smart-wardrobe-be/internal/modules/subscription/application/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
+	"smart-wardrobe-be/internal/shared/infrastructure/media"
 	"smart-wardrobe-be/pkg/logger"
 )
 
@@ -39,7 +39,6 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iUserRepository := persistence.NewUserRepository(gormDB)
-	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
 	client, err := caching.NewRedisConnection(cfg)
 	if err != nil {
 		return nil, nil, err
@@ -47,28 +46,33 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
-	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
-	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
-	iUserSubscriptionRepository := persistence2.NewUserSubscriptionRepository(gormDB)
-	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
-	iSubscriptionModuleContract := contract.NewSubscriptionModuleContractImpl(iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserDailyQuotaRepository)
 	iUnitOfWork := db.NewGormUnitOfWork(gormDB)
-	iAuthUseCase := usecase.NewAuthUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, iSubscriptionModuleContract, iUnitOfWork, cfg)
-	authHandler := handler.NewAuthHandler(iAuthUseCase, cfg)
-	authMiddleware := middleware.NewAuthMiddleware(cfg)
-	authRouter := auth.NewRouter(authHandler, authMiddleware)
-	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionModuleContract)
-	meHandler := handler.NewMeHandler(iUserUseCase)
-	meRouter := me.NewRouter(meHandler, authMiddleware)
+	iUserSubscriptionRepository := persistence2.NewUserSubscriptionRepository(gormDB)
+	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
 	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
-	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iUnitOfWork, iSubscriptionModuleContract, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l)
+	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
+	iSubscriptionPlanUseCase := usecase.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
+	iUserQuotaUseCase := usecase.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
+	iSubscriptionUseCase := usecase.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
+	iRegisterUseCase := usecase2.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, iSubscriptionUseCase, iUnitOfWork, cfg)
+	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
+	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
+	iSessionUseCase := usecase2.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg)
+	iPasswordRecoveryUseCase := usecase2.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
+	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
+	authMiddleware := middleware.NewAuthMiddleware(cfg)
+	authRouter := auth.NewRouter(authHandler, authMiddleware)
+	iMediaService := media.NewCloudinaryService(cfg)
+	iUserUseCase := usecase2.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionUseCase, iMediaService, cfg)
+	meHandler := handler.NewMeHandler(iUserUseCase)
+	meRouter := me.NewRouter(meHandler, authMiddleware)
 	dailyQuotaHandler := handler2.NewDailyQuotaHandler(iSubscriptionUseCase)
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
-	iWalletUseCase := usecase2.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iSubscriptionPurchaseUseCase := usecase2.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iPaymentWebhookUseCase := usecase2.NewPaymentWebhookUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iWalletUseCase := usecase.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iSubscriptionPurchaseUseCase := usecase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iPaymentWebhookUseCase := usecase.NewPaymentWebhookUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
 	billingHandler := handler2.NewBillingHandler(iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, billingHandler, authMiddleware)
 	appRouter := &routes.AppRouter{

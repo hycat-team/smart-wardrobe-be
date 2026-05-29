@@ -36,7 +36,12 @@ func (r *UserWalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID
 
 func (r *UserWalletRepository) GetByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserWallet, error) {
 	var wallet entities.UserWallet
-	err := r.GetDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&wallet).Error
+	err := r.GetDB(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ?", userID).
+		First(&wallet).
+		Error
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

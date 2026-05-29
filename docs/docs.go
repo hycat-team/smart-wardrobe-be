@@ -374,6 +374,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/avatar": {
+            "put": {
+                "description": "Cập nhật URL ảnh đại diện và public ID của người dùng",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Cập nhật ảnh đại diện",
+                "parameters": [
+                    {
+                        "description": "Thông tin ảnh đại diện mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateAvatarReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thông tin người dùng sau khi cập nhật",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/avatar-signature": {
+            "get": {
+                "description": "Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh đại diện lên",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Lấy chữ ký tải ảnh đại diện",
+                "responses": {
+                    "200": {
+                        "description": "Chữ ký và thông tin upload",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/change-password": {
             "put": {
                 "description": "Thay đổi mật khẩu cho người dùng hiện tại đang đăng nhập",
@@ -821,6 +899,21 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateAvatarReq": {
+            "type": "object",
+            "required": [
+                "avatarPublicId",
+                "avatarUrl"
+            ],
+            "properties": {
+                "avatarPublicId": {
+                    "type": "string"
+                },
+                "avatarUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq": {
             "type": "object",
             "required": [
@@ -887,6 +980,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "address": {
+                    "type": "string"
+                },
+                "avatarPublicId": {
+                    "type": "string"
+                },
+                "avatarUrl": {
                     "type": "string"
                 },
                 "bodyProfile": {
@@ -1049,6 +1148,26 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "folder": {
+                    "type": "string"
+                },
+                "publicId": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
                 }
             }
         },

@@ -2,11 +2,12 @@ package contract
 
 import (
 	"context"
+	"smart-wardrobe-be/internal/modules/identity/application/dto"
 
 	"github.com/google/uuid"
 )
 
-// IIdentityModuleContract exposes external identity lookups for other modules
-type IIdentityModuleContract interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*PublicUserDTO, error)
+// IUserContract exposes external identity lookups for other modules
+type IUserContract interface {
+	GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error)
 }

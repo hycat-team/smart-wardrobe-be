@@ -83,6 +83,12 @@ func LoadConfig() *Config {
 			ReturnUrl:   getEnv("PAYOS_RETURN_URL", "http://localhost:3000"),
 			CancelUrl:   getEnv("PAYOS_CANCEL_URL", "http://localhost:3000"),
 		},
+		Cloudinary: Cloudinary{
+			CloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
+			ApiKey:       getEnv("CLOUDINARY_API_KEY", ""),
+			ApiSecret:    getEnv("CLOUDINARY_API_SECRET", ""),
+			AvatarFolder: getEnv("CLOUDINARY_AVATAR_FOLDER", "smart_wardrobe/avatars"),
+		},
 	}
 }
 

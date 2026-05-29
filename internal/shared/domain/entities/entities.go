@@ -37,6 +37,8 @@ type User struct {
 	BodyProfile  *bodyProfile          `gorm:"type:jsonb"`
 	Status       userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
 	StyleProfile *UserStyleProfile     `gorm:"foreignKey:UserID"`
+	AvatarUrl      *string               `gorm:"type:varchar(500)"`
+	AvatarPublicID *string               `gorm:"type:varchar(255)"`
 }
 
 type UserSubscription struct {
@@ -106,7 +108,8 @@ type WardrobeItem struct {
 	User       *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 	CategoryID uuid.UUID `gorm:"type:uuid;not null"`
 	Category   *Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
-	ImageUrl   string    `gorm:"type:varchar(500);not null"`
+	ImageUrl      string    `gorm:"type:varchar(500);not null"`
+	ImagePublicID *string   `gorm:"type:varchar(255)"`
 	Color      *string   `gorm:"type:varchar(50)"`
 	Style      *string   `gorm:"type:varchar(100)"`
 	Status     int16     `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'

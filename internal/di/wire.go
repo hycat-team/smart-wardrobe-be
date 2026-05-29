@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/identity"
 	"smart-wardrobe-be/internal/modules/subscription"
+	"smart-wardrobe-be/internal/shared"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/pkg/logger"
@@ -24,6 +25,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		db.NewGormUnitOfWork,
 		caching.NewRedisConnection,
 
+		shared.ProviderSet,
 		identity.ProviderSet,
 		subscription.ProviderSet,
 

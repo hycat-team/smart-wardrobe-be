@@ -21,6 +21,13 @@ type UserRes struct {
 	Subscription UserSubscriptionRes `json:"subscription"`
 	// Quota        *UserQuotaRes       `json:"quota,omitempty"`
 	BodyProfile *UserBodyProfileRes `json:"bodyProfile,omitempty"`
+	AvatarUrl    *string             `json:"avatarUrl,omitempty"`
+	AvatarPublicID *string           `json:"avatarPublicId,omitempty"`
+}
+
+type UpdateAvatarReq struct {
+	AvatarUrl      string `json:"avatarUrl" binding:"required"`
+	AvatarPublicID string `json:"avatarPublicId" binding:"required"`
 }
 
 type UserSubscriptionRes struct {

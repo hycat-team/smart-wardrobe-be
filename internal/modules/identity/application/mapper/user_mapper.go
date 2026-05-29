@@ -40,6 +40,8 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 		Gender:    genderVal,
 		Status:    int(user.Status),
 		CreatedAt: user.CreatedAt,
+		AvatarUrl:      user.AvatarUrl,
+		AvatarPublicID: user.AvatarPublicID,
 	}
 
 	if sub != nil {

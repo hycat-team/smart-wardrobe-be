@@ -6,15 +6,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// ISubscriptionModuleContract exposes core functions for subscription lifecycle and quota checks
-type ISubscriptionModuleContract interface {
+// ISubscriptionPlanContract retrieves plan configuration details
+type ISubscriptionPlanContract interface {
 	GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error)
 	IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error)
+}
+
+// IUserSubscriptionContract manages active user subscriptions and overview queries
+type IUserSubscriptionContract interface {
 	InitializeUserSubscription(ctx context.Context, userID uuid.UUID) error
 	GetUserSubscription(ctx context.Context, userID uuid.UUID) (*UserSubscriptionDTO, error)
 	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*UserSubscriptionOverviewDTO, error)
+}
+
+// IUserQuotaContract manages daily quota evaluations, updates, and constraints
+type IUserQuotaContract interface {
 	GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*UserSubscriptionDTO, error)
-	UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error
-	UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int, resetDate bool) error
-	ResetDailyQuotas(ctx context.Context, userID uuid.UUID) error
+	UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int) error
+	UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int) error
 }

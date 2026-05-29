@@ -3,6 +3,7 @@ package handler
 import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
+	_ "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -98,5 +99,56 @@ func (h *MeHandler) ChangePassword(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, "Đổi mật khẩu thành công", nil)
+	return nil
+}
+
+// GetAvatarSignature get secure cloudinary signature for avatar upload
+// @Summary Lấy chữ ký tải ảnh đại diện
+// @Description Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh đại diện lên
+// @Tags Me
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Chữ ký và thông tin upload"
+// @Router /api/v1/me/avatar-signature [get]
+func (h *MeHandler) GetAvatarSignature(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	signatureRes, err := h.userUseCase.GetAvatarSignature(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy chữ ký tải ảnh đại diện thành công", signatureRes)
+	return nil
+}
+
+// UpdateAvatar update user avatar url
+// @Summary Cập nhật ảnh đại diện
+// @Description Cập nhật URL ảnh đại diện và public ID của người dùng
+// @Tags Me
+// @Accept json
+// @Produce json
+// @Param body body dto.UpdateAvatarReq true "Thông tin ảnh đại diện mới"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "Thông tin người dùng sau khi cập nhật"
+// @Router /api/v1/me/avatar [put]
+func (h *MeHandler) UpdateAvatar(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.UpdateAvatarReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.userUseCase.UpdateAvatar(c.Request.Context(), userID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Cập nhật ảnh đại diện thành công", response)
 	return nil
 }

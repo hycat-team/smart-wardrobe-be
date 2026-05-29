@@ -19,3 +19,8 @@ func (u *User) ChangeAddress(newAddress string) {
 func (u *User) ChangePasswordHash(newPasswordHash string) {
 	u.PasswordHash = newPasswordHash
 }
+
+func (u *User) UpdateAvatar(avatarUrl string, avatarPublicID string) {
+	u.AvatarUrl = &avatarUrl
+	u.AvatarPublicID = &avatarPublicID
+}

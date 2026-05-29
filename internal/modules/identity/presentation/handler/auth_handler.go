@@ -16,13 +16,22 @@ import (
 )
 
 type AuthHandler struct {
-	authUseCase usecase_interfaces.IAuthUseCase
+	registerUC  usecase_interfaces.IRegisterUseCase
+	sessionUC   usecase_interfaces.ISessionUseCase
+	recoveryUC  usecase_interfaces.IPasswordRecoveryUseCase
 	cfg         *config.Config
 }
 
-func NewAuthHandler(ac usecase_interfaces.IAuthUseCase, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(
+	registerUC usecase_interfaces.IRegisterUseCase,
+	sessionUC usecase_interfaces.ISessionUseCase,
+	recoveryUC usecase_interfaces.IPasswordRecoveryUseCase,
+	cfg *config.Config,
+) *AuthHandler {
 	return &AuthHandler{
-		authUseCase: ac,
+		registerUC:  registerUC,
+		sessionUC:   sessionUC,
+		recoveryUC:  recoveryUC,
 		cfg:         cfg,
 	}
 }
@@ -42,7 +51,7 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		return err
 	}
 
-	_, err := h.authUseCase.Register(c.Request.Context(), input)
+	_, err := h.registerUC.Register(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -66,7 +75,7 @@ func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 		return err
 	}
 
-	_, err := h.authUseCase.ConfirmRegisterOtp(c.Request.Context(), input)
+	_, err := h.registerUC.ConfirmRegisterOtp(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -90,7 +99,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		return err
 	}
 
-	output, err := h.authUseCase.Login(c.Request.Context(), input)
+	output, err := h.sessionUC.Login(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -147,7 +156,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 		RefreshToken: refreshToken,
 	}
 
-	_, err = h.authUseCase.Logout(c.Request.Context(), input)
+	_, err = h.sessionUC.Logout(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -195,7 +204,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		OldRefreshToken: oldRefreshToken,
 	}
 
-	output, err := h.authUseCase.RefreshToken(c.Request.Context(), input)
+	output, err := h.sessionUC.RefreshToken(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -243,7 +252,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) error {
 		return err
 	}
 
-	_, err := h.authUseCase.SendForgotPasswordOtp(c.Request.Context(), input)
+	_, err := h.recoveryUC.SendForgotPasswordOtp(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -267,7 +276,7 @@ func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 		return err
 	}
 
-	resetToken, err := h.authUseCase.ConfirmForgotPasswordOtp(c.Request.Context(), input)
+	resetToken, err := h.recoveryUC.ConfirmForgotPasswordOtp(c.Request.Context(), input)
 	if err != nil {
 		return err
 	}
@@ -309,7 +318,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 		return errorcode.NewUnauthorized("Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại yêu cầu.")
 	}
 
-	_, err = h.authUseCase.ResetPassword(c.Request.Context(), input, resetToken)
+	_, err = h.recoveryUC.ResetPassword(c.Request.Context(), input, resetToken)
 	if err != nil {
 		return err
 	}
