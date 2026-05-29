@@ -2,9 +2,9 @@ package contract
 
 import (
 	"context"
-	"errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"time"
 
@@ -38,7 +38,7 @@ func (impl *SubscriptionModuleContractImpl) GetDefaultSubscriptionPlanID(ctx con
 		return uuid.Nil, err
 	}
 	if plan == nil {
-		return uuid.Nil, errors.New("default free plan not found")
+		return uuid.Nil, errorcode.NewNotFound("Không tìm thấy gói hội viên mặc định")
 	}
 	return plan.ID, nil
 }
@@ -86,7 +86,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 		return nil, err
 	}
 	if sub == nil {
-		return nil, errors.New("user subscription record not found")
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
@@ -94,7 +94,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 		return nil, err
 	}
 	if quota == nil {
-		return nil, errors.New("user daily quota record not found")
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
 	}
 
 	plan := sub.SubscriptionPlan
@@ -104,7 +104,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscription(ctx context.Cont
 			return nil, err
 		}
 		if p == nil {
-			return nil, errors.New("associated subscription plan not found")
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 		}
 		plan = p
 	}
@@ -132,7 +132,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscriptionOverview(ctx cont
 		return nil, err
 	}
 	if sub == nil {
-		return nil, errors.New("user subscription record not found")
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	plan := sub.SubscriptionPlan
@@ -142,7 +142,7 @@ func (impl *SubscriptionModuleContractImpl) GetUserSubscriptionOverview(ctx cont
 			return nil, err
 		}
 		if p == nil {
-			return nil, errors.New("associated subscription plan not found")
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 		}
 		plan = p
 	}
@@ -167,7 +167,7 @@ func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Co
 		return nil, err
 	}
 	if sub == nil {
-		return nil, errors.New("user subscription record not found")
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	quota, err := impl.quotaRepo.GetByUserID(ctx, userID)
@@ -175,7 +175,7 @@ func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Co
 		return nil, err
 	}
 	if quota == nil {
-		return nil, errors.New("user daily quota record not found")
+		return nil, errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
 	}
 
 	now := time.Now()
@@ -201,7 +201,7 @@ func (impl *SubscriptionModuleContractImpl) GetAndResetDailyQuota(ctx context.Co
 			return nil, err
 		}
 		if p == nil {
-			return nil, errors.New("associated subscription plan not found")
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 		}
 		plan = p
 	}
@@ -229,7 +229,7 @@ func (impl *SubscriptionModuleContractImpl) UpdateOutfitQuota(ctx context.Contex
 		return err
 	}
 	if quota == nil {
-		return errors.New("user daily quota not found")
+		return errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
 	}
 
 	quota.OutfitRecommendCount = count
@@ -246,7 +246,7 @@ func (impl *SubscriptionModuleContractImpl) UpdateAiChatQuota(ctx context.Contex
 		return err
 	}
 	if quota == nil {
-		return errors.New("user daily quota not found")
+		return errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
 	}
 
 	quota.AiUsageCount = count
@@ -263,7 +263,7 @@ func (impl *SubscriptionModuleContractImpl) ResetDailyQuotas(ctx context.Context
 		return err
 	}
 	if quota == nil {
-		return errors.New("user daily quota not found")
+		return errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
 	}
 
 	quota.OutfitRecommendCount = 0

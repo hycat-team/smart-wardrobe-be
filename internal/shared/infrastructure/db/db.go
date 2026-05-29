@@ -23,7 +23,7 @@ func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
 	)
 
 	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Warn),
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   "",
 			SingularTable: true,

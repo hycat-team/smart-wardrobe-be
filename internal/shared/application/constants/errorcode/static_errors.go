@@ -33,7 +33,7 @@ var (
 	ErrOTPTooManyAttempts = errors.New("Quá số lần nhập OTP")
 
 	// --- 500 Internal Server Error ---
-	ErrInternalServer         = errors.New("Lỗi không mong muốn")
+	ErrInternalServer         = errors.New("Lỗi không mong muốn. Vui lòng thử lại")
 	ErrDbUpdate               = errors.New("Lỗi cập nhật dữ liệu")
 	ErrExportFailed           = errors.New("Lỗi xuất file")
 	ErrUnexpectedSigningToken = errors.New("Token không hợp lệ")

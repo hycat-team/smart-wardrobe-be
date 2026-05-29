@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
@@ -13,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
@@ -27,6 +27,7 @@ type SubscriptionUseCase struct {
 	statementRepo repositories.IWalletStatementRepository
 	quotaRepo     repositories.IUserDailyQuotaRepository
 	cfg           *config.Config
+	l             logger.Interface
 }
 
 func NewSubscriptionUseCase(
@@ -38,6 +39,7 @@ func NewSubscriptionUseCase(
 	statementRepo repositories.IWalletStatementRepository,
 	quotaRepo repositories.IUserDailyQuotaRepository,
 	cfg *config.Config,
+	l logger.Interface,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:           uow,
@@ -48,6 +50,7 @@ func NewSubscriptionUseCase(
 		statementRepo: statementRepo,
 		quotaRepo:     quotaRepo,
 		cfg:           cfg,
+		l:             l,
 	}
 }
 
@@ -137,7 +140,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
-				log.Printf("Successfully auto-renewed user %s with plan %s", sub.UserID, plan.Name)
+				uc.l.Info(fmt.Sprintf("Successfully auto-renewed user %s with plan %s", sub.UserID, plan.Name))
 
 			} else {
 				sub.SubscriptionPlanID = freePlan.ID
@@ -149,14 +152,14 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
-				log.Printf("Auto-renewal disabled or insufficient funds, downgraded user %s back to standard free plan", sub.UserID)
+				uc.l.Info(fmt.Sprintf("Auto-renewal disabled or insufficient funds, downgraded user %s back to standard free plan", sub.UserID))
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			log.Printf("Failed to process renewal sequence for user %s: %v", sub.UserID, err)
+			uc.l.Error(fmt.Sprintf("Failed to process renewal sequence for user %s: %v", sub.UserID, err))
 		}
 	}
 

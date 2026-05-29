@@ -62,7 +62,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	meRouter := me.NewRouter(meHandler, authMiddleware)
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
 	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
-	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iUnitOfWork, iSubscriptionModuleContract, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg)
+	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iUnitOfWork, iSubscriptionModuleContract, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l)
 	dailyQuotaHandler := handler2.NewDailyQuotaHandler(iSubscriptionUseCase)
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)

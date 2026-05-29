@@ -75,7 +75,8 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 		core = consoleCore
 	}
 
-	zapLogger := zap.New(core, zap.AddCaller())
+	// zapLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	zapLogger := zap.New(core)
 
 	return &Logger{
 		zapLogger: zapLogger,

@@ -2,9 +2,9 @@ package contract
 
 import (
 	"context"
-	"errors"
 	"smart-wardrobe-be/internal/modules/identity/contract"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 
 	"github.com/google/uuid"
 )
@@ -28,7 +28,7 @@ func (impl *IdentityModuleContractImpl) GetUserByID(ctx context.Context, id uuid
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, errors.New("user not found or deleted")
+		return nil, errorcode.NewNotFound("Người dùng không tồn tại.")
 	}
 
 	return &contract.PublicUserDTO{

@@ -143,18 +143,18 @@ func (uc *AuthUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Confirm
 	}
 
 	if len(tempUserDataJson) == 0 {
-		return false, errorcode.NewBadRequest("Lấy thông tin đăng ký thất bại")
+		return false, errorcode.NewInternalError("Lấy thông tin đăng ký thất bại")
 	}
 
 	var registerData vo.TempUserCacheModel
 	err = json.Unmarshal([]byte(tempUserDataJson), &registerData)
 	if err != nil {
-		return false, errorcode.NewBadRequest("Thông tin đăng ký không hợp lệ.")
+		return false, errorcode.NewInternalError("Thông tin đăng ký không hợp lệ.")
 	}
 
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
-		return false, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
+		return false, errorcode.NewInternalError("Ngày sinh không hợp lệ.")
 	}
 
 	gen := gender.Gender(registerData.Gender)
@@ -427,7 +427,7 @@ func (uc *AuthUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.C
 		return "", err
 	}
 	if user == nil || user.IsDeleted {
-		return "", errorcode.NewUnauthorized("Người dùng không tồn tại.")
+		return "", errorcode.NewNotFound("Người dùng không tồn tại.")
 	}
 
 	resetToken, err := jwtutils.GenerateToken(
