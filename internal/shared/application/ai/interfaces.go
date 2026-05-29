@@ -1,0 +1,11 @@
+package ai
+
+import (
+	"context"
+	"smart-wardrobe-be/internal/shared/application/dto"
+)
+
+type IAIService interface {
+	AnalyzeFashionImage(ctx context.Context, imageUrl string) (*dto.FashionMetadataResult, error)
+	GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error)
+}

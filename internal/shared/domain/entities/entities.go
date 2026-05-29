@@ -63,7 +63,7 @@ type UserDailyQuota struct {
 
 type UserStyleProfile struct {
 	UserID          uuid.UUID `gorm:"type:uuid;primaryKey"`
-	TasteEmbedding  Vector    `gorm:"type:vector(1536)"`
+	TasteEmbedding  Vector    `gorm:"type:vector(768)"`
 	PreferredColors *string   `gorm:"type:jsonb"`
 	UpdatedAt       time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
 	User            *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
@@ -110,10 +110,15 @@ type WardrobeItem struct {
 	Category   *Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
 	ImageUrl      string    `gorm:"type:varchar(500);not null"`
 	ImagePublicID *string   `gorm:"type:varchar(255)"`
-	Color      *string   `gorm:"type:varchar(50)"`
-	Style      *string   `gorm:"type:varchar(100)"`
-	Status     int16     `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
-	Embedding  Vector    `gorm:"type:vector(1536)"`
+	Color         *string   `gorm:"type:varchar(50)"`
+	Style         *string   `gorm:"type:varchar(100)"`
+	Material      *string   `gorm:"type:varchar(100)"`
+	Pattern       *string   `gorm:"type:varchar(100)"`
+	Fit           *string   `gorm:"type:varchar(50)"`
+	Seasonality   *string   `gorm:"type:varchar(100)"`
+	Description   *string   `gorm:"type:text"`
+	Status        int16     `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
+	Embedding     Vector    `gorm:"type:vector(768)"`
 }
 
 type Outfit struct {

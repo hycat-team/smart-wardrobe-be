@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/identity"
 	"smart-wardrobe-be/internal/modules/subscription"
+	"smart-wardrobe-be/internal/modules/wardrobe"
 	"smart-wardrobe-be/internal/shared"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -28,6 +29,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		shared.ProviderSet,
 		identity.ProviderSet,
 		subscription.ProviderSet,
+		wardrobe.ProviderSet,
 
 		middleware.NewAuthMiddleware,
 		middleware.NewRateLimitMiddleware,

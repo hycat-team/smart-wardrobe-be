@@ -264,6 +264,52 @@ definitions:
     required:
     - enabled
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq:
+    properties:
+      categoryId:
+        type: string
+      imagePublicId:
+        type: string
+      imageUrl:
+        type: string
+    required:
+    - categoryId
+    - imagePublicId
+    - imageUrl
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
+    properties:
+      categoryId:
+        type: string
+      categoryName:
+        type: string
+      color:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      fit:
+        type: string
+      id:
+        type: string
+      imagePublicId:
+        type: string
+      imageUrl:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      seasonality:
+        type: string
+      status:
+        type: integer
+      style:
+        type: string
+      userId:
+        type: string
+    type: object
   smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult:
     properties:
       apiKey:
@@ -770,4 +816,51 @@ paths:
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
+  /api/v1/wardrobe-items:
+    post:
+      consumes:
+      - application/json
+      description: Tải lên trang phục mới, tự động phân tích và số hóa gu thời trang
+        bằng trí tuệ nhân tạo
+      parameters:
+      - description: Thông tin trang phục
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Thông tin trang phục sau khi lưu trữ
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+              type: object
+      summary: Thêm trang phục mới
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/upload-signature:
+    get:
+      description: Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh trang
+        phục lên
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chữ ký và thông tin upload
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult'
+              type: object
+      summary: Lấy chữ ký tải ảnh trang phục
+      tags:
+      - Wardrobe
 swagger: "2.0"

@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/api/routes/subscription"
+	"smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
 	usecase2 "smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
@@ -25,6 +26,10 @@ import (
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	usecase3 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase"
+	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
+	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
+	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/internal/shared/infrastructure/media"
@@ -75,10 +80,17 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPaymentWebhookUseCase := usecase.NewPaymentWebhookUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
 	billingHandler := handler2.NewBillingHandler(iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, billingHandler, authMiddleware)
+	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
+	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
+	iaiService := ai.NewAIService(cfg)
+	iWardrobeUseCase := usecase3.NewWardrobeUseCase(cfg, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService)
+	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
+	wardrobeRouter := wardrobe.NewRouter(wardrobeHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
 		SubscriptionRouter: subscriptionRouter,
+		WardrobeRouter:     wardrobeRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)

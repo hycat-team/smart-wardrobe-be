@@ -746,6 +746,84 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/wardrobe-items": {
+            "post": {
+                "description": "Tải lên trang phục mới, tự động phân tích và số hóa gu thời trang bằng trí tuệ nhân tạo",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Thêm trang phục mới",
+                "parameters": [
+                    {
+                        "description": "Thông tin trang phục",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Thông tin trang phục sau khi lưu trữ",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/upload-signature": {
+            "get": {
+                "description": "Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh trang phục lên",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Lấy chữ ký tải ảnh trang phục",
+                "responses": {
+                    "200": {
+                        "description": "Chữ ký và thông tin upload",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1148,6 +1226,75 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "imagePublicId",
+                "imageUrl"
+            ],
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "categoryName": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "style": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
                 }
             }
         },

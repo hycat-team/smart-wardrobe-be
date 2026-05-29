@@ -12,6 +12,21 @@ type Config struct {
 	RateLimit RateLimit
 	PayOS     PayOS
 	Cloudinary Cloudinary
+	AI         AIServiceConfig
+}
+
+type APIProviderConfig struct {
+	Provider string
+	ApiKey   string
+	Endpoint string
+	Model    string
+}
+
+type AIServiceConfig struct {
+	VisionPrimary     APIProviderConfig
+	VisionFallback    APIProviderConfig
+	EmbeddingPrimary  APIProviderConfig
+	EmbeddingFallback APIProviderConfig
 }
 
 type Cloudinary struct {
@@ -19,6 +34,7 @@ type Cloudinary struct {
 	ApiKey       string
 	ApiSecret    string
 	AvatarFolder string
+	ItemFolder   string
 }
 
 type PayOS struct {

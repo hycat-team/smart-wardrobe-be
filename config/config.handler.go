@@ -2,8 +2,6 @@ package config
 
 import (
 	"log"
-	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -87,32 +85,34 @@ func LoadConfig() *Config {
 			CloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
 			ApiKey:       getEnv("CLOUDINARY_API_KEY", ""),
 			ApiSecret:    getEnv("CLOUDINARY_API_SECRET", ""),
-			AvatarFolder: getEnv("CLOUDINARY_AVATAR_FOLDER", "smart_wardrobe/avatars"),
+			AvatarFolder: getEnv("CLOUDINARY_AVATAR_FOLDER", ""),
+			ItemFolder:   getEnv("CLOUDINARY_ITEM_FOLDER", ""),
+		},
+		AI: AIServiceConfig{
+			VisionPrimary: APIProviderConfig{
+				Provider: getEnv("VISION_PRIMARY_PROVIDER", ""),
+				ApiKey:   getEnv("VISION_PRIMARY_API_KEY", ""),
+				Endpoint: getEnv("VISION_PRIMARY_ENDPOINT", ""),
+				Model:    getEnv("VISION_PRIMARY_MODEL", ""),
+			},
+			VisionFallback: APIProviderConfig{
+				Provider: getEnv("VISION_FALLBACK_PROVIDER", ""),
+				ApiKey:   getEnv("VISION_FALLBACK_API_KEY", ""),
+				Endpoint: getEnv("VISION_FALLBACK_ENDPOINT", ""),
+				Model:    getEnv("VISION_FALLBACK_MODEL", ""),
+			},
+			EmbeddingPrimary: APIProviderConfig{
+				Provider: getEnv("EMBEDDING_PRIMARY_PROVIDER", ""),
+				ApiKey:   getEnv("EMBEDDING_PRIMARY_API_KEY", ""),
+				Endpoint: getEnv("EMBEDDING_PRIMARY_ENDPOINT", ""),
+				Model:    getEnv("EMBEDDING_PRIMARY_MODEL", ""),
+			},
+			EmbeddingFallback: APIProviderConfig{
+				Provider: getEnv("EMBEDDING_FALLBACK_PROVIDER", ""),
+				ApiKey:   getEnv("EMBEDDING_FALLBACK_API_KEY", ""),
+				Endpoint: getEnv("EMBEDDING_FALLBACK_ENDPOINT", ""),
+				Model:    getEnv("EMBEDDING_FALLBACK_MODEL", ""),
+			},
 		},
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	if value, exists := os.LookupEnv(key); exists {
-		if val, err := strconv.Atoi(value); err == nil {
-			return val
-		}
-	}
-	return fallback
-}
-
-func getEnvBool(key string, fallback bool) bool {
-	if value, exists := os.LookupEnv(key); exists {
-		if val, err := strconv.ParseBool(value); err == nil {
-			return val
-		}
-	}
-	return fallback
 }

@@ -72,7 +72,7 @@ CREATE TABLE user_daily_quotas (
 -- ========================================================
 CREATE TABLE user_style_profiles (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    taste_embedding VECTOR(1536), -- Vector gu thời trang người dùng
+    taste_embedding VECTOR(768), -- Vector gu thời trang người dùng
     preferred_colors JSONB,      -- Lưu danh sách mảng màu tương tác phổ biến
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -137,8 +137,13 @@ CREATE TABLE wardrobe_items (
     image_public_id VARCHAR(255),
     color VARCHAR(50),
     style VARCHAR(100),
+    material VARCHAR(100),
+    pattern VARCHAR(100),
+    fit VARCHAR(50),
+    seasonality VARCHAR(100),
+    description TEXT,
     status SMALLINT NOT NULL DEFAULT 0, -- 'in_wardrobe', 'selling', 'sold'
-    embedding VECTOR(1536),
+    embedding VECTOR(768),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
