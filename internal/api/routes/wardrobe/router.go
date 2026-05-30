@@ -21,10 +21,20 @@ func NewRouter(h *wardrobe_handler.WardrobeHandler, m *middleware.AuthMiddleware
 }
 
 func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
-	wardrobeApi := group.Group("/wardrobe-items")
-	wardrobeApi.Use(r.authMiddleware.Handle())
+	privateApi := group.Group("")
+	privateApi.Use(r.authMiddleware.Handle())
+
+	wardrobeApi := privateApi.Group("/wardrobe-items")
 	{
 		wardrobeApi.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeHandler.GetUploadSignature))
-		wardrobeApi.POST("", shared_pres.WrapHandler(r.wardrobeHandler.CreateWardrobeItem))
+		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItemByID))
+		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.wardrobeHandler.CloneWardrobeItem))
+		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.wardrobeHandler.InitClosetFromCatalog))
+		wardrobeApi.POST("/batch-crop", shared_pres.WrapHandler(r.wardrobeHandler.BatchCropWardrobeItems))
+	}
+
+	meApi := privateApi.Group("/me/wardrobe-items")
+	{
+		meApi.GET("", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItems))
 	}
 }

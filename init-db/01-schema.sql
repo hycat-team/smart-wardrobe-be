@@ -143,6 +143,7 @@ CREATE TABLE wardrobe_items (
     seasonality VARCHAR(100),
     description TEXT,
     status SMALLINT NOT NULL DEFAULT 0, -- 'in_wardrobe', 'selling', 'sold'
+    item_type SMALLINT NOT NULL DEFAULT 0, -- 0: UserItem, 1: SystemCatalogItem
     embedding VECTOR(768),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

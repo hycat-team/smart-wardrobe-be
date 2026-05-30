@@ -264,16 +264,7 @@ definitions:
     required:
     - enabled
     type: object
-  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      slug:
-        type: string
-    type: object
-  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq:
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq:
     properties:
       categoryId:
         type: string
@@ -285,6 +276,44 @@ definitions:
     - categoryId
     - imagePublicId
     - imageUrl
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq'
+        minItems: 1
+        type: array
+    required:
+    - items
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq:
+    properties:
+      quantity:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - quantity
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq:
+    properties:
+      catalogItemIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - catalogItemIds
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
     properties:
@@ -304,6 +333,8 @@ definitions:
         type: string
       imageUrl:
         type: string
+      isLocked:
+        type: boolean
       material:
         type: string
       pattern:
@@ -355,12 +386,25 @@ definitions:
     - 0
     - 1
     - 2
+    - 3
+    - 4
     format: int32
     type: integer
+    x-enum-comments:
+      Failed: AI processing failed
+      Processing: AI processing in background
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - AI processing in background
+    - AI processing failed
     x-enum-varnames:
     - InWardrobe
     - Selling
     - Sold
+    - Processing
+    - Failed
   smart-wardrobe-be_internal_shared_presentation.APIResponse:
     properties:
       data: {}
@@ -667,6 +711,27 @@ paths:
       summary: Đổi mật khẩu
       tags:
       - Me
+  /api/v1/me/wardrobe-items:
+    get:
+      description: Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp
+        dụng trạng thái khóa động nếu hạ cấp gói
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách trang phục
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách trang phục
+      tags:
+      - Wardrobe
   /api/v1/subscriptions/me/daily-quota:
     get:
       consumes:
@@ -842,24 +907,21 @@ paths:
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
-  /api/v1/wardrobe-items:
-    post:
-      consumes:
-      - application/json
-      description: Tải lên trang phục mới, tự động phân tích và số hóa gu thời trang
-        bằng trí tuệ nhân tạo
+  /api/v1/wardrobe-items/{id}:
+    get:
+      description: Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn
+        nếu trang phục nằm trong vùng bị khóa
       parameters:
-      - description: Thông tin trang phục
-        in: body
-        name: body
+      - description: ID trang phục
+        in: path
+        name: id
         required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq'
+        type: string
       produces:
       - application/json
       responses:
-        "201":
-          description: Thông tin trang phục sau khi lưu trữ
+        "200":
+          description: Chi tiết trang phục
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -867,7 +929,103 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
               type: object
-      summary: Thêm trang phục mới
+      summary: Xem chi tiết trang phục
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/{id}/clone:
+    post:
+      consumes:
+      - application/json
+      description: Sao chép nhanh một trang phục có sẵn trong tủ đồ (tái sử dụng nguyên
+        bản AI metadata & ảnh), tối đa 5 bản sao
+      parameters:
+      - description: ID trang phục gốc
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Số lượng nhân bản
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Danh sách trang phục được nhân bản
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
+              type: object
+      summary: Nhân bản trang phục
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/batch-crop:
+    post:
+      consumes:
+      - application/json
+      description: Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần),
+        hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi
+        AI phân tích ngầm
+      parameters:
+      - description: Danh sách ảnh trang phục cắt
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Danh sách trang phục đang được xử lý ngầm
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
+              type: object
+      summary: Số hóa trang phục hàng loạt (Cắt ảnh)
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/catalog-init:
+    post:
+      consumes:
+      - application/json
+      description: Sao chép hàng loạt các trang phục mẫu (Global Catalog) từ hệ thống
+        sang tủ đồ cá nhân của user, không tốn quota AI
+      parameters:
+      - description: Danh sách ID trang phục mẫu
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Danh sách trang phục cá nhân được tạo
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
+              type: object
+      summary: Khởi tạo nhanh tủ đồ cá nhân
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/upload-signature:

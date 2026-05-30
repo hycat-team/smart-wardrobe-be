@@ -7,7 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"syscall"
 	"time"
 
@@ -15,20 +16,23 @@ import (
 )
 
 type App struct {
-	Config        *config.Config
-	Server        *gin.Engine
-	RenewalWorker worker.ISubscriptionRenewalWorker
+	Config          *config.Config
+	Server          *gin.Engine
+	RenewalWorker   subWorker.ISubscriptionRenewalWorker
+	BatchCropWorker *wardrobeWorker.BatchCropRabbitMQWorker
 }
 
 func NewApp(
 	cfg *config.Config,
 	server *gin.Engine,
-	renewalWorker worker.ISubscriptionRenewalWorker,
+	renewalWorker subWorker.ISubscriptionRenewalWorker,
+	batchCropWorker *wardrobeWorker.BatchCropRabbitMQWorker,
 ) *App {
 	return &App{
-		Config:        cfg,
-		Server:        server,
-		RenewalWorker: renewalWorker,
+		Config:          cfg,
+		Server:          server,
+		RenewalWorker:   renewalWorker,
+		BatchCropWorker: batchCropWorker,
 	}
 }
 

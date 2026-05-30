@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"context"
+
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -9,6 +11,10 @@ import (
 
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
+	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.WardrobeItem, error)
+	BulkCreate(ctx context.Context, items []*entities.WardrobeItem) error
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
 }
 
 type ICategoryRepository interface {

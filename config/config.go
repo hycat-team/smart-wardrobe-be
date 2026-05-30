@@ -13,6 +13,7 @@ type Config struct {
 	PayOS     PayOS
 	Cloudinary Cloudinary
 	AI         AIServiceConfig
+	RabbitMQ   RabbitMQ
 }
 
 type APIProviderConfig struct {
@@ -27,6 +28,14 @@ type AIServiceConfig struct {
 	VisionFallback    APIProviderConfig
 	EmbeddingPrimary  APIProviderConfig
 	EmbeddingFallback APIProviderConfig
+	RpmLimit          int
+}
+
+type RabbitMQ struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
 }
 
 type Cloudinary struct {

@@ -1,6 +1,6 @@
 module smart-wardrobe-be
 
-go 1.24.5
+go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.11.0
@@ -11,7 +11,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.40.0
-	golang.org/x/time v0.9.0
+	golang.org/x/time v0.5.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
 )
@@ -29,6 +29,7 @@ require (
 	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/rabbitmq/amqp091-go v1.11.0 // indirect
 )
 
 require (

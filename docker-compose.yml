@@ -44,6 +44,7 @@ services:
         environment:
             - DB_HOST=postgres
             - REDIS_HOST=redis
+            - RABBITMQ_HOST=rabbitmq
             - LOG_TO_FILE=false
         env_file:
             - .env
@@ -52,6 +53,26 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+
+    rabbitmq:
+        image: rabbitmq:3-management-alpine
+        container_name: rabbitmq-smartwardrobe
+        restart: always
+        environment:
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+        ports:
+            - "${RABBITMQ_PORT}:5672"
+            - "15672:15672"
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     ngrok:
         image: ngrok/ngrok:latest
@@ -69,3 +90,4 @@ services:
 volumes:
     postgres_data:
     redis_data:
+    rabbitmq_data:

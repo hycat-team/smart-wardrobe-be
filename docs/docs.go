@@ -486,6 +486,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/wardrobe-items": {
+            "get": {
+                "description": "Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Lấy danh sách trang phục",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách trang phục",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscriptions/me/daily-quota": {
             "get": {
                 "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
@@ -747,9 +782,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/wardrobe-items": {
+        "/api/v1/wardrobe-items/batch-crop": {
             "post": {
-                "description": "Tải lên trang phục mới, tự động phân tích và số hóa gu thời trang bằng trí tuệ nhân tạo",
+                "description": "Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần), hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi AI phân tích ngầm",
                 "consumes": [
                     "application/json"
                 ],
@@ -759,21 +794,21 @@ const docTemplate = `{
                 "tags": [
                     "Wardrobe"
                 ],
-                "summary": "Thêm trang phục mới",
+                "summary": "Số hóa trang phục hàng loạt (Cắt ảnh)",
                 "parameters": [
                     {
-                        "description": "Thông tin trang phục",
+                        "description": "Danh sách ảnh trang phục cắt",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Thông tin trang phục sau khi lưu trữ",
+                        "description": "Danh sách trang phục đang được xử lý ngầm",
                         "schema": {
                             "allOf": [
                                 {
@@ -783,7 +818,59 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/catalog-init": {
+            "post": {
+                "description": "Sao chép hàng loạt các trang phục mẫu (Global Catalog) từ hệ thống sang tủ đồ cá nhân của user, không tốn quota AI",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Khởi tạo nhanh tủ đồ cá nhân",
+                "parameters": [
+                    {
+                        "description": "Danh sách ID trang phục mẫu",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Danh sách trang phục cá nhân được tạo",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
                                         }
                                     }
                                 }
@@ -816,6 +903,103 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/{id}": {
+            "get": {
+                "description": "Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn nếu trang phục nằm trong vùng bị khóa",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Xem chi tiết trang phục",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID trang phục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chi tiết trang phục",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/{id}/clone": {
+            "post": {
+                "description": "Sao chép nhanh một trang phục có sẵn trong tủ đồ (tái sử dụng nguyên bản AI metadata \u0026 ảnh), tối đa 5 bản sao",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Nhân bản trang phục",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID trang phục gốc",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Số lượng nhân bản",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Danh sách trang phục được nhân bản",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
                                         }
                                     }
                                 }
@@ -1229,21 +1413,7 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq": {
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq": {
             "type": "object",
             "required": [
                 "categoryId",
@@ -1259,6 +1429,63 @@ const docTemplate = `{
                 },
                 "imageUrl": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq": {
+            "type": "object",
+            "required": [
+                "quantity"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq": {
+            "type": "object",
+            "required": [
+                "catalogItemIds"
+            ],
+            "properties": {
+                "catalogItemIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1288,6 +1515,9 @@ const docTemplate = `{
                 },
                 "imageUrl": {
                     "type": "string"
+                },
+                "isLocked": {
+                    "type": "boolean"
                 },
                 "material": {
                     "type": "string"
@@ -1361,12 +1591,27 @@ const docTemplate = `{
             "enum": [
                 0,
                 1,
-                2
+                2,
+                3,
+                4
+            ],
+            "x-enum-comments": {
+                "Failed": "AI processing failed",
+                "Processing": "AI processing in background"
+            },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "AI processing in background",
+                "AI processing failed"
             ],
             "x-enum-varnames": [
                 "InWardrobe",
                 "Selling",
-                "Sold"
+                "Sold",
+                "Processing",
+                "Failed"
             ]
         },
         "smart-wardrobe-be_internal_shared_presentation.APIResponse": {

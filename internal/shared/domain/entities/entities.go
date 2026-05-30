@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
@@ -126,7 +127,8 @@ type WardrobeItem struct {
 	Seasonality   *string   `gorm:"type:varchar(100)"`
 	Description   *string   `gorm:"type:text"`
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
-	Embedding     Vector    `gorm:"type:vector(768)"`
+	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"` // 0: UserItem, 1: SystemCatalogItem
+	Embedding     Vector                            `gorm:"type:vector(768)"`
 }
 
 type Outfit struct {

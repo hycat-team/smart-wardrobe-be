@@ -113,6 +113,13 @@ func LoadConfig() *Config {
 				Endpoint: getEnv("EMBEDDING_FALLBACK_ENDPOINT", ""),
 				Model:    getEnv("EMBEDDING_FALLBACK_MODEL", ""),
 			},
+			RpmLimit: getEnvInt("AI_RPM_LIMIT", 5),
+		},
+		RabbitMQ: RabbitMQ{
+			Host:     getEnv("RABBITMQ_HOST", "localhost"),
+			Port:     getEnvInt("RABBITMQ_PORT", 5672),
+			User:     getEnv("RABBITMQ_USER", "guest"),
+			Password: getEnv("RABBITMQ_PASSWORD", "123456"),
 		},
 	}
 }

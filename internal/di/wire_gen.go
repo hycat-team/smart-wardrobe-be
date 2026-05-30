@@ -13,7 +13,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/api/routes/subscription"
-	"smart-wardrobe-be/internal/api/routes/wardrobe"
+	wardrobe2 "smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
 	usecase2 "smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
@@ -26,13 +26,15 @@ import (
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
-	usecase3 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
+	worker2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/internal/shared/infrastructure/media"
+	"smart-wardrobe-be/internal/shared/infrastructure/rabbitmq"
 	"smart-wardrobe-be/pkg/logger"
 )
 
@@ -83,9 +85,13 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
 	iaiService := ai.NewAIService(cfg)
-	iWardrobeUseCase := usecase3.NewWardrobeUseCase(cfg, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService)
+	rabbitMQClient, err := rabbitmq.NewRabbitMQClient(cfg, l)
+	if err != nil {
+		return nil, nil, err
+	}
+	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
-	wardrobeRouter := wardrobe.NewRouter(wardrobeHandler, authMiddleware)
+	wardrobeRouter := wardrobe2.NewRouter(wardrobeHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
@@ -95,7 +101,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
-	app := bootstrap.NewApp(cfg, engine, iSubscriptionRenewalWorker)
+	batchCropRabbitMQWorker := worker2.NewBatchCropRabbitMQWorker(rabbitMQClient, iWardrobeUseCase, l)
+	app := bootstrap.NewApp(cfg, engine, iSubscriptionRenewalWorker, batchCropRabbitMQWorker)
 	return app, func() {
 	}, nil
 }

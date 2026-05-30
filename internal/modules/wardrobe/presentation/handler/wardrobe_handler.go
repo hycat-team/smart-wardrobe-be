@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type WardrobeHandler struct {
@@ -38,31 +39,148 @@ func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
 	return nil
 }
 
-// CreateWardrobeItem create new wardrobe item with AI analysis
-// @Summary Thêm trang phục mới
-// @Description Tải lên trang phục mới, tự động phân tích và số hóa gu thời trang bằng trí tuệ nhân tạo
+
+// GetWardrobeItems get all active wardrobe items with lock status
+// @Summary Lấy danh sách trang phục
+// @Description Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói
 // @Tags Wardrobe
-// @Accept json
 // @Produce json
-// @Param body body dto.CreateWardrobeItemReq true "Thông tin trang phục"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Thông tin trang phục sau khi lưu trữ"
-// @Router /api/v1/wardrobe-items [post]
-func (h *WardrobeHandler) CreateWardrobeItem(c *gin.Context) error {
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục"
+// @Router /api/v1/me/wardrobe-items [get]
+func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	var input dto.CreateWardrobeItemReq
-	if err := validation.BindJSON(c, &input); err != nil {
-		return err
-	}
-
-	response, err := h.wardrobeUseCase.CreateWardrobeItem(c.Request.Context(), userID, input)
+	response, err := h.wardrobeUseCase.GetWardrobeItems(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
 
-	shared_pres.Created(c, "Tải lên và phân tích trang phục thành công", response)
+	shared_pres.Success(c, "Lấy danh sách trang phục thành công", response)
+	return nil
+}
+
+// GetWardrobeItemByID get details of a specific wardrobe item
+// @Summary Xem chi tiết trang phục
+// @Description Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn nếu trang phục nằm trong vùng bị khóa
+// @Tags Wardrobe
+// @Produce json
+// @Param id path string true "ID trang phục"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục"
+// @Router /api/v1/wardrobe-items/{id} [get]
+func (h *WardrobeHandler) GetWardrobeItemByID(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	idStr := c.Param("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.GetWardrobeItemByID(c.Request.Context(), userID, itemID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy thông tin chi tiết trang phục thành công", response)
+	return nil
+}
+
+// CloneWardrobeItem clone an existing wardrobe item
+// @Summary Nhân bản trang phục
+// @Description Sao chép nhanh một trang phục có sẵn trong tủ đồ (tái sử dụng nguyên bản AI metadata & ảnh), tối đa 5 bản sao
+// @Tags Wardrobe
+// @Accept json
+// @Produce json
+// @Param id path string true "ID trang phục gốc"
+// @Param body body dto.CloneWardrobeItemReq true "Số lượng nhân bản"
+// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục được nhân bản"
+// @Router /api/v1/wardrobe-items/{id}/clone [post]
+func (h *WardrobeHandler) CloneWardrobeItem(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	idStr := c.Param("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		return err
+	}
+
+	var input dto.CloneWardrobeItemReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.CloneWardrobeItem(c.Request.Context(), userID, itemID, input.Quantity)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Created(c, "Nhân bản trang phục thành công", response)
+	return nil
+}
+
+// InitClosetFromCatalog initialize user's wardrobe using pre-analyzed global catalog templates
+// @Summary Khởi tạo nhanh tủ đồ cá nhân
+// @Description Sao chép hàng loạt các trang phục mẫu (Global Catalog) từ hệ thống sang tủ đồ cá nhân của user, không tốn quota AI
+// @Tags Wardrobe
+// @Accept json
+// @Produce json
+// @Param body body dto.InitClosetFromCatalogReq true "Danh sách ID trang phục mẫu"
+// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục cá nhân được tạo"
+// @Router /api/v1/wardrobe-items/catalog-init [post]
+func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.InitClosetFromCatalogReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.InitClosetFromCatalog(c.Request.Context(), userID, input.CatalogItemIDs)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Created(c, "Khởi tạo nhanh tủ đồ thành công", response)
+	return nil
+}
+
+// BatchCropWardrobeItems upload and process background AI analysis for multiple cropped wardrobe accessories
+// @Summary Số hóa trang phục hàng loạt (Cắt ảnh)
+// @Description Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần), hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi AI phân tích ngầm
+// @Tags Wardrobe
+// @Accept json
+// @Produce json
+// @Param body body dto.BatchCropWardrobeItemsReq true "Danh sách ảnh trang phục cắt"
+// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm"
+// @Router /api/v1/wardrobe-items/batch-crop [post]
+func (h *WardrobeHandler) BatchCropWardrobeItems(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.BatchCropWardrobeItemsReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.BatchCropWardrobeItems(c.Request.Context(), userID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Created(c, "Tải lên và bắt đầu phân tích hàng loạt thành công", response)
 	return nil
 }

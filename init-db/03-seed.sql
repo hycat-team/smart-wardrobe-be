@@ -20,3 +20,17 @@ VALUES
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a06', 'Váy', 'vay'),
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a07', 'Áo khoác', 'ao-khoac')
 ON CONFLICT (id) DO NOTHING;
+
+-- Chèn tài khoản Admin hệ thống mặc định (password: admin123)
+INSERT INTO users (id, username, email, password_hash, first_name, last_name, role_slug, status)
+VALUES
+    ('ad11ad11-ad11-ad11-ad11-ad11ad11ad11', 'admin', 'admin@smartwardrobe.com', '$2a$10$tM3p/yY1o8xM2q3LqB3E2u7p83kCsk4g5g2/c1WzF0H51n1v/0i5C', 'System', 'Admin', 'admin', 0)
+ON CONFLICT (id) DO NOTHING;
+
+-- Chèn các trang phục mẫu trong Global Fashion Catalog (item_type = 1)
+INSERT INTO wardrobe_items (id, user_id, category_id, image_url, image_public_id, color, style, material, pattern, fit, seasonality, description, status, item_type)
+VALUES
+    ('ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c01', 'ad11ad11-ad11-ad11-ad11-ad11ad11ad11', '8b7eb3de-2661-46ab-ae7d-b57bfd2d2a01', '', '', 'Trắng', 'Casual', 'Cotton', 'Trơn', 'Regular', 'Mùa hè', 'Áo thun trắng basic mẫu mực dễ phối đồ', 0, 1),
+    ('ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c02', 'ad11ad11-ad11-ad11-ad11-ad11ad11ad11', '8b7eb3de-2661-46ab-ae7d-b57bfd2d2a02', '', '', 'Xanh dương', 'Casual', 'Denim', 'Trơn', 'Regular', 'Bốn mùa', 'Quần jeans xanh trơn bền bỉ cổ điển', 0, 1),
+    ('ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c03', 'ad11ad11-ad11-ad11-ad11-ad11ad11ad11', '8b7eb3de-2661-46ab-ae7d-b57bfd2d2a04', '', '', 'Trắng', 'Sporty', 'Da nhân tạo', 'Trơn', 'Regular', 'Bốn mùa', 'Giày sneaker trắng thể thao năng động', 0, 1)
+ON CONFLICT (id) DO NOTHING;
