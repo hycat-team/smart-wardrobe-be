@@ -6,6 +6,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -21,7 +23,7 @@ func processWalletTransaction(
 	statementRepo repositories.IWalletStatementRepository,
 	userID uuid.UUID,
 	amount float64,
-	transactionType string,
+	transactionType walletstatementtype.WalletStatementType,
 	description string,
 	referenceID *uuid.UUID,
 	now time.Time,
@@ -42,7 +44,7 @@ func processWalletTransaction(
 		wallet = &entities.UserWallet{
 			UserID:    userID,
 			Balance:   0,
-			Currency:  "VND",
+			Currency:  currency.VND,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}

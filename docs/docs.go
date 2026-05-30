@@ -1093,7 +1093,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "roleSlug": {
-                    "type": "string"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug"
                 },
                 "status": {
                     "type": "integer"
@@ -1229,6 +1229,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq": {
             "type": "object",
             "required": [
@@ -1251,11 +1265,8 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes": {
             "type": "object",
             "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "categoryName": {
-                    "type": "string"
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
                 "color": {
                     "type": "string"
@@ -1288,7 +1299,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "type": "integer"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus"
                 },
                 "style": {
                     "type": "string"
@@ -1331,6 +1342,31 @@ const docTemplate = `{
                 "Male",
                 "Female",
                 "Other"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug": {
+            "type": "string",
+            "enum": [
+                "admin",
+                "member"
+            ],
+            "x-enum-varnames": [
+                "Admin",
+                "Member"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "InWardrobe",
+                "Selling",
+                "Sold"
             ]
         },
         "smart-wardrobe-be_internal_shared_presentation.APIResponse": {

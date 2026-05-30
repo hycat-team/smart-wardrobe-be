@@ -176,7 +176,7 @@ definitions:
       lastName:
         type: string
       roleSlug:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug'
       status:
         type: integer
       subscription:
@@ -264,6 +264,15 @@ definitions:
     required:
     - enabled
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateWardrobeItemReq:
     properties:
       categoryId:
@@ -279,10 +288,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
     properties:
-      categoryId:
-        type: string
-      categoryName:
-        type: string
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes'
       color:
         type: string
       createdAt:
@@ -304,7 +311,7 @@ definitions:
       seasonality:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus'
       style:
         type: string
       userId:
@@ -335,6 +342,25 @@ definitions:
     - Male
     - Female
     - Other
+  smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
+    enum:
+    - admin
+    - member
+    type: string
+    x-enum-varnames:
+    - Admin
+    - Member
+  smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - InWardrobe
+    - Selling
+    - Sold
   smart-wardrobe-be_internal_shared_presentation.APIResponse:
     properties:
       data: {}

@@ -159,7 +159,7 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 		DateOfBirth:  &dob,
 		Address:      &registerData.Address,
 		Gender:       &gen,
-		RoleSlug:     string(roleslug.Member),
+		RoleSlug:     roleslug.Member,
 		Status:       1,
 	}
 	newUser.ID = uuid.New()

@@ -1,17 +1,16 @@
 package repositories
 
 import (
-	"context"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
 type IWardrobeItemRepository interface {
-	Create(ctx context.Context, item *entities.WardrobeItem) error
-	GetByID(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error)
+	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
 }
 
 type ICategoryRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*entities.Category, error)
+	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
 }

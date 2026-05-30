@@ -11,7 +11,10 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -83,9 +86,9 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		tx := &entities.DepositTransaction{
 			UserID:             userID,
 			Amount:             plan.Price,
-			Currency:           "VND",
+			Currency:           currency.VND,
 			Status:             depositstatus.Pending,
-			TransactionType:    "DIRECT_PURCHASE",
+			TransactionType:    deposittransactiontype.DirectPurchase,
 			SubscriptionPlanID: &plan.ID,
 			PaymentUrl:         nil,
 		}
@@ -152,7 +155,7 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 		desc := fmt.Sprintf("Đăng ký gói hội viên %s thành công qua ví nội bộ", plan.Name)
-		if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, userID, -plan.Price, "SUBSCRIPTION_PURCHASE", desc, nil, now); err != nil {
+		if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, userID, -plan.Price, walletstatementtype.SubscriptionPurchase, desc, nil, now); err != nil {
 			return err
 		}
 

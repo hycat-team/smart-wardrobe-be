@@ -1,27 +1,29 @@
 package dto
 
 import (
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type WalletDTO struct {
-	UserID    uuid.UUID `json:"userID"`
-	Balance   float64   `json:"balance"`
-	Currency  string    `json:"currency"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	UserID    uuid.UUID         `json:"userID"`
+	Balance   float64           `json:"balance"`
+	Currency  currency.Currency `json:"currency"`
+	UpdatedAt time.Time         `json:"updatedAt"`
 }
 
 type WalletStatementDTO struct {
-	ID              uuid.UUID `json:"id"`
-	UserID          uuid.UUID `json:"userID"`
-	Amount          float64   `json:"amount"`
-	TransactionType string    `json:"transactionType"`
-	PreviousBalance float64   `json:"previousBalance"`
-	NewBalance      float64   `json:"newBalance"`
-	Description     string    `json:"description"`
-	CreatedAt       time.Time `json:"createdAt"`
+	ID              uuid.UUID                               `json:"id"`
+	UserID          uuid.UUID                               `json:"userID"`
+	Amount          float64                                 `json:"amount"`
+	TransactionType walletstatementtype.WalletStatementType `json:"transactionType"`
+	PreviousBalance float64                                 `json:"previousBalance"`
+	NewBalance      float64                                 `json:"newBalance"`
+	Description     string                                  `json:"description"`
+	CreatedAt       time.Time                               `json:"createdAt"`
 }
 
 type WalletTopUpReq struct {

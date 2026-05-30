@@ -12,6 +12,11 @@ import (
 	"smart-wardrobe-be/internal/shared/application/dto"
 )
 
+const (
+	ProviderOpenAI = "openai"
+	ProviderGemini = "google" // Google Gemini API
+)
+
 type AIService struct {
 	cfg *config.Config
 	cli *http.Client
@@ -54,9 +59,9 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 
 func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
 	switch provider.Provider {
-	case "openai":
+	case ProviderOpenAI:
 		return s.callOpenAIVision(ctx, provider, imageUrl)
-	case "google":
+	case ProviderGemini:
 		return s.callGoogleVision(ctx, provider, imageUrl)
 	}
 	return nil, errorcode.NewInternalError("Nhà cung cấp dịch vụ trí tuệ nhân tạo không được hỗ trợ.")
@@ -64,9 +69,9 @@ func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIPr
 
 func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
 	switch provider.Provider {
-	case "openai":
+	case ProviderOpenAI:
 		return s.callOpenAIEmbeddingBatch(ctx, provider, chunks)
-	case "google":
+	case ProviderGemini:
 		return s.callGoogleEmbeddingBatch(ctx, provider, chunks)
 	}
 	return nil, errorcode.NewInternalError("Nhà cung cấp dịch vụ mã hóa không được hỗ trợ.")

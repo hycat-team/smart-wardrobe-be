@@ -10,7 +10,9 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -66,7 +68,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 			newWallet := &entities.UserWallet{
 				UserID:    userID,
 				Balance:   0,
-				Currency:  "VND",
+				Currency:  currency.VND,
 				CreatedAt: now,
 				UpdatedAt: now,
 			}
@@ -126,9 +128,9 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		tx := &entities.DepositTransaction{
 			UserID:          userID,
 			Amount:          req.Amount,
-			Currency:        "VND",
+			Currency:        currency.VND,
 			Status:          depositstatus.Pending,
-			TransactionType: "WALLET_TOPUP",
+			TransactionType: deposittransactiontype.WalletTopup,
 			PaymentUrl:      nil,
 		}
 

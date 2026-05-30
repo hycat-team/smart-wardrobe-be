@@ -2,6 +2,7 @@ package dto
 
 import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,7 +12,7 @@ type UserRes struct {
 	ID           uuid.UUID           `json:"id"`
 	Username     string              `json:"username"`
 	Email        string              `json:"email"`
-	RoleSlug     string              `json:"roleSlug"`
+	RoleSlug     roleslug.RoleSlug   `json:"roleSlug"`
 	FirstName    string              `json:"firstName"`
 	LastName     string              `json:"lastName,omitempty"`
 	Address      string              `json:"address,omitempty"`

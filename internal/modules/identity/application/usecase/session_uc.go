@@ -60,7 +60,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 	refreshExpiry := time.Hour * 24 * time.Duration(uc.cfg.Jwt.RefreshExpirationDays)
 
 	accessToken, err := jwtutils.GenerateToken(
-		user.ID, user.Email, user.RoleSlug,
+		user.ID, user.Email, string(user.RoleSlug),
 		jwttype.AccessToken,
 		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
 		accessExpiry,
@@ -70,7 +70,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 	}
 
 	refreshToken, err := jwtutils.GenerateToken(
-		user.ID, user.Email, user.RoleSlug,
+		user.ID, user.Email, string(user.RoleSlug),
 		jwttype.RefreshToken,
 		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
 		refreshExpiry,
@@ -134,7 +134,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
 
 	newAccessToken, err := jwtutils.GenerateToken(
-		user.ID, user.Email, user.RoleSlug,
+		user.ID, user.Email, string(user.RoleSlug),
 		jwttype.AccessToken,
 		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
 		accessExpiry,
@@ -144,7 +144,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	}
 
 	newRefreshToken, err := jwtutils.GenerateToken(
-		user.ID, user.Email, user.RoleSlug,
+		user.ID, user.Email, string(user.RoleSlug),
 		jwttype.RefreshToken,
 		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
 		remainingTime,

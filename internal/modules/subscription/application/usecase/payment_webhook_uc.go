@@ -12,6 +12,8 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -136,11 +138,11 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		}
 
 		switch lockedTx.TransactionType {
-		case "WALLET_TOPUP":
+		case deposittransactiontype.WalletTopup:
 			if err := uc.executeWalletTopUpWorkflow(txCtx, lockedTx, now); err != nil {
 				return err
 			}
-		case "DIRECT_PURCHASE":
+		case deposittransactiontype.DirectPurchase:
 			if err := uc.executeDirectPurchaseWorkflow(txCtx, lockedTx, now); err != nil {
 				return err
 			}
@@ -152,7 +154,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 
 func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
-	if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, "TOPUP", desc, &tx.ID, now); err != nil {
+	if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now); err != nil {
 		return err
 	}
 	return nil

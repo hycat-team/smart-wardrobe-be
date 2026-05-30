@@ -117,7 +117,7 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 	}
 
 	resetToken, err := jwtutils.GenerateToken(
-		user.ID, user.Email, user.RoleSlug,
+		user.ID, user.Email, string(user.RoleSlug),
 		jwttype.ResetPasswordToken,
 		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
 		time.Duration(uc.cfg.Jwt.ForgotPasswordExpirationMinutes)*time.Minute,

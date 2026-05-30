@@ -9,10 +9,13 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 
 	"github.com/google/uuid"
 )
@@ -91,7 +94,7 @@ func (uc *WardrobeUseCase) CreateWardrobeItem(ctx context.Context, userID uuid.U
 		UserID:        userID,
 		CategoryID:    input.CategoryID,
 		ImageUrl:      input.ImageUrl,
-		ImagePublicID: &input.ImagePublicID,
+		ImagePublicID: input.ImagePublicID,
 		Color:         &aiMeta.Color,
 		Style:         &aiMeta.Style,
 		Material:      &aiMeta.Material,
@@ -100,7 +103,7 @@ func (uc *WardrobeUseCase) CreateWardrobeItem(ctx context.Context, userID uuid.U
 		Seasonality:   &aiMeta.Seasonality,
 		Description:   &aiMeta.Description,
 		Embedding:     entities.Vector(embedding),
-		Status:        0,
+		Status:        wardrobestatus.InWardrobe,
 	}
 
 	err = uc.wardrobeRepo.Create(ctx, item)
@@ -108,21 +111,6 @@ func (uc *WardrobeUseCase) CreateWardrobeItem(ctx context.Context, userID uuid.U
 		return nil, err
 	}
 
-	return &dto.WardrobeItemRes{
-		ID:            item.ID,
-		UserID:        item.UserID,
-		CategoryID:    item.CategoryID,
-		CategoryName:  category.Name,
-		ImageUrl:      item.ImageUrl,
-		ImagePublicID: input.ImagePublicID,
-		Color:         aiMeta.Color,
-		Style:         aiMeta.Style,
-		Material:      aiMeta.Material,
-		Pattern:       aiMeta.Pattern,
-		Fit:           aiMeta.Fit,
-		Seasonality:   aiMeta.Seasonality,
-		Description:   aiMeta.Description,
-		Status:        item.Status,
-		CreatedAt:     item.CreatedAt,
-	}, nil
+	item.Category = category
+	return mapper.MapToWardrobeItemRes(item), nil
 }

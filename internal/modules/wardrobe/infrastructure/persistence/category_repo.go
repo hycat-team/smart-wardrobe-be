@@ -9,16 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type WardrobeItemRepository struct {
-	shared_persist.GenericRepository[entities.WardrobeItem, uuid.UUID]
-}
-
-func NewWardrobeItemRepository(db *gorm.DB) repositories.IWardrobeItemRepository {
-	return &WardrobeItemRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.WardrobeItem, uuid.UUID](db),
-	}
-}
-
 type CategoryRepository struct {
 	shared_persist.GenericRepository[entities.Category, uuid.UUID]
 }
