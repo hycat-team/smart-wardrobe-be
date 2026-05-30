@@ -121,5 +121,10 @@ func LoadConfig() *Config {
 			User:     getEnv("RABBITMQ_USER", "guest"),
 			Password: getEnv("RABBITMQ_PASSWORD", "123456"),
 		},
+		Elasticsearch: Elasticsearch{
+			Addresses: []string{getEnv("ELASTICSEARCH_ADDRESS", "http://localhost:9200")},
+			User:      getEnv("ELASTICSEARCH_USER", ""),
+			Password:  getEnv("ELASTICSEARCH_PASSWORD", ""),
+		},
 	}
 }

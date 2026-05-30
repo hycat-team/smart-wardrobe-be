@@ -21,6 +21,11 @@ func NewRouter(h *wardrobe_handler.WardrobeHandler, m *middleware.AuthMiddleware
 }
 
 func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
+	publicApi := group.Group("/wardrobe-items")
+	{
+		publicApi.GET("/search", shared_pres.WrapHandler(r.wardrobeHandler.SearchWardrobeItems))
+	}
+
 	privateApi := group.Group("")
 	privateApi.Use(r.authMiddleware.Handle())
 

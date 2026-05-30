@@ -57,3 +57,24 @@ type BatchCropJobDTO struct {
 	ImageUrl      string    `json:"imageUrl"`
 	ImagePublicID string    `json:"imagePublicId"`
 }
+
+type WardrobeEventPayload struct {
+	ItemID uuid.UUID `json:"item_id"`
+	UserID uuid.UUID `json:"user_id"`
+	Action string    `json:"action"` // "created", "updated", "deleted"
+}
+
+type SearchWardrobeItemRes struct {
+	ID            uuid.UUID `json:"id"`
+	CategoryID    uuid.UUID `json:"categoryId"`
+	ImageUrl      string    `json:"imageUrl"`
+	ImagePublicID string    `json:"imagePublicId"`
+	Color         string    `json:"color"`
+	Style         string    `json:"style"`
+	Material      string    `json:"material"`
+	Pattern       string    `json:"pattern"`
+	Fit           string    `json:"fit"`
+	Seasonality   string    `json:"seasonality"`
+	Description   string    `json:"description"`
+	IsSystem      bool      `json:"isSystem"`
+}

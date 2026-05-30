@@ -134,10 +134,12 @@ type WardrobeItem struct {
 type Outfit struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID      uuid.UUID `gorm:"type:uuid;not null"`
-	User        *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Name        string    `gorm:"type:varchar(255);not null"`
-	Description *string   `gorm:"type:text"`
+	UserID        uuid.UUID `gorm:"type:uuid;not null"`
+	User          *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Name          string    `gorm:"type:varchar(255);not null"`
+	Description   *string   `gorm:"type:text"`
+	CoverImageUrl *string   `gorm:"type:varchar(500)"`
+	Status        int16     `gorm:"type:smallint;not null;default:1"` // 1: Active, 0: Draft
 }
 
 type OutfitItem struct {
@@ -145,6 +147,9 @@ type OutfitItem struct {
 	Outfit     *Outfit       `gorm:"foreignKey:OutfitID;constraint:OnDelete:CASCADE"`
 	ItemID     uuid.UUID     `gorm:"type:uuid;primaryKey"`
 	Wardrobe   *WardrobeItem `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
+	PositionX  float64       `gorm:"type:double precision;not null;default:0.0"`
+	PositionY  float64       `gorm:"type:double precision;not null;default:0.0"`
+	Scale      float64       `gorm:"type:double precision;not null;default:1.0"`
 	LayerOrder int16         `gorm:"type:smallint;not null;default:1"`
 	CreatedAt  time.Time     `gorm:"type:timestamp with time zone;not null;default:now()"`
 	UpdatedAt  time.Time     `gorm:"type:timestamp with time zone;not null;default:now()"`

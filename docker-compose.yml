@@ -45,6 +45,7 @@ services:
             - DB_HOST=postgres
             - REDIS_HOST=redis
             - RABBITMQ_HOST=rabbitmq
+            - ELASTICSEARCH_ADDRESS=http://elasticsearch:9200
             - LOG_TO_FILE=false
         env_file:
             - .env
@@ -54,6 +55,8 @@ services:
             redis:
                 condition: service_healthy
             rabbitmq:
+                condition: service_healthy
+            elasticsearch:
                 condition: service_healthy
 
     rabbitmq:
@@ -70,6 +73,24 @@ services:
             - rabbitmq_data:/var/lib/rabbitmq
         healthcheck:
             test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    elasticsearch:
+        image: elasticsearch:8.12.0
+        container_name: elasticsearch-smartwardrobe
+        restart: always
+        environment:
+            - discovery.type=single-node
+            - xpack.security.enabled=false
+            - ES_JAVA_OPTS=-Xms512m -Xmx512m
+        ports:
+            - "9200:9200"
+        volumes:
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        healthcheck:
+            test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -91,3 +112,4 @@ volumes:
     postgres_data:
     redis_data:
     rabbitmq_data:
+    elasticsearch_data:

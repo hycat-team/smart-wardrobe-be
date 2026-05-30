@@ -15,24 +15,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type App struct {
-	Config          *config.Config
-	Server          *gin.Engine
+type AppWorkers struct {
 	RenewalWorker   subWorker.ISubscriptionRenewalWorker
 	BatchCropWorker *wardrobeWorker.BatchCropRabbitMQWorker
+	ESAsyncWorker   *wardrobeWorker.ElasticsearchSyncWorker
+}
+
+type App struct {
+	Config  *config.Config
+	Server  *gin.Engine
+	Workers *AppWorkers
 }
 
 func NewApp(
 	cfg *config.Config,
 	server *gin.Engine,
-	renewalWorker subWorker.ISubscriptionRenewalWorker,
-	batchCropWorker *wardrobeWorker.BatchCropRabbitMQWorker,
+	workers *AppWorkers,
 ) *App {
 	return &App{
-		Config:          cfg,
-		Server:          server,
-		RenewalWorker:   renewalWorker,
-		BatchCropWorker: batchCropWorker,
+		Config:  cfg,
+		Server:  server,
+		Workers: workers,
 	}
 }
 
@@ -49,7 +52,7 @@ func (a *App) Run() error {
 	fmt.Printf("Swagger UI is available at: http://localhost:%s/swagger\n", port)
 	fmt.Println("==========================================================")
 
-	a.RenewalWorker.Start()
+	a.Workers.RenewalWorker.Start()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -63,7 +66,7 @@ func (a *App) Run() error {
 	<-quit
 	fmt.Println("\nReceived shutdown signal...")
 
-	a.RenewalWorker.Stop()
+	a.Workers.RenewalWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

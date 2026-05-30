@@ -13,6 +13,7 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/infrastructure/search"
 	"smart-wardrobe-be/pkg/logger"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -25,6 +26,7 @@ type WardrobeUseCase struct {
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	categoryRepo    repositories.ICategoryRepository
+	esClient        *search.ElasticsearchClient
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
@@ -36,6 +38,7 @@ func NewWardrobeUseCase(
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	categoryRepo repositories.ICategoryRepository,
+	esClient *search.ElasticsearchClient,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
@@ -46,6 +49,7 @@ func NewWardrobeUseCase(
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
 		categoryRepo:    categoryRepo,
+		esClient:        esClient,
 		mediaService:    mediaService,
 		aiService:       aiService,
 		userSubContract: userSubContract,

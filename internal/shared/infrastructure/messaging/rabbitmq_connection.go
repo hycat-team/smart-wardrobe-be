@@ -1,4 +1,4 @@
-package rabbitmq
+package messaging
 
 import (
 	"fmt"
@@ -59,33 +59,18 @@ func (r *RabbitMQClient) connect() error {
 		return fmt.Errorf("could not declare RabbitMQ exchange: %w", err)
 	}
 
-	// 2. Declare queue mặc định cho batch crop
-	_, err = r.ch.QueueDeclare(
-		"batch_crop_jobs", // queue name
-		true,               // durable (bền vững)
-		false,              // delete when unused
-		false,              // exclusive
-		false,              // no-wait
-		nil,                // arguments
-	)
-	if err != nil {
+	// 2. Declare and Bind Batch Crop Queue
+	if err := r.DeclareAndBindQueue(QueueBatchCropJobs, RoutingKeyBatchCropJobs); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
-		return fmt.Errorf("could not declare batch_crop_jobs queue: %w", err)
+		return err
 	}
 
-	// 3. Bind Queue vào Exchange với routing key tương ứng (Pub/Sub)
-	err = r.ch.QueueBind(
-		"batch_crop_jobs", // queue name
-		"batch_crop_jobs", // routing key
-		ExchangeName,      // exchange
-		false,
-		nil,
-	)
-	if err != nil {
+	// 3. Declare and Bind Elasticsearch Sync Queue
+	if err := r.DeclareAndBindQueue(QueueElasticsearchSync, RoutingKeyElasticsearchSyncWildcard); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
-		return fmt.Errorf("could not bind queue to exchange: %w", err)
+		return err
 	}
 
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")

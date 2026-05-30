@@ -252,6 +252,19 @@ The original specification proposed a **"Double Quota Consumption Logic"** (dedu
 
 ---
 
+### 8. Future Expansion Plan: AI OOTD Generator (Daily Outfit & Weather Integration)
+
+#### A. Business & Economic Problem Statement
+Offering unrestricted AI OOTD (Outfit of the Day) recommendations to thousands of concurrent users creates an extreme financial liability due to heavy input/output token costs on Large Language Models (LLMs). Supporting 10,000 active users requesting daily outfits would compile to millions of tokens per day. This requires a dedicated cost-conscious approach and collaboration with the economics team to model subscription tiers and daily API quotas.
+
+#### B. Functional Specification (Future Plan)
+- **Automatic Daily Prompting:** Recommend a perfect matching outfit dynamically every morning based on local weather conditions (temperature, rain probability) fetched via weather APIs and the user's scheduled calendar events.
+- **Token Constraints & Quota Guardrail:**
+  - **Free Tier:** Bypasses LLM styling; generates daily matching outfits strictly using local HSL color theory and style matrix matching (zero-LLM, zero-token cost).
+  - **Premium Tier:** Employs advanced Stage 4 Gemini/OpenAI styling prompts to generate highly personalized outfits with written stylistic reasoning, limited to exactly **one (1) daily OOTD generation** per user.
+
+---
+
 ## III. IMPLEMENTATION FEASIBILITY & RISK ASSESSMENT
 
 Based on the existing codebase audit, the implementation of these six features is **highly feasible** and structurally aligned with the platform's architectural design:

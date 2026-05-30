@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/me"
+	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
 	"smart-wardrobe-be/internal/api/routes/subscription"
 	wardrobe2 "smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
@@ -26,6 +27,7 @@ import (
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
@@ -34,7 +36,8 @@ import (
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/internal/shared/infrastructure/media"
-	"smart-wardrobe-be/internal/shared/infrastructure/rabbitmq"
+	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/infrastructure/search"
 	"smart-wardrobe-be/pkg/logger"
 )
 
@@ -84,25 +87,37 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, billingHandler, authMiddleware)
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
+	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iaiService := ai.NewAIService(cfg)
-	rabbitMQClient, err := rabbitmq.NewRabbitMQClient(cfg, l)
+	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
-	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
+	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, elasticsearchClient, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
 	wardrobeRouter := wardrobe2.NewRouter(wardrobeHandler, authMiddleware)
+	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)
+	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase)
+	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
+	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
 		SubscriptionRouter: subscriptionRouter,
 		WardrobeRouter:     wardrobeRouter,
+		OutfitRouter:       outfitRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	batchCropRabbitMQWorker := worker2.NewBatchCropRabbitMQWorker(rabbitMQClient, iWardrobeUseCase, l)
-	app := bootstrap.NewApp(cfg, engine, iSubscriptionRenewalWorker, batchCropRabbitMQWorker)
+	elasticsearchSyncWorker := worker2.NewElasticsearchSyncWorker(rabbitMQClient, elasticsearchClient, iWardrobeItemRepository, l)
+	appWorkers := &bootstrap.AppWorkers{
+		RenewalWorker:   iSubscriptionRenewalWorker,
+		BatchCropWorker: batchCropRabbitMQWorker,
+		ESAsyncWorker:   elasticsearchSyncWorker,
+	}
+	app := bootstrap.NewApp(cfg, engine, appWorkers)
 	return app, func() {
 	}, nil
 }

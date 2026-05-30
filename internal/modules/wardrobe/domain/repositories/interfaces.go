@@ -15,8 +15,18 @@ type IWardrobeItemRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.WardrobeItem, error)
 	BulkCreate(ctx context.Context, items []*entities.WardrobeItem) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
+	GetSystemCatalogItems(ctx context.Context) ([]*entities.WardrobeItem, error)
 }
 
 type ICategoryRepository interface {
 	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
+}
+
+type IOutfitRepository interface {
+	shared_repos.IGenericRepository[entities.Outfit, uuid.UUID]
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Outfit, error)
+	GetDetailByID(ctx context.Context, id uuid.UUID) (*entities.Outfit, []*entities.OutfitItem, error)
+	CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
+	UpdateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
+	DeleteOutfit(ctx context.Context, id uuid.UUID) error
 }

@@ -315,6 +315,113 @@ definitions:
     required:
     - catalogItemIds
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes:
+    properties:
+      id:
+        type: string
+      layer_order:
+        type: integer
+      position_x:
+        type: number
+      position_y:
+        type: number
+      scale:
+        type: number
+      wardrobe_item:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes:
+    properties:
+      cover_image_url:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes'
+        type: array
+      name:
+        type: string
+      status:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq:
+    properties:
+      layer_order:
+        type: integer
+      position_x:
+        maximum: 1
+        minimum: 0
+        type: number
+      position_y:
+        maximum: 1
+        minimum: 0
+        type: number
+      scale:
+        maximum: 10
+        minimum: 0.1
+        type: number
+      wardrobe_item_id:
+        type: string
+    required:
+    - layer_order
+    - position_x
+    - position_y
+    - scale
+    - wardrobe_item_id
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq:
+    properties:
+      cover_image_url:
+        type: string
+      description:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq'
+        type: array
+      name:
+        maxLength: 255
+        type: string
+    required:
+    - items
+    - name
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes:
+    properties:
+      categoryId:
+        type: string
+      color:
+        type: string
+      description:
+        type: string
+      fit:
+        type: string
+      id:
+        type: string
+      imagePublicId:
+        type: string
+      imageUrl:
+        type: string
+      isSystem:
+        type: boolean
+      material:
+        type: string
+      pattern:
+        type: string
+      seasonality:
+        type: string
+      style:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
     properties:
       category:
@@ -732,6 +839,128 @@ paths:
       summary: Lấy danh sách trang phục
       tags:
       - Wardrobe
+  /api/v1/outfits:
+    get:
+      description: Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách bộ phối đồ
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách bộ phối đồ của tôi
+      tags:
+      - Outfits
+    post:
+      consumes:
+      - application/json
+      description: Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ
+        kéo thả 2D và layer order.
+      parameters:
+      - description: Tọa độ 2D và thông tin phối đồ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tạo bộ phối đồ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes'
+              type: object
+      summary: Tạo bộ phối đồ mới
+      tags:
+      - Outfits
+  /api/v1/outfits/{id}:
+    delete:
+      description: Xóa bộ phối đồ khỏi bộ sưu tập cá nhân.
+      parameters:
+      - description: ID bộ phối đồ
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa bộ phối đồ thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa bộ phối đồ tự thiết kế
+      tags:
+      - Outfits
+    get:
+      description: Trả về chi tiết bộ phối đồ kèm danh sách trang phục đầy đủ và tọa
+        độ 2D để render lên canvas.
+      parameters:
+      - description: ID bộ phối đồ
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chi tiết bộ phối đồ
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes'
+              type: object
+      summary: Chi tiết bộ phối đồ và tọa độ canvas
+      tags:
+      - Outfits
+    put:
+      consumes:
+      - application/json
+      description: Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối
+        đồ.
+      parameters:
+      - description: ID bộ phối đồ
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thông tin cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes'
+              type: object
+      summary: Cập nhật bộ phối đồ
+      tags:
+      - Outfits
   /api/v1/subscriptions/me/daily-quota:
     get:
       consumes:
@@ -1026,6 +1255,32 @@ paths:
                   type: array
               type: object
       summary: Khởi tạo nhanh tủ đồ cá nhân
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/search:
+    get:
+      description: Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả
+        bằng bộ lọc Elasticsearch tốc độ mili-giây.
+      parameters:
+      - description: 'Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)'
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách trang phục tìm thấy
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes'
+                  type: array
+              type: object
+      summary: Tìm kiếm trang phục nâng cao (Elasticsearch CQRS)
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/upload-signature:

@@ -39,7 +39,6 @@ func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
 	return nil
 }
 
-
 // GetWardrobeItems get all active wardrobe items with lock status
 // @Summary Lấy danh sách trang phục
 // @Description Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói
@@ -182,5 +181,24 @@ func (h *WardrobeHandler) BatchCropWardrobeItems(c *gin.Context) error {
 	}
 
 	shared_pres.Created(c, "Tải lên và bắt đầu phân tích hàng loạt thành công", response)
+	return nil
+}
+
+// SearchWardrobeItems searches wardrobe items using Elasticsearch CQRS
+// @Summary Tìm kiếm trang phục nâng cao (Elasticsearch CQRS)
+// @Description Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.
+// @Tags Wardrobe
+// @Produce json
+// @Param q query string false "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SearchWardrobeItemRes} "Danh sách trang phục tìm thấy"
+// @Router /api/v1/wardrobe-items/search [get]
+func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
+	query := c.Query("q")
+	response, err := h.wardrobeUseCase.SearchWardrobeItems(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Tìm kiếm trang phục thành công", response)
 	return nil
 }

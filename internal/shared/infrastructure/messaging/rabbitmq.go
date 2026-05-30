@@ -1,4 +1,4 @@
-package rabbitmq
+package messaging
 
 import (
 	"fmt"
@@ -12,11 +12,6 @@ import (
 )
 
 var _ event.IEventPublisher = (*RabbitMQClient)(nil)
-
-const (
-	ExchangeName = "smart_wardrobe_exchange"
-	ExchangeType = "topic"
-)
 
 type IRabbitMQClient interface {
 	Consume(queueName string) (<-chan amqp.Delivery, error)

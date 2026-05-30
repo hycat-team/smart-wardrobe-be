@@ -6,20 +6,20 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/infrastructure/rabbitmq"
+	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
 )
 
 type BatchCropRabbitMQWorker struct {
-	rabbitmqClient rabbitmq.IRabbitMQClient
+	rabbitmqClient messaging.IRabbitMQClient
 	useCase        uc_interfaces.IWardrobeUseCase
 	logger         logger.Interface
 }
 
 func NewBatchCropRabbitMQWorker(
-	rabbitmqClient rabbitmq.IRabbitMQClient,
+	rabbitmqClient messaging.IRabbitMQClient,
 	useCase uc_interfaces.IWardrobeUseCase,
 	l logger.Interface,
 ) *BatchCropRabbitMQWorker {
@@ -38,13 +38,13 @@ func NewBatchCropRabbitMQWorker(
 }
 
 func (w *BatchCropRabbitMQWorker) startConsume() {
-	deliveries, err := w.rabbitmqClient.Consume("batch_crop_jobs")
+	deliveries, err := w.rabbitmqClient.Consume(messaging.QueueBatchCropJobs)
 	if err != nil {
-		w.logger.Error("[BatchCropWorker] Failed to start consuming from RabbitMQ queue batch_crop_jobs", zap.Error(err))
+		w.logger.Error("[BatchCropWorker] Failed to start consuming from RabbitMQ queue "+messaging.QueueBatchCropJobs, zap.Error(err))
 		return
 	}
 
-	w.logger.Info("[BatchCropWorker] Worker started listening to RabbitMQ queue batch_crop_jobs...")
+	w.logger.Info("[BatchCropWorker] Worker started listening to RabbitMQ queue " + messaging.QueueBatchCropJobs + "...")
 
 	for d := range deliveries {
 		var job dto.BatchCropJobDTO

@@ -57,3 +57,12 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 	}
 	return items, nil
 }
+
+func (r *WardrobeItemRepository) GetSystemCatalogItems(ctx context.Context) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).Preload("Category").Where("item_type = ?", 1).Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}

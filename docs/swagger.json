@@ -513,6 +513,204 @@
                 }
             }
         },
+        "/api/v1/outfits": {
+            "get": {
+                "description": "Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Lấy danh sách bộ phối đồ của tôi",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách bộ phối đồ",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Tạo bộ phối đồ mới",
+                "parameters": [
+                    {
+                        "description": "Tọa độ 2D và thông tin phối đồ",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Tạo bộ phối đồ thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/outfits/{id}": {
+            "get": {
+                "description": "Trả về chi tiết bộ phối đồ kèm danh sách trang phục đầy đủ và tọa độ 2D để render lên canvas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Chi tiết bộ phối đồ và tọa độ canvas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID bộ phối đồ",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chi tiết bộ phối đồ",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Cập nhật lại thông tin hoặc điều chỉnh tọa độ kéo thả của bộ phối đồ.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Cập nhật bộ phối đồ",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID bộ phối đồ",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cập nhật thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Xóa bộ phối đồ khỏi bộ sưu tập cá nhân.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Xóa bộ phối đồ tự thiết kế",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID bộ phối đồ",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa bộ phối đồ thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscriptions/me/daily-quota": {
             "get": {
                 "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
@@ -862,6 +1060,49 @@
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/search": {
+            "get": {
+                "description": "Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Tìm kiếm trang phục nâng cao (Elasticsearch CQRS)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Danh sách trang phục tìm thấy",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes"
                                             }
                                         }
                                     }
@@ -1478,6 +1719,163 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "layer_order": {
+                    "type": "integer"
+                },
+                "position_x": {
+                    "type": "number"
+                },
+                "position_y": {
+                    "type": "number"
+                },
+                "scale": {
+                    "type": "number"
+                },
+                "wardrobe_item": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes": {
+            "type": "object",
+            "properties": {
+                "cover_image_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq": {
+            "type": "object",
+            "required": [
+                "layer_order",
+                "position_x",
+                "position_y",
+                "scale",
+                "wardrobe_item_id"
+            ],
+            "properties": {
+                "layer_order": {
+                    "type": "integer"
+                },
+                "position_x": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "position_y": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "scale": {
+                    "type": "number",
+                    "maximum": 10,
+                    "minimum": 0.1
+                },
+                "wardrobe_item_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq": {
+            "type": "object",
+            "required": [
+                "items",
+                "name"
+            ],
+            "properties": {
+                "cover_image_url": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "isSystem": {
+                    "type": "boolean"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
                 }
             }
         },

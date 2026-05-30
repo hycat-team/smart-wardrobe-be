@@ -14,6 +14,13 @@ type Config struct {
 	Cloudinary Cloudinary
 	AI         AIServiceConfig
 	RabbitMQ   RabbitMQ
+	Elasticsearch Elasticsearch
+}
+
+type Elasticsearch struct {
+	Addresses []string
+	User      string
+	Password  string
 }
 
 type APIProviderConfig struct {

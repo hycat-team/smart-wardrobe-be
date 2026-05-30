@@ -135,6 +135,14 @@ func (uc *WardrobeUseCase) ProcessBackgroundCropJob(ctx context.Context, job dto
 		return err
 	}
 
+	// Phát sự kiện created để đồng bộ sang Elasticsearch (CQRS)
+	payload := dto.WardrobeEventPayload{
+		ItemID: item.ID,
+		UserID: item.UserID,
+		Action: "created",
+	}
+	_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
+
 	return nil
 }
 

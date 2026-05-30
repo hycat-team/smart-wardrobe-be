@@ -36,6 +36,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		routes.RouterSet,
 		routes.NewEngine,
 		wire.Struct(new(routes.AppRouter), "*"),
+		wire.Struct(new(bootstrap.AppWorkers), "*"),
 	)
 	return &bootstrap.App{}, nil, nil
 }

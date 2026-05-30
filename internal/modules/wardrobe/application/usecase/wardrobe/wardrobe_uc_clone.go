@@ -74,6 +74,15 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 
+	for _, cloned := range clonedItems {
+		payload := dto.WardrobeEventPayload{
+			ItemID: cloned.ID,
+			UserID: cloned.UserID,
+			Action: "created",
+		}
+		_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
+	}
+
 	resList := make([]*dto.WardrobeItemRes, quantity)
 	for i := range quantity {
 		clonedItems[i].Category = original.Category
