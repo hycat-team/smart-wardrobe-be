@@ -46,13 +46,13 @@ To guarantee continuous system availability and bypass compute-heavy midnight cr
 
 4. If the check passes (or after a reset occurs), verify that the current count is strictly less than the allowed subscription tier limit.
 
-### 2. Double Quota Consumption Logic (This section is still under debate; please feel free to discuss it if you've read this far.)
+### 2. Chatbot Outfit Request Redirect Engine
 
-Prevents users from bypassing the separate "AI Outfit" counter by manually framing text instructions inside the conversational chatbot interface:
+Prevents users from bypassing the separate "AI Outfit" counter by attempting to request outfit combinations inside the conversational AI Chatbot:
 
-- **Rule Criteria:** When a user executes an ongoing session query inside the AI Chatbot , if the user issues a prompt requesting an outfit assembly, AND the AI engine successfully outputs an optimal clothing combination that is subsequently persisted into the user's saved lookbook, the billing service activates a double-charge.
+- **Rule Criteria:** When a user initiates a conversation query inside the AI Chatbot expressing an intent to generate, assemble, or recommend a new outfit combination (e.g., asking to match clothing items or create style sets for occasions), the Chatbot's System Prompt / Guardrail intercepts the request.
 
-- **Deduction Rule:** Deduct exactly **1 unit** from the AI Chatbot usage quota AND exactly **1 unit** from the AI Outfit recommendation quota simultaneously for that specific user's daily pool.
+- **Deduction Rule:** Deduct exactly **0 units** from the AI Outfit recommendation quota and **0 units** from the AI Chatbot quota for outfit generation. The chatbot blocks the generation and returns a standardized, friendly guidance message directing the user to the dedicated **Outfit Generator (Phối đồ)** feature on the home dashboard.
 
 ### 3. Automated Wardrobe Digitization Engine
 
