@@ -87,7 +87,7 @@ func (c *ElasticsearchClient) doRequest(ctx context.Context, method, urlPath str
 	return respBody, nil
 }
 
-func (c *ElasticsearchClient) IndexDocument(ctx context.Context, index, id string, doc interface{}) error {
+func (c *ElasticsearchClient) IndexDocument(ctx context.Context, index, id string, doc any) error {
 	body, err := json.Marshal(doc)
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func (c *ElasticsearchClient) DeleteDocument(ctx context.Context, index, id stri
 	return nil
 }
 
-func (c *ElasticsearchClient) Search(ctx context.Context, index string, queryBody interface{}) ([]byte, error) {
+func (c *ElasticsearchClient) Search(ctx context.Context, index string, queryBody any) ([]byte, error) {
 	body, err := json.Marshal(queryBody)
 	if err != nil {
 		return nil, err

@@ -26,10 +26,10 @@ type WardrobeItemRes struct {
 	Pattern       string                            `json:"pattern"`
 	Fit           string                            `json:"fit"`
 	Seasonality   string                            `json:"seasonality"`
-	Description   string                            `json:"description"`
 	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
 	IsLocked      bool                              `json:"isLocked"`
 	CreatedAt     time.Time                         `json:"createdAt"`
+	// Description   string                            `json:"description"`
 }
 
 type CloneWardrobeItemReq struct {
@@ -65,16 +65,16 @@ type WardrobeEventPayload struct {
 }
 
 type SearchWardrobeItemRes struct {
-	ID            uuid.UUID `json:"id"`
-	CategoryID    uuid.UUID `json:"categoryId"`
-	ImageUrl      string    `json:"imageUrl"`
-	ImagePublicID string    `json:"imagePublicId"`
-	Color         string    `json:"color"`
-	Style         string    `json:"style"`
-	Material      string    `json:"material"`
-	Pattern       string    `json:"pattern"`
-	Fit           string    `json:"fit"`
-	Seasonality   string    `json:"seasonality"`
-	Description   string    `json:"description"`
-	IsSystem      bool      `json:"isSystem"`
+	ID            uuid.UUID    `json:"id"`
+	Category      *CategoryRes `json:"category,omitempty"`
+	ImageUrl      string       `json:"imageUrl"`
+	ImagePublicID string       `json:"imagePublicId"`
+	Color         string       `json:"color"`
+	Style         string       `json:"style"`
+	Material      string       `json:"material"`
+	Pattern       string       `json:"pattern"`
+	Fit           string       `json:"fit"`
+	Seasonality   string       `json:"seasonality"`
+	IsSystem      bool         `json:"isSystem"`
+	// Description   string       `json:"description"`
 }

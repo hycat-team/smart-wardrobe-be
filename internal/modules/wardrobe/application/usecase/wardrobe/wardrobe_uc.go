@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
@@ -13,7 +14,6 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/infrastructure/search"
 	"smart-wardrobe-be/pkg/logger"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -26,7 +26,7 @@ type WardrobeUseCase struct {
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	categoryRepo    repositories.ICategoryRepository
-	esClient        *search.ElasticsearchClient
+	searchEngine    search.IWardrobeSearchService
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
@@ -38,7 +38,7 @@ func NewWardrobeUseCase(
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	categoryRepo repositories.ICategoryRepository,
-	esClient *search.ElasticsearchClient,
+	searchEngine search.IWardrobeSearchService,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
@@ -49,7 +49,7 @@ func NewWardrobeUseCase(
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
 		categoryRepo:    categoryRepo,
-		esClient:        esClient,
+		searchEngine:    searchEngine,
 		mediaService:    mediaService,
 		aiService:       aiService,
 		userSubContract: userSubContract,
@@ -67,7 +67,6 @@ func (uc *WardrobeUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.
 	}
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
-
 
 func (uc *WardrobeUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)

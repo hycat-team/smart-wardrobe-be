@@ -9,19 +9,19 @@ import (
 	"net/http"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/dto"
 )
 
 func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
 	prompt := getVisionSystemPrompt()
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"model": provider.Model,
-		"messages": []map[string]interface{}{
+		"messages": []map[string]any{
 			{
 				"role": "user",
-				"content": []map[string]interface{}{
+				"content": []map[string]any{
 					{
 						"type": "text",
 						"text": prompt,
@@ -99,7 +99,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		}
 		subSlice := chunks[i:end]
 
-		payload := map[string]interface{}{
+		payload := map[string]any{
 			"input":      subSlice,
 			"model":      provider.Model,
 			"dimensions": 768,

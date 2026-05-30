@@ -30,6 +30,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
+	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	worker2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
@@ -88,12 +89,13 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
+	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient, l)
 	iaiService := ai.NewAIService(cfg)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
-	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, elasticsearchClient, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
+	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
 	wardrobeRouter := wardrobe2.NewRouter(wardrobeHandler, authMiddleware)
 	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)

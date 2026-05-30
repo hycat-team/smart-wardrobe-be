@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload interface{}) error {
+func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

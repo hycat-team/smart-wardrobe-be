@@ -24,10 +24,10 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 	base64Data := base64.StdEncoding.EncodeToString(imgBytes)
 	prompt := getVisionSystemPrompt()
 
-	payload := map[string]interface{}{
-		"contents": []map[string]interface{}{
+	payload := map[string]any{
+		"contents": []map[string]any{
 			{
-				"parts": []map[string]interface{}{
+				"parts": []map[string]any{
 					{
 						"text": prompt,
 					},
@@ -40,7 +40,7 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 				},
 			},
 		},
-		"generationConfig": map[string]interface{}{
+		"generationConfig": map[string]any{
 			"responseMimeType": "application/json",
 		},
 	}
@@ -111,12 +111,12 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 		}
 		subSlice := chunks[i:end]
 
-		requestsList := make([]map[string]interface{}, len(subSlice))
+		requestsList := make([]map[string]any, len(subSlice))
 		for idx, text := range subSlice {
-			requestsList[idx] = map[string]interface{}{
+			requestsList[idx] = map[string]any{
 				"model": modelName,
-				"content": map[string]interface{}{
-					"parts": []map[string]interface{}{
+				"content": map[string]any{
+					"parts": []map[string]any{
 						{
 							"text": text,
 						},
@@ -125,7 +125,7 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 			}
 		}
 
-		payload := map[string]interface{}{
+		payload := map[string]any{
 			"requests": requestsList,
 		}
 

@@ -185,7 +185,7 @@ func (h *WardrobeHandler) BatchCropWardrobeItems(c *gin.Context) error {
 }
 
 // SearchWardrobeItems searches wardrobe items using Elasticsearch CQRS
-// @Summary Tìm kiếm trang phục nâng cao (Elasticsearch CQRS)
+// @Summary Tìm kiếm trang phục có sẵn của hệ thống (Elasticsearch CQRS)
 // @Description Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.
 // @Tags Wardrobe
 // @Produce json

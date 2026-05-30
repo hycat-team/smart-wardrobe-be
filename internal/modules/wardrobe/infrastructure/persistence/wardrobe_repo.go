@@ -2,8 +2,10 @@ package persistence
 
 import (
 	"context"
+	"strings"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -58,9 +60,28 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetSystemCatalogItems(ctx context.Context) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	err := r.GetDB(ctx).Preload("Category").Where("item_type = ?", 1).Find(&items).Error
+	db := r.GetDB(ctx)
+
+	db = db.Where("item_type = ?", itemType)
+
+	if query != nil && *query != "" {
+		queryStr := strings.ToLower(*query)
+
+		db = db.Where(r.GetDB(ctx).
+			Where("category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?)", "%"+queryStr+"%").
+			Or("LOWER(color) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(style) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(material) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(pattern) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(fit) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(seasonality) LIKE ?", "%"+queryStr+"%").
+			Or("LOWER(description) LIKE ?", "%"+queryStr+"%"),
+		)
+	}
+
+	err := db.Preload("Category").Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

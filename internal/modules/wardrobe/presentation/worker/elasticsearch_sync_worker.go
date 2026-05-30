@@ -7,10 +7,12 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/infrastructure/search"
 	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"go.uber.org/zap"
 )
@@ -112,7 +114,7 @@ func (w *ElasticsearchSyncWorker) processSyncEvent(ctx context.Context, event dt
 func (w *ElasticsearchSyncWorker) initialSync() {
 	ctx := context.Background()
 
-	items, err := w.wardrobeRepo.GetSystemCatalogItems(ctx)
+	items, err := w.wardrobeRepo.GetItems(ctx, nil, itemtype.SystemCatalogItem)
 	if err != nil {
 		w.logger.Error("[ElasticsearchSyncWorker] Failed to fetch system catalog items for initial sync", zap.Error(err))
 		return
@@ -143,33 +145,26 @@ func (w *ElasticsearchSyncWorker) initialSync() {
 }
 
 // buildItemDocument chuyển đổi entity WardrobeItem sang document map cho Elasticsearch
-func buildItemDocument(item *entities.WardrobeItem) map[string]interface{} {
-	return map[string]interface{}{
+func buildItemDocument(item *entities.WardrobeItem) map[string]any {
+	return map[string]any{
 		"id":        item.ID.String(),
 		"user_id":   item.UserID.String(),
 		"item_type": int(item.ItemType),
-		"category": map[string]interface{}{
+		"category": map[string]any{
 			"id":   item.CategoryID.String(),
 			"name": item.Category.Name,
 			"slug": item.Category.Slug,
 		},
-		"image_url":      item.ImageUrl,
+		"image_url":       item.ImageUrl,
 		"image_public_id": item.ImagePublicID,
-		"color":          getStringValue(item.Color),
-		"style":          getStringValue(item.Style),
-		"material":       getStringValue(item.Material),
-		"pattern":        getStringValue(item.Pattern),
-		"fit":            getStringValue(item.Fit),
-		"seasonality":    getStringValue(item.Seasonality),
-		"description":    getStringValue(item.Description),
-		"status":         item.Status,
-		"created_at":     item.CreatedAt,
+		"color":           stringutils.GetString(item.Color),
+		"style":           stringutils.GetString(item.Style),
+		"material":        stringutils.GetString(item.Material),
+		"pattern":         stringutils.GetString(item.Pattern),
+		"fit":             stringutils.GetString(item.Fit),
+		"seasonality":     stringutils.GetString(item.Seasonality),
+		"description":     stringutils.GetString(item.Description),
+		"status":          item.Status,
+		"created_at":      item.CreatedAt,
 	}
-}
-
-func getStringValue(val *string) string {
-	if val == nil {
-		return ""
-	}
-	return *val
 }
