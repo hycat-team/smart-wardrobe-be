@@ -54,7 +54,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	}
 
 	if len(existingOutfits) >= subOverview.MaxOutfits {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Bạn đã đạt giới hạn tối đa phối đồ (%d bộ đồ) của gói dịch vụ hiện tại. Vui lòng nâng cấp lên gói Premium để mở rộng giới hạn phối đồ!", subOverview.MaxOutfits))
+		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng bộ phối đồ của gói dịch vụ hiện tại (Hiện có: %d/%d bộ đồ).", len(existingOutfits), subOverview.MaxOutfits))
 	}
 
 	// 2. Kiểm tra các Wardrobe Items truyền lên có tồn tại và thuộc về User không

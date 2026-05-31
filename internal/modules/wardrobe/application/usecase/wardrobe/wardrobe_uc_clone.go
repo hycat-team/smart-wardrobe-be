@@ -32,7 +32,7 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 	}
 
 	if int(currentCount)+quantity > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Hành động nhân bản (%d cái) vượt quá giới hạn của gói hiện tại (Tối đa: %d, Hiện có: %d). Vui lòng nâng cấp Premium!", quantity, subOverview.MaxWardrobeItems, currentCount))
+		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, quantity))
 	}
 
 	// 2. Lấy trang phục gốc

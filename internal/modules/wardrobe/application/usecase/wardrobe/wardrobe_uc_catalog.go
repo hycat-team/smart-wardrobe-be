@@ -32,7 +32,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 	}
 
 	if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Hành động khởi tạo tủ đồ (%d trang phục) vượt quá giới hạn của gói hiện tại (Tối đa: %d, Hiện có: %d). Vui lòng nâng cấp Premium!", len(catalogItemIDs), subOverview.MaxWardrobeItems, currentCount))
+		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
 	}
 
 	// 2. Fetch Catalog Items mẫu từ Database

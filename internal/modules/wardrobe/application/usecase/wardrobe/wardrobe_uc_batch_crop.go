@@ -33,7 +33,7 @@ func (uc *WardrobeUseCase) BatchCropWardrobeItems(ctx context.Context, userID uu
 	}
 
 	if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Hành động số hóa hàng loạt (%d trang phục) vượt quá giới hạn của gói hiện tại (Tối đa: %d, Hiện có: %d). Vui lòng nâng cấp Premium!", len(input.Items), subOverview.MaxWardrobeItems, currentCount))
+		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
 	}
 
 	// 2. Tạo nhanh các trang phục mẫu trong DB ở trạng thái Processing

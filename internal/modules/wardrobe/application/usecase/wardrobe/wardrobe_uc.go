@@ -2,6 +2,7 @@ package wardrobe
 
 import (
 	"context"
+	"fmt"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
@@ -124,7 +125,7 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 	}
 
 	if isLocked {
-		return nil, errorcode.NewForbidden("Trang phục này đã bị khóa do vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại. Vui lòng nâng cấp Premium để mở khóa.")
+		return nil, errorcode.NewForbidden(fmt.Sprintf("Trang phục này đã bị khóa do vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tối đa: %d trang phục).", subOverview.MaxWardrobeItems))
 	}
 
 	res := mapper.MapToWardrobeItemRes(item)

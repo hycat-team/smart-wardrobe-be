@@ -1,0 +1,9 @@
+# ON_CONVERSATION_START
+
+- You MUST automatically read and internalize all reference materials located in `/docs/business/` and `/docs/technical/` at the very beginning of this conversation. Do not re-read them on every single request to optimize token usage.
+- All code generation, architectural decisions, and logic modifications must strictly align with the specifications found in these directories.
+
+# CONFLICT_RESOLUTION_RULE
+
+- If you detect any ambiguity, contradictions, or confusing requirements between the user's prompt and the existing documentation, you MUST halt execution immediately.
+- Do not make assumptions or guess the implementation. Stop and ask the user for clarification before proceeding with any code changes.
