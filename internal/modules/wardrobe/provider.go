@@ -3,6 +3,7 @@ package wardrobe
 import (
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	wardrobe_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
+	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
@@ -16,10 +17,13 @@ var ProviderSet = wire.NewSet(
 	persistence.NewCategoryRepository,
 	persistence.NewOutfitRepository,
 	search.NewWardrobeSearchService,
+	search.NewWardrobeSearchIndexService,
+	messaging.NewBatchCropJobConsumer,
+	messaging.NewSearchSyncEventConsumer,
 	wardrobe_uc.NewWardrobeUseCase,
 	outfit_uc.NewOutfitUseCase,
 	handler.NewWardrobeHandler,
 	handler.NewOutfitHandler,
-	worker.NewBatchCropRabbitMQWorker,
-	worker.NewElasticsearchSyncWorker,
+	worker.NewBatchCropWorker,
+	worker.NewSearchSyncWorker,
 )

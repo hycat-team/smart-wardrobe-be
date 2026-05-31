@@ -2,69 +2,47 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
 )
 
-type BatchCropRabbitMQWorker struct {
-	rabbitmqClient messaging.IRabbitMQClient
-	useCase        uc_interfaces.IWardrobeUseCase
-	logger         logger.Interface
+type BatchCropWorker struct {
+	jobConsumer event.IBatchCropJobConsumer
+	useCase     uc_interfaces.IWardrobeUseCase
+	logger      logger.Interface
 }
 
-func NewBatchCropRabbitMQWorker(
-	rabbitmqClient messaging.IRabbitMQClient,
+func NewBatchCropWorker(
+	jobConsumer event.IBatchCropJobConsumer,
 	useCase uc_interfaces.IWardrobeUseCase,
 	l logger.Interface,
-) *BatchCropRabbitMQWorker {
-	w := &BatchCropRabbitMQWorker{
-		rabbitmqClient: rabbitmqClient,
-		useCase:        useCase,
-		logger:         l,
+) *BatchCropWorker {
+	w := &BatchCropWorker{
+		jobConsumer: jobConsumer,
+		useCase:     useCase,
+		logger:      l,
 	}
 
-	// Khởi chạy 2 background worker threads lắng nghe RabbitMQ
-	for range 2 {
-		go w.startConsume()
-	}
+	// Khởi chạy việc lắng nghe hàng đợi công việc thông qua Consumer của tầng Application
+	go w.startConsume()
 
 	return w
 }
 
-func (w *BatchCropRabbitMQWorker) startConsume() {
-	deliveries, err := w.rabbitmqClient.Consume(messaging.QueueBatchCropJobs)
+func (w *BatchCropWorker) startConsume() {
+	ctx := context.Background()
+	err := w.jobConsumer.ConsumeJobs(ctx, func(ctx context.Context, job dto.BatchCropJobDTO) error {
+		return w.useCase.ProcessBackgroundCropJob(ctx, job)
+	})
+
 	if err != nil {
-		w.logger.Error("[BatchCropWorker] Failed to start consuming from RabbitMQ queue "+messaging.QueueBatchCropJobs, zap.Error(err))
-		return
-	}
-
-	w.logger.Info("[BatchCropWorker] Worker started listening to RabbitMQ queue " + messaging.QueueBatchCropJobs + "...")
-
-	for d := range deliveries {
-		var job dto.BatchCropJobDTO
-		err := json.Unmarshal(d.Body, &job)
-		if err != nil {
-			w.logger.Error("[BatchCropWorker] Failed to unmarshal message body", zap.Error(err))
-			_ = d.Nack(false, false)
-			continue
-		}
-
-		ctx := context.Background()
-		err = w.useCase.ProcessBackgroundCropJob(ctx, job)
-		if err != nil {
-			w.logger.Error("[BatchCropWorker] Error processing job for item",
-				zap.String("itemId", job.ItemID.String()),
-				zap.Error(err),
-			)
-			_ = d.Nack(false, false) // requeue = false, chuyển sang trạng thái Failed
-		} else {
-			_ = d.Ack(false)
-		}
+		w.logger.Error("Failed to initiate batch crop job consumption process", zap.Error(err))
+	} else {
+		w.logger.Info("Batch crop coordinator successfully registered job handling callback")
 	}
 }

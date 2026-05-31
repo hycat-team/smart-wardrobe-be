@@ -17,8 +17,8 @@ import (
 
 type AppWorkers struct {
 	RenewalWorker   subWorker.ISubscriptionRenewalWorker
-	BatchCropWorker *wardrobeWorker.BatchCropRabbitMQWorker
-	ESAsyncWorker   *wardrobeWorker.ElasticsearchSyncWorker
+	BatchCropWorker *wardrobeWorker.BatchCropWorker
+	ESAsyncWorker   *wardrobeWorker.SearchSyncWorker
 }
 
 type App struct {

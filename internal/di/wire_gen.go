@@ -31,6 +31,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
+	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	worker2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
@@ -112,12 +113,15 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
-	batchCropRabbitMQWorker := worker2.NewBatchCropRabbitMQWorker(rabbitMQClient, iWardrobeUseCase, l)
-	elasticsearchSyncWorker := worker2.NewElasticsearchSyncWorker(rabbitMQClient, elasticsearchClient, iWardrobeItemRepository, l)
+	iBatchCropJobConsumer := messaging2.NewBatchCropJobConsumer(rabbitMQClient, l)
+	batchCropWorker := worker2.NewBatchCropWorker(iBatchCropJobConsumer, iWardrobeUseCase, l)
+	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient, l)
+	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
+	searchSyncWorker := worker2.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:   iSubscriptionRenewalWorker,
-		BatchCropWorker: batchCropRabbitMQWorker,
-		ESAsyncWorker:   elasticsearchSyncWorker,
+		BatchCropWorker: batchCropWorker,
+		ESAsyncWorker:   searchSyncWorker,
 	}
 	app := bootstrap.NewApp(cfg, engine, appWorkers)
 	return app, func() {

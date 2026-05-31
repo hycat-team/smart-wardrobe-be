@@ -9,11 +9,6 @@ import (
 	"strings"
 )
 
-type WardrobeSearchService struct {
-	searchEngine *shared_search.ElasticsearchClient
-	logger       logger.Interface
-}
-
 func NewWardrobeSearchService(searchEngine *shared_search.ElasticsearchClient, l logger.Interface) search.IWardrobeSearchService {
 	return &WardrobeSearchService{searchEngine: searchEngine, logger: l}
 }
