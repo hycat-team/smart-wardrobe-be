@@ -16,22 +16,22 @@ import (
 	"smart-wardrobe-be/internal/api/routes/subscription"
 	wardrobe2 "smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
-	usecase2 "smart-wardrobe-be/internal/modules/identity/application/usecase"
+	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
-	"smart-wardrobe-be/internal/modules/subscription/application/usecase"
+	usecase2 "smart-wardrobe-be/internal/modules/subscription/application/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
+	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
-	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	worker2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
@@ -58,35 +58,35 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
+	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
+	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
+	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
+	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg)
+	iPasswordRecoveryUseCase := usecase.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
+	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
+	authMiddleware := middleware.NewAuthMiddleware(cfg)
+	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	iUnitOfWork := db.NewGormUnitOfWork(gormDB)
 	iUserSubscriptionRepository := persistence2.NewUserSubscriptionRepository(gormDB)
 	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
 	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
 	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
-	iSubscriptionPlanUseCase := usecase.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
-	iUserQuotaUseCase := usecase.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
-	iSubscriptionUseCase := usecase.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
-	iRegisterUseCase := usecase2.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, iSubscriptionUseCase, iUnitOfWork, cfg)
-	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
-	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
-	iSessionUseCase := usecase2.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg)
-	iPasswordRecoveryUseCase := usecase2.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
-	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
-	authMiddleware := middleware.NewAuthMiddleware(cfg)
-	authRouter := auth.NewRouter(authHandler, authMiddleware)
+	iSubscriptionPlanUseCase := usecase2.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
+	iUserQuotaUseCase := usecase2.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
+	iSubscriptionUseCase := usecase2.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
 	iMediaService := media.NewCloudinaryService(cfg)
-	iUserUseCase := usecase2.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionUseCase, iMediaService, cfg)
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionUseCase, iMediaService, cfg)
 	meHandler := handler.NewMeHandler(iUserUseCase)
 	meRouter := me.NewRouter(meHandler, authMiddleware)
-	dailyQuotaHandler := handler2.NewDailyQuotaHandler(iSubscriptionUseCase)
+	subscriptionHandler := handler2.NewSubscriptionHandler(iSubscriptionUseCase)
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
-	iWalletUseCase := usecase.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iSubscriptionPurchaseUseCase := usecase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iPaymentWebhookUseCase := usecase.NewPaymentWebhookUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iWalletUseCase := usecase2.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iSubscriptionPurchaseUseCase := usecase2.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iPaymentWebhookUseCase := usecase2.NewPaymentWebhookUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
 	billingHandler := handler2.NewBillingHandler(iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
-	subscriptionRouter := subscription.NewRouter(dailyQuotaHandler, billingHandler, authMiddleware)
+	subscriptionRouter := subscription.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
@@ -115,8 +115,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iBatchCropJobConsumer := messaging2.NewBatchCropJobConsumer(rabbitMQClient, l)
 	batchCropWorker := worker2.NewBatchCropWorker(iBatchCropJobConsumer, iWardrobeUseCase, l)
-	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
+	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient, l)
 	searchSyncWorker := worker2.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:   iSubscriptionRenewalWorker,

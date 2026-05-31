@@ -17,6 +17,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/errorutils"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
@@ -90,6 +91,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			Status:             depositstatus.Pending,
 			TransactionType:    deposittransactiontype.DirectPurchase,
 			SubscriptionPlanID: &plan.ID,
+			OrderCode:          timeutils.GenerateOrderCode(),
 			PaymentUrl:         nil,
 		}
 
@@ -121,7 +123,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			CancelUrl:   cancelUrl,
 		})
 		if err != nil {
-			return errorcode.NewInternalError("Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
+			return errorutils.WrapError(err, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
 		}
 
 		tx.PaymentUrl = &checkoutUrl

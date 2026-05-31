@@ -14,26 +14,22 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )
 
 type RegisterUseCase struct {
-	userRepo             repositories.IUserRepository
-	otpService           identity.IOtpService
-	emailService         communication.IEmailService
-	passwordHasher       security.IPasswordHasher
-	subscriptionContract subscription_contract.IUserSubscriptionContract
-	uow                  shared_repos.IUnitOfWork
-	cfg                  *config.Config
+	userRepo       repositories.IUserRepository
+	otpService     identity.IOtpService
+	emailService   communication.IEmailService
+	passwordHasher security.IPasswordHasher
+	cfg            *config.Config
 }
 
 func NewRegisterUseCase(
@@ -41,18 +37,14 @@ func NewRegisterUseCase(
 	otpService identity.IOtpService,
 	emailService communication.IEmailService,
 	passwordHasher security.IPasswordHasher,
-	subscriptionContract subscription_contract.IUserSubscriptionContract,
-	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 ) uc_interfaces.IRegisterUseCase {
 	return &RegisterUseCase{
-		userRepo:             userRepo,
-		otpService:           otpService,
-		emailService:         emailService,
-		passwordHasher:       passwordHasher,
-		subscriptionContract: subscriptionContract,
-		uow:                  uow,
-		cfg:                  cfg,
+		userRepo:       userRepo,
+		otpService:     otpService,
+		emailService:   emailService,
+		passwordHasher: passwordHasher,
+		cfg:            cfg,
 	}
 }
 
@@ -165,15 +157,9 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	newUser.ID = uuid.New()
 	newUser.IsDeleted = false
 
-	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		err := uc.userRepo.Create(txCtx, newUser)
-		if err != nil {
-			return errorcode.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
-		}
-		return uc.subscriptionContract.InitializeUserSubscription(txCtx, newUser.ID)
-	})
+	err = uc.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return false, err
+		return false, errorcode.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
 	}
 
 	return true, nil

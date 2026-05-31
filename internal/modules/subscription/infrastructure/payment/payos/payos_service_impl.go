@@ -18,7 +18,10 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 )
+
+const MinPayOSTransactionAmount = 2000.00
 
 type PayOSService struct {
 	clientID    string
@@ -41,6 +44,10 @@ func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
 func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.CheckoutSessionReq) (string, error) {
 	if s.clientID == "" || s.apiKey == "" || s.checksumKey == "" {
 		return "", errors.New("payos credentials are not fully configured in the environment")
+	}
+
+	if req.Amount < MinPayOSTransactionAmount {
+		return "", errorcode.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VND", int(MinPayOSTransactionAmount)))
 	}
 
 	bodyMap := map[string]any{

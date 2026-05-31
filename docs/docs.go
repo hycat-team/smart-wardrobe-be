@@ -486,6 +486,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/outfits": {
+            "get": {
+                "description": "Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Outfits"
+                ],
+                "summary": "Lấy danh sách bộ phối đồ của tôi",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách bộ phối đồ",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/wardrobe-items": {
             "get": {
                 "description": "Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói",
@@ -522,39 +557,6 @@ const docTemplate = `{
             }
         },
         "/api/v1/outfits": {
-            "get": {
-                "description": "Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Outfits"
-                ],
-                "summary": "Lấy danh sách bộ phối đồ của tôi",
-                "responses": {
-                    "200": {
-                        "description": "Danh sách bộ phối đồ",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
             "post": {
                 "description": "Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.",
                 "consumes": [
@@ -712,6 +714,29 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Xóa bộ phối đồ thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/me": {
+            "get": {
+                "description": "Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Lấy thông tin gói hội viên hiện tại",
+                "responses": {
+                    "200": {
+                        "description": "Thông tin gói hội viên hiện tại",
                         "schema": {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
                         }
@@ -1087,7 +1112,7 @@ const docTemplate = `{
                 "tags": [
                     "Wardrobe"
                 ],
-                "summary": "Tìm kiếm trang phục nâng cao (Elasticsearch CQRS)",
+                "summary": "Tìm kiếm trang phục có sẵn của hệ thống (Elasticsearch CQRS)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1849,13 +1874,10 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes": {
             "type": "object",
             "properties": {
-                "categoryId": {
-                    "type": "string"
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
                 "color": {
-                    "type": "string"
-                },
-                "description": {
                     "type": "string"
                 },
                 "fit": {
@@ -1897,9 +1919,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createdAt": {
-                    "type": "string"
-                },
-                "description": {
                     "type": "string"
                 },
                 "fit": {

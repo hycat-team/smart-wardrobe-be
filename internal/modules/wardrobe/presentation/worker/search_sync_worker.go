@@ -75,10 +75,24 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 			return nil
 		}
 
-		return w.searchIndex.IndexItem(ctx, item)
+		if err := w.searchIndex.IndexItem(ctx, item); err != nil {
+			w.logger.Warn("[SearchSyncWorker] Failed to index item in search index (Elasticsearch may be offline)",
+				zap.String("itemId", item.ID.String()),
+				zap.Error(err),
+			)
+			// Trả về nil thay vì ném lỗi để tránh treo hoặc spam queue khi ES offline
+			return nil
+		}
 
 	case "deleted":
-		return w.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String())
+		if err := w.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String()); err != nil {
+			w.logger.Warn("[SearchSyncWorker] Failed to delete item from search index (Elasticsearch may be offline)",
+				zap.String("itemId", eventPayload.ItemID.String()),
+				zap.Error(err),
+			)
+			// Trả về nil thay vì ném lỗi để tránh treo hoặc spam queue khi ES offline
+			return nil
+		}
 	}
 
 	return nil
@@ -102,16 +116,15 @@ func (w *SearchSyncWorker) initialSync() {
 	successCount := 0
 	for _, item := range items {
 		if err := w.searchIndex.IndexItem(ctx, item); err != nil {
-			w.logger.Error("[SearchSyncWorker] Failed to index system catalog item during initial sync",
-				zap.String("itemId", item.ID.String()),
+			w.logger.Warn("[SearchSyncWorker] Failed to index system catalog item during initial sync. Elasticsearch might be offline. Aborting initial sync to prevent log spam.",
 				zap.Error(err),
 			)
-			continue
+			break
 		}
 		successCount++
 	}
 
-	w.logger.Info("[SearchSyncWorker] Initial sync completed",
+	w.logger.Info("[SearchSyncWorker] Initial sync process completed",
 		zap.Int("total", len(items)),
 		zap.Int("indexed", successCount),
 	)

@@ -218,46 +218,68 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	return sub.IsAutoRenewEnabled, nil
 }
 
-// InitializeUserSubscription sets up default free plan subscription and daily quota records
-func (uc *SubscriptionUseCase) InitializeUserSubscription(ctx context.Context, userID uuid.UUID) error {
-	defaultPlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
-	if err != nil {
-		return err
-	}
-
-	newSub := &entities.UserSubscription{
-		UserID:             userID,
-		SubscriptionPlanID: defaultPlanID,
-		IsActive:           true,
-	}
-	err = uc.userSubRepo.Create(ctx, newSub)
-	if err != nil {
-		return err
-	}
-
-	newQuota := &entities.UserDailyQuota{
-		UserID:        userID,
-		LastResetDate: time.Now(),
-	}
-	return uc.quotaRepo.Create(ctx, newQuota)
-}
-
-// GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
-func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+func (uc *SubscriptionUseCase) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
 	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if sub == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
-	}
+		defaultPlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defaultPlan, err := uc.planRepo.GetByID(ctx, defaultPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if defaultPlan == nil {
+			return nil, errorcode.NewNotFound("Không tìm thấy cấu hình gói hội viên mặc định")
+		}
 
+		sub = &entities.UserSubscription{
+			UserID:             userID,
+			SubscriptionPlanID: defaultPlanID,
+			IsActive:           true,
+			SubscriptionPlan:   defaultPlan,
+		}
+		err = uc.userSubRepo.Create(ctx, sub)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return sub, nil
+}
+
+func (uc *SubscriptionUseCase) getOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
 	quota, err := uc.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if quota == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
+		quota = &entities.UserDailyQuota{
+			UserID:               userID,
+			OutfitRecommendCount: 0,
+			AiUsageCount:         0,
+			LastResetDate:        time.Now(),
+		}
+		err = uc.quotaRepo.Create(ctx, quota)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return quota, nil
+}
+
+// GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
+func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	quota, err := uc.getOrCreateUserDailyQuota(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	plan := sub.SubscriptionPlan
@@ -290,12 +312,9 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
-	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
+	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-	if sub == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	plan := sub.SubscriptionPlan

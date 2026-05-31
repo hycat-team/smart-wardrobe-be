@@ -10,14 +10,37 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type DailyQuotaHandler struct {
+type SubscriptionHandler struct {
 	subscriptionUseCase usecase_interfaces.ISubscriptionUseCase
 }
 
-func NewDailyQuotaHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) *DailyQuotaHandler {
-	return &DailyQuotaHandler{
+func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) *SubscriptionHandler {
+	return &SubscriptionHandler{
 		subscriptionUseCase: subUseCase,
 	}
+}
+
+// GetUserSubscriptionOverview retrieves user current subscription details
+// @Summary Lấy thông tin gói hội viên hiện tại
+// @Description Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại
+// @Tags Subscription
+// @Accept json
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse "Thông tin gói hội viên hiện tại"
+// @Router /api/v1/subscriptions/me [get]
+func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	overviewDTO, err := h.subscriptionUseCase.GetUserSubscriptionOverview(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy thông tin gói hội viên hiện tại thành công", overviewDTO)
+	return nil
 }
 
 // GetDailyQuota retrieves user daily quota and performs lazy reset if outdated
@@ -28,7 +51,7 @@ func NewDailyQuotaHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) *D
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse "Hạn ngạch sử dụng"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
-func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
+func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -52,7 +75,7 @@ func (h *DailyQuotaHandler) GetDailyQuota(c *gin.Context) error {
 // @Param body body dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/toggle-auto-renew [patch]
-func (h *DailyQuotaHandler) SetAutoRenewStatus(c *gin.Context) error {
+func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -82,7 +105,7 @@ func (h *DailyQuotaHandler) SetAutoRenewStatus(c *gin.Context) error {
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse "Danh sách gói cước"
 // @Router /api/v1/subscriptions/plans [get]
-func (h *DailyQuotaHandler) GetPlans(c *gin.Context) error {
+func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())
 	if err != nil {
 		return err

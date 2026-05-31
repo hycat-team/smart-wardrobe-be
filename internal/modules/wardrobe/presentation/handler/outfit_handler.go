@@ -93,7 +93,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 // @Tags Outfits
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.OutfitRes} "Danh sách bộ phối đồ"
-// @Router /api/v1/outfits [get]
+// @Router /api/v1/me/outfits [get]
 func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

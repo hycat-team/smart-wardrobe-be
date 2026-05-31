@@ -31,7 +31,7 @@ func GlobalErrorHandler(log logger.Interface) gin.HandlerFunc {
 		c.Next()
 
 		if len(c.Errors) > 0 {
-			err := c.Errors.Last().Err
+			err := errorutils.WrapError(c.Errors.Last().Err)
 
 			status, title, detail := errorutils.MapErrorToProblem(err)
 

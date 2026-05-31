@@ -12,7 +12,7 @@ import (
 var ProviderSet = wire.NewSet(
 	application.ProviderSet,
 	infrastructure.ProviderSet,
-	handler.NewDailyQuotaHandler,
+	handler.NewSubscriptionHandler,
 	handler.NewBillingHandler,
 	worker.NewSubscriptionRenewalWorker,
 )

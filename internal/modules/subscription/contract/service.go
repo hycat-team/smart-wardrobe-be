@@ -14,7 +14,6 @@ type ISubscriptionPlanContract interface {
 
 // IUserSubscriptionContract manages active user subscriptions and overview queries
 type IUserSubscriptionContract interface {
-	InitializeUserSubscription(ctx context.Context, userID uuid.UUID) error
 	GetUserSubscription(ctx context.Context, userID uuid.UUID) (*UserSubscriptionDTO, error)
 	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*UserSubscriptionOverviewDTO, error)
 }

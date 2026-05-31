@@ -31,14 +31,59 @@ func NewUserQuotaUseCase(
 	}
 }
 
-// checkAndResetDailyQuota fetches the user's daily quota and lazily performs reset if a new day has arrived
-func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+func (uc *UserQuotaUseCase) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
+	sub, err := uc.subRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if sub == nil {
+		defaultPlan, err := uc.planRepo.GetDefaultPlan(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if defaultPlan == nil {
+			return nil, errorcode.NewNotFound("Không tìm thấy cấu hình gói hội viên mặc định")
+		}
+
+		sub = &entities.UserSubscription{
+			UserID:             userID,
+			SubscriptionPlanID: defaultPlan.ID,
+			IsActive:           true,
+			SubscriptionPlan:   defaultPlan,
+		}
+		err = uc.subRepo.Create(ctx, sub)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return sub, nil
+}
+
+func (uc *UserQuotaUseCase) getOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
 	quota, err := uc.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if quota == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin hạn mức đã sử dụng")
+		quota = &entities.UserDailyQuota{
+			UserID:               userID,
+			OutfitRecommendCount: 0,
+			AiUsageCount:         0,
+			LastResetDate:        time.Now(),
+		}
+		err = uc.quotaRepo.Create(ctx, quota)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return quota, nil
+}
+
+// checkAndResetDailyQuota fetches the user's daily quota and lazily performs reset if a new day has arrived
+func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+	quota, err := uc.getOrCreateUserDailyQuota(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
@@ -62,12 +107,9 @@ func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID 
 
 // GetAndResetDailyQuota evaluates daily resets lazily and retrieves the fresh resource counters
 func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := uc.subRepo.GetByUserID(ctx, userID)
+	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-	if sub == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	quota, err := uc.checkAndResetDailyQuota(ctx, userID)
@@ -82,7 +124,7 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 			return nil, err
 		}
 		if p == nil {
-			return nil, errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+			return nil, errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
 		}
 		plan = p
 	}
@@ -105,12 +147,9 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 
 // UpdateOutfitQuota alters daily recommended outfit generations count
 func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.subRepo.GetByUserID(ctx, userID)
+	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
-	}
-	if sub == nil {
-		return errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	quota, err := uc.checkAndResetDailyQuota(ctx, userID)
@@ -125,7 +164,7 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+			return errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
 		}
 		plan = p
 	}
@@ -141,12 +180,9 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 
 // UpdateAiChatQuota alters daily AI chatbot usage count
 func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.subRepo.GetByUserID(ctx, userID)
+	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
-	}
-	if sub == nil {
-		return errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
 	}
 
 	quota, err := uc.checkAndResetDailyQuota(ctx, userID)
@@ -161,7 +197,7 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return errorcode.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+			return errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
 		}
 		plan = p
 	}

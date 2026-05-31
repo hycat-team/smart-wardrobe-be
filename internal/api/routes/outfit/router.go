@@ -31,8 +31,12 @@ func (r *OutfitRouter) Init(parentGroup *gin.RouterGroup) {
 	{
 		outfitApi.POST("", shared_pres.WrapHandler(r.outfitHandler.SaveOutfit))
 		outfitApi.PUT("/:id", shared_pres.WrapHandler(r.outfitHandler.UpdateOutfit))
-		outfitApi.GET("", shared_pres.WrapHandler(r.outfitHandler.GetOutfits))
 		outfitApi.GET("/:id", shared_pres.WrapHandler(r.outfitHandler.GetOutfitByID))
 		outfitApi.DELETE("/:id", shared_pres.WrapHandler(r.outfitHandler.DeleteOutfit))
+	}
+
+	meApi := privateApi.Group("/me/outfits")
+	{
+		meApi.GET("", shared_pres.WrapHandler(r.outfitHandler.GetOutfits))
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/errorutils"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
@@ -117,10 +118,6 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 }
 
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {
-	if req.Amount < 1000.00 {
-		return nil, errorcode.NewBadRequest("Số tiền nạp tối thiểu là 1,000 VND")
-	}
-
 	var checkoutUrl string
 	var orderCode int64
 
@@ -131,6 +128,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			Currency:        currency.VND,
 			Status:          depositstatus.Pending,
 			TransactionType: deposittransactiontype.WalletTopup,
+			OrderCode:       timeutils.GenerateOrderCode(),
 			PaymentUrl:      nil,
 		}
 
@@ -147,7 +145,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			cancelUrl = uc.cfg.PayOS.CancelUrl
 		}
 
-		description := fmt.Sprintf("Top up wallet sum %d", int(tx.Amount))
+		description := fmt.Sprintf("Nạp vào ví %d VNĐ", int(tx.Amount))
 		var err error
 		checkoutUrl, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
 			OrderCode:   tx.OrderCode,
@@ -157,7 +155,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			CancelUrl:   cancelUrl,
 		})
 		if err != nil {
-			return errorcode.NewInternalError("Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
+			return errorutils.WrapError(err, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
 		}
 
 		tx.PaymentUrl = &checkoutUrl
