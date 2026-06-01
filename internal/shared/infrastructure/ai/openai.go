@@ -11,6 +11,8 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
 func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
@@ -80,7 +82,7 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	}
 
 	var result dto.FashionMetadataResult
-	cleanContent := cleanJSONMarkdown(openAIResp.Choices[0].Message.Content)
+	cleanContent := stringutils.CleanJSONMarkdown(openAIResp.Choices[0].Message.Content)
 	if err := json.Unmarshal([]byte(cleanContent), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
 	}
@@ -146,7 +148,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		batchResults := make([][]float32, len(subSlice))
 		for _, d := range openAIResp.Data {
 			if d.Index >= 0 && d.Index < len(subSlice) {
-				batchResults[d.Index] = s.adjustVectorLength(d.Embedding, 768)
+				batchResults[d.Index] = sliceutils.AdjustVectorLength(d.Embedding, 768)
 			}
 		}
 

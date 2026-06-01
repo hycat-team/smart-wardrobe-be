@@ -3,32 +3,33 @@ package ai
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/pkg/logger"
 
 	"golang.org/x/time/rate"
 )
 
 const (
 	ProviderOpenAI = "openai"
-	ProviderGemini = "google" // Google Gemini API
+	ProviderGemini = "google"
 )
 
 type AIService struct {
 	cfg     *config.Config
 	cli     *http.Client
 	limiter *rate.Limiter
+	logger  logger.Interface
 }
 
-func NewAIService(cfg *config.Config) ai.IAIService {
+func NewAIService(cfg *config.Config, logger logger.Interface) ai.IAIService {
 	rpm := cfg.AI.RpmLimit
 	if rpm <= 0 {
-		rpm = 5 // Mặc định 5 RPM
+		rpm = 5
 	}
 
 	return &AIService{
@@ -37,23 +38,26 @@ func NewAIService(cfg *config.Config) ai.IAIService {
 			Timeout: 15 * time.Second,
 		},
 		limiter: rate.NewLimiter(rate.Limit(float64(rpm)/60.0), 1),
+		logger:  logger,
 	}
 }
 
 func (s *AIService) AnalyzeFashionImage(ctx context.Context, imageUrl string) (*dto.FashionMetadataResult, error) {
-	// Hệ thống tự động xếp hàng nếu vượt quá giới hạn RPM cấu hình toàn cục
 	if err := s.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
 
-	result, err := s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl)
-	if err != nil {
-		if strings.Contains(err.Error(), "429") && s.cfg.AI.VisionFallback.Provider != "" {
+	return executeWithFallback(
+		s.logger,
+		"AnalyzeFashionImage",
+		s.cfg.AI.VisionFallback,
+		func() (*dto.FashionMetadataResult, error) {
+			return s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl)
+		},
+		func() (*dto.FashionMetadataResult, error) {
 			return s.tryVisionProvider(ctx, s.cfg.AI.VisionFallback, imageUrl)
-		}
-		return nil, err
-	}
-	return result, nil
+		},
+	)
 }
 
 func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error) {
@@ -61,19 +65,21 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 		return nil, nil
 	}
 
-	// Hệ thống tự động xếp hàng nếu vượt quá giới hạn RPM cấu hình toàn cục
 	if err := s.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
 
-	result, err := s.tryEmbeddingProviderBatch(ctx, s.cfg.AI.EmbeddingPrimary, chunks)
-	if err != nil {
-		if strings.Contains(err.Error(), "429") && s.cfg.AI.EmbeddingFallback.Provider != "" {
+	return executeWithFallback(
+		s.logger,
+		"GenerateEmbeddings",
+		s.cfg.AI.EmbeddingFallback,
+		func() ([][]float32, error) {
+			return s.tryEmbeddingProviderBatch(ctx, s.cfg.AI.EmbeddingPrimary, chunks)
+		},
+		func() ([][]float32, error) {
 			return s.tryEmbeddingProviderBatch(ctx, s.cfg.AI.EmbeddingFallback, chunks)
-		}
-		return nil, err
-	}
-	return result, nil
+		},
+	)
 }
 
 func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {

@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// parseElasticsearchResults parse JSON thô từ Elasticsearch sang danh sách DTO
-func (s *WardrobeSearchService) parseElasticsearchResults(respBytes []byte) ([]*dto.SearchWardrobeItemRes, error) {
+// parseEsResToSearchRes parse JSON thô từ Elasticsearch sang danh sách SearchWardrobeItemRes
+func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]*dto.SearchWardrobeItemRes, error) {
 	type esDocSource struct {
 		ID       string `json:"id"`
 		ItemType int    `json:"item_type"`

@@ -82,5 +82,5 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) (
 	}
 
 	// 3. Parse kết quả từ Elasticsearch
-	return s.parseElasticsearchResults(respBytes)
+	return s.parseSearchWardrobeItemRes(respBytes)
 }

@@ -110,7 +110,7 @@ func (uc *WardrobeUseCase) ProcessBackgroundCropJob(ctx context.Context, job dto
 	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
 	if err != nil || len(embeddings) == 0 {
 		uc.markJobFailed(ctx, job.ItemID)
-		return fmt.Errorf("embeddings generation failed")
+		return err
 	}
 	embedding := embeddings[0]
 

@@ -13,10 +13,13 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/pkg/utils/httputils"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
 func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
-	imgBytes, mimeType, err := s.downloadImage(ctx, imageUrl)
+	imgBytes, mimeType, err := httputils.DownloadImage(s.cli, ctx, imageUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image for Google Vision: %w", err)
 	}
@@ -87,7 +90,7 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 	}
 
 	var result dto.FashionMetadataResult
-	cleanContent := cleanJSONMarkdown(googleResp.Candidates[0].Content.Parts[0].Text)
+	cleanContent := stringutils.CleanJSONMarkdown(googleResp.Candidates[0].Content.Parts[0].Text)
 	if err := json.Unmarshal([]byte(cleanContent), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from Google AI: %w", err)
 	}
@@ -167,7 +170,7 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 		}
 
 		for _, emb := range googleResp.Embeddings {
-			allEmbeddings = append(allEmbeddings, s.adjustVectorLength(emb.Values, 768))
+			allEmbeddings = append(allEmbeddings, sliceutils.AdjustVectorLength(emb.Values, 768))
 		}
 	}
 

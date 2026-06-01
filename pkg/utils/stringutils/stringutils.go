@@ -102,3 +102,13 @@ func SanitizeFileName(fileName string, salt *string) string {
 
 	return fmt.Sprintf("%s-%s%s", safeName, suffix, ext)
 }
+
+func CleanJSONMarkdown(content string) string {
+	content = strings.TrimSpace(content)
+	if strings.HasPrefix(content, "```") {
+		content = strings.TrimPrefix(content, "```json")
+		content = strings.TrimPrefix(content, "```")
+		content = strings.TrimSuffix(content, "```")
+	}
+	return strings.TrimSpace(content)
+}
