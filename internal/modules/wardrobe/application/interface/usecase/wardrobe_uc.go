@@ -4,6 +4,7 @@ import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ type IWardrobeUseCase interface {
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
 	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
-	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
+	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
 	ProcessBackgroundCropJob(ctx context.Context, job dto.BatchCropJobDTO) error
 	SearchWardrobeItems(ctx context.Context, query string) ([]*dto.SearchWardrobeItemRes, error)
 }

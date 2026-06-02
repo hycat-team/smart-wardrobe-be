@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
@@ -16,24 +17,27 @@ import (
 	"go.uber.org/zap"
 )
 
-func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
 		return nil, errorcode.NewBadRequest("Danh sách ảnh cắt không được để trống.")
 	}
 
-	// 1. Kiểm tra giới hạn số lượng trang phục của gói cước
-	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	itemType := itemtype.SystemCatalogItem
+	if currentRole == roleslug.Member {
+		itemType = itemtype.UserItem
+		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
 
-	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+		currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
 
-	if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
+		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
+			return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
+		}
 	}
 
 	// 2. Tạo nhanh các trang phục mẫu trong DB ở trạng thái Processing
@@ -45,11 +49,11 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 			ImageUrl:      itemReq.ImageUrl,
 			ImagePublicID: itemReq.ImagePublicID,
 			Status:        wardrobestatus.Processing, // Trạng thái xử lý AI ngầm
-			ItemType:      itemtype.UserItem,
+			ItemType:      itemType,
 		}
 	}
 
-	err = uc.wardrobeRepo.BulkCreate(ctx, newItems)
+	err := uc.wardrobeRepo.BulkCreate(ctx, newItems)
 	if err != nil {
 		return nil, err
 	}

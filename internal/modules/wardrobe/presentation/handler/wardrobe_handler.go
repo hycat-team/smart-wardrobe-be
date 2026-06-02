@@ -169,13 +169,17 @@ func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
+	roleSlug, err := contextutils.GetRoleSlug(c)
+	if err != nil {
+		return err
+	}
 
 	var input dto.BatchUploadWardrobeItemsReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, input)
+	response, err := h.wardrobeUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, roleSlug, input)
 	if err != nil {
 		return err
 	}
