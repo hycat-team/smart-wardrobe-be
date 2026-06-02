@@ -7,9 +7,8 @@ import (
 )
 
 func MapErrorToProblem(err error) (int, string, string) {
-	var appErr *errorcode.ErrorResponse
-	if errors.As(err, &appErr) {
-		return appErr.Status, appErr.Title, appErr.Detail
+	if err == nil {
+		return http.StatusOK, "", ""
 	}
 
 	for internalErr, info := range errorcode.InternalErrorMap {
@@ -18,15 +17,23 @@ func MapErrorToProblem(err error) (int, string, string) {
 		}
 	}
 
+	var appErr *errorcode.ErrorResponse
+	if errors.As(err, &appErr) {
+		return appErr.Status, appErr.Title, appErr.Detail
+	}
+
 	return http.StatusInternalServerError, "Lỗi hệ thống", err.Error()
 }
 
-// WrapError checks if the input error is already a system *errorcode.ErrorResponse.
-// If it is, it returns the error as is.
-// If not, it wraps the error in a NewInternalError.
 func WrapError(err error, fallbackMsg ...string) error {
 	if err == nil {
 		return nil
+	}
+
+	for internalErr := range errorcode.InternalErrorMap {
+		if errors.Is(err, internalErr) {
+			return err
+		}
 	}
 
 	var appErr *errorcode.ErrorResponse
