@@ -24,7 +24,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Chèn tài khoản Admin hệ thống mặc định (password: admin123)
 INSERT INTO users (id, username, email, password_hash, first_name, last_name, role_slug, status)
 VALUES
-    ('ad11ad11-ad11-ad11-ad11-ad11ad11ad11', 'admin', 'admin@smartwardrobe.com', '$2a$10$tM3p/yY1o8xM2q3LqB3E2u7p83kCsk4g5g2/c1WzF0H51n1v/0i5C', 'System', 'Admin', 'admin', 0)
+    ('ad11ad11-ad11-ad11-ad11-ad11ad11ad11', 'admin', 'admin@smartwardrobe.com', '$2a$11$kXWLREY8wu6wEQlONWcLveV2jeE/Tx9MS4vOlQqXmcQ9VASP0NMhu', 'System', 'Admin', 'admin', 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- Chèn các trang phục mẫu trong Global Fashion Catalog (item_type = 1)
