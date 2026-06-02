@@ -14,7 +14,10 @@ type CategoryRepository struct {
 }
 
 func NewCategoryRepository(db *gorm.DB) repositories.ICategoryRepository {
+	relations := []string{}
 	return &CategoryRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.Category, uuid.UUID](db),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.Category, uuid.UUID](
+			db, relations,
+		),
 	}
 }

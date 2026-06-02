@@ -17,8 +17,9 @@ type DepositTransactionRepository struct {
 }
 
 func NewDepositTransactionRepository(dbConn *gorm.DB) repositories.IDepositTransactionRepository {
+	relations := []string{}
 	return &DepositTransactionRepository{
-		GenericRepository: shared_repos.NewGenericRepository[entities.DepositTransaction, uuid.UUID](dbConn),
+		GenericRepository: shared_repos.NewGenericRepository[entities.DepositTransaction, uuid.UUID](dbConn, relations),
 	}
 }
 

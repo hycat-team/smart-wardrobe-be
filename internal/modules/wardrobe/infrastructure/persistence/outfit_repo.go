@@ -16,8 +16,9 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
+	relations := []string{"Wardrobe.Category"}
 	return &OutfitRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}
 }
 
@@ -38,7 +39,7 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 	}
 
 	var items []*entities.OutfitItem
-	err = r.GetDB(ctx).Preload("Wardrobe.Category").Where("outfit_id = ?", id).Order("layer_order ASC").Find(&items).Error
+	err = r.GetQueryWithPreload(ctx).Where("outfit_id = ?", id).Order("layer_order ASC").Find(&items).Error
 	if err != nil {
 		return nil, nil, err
 	}

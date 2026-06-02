@@ -22,15 +22,10 @@ func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) e
 }
 
 func buildItemDocument(item *entities.WardrobeItem) map[string]any {
-	return map[string]any{
-		"id":        item.ID.String(),
-		"user_id":   item.UserID.String(),
-		"item_type": int(item.ItemType),
-		"category": map[string]any{
-			"id":   item.CategoryID.String(),
-			"name": item.Category.Name,
-			"slug": item.Category.Slug,
-		},
+	doc := map[string]any{
+		"id":              item.ID.String(),
+		"user_id":         item.UserID.String(),
+		"item_type":       int(item.ItemType),
 		"image_url":       item.ImageUrl,
 		"image_public_id": item.ImagePublicID,
 		"color":           stringutils.GetString(item.Color),
@@ -43,4 +38,20 @@ func buildItemDocument(item *entities.WardrobeItem) map[string]any {
 		"status":          item.Status,
 		"created_at":      item.CreatedAt,
 	}
+
+	if item.Category != nil {
+		doc["category"] = map[string]any{
+			"id":   item.CategoryID.String(),
+			"name": item.Category.Name,
+			"slug": item.Category.Slug,
+		}
+	} else {
+		doc["category"] = map[string]any{
+			"id":   item.CategoryID.String(),
+			"name": "",
+			"slug": "",
+		}
+	}
+
+	return doc
 }

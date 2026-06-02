@@ -19,8 +19,9 @@ type UserDailyQuotaRepository struct {
 
 // NewUserDailyQuotaRepository creates a new instance of quota repository
 func NewUserDailyQuotaRepository(dbConn *gorm.DB) repositories.IUserDailyQuotaRepository {
+	relations := []string{}
 	return &UserDailyQuotaRepository{
-		GenericRepository: shared_repos.NewGenericRepository[entities.UserDailyQuota, uuid.UUID](dbConn),
+		GenericRepository: shared_repos.NewGenericRepository[entities.UserDailyQuota, uuid.UUID](dbConn, relations),
 	}
 }
 

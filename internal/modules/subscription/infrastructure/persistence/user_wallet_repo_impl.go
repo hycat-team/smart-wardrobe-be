@@ -17,8 +17,9 @@ type UserWalletRepository struct {
 }
 
 func NewUserWalletRepository(dbConn *gorm.DB) repositories.IUserWalletRepository {
+	relations := []string{}
 	return &UserWalletRepository{
-		GenericRepository: shared_repos.NewGenericRepository[entities.UserWallet, uuid.UUID](dbConn),
+		GenericRepository: shared_repos.NewGenericRepository[entities.UserWallet, uuid.UUID](dbConn, relations),
 	}
 }
 

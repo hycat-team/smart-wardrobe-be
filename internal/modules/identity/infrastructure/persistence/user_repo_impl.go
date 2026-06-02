@@ -18,14 +18,10 @@ type UserRepository struct {
 
 // NewUserRepository creates a new UserRepository instance
 func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
+	relations := []string{}
 	return &UserRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.User, uuid.UUID](db),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.User, uuid.UUID](db, relations),
 	}
-}
-
-// GetPreloadRelations returns zero preloaded relationships by default
-func (r *UserRepository) GetPreloadRelations() []string {
-	return []string{}
 }
 
 // GetByEmail searches for a user matching the provided email address

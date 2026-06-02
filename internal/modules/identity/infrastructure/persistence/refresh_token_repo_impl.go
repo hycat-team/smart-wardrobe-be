@@ -16,13 +16,10 @@ type RefreshTokenRepository struct {
 }
 
 func NewRefreshTokenRepository(db *gorm.DB) repositories.IRefreshTokenRepository {
+	relations := []string{"User"}
 	return &RefreshTokenRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.RefreshToken, uuid.UUID](db),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.RefreshToken, uuid.UUID](db, relations),
 	}
-}
-
-func (r *RefreshTokenRepository) GetPreloadRelations() []string {
-	return []string{"User"}
 }
 
 func (r *RefreshTokenRepository) GetByToken(ctx context.Context, token string) (*entities.RefreshToken, error) {

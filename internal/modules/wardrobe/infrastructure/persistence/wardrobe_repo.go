@@ -18,8 +18,9 @@ type WardrobeItemRepository struct {
 }
 
 func NewWardrobeItemRepository(db *gorm.DB) repositories.IWardrobeItemRepository {
+	relations := []string{"User", "Category"}
 	return &WardrobeItemRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.WardrobeItem, uuid.UUID](db),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.WardrobeItem, uuid.UUID](db, relations),
 	}
 }
 
@@ -34,7 +35,7 @@ func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.
 
 func (r *WardrobeItemRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	err := r.GetDB(ctx).Preload("Category").Where("user_id = ?", userID).Order("created_at DESC").Find(&items).Error
+	err := r.GetQueryWithPreload(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 		return nil, nil
 	}
 	var items []*entities.WardrobeItem
-	err := r.GetDB(ctx).Preload("Category").Where("id IN ?", ids).Find(&items).Error
+	err := r.GetQueryWithPreload(ctx).Where("id IN ?", ids).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 
 func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	db := r.GetDB(ctx)
+	db := r.GetQueryWithPreload(ctx)
 
 	db = db.Where("item_type = ?", itemType)
 
@@ -81,7 +82,7 @@ func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, it
 		)
 	}
 
-	err := db.Preload("Category").Find(&items).Error
+	err := db.Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

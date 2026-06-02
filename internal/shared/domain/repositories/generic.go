@@ -2,10 +2,6 @@ package repositories
 
 import "context"
 
-type IPreloadableRepository interface {
-	GetPreloadRelations() []string
-}
-
 type IGenericRepository[T any, ID any] interface {
 	GetByID(ctx context.Context, id ID) (*T, error)
 	GetAll(ctx context.Context) ([]*T, error)

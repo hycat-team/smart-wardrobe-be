@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	domain_repo "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 
 	"gorm.io/gorm"
@@ -11,12 +10,14 @@ import (
 )
 
 type GenericRepository[T any, ID any] struct {
-	db *gorm.DB
+	db               *gorm.DB
+	preloadRelations []string
 }
 
-func NewGenericRepository[T any, ID any](dbConn *gorm.DB) *GenericRepository[T, ID] {
+func NewGenericRepository[T any, ID any](dbConn *gorm.DB, preloadRelations []string) *GenericRepository[T, ID] {
 	return &GenericRepository[T, ID]{
-		db: dbConn,
+		db:               dbConn,
+		preloadRelations: preloadRelations,
 	}
 }
 
@@ -27,15 +28,19 @@ func (r *GenericRepository[T, ID]) GetDB(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx)
 }
 
-func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {
-	var entity T
+func (r *GenericRepository[T, ID]) GetQueryWithPreload(ctx context.Context) *gorm.DB {
 	query := r.GetDB(ctx)
 
-	if preloadableRepo, ok := any(r).(domain_repo.IPreloadableRepository); ok {
-		for _, relation := range preloadableRepo.GetPreloadRelations() {
-			query = query.Preload(relation)
-		}
+	for _, relation := range r.preloadRelations {
+		query = query.Preload(relation)
 	}
+
+	return query
+}
+
+func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {
+	var entity T
+	query := r.GetQueryWithPreload(ctx)
 
 	err := query.First(&entity, "id = ?", id).Error
 	if err != nil {
@@ -49,13 +54,7 @@ func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, erro
 
 func (r *GenericRepository[T, ID]) GetAll(ctx context.Context) ([]*T, error) {
 	var entities []*T
-	query := r.GetDB(ctx)
-
-	if preloadableRepo, ok := any(r).(domain_repo.IPreloadableRepository); ok {
-		for _, relation := range preloadableRepo.GetPreloadRelations() {
-			query = query.Preload(relation)
-		}
-	}
+	query := r.GetQueryWithPreload(ctx)
 
 	err := query.Find(&entities).Error
 	if err != nil {
