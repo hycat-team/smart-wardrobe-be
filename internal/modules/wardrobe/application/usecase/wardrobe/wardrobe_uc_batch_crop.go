@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (uc *WardrobeUseCase) BatchCropWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchCropWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
 		return nil, errorcode.NewBadRequest("Danh sách ảnh cắt không được để trống.")
 	}

@@ -277,7 +277,7 @@ definitions:
     - imagePublicId
     - imageUrl
     type: object
-  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq:
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq:
     properties:
       items:
         items:
@@ -1209,7 +1209,7 @@ paths:
       summary: Nhân bản trang phục
       tags:
       - Wardrobe
-  /api/v1/wardrobe-items/batch-crop:
+  /api/v1/wardrobe-items/batch-upload:
     post:
       consumes:
       - application/json
@@ -1222,7 +1222,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq'
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq'
       produces:
       - application/json
       responses:
@@ -1237,7 +1237,7 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
                   type: array
               type: object
-      summary: Số hóa trang phục hàng loạt (Cắt ảnh)
+      summary: Số hóa trang phục hàng loạt
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/catalog-init:

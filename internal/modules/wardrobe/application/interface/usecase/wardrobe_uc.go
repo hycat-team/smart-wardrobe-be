@@ -14,7 +14,7 @@ type IWardrobeUseCase interface {
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
 	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
-	BatchCropWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchCropWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
+	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
 	ProcessBackgroundCropJob(ctx context.Context, job dto.BatchCropJobDTO) error
 	SearchWardrobeItems(ctx context.Context, query string) ([]*dto.SearchWardrobeItemRes, error)
 }

@@ -155,27 +155,27 @@ func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
 	return nil
 }
 
-// BatchCropWardrobeItems upload and process background AI analysis for multiple cropped wardrobe accessories
-// @Summary Số hóa trang phục hàng loạt (Cắt ảnh)
+// BatchUploadWardrobeItems upload and process background AI analysis for multiple cropped wardrobe accessories
+// @Summary Số hóa trang phục hàng loạt
 // @Description Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần), hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi AI phân tích ngầm
 // @Tags Wardrobe
 // @Accept json
 // @Produce json
-// @Param body body dto.BatchCropWardrobeItemsReq true "Danh sách ảnh trang phục cắt"
+// @Param body body dto.BatchUploadWardrobeItemsReq true "Danh sách ảnh trang phục cắt"
 // @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm"
-// @Router /api/v1/wardrobe-items/batch-crop [post]
-func (h *WardrobeHandler) BatchCropWardrobeItems(c *gin.Context) error {
+// @Router /api/v1/wardrobe-items/batch-upload [post]
+func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	var input dto.BatchCropWardrobeItemsReq
+	var input dto.BatchUploadWardrobeItemsReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.BatchCropWardrobeItems(c.Request.Context(), userID, input)
+	response, err := h.wardrobeUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, input)
 	if err != nil {
 		return err
 	}

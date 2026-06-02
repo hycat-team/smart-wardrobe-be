@@ -46,7 +46,7 @@ type BatchCropWardrobeItemReq struct {
 	ImagePublicID string    `json:"imagePublicId" binding:"required"`
 }
 
-type BatchCropWardrobeItemsReq struct {
+type BatchUploadWardrobeItemsReq struct {
 	Items []BatchCropWardrobeItemReq `json:"items" binding:"required,min=1"`
 }
 

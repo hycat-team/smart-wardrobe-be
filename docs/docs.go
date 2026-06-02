@@ -1005,7 +1005,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/wardrobe-items/batch-crop": {
+        "/api/v1/wardrobe-items/batch-upload": {
             "post": {
                 "description": "Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần), hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi AI phân tích ngầm",
                 "consumes": [
@@ -1017,7 +1017,7 @@ const docTemplate = `{
                 "tags": [
                     "Wardrobe"
                 ],
-                "summary": "Số hóa trang phục hàng loạt (Cắt ảnh)",
+                "summary": "Số hóa trang phục hàng loạt",
                 "parameters": [
                     {
                         "description": "Danh sách ảnh trang phục cắt",
@@ -1025,7 +1025,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq"
                         }
                     }
                 ],
@@ -1698,7 +1698,7 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemsReq": {
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq": {
             "type": "object",
             "required": [
                 "items"

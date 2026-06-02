@@ -35,7 +35,7 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItemByID))
 		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.wardrobeHandler.CloneWardrobeItem))
 		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.wardrobeHandler.InitClosetFromCatalog))
-		wardrobeApi.POST("/batch-crop", shared_pres.WrapHandler(r.wardrobeHandler.BatchCropWardrobeItems))
+		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeHandler.BatchUploadWardrobeItems))
 	}
 
 	meApi := privateApi.Group("/me/wardrobe-items")
