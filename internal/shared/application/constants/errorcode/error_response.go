@@ -1,9 +1,10 @@
 package errorcode
 
 type ErrorResponse struct {
-	Status int    `json:"status"`
-	Title  string `json:"title,omitempty"`
-	Detail string `json:"detail,omitempty"`
+	Status     int    `json:"status"`
+	Title      string `json:"title,omitempty"`
+	Detail     string `json:"detail,omitempty"`
+	StackTrace any    `json:"stack_trace,omitempty"`
 }
 
 func (e *ErrorResponse) Error() string {

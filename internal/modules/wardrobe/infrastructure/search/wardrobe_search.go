@@ -2,15 +2,15 @@ package search
 
 import (
 	"context"
+	"errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	shared_search "smart-wardrobe-be/internal/shared/infrastructure/search"
-	"smart-wardrobe-be/pkg/logger"
-	"strings"
 )
 
-func NewWardrobeSearchService(searchEngine *shared_search.ElasticsearchClient, l logger.Interface) search.IWardrobeSearchService {
-	return &WardrobeSearchService{searchEngine: searchEngine, logger: l}
+func NewWardrobeSearchService(searchEngine *shared_search.ElasticsearchClient) search.IWardrobeSearchService {
+	return &WardrobeSearchService{searchEngine: searchEngine}
 }
 
 func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) ([]*dto.SearchWardrobeItemRes, error) {
@@ -75,10 +75,10 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) (
 	// 2. Thực thi lệnh search qua Elasticsearch
 	respBytes, err := s.searchEngine.Search(ctx, "wardrobe_items", esQuery)
 	if err != nil {
-		// Index chưa tồn tại — trả về mảng rỗng
-		if strings.Contains(err.Error(), "status code 404") {
+		if errors.Is(err, errorcode.ErrSearchIndexNotFound) {
 			return []*dto.SearchWardrobeItemRes{}, nil
 		}
+		return nil, err
 	}
 
 	// 3. Parse kết quả từ Elasticsearch

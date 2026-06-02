@@ -5,12 +5,11 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_search "smart-wardrobe-be/internal/shared/infrastructure/search"
-	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-func NewWardrobeSearchIndexService(searchEngine *shared_search.ElasticsearchClient, l logger.Interface) search.IWardrobeSearchIndexService {
-	return &WardrobeSearchService{searchEngine: searchEngine, logger: l}
+func NewWardrobeSearchIndexService(searchEngine *shared_search.ElasticsearchClient) search.IWardrobeSearchIndexService {
+	return &WardrobeSearchService{searchEngine: searchEngine}
 }
 
 func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *entities.WardrobeItem) error {

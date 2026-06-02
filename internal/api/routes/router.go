@@ -13,7 +13,7 @@ import (
 func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *middleware.RateLimitMiddleware) *gin.Engine {
 	engine := gin.Default()
 
-	engine.Use(middleware.GlobalErrorHandler(log))
+	engine.Use(middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
 	engine.Use(middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())

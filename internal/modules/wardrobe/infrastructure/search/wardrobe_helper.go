@@ -3,9 +3,9 @@ package search
 import (
 	"encoding/json"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 // parseEsResToSearchRes parse JSON thô từ Elasticsearch sang danh sách SearchWardrobeItemRes
@@ -38,8 +38,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	}
 
 	if err := json.Unmarshal(respBytes, &esResult); err != nil {
-		s.logger.Error("Failed to unmarshal Elasticsearch raw search response", zap.Error(err))
-		return nil, err
+		return nil, errorcode.NewInternalError("Failed to unmarshal raw search response")
 	}
 
 	results := make([]*dto.SearchWardrobeItemRes, len(esResult.Hits.Hits))

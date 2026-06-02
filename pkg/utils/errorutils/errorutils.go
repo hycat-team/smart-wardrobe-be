@@ -4,7 +4,35 @@ import (
 	"errors"
 	"net/http"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"strings"
 )
+
+// FilterStackTrace loại bỏ các dòng log của thư viện ngoài, giữ lại dòng code của dự án
+func FilterStackTraceArray(rawStack string) []string {
+	lines := strings.Split(rawStack, "\n")
+	var filteredLines []string
+
+	if len(lines) > 0 && strings.HasPrefix(lines[0], "goroutine") {
+		filteredLines = append(filteredLines, lines[0])
+	}
+
+	for i := 1; i < len(lines)-1; i += 2 {
+		functionLine := lines[i]
+		fileLine := lines[i+1]
+
+		if strings.Contains(functionLine, "smart-wardrobe-be") || strings.Contains(fileLine, "smart-wardrobe-be") {
+			// Thu gọn khoảng trắng và ký tự tab để hiển thị JSON sạch hơn
+			filteredLines = append(filteredLines, strings.TrimSpace(functionLine))
+			filteredLines = append(filteredLines, strings.TrimSpace(fileLine))
+		}
+	}
+
+	if len(filteredLines) <= 1 {
+		return []string{"No project-level stack trace available."}
+	}
+
+	return filteredLines
+}
 
 func MapErrorToProblem(err error) (int, string, string) {
 	if err == nil {

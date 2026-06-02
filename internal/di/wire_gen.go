@@ -90,7 +90,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
-	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient, l)
+	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
 	iaiService := ai.NewAIService(cfg, l)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
@@ -116,7 +116,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBatchCropJobConsumer := messaging2.NewBatchCropJobConsumer(rabbitMQClient, l)
 	batchCropWorker := worker2.NewBatchCropWorker(iBatchCropJobConsumer, iWardrobeUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
-	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient, l)
+	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	searchSyncWorker := worker2.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:   iSubscriptionRenewalWorker,

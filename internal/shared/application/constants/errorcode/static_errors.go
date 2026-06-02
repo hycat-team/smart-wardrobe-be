@@ -22,7 +22,8 @@ var (
 	ErrForbidden = errors.New("Không có quyền truy cập")
 
 	// --- 404 Not Found ---
-	ErrTokenNotFound = errors.New("không tìm thấy token")
+	ErrTokenNotFound       = errors.New("không tìm thấy token")
+	ErrSearchIndexNotFound = errors.New("chỉ mục tìm kiếm chưa tồn tại hoặc đã bị xóa")
 
 	// --- 409 Conflict ---
 	ErrConflictDuplicate = errors.New("Dữ liệu bị trùng lặp")
@@ -99,6 +100,11 @@ func InitErrorMap() {
 			Status: http.StatusNotFound,
 			Title:  "Không tìm thấy",
 			Detail: ErrTokenNotFound.Error(),
+		},
+		ErrSearchIndexNotFound: {
+			Status: http.StatusNotFound,
+			Title:  "Không tìm thấy",
+			Detail: ErrSearchIndexNotFound.Error(),
 		},
 
 		// --- 409 ---
