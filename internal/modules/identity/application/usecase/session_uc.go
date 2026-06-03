@@ -10,7 +10,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
-	"smart-wardrobe-be/internal/shared/domain/constants/jwttype"
+	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 

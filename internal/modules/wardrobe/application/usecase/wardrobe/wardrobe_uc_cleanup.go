@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 
 	"go.uber.org/zap"
 )

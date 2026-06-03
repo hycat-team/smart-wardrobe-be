@@ -3,7 +3,7 @@ package middleware
 import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
-	"smart-wardrobe-be/internal/shared/domain/constants/jwttype"
+	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 	"strings"

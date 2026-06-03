@@ -3,7 +3,7 @@ package jwtutils
 import (
 	"errors"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
-	"smart-wardrobe-be/internal/shared/domain/constants/jwttype"
+	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"

@@ -12,7 +12,7 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
-	"smart-wardrobe-be/internal/shared/domain/constants/otpconstants"
+	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 
 	"github.com/redis/go-redis/v9"
 )

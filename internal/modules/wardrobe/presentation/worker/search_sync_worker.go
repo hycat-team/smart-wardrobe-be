@@ -8,7 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/pkg/logger"
 
