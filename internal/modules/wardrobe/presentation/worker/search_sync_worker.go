@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -58,7 +59,7 @@ func (w *SearchSyncWorker) startConsume() {
 
 func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dto.WardrobeEventPayload) error {
 	switch eventPayload.Action {
-	case "created", "updated":
+	case eventconstants.ActionCreated, eventconstants.ActionUpdated:
 		item, err := w.wardrobeRepo.GetByID(ctx, eventPayload.ItemID)
 		if err != nil {
 			return err
@@ -84,7 +85,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 			return nil
 		}
 
-	case "deleted":
+	case eventconstants.ActionDeleted:
 		if err := w.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String()); err != nil {
 			w.logger.Warn("[SearchSyncWorker] Failed to delete item from search index (Elasticsearch may be offline)",
 				zap.String("itemId", eventPayload.ItemID.String()),

@@ -11,32 +11,32 @@ import (
 	"go.uber.org/zap"
 )
 
-type BatchCropJobConsumer struct {
+type WardrobeBatchUploadJobConsumer struct {
 	messageClient shared_msg.IRabbitMQClient
 	logger        logger.Interface
 }
 
-func NewBatchCropJobConsumer(messageClient shared_msg.IRabbitMQClient, l logger.Interface) event.IBatchCropJobConsumer {
-	return &BatchCropJobConsumer{messageClient: messageClient, logger: l}
+func NewWardrobeBatchUploadJobConsumer(messageClient shared_msg.IRabbitMQClient, l logger.Interface) event.IWardrobeBatchUploadJobConsumer {
+	return &WardrobeBatchUploadJobConsumer{messageClient: messageClient, logger: l}
 }
 
-func (c *BatchCropJobConsumer) ConsumeJobs(ctx context.Context, handler func(ctx context.Context, job dto.BatchCropJobDTO) error) error {
-	deliveries, err := c.messageClient.Consume(shared_msg.QueueBatchCropJobs)
+func (c *WardrobeBatchUploadJobConsumer) ConsumeJobs(ctx context.Context, handler func(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error) error {
+	deliveries, err := c.messageClient.Consume(shared_msg.QueueWardrobeBatchUpload)
 	if err != nil {
 		return err
 	}
 
 	go func() {
 		for d := range deliveries {
-			var job dto.BatchCropJobDTO
+			var job dto.WardrobeBatchUploadJobDTO
 			if err := json.Unmarshal(d.Body, &job); err != nil {
-				c.logger.Error("[BatchCropJobConsumer] Failed to unmarshal message body", zap.Error(err))
+				c.logger.Error("[WardrobeBatchUploadJobConsumer] Failed to unmarshal message body", zap.Error(err))
 				_ = d.Nack(false, false)
 				continue
 			}
 
 			if err := handler(ctx, job); err != nil {
-				c.logger.Error("[BatchCropJobConsumer] Error processing job", zap.Error(err))
+				c.logger.Error("[WardrobeBatchUploadJobConsumer] Error processing job", zap.Error(err))
 				_ = d.Nack(false, false)
 			} else {
 				_ = d.Ack(false)

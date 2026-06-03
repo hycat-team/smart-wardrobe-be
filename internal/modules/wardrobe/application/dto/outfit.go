@@ -7,9 +7,9 @@ import (
 )
 
 type SaveOutfitReq struct {
-	Name          string             `json:"name" binding:"required,max=255"`
-	Description   *string            `json:"description" binding:"omitempty"`
-	CoverImageUrl *string            `json:"cover_image_url" binding:"omitempty,url"`
+	Name          string              `json:"name" binding:"required,max=255"`
+	Description   *string             `json:"description" binding:"omitempty"`
+	CoverImageUrl *string             `json:"cover_image_url" binding:"omitempty,url"`
 	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive"`
 }
 

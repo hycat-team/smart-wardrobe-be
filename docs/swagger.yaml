@@ -264,24 +264,11 @@ definitions:
     required:
     - enabled
     type: object
-  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq:
-    properties:
-      categoryId:
-        type: string
-      imagePublicId:
-        type: string
-      imageUrl:
-        type: string
-    required:
-    - categoryId
-    - imagePublicId
-    - imageUrl
-    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq:
     properties:
       items:
         items:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq'
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq'
         minItems: 1
         type: array
     required:
@@ -314,6 +301,31 @@ definitions:
         type: array
     required:
     - catalogItemIds
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq:
+    properties:
+      categoryId:
+        type: string
+      color:
+        type: string
+      fit:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      seasonality:
+        type: string
+      style:
+        type: string
+    required:
+    - categoryId
+    - color
+    - fit
+    - material
+    - pattern
+    - seasonality
+    - style
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes:
     properties:
@@ -419,6 +431,18 @@ definitions:
         type: string
       style:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq:
+    properties:
+      categoryId:
+        type: string
+      imagePublicId:
+        type: string
+      imageUrl:
+        type: string
+    required:
+    - imagePublicId
+    - imageUrl
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
     properties:
@@ -698,6 +722,26 @@ paths:
       summary: Đặt lại mật khẩu
       tags:
       - Auth
+  /api/v1/categories:
+    get:
+      description: Lấy danh sách toàn bộ danh mục trang phục trong hệ thống
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách danh mục
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes'
+                  type: array
+              type: object
+      summary: Lấy tất cả danh mục trang phục
+      tags:
+      - Category
   /api/v1/me:
     get:
       consumes:
@@ -1207,6 +1251,39 @@ paths:
                   type: array
               type: object
       summary: Nhân bản trang phục
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/{id}/manual-classify:
+    put:
+      consumes:
+      - application/json
+      description: Cho phép người dùng tự điền tay thông tin cho trang phục phân tích
+        lỗi, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ
+      parameters:
+      - description: ID trang phục
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thông tin phân loại thủ công
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chi tiết trang phục sau khi cập nhật
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+              type: object
+      summary: Tự phân loại trang phục thủ công
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/batch-upload:

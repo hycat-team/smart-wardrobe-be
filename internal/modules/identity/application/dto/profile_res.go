@@ -21,9 +21,9 @@ type UserRes struct {
 	CreatedAt    time.Time           `json:"createdAt"`
 	Subscription UserSubscriptionRes `json:"subscription"`
 	// Quota        *UserQuotaRes       `json:"quota,omitempty"`
-	BodyProfile *UserBodyProfileRes `json:"bodyProfile,omitempty"`
-	AvatarUrl    *string             `json:"avatarUrl,omitempty"`
-	AvatarPublicID *string           `json:"avatarPublicId,omitempty"`
+	BodyProfile    *UserBodyProfileRes `json:"bodyProfile,omitempty"`
+	AvatarUrl      *string             `json:"avatarUrl,omitempty"`
+	AvatarPublicID *string             `json:"avatarPublicId,omitempty"`
 }
 
 type UpdateAvatarReq struct {

@@ -39,15 +39,20 @@ func buildItemDocument(item *entities.WardrobeItem) map[string]any {
 		"created_at":      item.CreatedAt,
 	}
 
+	var categoryIDStr string
+	if item.CategoryID != nil {
+		categoryIDStr = item.CategoryID.String()
+	}
+
 	if item.Category != nil {
 		doc["category"] = map[string]any{
-			"id":   item.CategoryID.String(),
+			"id":   categoryIDStr,
 			"name": item.Category.Name,
 			"slug": item.Category.Slug,
 		}
 	} else {
 		doc["category"] = map[string]any{
-			"id":   item.CategoryID.String(),
+			"id":   categoryIDStr,
 			"name": "",
 			"slug": "",
 		}

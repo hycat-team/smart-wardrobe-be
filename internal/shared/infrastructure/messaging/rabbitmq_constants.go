@@ -5,10 +5,10 @@ const (
 	ExchangeType = "topic"
 
 	// Queues
-	QueueBatchCropJobs     = "batch_crop_jobs"
-	QueueElasticsearchSync = "elasticsearch_sync_queue"
+	QueueWardrobeBatchUpload = "wardrobe_batch_upload_queue"
+	QueueElasticsearchSync   = "elasticsearch_sync_queue"
 
 	// Routing Keys
-	RoutingKeyBatchCropJobs             = "batch_crop_jobs"
+	RoutingKeyWardrobeBatchUpload       = "wardrobe.event.batch-upload"
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
 )

@@ -16,10 +16,10 @@ import (
 )
 
 type AuthHandler struct {
-	registerUC  usecase_interfaces.IRegisterUseCase
-	sessionUC   usecase_interfaces.ISessionUseCase
-	recoveryUC  usecase_interfaces.IPasswordRecoveryUseCase
-	cfg         *config.Config
+	registerUC usecase_interfaces.IRegisterUseCase
+	sessionUC  usecase_interfaces.ISessionUseCase
+	recoveryUC usecase_interfaces.IPasswordRecoveryUseCase
+	cfg        *config.Config
 }
 
 func NewAuthHandler(
@@ -29,10 +29,10 @@ func NewAuthHandler(
 	cfg *config.Config,
 ) *AuthHandler {
 	return &AuthHandler{
-		registerUC:  registerUC,
-		sessionUC:   sessionUC,
-		recoveryUC:  recoveryUC,
-		cfg:         cfg,
+		registerUC: registerUC,
+		sessionUC:  sessionUC,
+		recoveryUC: recoveryUC,
+		cfg:        cfg,
 	}
 }
 

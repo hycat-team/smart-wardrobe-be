@@ -1,0 +1,88 @@
+package wardrobe
+
+import (
+	"context"
+	"fmt"
+
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/domain/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+
+	"github.com/google/uuid"
+)
+
+func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error) {
+	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, errorcode.NewNotFound("Không tìm thấy trang phục.")
+	}
+
+	if item.UserID != userID {
+		return nil, errorcode.NewForbidden("Bạn không có quyền cập nhật trang phục này.")
+	}
+
+	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	if category == nil {
+		return nil, errorcode.NewBadRequest("Danh mục không tồn tại.")
+	}
+
+	tokens := fmt.Sprintf("[CAT:%s][COL:%s][STY:%s][MAT:%s][PAT:%s][FIT:%s][SEA:%s]",
+		category.Slug, input.Color, input.Style, input.Material, input.Pattern, input.Fit, input.Seasonality)
+
+	freeForm := fmt.Sprintf("Món đồ thời trang %s màu %s phong cách %s được làm từ %s với họa tiết %s, dáng %s thích hợp mặc vào %s.",
+		category.Name, input.Color, input.Style, input.Material, input.Pattern, input.Fit, input.Seasonality)
+
+	description := tokens + " " + freeForm
+
+	richTextContext := fmt.Sprintf(
+		"Danh mục trang phục: %s, Thuộc tính màu sắc: %s, Định hình phong cách thiết kế: %s, Chất liệu: %s, Họa tiết: %s, Kiểu dáng: %s, Mùa phù hợp: %s. Mô tả chi tiết: %s",
+		category.Name,
+		input.Color,
+		input.Style,
+		input.Material,
+		input.Pattern,
+		input.Fit,
+		input.Seasonality,
+		freeForm,
+	)
+
+	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
+	if err != nil || len(embeddings) == 0 {
+		return nil, errorcode.NewInternalError("Không thể tạo vector biểu diễn văn bản thời trang.")
+	}
+	embedding := embeddings[0]
+
+	item.CategoryID = &category.ID
+	item.Color = &input.Color
+	item.Style = &input.Style
+	item.Material = &input.Material
+	item.Pattern = &input.Pattern
+	item.Fit = &input.Fit
+	item.Seasonality = &input.Seasonality
+	item.Description = &description
+	item.Embedding = entities.Vector(embedding)
+	item.Status = wardrobestatus.InWardrobe
+
+	err = uc.wardrobeRepo.Update(ctx, item)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := dto.WardrobeEventPayload{
+		ItemID: item.ID,
+		UserID: item.UserID,
+		Action: eventconstants.ActionCreated,
+	}
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
+
+	return mapper.MapToWardrobeItemRes(item), nil
+}

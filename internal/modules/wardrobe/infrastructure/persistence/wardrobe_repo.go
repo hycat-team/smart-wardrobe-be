@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -26,7 +27,9 @@ func NewWardrobeItemRepository(db *gorm.DB) repositories.IWardrobeItemRepository
 
 func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
 	var count int64
-	err := r.GetDB(ctx).Model(&entities.WardrobeItem{}).Where("user_id = ?", userID).Count(&count).Error
+	err := r.GetDB(ctx).Model(&entities.WardrobeItem{}).
+		Where("user_id = ? AND status NOT IN (?, ?)", userID, wardrobestatus.Processing, wardrobestatus.Failed).
+		Count(&count).Error
 	if err != nil {
 		return 0, err
 	}
@@ -83,6 +86,18 @@ func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, it
 	}
 
 	err := db.Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *WardrobeItemRepository) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).
+		Where("status = ? AND created_at < NOW() - INTERVAL '7 days'", wardrobestatus.Failed).
+		Limit(limit).
+		Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

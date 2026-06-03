@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/auth"
+	category2 "smart-wardrobe-be/internal/api/routes/category"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
 	"smart-wardrobe-be/internal/api/routes/subscription"
@@ -27,6 +28,7 @@ import (
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
@@ -103,25 +105,31 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase)
 	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
+	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository)
+	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
+	categoryRouter := category2.NewRouter(categoryHandler)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
 		SubscriptionRouter: subscriptionRouter,
 		WardrobeRouter:     wardrobeRouter,
 		OutfitRouter:       outfitRouter,
+		CategoryRouter:     categoryRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
-	iBatchCropJobConsumer := messaging2.NewBatchCropJobConsumer(rabbitMQClient, l)
-	batchCropWorker := worker2.NewBatchCropWorker(iBatchCropJobConsumer, iWardrobeUseCase, l)
+	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
+	wardrobeBatchUploadWorker := worker2.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	searchSyncWorker := worker2.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
+	iFailedItemsCleanupWorker := worker2.NewFailedItemsCleanupWorker(iWardrobeUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
-		RenewalWorker:   iSubscriptionRenewalWorker,
-		BatchCropWorker: batchCropWorker,
-		ESAsyncWorker:   searchSyncWorker,
+		RenewalWorker:             iSubscriptionRenewalWorker,
+		WardrobeBatchUploadWorker: wardrobeBatchUploadWorker,
+		ESAsyncWorker:             searchSyncWorker,
+		FailedItemsCleanupWorker:  iFailedItemsCleanupWorker,
 	}
 	app := bootstrap.NewApp(cfg, engine, appWorkers)
 	return app, func() {

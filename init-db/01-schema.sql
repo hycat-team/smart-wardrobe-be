@@ -132,7 +132,7 @@ CREATE TABLE categories (
 CREATE TABLE wardrobe_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+    category_id UUID REFERENCES categories(id) ON DELETE RESTRICT,
     image_url VARCHAR(500) NOT NULL,
     image_public_id VARCHAR(255) NOT NULL,
     color VARCHAR(50),

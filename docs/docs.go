@@ -295,6 +295,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/categories": {
+            "get": {
+                "description": "Lấy danh sách toàn bộ danh mục trang phục trong hệ thống",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Category"
+                ],
+                "summary": "Lấy tất cả danh mục trang phục",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách danh mục",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me": {
             "get": {
                 "description": "Lấy thông tin chi tiết tài khoản của người dùng hiện tại đang đăng nhập",
@@ -1274,6 +1309,59 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/wardrobe-items/{id}/manual-classify": {
+            "put": {
+                "description": "Cho phép người dùng tự điền tay thông tin cho trang phục phân tích lỗi, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Tự phân loại trang phục thủ công",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID trang phục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin phân loại thủ công",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chi tiết trang phục sau khi cập nhật",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1679,25 +1767,6 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq": {
-            "type": "object",
-            "required": [
-                "categoryId",
-                "imagePublicId",
-                "imageUrl"
-            ],
-            "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "imagePublicId": {
-                    "type": "string"
-                },
-                "imageUrl": {
-                    "type": "string"
-                }
-            }
-        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq": {
             "type": "object",
             "required": [
@@ -1708,7 +1777,7 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchCropWardrobeItemReq"
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq"
                     }
                 }
             }
@@ -1752,6 +1821,41 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "color",
+                "fit",
+                "material",
+                "pattern",
+                "seasonality",
+                "style"
+            ],
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
                 }
             }
         },
@@ -1905,6 +2009,24 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "style": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq": {
+            "type": "object",
+            "required": [
+                "imagePublicId",
+                "imageUrl"
+            ],
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
                     "type": "string"
                 }
             }

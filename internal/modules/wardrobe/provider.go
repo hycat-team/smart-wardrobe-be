@@ -1,6 +1,7 @@
 package wardrobe
 
 import (
+	category_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	wardrobe_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
@@ -18,12 +19,15 @@ var ProviderSet = wire.NewSet(
 	persistence.NewOutfitRepository,
 	search.NewWardrobeSearchService,
 	search.NewWardrobeSearchIndexService,
-	messaging.NewBatchCropJobConsumer,
+	messaging.NewWardrobeBatchUploadJobConsumer,
 	messaging.NewSearchSyncEventConsumer,
 	wardrobe_uc.NewWardrobeUseCase,
 	outfit_uc.NewOutfitUseCase,
+	category_uc.NewCategoryUseCase,
 	handler.NewWardrobeHandler,
 	handler.NewOutfitHandler,
-	worker.NewBatchCropWorker,
+	handler.NewCategoryHandler,
+	worker.NewWardrobeBatchUploadWorker,
 	worker.NewSearchSyncWorker,
+	worker.NewFailedItemsCleanupWorker,
 )

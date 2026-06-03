@@ -30,16 +30,16 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 	}
 
 	res := &dto.UserRes{
-		ID:        user.ID,
-		Username:  user.Username,
-		Email:     user.Email,
-		RoleSlug:  user.RoleSlug,
-		FirstName: firstNameStr,
-		LastName:  lastNameStr,
-		Address:   addressStr,
-		Gender:    genderVal,
-		Status:    int(user.Status),
-		CreatedAt: user.CreatedAt,
+		ID:             user.ID,
+		Username:       user.Username,
+		Email:          user.Email,
+		RoleSlug:       user.RoleSlug,
+		FirstName:      firstNameStr,
+		LastName:       lastNameStr,
+		Address:        addressStr,
+		Gender:         genderVal,
+		Status:         int(user.Status),
+		CreatedAt:      user.CreatedAt,
 		AvatarUrl:      user.AvatarUrl,
 		AvatarPublicID: user.AvatarPublicID,
 	}

@@ -6,6 +6,6 @@ import (
 )
 
 type IAIService interface {
-	AnalyzeFashionImage(ctx context.Context, imageUrl string) (*dto.FashionMetadataResult, error)
+	AnalyzeFashionImage(ctx context.Context, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error)
 	GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error)
 }

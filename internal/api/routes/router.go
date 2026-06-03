@@ -44,6 +44,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		r.SubscriptionRouter.Init(api)
 		r.WardrobeRouter.Init(api)
 		r.OutfitRouter.Init(api)
+		r.CategoryRouter.Init(api)
 	}
 
 	return engine

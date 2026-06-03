@@ -5,8 +5,8 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
-type IBatchCropJobConsumer interface {
-	ConsumeJobs(ctx context.Context, handler func(ctx context.Context, job dto.BatchCropJobDTO) error) error
+type IWardrobeBatchUploadJobConsumer interface {
+	ConsumeJobs(ctx context.Context, handler func(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error) error
 }
 
 type ISearchSyncEventConsumer interface {

@@ -1,18 +1,18 @@
 package entities
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
-	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/gender"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
+	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,18 +34,18 @@ type SubscriptionPlan struct {
 type User struct {
 	AuditableEntity
 	SoftDeleteEntity
-	Username     string                `gorm:"type:varchar(255);not null"`
-	Email        string                `gorm:"type:varchar(255);uniqueIndex;not null"`
-	PasswordHash string                `gorm:"type:varchar(255);not null"`
-	FirstName    *string               `gorm:"type:varchar(255)"`
-	LastName     *string               `gorm:"type:varchar(255)"`
-	DateOfBirth  *time.Time            `gorm:"type:date"`
-	Address      *string               `gorm:"type:varchar(255)"`
-	Gender       *gender.Gender        `gorm:"type:int"`
-	RoleSlug     roleslug.RoleSlug     `gorm:"type:varchar(50);not null"`
-	BodyProfile  *bodyProfile          `gorm:"type:jsonb"`
-	Status       userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
-	StyleProfile *UserStyleProfile     `gorm:"foreignKey:UserID"`
+	Username       string                `gorm:"type:varchar(255);not null"`
+	Email          string                `gorm:"type:varchar(255);uniqueIndex;not null"`
+	PasswordHash   string                `gorm:"type:varchar(255);not null"`
+	FirstName      *string               `gorm:"type:varchar(255)"`
+	LastName       *string               `gorm:"type:varchar(255)"`
+	DateOfBirth    *time.Time            `gorm:"type:date"`
+	Address        *string               `gorm:"type:varchar(255)"`
+	Gender         *gender.Gender        `gorm:"type:int"`
+	RoleSlug       roleslug.RoleSlug     `gorm:"type:varchar(50);not null"`
+	BodyProfile    *bodyProfile          `gorm:"type:jsonb"`
+	Status         userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
+	StyleProfile   *UserStyleProfile     `gorm:"foreignKey:UserID"`
 	AvatarUrl      *string               `gorm:"type:varchar(500)"`
 	AvatarPublicID *string               `gorm:"type:varchar(255)"`
 }
@@ -98,10 +98,10 @@ type ConversationalContext struct {
 
 type Message struct {
 	BaseEntity
-	ContextID uuid.UUID              `gorm:"type:uuid;not null"`
-	Context   *ConversationalContext `gorm:"foreignKey:ContextID;constraint:OnDelete:CASCADE"`
+	ContextID uuid.UUID                   `gorm:"type:uuid;not null"`
+	Context   *ConversationalContext      `gorm:"foreignKey:ContextID;constraint:OnDelete:CASCADE"`
 	Sender    messagesender.MessageSender `gorm:"type:varchar(50);not null"` // 'user' or 'ai'
-	Content   string                 `gorm:"type:text;not null"`
+	Content   string                      `gorm:"type:text;not null"`
 }
 
 type Category struct {
@@ -113,19 +113,19 @@ type Category struct {
 type WardrobeItem struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID     uuid.UUID `gorm:"type:uuid;not null"`
-	User       *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	CategoryID uuid.UUID `gorm:"type:uuid;not null"`
-	Category   *Category `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
-	ImageUrl      string    `gorm:"type:varchar(500);not null"`
-	ImagePublicID string    `gorm:"type:varchar(255);not null"`
-	Color         *string   `gorm:"type:varchar(50)"`
-	Style         *string   `gorm:"type:varchar(100)"`
-	Material      *string   `gorm:"type:varchar(100)"`
-	Pattern       *string   `gorm:"type:varchar(100)"`
-	Fit           *string   `gorm:"type:varchar(50)"`
-	Seasonality   *string   `gorm:"type:varchar(100)"`
-	Description   *string   `gorm:"type:text"`
+	UserID        uuid.UUID                         `gorm:"type:uuid;not null"`
+	User          *User                             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	CategoryID    *uuid.UUID                        `gorm:"type:uuid"`
+	Category      *Category                         `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
+	ImageUrl      string                            `gorm:"type:varchar(500);not null"`
+	ImagePublicID string                            `gorm:"type:varchar(255);not null"`
+	Color         *string                           `gorm:"type:varchar(50)"`
+	Style         *string                           `gorm:"type:varchar(100)"`
+	Material      *string                           `gorm:"type:varchar(100)"`
+	Pattern       *string                           `gorm:"type:varchar(100)"`
+	Fit           *string                           `gorm:"type:varchar(50)"`
+	Seasonality   *string                           `gorm:"type:varchar(100)"`
+	Description   *string                           `gorm:"type:text"`
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
 	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"` // 0: UserItem, 1: SystemCatalogItem
 	Embedding     Vector                            `gorm:"type:vector(768)"`
@@ -158,14 +158,14 @@ type OutfitItem struct {
 type Post struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID       uuid.UUID `gorm:"type:uuid;not null"`
-	User         *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	PostType     posttype.PostType    `gorm:"type:varchar(50);not null"`
-	Content      string    `gorm:"type:text;not null"`
-	ContactInfo  *string   `gorm:"type:varchar(255)"`
-	TotalPrice   float64   `gorm:"type:decimal(12,2);default:0.00"`
-	LikeCount    int       `gorm:"type:int;default:0"`
-	CommentCount int       `gorm:"type:int;default:0"`
+	UserID       uuid.UUID         `gorm:"type:uuid;not null"`
+	User         *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	PostType     posttype.PostType `gorm:"type:varchar(50);not null"`
+	Content      string            `gorm:"type:text;not null"`
+	ContactInfo  *string           `gorm:"type:varchar(255)"`
+	TotalPrice   float64           `gorm:"type:decimal(12,2);default:0.00"`
+	LikeCount    int               `gorm:"type:int;default:0"`
+	CommentCount int               `gorm:"type:int;default:0"`
 }
 
 type PostScoreSnapshot struct {
@@ -177,12 +177,12 @@ type PostScoreSnapshot struct {
 
 type PostItem struct {
 	AuditableEntity
-	PostID        uuid.UUID     `gorm:"type:uuid;not null;uniqueIndex:unique_post_item"`
-	Post          *Post         `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE"`
-	ItemID        uuid.UUID     `gorm:"type:uuid;not null;uniqueIndex:unique_post_item"`
-	WardrobeItem  *WardrobeItem `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
-	Price         float64       `gorm:"type:decimal(12,2);not null;default:0.00"`
-	ItemCondition int16         `gorm:"type:smallint;not null;default:1"`
+	PostID        uuid.UUID                     `gorm:"type:uuid;not null;uniqueIndex:unique_post_item"`
+	Post          *Post                         `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE"`
+	ItemID        uuid.UUID                     `gorm:"type:uuid;not null;uniqueIndex:unique_post_item"`
+	WardrobeItem  *WardrobeItem                 `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
+	Price         float64                       `gorm:"type:decimal(12,2);not null;default:0.00"`
+	ItemCondition int16                         `gorm:"type:smallint;not null;default:1"`
 	Status        postitemstatus.PostItemStatus `gorm:"type:smallint;not null;default:1"` // 0: hidden, 1: available, 2: sold
 }
 
@@ -209,38 +209,38 @@ type Like struct {
 }
 
 type UserWallet struct {
-	UserID    uuid.UUID `gorm:"type:uuid;primaryKey"`
-	User      *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Balance   float64   `gorm:"type:numeric(12,2);not null;default:0.00"`
-	Currency  currency.Currency    `gorm:"type:varchar(10);not null;default:'VND'"`
-	CreatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
-	UpdatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UserID    uuid.UUID         `gorm:"type:uuid;primaryKey"`
+	User      *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Balance   float64           `gorm:"type:numeric(12,2);not null;default:0.00"`
+	Currency  currency.Currency `gorm:"type:varchar(10);not null;default:'VND'"`
+	CreatedAt time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UpdatedAt time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
 }
 
 type DepositTransaction struct {
 	AuditableEntity
-	UserID             uuid.UUID         `gorm:"type:uuid;not null"`
-	User               *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Amount             float64                     `gorm:"type:numeric(12,2);not null"`
-	Currency           currency.Currency           `gorm:"type:varchar(10);not null;default:'VND'"`
-	Status             depositstatus.DepositStatus `gorm:"type:smallint;not null;default:0"` // 0: PENDING, 1: SUCCESS, 2: FAILED
+	UserID             uuid.UUID                                     `gorm:"type:uuid;not null"`
+	User               *User                                         `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Amount             float64                                       `gorm:"type:numeric(12,2);not null"`
+	Currency           currency.Currency                             `gorm:"type:varchar(10);not null;default:'VND'"`
+	Status             depositstatus.DepositStatus                   `gorm:"type:smallint;not null;default:0"` // 0: PENDING, 1: SUCCESS, 2: FAILED
 	TransactionType    deposittransactiontype.DepositTransactionType `gorm:"type:varchar(50);not null"`        // DIRECT_PURCHASE, WALLET_TOPUP
-	SubscriptionPlanID *uuid.UUID        `gorm:"type:uuid"`
-	SubscriptionPlan   *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:SET NULL"`
-	OrderCode          int64             `gorm:"type:bigint;autoIncrement;uniqueIndex;not null"`
-	GatewayReference   *string           `gorm:"type:varchar(255);uniqueIndex"` // PayOS payment transaction reference
-	GatewayDetails     *string           `gorm:"type:text"`                     // Raw JSON string payload from gateway
-	PaymentUrl         *string           `gorm:"type:varchar(500)"`
+	SubscriptionPlanID *uuid.UUID                                    `gorm:"type:uuid"`
+	SubscriptionPlan   *SubscriptionPlan                             `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:SET NULL"`
+	OrderCode          int64                                         `gorm:"type:bigint;autoIncrement;uniqueIndex;not null"`
+	GatewayReference   *string                                       `gorm:"type:varchar(255);uniqueIndex"` // PayOS payment transaction reference
+	GatewayDetails     *string                                       `gorm:"type:text"`                     // Raw JSON string payload from gateway
+	PaymentUrl         *string                                       `gorm:"type:varchar(500)"`
 }
 
 type WalletStatement struct {
 	AuditableEntity
-	UserID          uuid.UUID  `gorm:"type:uuid;not null"`
-	User            *User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Amount          float64    `gorm:"type:numeric(12,2);not null"`
+	UserID          uuid.UUID                               `gorm:"type:uuid;not null"`
+	User            *User                                   `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Amount          float64                                 `gorm:"type:numeric(12,2);not null"`
 	TransactionType walletstatementtype.WalletStatementType `gorm:"type:varchar(50);not null"` // TOPUP, SUBSCRIPTION_PURCHASE, SUBSCRIPTION_RENEWAL
-	PreviousBalance float64    `gorm:"type:numeric(12,2);not null"`
-	NewBalance      float64    `gorm:"type:numeric(12,2);not null"`
-	ReferenceID     *uuid.UUID `gorm:"type:uuid"`
-	Description     string     `gorm:"type:varchar(255);not null"`
+	PreviousBalance float64                                 `gorm:"type:numeric(12,2);not null"`
+	NewBalance      float64                                 `gorm:"type:numeric(12,2);not null"`
+	ReferenceID     *uuid.UUID                              `gorm:"type:uuid"`
+	Description     string                                  `gorm:"type:varchar(255);not null"`
 }

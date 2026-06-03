@@ -206,3 +206,39 @@ func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
 	shared_pres.Success(c, "Tìm kiếm trang phục thành công", response)
 	return nil
 }
+
+// ManualClassify manual classification fallback for a failed wardrobe item
+// @Summary Tự phân loại trang phục thủ công
+// @Description Cho phép người dùng tự điền tay thông tin cho trang phục phân tích lỗi, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ
+// @Tags Wardrobe
+// @Accept json
+// @Produce json
+// @Param id path string true "ID trang phục"
+// @Param body body dto.ManualClassifyReq true "Thông tin phân loại thủ công"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục sau khi cập nhật"
+// @Router /api/v1/wardrobe-items/{id}/manual-classify [put]
+func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	idStr := c.Param("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		return err
+	}
+
+	var input dto.ManualClassifyReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.ManualClassify(c.Request.Context(), userID, itemID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Tự phân loại trang phục thủ công thành công", response)
+	return nil
+}

@@ -42,7 +42,7 @@ func NewAIService(cfg *config.Config, logger logger.Interface) ai.IAIService {
 	}
 }
 
-func (s *AIService) AnalyzeFashionImage(ctx context.Context, imageUrl string) (*dto.FashionMetadataResult, error) {
+func (s *AIService) AnalyzeFashionImage(ctx context.Context, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	if err := s.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
@@ -52,10 +52,10 @@ func (s *AIService) AnalyzeFashionImage(ctx context.Context, imageUrl string) (*
 		"AnalyzeFashionImage",
 		s.cfg.AI.VisionFallback,
 		func() (*dto.FashionMetadataResult, error) {
-			return s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl)
+			return s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl, categories)
 		},
 		func() (*dto.FashionMetadataResult, error) {
-			return s.tryVisionProvider(ctx, s.cfg.AI.VisionFallback, imageUrl)
+			return s.tryVisionProvider(ctx, s.cfg.AI.VisionFallback, imageUrl, categories)
 		},
 	)
 }
@@ -82,12 +82,12 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 	)
 }
 
-func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
+func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIVision(ctx, provider, imageUrl)
+		return s.callOpenAIVision(ctx, provider, imageUrl, categories)
 	case ProviderGemini:
-		return s.callGoogleVision(ctx, provider, imageUrl)
+		return s.callGoogleVision(ctx, provider, imageUrl, categories)
 	}
 	return nil, errorcode.NewInternalError("Nhà cung cấp dịch vụ trí tuệ nhân tạo không được hỗ trợ.")
 }

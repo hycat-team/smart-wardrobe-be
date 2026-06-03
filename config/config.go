@@ -1,19 +1,19 @@
 package config
 
 type Config struct {
-	Database  Database
-	Redis     Redis
-	Server    Server
-	Jwt       Jwt
-	Logger    Logger
-	Quota     Quota
-	Otp       Otp
-	Email     Email
-	RateLimit RateLimit
-	PayOS     PayOS
-	Cloudinary Cloudinary
-	AI         AIServiceConfig
-	RabbitMQ   RabbitMQ
+	Database      Database
+	Redis         Redis
+	Server        Server
+	Jwt           Jwt
+	Logger        Logger
+	Quota         Quota
+	Otp           Otp
+	Email         Email
+	RateLimit     RateLimit
+	PayOS         PayOS
+	Cloudinary    Cloudinary
+	AI            AIServiceConfig
+	RabbitMQ      RabbitMQ
 	Elasticsearch Elasticsearch
 }
 

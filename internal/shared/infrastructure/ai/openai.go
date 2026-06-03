@@ -15,8 +15,8 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
-	prompt := getVisionSystemPrompt()
+func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
+	prompt := getVisionSystemPrompt(categories)
 
 	payload := map[string]any{
 		"model": provider.Model,
@@ -81,13 +81,20 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 		return nil, errorcode.NewInternalError("Không nhận được phản hồi phân tích hình ảnh.")
 	}
 
-	var result dto.FashionMetadataResult
+	var result struct {
+		dto.FashionMetadataResult
+		Error string `json:"error"`
+	}
 	cleanContent := stringutils.CleanJSONMarkdown(openAIResp.Choices[0].Message.Content)
 	if err := json.Unmarshal([]byte(cleanContent), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
 	}
 
-	return &result, nil
+	if result.Error != "" {
+		return nil, fmt.Errorf("OpenAI AI Error: %s", result.Error)
+	}
+
+	return &result.FashionMetadataResult, nil
 }
 
 func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {

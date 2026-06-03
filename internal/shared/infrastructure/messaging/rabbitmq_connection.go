@@ -59,8 +59,8 @@ func (r *RabbitMQClient) connect() error {
 		return fmt.Errorf("could not declare RabbitMQ exchange: %w", err)
 	}
 
-	// 2. Declare and Bind Batch Crop Queue
-	if err := r.DeclareAndBindQueue(QueueBatchCropJobs, RoutingKeyBatchCropJobs); err != nil {
+	// 2. Declare and Bind Wardrobe Batch Upload Queue
+	if err := r.DeclareAndBindQueue(QueueWardrobeBatchUpload, RoutingKeyWardrobeBatchUpload); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
 		return err

@@ -16,9 +16,10 @@ import (
 )
 
 type AppWorkers struct {
-	RenewalWorker   subWorker.ISubscriptionRenewalWorker
-	BatchCropWorker *wardrobeWorker.BatchCropWorker
-	ESAsyncWorker   *wardrobeWorker.SearchSyncWorker
+	RenewalWorker            subWorker.ISubscriptionRenewalWorker
+	WardrobeBatchUploadWorker *wardrobeWorker.WardrobeBatchUploadWorker
+	ESAsyncWorker            *wardrobeWorker.SearchSyncWorker
+	FailedItemsCleanupWorker wardrobeWorker.IFailedItemsCleanupWorker
 }
 
 type App struct {
@@ -53,6 +54,7 @@ func (a *App) Run() error {
 	fmt.Println("==========================================================")
 
 	a.Workers.RenewalWorker.Start()
+	a.Workers.FailedItemsCleanupWorker.Start()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -67,6 +69,7 @@ func (a *App) Run() error {
 	fmt.Println("\nReceived shutdown signal...")
 
 	a.Workers.RenewalWorker.Stop()
+	a.Workers.FailedItemsCleanupWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

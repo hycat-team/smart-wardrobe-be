@@ -1,10 +1,10 @@
 package shared
 
 import (
+	"smart-wardrobe-be/internal/shared/application/event"
 	infra_ai "smart-wardrobe-be/internal/shared/infrastructure/ai"
 	infra_media "smart-wardrobe-be/internal/shared/infrastructure/media"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
-	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/infrastructure/search"
 
 	"github.com/google/wire"

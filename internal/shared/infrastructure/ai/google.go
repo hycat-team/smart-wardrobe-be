@@ -18,14 +18,14 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string) (*dto.FashionMetadataResult, error) {
+func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	imgBytes, mimeType, err := httputils.DownloadImage(s.cli, ctx, imageUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image for Google Vision: %w", err)
 	}
 
 	base64Data := base64.StdEncoding.EncodeToString(imgBytes)
-	prompt := getVisionSystemPrompt()
+	prompt := getVisionSystemPrompt(categories)
 
 	payload := map[string]any{
 		"contents": []map[string]any{
@@ -89,13 +89,20 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 		return nil, errorcode.NewInternalError("Không nhận được phản hồi phân tích hình ảnh từ Google AI.")
 	}
 
-	var result dto.FashionMetadataResult
+	var result struct {
+		dto.FashionMetadataResult
+		Error string `json:"error"`
+	}
 	cleanContent := stringutils.CleanJSONMarkdown(googleResp.Candidates[0].Content.Parts[0].Text)
 	if err := json.Unmarshal([]byte(cleanContent), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from Google AI: %w", err)
 	}
 
-	return &result, nil
+	if result.Error != "" {
+		return nil, fmt.Errorf("Google AI Error: %s", result.Error)
+	}
+
+	return &result.FashionMetadataResult, nil
 }
 
 func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
