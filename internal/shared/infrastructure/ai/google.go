@@ -18,6 +18,63 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
+func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+	payload := map[string]any{
+		"contents": []map[string]any{
+			{
+				"parts": []map[string]string{
+					{
+						"text": systemPrompt + "\n\n" + userPrompt,
+					},
+				},
+			},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, provider.Model, provider.ApiKey)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.cli.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("Google Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	var googleResp struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&googleResp); err != nil {
+		return "", err
+	}
+
+	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
+		return "", errorcode.NewInternalError("Không nhận được phản hồi văn bản từ Google AI.")
+	}
+
+	return googleResp.Candidates[0].Content.Parts[0].Text, nil
+}
+
 func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	imgBytes, mimeType, err := httputils.DownloadImage(s.cli, ctx, imageUrl)
 	if err != nil {

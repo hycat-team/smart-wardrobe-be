@@ -15,6 +15,7 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -27,11 +28,15 @@ type WardrobeUseCase struct {
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	categoryRepo    repositories.ICategoryRepository
+	contextRepo     repositories.IConversationalContextRepository
+	messageRepo     repositories.IMessageRepository
 	searchEngine    search.IWardrobeSearchService
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
+	userQuotaCtr    contract.IUserQuotaContract
 	eventPublisher  event.IEventPublisher
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewWardrobeUseCase(
@@ -39,22 +44,30 @@ func NewWardrobeUseCase(
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	categoryRepo repositories.ICategoryRepository,
+	contextRepo repositories.IConversationalContextRepository,
+	messageRepo repositories.IMessageRepository,
 	searchEngine search.IWardrobeSearchService,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
+	userQuotaCtr contract.IUserQuotaContract,
 	eventPublisher event.IEventPublisher,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeUseCase {
 	return &WardrobeUseCase{
 		cfg:             cfg,
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
 		categoryRepo:    categoryRepo,
+		contextRepo:     contextRepo,
+		messageRepo:     messageRepo,
 		searchEngine:    searchEngine,
 		mediaService:    mediaService,
 		aiService:       aiService,
 		userSubContract: userSubContract,
+		userQuotaCtr:    userQuotaCtr,
 		eventPublisher:  eventPublisher,
+		uow:             uow,
 	}
 }
 

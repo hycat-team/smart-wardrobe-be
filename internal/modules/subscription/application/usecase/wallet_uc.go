@@ -54,37 +54,42 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 		return nil, err
 	}
 
-	if wallet == nil {
-		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-			existing, err := uc.walletRepo.GetByUserIDWithLock(txCtx, userID)
-			if err != nil {
-				return err
-			}
-			if existing != nil {
-				wallet = existing
-				return nil
-			}
+	if wallet != nil {
+		return &dto.WalletDTO{
+			UserID:    wallet.UserID,
+			Balance:   wallet.Balance,
+			Currency:  wallet.Currency,
+			UpdatedAt: wallet.UpdatedAt,
+		}, nil
+	}
 
-			now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-			newWallet := &entities.UserWallet{
-				UserID:    userID,
-				Balance:   0,
-				Currency:  currency.VND,
-				CreatedAt: now,
-				UpdatedAt: now,
-			}
-			if err := uc.walletRepo.Create(txCtx, newWallet); err != nil {
-				return err
-			}
-			wallet = newWallet
-			return nil
-		})
+	createNewWallet := func(txCtx context.Context) error {
+		existing, err := uc.walletRepo.GetByUserIDWithLock(txCtx, userID)
 		if err != nil {
-			wallet, err = uc.walletRepo.GetByUserID(ctx, userID)
-			if err != nil || wallet == nil {
-				return nil, errorcode.NewNotFound("Không tìm thấy ví người dùng")
-			}
+			return err
 		}
+		if existing != nil {
+			wallet = existing
+			return nil
+		}
+
+		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+		newWallet := &entities.UserWallet{
+			UserID:    userID,
+			Balance:   0,
+			Currency:  currency.VND,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		if err := uc.walletRepo.Create(txCtx, newWallet); err != nil {
+			return err
+		}
+		wallet = newWallet
+		return nil
+	}
+
+	if err = uc.uow.Execute(ctx, createNewWallet); err != nil || wallet == nil {
+		return nil, errorcode.NewNotFound("Không tìm thấy ví người dùng")
 	}
 
 	return &dto.WalletDTO{
@@ -121,7 +126,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 	var checkoutUrl string
 	var orderCode int64
 
-	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+	createWalletTopUp := func(txCtx context.Context) error {
 		tx := &entities.DepositTransaction{
 			UserID:          userID,
 			Amount:          req.Amount,
@@ -165,9 +170,9 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		orderCode = tx.OrderCode
 		return nil
-	})
+	}
 
-	if err != nil {
+	if err := uc.uow.Execute(ctx, createWalletTopUp); err != nil {
 		return nil, err
 	}
 

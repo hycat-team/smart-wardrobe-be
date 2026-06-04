@@ -74,7 +74,7 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 // @Produce json
 // @Param body body dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
-// @Router /api/v1/subscriptions/me/toggle-auto-renew [patch]
+// @Router /api/v1/subscriptions/me/auto-renew [put]
 func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

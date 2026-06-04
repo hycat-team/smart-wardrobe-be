@@ -55,3 +55,6 @@ CREATE INDEX IF NOT EXISTS idx_wardrobe_items_category_id ON wardrobe_items (cat
 -- Cải tiến UNIQUE ràng buộc kết hợp điều kiện (Conditional Unique Indexes) cho luồng Like
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_post ON likes (user_id, post_id) WHERE post_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_comment ON likes (user_id, comment_id) WHERE comment_id IS NOT NULL;
+
+-- Tối ưu luồng quét các gói cước hết hạn cần gia hạn tự động theo lô (Batch Processing)
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_active_expires ON user_subscriptions (is_active, expires_at, user_id);

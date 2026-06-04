@@ -35,6 +35,8 @@ type AIServiceConfig struct {
 	VisionFallback    APIProviderConfig
 	EmbeddingPrimary  APIProviderConfig
 	EmbeddingFallback APIProviderConfig
+	TextPrimary       APIProviderConfig
+	TextFallback      APIProviderConfig
 	RpmLimit          int
 }
 
@@ -51,6 +53,8 @@ type Cloudinary struct {
 	ApiSecret    string
 	AvatarFolder string
 	ItemFolder   string
+	OutfitFolder string
+	PostFolder   string
 }
 
 type PayOS struct {

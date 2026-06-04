@@ -12,11 +12,15 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/auth"
 	category2 "smart-wardrobe-be/internal/api/routes/category"
+	"smart-wardrobe-be/internal/api/routes/community"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
 	"smart-wardrobe-be/internal/api/routes/subscription"
 	wardrobe2 "smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
+	usecase3 "smart-wardrobe-be/internal/modules/community/application/usecase"
+	persistence4 "smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
+	handler4 "smart-wardrobe-be/internal/modules/community/presentation/handler"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
@@ -63,12 +67,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
 	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
-	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg)
-	iPasswordRecoveryUseCase := usecase.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
-	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
-	authMiddleware := middleware.NewAuthMiddleware(cfg)
-	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	iUnitOfWork := db.NewGormUnitOfWork(gormDB)
+	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
+	iPasswordRecoveryUseCase := usecase.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg, iUnitOfWork)
+	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService, iUserRepository)
+	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	iUserSubscriptionRepository := persistence2.NewUserSubscriptionRepository(gormDB)
 	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
@@ -91,6 +95,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	subscriptionRouter := subscription.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
+	iConversationalContextRepository := persistence3.NewConversationalContextRepository(gormDB)
+	iMessageRepository := persistence3.NewMessageRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
 	iaiService := ai.NewAIService(cfg, l)
@@ -98,16 +104,28 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	if err != nil {
 		return nil, nil, err
 	}
-	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
+	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iConversationalContextRepository, iMessageRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, rabbitMQClient, iUnitOfWork)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
 	wardrobeRouter := wardrobe2.NewRouter(wardrobeHandler, authMiddleware)
 	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)
-	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase)
+	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
 	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
 	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository)
 	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	categoryRouter := category2.NewRouter(categoryHandler)
+	iPostRepository := persistence4.NewPostRepository(gormDB)
+	iPostItemRepository := persistence4.NewPostItemRepository(gormDB)
+	iPostMediaRepository := persistence4.NewPostMediaRepository(gormDB)
+	iCommentRepository := persistence4.NewCommentRepository(gormDB)
+	iPostUseCase := usecase3.NewPostUseCase(iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
+	postHandler := handler4.NewPostHandler(iPostUseCase)
+	iLikeRepository := persistence4.NewLikeRepository(gormDB)
+	iPostInteractionUseCase := usecase3.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
+	postInteractionHandler := handler4.NewPostInteractionHandler(iPostInteractionUseCase)
+	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
+	itemTransferHandler := handler4.NewItemTransferHandler(iItemTransferUseCase)
+	communityRouter := community.NewRouter(postHandler, postInteractionHandler, itemTransferHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AuthRouter:         authRouter,
 		MeRouter:           meRouter,
@@ -115,6 +133,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		WardrobeRouter:     wardrobeRouter,
 		OutfitRouter:       outfitRouter,
 		CategoryRouter:     categoryRouter,
+		CommunityRouter:    communityRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)

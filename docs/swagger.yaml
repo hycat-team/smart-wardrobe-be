@@ -1,4 +1,152 @@
 definitions:
+  smart-wardrobe-be_internal_modules_community_application_dto.AddCommentReq:
+    properties:
+      content:
+        type: string
+    required:
+    - content
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.CommentRes:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.CreatePostReq:
+    properties:
+      contactInfo:
+        type: string
+      content:
+        type: string
+      itemIds:
+        items:
+          type: string
+        type: array
+      media:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq'
+        type: array
+      postType:
+        type: string
+      title:
+        type: string
+      totalPrice:
+        type: number
+    required:
+    - content
+    - postType
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.LikePostReq:
+    properties:
+      isLiked:
+        type: boolean
+    required:
+    - isLiked
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes:
+    properties:
+      buyerUserId:
+        type: string
+      id:
+        type: string
+      item:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+      itemCondition:
+        type: integer
+      price:
+        type: number
+      soldAt:
+        type: string
+      status:
+        type: integer
+      transferState:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq:
+    properties:
+      mediaType:
+        type: string
+      mediaUrl:
+        type: string
+      publicId:
+        type: string
+      sortOrder:
+        type: integer
+    required:
+    - mediaType
+    - mediaUrl
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostMediaRes:
+    properties:
+      id:
+        type: string
+      mediaType:
+        type: string
+      mediaUrl:
+        type: string
+      publicId:
+        type: string
+      sortOrder:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostRes:
+    properties:
+      commentCount:
+        type: integer
+      comments:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CommentRes'
+        type: array
+      contactInfo:
+        type: string
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+        type: array
+      likeCount:
+        type: integer
+      media:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostMediaRes'
+        type: array
+      postType:
+        type: string
+      title:
+        type: string
+      totalPrice:
+        type: number
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.RemovePostItemsReq:
+    properties:
+      postItemIds:
+        items:
+          type: string
+        type: array
+    required:
+    - postItemIds
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq:
+    properties:
+      buyerUserId:
+        type: string
+    required:
+    - buyerUserId
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq:
     properties:
       confirmPassword:
@@ -283,6 +431,32 @@ definitions:
       slug:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatMessageRes:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      sender:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes:
+    properties:
+      contextSummary:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: boolean
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq:
     properties:
       quantity:
@@ -291,6 +465,11 @@ definitions:
         type: integer
     required:
     - quantity
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateChatSessionReq:
+    properties:
+      title:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq:
     properties:
@@ -346,6 +525,8 @@ definitions:
     properties:
       cover_image_url:
         type: string
+      cover_public_id:
+        type: string
       created_at:
         type: string
       description:
@@ -363,6 +544,41 @@ definitions:
       updated_at:
         type: string
       user_id:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendOutfitReq:
+    properties:
+      details:
+        type: string
+      occasion:
+        type: string
+      season:
+        type: string
+      styleTarget:
+        type: string
+      weather:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendedItemGroup:
+    properties:
+      alternatives:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+        type: array
+      primary:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+      role:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendedOutfitRes:
+    properties:
+      explanation:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendedItemGroup'
+        type: array
+      title:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq:
@@ -393,6 +609,9 @@ definitions:
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq:
     properties:
       cover_image_url:
+        type: string
+      cover_public_id:
+        maxLength: 255
         type: string
       description:
         type: string
@@ -431,6 +650,13 @@ definitions:
         type: string
       style:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.SendChatMessageReq:
+    properties:
+      content:
+        type: string
+    required:
+    - content
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq:
     properties:
@@ -544,6 +770,161 @@ info:
   title: Smart Wardrobe API Document
   version: "1.0"
 paths:
+  /api/v1/ai/chat/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Lấy tất cả các phiên trò chuyện của người dùng hiện tại với stylist
+        AI
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách cuộc trò chuyện thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách cuộc trò chuyện AI
+      tags:
+      - Wardrobe AI
+    post:
+      consumes:
+      - application/json
+      description: Khởi tạo một phiên tư vấn phong cách thời trang mới với stylist
+        AI
+      parameters:
+      - description: Yêu cầu tạo cuộc trò chuyện
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateChatSessionReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tạo cuộc trò chuyện thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes'
+              type: object
+      summary: Tạo cuộc trò chuyện AI mới
+      tags:
+      - Wardrobe AI
+  /api/v1/ai/chat/sessions/{contextID}/archive:
+    patch:
+      consumes:
+      - application/json
+      description: Lưu trữ/ẩn cuộc trò chuyện với stylist AI
+      parameters:
+      - description: ID cuộc trò chuyện
+        in: path
+        name: contextID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lưu trữ cuộc trò chuyện thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lưu trữ cuộc trò chuyện AI
+      tags:
+      - Wardrobe AI
+  /api/v1/ai/chat/sessions/{contextID}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Lấy toàn bộ các tin nhắn trong một phiên trò chuyện cụ thể
+      parameters:
+      - description: ID cuộc trò chuyện
+        in: path
+        name: contextID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy lịch sử tin nhắn thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatMessageRes'
+                  type: array
+              type: object
+      summary: Lấy lịch sử tin nhắn AI
+      tags:
+      - Wardrobe AI
+  /api/v1/ai/chat/sessions/{contextID}/messages/stream:
+    post:
+      consumes:
+      - application/json
+      description: Gửi tin nhắn cho stylist AI và nhận phản hồi dạng stream sự kiện
+        (Server-Sent Events)
+      parameters:
+      - description: ID cuộc trò chuyện
+        in: path
+        name: contextID
+        required: true
+        type: string
+      - description: Nội dung tin nhắn gửi đi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SendChatMessageReq'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Stream Server-Sent Events (SSE) phản hồi từ AI
+          schema:
+            type: string
+      summary: Nhắn tin với stylist AI (Stream SSE)
+      tags:
+      - Wardrobe AI
+  /api/v1/ai/outfit-recommendations:
+    post:
+      consumes:
+      - application/json
+      description: Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người
+        dùng dựa trên dịp, thời tiết và phong cách
+      parameters:
+      - description: Yêu cầu gợi ý phối đồ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendOutfitReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Gợi ý phối đồ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendedOutfitRes'
+              type: object
+      summary: Gợi ý phối đồ từ tủ đồ
+      tags:
+      - Wardrobe AI
   /api/v1/auth/forgot-password:
     post:
       consumes:
@@ -1002,6 +1383,202 @@ paths:
       summary: Cập nhật bộ phối đồ
       tags:
       - Outfits
+  /api/v1/outfits/upload-signature:
+    get:
+      description: Lấy thông tin chữ ký bảo mật từ Cloudinary để upload ảnh cover
+        của outfit từ Client
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy chữ ký thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult'
+              type: object
+      summary: Lấy chữ ký tải ảnh bìa bộ phối đồ
+      tags:
+      - Outfits
+  /api/v1/posts:
+    get:
+      description: Lấy feed danh sách bài đăng của cộng đồng sắp xếp theo thứ tự mới
+        nhất/hot nhất
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy feed thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách bài đăng cộng đồng
+      tags:
+      - Community
+    post:
+      consumes:
+      - application/json
+      description: Đăng bài bán đồ hoặc khoe outfit lên bảng tin cộng đồng
+      parameters:
+      - description: Nội dung bài đăng
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CreatePostReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tạo bài đăng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+              type: object
+      summary: Tạo bài đăng cộng đồng mới
+      tags:
+      - Community
+  /api/v1/posts/{postID}:
+    delete:
+      description: Xóa bài đăng của chính người dùng hiện tại
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa bài đăng thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa bài đăng
+      tags:
+      - Community
+    get:
+      description: Lấy thông tin chi tiết của một bài đăng cụ thể kèm danh sách bình
+        luận
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy chi tiết bài đăng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+              type: object
+      summary: Lấy chi tiết bài đăng
+      tags:
+      - Community
+  /api/v1/posts/{postID}/comments:
+    post:
+      consumes:
+      - application/json
+      description: Tạo bình luận mới dưới bài viết cộng đồng
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      - description: Nội dung bình luận
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AddCommentReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Thêm bình luận thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CommentRes'
+              type: object
+      summary: Thêm bình luận vào bài viết
+      tags:
+      - Community
+  /api/v1/posts/{postID}/items:
+    delete:
+      consumes:
+      - application/json
+      description: Gỡ một hoặc nhiều món đồ ra khỏi danh sách bán trong bài đăng
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      - description: Danh sách ID các món đồ cần gỡ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.RemovePostItemsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Gỡ món đồ thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Gỡ món đồ khỏi bài đăng
+      tags:
+      - Community
+  /api/v1/posts/{postID}/like:
+    put:
+      consumes:
+      - application/json
+      description: Like hoặc unlike một bài viết trên cộng đồng bằng cách gửi trạng
+        thái rõ ràng
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      - description: Trạng thái thích
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.LikePostReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật like thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Thích / Bỏ thích bài đăng
+      tags:
+      - Community
   /api/v1/subscriptions/me:
     get:
       consumes:
@@ -1016,6 +1593,29 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Lấy thông tin gói hội viên hiện tại
+      tags:
+      - Subscription
+  /api/v1/subscriptions/me/auto-renew:
+    put:
+      consumes:
+      - application/json
+      description: Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví
+        nội bộ khi hết hạn
+      parameters:
+      - description: Trạng thái thiết lập tự động gia hạn
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Trạng thái tự động gia hạn mới
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Thiết lập tự động gia hạn gói cước
       tags:
       - Subscription
   /api/v1/subscriptions/me/daily-quota:
@@ -1079,29 +1679,6 @@ paths:
       summary: Đăng ký mua gói cước bằng ví nội bộ
       tags:
       - Billing
-  /api/v1/subscriptions/me/toggle-auto-renew:
-    patch:
-      consumes:
-      - application/json
-      description: Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví
-        nội bộ khi hết hạn
-      parameters:
-      - description: Trạng thái thiết lập tự động gia hạn
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Trạng thái tự động gia hạn mới
-          schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Thiết lập tự động gia hạn gói cước
-      tags:
-      - Subscription
   /api/v1/subscriptions/me/wallet:
     get:
       consumes:
@@ -1193,6 +1770,99 @@ paths:
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
+  /api/v1/transfers/{postItemID}/accept:
+    post:
+      description: Đồng ý nhận trang phục đã mua về tủ đồ cá nhân (Trang phục sẽ chuyển
+        quyền sở hữu)
+      parameters:
+      - description: ID chi tiết món đồ trong bài post
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nhận món đồ vào tủ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+              type: object
+      summary: Chấp nhận nhận bàn giao trang phục
+      tags:
+      - Community
+  /api/v1/transfers/{postItemID}/decline:
+    post:
+      description: Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
+      parameters:
+      - description: ID chi tiết món đồ trong bài post
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Từ chối nhận món đồ thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Từ chối nhận bàn giao trang phục
+      tags:
+      - Community
+  /api/v1/transfers/{postItemID}/mark-sold:
+    post:
+      consumes:
+      - application/json
+      description: Đánh dấu trang phục đã được bán cho một người dùng khác và kích
+        hoạt trạng thái bàn giao (transfer)
+      parameters:
+      - description: ID chi tiết món đồ trong bài post
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      - description: Thông tin người mua
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Đánh dấu đã bán thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đánh dấu món đồ đã bán
+      tags:
+      - Community
+  /api/v1/transfers/pending:
+    get:
+      description: Lấy danh sách các trang phục do người khác đánh dấu bán cho bạn
+        đang chờ xác nhận nhận về tủ đồ
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách đang chờ nhận thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+                  type: array
+              type: object
+      summary: Danh sách trang phục đang chờ nhận bàn giao
+      tags:
+      - Community
   /api/v1/wardrobe-items/{id}:
     get:
       description: Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn

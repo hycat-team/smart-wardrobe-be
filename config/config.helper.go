@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -28,4 +29,12 @@ func getEnvBool(key string, fallback bool) bool {
 		}
 	}
 	return fallback
+}
+
+func requireEnv(key string) (string, error) {
+	value, exists := os.LookupEnv(key)
+	if !exists || value == "" {
+		return "", fmt.Errorf("missing required env var: %s", key)
+	}
+	return value, nil
 }

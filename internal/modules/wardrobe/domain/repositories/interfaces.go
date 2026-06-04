@@ -32,3 +32,17 @@ type IOutfitRepository interface {
 	UpdateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	DeleteOutfit(ctx context.Context, id uuid.UUID) error
 }
+
+type IConversationalContextRepository interface {
+	shared_repos.IGenericRepository[entities.ConversationalContext, uuid.UUID]
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.ConversationalContext, error)
+}
+
+type IMessageRepository interface {
+	shared_repos.IGenericRepository[entities.Message, uuid.UUID]
+	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*entities.Message, error)
+	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
+	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
+	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
+	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
+}

@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -17,7 +19,7 @@ func LoadConfig() *Config {
 		}
 	}
 
-	return &Config{
+	cfg := &Config{
 		Database: Database{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnvInt("DB_PORT", 5432),
@@ -40,7 +42,7 @@ func LoadConfig() *Config {
 			Env:            getEnv("ENV", "development"),
 		},
 		Jwt: Jwt{
-			Secret:                          getEnv("JWT_SECRET", "default_secret_key_change_me_in_production"),
+			Secret:                          getEnv("JWT_SECRET", ""),
 			Issuer:                          getEnv("JWT_ISSUER", "SmartWardrobe"),
 			Audience:                        getEnv("JWT_AUDIENCE", "SmartWardrobeUsers"),
 			AccessExpirationMinutes:         getEnvInt("JWT_ACCESS_EXPIRATION_MINUTES", 60),
@@ -87,6 +89,8 @@ func LoadConfig() *Config {
 			ApiSecret:    getEnv("CLOUDINARY_API_SECRET", ""),
 			AvatarFolder: getEnv("CLOUDINARY_AVATAR_FOLDER", ""),
 			ItemFolder:   getEnv("CLOUDINARY_ITEM_FOLDER", ""),
+			OutfitFolder: getEnv("CLOUDINARY_OUTFIT_FOLDER", "smart_wardrobe/outfits"),
+			PostFolder:   getEnv("CLOUDINARY_POST_FOLDER", "smart_wardrobe/posts"),
 		},
 		AI: AIServiceConfig{
 			VisionPrimary: APIProviderConfig{
@@ -113,6 +117,18 @@ func LoadConfig() *Config {
 				Endpoint: getEnv("EMBEDDING_FALLBACK_ENDPOINT", ""),
 				Model:    getEnv("EMBEDDING_FALLBACK_MODEL", ""),
 			},
+			TextPrimary: APIProviderConfig{
+				Provider: getEnv("TEXT_PRIMARY_PROVIDER", getEnv("VISION_PRIMARY_PROVIDER", "")),
+				ApiKey:   getEnv("TEXT_PRIMARY_API_KEY", getEnv("VISION_PRIMARY_API_KEY", "")),
+				Endpoint: getEnv("TEXT_PRIMARY_ENDPOINT", getEnv("VISION_PRIMARY_ENDPOINT", "")),
+				Model:    getEnv("TEXT_PRIMARY_MODEL", getEnv("VISION_PRIMARY_MODEL", "")),
+			},
+			TextFallback: APIProviderConfig{
+				Provider: getEnv("TEXT_FALLBACK_PROVIDER", getEnv("VISION_FALLBACK_PROVIDER", "")),
+				ApiKey:   getEnv("TEXT_FALLBACK_API_KEY", getEnv("VISION_FALLBACK_API_KEY", "")),
+				Endpoint: getEnv("TEXT_FALLBACK_ENDPOINT", getEnv("VISION_FALLBACK_ENDPOINT", "")),
+				Model:    getEnv("TEXT_FALLBACK_MODEL", getEnv("VISION_FALLBACK_MODEL", "")),
+			},
 			RpmLimit: getEnvInt("AI_RPM_LIMIT", 5),
 		},
 		RabbitMQ: RabbitMQ{
@@ -127,4 +143,36 @@ func LoadConfig() *Config {
 			Password:  getEnv("ELASTICSEARCH_PASSWORD", ""),
 		},
 	}
+
+	if err := validateConfig(cfg); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
+	}
+
+	return cfg
+}
+
+func validateConfig(cfg *Config) error {
+	required := map[string]string{
+		"JWT secret": cfg.Jwt.Secret,
+		"DB host":    cfg.Database.Host,
+		"DB user":    cfg.Database.User,
+		"DB name":    cfg.Database.DbName,
+	}
+
+	for label, value := range required {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("%s is required", label)
+		}
+	}
+
+	if cfg.Server.Env == "production" {
+		if cfg.Jwt.Secret == "" {
+			return fmt.Errorf("default JWT secret is not allowed in production")
+		}
+		if strings.Contains(cfg.Server.FrontEndOrigin, "*") {
+			return fmt.Errorf("wildcard FRONTEND_ORIGIN is not allowed in production")
+		}
+	}
+
+	return nil
 }

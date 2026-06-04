@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	_ "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -20,6 +21,23 @@ func NewOutfitHandler(uc usecase_interfaces.IOutfitUseCase) *OutfitHandler {
 	return &OutfitHandler{
 		outfitUseCase: uc,
 	}
+}
+
+// GetUploadSignature get secure signature for uploading cover image
+// @Summary Lấy chữ ký tải ảnh bìa bộ phối đồ
+// @Description Lấy thông tin chữ ký bảo mật từ Cloudinary để upload ảnh cover của outfit từ Client
+// @Tags Outfits
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Lấy chữ ký thành công"
+// @Router /api/v1/outfits/upload-signature [get]
+func (h *OutfitHandler) GetUploadSignature(c *gin.Context) error {
+	signatureRes, err := h.outfitUseCase.GetUploadSignature(c.Request.Context())
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy chữ ký tải ảnh bìa bộ phối đồ thành công", signatureRes)
+	return nil
 }
 
 // SaveOutfit creates a new outfit coordinate canvas

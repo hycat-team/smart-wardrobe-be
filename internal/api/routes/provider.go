@@ -3,6 +3,7 @@ package routes
 import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/category"
+	"smart-wardrobe-be/internal/api/routes/community"
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/api/routes/outfit"
 	"smart-wardrobe-be/internal/api/routes/subscription"
@@ -18,6 +19,7 @@ type AppRouter struct {
 	WardrobeRouter     *wardrobe.WardrobeRouter
 	OutfitRouter       *outfit.OutfitRouter
 	CategoryRouter     *category.CategoryRouter
+	CommunityRouter    *community.CommunityRouter
 }
 
 var RouterSet = wire.NewSet(
@@ -27,4 +29,5 @@ var RouterSet = wire.NewSet(
 	wardrobe.NewRouter,
 	outfit.NewRouter,
 	category.NewRouter,
+	community.NewRouter,
 )

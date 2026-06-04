@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/ai"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/logger"
@@ -26,7 +26,7 @@ type AIService struct {
 	logger  logger.Interface
 }
 
-func NewAIService(cfg *config.Config, logger logger.Interface) ai.IAIService {
+func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService {
 	rpm := cfg.AI.RpmLimit
 	if rpm <= 0 {
 		rpm = 5
@@ -82,6 +82,24 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 	)
 }
 
+func (s *AIService) GenerateText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+	if err := s.limiter.Wait(ctx); err != nil {
+		return "", err
+	}
+
+	return executeWithFallback(
+		s.logger,
+		"GenerateText",
+		s.cfg.AI.TextFallback,
+		func() (string, error) {
+			return s.tryTextProvider(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
+		},
+		func() (string, error) {
+			return s.tryTextProvider(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
+		},
+	)
+}
+
 func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
@@ -89,6 +107,7 @@ func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIPr
 	case ProviderGemini:
 		return s.callGoogleVision(ctx, provider, imageUrl, categories)
 	}
+
 	return nil, errorcode.NewInternalError("Nhà cung cấp dịch vụ trí tuệ nhân tạo không được hỗ trợ.")
 }
 
@@ -99,5 +118,17 @@ func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider conf
 	case ProviderGemini:
 		return s.callGoogleEmbeddingBatch(ctx, provider, chunks)
 	}
+
 	return nil, errorcode.NewInternalError("Nhà cung cấp dịch vụ mã hóa không được hỗ trợ.")
+}
+
+func (s *AIService) tryTextProvider(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+	switch provider.Provider {
+	case ProviderOpenAI:
+		return s.callOpenAIText(ctx, provider, systemPrompt, userPrompt)
+	case ProviderGemini:
+		return s.callGoogleText(ctx, provider, systemPrompt, userPrompt)
+	}
+
+	return "", errorcode.NewInternalError("Nhà cung cấp dịch vụ tạo sinh văn bản không được hỗ trợ.")
 }

@@ -10,6 +10,7 @@ type SaveOutfitReq struct {
 	Name          string              `json:"name" binding:"required,max=255"`
 	Description   *string             `json:"description" binding:"omitempty"`
 	CoverImageUrl *string             `json:"cover_image_url" binding:"omitempty,url"`
+	CoverPublicID *string             `json:"cover_public_id" binding:"omitempty,max=255"`
 	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive"`
 }
 
@@ -27,6 +28,7 @@ type OutfitRes struct {
 	Name          string           `json:"name"`
 	Description   *string          `json:"description"`
 	CoverImageUrl *string          `json:"cover_image_url"`
+	CoverPublicID *string          `json:"cover_public_id"`
 	Status        int16            `json:"status"`
 	CreatedAt     time.Time        `json:"created_at"`
 	UpdatedAt     time.Time        `json:"updated_at"`

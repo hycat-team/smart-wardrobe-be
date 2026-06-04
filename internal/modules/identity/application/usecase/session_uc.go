@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -24,6 +25,7 @@ type SessionUseCase struct {
 	passwordHasher        security.IPasswordHasher
 	tokenBlacklistService security.ITokenBlacklistService
 	cfg                   *config.Config
+	uow                   shared_repos.IUnitOfWork
 }
 
 func NewSessionUseCase(
@@ -32,6 +34,7 @@ func NewSessionUseCase(
 	passwordHasher security.IPasswordHasher,
 	tokenBlacklistService security.ITokenBlacklistService,
 	cfg *config.Config,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.ISessionUseCase {
 	return &SessionUseCase{
 		userRepo:              userRepo,
@@ -39,6 +42,7 @@ func NewSessionUseCase(
 		passwordHasher:        passwordHasher,
 		tokenBlacklistService: tokenBlacklistService,
 		cfg:                   cfg,
+		uow:                   uow,
 	}
 }
 
@@ -153,11 +157,6 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		return nil, errorcode.NewInternalError("Lỗi khi cấp phiên làm việc")
 	}
 
-	err = uc.refreshTokenRepo.RevokeToken(ctx, input.OldRefreshToken)
-	if err != nil {
-		return nil, err
-	}
-
 	rt := &entities.RefreshToken{
 		UserID:    user.ID,
 		Token:     newRefreshToken,
@@ -166,8 +165,20 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	}
 	rt.ID = uuid.New()
 
-	err = uc.refreshTokenRepo.Create(ctx, rt)
-	if err != nil {
+	refreshTokenFn := func(txCtx context.Context) error {
+		err = uc.refreshTokenRepo.RevokeToken(txCtx, input.OldRefreshToken)
+		if err != nil {
+			return err
+		}
+
+		err = uc.refreshTokenRepo.Create(txCtx, rt)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := uc.uow.Execute(ctx, refreshTokenFn); err != nil {
 		return nil, err
 	}
 
@@ -215,3 +226,5 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 
 	return true, nil
 }
+
+var _ uc_interfaces.ISessionUseCase = (*SessionUseCase)(nil)

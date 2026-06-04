@@ -27,6 +27,10 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, errorcode.NewForbidden("Bạn không có quyền cập nhật trang phục này.")
 	}
 
+	if item.Status == wardrobestatus.Sold {
+		return nil, errorcode.NewBadRequest("Không thể phân loại thủ công trang phục đã được bán.")
+	}
+
 	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
 	if err != nil {
 		return nil, err

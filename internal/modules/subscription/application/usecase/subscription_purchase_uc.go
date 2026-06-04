@@ -83,7 +83,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	var checkoutUrl string
 	var orderCode int64
 
-	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+	createDirectPurchase := func(txCtx context.Context) error {
 		tx := &entities.DepositTransaction{
 			UserID:             userID,
 			Amount:             plan.Price,
@@ -133,9 +133,9 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 
 		orderCode = tx.OrderCode
 		return nil
-	})
+	}
 
-	if err != nil {
+	if err := uc.uow.Execute(ctx, createDirectPurchase); err != nil {
 		return nil, err
 	}
 

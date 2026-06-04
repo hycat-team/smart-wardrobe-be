@@ -75,6 +75,11 @@ func (PostItem) TableName() string {
 	return "post_items"
 }
 
+// TableName returns table name mapping for PostMedia
+func (PostMedia) TableName() string {
+	return "post_media"
+}
+
 // TableName returns table name mapping for Comment
 func (Comment) TableName() string {
 	return "comments"

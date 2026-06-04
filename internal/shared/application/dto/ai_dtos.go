@@ -15,3 +15,7 @@ type AICategoryRef struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
 }
+
+type TextGenerationResult struct {
+	Content string `json:"content"`
+}

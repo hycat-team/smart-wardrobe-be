@@ -39,6 +39,16 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.wardrobeHandler.ManualClassify))
 	}
 
+	aiApi := privateApi.Group("/ai")
+	{
+		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.wardrobeHandler.RecommendOutfit))
+		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.wardrobeHandler.CreateChatSession))
+		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.wardrobeHandler.GetChatSessions))
+		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.wardrobeHandler.GetChatMessages))
+		aiApi.PATCH("/chat/sessions/:contextID/archive", shared_pres.WrapHandler(r.wardrobeHandler.ArchiveChatSession))
+		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.wardrobeHandler.StreamChatMessage))
+	}
+
 	meApi := privateApi.Group("/me/wardrobe-items")
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItems))

@@ -16,6 +16,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 
 	"github.com/google/uuid"
@@ -28,6 +29,7 @@ type PasswordRecoveryUseCase struct {
 	emailService     communication.IEmailService
 	passwordHasher   security.IPasswordHasher
 	cfg              *config.Config
+	uow              shared_repos.IUnitOfWork
 }
 
 func NewPasswordRecoveryUseCase(
@@ -37,6 +39,7 @@ func NewPasswordRecoveryUseCase(
 	emailService communication.IEmailService,
 	passwordHasher security.IPasswordHasher,
 	cfg *config.Config,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IPasswordRecoveryUseCase {
 	return &PasswordRecoveryUseCase{
 		userRepo:         userRepo,
@@ -45,6 +48,7 @@ func NewPasswordRecoveryUseCase(
 		emailService:     emailService,
 		passwordHasher:   passwordHasher,
 		cfg:              cfg,
+		uow:              uow,
 	}
 }
 
@@ -155,17 +159,26 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 
 	user.ChangePasswordHash(newPasswordHash)
 
-	if input.LogoutAllDevices {
-		err = uc.refreshTokenRepo.RevokeAllByUserID(ctx, userId)
-		if err != nil {
-			return false, err
+	changePassword := func(txCtx context.Context) error {
+		if input.LogoutAllDevices {
+			err = uc.refreshTokenRepo.RevokeAllByUserID(txCtx, userId)
+			if err != nil {
+				return err
+			}
 		}
+
+		err = uc.userRepo.Update(txCtx, user)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
-	err = uc.userRepo.Update(ctx, user)
-	if err != nil {
+	if err := uc.uow.Execute(ctx, changePassword); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
+
+var _ uc_interfaces.IPasswordRecoveryUseCase = (*PasswordRecoveryUseCase)(nil)

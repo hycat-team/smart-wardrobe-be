@@ -2,6 +2,7 @@ package entities
 
 import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"time"
 )
 
@@ -23,4 +24,8 @@ func (u *User) ChangePasswordHash(newPasswordHash string) {
 func (u *User) UpdateAvatar(avatarUrl string, avatarPublicID string) {
 	u.AvatarUrl = &avatarUrl
 	u.AvatarPublicID = &avatarPublicID
+}
+
+func (u *User) UpdateStatus(status userstatus.UserStatus) {
+	u.Status = status
 }

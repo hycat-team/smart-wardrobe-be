@@ -11,6 +11,10 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -23,6 +27,7 @@ type OutfitUseCase struct {
 	outfitRepo      repositories.IOutfitRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract contract.IUserSubscriptionContract
+	mediaService    media.IMediaService
 }
 
 func NewOutfitUseCase(
@@ -31,6 +36,7 @@ func NewOutfitUseCase(
 	outfitRepo repositories.IOutfitRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract contract.IUserSubscriptionContract,
+	mediaService media.IMediaService,
 ) uc_interfaces.IOutfitUseCase {
 	return &OutfitUseCase{
 		cfg:             cfg,
@@ -38,7 +44,19 @@ func NewOutfitUseCase(
 		outfitRepo:      outfitRepo,
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
+		mediaService:    mediaService,
 	}
+}
+
+func (uc *OutfitUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error) {
+	folder := uc.cfg.Cloudinary.OutfitFolder
+	if folder == "" {
+		folder = "smart_wardrobe/outfits"
+	}
+
+	return uc.mediaService.GenerateUploadSignature(ctx, shared_dto.UploadSignatureParams{
+		Folder: folder,
+	})
 }
 
 func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
@@ -71,6 +89,9 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
+			if item.Status == wardrobestatus.Sold {
+				return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+			}
 			verifiedMap[item.ID] = item
 		}
 	}
@@ -99,7 +120,8 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		Name:          input.Name,
 		Description:   input.Description,
 		CoverImageUrl: input.CoverImageUrl,
-		Status:        1,
+		CoverPublicID: input.CoverPublicID,
+		Status:        outfitstatus.Active,
 	}
 
 	err = uc.outfitRepo.CreateWithItems(ctx, outfit, outfitItems)
@@ -134,6 +156,9 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
+			if item.Status == wardrobestatus.Sold {
+				return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+			}
 			verifiedMap[item.ID] = item
 		}
 	}
@@ -160,6 +185,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	outfit.Name = input.Name
 	outfit.Description = input.Description
 	outfit.CoverImageUrl = input.CoverImageUrl
+	outfit.CoverPublicID = input.CoverPublicID
 
 	err = uc.outfitRepo.UpdateWithItems(ctx, outfit, outfitItems)
 	if err != nil {

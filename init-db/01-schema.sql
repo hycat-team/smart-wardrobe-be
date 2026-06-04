@@ -158,6 +158,9 @@ CREATE TABLE outfits (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    cover_image_url VARCHAR(500),
+    cover_public_id VARCHAR(255),
+    status SMALLINT NOT NULL DEFAULT 1,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -169,6 +172,9 @@ CREATE TABLE outfits (
 CREATE TABLE outfit_items (
     outfit_id UUID NOT NULL REFERENCES outfits(id) ON DELETE CASCADE,
     item_id UUID NOT NULL REFERENCES wardrobe_items(id) ON DELETE CASCADE,
+    position_x DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    position_y DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    scale DOUBLE PRECISION NOT NULL DEFAULT 1.0,
     layer_order SMALLINT NOT NULL DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -182,6 +188,7 @@ CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     post_type VARCHAR(50) NOT NULL,
+    title VARCHAR(255),
     content TEXT NOT NULL,
     contact_info VARCHAR(255),
     total_price DECIMAL(12, 2) DEFAULT 0.00,
@@ -211,9 +218,23 @@ CREATE TABLE post_items (
     price DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     item_condition SMALLINT NOT NULL DEFAULT 1,
     status SMALLINT NOT NULL DEFAULT 1, -- 0: hidden, 1: available, 2: sold
+    buyer_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    transfer_state SMALLINT NOT NULL DEFAULT 0, -- 0: none, 1: pending, 2: accepted, 3: declined
+    sold_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_post_item UNIQUE (post_id, item_id)
+);
+
+CREATE TABLE post_media (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    media_type VARCHAR(20) NOT NULL,
+    media_url VARCHAR(500) NOT NULL,
+    public_id VARCHAR(255),
+    sort_order SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- ========================================================

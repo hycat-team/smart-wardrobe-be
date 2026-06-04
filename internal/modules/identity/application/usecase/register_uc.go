@@ -18,6 +18,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
@@ -152,7 +153,7 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 		Address:      &registerData.Address,
 		Gender:       &gen,
 		RoleSlug:     roleslug.Member,
-		Status:       1,
+		Status:       userstatus.Active,
 	}
 	newUser.ID = uuid.New()
 	newUser.IsDeleted = false

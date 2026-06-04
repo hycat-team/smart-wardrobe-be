@@ -115,7 +115,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 
 	reference := payload.Data.Reference
 
-	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+	processPaymentWebhook := func(txCtx context.Context) error {
 		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
 		if err != nil {
 			return errorcode.NewInternalError("Lỗi khi khóa dữ liệu giao dịch")
@@ -149,7 +149,8 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		}
 
 		return nil
-	})
+	}
+	return uc.uow.Execute(ctx, processPaymentWebhook)
 }
 
 func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {

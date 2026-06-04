@@ -1,0 +1,87 @@
+package handler
+
+import (
+	"smart-wardrobe-be/internal/modules/community/application/dto"
+	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	shared_pres "smart-wardrobe-be/internal/shared/presentation"
+	"smart-wardrobe-be/pkg/utils/contextutils"
+	"smart-wardrobe-be/pkg/utils/validation"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type PostInteractionHandler struct {
+	interactionUC usecase_interfaces.IPostInteractionUseCase
+}
+
+func NewPostInteractionHandler(interactionUC usecase_interfaces.IPostInteractionUseCase) *PostInteractionHandler {
+	return &PostInteractionHandler{interactionUC: interactionUC}
+}
+
+// TogglePostLike like or unlike post
+// @Summary Thích / Bỏ thích bài đăng
+// @Description Like hoặc unlike một bài viết trên cộng đồng bằng cách gửi trạng thái rõ ràng
+// @Tags Community
+// @Accept json
+// @Produce json
+// @Param postID path string true "ID bài đăng"
+// @Param body body dto.LikePostReq true "Trạng thái thích"
+// @Success 200 {object} shared_pres.APIResponse "Cập nhật like thành công"
+// @Router /api/v1/posts/{postID}/like [put]
+func (h *PostInteractionHandler) TogglePostLike(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	postID, err := uuid.Parse(c.Param("postID"))
+	if err != nil {
+		return err
+	}
+
+	var input dto.LikePostReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	if err := h.interactionUC.TogglePostLike(c.Request.Context(), userID, postID, *input.IsLiked); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Cập nhật like thành công", nil)
+	return nil
+}
+
+// AddComment add comment to post
+// @Summary Thêm bình luận vào bài viết
+// @Description Tạo bình luận mới dưới bài viết cộng đồng
+// @Tags Community
+// @Accept json
+// @Produce json
+// @Param postID path string true "ID bài đăng"
+// @Param body body dto.AddCommentReq true "Nội dung bình luận"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.CommentRes} "Thêm bình luận thành công"
+// @Router /api/v1/posts/{postID}/comments [post]
+func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	postID, err := uuid.Parse(c.Param("postID"))
+	if err != nil {
+		return err
+	}
+
+	var input dto.AddCommentReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.interactionUC.AddComment(c.Request.Context(), userID, postID, input.Content)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Created(c, "Thêm bình luận thành công", response)
+	return nil
+}

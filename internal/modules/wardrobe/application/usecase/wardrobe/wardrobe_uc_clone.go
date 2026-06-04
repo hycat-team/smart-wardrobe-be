@@ -49,6 +49,10 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 		return nil, errorcode.NewForbidden("Bạn không có quyền nhân bản trang phục của người khác.")
 	}
 
+	if original.Status == wardrobestatus.Sold {
+		return nil, errorcode.NewBadRequest("Không thể nhân bản trang phục đã được bán.")
+	}
+
 	clonedItems := make([]*entities.WardrobeItem, quantity)
 	for i := range quantity {
 		clonedItems[i] = &entities.WardrobeItem{

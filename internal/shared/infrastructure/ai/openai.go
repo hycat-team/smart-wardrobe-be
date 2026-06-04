@@ -15,6 +15,63 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
+func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+	payload := map[string]any{
+		"model": provider.Model,
+		"messages": []map[string]string{
+			{
+				"role":    "system",
+				"content": systemPrompt,
+			},
+			{
+				"role":    "user",
+				"content": userPrompt,
+			},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", provider.Endpoint, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
+
+	resp, err := s.cli.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	var openAIResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
+		return "", err
+	}
+
+	if len(openAIResp.Choices) == 0 {
+		return "", errorcode.NewInternalError("Không nhận được phản hồi văn bản từ OpenAI.")
+	}
+
+	return openAIResp.Choices[0].Message.Content, nil
+}
+
 func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
 	prompt := getVisionSystemPrompt(categories)
 

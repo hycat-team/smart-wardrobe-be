@@ -29,6 +29,7 @@ func (r *OutfitRouter) Init(parentGroup *gin.RouterGroup) {
 
 	outfitApi := privateApi.Group("/outfits")
 	{
+		outfitApi.GET("/upload-signature", shared_pres.WrapHandler(r.outfitHandler.GetUploadSignature))
 		outfitApi.POST("", shared_pres.WrapHandler(r.outfitHandler.SaveOutfit))
 		outfitApi.PUT("/:id", shared_pres.WrapHandler(r.outfitHandler.UpdateOutfit))
 		outfitApi.GET("/:id", shared_pres.WrapHandler(r.outfitHandler.GetOutfitByID))

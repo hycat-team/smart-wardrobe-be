@@ -86,111 +86,155 @@ func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.Subscriptio
 	return dtoPlans, nil
 }
 
+const (
+	renewalStatusRenewed    = "renewed"
+	renewalStatusDowngraded = "downgraded"
+	renewalStatusSkipped    = "skipped"
+)
+
 func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) error {
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-	expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptions(ctx, now)
-	if err != nil {
-		return errorcode.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
-	}
-
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
 		return errorcode.NewInternalError("Lỗi khi tải thông tin cấu hình gói hội viên mặc định")
 	}
 
-	freePlan, err := uc.planRepo.GetByID(ctx, freePlanID)
-	if err != nil || freePlan == nil {
-		return errorcode.NewInternalError("Lỗi khi tải thông tin gói hội viên miễn phí tiêu chuẩn")
-	}
+	var lastUserID uuid.UUID
+	var lastExpiresAt time.Time
+	limit := 100
 
-	for _, sub := range expiredSubs {
-		if sub.SubscriptionPlan == nil || sub.SubscriptionPlan.Price <= 0 {
-			continue
+	var renewedCount, downgradedCount, skippedCount, failedCount int
+
+	for {
+		expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptionsBatch(ctx, now, lastUserID, lastExpiresAt, limit)
+		if err != nil {
+			return errorcode.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
 		}
 
-		plan := sub.SubscriptionPlan
+		if len(expiredSubs) == 0 {
+			break
+		}
 
-		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-			wallet, err := uc.walletRepo.GetByUserIDWithLock(txCtx, sub.UserID)
-			if err != nil {
-				return err
+		for _, sub := range expiredSubs {
+			if sub.ExpiresAt == nil {
+				skippedCount++
+				continue
 			}
-			isNewWallet := false
-			if wallet == nil {
-				wallet = &entities.UserWallet{
-					UserID:    sub.UserID,
-					Balance:   0,
-					Currency:  "VND",
-					CreatedAt: now,
-					UpdatedAt: now,
+
+			cursorUserID := sub.UserID
+			cursorExpiresAt := *sub.ExpiresAt
+
+			lastUserID = cursorUserID
+			lastExpiresAt = cursorExpiresAt
+
+			resultStatus := renewalStatusSkipped
+
+			processSubFn := func(txCtx context.Context) error {
+				lockedSub, err := uc.userSubRepo.GetActiveExpiredSubscriptionByUserIDWithLock(txCtx, sub.UserID, now)
+				if err != nil {
+					return err
 				}
-				isNewWallet = true
-			}
+				if lockedSub == nil {
+					resultStatus = renewalStatusSkipped
+					return nil
+				}
 
-			if sub.IsAutoRenewEnabled && wallet.Balance >= plan.Price {
-				prevBalance := wallet.Balance
-				wallet.Balance -= plan.Price
-				wallet.UpdatedAt = now
+				if lockedSub.SubscriptionPlan == nil || lockedSub.SubscriptionPlan.Price <= 0 {
+					resultStatus = renewalStatusSkipped
+					return nil
+				}
 
-				if isNewWallet {
-					if err := uc.walletRepo.Create(txCtx, wallet); err != nil {
+				plan := lockedSub.SubscriptionPlan
+
+				if !lockedSub.IsAutoRenewEnabled {
+					lockedSub.SubscriptionPlanID = freePlanID
+					lockedSub.ExpiresAt = nil
+					lockedSub.IsActive = false
+					lockedSub.UpdatedAt = now
+
+					if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
 						return err
 					}
-				} else {
+					resultStatus = renewalStatusDowngraded
+					return nil
+				}
+
+				wallet, err := uc.walletRepo.GetByUserIDWithLock(txCtx, lockedSub.UserID)
+				if err != nil {
+					return err
+				}
+
+				if wallet != nil && wallet.Balance >= plan.Price {
+					prevBalance := wallet.Balance
+					wallet.Balance -= plan.Price
+					wallet.UpdatedAt = now
+
 					if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
 						return err
 					}
+
+					days := 30
+					if plan.DurationDays != nil {
+						days = *plan.DurationDays
+					}
+
+					newExpiry := now.AddDate(0, 0, days)
+					lockedSub.ExpiresAt = &newExpiry
+					lockedSub.UpdatedAt = now
+
+					if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
+						return err
+					}
+
+					statement := &entities.WalletStatement{
+						UserID:          lockedSub.UserID,
+						Amount:          -plan.Price,
+						TransactionType: "SUBSCRIPTION_RENEWAL",
+						PreviousBalance: prevBalance,
+						NewBalance:      wallet.Balance,
+						Description:     fmt.Sprintf("Auto-renewed subscription plan %s", plan.Name),
+					}
+
+					if err := uc.statementRepo.Create(txCtx, statement); err != nil {
+						return err
+					}
+					resultStatus = renewalStatusRenewed
+				} else {
+					lockedSub.SubscriptionPlanID = freePlanID
+					lockedSub.ExpiresAt = nil
+					lockedSub.IsActive = false
+					lockedSub.UpdatedAt = now
+
+					if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
+						return err
+					}
+					resultStatus = renewalStatusDowngraded
 				}
 
-				days := 30
-				if plan.DurationDays != nil {
-					days = *plan.DurationDays
-				}
-
-				newExpiry := now.AddDate(0, 0, days)
-				sub.ExpiresAt = &newExpiry
-				sub.UpdatedAt = now
-
-				if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
-					return err
-				}
-
-				statement := &entities.WalletStatement{
-					UserID:          sub.UserID,
-					Amount:          -plan.Price,
-					TransactionType: "SUBSCRIPTION_RENEWAL",
-					PreviousBalance: prevBalance,
-					NewBalance:      wallet.Balance,
-					Description:     fmt.Sprintf("Auto-renewed subscription plan %s", plan.Name),
-				}
-
-				if err := uc.statementRepo.Create(txCtx, statement); err != nil {
-					return err
-				}
-
-				uc.log.Info(fmt.Sprintf("Successfully auto-renewed user %s with plan %s", sub.UserID, plan.Name))
-
-			} else {
-				sub.SubscriptionPlanID = freePlan.ID
-				sub.ExpiresAt = nil
-				sub.IsActive = false
-				sub.UpdatedAt = now
-
-				if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
-					return err
-				}
-
-				uc.log.Info(fmt.Sprintf("Auto-renewal disabled or insufficient funds, downgraded user %s back to standard free plan", sub.UserID))
+				return nil
 			}
 
-			return nil
-		})
+			if err = uc.uow.Execute(ctx, processSubFn); err != nil {
+				failedCount++
+				uc.log.Error(fmt.Sprintf("Failed to process renewal sequence for user %s: %v", sub.UserID, err))
+			} else {
+				switch resultStatus {
+				case renewalStatusRenewed:
+					renewedCount++
+				case renewalStatusDowngraded:
+					downgradedCount++
+				case renewalStatusSkipped:
+					skippedCount++
+				}
+			}
+		}
 
-		if err != nil {
-			uc.log.Error(fmt.Sprintf("Failed to process renewal sequence for user %s: %v", sub.UserID, err))
+		if len(expiredSubs) < limit {
+			break
 		}
 	}
 
+	uc.log.Info(fmt.Sprintf("Processed scheduled renewals summary: renewed=%d, downgraded=%d, skipped=%d, failed=%d", renewedCount, downgradedCount, skippedCount, failedCount))
 	return nil
 }
 
@@ -205,6 +249,10 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 
 	if sub.IsAutoRenewEnabled == enable {
 		return sub.IsAutoRenewEnabled, nil
+	}
+
+	if enable && sub.ExpiresAt != nil && sub.ExpiresAt.Before(time.Now()) {
+		return false, errorcode.NewBadRequest("Gói hội viên đã hết hạn, không thể thiết lập tự động gia hạn.")
 	}
 
 	sub.IsAutoRenewEnabled = enable
