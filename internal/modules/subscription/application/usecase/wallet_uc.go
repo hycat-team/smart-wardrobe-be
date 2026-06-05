@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/errorutils"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -57,7 +58,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	if wallet != nil {
 		return &dto.WalletDTO{
 			UserID:    wallet.UserID,
-			Balance:   wallet.Balance,
+			Balance:   sharedmoney.ToFloatForDTO(wallet.Balance),
 			Currency:  wallet.Currency,
 			UpdatedAt: wallet.UpdatedAt,
 		}, nil
@@ -76,7 +77,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 		newWallet := &entities.UserWallet{
 			UserID:    userID,
-			Balance:   0,
+			Balance:   sharedmoney.Zero,
 			Currency:  currency.VND,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -94,7 +95,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 
 	return &dto.WalletDTO{
 		UserID:    wallet.UserID,
-		Balance:   wallet.Balance,
+		Balance:   sharedmoney.ToFloatForDTO(wallet.Balance),
 		Currency:  wallet.Currency,
 		UpdatedAt: wallet.UpdatedAt,
 	}, nil
@@ -111,10 +112,10 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 		dtos = append(dtos, &dto.WalletStatementDTO{
 			ID:              s.ID,
 			UserID:          s.UserID,
-			Amount:          s.Amount,
+			Amount:          sharedmoney.ToFloatForDTO(s.Amount),
 			TransactionType: s.TransactionType,
-			PreviousBalance: s.PreviousBalance,
-			NewBalance:      s.NewBalance,
+			PreviousBalance: sharedmoney.ToFloatForDTO(s.PreviousBalance),
+			NewBalance:      sharedmoney.ToFloatForDTO(s.NewBalance),
 			Description:     s.Description,
 			CreatedAt:       s.CreatedAt,
 		})
@@ -123,13 +124,18 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 }
 
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {
-	var checkoutUrl string
+	amount, err := sharedmoney.FromFloatAmount(req.Amount)
+	if err != nil {
+		return nil, errorcode.NewBadRequest("Số tiền không hợp lệ")
+	}
+
+	var checkoutURL string
 	var orderCode int64
 
 	createWalletTopUp := func(txCtx context.Context) error {
 		tx := &entities.DepositTransaction{
 			UserID:          userID,
-			Amount:          req.Amount,
+			Amount:          amount,
 			Currency:        currency.VND,
 			Status:          depositstatus.Pending,
 			TransactionType: deposittransactiontype.WalletTopup,
@@ -141,29 +147,32 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			return errorcode.NewInternalError("Lỗi khi khởi tạo giao dịch nạp tiền")
 		}
 
-		returnUrl := req.ReturnUrl
-		if returnUrl == "" {
-			returnUrl = uc.cfg.PayOS.ReturnUrl
+		returnURL := req.ReturnUrl
+		if returnURL == "" {
+			returnURL = uc.cfg.PayOS.ReturnUrl
 		}
-		cancelUrl := req.CancelUrl
-		if cancelUrl == "" {
-			cancelUrl = uc.cfg.PayOS.CancelUrl
+		cancelURL := req.CancelUrl
+		if cancelURL == "" {
+			cancelURL = uc.cfg.PayOS.CancelUrl
 		}
 
-		description := fmt.Sprintf("Nạp vào ví %d VNĐ", int(tx.Amount))
-		var err error
-		checkoutUrl, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
+		amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
+		if err != nil {
+			return errorcode.NewBadRequest("Số tiền nạp vào ví phải là số nguyên VND")
+		}
+		description := fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND)
+		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
 			OrderCode:   tx.OrderCode,
 			Amount:      tx.Amount,
 			Description: description,
-			ReturnUrl:   returnUrl,
-			CancelUrl:   cancelUrl,
+			ReturnUrl:   returnURL,
+			CancelUrl:   cancelURL,
 		})
 		if err != nil {
 			return errorutils.WrapError(err, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
 		}
 
-		tx.PaymentUrl = &checkoutUrl
+		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
 			return errorcode.NewInternalError("Lỗi khi cập nhật liên kết thanh toán")
 		}
@@ -177,7 +186,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 	}
 
 	return &dto.PaymentLinkDTO{
-		PaymentUrl: checkoutUrl,
+		PaymentUrl: checkoutURL,
 		OrderCode:  orderCode,
 	}, nil
 }

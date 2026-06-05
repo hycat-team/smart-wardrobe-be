@@ -2,11 +2,13 @@ package payment
 
 import (
 	"context"
+
+	"github.com/shopspring/decimal"
 )
 
 type CheckoutSessionReq struct {
 	OrderCode   int64
-	Amount      float64
+	Amount      decimal.Decimal
 	Description string
 	ReturnUrl   string
 	CancelUrl   string

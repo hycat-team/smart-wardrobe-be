@@ -9,19 +9,20 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type SubscriptionPlan struct {
 	AuditableEntity
-	Slug               string  `gorm:"type:varchar(100);uniqueIndex;not null"`
-	Name               string  `gorm:"type:varchar(100);not null"`
-	Price              float64 `gorm:"type:numeric(12,2);not null;default:0.00"`
-	MaxWardrobeItems   int     `gorm:"type:int;not null"`
-	MaxOutfits         int     `gorm:"type:int;not null"`
-	AiOutfitDailyQuota int     `gorm:"type:int;not null"`
-	AiChatDailyQuota   int     `gorm:"type:int;not null"`
-	DurationDays       *int    `gorm:"type:int"`
-	IsActive           bool    `gorm:"type:boolean;not null;default:true"`
+	Slug               string          `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Name               string          `gorm:"type:varchar(100);not null"`
+	Price              decimal.Decimal `gorm:"type:numeric(12,2);not null;default:0.00"`
+	MaxWardrobeItems   int             `gorm:"type:int;not null"`
+	MaxOutfits         int             `gorm:"type:int;not null"`
+	AiOutfitDailyQuota int             `gorm:"type:int;not null"`
+	AiChatDailyQuota   int             `gorm:"type:int;not null"`
+	DurationDays       *int            `gorm:"type:int"`
+	IsActive           bool            `gorm:"type:boolean;not null;default:true"`
 }
 
 type UserSubscription struct {
@@ -47,7 +48,7 @@ type UserDailyQuota struct {
 type UserWallet struct {
 	UserID    uuid.UUID         `gorm:"type:uuid;primaryKey"`
 	User      *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Balance   float64           `gorm:"type:numeric(12,2);not null;default:0.00"`
+	Balance   decimal.Decimal   `gorm:"type:numeric(12,2);not null;default:0.00"`
 	Currency  currency.Currency `gorm:"type:varchar(10);not null;default:'VND'"`
 	CreatedAt time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
 	UpdatedAt time.Time         `gorm:"type:timestamp with time zone;not null;default:now()"`
@@ -57,7 +58,7 @@ type DepositTransaction struct {
 	AuditableEntity
 	UserID             uuid.UUID                                     `gorm:"type:uuid;not null"`
 	User               *User                                         `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Amount             float64                                       `gorm:"type:numeric(12,2);not null"`
+	Amount             decimal.Decimal                               `gorm:"type:numeric(12,2);not null"`
 	Currency           currency.Currency                             `gorm:"type:varchar(10);not null;default:'VND'"`
 	Status             depositstatus.DepositStatus                   `gorm:"type:smallint;not null;default:0"` // 0: PENDING, 1: SUCCESS, 2: FAILED
 	TransactionType    deposittransactiontype.DepositTransactionType `gorm:"type:varchar(50);not null"`        // DIRECT_PURCHASE, WALLET_TOPUP
@@ -73,10 +74,10 @@ type WalletStatement struct {
 	AuditableEntity
 	UserID          uuid.UUID                               `gorm:"type:uuid;not null"`
 	User            *User                                   `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Amount          float64                                 `gorm:"type:numeric(12,2);not null"`
+	Amount          decimal.Decimal                         `gorm:"type:numeric(12,2);not null"`
 	TransactionType walletstatementtype.WalletStatementType `gorm:"type:varchar(50);not null"` // TOPUP, SUBSCRIPTION_PURCHASE, SUBSCRIPTION_RENEWAL
-	PreviousBalance float64                                 `gorm:"type:numeric(12,2);not null"`
-	NewBalance      float64                                 `gorm:"type:numeric(12,2);not null"`
+	PreviousBalance decimal.Decimal                         `gorm:"type:numeric(12,2);not null"`
+	NewBalance      decimal.Decimal                         `gorm:"type:numeric(12,2);not null"`
 	ReferenceID     *uuid.UUID                              `gorm:"type:uuid"`
 	Description     string                                  `gorm:"type:varchar(255);not null"`
 }

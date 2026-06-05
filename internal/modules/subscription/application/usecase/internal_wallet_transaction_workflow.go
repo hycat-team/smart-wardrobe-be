@@ -9,8 +9,10 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // processWalletTransaction is an internal workflow to encapsulate the logic
@@ -22,14 +24,14 @@ func processWalletTransaction(
 	walletRepo repositories.IUserWalletRepository,
 	statementRepo repositories.IWalletStatementRepository,
 	userID uuid.UUID,
-	amount float64,
+	amount decimal.Decimal,
 	transactionType walletstatementtype.WalletStatementType,
 	description string,
 	referenceID *uuid.UUID,
 	now time.Time,
 ) error {
 	// Zero-ledger statement skip optimization
-	if amount == 0.00 {
+	if amount.IsZero() {
 		return nil
 	}
 
@@ -43,7 +45,7 @@ func processWalletTransaction(
 		isNewWallet = true
 		wallet = &entities.UserWallet{
 			UserID:    userID,
-			Balance:   0,
+			Balance:   sharedmoney.Zero,
 			Currency:  currency.VND,
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -51,12 +53,12 @@ func processWalletTransaction(
 	}
 
 	// For deductions, ensure sufficient balance
-	if amount < 0 && wallet.Balance < -amount {
+	if amount.IsNegative() && wallet.Balance.LessThan(amount.Neg()) {
 		return errorcode.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
 	}
 
 	prevBalance := wallet.Balance
-	wallet.Balance += amount
+	wallet.Balance = wallet.Balance.Add(amount)
 	wallet.UpdatedAt = now
 
 	if isNewWallet {

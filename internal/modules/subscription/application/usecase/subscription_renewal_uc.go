@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
@@ -116,7 +117,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return fmt.Errorf("missing wallet for renewal")
 				}
 
-				if wallet.Balance < plan.Price {
+				if wallet.Balance.LessThan(plan.Price) {
 					resultReason = renewalReasonDowngradedInsufficient
 					if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
 						return err
@@ -127,7 +128,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 
 				resultReason = renewalReasonRenewed
 				prevBalance := wallet.Balance
-				wallet.Balance -= plan.Price
+				wallet.Balance = wallet.Balance.Sub(plan.Price)
 				wallet.UpdatedAt = now
 
 				if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
@@ -145,7 +146,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 
 				statement := &entities.WalletStatement{
 					UserID:          lockedSub.UserID,
-					Amount:          -plan.Price,
+					Amount:          plan.Price.Neg(),
 					TransactionType: walletstatementtype.SubscriptionRenewal,
 					PreviousBalance: prevBalance,
 					NewBalance:      wallet.Balance,
@@ -222,7 +223,7 @@ func (uc *SubscriptionUseCase) validateRenewalPlan(lockedSub *entities.UserSubsc
 	if !plan.IsActive {
 		return nil, 0, renewalReasonFailedInactivePlan, fmt.Errorf("subscription plan is inactive")
 	}
-	if plan.Price <= 0 {
+	if !plan.Price.GreaterThan(sharedmoney.Zero) {
 		return nil, 0, renewalReasonFailedInvalidPrice, fmt.Errorf("subscription plan price must be greater than zero")
 	}
 

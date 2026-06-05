@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -74,7 +75,7 @@ func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.Subscriptio
 			ID:                 plan.ID,
 			Slug:               plan.Slug,
 			Name:               plan.Name,
-			Price:              plan.Price,
+			Price:              sharedmoney.ToFloatForDTO(plan.Price),
 			MaxWardrobeItems:   plan.MaxWardrobeItems,
 			MaxOutfits:         plan.MaxOutfits,
 			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,

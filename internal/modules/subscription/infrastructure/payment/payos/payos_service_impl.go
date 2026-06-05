@@ -19,9 +19,13 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
+
+	"github.com/shopspring/decimal"
 )
 
-const MinPayOSTransactionAmount = 2000.00
+var minPayOSTransactionAmount = decimal.NewFromInt(2000)
 
 type PayOSService struct {
 	clientID    string
@@ -46,13 +50,17 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		return "", errors.New("payos credentials are not fully configured in the environment")
 	}
 
-	if req.Amount < MinPayOSTransactionAmount {
-		return "", errorcode.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VND", int(MinPayOSTransactionAmount)))
+	if req.Amount.LessThan(minPayOSTransactionAmount) {
+		return "", errorcode.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VND", minPayOSTransactionAmount.IntPart()))
+	}
+	amountVND, err := sharedmoney.ToMinorUnits(req.Amount, currency.VND)
+	if err != nil {
+		return "", errorcode.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số nguyên VND")
 	}
 
 	bodyMap := map[string]any{
 		"orderCode":   req.OrderCode,
-		"amount":      int64(req.Amount),
+		"amount":      amountVND,
 		"description": req.Description,
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
@@ -74,7 +82,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 
 	reqPayload := map[string]any{
 		"orderCode":   req.OrderCode,
-		"amount":      int64(req.Amount),
+		"amount":      amountVND,
 		"description": req.Description,
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
@@ -114,7 +122,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		Code string `json:"code"`
 		Desc string `json:"desc"`
 		Data struct {
-			CheckoutUrl string `json:"checkoutUrl"`
+			CheckoutURL string `json:"checkoutUrl"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(respBytes, &res); err != nil {
@@ -125,7 +133,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		return "", fmt.Errorf("payos returned business error code %s: %s", res.Code, res.Desc)
 	}
 
-	return res.Data.CheckoutUrl, nil
+	return res.Data.CheckoutURL, nil
 }
 
 func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error) {
@@ -206,6 +214,8 @@ func formatWebhookValue(v any) string {
 		return fmt.Sprintf("%d", val)
 	case int64:
 		return fmt.Sprintf("%d", val)
+	case json.Number:
+		return val.String()
 	case []any:
 		sortedSlice := make([]any, len(val))
 		for i, item := range val {

@@ -17,11 +17,13 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/errorutils"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type SubscriptionPurchaseUseCase struct {
@@ -66,7 +68,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		return nil, errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
 	}
 
-	if plan.Price <= 0.00 {
+	if !plan.Price.GreaterThan(sharedmoney.Zero) {
 		return nil, errorcode.NewBadRequest("Không thể đăng ký trực tiếp gói hội viên miễn phí")
 	}
 
@@ -163,7 +165,7 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 			return err
 		}
 
-		if plan.Price == 0 {
+		if plan.Price.IsZero() {
 			uc.applyPlanToSubscriptionEntity(sub, isNewSub, plan, now)
 			if err := uc.persistSubscriptionForPurchase(txCtx, sub, isNewSub); err != nil {
 				return err
@@ -220,39 +222,39 @@ func (uc *SubscriptionPurchaseUseCase) getOrInitLockedWalletForPurchase(txCtx co
 
 	return &entities.UserWallet{
 		UserID:    userID,
-		Balance:   0,
+		Balance:   sharedmoney.Zero,
 		Currency:  currency.VND,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, true, nil
 }
 
-func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx context.Context, wallet *entities.UserWallet, isNewWallet bool, amount float64, now time.Time) (float64, error) {
-	if wallet.Balance < amount {
-		return 0, errorcode.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
+func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx context.Context, wallet *entities.UserWallet, isNewWallet bool, amount decimal.Decimal, now time.Time) (decimal.Decimal, error) {
+	if wallet.Balance.LessThan(amount) {
+		return sharedmoney.Zero, errorcode.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
 	}
 
 	prevBalance := wallet.Balance
-	wallet.Balance -= amount
+	wallet.Balance = wallet.Balance.Sub(amount)
 	wallet.UpdatedAt = now
 
 	if isNewWallet {
 		if err := uc.walletRepo.Create(txCtx, wallet); err != nil {
-			return 0, errorcode.NewInternalError("Lỗi khi khởi tạo ví mới")
+			return sharedmoney.Zero, errorcode.NewInternalError("Lỗi khi khởi tạo ví mới")
 		}
 	} else {
 		if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
-			return 0, errorcode.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
+			return sharedmoney.Zero, errorcode.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
 		}
 	}
 
 	return prevBalance, nil
 }
 
-func (uc *SubscriptionPurchaseUseCase) createPurchaseWalletStatement(txCtx context.Context, userID uuid.UUID, amount float64, prevBalance float64, newBalance float64, description string) error {
+func (uc *SubscriptionPurchaseUseCase) createPurchaseWalletStatement(txCtx context.Context, userID uuid.UUID, amount decimal.Decimal, prevBalance decimal.Decimal, newBalance decimal.Decimal, description string) error {
 	statement := &entities.WalletStatement{
 		UserID:          userID,
-		Amount:          -amount,
+		Amount:          amount.Neg(),
 		TransactionType: walletstatementtype.SubscriptionPurchase,
 		PreviousBalance: prevBalance,
 		NewBalance:      newBalance,

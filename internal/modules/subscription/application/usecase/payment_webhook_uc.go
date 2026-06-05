@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,8 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/timeutils"
+
+	"github.com/shopspring/decimal"
 )
 
 type PaymentWebhookUseCase struct {
@@ -63,32 +66,39 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		Desc    string `json:"desc"`
 		Success bool   `json:"success"`
 		Data    struct {
-			OrderCode              int64   `json:"orderCode"`
-			Amount                 float64 `json:"amount"`
-			Description            string  `json:"description"`
-			AccountNumber          string  `json:"accountNumber"`
-			Reference              string  `json:"reference"`
-			TransactionDateTime    string  `json:"transactionDateTime"`
-			Currency               string  `json:"currency"`
-			PaymentLinkId          string  `json:"paymentLinkId"`
-			Code                   string  `json:"code"`
-			Desc                   string  `json:"desc"`
-			CounterAccountBankId   string  `json:"counterAccountBankId"`
-			CounterAccountBankName string  `json:"counterAccountBankName"`
-			CounterAccountName     string  `json:"counterAccountName"`
-			CounterAccountNumber   string  `json:"counterAccountNumber"`
-			VirtualAccountName     string  `json:"virtualAccountName"`
-			VirtualAccountNumber   string  `json:"virtualAccountNumber"`
+			OrderCode              int64       `json:"orderCode"`
+			Amount                 json.Number `json:"amount"`
+			Description            string      `json:"description"`
+			AccountNumber          string      `json:"accountNumber"`
+			Reference              string      `json:"reference"`
+			TransactionDateTime    string      `json:"transactionDateTime"`
+			Currency               string      `json:"currency"`
+			PaymentLinkId          string      `json:"paymentLinkId"`
+			Code                   string      `json:"code"`
+			Desc                   string      `json:"desc"`
+			CounterAccountBankId   string      `json:"counterAccountBankId"`
+			CounterAccountBankName string      `json:"counterAccountBankName"`
+			CounterAccountName     string      `json:"counterAccountName"`
+			CounterAccountNumber   string      `json:"counterAccountNumber"`
+			VirtualAccountName     string      `json:"virtualAccountName"`
+			VirtualAccountNumber   string      `json:"virtualAccountNumber"`
 		} `json:"data"`
 		Signature string `json:"signature"`
 	}
 
-	if err := json.Unmarshal(rawBody, &payload); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(rawBody))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payload); err != nil {
 		return errorcode.NewBadRequest("Dữ liệu webhook không đúng định dạng cấu trúc")
 	}
 
 	if payload.Code != "00" || payload.Data.Code != "00" {
 		return nil
+	}
+
+	webhookAmount, err := decimal.NewFromString(payload.Data.Amount.String())
+	if err != nil {
+		return errorcode.NewBadRequest("Số tiền webhook không hợp lệ")
 	}
 
 	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
@@ -99,7 +109,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		return errorcode.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch nạp tiền với mã đơn hàng %d", payload.Data.OrderCode))
 	}
 
-	if payload.Data.Amount < tx.Amount || payload.Data.Amount != tx.Amount {
+	if webhookAmount.LessThan(tx.Amount) || !webhookAmount.Equal(tx.Amount) {
 		return errorcode.NewBadRequest("Số tiền thanh toán thực tế không khớp hoặc nhỏ hơn số tiền của giao dịch")
 	}
 

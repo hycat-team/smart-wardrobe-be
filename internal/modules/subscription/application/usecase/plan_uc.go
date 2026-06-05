@@ -2,10 +2,12 @@ package usecase
 
 import (
 	"context"
+
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/google/uuid"
 )
@@ -35,7 +37,7 @@ func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.Subscri
 			ID:                 plan.ID,
 			Slug:               plan.Slug,
 			Name:               plan.Name,
-			Price:              plan.Price,
+			Price:              sharedmoney.ToFloatForDTO(plan.Price),
 			MaxWardrobeItems:   plan.MaxWardrobeItems,
 			MaxOutfits:         plan.MaxOutfits,
 			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
@@ -67,5 +69,5 @@ func (uc *SubscriptionPlanUseCase) IsPremiumPlan(ctx context.Context, planID uui
 	if plan == nil || !plan.IsActive {
 		return false, nil
 	}
-	return plan.Price > 0, nil
+	return plan.Price.GreaterThan(sharedmoney.Zero), nil
 }
