@@ -53,7 +53,7 @@ The code workspace separates layer responsibilities into physical Go package bou
 │    │    └── 📁 subscription       # Subscription modular boundary (loose coupling via contract)
 │    │
 │    └── 📁 shared
-│         ├── 📁 application        # Shared app structures, global errorcode definitions
+│         ├── 📁 application        # Shared app structures, global apperror definitions
 │         ├── 📁 domain
 │         │    ├── 📁 constants     # General enums and status identifiers
 │         │    └── 📁 entities      # Unified GORM models (all 16 relational database tables mapped here)
@@ -196,3 +196,4 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entiti
 * **Comment Decoration Prohibition:** Absolutely DO NOT inject ordered list sequence numbering arrays (e.g., `1.`, `2.`, `01.`, `Step 1:`) inside codebase comment expressions. Use pure textual characters, functional headers, or horizontal line layouts (e.g., `// ===`, `// ---`) to detail method blocks.
 * **Anemic Handlers & Presentation Boundaries:** Presentational Handlers must remain highly anemic, delegating execution immediately by calling the Usecases inside the `Application` layer. All Feature domain logic, repository operations, validation structures, and transactional loops must live strictly inside the module's `application/usecase` folder.
 * **Module Communication Guardrails:** Direct reference links across internal functional spaces of separate business modules are entirely blocked. All communication routines must path through exposed interface pipelines declared within target module `contract` packages. Direct domain entity sharing is strictly prohibited.
+

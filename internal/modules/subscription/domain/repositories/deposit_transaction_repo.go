@@ -13,4 +13,5 @@ type IDepositTransactionRepository interface {
 	GetByGatewayReference(ctx context.Context, reference string) (*entities.DepositTransaction, error)
 	GetByOrderCode(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error)
 	GetByOrderCodeWithLock(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error)
+	HasPendingDirectPurchase(ctx context.Context, userID uuid.UUID) (bool, error)
 }

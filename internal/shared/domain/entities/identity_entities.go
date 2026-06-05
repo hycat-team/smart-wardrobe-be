@@ -30,11 +30,11 @@ type User struct {
 }
 
 type UserStyleProfile struct {
-	UserID          uuid.UUID `gorm:"type:uuid;primaryKey"`
-	TasteEmbedding  Vector    `gorm:"type:vector(768)"`
-	PreferredColors *string   `gorm:"type:jsonb"`
-	UpdatedAt       time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
-	User            *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	UserID          uuid.UUID        `gorm:"type:uuid;primaryKey"`
+	TasteEmbedding  Vector           `gorm:"type:vector(768)"`
+	PreferredColors *preferredColors `gorm:"type:jsonb"`
+	UpdatedAt       time.Time        `gorm:"type:timestamp with time zone;not null;default:now()"`
+	User            *User            `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }
 
 type RefreshToken struct {

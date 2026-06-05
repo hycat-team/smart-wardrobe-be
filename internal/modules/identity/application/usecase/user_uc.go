@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/mapper"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
@@ -52,12 +52,12 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, errorcode.NewUnauthorized("Người dùng không tồn tại.")
+		return false, apperror.NewUnauthorized("Người dùng không tồn tại.")
 	}
 
 	isValid := uc.passwordHasher.VerifyPassword(input.OldPassword, user.PasswordHash)
 	if !isValid {
-		return false, errorcode.NewBadRequest("Mật khẩu cũ không chính xác.")
+		return false, apperror.NewBadRequest("Mật khẩu cũ không chính xác.")
 	}
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)
@@ -88,12 +88,12 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
+		return nil, apperror.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
 	dob, err := time.Parse(time.DateOnly, input.DateOfBirth)
 	if err != nil {
-		return nil, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
+		return nil, apperror.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
 	}
 
 	genVal := gender.Unknown
@@ -125,7 +125,7 @@ func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.User
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
+		return nil, apperror.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
@@ -150,7 +150,7 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin người dùng.")
+		return nil, apperror.NewNotFound("Không tìm thấy thông tin người dùng.")
 	}
 
 	user.UpdateAvatar(input.AvatarUrl, input.AvatarPublicID)
@@ -166,3 +166,4 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 
 	return mapper.MapToUserRes(user, sub), nil
 }
+

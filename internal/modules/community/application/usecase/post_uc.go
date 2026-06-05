@@ -8,7 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
@@ -129,7 +129,7 @@ func (uc *PostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID) (*dt
 		return nil, err
 	}
 	if post == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy bài đăng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bài đăng.")
 	}
 
 	comments, err := uc.commentRepo.GetByPostID(ctx, postID)
@@ -146,7 +146,7 @@ func (uc *PostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, postID 
 		return err
 	}
 	if post == nil || post.UserID != userID {
-		return errorcode.NewNotFound("Không tìm thấy bài đăng.")
+		return apperror.NewNotFound("Không tìm thấy bài đăng.")
 	}
 	return uc.postRepo.Delete(ctx, postID)
 }
@@ -157,9 +157,10 @@ func (uc *PostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, po
 		return err
 	}
 	if post == nil || post.UserID != userID {
-		return errorcode.NewNotFound("Không tìm thấy bài đăng.")
+		return apperror.NewNotFound("Không tìm thấy bài đăng.")
 	}
 	return uc.postItemRepo.DeleteByPostAndIDs(ctx, postID, postItemIDs)
 }
 
 var _ uc_interfaces.IPostUseCase = (*PostUseCase)(nil)
+

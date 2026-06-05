@@ -2,7 +2,7 @@ package jwtutils
 
 import (
 	"errors"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"time"
 
@@ -49,7 +49,7 @@ func ValidateToken(secret []byte, tokenString string, expectedTokenType jwttype.
 	claims := &CustomClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errorcode.ErrUnexpectedSigningToken
+			return nil, apperror.ErrUnexpectedSigningToken()
 		}
 		return secret, nil
 	})
@@ -57,18 +57,18 @@ func ValidateToken(secret []byte, tokenString string, expectedTokenType jwttype.
 		var ve *jwt.ValidationError
 		if errors.As(err, &ve) {
 			if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return nil, errorcode.ErrInvalidAccessToken
+				return nil, apperror.ErrInvalidAccessToken()
 			}
 		}
-		return nil, errorcode.ErrInvalidAccessToken
+		return nil, apperror.ErrInvalidAccessToken()
 	}
 
 	if !token.Valid {
-		return nil, errorcode.ErrInvalidToken
+		return nil, apperror.ErrInvalidToken()
 	}
 
 	if claims.Type != expectedTokenType {
-		return nil, errorcode.ErrInvalidToken
+		return nil, apperror.ErrInvalidToken()
 	}
 
 	return claims, nil

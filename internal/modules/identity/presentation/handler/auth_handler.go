@@ -7,7 +7,7 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -148,7 +148,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 	refreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(refreshToken) == 0 {
-		return errorcode.NewBadRequest("Refresh token is missing from cookies.")
+		return apperror.NewBadRequest("Refresh token is missing from cookies.")
 	}
 
 	input := dto.LogoutReq{
@@ -197,7 +197,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(oldRefreshToken) == 0 {
-		return errorcode.NewBadRequest("Refresh token is missing from cookies.")
+		return apperror.NewBadRequest("Refresh token is missing from cookies.")
 	}
 
 	input := dto.RefreshTokenReq{
@@ -315,7 +315,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 
 	resetToken, err := c.Cookie(contextutils.CookieForgotPasswordToken)
 	if err != nil || len(resetToken) == 0 {
-		return errorcode.NewUnauthorized("Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại yêu cầu.")
+		return apperror.NewUnauthorized("Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại yêu cầu.")
 	}
 
 	_, err = h.recoveryUC.ResetPassword(c.Request.Context(), input, resetToken)
@@ -337,3 +337,4 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 	shared_pres.Success(c, "Đặt lại mật khẩu thành công", nil)
 	return nil
 }
+

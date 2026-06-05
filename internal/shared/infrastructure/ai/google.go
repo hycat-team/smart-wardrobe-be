@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/utils/httputils"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -69,7 +69,7 @@ func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProvi
 	}
 
 	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
-		return "", errorcode.NewInternalError("Không nhận được phản hồi văn bản từ Google AI.")
+		return "", apperror.NewInternalError("Không nhận được phản hồi văn bản từ Google AI.")
 	}
 
 	return googleResp.Candidates[0].Content.Parts[0].Text, nil
@@ -143,7 +143,7 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 	}
 
 	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
-		return nil, errorcode.NewInternalError("Không nhận được phản hồi phân tích hình ảnh từ Google AI.")
+		return nil, apperror.NewInternalError("Không nhận được phản hồi phân tích hình ảnh từ Google AI.")
 	}
 
 	var result struct {
@@ -230,7 +230,7 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 		}
 
 		if len(googleResp.Embeddings) == 0 {
-			return nil, errorcode.NewInternalError("Không nhận được phản hồi mã hóa từ Google AI.")
+			return nil, apperror.NewInternalError("Không nhận được phản hồi mã hóa từ Google AI.")
 		}
 
 		for _, emb := range googleResp.Embeddings {
@@ -240,3 +240,4 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 
 	return allEmbeddings, nil
 }
+

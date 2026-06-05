@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 	"smart-wardrobe-be/pkg/utils/stringutils"
@@ -66,7 +66,7 @@ func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProvi
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return "", errorcode.NewInternalError("Không nhận được phản hồi văn bản từ OpenAI.")
+		return "", apperror.NewInternalError("Không nhận được phản hồi văn bản từ OpenAI.")
 	}
 
 	return openAIResp.Choices[0].Message.Content, nil
@@ -135,7 +135,7 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return nil, errorcode.NewInternalError("Không nhận được phản hồi phân tích hình ảnh.")
+		return nil, apperror.NewInternalError("Không nhận được phản hồi phân tích hình ảnh.")
 	}
 
 	var result struct {
@@ -206,7 +206,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		}
 
 		if len(openAIResp.Data) == 0 {
-			return nil, errorcode.NewInternalError("Không nhận được phản hồi mã hóa từ OpenAI.")
+			return nil, apperror.NewInternalError("Không nhận được phản hồi mã hóa từ OpenAI.")
 		}
 
 		batchResults := make([][]float32, len(subSlice))
@@ -221,3 +221,4 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 
 	return allEmbeddings, nil
 }
+

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/streamutils"
@@ -113,7 +113,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
 	}
 
 	response, err := h.wardrobeUseCase.GetChatMessages(c.Request.Context(), userID, contextID)
@@ -142,7 +142,7 @@ func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
 	}
 
 	if err := h.wardrobeUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -171,7 +171,7 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
 	}
 
 	var input dto.SendChatMessageReq
@@ -205,3 +205,4 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 	flusher.Flush()
 	return nil
 }
+

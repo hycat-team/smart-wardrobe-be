@@ -13,7 +13,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -58,7 +58,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		return false, err
 	}
 	if user == nil {
-		return false, errorcode.NewNotFound("Email này chưa được đăng ký trong hệ thống.")
+		return false, apperror.NewNotFound("Email này chưa được đăng ký trong hệ thống.")
 	}
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeForgotPassword)
@@ -66,7 +66,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		return false, err
 	}
 	if isCooldown {
-		return false, errorcode.NewBadRequest("Vui lòng đợi một lát trước khi yêu cầu mã mới.")
+		return false, apperror.NewBadRequest("Vui lòng đợi một lát trước khi yêu cầu mã mới.")
 	}
 
 	tempData := vo.TempOtpData{
@@ -75,7 +75,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 
 	tempUserDataJson, err := json.Marshal(tempData)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi chuyển đổi thông tin tạm thời")
+		return false, apperror.NewInternalError("Lỗi khi chuyển đổi thông tin tạm thời")
 	}
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeForgotPassword)
@@ -85,7 +85,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 
 	err = uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi gửi email khôi phục mật khẩu")
+		return false, apperror.NewInternalError("Lỗi khi gửi email khôi phục mật khẩu")
 	}
 
 	return true, nil
@@ -98,18 +98,18 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 	}
 
 	if len(tempUserDataJson) == 0 {
-		return "", errorcode.NewBadRequest("Dữ liệu xác thực không hợp lệ")
+		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ")
 	}
 
 	var tempData vo.TempOtpData
 	err = json.Unmarshal([]byte(tempUserDataJson), &tempData)
 	if err != nil {
-		return "", errorcode.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
+		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
 	}
 
 	userId, err := uuid.Parse(tempData.UserId)
 	if err != nil {
-		return "", errorcode.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
+		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
@@ -117,7 +117,7 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 		return "", err
 	}
 	if user == nil || user.IsDeleted {
-		return "", errorcode.NewNotFound("Người dùng không tồn tại.")
+		return "", apperror.NewNotFound("Người dùng không tồn tại.")
 	}
 
 	resetToken, err := jwtutils.GenerateToken(
@@ -127,7 +127,7 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 		time.Duration(uc.cfg.Jwt.ForgotPasswordExpirationMinutes)*time.Minute,
 	)
 	if err != nil {
-		return "", errorcode.NewInternalError("Lỗi khi cấp mã khôi phục mật khẩu")
+		return "", apperror.NewInternalError("Lỗi khi cấp mã khôi phục mật khẩu")
 	}
 
 	return resetToken, nil
@@ -136,12 +136,12 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswordReq, resetToken string) (bool, error) {
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), resetToken, jwttype.ResetPasswordToken)
 	if err != nil {
-		return false, errorcode.NewUnauthorized("Token không hợp lệ.")
+		return false, apperror.NewUnauthorized("Token không hợp lệ.")
 	}
 
 	userId, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return false, errorcode.NewUnauthorized("Token không hợp lệ.")
+		return false, apperror.NewUnauthorized("Token không hợp lệ.")
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userId)
@@ -149,7 +149,7 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, errorcode.NewUnauthorized("Người dùng không tồn tại.")
+		return false, apperror.NewUnauthorized("Người dùng không tồn tại.")
 	}
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)
@@ -182,3 +182,4 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 }
 
 var _ uc_interfaces.IPasswordRecoveryUseCase = (*PasswordRecoveryUseCase)(nil)
+

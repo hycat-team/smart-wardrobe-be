@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -57,4 +59,15 @@ func (r *DepositTransactionRepository) GetByOrderCodeWithLock(ctx context.Contex
 		return nil, err
 	}
 	return &tx, nil
+}
+
+func (r *DepositTransactionRepository) HasPendingDirectPurchase(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.DepositTransaction{}).
+		Where("user_id = ? AND status = ? AND transaction_type = ?", userID, depositstatus.Pending, deposittransactiontype.DirectPurchase).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

@@ -11,7 +11,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 
 	"github.com/redis/go-redis/v9"
@@ -71,7 +71,7 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 	savedOtp, err := s.redisClient.Get(ctx, otpKey).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return "", errorcode.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
+			return "", apperror.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
 		}
 		return "", err
 	}
@@ -79,7 +79,7 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 	tempUserData, err := s.redisClient.Get(ctx, dataKey).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return "", errorcode.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
+			return "", apperror.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
 		}
 		return "", err
 	}
@@ -100,7 +100,7 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 	if currentAttempts >= s.cfg.Otp.MaxAttempts {
 		_ = s.redisClient.Del(ctx, otpKey).Err()
 		_ = s.redisClient.Del(ctx, dataKey).Err()
-		return "", errorcode.NewTooManyRequest("Bạn đã nhập sai quá nhiều lần. Mã OTP này đã bị hủy để bảo mật. Vui lòng thử lại sau 1 phút.")
+		return "", apperror.NewTooManyRequest("Bạn đã nhập sai quá nhiều lần. Mã OTP này đã bị hủy để bảo mật. Vui lòng thử lại sau 1 phút.")
 	}
 
 	if savedOtp != otpCode {
@@ -109,7 +109,7 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 		_ = s.redisClient.Set(ctx, attemptKey, strconv.Itoa(currentAttempts), expiry).Err()
 
 		remainingAttempts := s.cfg.Otp.MaxAttempts - currentAttempts
-		return "", errorcode.NewBadRequest(fmt.Sprintf("Mã OTP không chính xác. Bạn còn %d lần thử.", remainingAttempts))
+		return "", apperror.NewBadRequest(fmt.Sprintf("Mã OTP không chính xác. Bạn còn %d lần thử.", remainingAttempts))
 	}
 
 	_ = s.redisClient.Del(ctx, otpKey).Err()
@@ -135,3 +135,4 @@ func (s *RedisOtpService) generateSecureOTP() string {
 	}
 	return fmt.Sprintf("%06d", nBig.Int64())
 }
+

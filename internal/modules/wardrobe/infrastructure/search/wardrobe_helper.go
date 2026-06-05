@@ -3,7 +3,7 @@ package search
 import (
 	"encoding/json"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 
 	"github.com/google/uuid"
 )
@@ -38,7 +38,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	}
 
 	if err := json.Unmarshal(respBytes, &esResult); err != nil {
-		return nil, errorcode.NewInternalError("Failed to unmarshal raw search response")
+		return nil, apperror.NewInternalError("Failed to unmarshal raw search response")
 	}
 
 	results := make([]*dto.SearchWardrobeItemRes, len(esResult.Hits.Hits))
@@ -68,3 +68,4 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 
 	return results, nil
 }
+

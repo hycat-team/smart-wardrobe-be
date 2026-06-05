@@ -11,7 +11,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -113,7 +113,7 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 		return nil, err
 	}
 	if item == nil || item.UserID != userID {
-		return nil, errorcode.NewNotFound("Không tìm thấy trang phục tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục tương ứng.")
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -138,10 +138,11 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 	}
 
 	if isLocked {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Trang phục này đã bị khóa do vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tối đa: %d trang phục).", subOverview.MaxWardrobeItems))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Trang phục này đã bị khóa do vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tối đa: %d trang phục).", subOverview.MaxWardrobeItems))
 	}
 
 	res := mapper.MapToWardrobeItemRes(item)
 	res.IsLocked = false
 	return res, nil
 }
+

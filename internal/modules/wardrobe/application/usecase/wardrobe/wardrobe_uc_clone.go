@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -17,7 +17,7 @@ import (
 
 func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
 	if quantity < 1 || quantity > 5 {
-		return nil, errorcode.NewBadRequest("Số lượng bản sao nhân bản chỉ được phép từ 1 đến 5 cái.")
+		return nil, apperror.NewBadRequest("Số lượng bản sao nhân bản chỉ được phép từ 1 đến 5 cái.")
 	}
 
 	// 1. Kiểm tra giới hạn số lượng trang phục của gói cước
@@ -32,7 +32,7 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 	}
 
 	if int(currentCount)+quantity > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, quantity))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, quantity))
 	}
 
 	// 2. Lấy trang phục gốc
@@ -41,16 +41,16 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 	if original == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy trang phục gốc để thực hiện nhân bản.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục gốc để thực hiện nhân bản.")
 	}
 
 	// Ràng buộc bảo mật: Chỉ cho phép nhân bản trang phục của chính mình
 	if original.UserID != userID {
-		return nil, errorcode.NewForbidden("Bạn không có quyền nhân bản trang phục của người khác.")
+		return nil, apperror.NewForbidden("Bạn không có quyền nhân bản trang phục của người khác.")
 	}
 
 	if original.Status == wardrobestatus.Sold {
-		return nil, errorcode.NewBadRequest("Không thể nhân bản trang phục đã được bán.")
+		return nil, apperror.NewBadRequest("Không thể nhân bản trang phục đã được bán.")
 	}
 
 	clonedItems := make([]*entities.WardrobeItem, quantity)
@@ -96,3 +96,4 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 
 	return resList, nil
 }
+

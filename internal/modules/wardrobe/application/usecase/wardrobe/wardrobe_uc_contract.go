@@ -6,7 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -20,7 +20,7 @@ func (uc *WardrobeUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid
 		return nil, err
 	}
 	if sourceItem == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy trang phục cần sao chép.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục cần sao chép.")
 	}
 
 	cloned := &entities.WardrobeItem{
@@ -54,7 +54,7 @@ func (uc *WardrobeUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUI
 		return err
 	}
 	if item == nil {
-		return errorcode.NewNotFound("Không tìm thấy trang phục.")
+		return apperror.NewNotFound("Không tìm thấy trang phục.")
 	}
 
 	item.Status = status
@@ -79,15 +79,16 @@ func (uc *WardrobeUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.U
 	for _, itemID := range itemIDs {
 		item, ok := itemMap[itemID]
 		if !ok {
-			return errorcode.NewNotFound(fmt.Sprintf("Không tìm thấy trang phục ID %s.", itemID))
+			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy trang phục ID %s.", itemID))
 		}
 		if item.UserID != userID {
-			return errorcode.NewForbidden(fmt.Sprintf("Trang phục ID %s không thuộc tủ đồ của bạn.", itemID))
+			return apperror.NewForbidden(fmt.Sprintf("Trang phục ID %s không thuộc tủ đồ của bạn.", itemID))
 		}
 		if item.Status == wardrobestatus.Sold {
-			return errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể đăng bài.", itemID))
+			return apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể đăng bài.", itemID))
 		}
 	}
 
 	return nil
 }
+

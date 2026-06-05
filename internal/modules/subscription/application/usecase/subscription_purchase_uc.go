@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
@@ -60,33 +60,38 @@ func NewSubscriptionPurchaseUseCase(
 }
 
 func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context, userID uuid.UUID, req *dto.DirectPurchaseReq) (*dto.PaymentLinkDTO, error) {
+	// Query the plan details by slug to check if it exists.
 	plan, err := uc.planRepo.GetBySlug(ctx, req.PlanSlug)
 	if err != nil {
 		return nil, err
 	}
 	if plan == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
+		return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
 	}
 
+	// Prevent users from checking out free plans directly.
 	if !plan.Price.GreaterThan(sharedmoney.Zero) {
-		return nil, errorcode.NewBadRequest("Không thể đăng ký trực tiếp gói hội viên miễn phí")
+		return nil, apperror.NewBadRequest("Không thể đăng ký trực tiếp gói hội viên miễn phí")
 	}
 
+	// Fetch existing user subscription to perform validation.
 	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
+
+	// Validate the purchase request against business rules.
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-	if sub != nil && sub.IsActive && sub.SubscriptionPlanID == plan.ID {
-		if sub.ExpiresAt == nil || sub.ExpiresAt.After(now) {
-			return nil, errorcode.NewConflict("Bạn đã đăng ký gói hội viên này rồi")
-		}
+	if err := uc.validatePurchase(ctx, userID, plan, sub, now); err != nil {
+		return nil, err
 	}
 
 	var checkoutURL string
 	var orderCode int64
 
+	// Define a transaction function to create a pending payment record and generate the payment link.
 	createDirectPurchase := func(txCtx context.Context) error {
+		// Initialize the deposit/payment transaction entity with PENDING status.
 		tx := &entities.DepositTransaction{
 			UserID:             userID,
 			Amount:             plan.Price,
@@ -94,14 +99,16 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			Status:             depositstatus.Pending,
 			TransactionType:    deposittransactiontype.DirectPurchase,
 			SubscriptionPlanID: &plan.ID,
-			OrderCode:          timeutils.GenerateOrderCode(),
+			OrderCode:          timeutils.GenerateOrderCode(), // Custom application-generated unique numeric identifier
 			PaymentUrl:         nil,
 		}
 
+		// Insert the transaction into the database first.
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
-			return errorcode.NewInternalError("Lỗi khi tạo giao dịch thanh toán trực tiếp")
+			return apperror.NewInternalError("Lỗi khi tạo giao dịch thanh toán trực tiếp")
 		}
 
+		// Configure return/cancel callback URLs for the payment gateway.
 		returnURL := req.ReturnUrl
 		if returnURL == "" {
 			returnURL = uc.cfg.PayOS.ReturnUrl
@@ -111,12 +118,14 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			cancelURL = uc.cfg.PayOS.CancelUrl
 		}
 
+		// Normalize descriptive text for the bank checkout session.
 		normalizedPlanName := strings.ReplaceAll(plan.Name, " ", "")
 		description := fmt.Sprintf("Purchase plan %s", normalizedPlanName)
 		if len(description) > 25 {
-			description = description[:25]
+			description = description[:25] // Standard length limit for payment gateways (e.g., PayOS)
 		}
 
+		// Call the external payment gateway service to initiate checkout.
 		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
 			OrderCode:   tx.OrderCode,
 			Amount:      tx.Amount,
@@ -128,15 +137,17 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			return errorutils.WrapError(err, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
 		}
 
+		// Update the transaction in database with the generated checkout payment URL.
 		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return errorcode.NewInternalError("Lỗi khi liên kết địa chỉ thanh toán")
+			return apperror.NewInternalError("Lỗi khi liên kết địa chỉ thanh toán")
 		}
 
 		orderCode = tx.OrderCode
 		return nil
 	}
 
+	// Execute the entire setup workflow in a single database transaction.
 	if err := uc.uow.Execute(ctx, createDirectPurchase); err != nil {
 		return nil, err
 	}
@@ -148,23 +159,36 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 }
 
 func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Context, userID uuid.UUID, planSlug string) error {
+	// Retrieve the subscription plan details by slug.
 	plan, err := uc.planRepo.GetBySlug(ctx, planSlug)
 	if err != nil {
-		return errorcode.NewInternalError("Lỗi khi tìm kiếm thông tin gói cước")
+		return apperror.NewInternalError("Lỗi khi tìm kiếm thông tin gói cước")
 	}
 	if plan == nil {
-		return errorcode.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
+		return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
 	}
 
+	// Execute the purchase using a database transaction.
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 		description := fmt.Sprintf("Đăng ký gói hội viên %s thành công qua ví nội bộ", plan.Name)
 
+		// Fetch and lock the user's subscription record (FOR UPDATE) to prevent race conditions.
 		sub, isNewSub, err := uc.getOrInitLockedSubscriptionForPurchase(txCtx, userID, now)
 		if err != nil {
 			return err
 		}
 
+		// Validate the purchase request using the locked subscription row.
+		var lockedSub *entities.UserSubscription
+		if !isNewSub {
+			lockedSub = sub
+		}
+		if err := uc.validatePurchase(txCtx, userID, plan, lockedSub, now); err != nil {
+			return err
+		}
+
+		// Special case - if the plan is free, apply the plan immediately without wallet debit.
 		if plan.Price.IsZero() {
 			uc.applyPlanToSubscriptionEntity(sub, isNewSub, plan, now)
 			if err := uc.persistSubscriptionForPurchase(txCtx, sub, isNewSub); err != nil {
@@ -173,20 +197,24 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 			return nil
 		}
 
+		// Fetch and lock the user's wallet record (FOR UPDATE) to guarantee atomic balance deduction.
 		wallet, isNewWallet, err := uc.getOrInitLockedWalletForPurchase(txCtx, userID, now)
 		if err != nil {
 			return err
 		}
 
+		// Debit the wallet balance and persist the changes.
 		prevBalance, err := uc.applyWalletDebitToLockedWallet(txCtx, wallet, isNewWallet, plan.Price, now)
 		if err != nil {
 			return err
 		}
 
+		// Record a wallet transaction statement (ledger) for auditing purposes.
 		if err := uc.createPurchaseWalletStatement(txCtx, userID, plan.Price, prevBalance, wallet.Balance, description); err != nil {
 			return err
 		}
 
+		// Calculate expiration/extension, update subscription state, and save the subscription record.
 		uc.applyPlanToSubscriptionEntity(sub, isNewSub, plan, now)
 		if err := uc.persistSubscriptionForPurchase(txCtx, sub, isNewSub); err != nil {
 			return err
@@ -196,10 +224,12 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	})
 }
 
+// getOrInitLockedSubscriptionForPurchase locks the user subscription row in the database.
+// If it doesn't exist, it prepares a new subscription entity.
 func (uc *SubscriptionPurchaseUseCase) getOrInitLockedSubscriptionForPurchase(txCtx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, bool, error) {
 	sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return nil, false, errorcode.NewInternalError("Lỗi khi kiểm tra thông tin gói hội viên hiện tại")
+		return nil, false, apperror.NewInternalError("Lỗi khi kiểm tra thông tin gói hội viên hiện tại")
 	}
 	if sub != nil {
 		return sub, false, nil
@@ -211,10 +241,12 @@ func (uc *SubscriptionPurchaseUseCase) getOrInitLockedSubscriptionForPurchase(tx
 	}, true, nil
 }
 
+// getOrInitLockedWalletForPurchase locks the user wallet row in the database.
+// If it doesn't exist, it prepares a new wallet entity with zero balance.
 func (uc *SubscriptionPurchaseUseCase) getOrInitLockedWalletForPurchase(txCtx context.Context, userID uuid.UUID, now time.Time) (*entities.UserWallet, bool, error) {
 	wallet, err := uc.walletRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return nil, false, errorcode.NewInternalError("Lỗi khi truy vấn thông tin số dư ví")
+		return nil, false, apperror.NewInternalError("Lỗi khi truy vấn thông tin số dư ví")
 	}
 	if wallet != nil {
 		return wallet, false, nil
@@ -229,9 +261,11 @@ func (uc *SubscriptionPurchaseUseCase) getOrInitLockedWalletForPurchase(txCtx co
 	}, true, nil
 }
 
+// applyWalletDebitToLockedWallet validates the balance and subtracts the plan price.
+// Persists the change to the repository.
 func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx context.Context, wallet *entities.UserWallet, isNewWallet bool, amount decimal.Decimal, now time.Time) (decimal.Decimal, error) {
 	if wallet.Balance.LessThan(amount) {
-		return sharedmoney.Zero, errorcode.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
+		return sharedmoney.Zero, apperror.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
 	}
 
 	prevBalance := wallet.Balance
@@ -240,21 +274,22 @@ func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx cont
 
 	if isNewWallet {
 		if err := uc.walletRepo.Create(txCtx, wallet); err != nil {
-			return sharedmoney.Zero, errorcode.NewInternalError("Lỗi khi khởi tạo ví mới")
+			return sharedmoney.Zero, apperror.NewInternalError("Lỗi khi khởi tạo ví mới")
 		}
 	} else {
 		if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
-			return sharedmoney.Zero, errorcode.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
+			return sharedmoney.Zero, apperror.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
 		}
 	}
 
 	return prevBalance, nil
 }
 
+// createPurchaseWalletStatement creates a negative balance change audit ledger entry.
 func (uc *SubscriptionPurchaseUseCase) createPurchaseWalletStatement(txCtx context.Context, userID uuid.UUID, amount decimal.Decimal, prevBalance decimal.Decimal, newBalance decimal.Decimal, description string) error {
 	statement := &entities.WalletStatement{
 		UserID:          userID,
-		Amount:          amount.Neg(),
+		Amount:          amount.Neg(), // Negative amount indicates a deduction/debit
 		TransactionType: walletstatementtype.SubscriptionPurchase,
 		PreviousBalance: prevBalance,
 		NewBalance:      newBalance,
@@ -262,12 +297,13 @@ func (uc *SubscriptionPurchaseUseCase) createPurchaseWalletStatement(txCtx conte
 	}
 
 	if err := uc.statementRepo.Create(txCtx, statement); err != nil {
-		return errorcode.NewInternalError("Lỗi khi lưu lịch sử biến động số dư ví")
+		return apperror.NewInternalError("Lỗi khi lưu lịch sử biến động số dư ví")
 	}
 
 	return nil
 }
 
+// applyPlanToSubscriptionEntity computes subscription validity duration and sets update values.
 func (uc *SubscriptionPurchaseUseCase) applyPlanToSubscriptionEntity(sub *entities.UserSubscription, isNewSub bool, plan *entities.SubscriptionPlan, now time.Time) {
 	var expiresAt *time.Time
 
@@ -276,6 +312,8 @@ func (uc *SubscriptionPurchaseUseCase) applyPlanToSubscriptionEntity(sub *entiti
 	} else {
 		days := *plan.DurationDays
 		var expiry time.Time
+		// If user extends the SAME plan that is currently active, stack/add to the expiration time.
+		// If switching plans or the previous plan expired, start fresh duration from now.
 		if !isNewSub && sub.IsActive && sub.ExpiresAt != nil && sub.ExpiresAt.After(now) && sub.SubscriptionPlanID == plan.ID {
 			expiry = sub.ExpiresAt.AddDate(0, 0, days)
 		} else {
@@ -290,17 +328,72 @@ func (uc *SubscriptionPurchaseUseCase) applyPlanToSubscriptionEntity(sub *entiti
 	sub.UpdatedAt = now
 }
 
+// persistSubscriptionForPurchase saves the modified user subscription into the repository.
 func (uc *SubscriptionPurchaseUseCase) persistSubscriptionForPurchase(txCtx context.Context, sub *entities.UserSubscription, isNewSub bool) error {
 	if isNewSub {
 		if err := uc.userSubRepo.Create(txCtx, sub); err != nil {
-			return errorcode.NewInternalError("Lỗi khi kích hoạt gói hội viên mới")
+			return apperror.NewInternalError("Lỗi khi kích hoạt gói hội viên mới")
 		}
 		return nil
 	}
 
 	if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
-		return errorcode.NewInternalError("Lỗi khi cập nhật thời hạn gói hội viên")
+		return apperror.NewInternalError("Lỗi khi cập nhật thời hạn gói hội viên")
 	}
 
 	return nil
 }
+
+// validatePurchase checks shared business rules before a user purchases a subscription plan.
+// It rejects inactive target plans, conflicting pending purchases, unsafe downgrades,
+// and duplicate purchases of permanent plans.
+func (uc *SubscriptionPurchaseUseCase) validatePurchase(
+	ctx context.Context,
+	userID uuid.UUID,
+	targetPlan *entities.SubscriptionPlan,
+	currentSub *entities.UserSubscription,
+	now time.Time,
+) error {
+	if !targetPlan.IsActive {
+		return apperror.NewBadRequest("Gói hội viên này hiện đang ngừng hoạt động")
+	}
+
+	hasPending, err := uc.depositTxRepo.HasPendingDirectPurchase(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if hasPending {
+		return apperror.NewConflict("Bạn đang có giao dịch thanh toán trực tiếp chờ xử lý. Vui lòng hoàn tất hoặc đợi giao dịch hết hạn.")
+	}
+
+	if currentSub == nil || !currentSub.IsActive {
+		return nil
+	}
+
+	currentPlan := currentSub.SubscriptionPlan
+	if currentPlan == nil {
+		var err error
+		currentPlan, err = uc.planRepo.GetByID(ctx, currentSub.SubscriptionPlanID)
+		if err != nil {
+			return apperror.NewInternalError("Lỗi khi tải thông tin gói hội viên hiện tại")
+		}
+		if currentPlan == nil {
+			return apperror.NewInternalError("Không tìm thấy thông tin gói hội viên hiện tại")
+		}
+	}
+
+	if currentSub.SubscriptionPlanID == targetPlan.ID && currentSub.ExpiresAt == nil {
+		return apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này rồi")
+	}
+
+	currentIsPaid := currentPlan.Price.GreaterThan(sharedmoney.Zero)
+	currentStillValid := currentSub.ExpiresAt == nil || currentSub.ExpiresAt.After(now)
+	targetIsLower := targetPlan.Price.LessThan(currentPlan.Price)
+
+	if currentIsPaid && currentStillValid && targetIsLower {
+		return apperror.NewBadRequest("Gói hội viên hiện tại vẫn còn hiệu lực. Vui lòng tắt tự động gia hạn nếu bạn không muốn gia hạn tiếp.")
+	}
+
+	return nil
+}
+

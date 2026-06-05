@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -17,7 +17,7 @@ import (
 
 func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	if len(catalogItemIDs) == 0 {
-		return nil, errorcode.NewBadRequest("Danh sách trang phục mẫu không được để trống.")
+		return nil, apperror.NewBadRequest("Danh sách trang phục mẫu không được để trống.")
 	}
 
 	// 1. Kiểm tra giới hạn số lượng trang phục của gói cước
@@ -32,7 +32,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 	}
 
 	if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
 	}
 
 	// 2. Fetch Catalog Items mẫu từ Database
@@ -41,7 +41,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 		return nil, err
 	}
 	if len(templates) == 0 {
-		return nil, errorcode.NewNotFound("Không tìm thấy bất kỳ trang phục mẫu nào tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bất kỳ trang phục mẫu nào tương ứng.")
 	}
 
 	newItems := make([]*entities.WardrobeItem, len(templates))
@@ -78,3 +78,4 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 
 	return resList, nil
 }
+

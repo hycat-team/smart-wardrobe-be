@@ -138,25 +138,25 @@ if err := c.ShouldBindJSON(&input); err != nil {
 
 ### B. Business / Domain Exception Propagation
 
-Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions using the structured types provided by the `errorcode` package (`smart-wardrobe-be/internal/shared/application/constants/errorcode`):
+Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions using the structured types provided by the `apperror` package (`smart-wardrobe-be/internal/shared/application/constants/apperror`):
 
 - **Not Found Errors**:
     ```go
-    return errorcode.NewNotFound("User not found with the provided ID.")
+    return apperror.NewNotFound("User not found with the provided ID.")
     ```
 - **Conflict / Already Exists Errors**:
     ```go
-    return errorcode.NewConflict("This email address is already registered.")
+    return apperror.NewConflict("This email address is already registered.")
     ```
 - **Unauthorized / Session Errors**:
     ```go
-    return errorcode.NewUnauthorized("Session expired. Please log in again.")
+    return apperror.NewUnauthorized("Session expired. Please log in again.")
     ```
 - **Bad Request / Validation Errors**:
     ```go
-    return errorcode.NewBadRequest("Incorrect OTP verification code.")
+    return apperror.NewBadRequest("Incorrect OTP verification code.")
     ```
-- _And other types available in the `errorcode` package..._
+- _And other types available in the `apperror` package..._
 
 The underlying `WrapHandler` mechanism working together with the `GlobalErrorHandler` middleware will automatically catch these exceptions, map them to their corresponding HTTP status codes, and serialize them into a unified JSON format for the client. Handlers must never perform manual HTTP status parsing!
 
@@ -184,3 +184,5 @@ All developments and future refactoring phases must strictly satisfy the followi
 ### E. Code Commenting Standards
 - All comments, documentation block headers, or Swagger annotations in source code must use plain text formats only.
 - Absolutely **NO** sequential numbering prefixes (e.g., `1.`, `2.`, `01.`, `02.`) and **NO** visual emojis are allowed inside any source code comments.
+
+

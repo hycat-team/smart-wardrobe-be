@@ -14,7 +14,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
@@ -55,7 +55,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if usernameExists {
-		return false, errorcode.NewConflict(fmt.Sprintf("Tài khoản '%s' đã tồn tại.", input.Username))
+		return false, apperror.NewConflict(fmt.Sprintf("Tài khoản '%s' đã tồn tại.", input.Username))
 	}
 
 	emailExists, err := uc.userRepo.IsEmailExists(ctx, input.Email)
@@ -63,7 +63,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if emailExists {
-		return false, errorcode.NewConflict(fmt.Sprintf("Email '%s' đã tồn tại.", input.Email))
+		return false, apperror.NewConflict(fmt.Sprintf("Email '%s' đã tồn tại.", input.Email))
 	}
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeRegistration)
@@ -71,7 +71,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if isCooldown {
-		return false, errorcode.NewTooManyRequest("Vui lòng đợi 1 phút trước khi yêu cầu OTP mới.")
+		return false, apperror.NewTooManyRequest("Vui lòng đợi 1 phút trước khi yêu cầu OTP mới.")
 	}
 
 	hashedPass, err := uc.passwordHasher.HashPassword(input.Password)
@@ -82,7 +82,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 	if input.DateOfBirth != "" {
 		_, err := time.Parse(time.DateOnly, input.DateOfBirth)
 		if err != nil {
-			return false, errorcode.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
+			return false, apperror.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
 		}
 	}
 
@@ -104,7 +104,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	tempUserDataJson, err := json.Marshal(cacheModel)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi chuyển đổi thông tin người dùng")
+		return false, apperror.NewInternalError("Lỗi khi chuyển đổi thông tin người dùng")
 	}
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeRegistration)
@@ -114,7 +114,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi gửi email xác nhận OTP")
+		return false, apperror.NewInternalError("Lỗi khi gửi email xác nhận OTP")
 	}
 
 	return true, nil
@@ -127,18 +127,18 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	}
 
 	if len(tempUserDataJson) == 0 {
-		return false, errorcode.NewInternalError("Lấy thông tin đăng ký thất bại")
+		return false, apperror.NewInternalError("Lấy thông tin đăng ký thất bại")
 	}
 
 	var registerData vo.TempUserCacheModel
 	err = json.Unmarshal([]byte(tempUserDataJson), &registerData)
 	if err != nil {
-		return false, errorcode.NewInternalError("Thông tin đăng ký không hợp lệ.")
+		return false, apperror.NewInternalError("Thông tin đăng ký không hợp lệ.")
 	}
 
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
-		return false, errorcode.NewInternalError("Ngày sinh không hợp lệ.")
+		return false, apperror.NewInternalError("Ngày sinh không hợp lệ.")
 	}
 
 	gen := gender.Gender(registerData.Gender)
@@ -160,8 +160,9 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 
 	err = uc.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return false, errorcode.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
+		return false, apperror.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
 	}
 
 	return true, nil
 }
+

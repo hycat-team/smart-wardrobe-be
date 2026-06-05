@@ -7,24 +7,29 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
+	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type BillingHandler struct {
+	logger                logger.Interface
 	walletUseCase         usecase_interfaces.IWalletUseCase
 	subPurchaseUseCase    usecase_interfaces.ISubscriptionPurchaseUseCase
 	paymentWebhookUseCase usecase_interfaces.IPaymentWebhookUseCase
 }
 
 func NewBillingHandler(
+	logger logger.Interface,
 	walletUseCase usecase_interfaces.IWalletUseCase,
 	subPurchaseUseCase usecase_interfaces.ISubscriptionPurchaseUseCase,
 	paymentWebhookUseCase usecase_interfaces.IPaymentWebhookUseCase,
 ) *BillingHandler {
 	return &BillingHandler{
+		logger:                logger,
 		walletUseCase:         walletUseCase,
 		subPurchaseUseCase:    subPurchaseUseCase,
 		paymentWebhookUseCase: paymentWebhookUseCase,
@@ -190,6 +195,7 @@ func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {
 
 	err = h.paymentWebhookUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
 	if err != nil {
+		h.logger.Error("Error verifying webhook signature", zap.Error(err))
 		return err
 	}
 

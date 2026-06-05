@@ -4,7 +4,7 @@ import (
 	"smart-wardrobe-be/config"
 	identity_security "smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -48,19 +48,19 @@ func (m *AuthMiddleware) Handle() gin.HandlerFunc {
 		}
 
 		if tokenStr == "" {
-			c.Error(errorcode.ErrUnauthorized)
+			c.Error(apperror.ErrUnauthorized())
 			c.Abort()
 			return
 		}
 
 		isBlacklisted, err := m.tokenBlacklistService.IsTokenBlacklisted(c.Request.Context(), tokenStr)
 		if err != nil {
-			c.Error(errorcode.NewInternalError("Không thể kiểm tra trạng thái phiên đăng nhập."))
+			c.Error(apperror.NewInternalError("Không thể kiểm tra trạng thái phiên đăng nhập."))
 			c.Abort()
 			return
 		}
 		if isBlacklisted {
-			c.Error(errorcode.ErrUnauthorized)
+			c.Error(apperror.ErrUnauthorized())
 			c.Abort()
 			return
 		}
@@ -74,19 +74,19 @@ func (m *AuthMiddleware) Handle() gin.HandlerFunc {
 
 		userID, err := uuid.Parse(claims.Subject)
 		if err != nil {
-			c.Error(errorcode.ErrInvalidAccessToken)
+			c.Error(apperror.ErrInvalidAccessToken())
 			c.Abort()
 			return
 		}
 
 		user, err := m.userRepo.GetByID(c.Request.Context(), userID)
 		if err != nil {
-			c.Error(errorcode.NewInternalError("Không thể tải thông tin người dùng."))
+			c.Error(apperror.NewInternalError("Không thể tải thông tin người dùng."))
 			c.Abort()
 			return
 		}
 		if user == nil || user.IsDeleted || user.Status != userstatus.Active {
-			c.Error(errorcode.ErrUnauthorized)
+			c.Error(apperror.ErrUnauthorized())
 			c.Abort()
 			return
 		}

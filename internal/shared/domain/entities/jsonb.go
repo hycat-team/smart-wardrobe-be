@@ -29,3 +29,18 @@ func (b *bodyProfile) Scan(value any) error {
 	}
 	return json.Unmarshal(bytes, b)
 }
+
+type preferredColors []string
+
+func (p preferredColors) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func (p *preferredColors) Scan(value any) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
+	}
+	return json.Unmarshal(bytes, p)
+}
+

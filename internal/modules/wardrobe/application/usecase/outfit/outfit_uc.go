@@ -10,7 +10,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
@@ -72,7 +72,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	}
 
 	if len(existingOutfits) >= subOverview.MaxOutfits {
-		return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng bộ phối đồ của gói dịch vụ hiện tại (Hiện có: %d/%d bộ đồ).", len(existingOutfits), subOverview.MaxOutfits))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng bộ phối đồ của gói dịch vụ hiện tại (Hiện có: %d/%d bộ đồ).", len(existingOutfits), subOverview.MaxOutfits))
 	}
 
 	// 2. Kiểm tra các Wardrobe Items truyền lên có tồn tại và thuộc về User không
@@ -90,7 +90,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
 			}
 			verifiedMap[item.ID] = item
 		}
@@ -101,7 +101,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -139,7 +139,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, errorcode.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
 	}
 
 	// 2. Kiểm tra các Wardrobe Items truyền lên
@@ -157,7 +157,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
 			}
 			verifiedMap[item.ID] = item
 		}
@@ -167,7 +167,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, errorcode.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -215,7 +215,7 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, errorcode.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
 	}
 
 	return mapper.MapToOutfitRes(outfit, items), nil
@@ -227,8 +227,9 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 		return err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return errorcode.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
 	}
 
 	return uc.outfitRepo.DeleteOutfit(ctx, id)
 }
+

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/di"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
@@ -15,7 +14,6 @@ import (
 // @description     API docs for Smart Wardrobe.
 func main() {
 	cfg := config.LoadConfig()
-	errorcode.InitErrorMap()
 	l := logger.New("dev", cfg.Logger.FilePath, cfg.Logger.LogLevel, cfg.Logger.LogToFile)
 
 	app, cleanup, err := di.InitializeApp(cfg, l)

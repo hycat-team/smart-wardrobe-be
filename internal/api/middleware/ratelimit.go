@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"sync"
 	"time"
 
@@ -41,7 +41,7 @@ func (m *RateLimitMiddleware) Handle() gin.HandlerFunc {
 
 		limiter := m.getLimiter(key)
 		if !limiter.Allow() {
-			c.Error(errorcode.NewTooManyRequest("Vui lòng thử lại sau. Quá nhiều yêu cầu được gửi từ IP của bạn."))
+			c.Error(apperror.NewTooManyRequest("Vui lòng thử lại sau. Quá nhiều yêu cầu được gửi từ IP của bạn."))
 			c.Abort()
 			return
 		}
@@ -90,3 +90,4 @@ func (m *RateLimitMiddleware) startCleanupJob(expireAfter time.Duration, interva
 		})
 	}
 }
+

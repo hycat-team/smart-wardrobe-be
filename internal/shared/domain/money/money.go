@@ -20,7 +20,7 @@ func FromFloatAmount(amount float64) (decimal.Decimal, error) {
 	return decimal.NewFromFloat(amount), nil
 }
 
-func ToFloatForDTO(amount decimal.Decimal) float64 {
+func ToFloat(amount decimal.Decimal) float64 {
 	return amount.InexactFloat64()
 }
 

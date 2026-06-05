@@ -2,7 +2,7 @@ package presentation
 
 import (
 	"net/http"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,8 @@ func InitSSE(c *gin.Context) (http.Flusher, error) {
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
-		return nil, errorcode.NewInternalError("Máy chủ không hỗ trợ SSE.")
+		return nil, apperror.NewInternalError("Máy chủ không hỗ trợ SSE.")
 	}
 	return flusher, nil
 }
+

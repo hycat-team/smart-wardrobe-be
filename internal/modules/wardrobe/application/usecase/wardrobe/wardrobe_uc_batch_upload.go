@@ -9,7 +9,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
@@ -23,7 +23,7 @@ import (
 
 func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
-		return nil, errorcode.NewBadRequest("Danh sách ảnh cắt không được để trống.")
+		return nil, apperror.NewBadRequest("Danh sách ảnh cắt không được để trống.")
 	}
 
 	itemType := itemtype.SystemCatalogItem
@@ -40,7 +40,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 		}
 
 		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-			return nil, errorcode.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
+			return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
 		}
 	}
 
@@ -269,3 +269,4 @@ func (uc *WardrobeUseCase) markJobFailed(ctx context.Context, itemID uuid.UUID) 
 		_ = uc.wardrobeRepo.Update(ctx, item)
 	}
 }
+

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
@@ -39,36 +39,47 @@ const (
 )
 
 func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) error {
+	// Get the current timestamp based on database timezone settings.
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+
+	// Fetch the configured default subscription plan ID (usually the Free Plan) for downgrades.
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
-		return errorcode.NewInternalError("Lỗi khi tải thông tin cấu hình gói hội viên mặc định")
+		return apperror.NewInternalError("Lỗi khi tải thông tin cấu hình gói hội viên mặc định")
 	}
 
+	// Initialize pagination state for cursor-based batch processing to avoid memory bloat.
 	var lastUserID uuid.UUID
 	var lastExpiresAt time.Time
 	limit := 100
 
+	// Track statistics for reporting and logs.
 	var renewedCount, downgradedCount, skippedCount, failedCount int
 	outcomeCounts := map[string]int{}
 
+	// Start batch processing loop.
 	for {
+		// Query a batch of expired, active subscriptions using a cursor (lastUserID & lastExpiresAt).
 		expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptionsBatch(ctx, now, lastUserID, lastExpiresAt, limit)
 		if err != nil {
-			return errorcode.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
+			return apperror.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
 		}
 
+		// If no expired subscriptions are returned, processing is complete.
 		if len(expiredSubs) == 0 {
 			break
 		}
 
+		// Process each expired subscription in the current batch.
 		for _, sub := range expiredSubs {
+			// If ExpiresAt is nil, this is an unlimited subscription and should not expire.
 			if sub.ExpiresAt == nil {
 				skippedCount++
 				outcomeCounts[renewalReasonSkippedNilExpiresAt]++
 				continue
 			}
 
+			// Capture cursor values for the next query pagination block.
 			cursorUserID := sub.UserID
 			cursorExpiresAt := *sub.ExpiresAt
 
@@ -78,18 +89,23 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 			resultStatus := renewalStatusSkipped
 			resultReason := renewalReasonFailedProcessing
 
+			// Define individual renewal transaction scope.
 			processSubFn := func(txCtx context.Context) error {
 				resultReason = renewalReasonFailedLockSubscription
+
+				// Re-fetch the subscription with a row lock (FOR UPDATE) to prevent concurrent modifications.
 				lockedSub, err := uc.userSubRepo.GetActiveExpiredSubscriptionByUserIDWithLock(txCtx, sub.UserID, now)
 				if err != nil {
 					return err
 				}
+				// If the subscription is no longer expired or was modified/removed by another process, skip it.
 				if lockedSub == nil {
 					resultStatus = renewalStatusSkipped
 					resultReason = renewalReasonSkippedNotFoundAfterLock
 					return nil
 				}
 
+				// Validate plan configurations (active status, pricing, duration).
 				plan, days, validationReason, err := uc.validateRenewalPlan(lockedSub)
 				if err != nil {
 					resultStatus = renewalStatusFailed
@@ -97,6 +113,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
+				// If auto-renewal is turned off, downgrade the user immediately to the Free plan.
 				if !lockedSub.IsAutoRenewEnabled {
 					resultReason = renewalReasonDowngradedAutoRenewOff
 					if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
@@ -107,6 +124,8 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 				}
 
 				resultReason = renewalReasonFailedLockWallet
+
+				// Fetch and lock the user's wallet (FOR UPDATE) to perform debit checks.
 				wallet, err := uc.walletRepo.GetByUserIDWithLock(txCtx, lockedSub.UserID)
 				if err != nil {
 					return err
@@ -117,6 +136,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return fmt.Errorf("missing wallet for renewal")
 				}
 
+				// If the user has insufficient funds, automatically downgrade them to the Free plan.
 				if wallet.Balance.LessThan(plan.Price) {
 					resultReason = renewalReasonDowngradedInsufficient
 					if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
@@ -126,6 +146,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return nil
 				}
 
+				// Deduct subscription price from the locked wallet.
 				resultReason = renewalReasonRenewed
 				prevBalance := wallet.Balance
 				wallet.Balance = wallet.Balance.Sub(plan.Price)
@@ -135,6 +156,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
+				// Extend the subscription expiration date.
 				newExpiry := now.AddDate(0, 0, days)
 				lockedSub.ExpiresAt = &newExpiry
 				lockedSub.IsActive = true
@@ -144,6 +166,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
+				// Create a transaction statement ledger entry for the renewal payment.
 				statement := &entities.WalletStatement{
 					UserID:          lockedSub.UserID,
 					Amount:          plan.Price.Neg(),
@@ -161,6 +184,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 				return nil
 			}
 
+			// Execute the transaction function.
 			if err = uc.uow.Execute(ctx, processSubFn); err != nil {
 				failedCount++
 				outcomeCounts[resultReason]++
@@ -183,11 +207,13 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 			}
 		}
 
+		// Break early if the returned batch size is less than limit, indicating we reached the end of the query.
 		if len(expiredSubs) < limit {
 			break
 		}
 	}
 
+	// Log batch execution summaries.
 	uc.log.Info("Processed scheduled renewals summary",
 		zap.Int("renewed", renewedCount),
 		zap.Int("downgraded", downgradedCount),
@@ -214,6 +240,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 	return nil
 }
 
+// validateRenewalPlan ensures that the target plan is valid for renewal.
 func (uc *SubscriptionUseCase) validateRenewalPlan(lockedSub *entities.UserSubscription) (*entities.SubscriptionPlan, int, string, error) {
 	if lockedSub.SubscriptionPlan == nil {
 		return nil, 0, renewalReasonFailedMissingPlan, fmt.Errorf("subscription plan is missing")
@@ -238,6 +265,7 @@ func (uc *SubscriptionUseCase) validateRenewalPlan(lockedSub *entities.UserSubsc
 	return plan, days, "", nil
 }
 
+// downgradeToFree updates the subscription record to default/free plan.
 func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub *entities.UserSubscription, freePlanID uuid.UUID, now time.Time) error {
 	lockedSub.SubscriptionPlanID = freePlanID
 	lockedSub.ExpiresAt = nil
@@ -246,3 +274,4 @@ func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub 
 
 	return uc.userSubRepo.Update(txCtx, lockedSub)
 }
+

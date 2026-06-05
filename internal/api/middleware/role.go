@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 
@@ -12,7 +12,7 @@ func RolesAuthorize(allowedRoles ...roleslug.RoleSlug) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		currentRole, err := contextutils.GetRoleSlug(c)
 		if err != nil {
-			c.Error(errorcode.ErrInvalidAccessToken)
+			c.Error(apperror.ErrInvalidAccessToken())
 			c.Abort()
 			return
 		}
@@ -26,7 +26,7 @@ func RolesAuthorize(allowedRoles ...roleslug.RoleSlug) gin.HandlerFunc {
 		}
 
 		if !allowed {
-			c.Error(errorcode.ErrForbidden)
+			c.Error(apperror.ErrForbidden())
 			c.Abort()
 			return
 		}

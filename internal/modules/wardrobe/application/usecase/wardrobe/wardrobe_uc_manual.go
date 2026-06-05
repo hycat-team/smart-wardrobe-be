@@ -6,7 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -20,15 +20,15 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if item == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy trang phục.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục.")
 	}
 
 	if item.UserID != userID {
-		return nil, errorcode.NewForbidden("Bạn không có quyền cập nhật trang phục này.")
+		return nil, apperror.NewForbidden("Bạn không có quyền cập nhật trang phục này.")
 	}
 
 	if item.Status == wardrobestatus.Sold {
-		return nil, errorcode.NewBadRequest("Không thể phân loại thủ công trang phục đã được bán.")
+		return nil, apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã được bán.")
 	}
 
 	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
@@ -36,7 +36,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if category == nil {
-		return nil, errorcode.NewBadRequest("Danh mục không tồn tại.")
+		return nil, apperror.NewBadRequest("Danh mục không tồn tại.")
 	}
 
 	tokens := fmt.Sprintf("[CAT:%s][COL:%s][STY:%s][MAT:%s][PAT:%s][FIT:%s][SEA:%s]",
@@ -61,7 +61,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 
 	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
 	if err != nil || len(embeddings) == 0 {
-		return nil, errorcode.NewInternalError("Không thể tạo vector biểu diễn văn bản thời trang.")
+		return nil, apperror.NewInternalError("Không thể tạo vector biểu diễn văn bản thời trang.")
 	}
 	embedding := embeddings[0]
 
@@ -90,3 +90,4 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 
 	return mapper.MapToWardrobeItemRes(item), nil
 }
+

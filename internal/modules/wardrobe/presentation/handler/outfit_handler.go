@@ -3,7 +3,7 @@ package handler
 import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	_ "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -88,7 +88,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
 	}
 
 	var input dto.SaveOutfitReq
@@ -144,7 +144,7 @@ func (h *OutfitHandler) GetOutfitByID(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
 	}
 
 	response, err := h.outfitUseCase.GetOutfitByID(c.Request.Context(), userID, id)
@@ -173,7 +173,7 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return errorcode.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng ID bộ phối đồ không hợp lệ.")
 	}
 
 	err = h.outfitUseCase.DeleteOutfit(c.Request.Context(), userID, id)
@@ -184,3 +184,4 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 	shared_pres.Success(c, "Xóa bộ phối đồ thành công", nil)
 	return nil
 }
+

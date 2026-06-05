@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/google/uuid"
@@ -37,7 +37,7 @@ func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.Subscri
 			ID:                 plan.ID,
 			Slug:               plan.Slug,
 			Name:               plan.Name,
-			Price:              sharedmoney.ToFloatForDTO(plan.Price),
+			Price:              sharedmoney.ToFloat(plan.Price),
 			MaxWardrobeItems:   plan.MaxWardrobeItems,
 			MaxOutfits:         plan.MaxOutfits,
 			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
@@ -55,7 +55,7 @@ func (uc *SubscriptionPlanUseCase) GetDefaultSubscriptionPlanID(ctx context.Cont
 		return uuid.Nil, err
 	}
 	if plan == nil {
-		return uuid.Nil, errorcode.NewNotFound("Không tìm thấy gói hội viên mặc định")
+		return uuid.Nil, apperror.NewNotFound("Không tìm thấy gói hội viên mặc định")
 	}
 	return plan.ID, nil
 }
@@ -71,3 +71,4 @@ func (uc *SubscriptionPlanUseCase) IsPremiumPlan(ctx context.Context, planID uui
 	}
 	return plan.Price.GreaterThan(sharedmoney.Zero), nil
 }
+

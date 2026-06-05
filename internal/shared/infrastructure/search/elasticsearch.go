@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
@@ -76,7 +76,7 @@ func (c *ElasticsearchClient) doRequest(ctx context.Context, method, urlPath str
 
 	if resp.StatusCode >= 400 {
 		if resp.StatusCode == http.StatusNotFound {
-			return nil, errorcode.ErrSearchIndexNotFound
+			return nil, apperror.ErrSearchIndexNotFound()
 		}
 
 		c.logger.Error("Elasticsearch returned error status",
@@ -84,7 +84,7 @@ func (c *ElasticsearchClient) doRequest(ctx context.Context, method, urlPath str
 			zap.String("response", string(respBody)),
 		)
 
-		return nil, errorcode.NewErrorResponse(resp.StatusCode, "Lỗi hệ thống", string(respBody))
+		return nil, apperror.NewError(resp.StatusCode, "Lỗi hệ thống", string(respBody))
 	}
 
 	return respBody, nil

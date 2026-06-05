@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -41,7 +41,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 			return err
 		}
 		if post == nil {
-			return errorcode.NewNotFound("Không tìm thấy bài đăng.")
+			return apperror.NewNotFound("Không tìm thấy bài đăng.")
 		}
 
 		like, err := uc.likeRepo.GetPostLike(txCtx, userID, postID)
@@ -93,7 +93,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 			return err
 		}
 		if post == nil {
-			return errorcode.NewNotFound("Không tìm thấy bài đăng.")
+			return apperror.NewNotFound("Không tìm thấy bài đăng.")
 		}
 
 		comment = &entities.Comment{
@@ -126,3 +126,4 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 }
 
 var _ uc_interfaces.IPostInteractionUseCase = (*PostInteractionUseCase)(nil)
+

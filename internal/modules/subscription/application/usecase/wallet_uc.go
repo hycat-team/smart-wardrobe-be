@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
@@ -58,7 +58,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	if wallet != nil {
 		return &dto.WalletDTO{
 			UserID:    wallet.UserID,
-			Balance:   sharedmoney.ToFloatForDTO(wallet.Balance),
+			Balance:   sharedmoney.ToFloat(wallet.Balance),
 			Currency:  wallet.Currency,
 			UpdatedAt: wallet.UpdatedAt,
 		}, nil
@@ -90,12 +90,12 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	}
 
 	if err = uc.uow.Execute(ctx, createNewWallet); err != nil || wallet == nil {
-		return nil, errorcode.NewNotFound("Không tìm thấy ví người dùng")
+		return nil, apperror.NewNotFound("Không tìm thấy ví người dùng")
 	}
 
 	return &dto.WalletDTO{
 		UserID:    wallet.UserID,
-		Balance:   sharedmoney.ToFloatForDTO(wallet.Balance),
+		Balance:   sharedmoney.ToFloat(wallet.Balance),
 		Currency:  wallet.Currency,
 		UpdatedAt: wallet.UpdatedAt,
 	}, nil
@@ -112,10 +112,10 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 		dtos = append(dtos, &dto.WalletStatementDTO{
 			ID:              s.ID,
 			UserID:          s.UserID,
-			Amount:          sharedmoney.ToFloatForDTO(s.Amount),
+			Amount:          sharedmoney.ToFloat(s.Amount),
 			TransactionType: s.TransactionType,
-			PreviousBalance: sharedmoney.ToFloatForDTO(s.PreviousBalance),
-			NewBalance:      sharedmoney.ToFloatForDTO(s.NewBalance),
+			PreviousBalance: sharedmoney.ToFloat(s.PreviousBalance),
+			NewBalance:      sharedmoney.ToFloat(s.NewBalance),
 			Description:     s.Description,
 			CreatedAt:       s.CreatedAt,
 		})
@@ -126,7 +126,7 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {
 	amount, err := sharedmoney.FromFloatAmount(req.Amount)
 	if err != nil {
-		return nil, errorcode.NewBadRequest("Số tiền không hợp lệ")
+		return nil, apperror.NewBadRequest("Số tiền không hợp lệ")
 	}
 
 	var checkoutURL string
@@ -144,7 +144,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		}
 
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
-			return errorcode.NewInternalError("Lỗi khi khởi tạo giao dịch nạp tiền")
+			return apperror.NewInternalError("Lỗi khi khởi tạo giao dịch nạp tiền")
 		}
 
 		returnURL := req.ReturnUrl
@@ -158,7 +158,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
 		if err != nil {
-			return errorcode.NewBadRequest("Số tiền nạp vào ví phải là số nguyên VND")
+			return apperror.NewBadRequest("Số tiền nạp vào ví phải là số nguyên VND")
 		}
 		description := fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND)
 		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
@@ -174,7 +174,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return errorcode.NewInternalError("Lỗi khi cập nhật liên kết thanh toán")
+			return apperror.NewInternalError("Lỗi khi cập nhật liên kết thanh toán")
 		}
 
 		orderCode = tx.OrderCode
@@ -190,3 +190,4 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		OrderCode:  orderCode,
 	}, nil
 }
+

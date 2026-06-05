@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -54,14 +54,15 @@ func init() {
 	}
 }
 
-func TranslateValidationError(err error) *errorcode.ErrorResponse {
+func TranslateValidationError(err error) *apperror.Error {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
-		msgs := []string{}
+		msgs := make([]string, 0, len(ve))
 		for _, fe := range ve {
 			var msg string
 			fieldName := fe.Field()
 			paramName := fe.Param()
+
 			switch fe.Tag() {
 			case "required":
 				msg = fmt.Sprintf("Vui lòng nhập %s", fieldName)
@@ -94,28 +95,22 @@ func TranslateValidationError(err error) *errorcode.ErrorResponse {
 			default:
 				msg = fmt.Sprintf("%s: %s không hợp lệ", fieldName, fe.Tag())
 			}
+
 			msgs = append(msgs, msg)
 		}
-		return &errorcode.ErrorResponse{
-			Status: http.StatusBadRequest,
-			Title:  "Thao tác không thành công",
-			Detail: strings.Join(msgs, "; "),
-		}
+
+		return apperror.NewBadRequest(strings.Join(msgs, "; "))
 	}
 
 	if strings.Contains(err.Error(), "unmarshal") {
-		return &errorcode.ErrorResponse{
-			Status: http.StatusBadRequest,
-			Title:  "Dữ liệu không đúng định dạng",
-			Detail: "Giá trị số quá lớn hoặc kiểu dữ liệu không hợp lệ",
-		}
+		return apperror.NewError(
+			http.StatusBadRequest,
+			"Dữ liệu không đúng định dạng",
+			"Giá trị số quá lớn hoặc kiểu dữ liệu không hợp lệ",
+		)
 	}
 
-	return &errorcode.ErrorResponse{
-		Status: http.StatusBadRequest,
-		Title:  "Thao tác không thành công",
-		Detail: err.Error(),
-	}
+	return apperror.NewBadRequest(err.Error())
 }
 
 func BindJSON(c *gin.Context, obj any) error {

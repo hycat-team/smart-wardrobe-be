@@ -32,7 +32,7 @@ func (r *UserSubscriptionRepository) GetByUserID(ctx context.Context, userID uui
 	var sub entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx)
 
-	err := query.Where("user_id = ?", userID).First(&sub).Error
+	err := query.Where("user_id = ? AND is_active = ?", userID, true).First(&sub).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

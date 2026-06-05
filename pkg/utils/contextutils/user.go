@@ -1,7 +1,7 @@
 package contextutils
 
 import (
-	"smart-wardrobe-be/internal/shared/application/constants/errorcode"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 
 	"github.com/gin-gonic/gin"
@@ -11,18 +11,18 @@ import (
 func GetUserId(c *gin.Context) (uuid.UUID, error) {
 	val, exists := c.Get(CtxUserId)
 	if !exists {
-		return uuid.Nil, errorcode.ErrUnauthorized
+		return uuid.Nil, apperror.ErrUnauthorized()
 	}
 
 	uid, ok := val.(uuid.UUID)
 	if !ok {
 		strVal, ok := val.(string)
 		if !ok {
-			return uuid.Nil, errorcode.ErrUnauthorized
+			return uuid.Nil, apperror.ErrUnauthorized()
 		}
 		parsed, err := uuid.Parse(strVal)
 		if err != nil {
-			return uuid.Nil, errorcode.ErrUnauthorized
+			return uuid.Nil, apperror.ErrUnauthorized()
 		}
 		return parsed, nil
 	}
@@ -33,12 +33,12 @@ func GetUserId(c *gin.Context) (uuid.UUID, error) {
 func GetRoleSlug(c *gin.Context) (roleslug.RoleSlug, error) {
 	val, exists := c.Get(CtxRoleSlug)
 	if !exists {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	role, ok := val.(string)
 	if !ok {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	return roleslug.RoleSlug(role), nil
@@ -47,12 +47,12 @@ func GetRoleSlug(c *gin.Context) (roleslug.RoleSlug, error) {
 func GetEmail(c *gin.Context) (string, error) {
 	val, exists := c.Get(CtxEmail)
 	if !exists {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	email, ok := val.(string)
 	if !ok {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	return email, nil
@@ -61,12 +61,12 @@ func GetEmail(c *gin.Context) (string, error) {
 func GetAccessToken(c *gin.Context) (string, error) {
 	val, exists := c.Get(CtxAccessToken)
 	if !exists {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	token, ok := val.(string)
 	if !ok {
-		return "", errorcode.ErrUnauthorized
+		return "", apperror.ErrUnauthorized()
 	}
 
 	return token, nil
