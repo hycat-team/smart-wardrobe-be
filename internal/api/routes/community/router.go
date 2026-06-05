@@ -48,6 +48,8 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 		// Post Interaction (Likes & Comments)
 		privatePosts.PUT("/:postID/like", shared_pres.WrapHandler(r.interactionHandler.TogglePostLike))
 		privatePosts.POST("/:postID/comments", shared_pres.WrapHandler(r.interactionHandler.AddComment))
+		privatePosts.PUT("/:postID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.UpdateComment))
+		privatePosts.DELETE("/:postID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.DeleteComment))
 	}
 
 	// Item Transfer (Authenticated)

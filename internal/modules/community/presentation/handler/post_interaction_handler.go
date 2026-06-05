@@ -85,3 +85,74 @@ func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
 	shared_pres.Created(c, "Thêm bình luận thành công", response)
 	return nil
 }
+
+// UpdateComment update comment of post
+// @Summary Cập nhật bình luận của bài viết
+// @Description Chỉnh sửa nội dung bình luận thuộc bài viết cộng đồng
+// @Tags Community
+// @Accept json
+// @Produce json
+// @Param postID path string true "ID bài đăng"
+// @Param commentID path string true "ID bình luận"
+// @Param body body dto.UpdateCommentReq true "Nội dung bình luận mới"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.CommentRes} "Cập nhật bình luận thành công"
+// @Router /api/v1/posts/{postID}/comments/{commentID} [put]
+func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	postID, err := uuid.Parse(c.Param("postID"))
+	if err != nil {
+		return err
+	}
+	commentID, err := uuid.Parse(c.Param("commentID"))
+	if err != nil {
+		return err
+	}
+
+	var input dto.UpdateCommentReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.interactionUC.UpdateComment(c.Request.Context(), userID, postID, commentID, input.Content)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Cập nhật bình luận thành công", response)
+	return nil
+}
+
+// DeleteComment delete comment of post
+// @Summary Xóa bình luận của bài viết
+// @Description Xóa bình luận thuộc bài viết cộng đồng của chính người dùng hiện tại
+// @Tags Community
+// @Accept json
+// @Produce json
+// @Param postID path string true "ID bài đăng"
+// @Param commentID path string true "ID bình luận"
+// @Success 200 {object} shared_pres.APIResponse "Xóa bình luận thành công"
+// @Router /api/v1/posts/{postID}/comments/{commentID} [delete]
+func (h *PostInteractionHandler) DeleteComment(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	postID, err := uuid.Parse(c.Param("postID"))
+	if err != nil {
+		return err
+	}
+	commentID, err := uuid.Parse(c.Param("commentID"))
+	if err != nil {
+		return err
+	}
+
+	if err := h.interactionUC.DeleteComment(c.Request.Context(), userID, postID, commentID); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Xóa bình luận thành công", nil)
+	return nil
+}

@@ -37,6 +37,10 @@ type AddCommentReq struct {
 	Content string `json:"content" binding:"required" label:"nội dung bình luận"`
 }
 
+type UpdateCommentReq struct {
+	Content string `json:"content" binding:"required" label:"nội dung bình luận"`
+}
+
 type LikePostReq struct {
 	IsLiked *bool `json:"isLiked" binding:"required" label:"trạng thái yêu thích"`
 }

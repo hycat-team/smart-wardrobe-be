@@ -88,7 +88,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 	var comment *entities.Comment
 
 	addComment := func(txCtx context.Context) error {
-		post, err := uc.postRepo.GetByID(ctx, postID)
+		post, err := uc.postRepo.GetByID(txCtx, postID)
 		if err != nil {
 			return err
 		}
@@ -125,5 +125,77 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 	}, nil
 }
 
-var _ uc_interfaces.IPostInteractionUseCase = (*PostInteractionUseCase)(nil)
+func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid.UUID, postID uuid.UUID, commentID uuid.UUID, content string) (*dto.CommentRes, error) {
+	var comment *entities.Comment
 
+	updateComment := func(txCtx context.Context) error {
+		post, err := uc.postRepo.GetByID(txCtx, postID)
+		if err != nil {
+			return err
+		}
+		if post == nil {
+			return apperror.NewNotFound("Không tìm thấy bài đăng.")
+		}
+
+		comment, err = uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
+		if err != nil {
+			return err
+		}
+		if comment == nil {
+			return apperror.NewNotFound("Không tìm thấy bình luận.")
+		}
+		if comment.UserID != userID {
+			return apperror.NewForbidden("Bạn không có quyền chỉnh sửa bình luận này.")
+		}
+
+		comment.Content = content
+		return uc.commentRepo.Update(txCtx, comment)
+	}
+
+	if err := uc.uow.Execute(ctx, updateComment); err != nil {
+		return nil, err
+	}
+
+	return &dto.CommentRes{
+		ID:        comment.ID,
+		UserID:    comment.UserID,
+		Content:   comment.Content,
+		CreatedAt: comment.CreatedAt,
+	}, nil
+}
+
+func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid.UUID, postID uuid.UUID, commentID uuid.UUID) error {
+	deleteComment := func(txCtx context.Context) error {
+		post, err := uc.postRepo.GetByID(txCtx, postID)
+		if err != nil {
+			return err
+		}
+		if post == nil {
+			return apperror.NewNotFound("Không tìm thấy bài đăng.")
+		}
+
+		comment, err := uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
+		if err != nil {
+			return err
+		}
+		if comment == nil {
+			return apperror.NewNotFound("Không tìm thấy bình luận.")
+		}
+		if comment.UserID != userID {
+			return apperror.NewForbidden("Bạn không có quyền xóa bình luận này.")
+		}
+
+		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
+			return err
+		}
+
+		if post.CommentCount > 0 {
+			post.CommentCount--
+		}
+		return uc.postRepo.Update(txCtx, post)
+	}
+
+	return uc.uow.Execute(ctx, deleteComment)
+}
+
+var _ uc_interfaces.IPostInteractionUseCase = (*PostInteractionUseCase)(nil)

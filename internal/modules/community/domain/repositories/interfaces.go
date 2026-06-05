@@ -33,6 +33,7 @@ type IPostMediaRepository interface {
 type ICommentRepository interface {
 	shared_repos.IGenericRepository[entities.Comment, uuid.UUID]
 	GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.Comment, error)
+	GetByIDAndPostID(ctx context.Context, commentID uuid.UUID, postID uuid.UUID) (*entities.Comment, error)
 }
 
 type ILikeRepository interface {
