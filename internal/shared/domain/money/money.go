@@ -3,7 +3,9 @@ package money
 import (
 	"fmt"
 	"math"
+	"strings"
 
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 
 	"github.com/shopspring/decimal"
@@ -56,4 +58,25 @@ func ToMinorUnits(amount decimal.Decimal, code currency.Currency) (int64, error)
 	}
 	scaleFactor := decimal.New(1, exponent)
 	return amount.Mul(scaleFactor).IntPart(), nil
+}
+
+const (
+	ErrInvalidAmount         = "Số tiền không hợp lệ"
+	ErrUnsupportedCurrency   = "Hệ thống hiện chỉ hỗ trợ thanh toán bằng VND"
+	ErrInvalidVNDGatewayUnit = "Số tiền phải là số nguyên VND theo yêu cầu của cổng thanh toán"
+)
+
+func ValidateSupportedCurrency(cur currency.Currency) error {
+	if cur != currency.VND {
+		return apperror.NewBadRequest(ErrUnsupportedCurrency)
+	}
+	return nil
+}
+
+func ValidateSupportedCurrencyText(cur string) error {
+	normalized := strings.ToUpper(strings.TrimSpace(cur))
+	if normalized == "" {
+		return apperror.NewBadRequest(ErrUnsupportedCurrency)
+	}
+	return ValidateSupportedCurrency(currency.Currency(normalized))
 }

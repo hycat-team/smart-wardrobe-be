@@ -119,6 +119,12 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
 						return err
 					}
+					uc.log.Info("Downgraded subscription because auto-renew is disabled",
+						zap.String("user_id", lockedSub.UserID.String()),
+						zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
+						zap.String("result", renewalStatusDowngraded),
+						zap.String("reason", resultReason),
+					)
 					resultStatus = renewalStatusDowngraded
 					return nil
 				}
@@ -135,6 +141,11 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					resultReason = renewalReasonFailedWalletMissing
 					return fmt.Errorf("missing wallet for renewal")
 				}
+				if err := sharedmoney.ValidateSupportedCurrency(wallet.Currency); err != nil {
+					resultStatus = renewalStatusFailed
+					resultReason = renewalReasonFailedProcessing
+					return err
+				}
 
 				// If the user has insufficient funds, automatically downgrade them to the Free plan.
 				if wallet.Balance.LessThan(plan.Price) {
@@ -142,6 +153,14 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					if err := uc.downgradeToFree(txCtx, lockedSub, freePlanID, now); err != nil {
 						return err
 					}
+					uc.log.Info("Downgraded subscription because wallet balance is insufficient",
+						zap.String("user_id", lockedSub.UserID.String()),
+						zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
+						zap.String("currency", string(wallet.Currency)),
+						zap.Float64("amount", sharedmoney.ToFloat(plan.Price)),
+						zap.String("result", renewalStatusDowngraded),
+						zap.String("reason", resultReason),
+					)
 					resultStatus = renewalStatusDowngraded
 					return nil
 				}
@@ -180,6 +199,15 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 					return err
 				}
 
+				uc.log.Info("Renewed subscription automatically successfully",
+					zap.String("user_id", lockedSub.UserID.String()),
+					zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
+					zap.Float64("amount", sharedmoney.ToFloat(plan.Price)),
+					zap.String("currency", string(wallet.Currency)),
+					zap.String("transaction_type", string(walletstatementtype.SubscriptionRenewal)),
+					zap.String("result", renewalStatusRenewed),
+					zap.String("reason", resultReason),
+				)
 				resultStatus = renewalStatusRenewed
 				return nil
 			}
@@ -189,9 +217,10 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 				failedCount++
 				outcomeCounts[resultReason]++
 				uc.log.Error("Failed to process subscription renewal",
-					zap.String("userID", sub.UserID.String()),
-					zap.Time("expiresAt", *sub.ExpiresAt),
+					zap.String("user_id", sub.UserID.String()),
+					zap.Time("expires_at", *sub.ExpiresAt),
 					zap.String("reason", resultReason),
+					zap.String("result", renewalStatusFailed),
 					zap.Error(err),
 				)
 			} else {
@@ -274,4 +303,3 @@ func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub 
 
 	return uc.userSubRepo.Update(txCtx, lockedSub)
 }
-

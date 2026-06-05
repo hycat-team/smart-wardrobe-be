@@ -16,10 +16,13 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/shopspring/decimal"
+	"go.uber.org/zap"
 )
 
 type PaymentWebhookUseCase struct {
@@ -31,6 +34,7 @@ type PaymentWebhookUseCase struct {
 	userSubRepo    repositories.IUserSubscriptionRepository
 	paymentGateway payment.IPaymentGatewayService
 	uow            shared_repos.IUnitOfWork
+	log            logger.Interface
 }
 
 func NewPaymentWebhookUseCase(
@@ -42,6 +46,7 @@ func NewPaymentWebhookUseCase(
 	userSubRepo repositories.IUserSubscriptionRepository,
 	paymentGateway payment.IPaymentGatewayService,
 	uow shared_repos.IUnitOfWork,
+	log logger.Interface,
 ) uc_interfaces.IPaymentWebhookUseCase {
 	return &PaymentWebhookUseCase{
 		cfg:            cfg,
@@ -52,6 +57,7 @@ func NewPaymentWebhookUseCase(
 		userSubRepo:    userSubRepo,
 		paymentGateway: paymentGateway,
 		uow:            uow,
+		log:            log,
 	}
 }
 
@@ -97,22 +103,34 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	// Check transaction status codes. Code "00" indicates success.
 	// If the transaction failed on the gateway side, we just return nil (we don't credit users).
 	if payload.Code != "00" || payload.Data.Code != "00" {
+		uc.log.Warn("Ignored unsuccessful payment webhook",
+			zap.Int64("order_code", payload.Data.OrderCode),
+			zap.String("gateway_code", payload.Code),
+			zap.String("gateway_data_code", payload.Data.Code),
+			zap.String("result", "ignored_non_success"),
+		)
 		return nil
 	}
 
 	// Convert amount string from payload to decimal.
 	webhookAmount, err := decimal.NewFromString(payload.Data.Amount.String())
 	if err != nil {
-		return apperror.NewBadRequest("Số tiền webhook không hợp lệ")
+		return apperror.NewBadRequest(sharedmoney.ErrInvalidAmount)
+	}
+	if err := sharedmoney.ValidateSupportedCurrencyText(payload.Data.Currency); err != nil {
+		return err
 	}
 
 	// Query the matching pending deposit transaction record by its OrderCode.
 	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi truy vấn thông tin giao dịch nạp tiền")
+		return apperror.NewInternalError("Lỗi khi truy vấn thông tin giao dịch thanh toán")
 	}
 	if tx == nil {
-		return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch nạp tiền với mã đơn hàng %d", payload.Data.OrderCode))
+		return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d", payload.Data.OrderCode))
+	}
+	if err := sharedmoney.ValidateSupportedCurrency(tx.Currency); err != nil {
+		return err
 	}
 
 	// Verify the received payment amount matches the expected record amount to prevent fraud/underpayment.
@@ -131,7 +149,6 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		return apperror.NewInternalError("Lỗi khi chuyển đổi thông tin cổng thanh toán")
 	}
 	detailsStr := string(rawBytes)
-
 	reference := payload.Data.Reference
 
 	// Execute transaction processing workflow within a database transaction.
@@ -143,7 +160,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 			return apperror.NewInternalError("Lỗi khi khóa dữ liệu giao dịch")
 		}
 		if lockedTx == nil {
-			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch nạp tiền với mã đơn hàng %d", payload.Data.OrderCode))
+			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d", payload.Data.OrderCode))
 		}
 
 		// Double-check the status inside the locked transaction context.
@@ -158,7 +175,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		lockedTx.GatewayDetails = &detailsStr
 
 		if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
-			return apperror.NewInternalError("Lỗi khi hoàn tất hồ sơ giao dịch nạp tiền")
+			return apperror.NewInternalError("Lỗi khi hoàn tất hồ sơ giao dịch thanh toán")
 		}
 
 		// Route processing based on the TransactionType.
@@ -177,10 +194,27 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 
 		return nil
 	}
-	return uc.uow.Execute(ctx, processPaymentWebhook)
+
+	if err := uc.uow.Execute(ctx, processPaymentWebhook); err != nil {
+		uc.log.Error("Failed to process payment webhook",
+			zap.Int64("order_code", payload.Data.OrderCode),
+			zap.String("gateway_reference", payload.Data.Reference),
+			zap.String("currency", payload.Data.Currency),
+			zap.String("result", "failed"),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	uc.log.Info("Processed payment webhook successfully",
+		zap.Int64("order_code", payload.Data.OrderCode),
+		zap.String("gateway_reference", payload.Data.Reference),
+		zap.String("currency", payload.Data.Currency),
+		zap.String("result", "processed"),
+	)
+	return nil
 }
 
-// executeWalletTopUpWorkflow credits the user wallet and logs the statement.
 func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
 	if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now); err != nil {
@@ -210,4 +244,3 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 
 	return nil
 }
-
