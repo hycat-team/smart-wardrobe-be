@@ -9,16 +9,16 @@ import (
 )
 
 type PostMediaReq struct {
-	MediaType string  `json:"mediaType" binding:"required"`
-	MediaURL  string  `json:"mediaUrl" binding:"required,url"`
+	MediaType string  `json:"mediaType" binding:"required" label:"loại phương tiện"`
+	MediaURL  string  `json:"mediaUrl" binding:"required,url" label:"đường dẫn phương tiện"`
 	PublicID  *string `json:"publicId"`
 	SortOrder int16   `json:"sortOrder"`
 }
 
 type CreatePostReq struct {
-	PostType    string         `json:"postType" binding:"required"`
+	PostType    string         `json:"postType" binding:"required" label:"loại bài đăng"`
 	Title       *string        `json:"title"`
-	Content     string         `json:"content" binding:"required"`
+	Content     string         `json:"content" binding:"required" label:"nội dung"`
 	ContactInfo *string        `json:"contactInfo"`
 	TotalPrice  *float64       `json:"totalPrice"`
 	ItemIDs     []uuid.UUID    `json:"itemIds"`
@@ -26,36 +26,36 @@ type CreatePostReq struct {
 }
 
 type UpdatePostItemsBuyerReq struct {
-	BuyerUserID uuid.UUID `json:"buyerUserId" binding:"required"`
+	BuyerUserID uuid.UUID `json:"buyerUserId" binding:"required" label:"người mua"`
 }
 
 type RemovePostItemsReq struct {
-	PostItemIDs []uuid.UUID `json:"postItemIds" binding:"required"`
+	PostItemIDs []uuid.UUID `json:"postItemIds" binding:"required" label:"danh sách món đồ bài đăng"`
 }
 
 type AddCommentReq struct {
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content" binding:"required" label:"nội dung bình luận"`
 }
 
 type LikePostReq struct {
-	IsLiked *bool `json:"isLiked" binding:"required"`
+	IsLiked *bool `json:"isLiked" binding:"required" label:"trạng thái yêu thích"`
 }
 
 type PostRes struct {
-	ID           uuid.UUID          `json:"id"`
-	UserID       uuid.UUID          `json:"userId"`
-	PostType     string             `json:"postType"`
-	Title        *string            `json:"title"`
-	Content      string             `json:"content"`
-	ContactInfo  *string            `json:"contactInfo"`
-	TotalPrice   float64            `json:"totalPrice"`
-	LikeCount    int                `json:"likeCount"`
-	CommentCount int                `json:"commentCount"`
-	Items        []*PostItemRes     `json:"items,omitempty"`
-	Media        []*PostMediaRes    `json:"media,omitempty"`
-	Comments     []*CommentRes      `json:"comments,omitempty"`
-	CreatedAt    time.Time          `json:"createdAt"`
-	UpdatedAt    time.Time          `json:"updatedAt"`
+	ID           uuid.UUID       `json:"id"`
+	UserID       uuid.UUID       `json:"userId"`
+	PostType     string          `json:"postType"`
+	Title        *string         `json:"title"`
+	Content      string          `json:"content"`
+	ContactInfo  *string         `json:"contactInfo"`
+	TotalPrice   float64         `json:"totalPrice"`
+	LikeCount    int             `json:"likeCount"`
+	CommentCount int             `json:"commentCount"`
+	Items        []*PostItemRes  `json:"items,omitempty"`
+	Media        []*PostMediaRes `json:"media,omitempty"`
+	Comments     []*CommentRes   `json:"comments,omitempty"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	UpdatedAt    time.Time       `json:"updatedAt"`
 }
 
 type PostItemRes struct {

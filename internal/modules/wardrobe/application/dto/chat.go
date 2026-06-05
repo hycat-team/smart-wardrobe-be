@@ -20,7 +20,7 @@ type ChatSessionRes struct {
 }
 
 type SendChatMessageReq struct {
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content" binding:"required" label:"nội dung tin nhắn"`
 }
 
 type ChatMessageRes struct {

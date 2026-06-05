@@ -27,8 +27,8 @@ type UserRes struct {
 }
 
 type UpdateAvatarReq struct {
-	AvatarUrl      string `json:"avatarUrl" binding:"required"`
-	AvatarPublicID string `json:"avatarPublicId" binding:"required"`
+	AvatarUrl      string `json:"avatarUrl" binding:"required" label:"đường dẫn ảnh đại diện"`
+	AvatarPublicID string `json:"avatarPublicId" binding:"required" label:"mã ảnh đại diện"`
 }
 
 type UserSubscriptionRes struct {

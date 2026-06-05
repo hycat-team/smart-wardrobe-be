@@ -27,13 +27,13 @@ type WalletStatementDTO struct {
 }
 
 type WalletTopUpReq struct {
-	Amount    float64 `json:"amount" binding:"required,gt=0"`
+	Amount    float64 `json:"amount" binding:"required,gt=0" label:"số tiền nạp"`
 	ReturnUrl string  `json:"returnUrl"`
 	CancelUrl string  `json:"cancelUrl"`
 }
 
 type DirectPurchaseReq struct {
-	PlanSlug  string `json:"planSlug" binding:"required"`
+	PlanSlug  string `json:"planSlug" binding:"required" label:"gói hội viên"`
 	ReturnUrl string `json:"returnUrl"`
 	CancelUrl string `json:"cancelUrl"`
 }

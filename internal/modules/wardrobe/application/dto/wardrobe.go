@@ -9,9 +9,9 @@ import (
 )
 
 type CreateWardrobeItemReq struct {
-	CategoryID    uuid.UUID `json:"categoryId" binding:"required"`
-	ImageUrl      string    `json:"imageUrl" binding:"required"`
-	ImagePublicID string    `json:"imagePublicId" binding:"required"`
+	CategoryID    uuid.UUID `json:"categoryId" binding:"required" label:"danh mục"`
+	ImageUrl      string    `json:"imageUrl" binding:"required" label:"đường dẫn ảnh"`
+	ImagePublicID string    `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
 type WardrobeItemRes struct {
@@ -33,21 +33,21 @@ type WardrobeItemRes struct {
 }
 
 type CloneWardrobeItemReq struct {
-	Quantity int `json:"quantity" binding:"required,min=1,max=5"`
+	Quantity int `json:"quantity" binding:"required,min=1,max=5" label:"số lượng bản sao"`
 }
 
 type InitClosetFromCatalogReq struct {
-	CatalogItemIDs []uuid.UUID `json:"catalogItemIds" binding:"required,min=1"`
+	CatalogItemIDs []uuid.UUID `json:"catalogItemIds" binding:"required,min=1" label:"danh sách trang phục mẫu"`
 }
 
 type WardrobeBatchUploadItemReq struct {
 	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
-	ImageUrl      string     `json:"imageUrl" binding:"required"`
-	ImagePublicID string     `json:"imagePublicId" binding:"required"`
+	ImageUrl      string     `json:"imageUrl" binding:"required" label:"đường dẫn ảnh"`
+	ImagePublicID string     `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
 type BatchUploadWardrobeItemsReq struct {
-	Items []WardrobeBatchUploadItemReq `json:"items" binding:"required,min=1"`
+	Items []WardrobeBatchUploadItemReq `json:"items" binding:"required,min=1" label:"danh sách trang phục"`
 }
 
 type WardrobeBatchUploadJobDTO struct {
@@ -81,11 +81,11 @@ type SearchWardrobeItemRes struct {
 }
 
 type ManualClassifyReq struct {
-	CategoryID  uuid.UUID `json:"categoryId" binding:"required"`
-	Color       string    `json:"color" binding:"required"`
-	Style       string    `json:"style" binding:"required"`
-	Material    string    `json:"material" binding:"required"`
-	Pattern     string    `json:"pattern" binding:"required"`
-	Fit         string    `json:"fit" binding:"required"`
-	Seasonality string    `json:"seasonality" binding:"required"`
+	CategoryID  uuid.UUID `json:"categoryId" binding:"required" label:"danh mục"`
+	Color       string    `json:"color" binding:"required" label:"màu sắc"`
+	Style       string    `json:"style" binding:"required" label:"phong cách"`
+	Material    string    `json:"material" binding:"required" label:"chất liệu"`
+	Pattern     string    `json:"pattern" binding:"required" label:"họa tiết"`
+	Fit         string    `json:"fit" binding:"required" label:"dáng mặc"`
+	Seasonality string    `json:"seasonality" binding:"required" label:"mùa phù hợp"`
 }

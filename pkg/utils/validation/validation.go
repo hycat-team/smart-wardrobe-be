@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"strings"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -45,13 +46,39 @@ func init() {
 		v.RegisterValidation("username", IsUserName)
 		v.RegisterValidation("neqfield", NotEqualField)
 		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+			if label := strings.TrimSpace(fld.Tag.Get("label")); label != "" {
+				return label
+			}
+
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 			if name == "-" {
 				return ""
 			}
-			return name
+			return humanizeFieldName(name)
 		})
 	}
+}
+
+func humanizeFieldName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return name
+	}
+
+	name = strings.ReplaceAll(name, "_", " ")
+	runes := []rune(name)
+	var builder strings.Builder
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			prev := runes[i-1]
+			if unicode.IsLower(prev) || unicode.IsDigit(prev) {
+				builder.WriteRune(' ')
+			}
+		}
+		builder.WriteRune(unicode.ToLower(r))
+	}
+
+	return strings.TrimSpace(builder.String())
 }
 
 func TranslateValidationError(err error) *apperror.Error {

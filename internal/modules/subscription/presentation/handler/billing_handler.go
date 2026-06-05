@@ -156,7 +156,7 @@ func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {
 	}
 
 	var req struct {
-		PlanSlug string `json:"planSlug" binding:"required"`
+		PlanSlug string `json:"planSlug" binding:"required" label:"gói hội viên"`
 	}
 	if err := validation.BindJSON(c, &req); err != nil {
 		return err
