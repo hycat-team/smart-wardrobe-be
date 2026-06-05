@@ -1,136 +1,135 @@
 # 1. Về dự án
 
-Dự án hiện tại chưa có tên chính thức (tạm gọi là Smart Wardrobe hoặc Closy).
+Dự án hiện tạm gọi là **Closy**.
 
-Đây là website và ứng dụng quản lý tủ đồ thông minh, giúp người dùng số hóa tủ quần áo cá nhân, nhận đề xuất phối đồ bằng AI và tận dụng tốt hơn những món đồ mình đang sở hữu.
+Closy là website và ứng dụng quản lý tủ đồ thông minh, giúp người dùng số hóa tủ quần áo cá nhân, nhận gợi ý phối đồ bằng AI và tận dụng tốt hơn những món đồ đang sở hữu.
 
-Về dài hạn, dự án có thể phát triển thành nền tảng kết nối giữa người dùng và các thương hiệu thời trang thông qua các chương trình loyalty, repair, warranty hoặc trade-in.
+Core hiện tại của dự án là:
+
+- Digital Wardrobe Management.
+- AI Outfit Recommendation.
+- Tận dụng lại quần áo có sẵn.
+
+Về dài hạn, nếu có đủ user, Closy có thể mở rộng sang các hợp tác nhẹ với brand như voucher, campaign, affiliate, private deal hoặc loyalty engagement.
 
 ---
 
-# 2. Target dự án (cơ bản)
+# 2. Target dự án
 
-Các bạn Gen Z tại Việt Nam.
+Target chính là **Gen Z tại Việt Nam**.
 
 Đây là nhóm:
 
-- Chịu ảnh hưởng mạnh bởi TikTok, Instagram và các xu hướng thời trang.
-- Có nhu cầu thể hiện bản thân thông qua outfit.
-- Sở hữu ngày càng nhiều quần áo do ảnh hưởng của fast fashion.
-- Thường gặp tình trạng quần áo bị bỏ quên hoặc ít được sử dụng.
-- Muốn mặc đẹp nhưng không muốn tốn quá nhiều thời gian và chi phí.
+- Quan tâm đến thời trang và phong cách cá nhân.
+- Bị ảnh hưởng bởi TikTok, Instagram và các xu hướng thời trang.
+- Có nhu cầu mặc đẹp và thể hiện bản thân qua outfit.
+- Sở hữu nhiều quần áo nhưng vẫn thường gặp tình trạng “không có gì để mặc”.
+- Muốn phối đồ nhanh hơn và tận dụng tốt hơn tủ đồ hiện có.
 
 ---
 
-# 3. Về pain point mà nhóm nhắm đến
+# 3. Pain point chính
 
-## 3.1. Hôm nay mặc gì?
+## 3.1. “Hôm nay mặc gì?”
 
-Người dùng có nhiều quần áo nhưng thường không biết phối như thế nào hoặc quên mất những món đồ mình đang có.
+Người dùng có nhiều quần áo nhưng vẫn khó chọn outfit, khó phối đồ mới hoặc quên mất những món đồ đang có.
 
-Mục tiêu của dự án là giúp người dùng:
+Closy giải quyết vấn đề này bằng cách giúp người dùng:
 
-- Phối đồ nhanh hơn.
-- Tận dụng tốt hơn quần áo hiện có.
-- Giảm việc mua sắm không cần thiết.
-- Hạn chế tình trạng quần áo bị bỏ quên trong tủ.
+- Quản lý tủ đồ rõ ràng hơn.
+- Tìm lại các item bị bỏ quên.
+- Nhận gợi ý phối đồ từ quần áo đang sở hữu.
+- Tiết kiệm thời gian khi lựa chọn trang phục.
 
----
+## 3.2. Tận dụng tủ đồ tốt hơn
 
-## 3.2. Nhu cầu được công nhận
+Người dùng thường mua thêm quần áo mới trong khi nhiều món đồ cũ vẫn chưa được sử dụng hiệu quả.
 
-Người dùng không chỉ muốn mặc đúng mà còn muốn mặc đẹp và thể hiện cá tính của mình.
+Closy hướng tới việc giúp người dùng:
 
-Họ muốn:
-
-- Chia sẻ outfit.
-- Nhận phản hồi tích cực từ người khác.
-- Tìm cảm hứng thời trang từ cộng đồng.
-
-Điều này tạo ra hiệu ứng user kéo user thông qua nội dung và phong cách cá nhân.
+- Phối lại đồ cũ theo cách mới.
+- Giảm tình trạng mặc lặp lại một vài outfit quen thuộc.
+- Tăng tần suất sử dụng các item đang có.
+- Hạn chế việc mua sắm không cần thiết.
 
 ---
 
 # 4. Nhóm chức năng chính
 
-## 4.1. Nhóm chức năng AI
+## 4.1. AI Outfit Recommendation
 
-(Có thể giới hạn quota theo Free/Premium)
+AI gợi ý outfit dựa trên:
 
-### 4.1.1. AI Outfit Recommendation
-
-Đề xuất phối đồ dựa trên:
-
-- Tủ đồ hiện có của user.
-- Thời tiết.
+- Tủ đồ hiện có.
 - Dịp sử dụng.
 - Phong cách mong muốn.
+- Thời tiết hoặc ngữ cảnh nếu có.
 
-Hỗ trợ lưu lại outfit sau khi phối.
+Người dùng có thể lưu lại các outfit đã phối.
 
-### 4.1.2. AI Fashion Chatbot
+## 4.2. Digital Wardrobe
 
-Chatbot AI cơ bản để hỏi đáp về thời trang, phối đồ và phong cách cá nhân.
+Người dùng có thể thêm quần áo, phụ kiện vào tủ đồ số.
 
-### 4.1.3. AI Wardrobe Analysis
+AI hỗ trợ nhận diện item và tạo metadata như:
 
-Upload ảnh quần áo hoặc phụ kiện.
+- Loại trang phục.
+- Màu sắc.
+- Chất liệu.
+- Mục đích sử dụng.
 
-AI sẽ:
+## 4.3. AI Fashion Chatbot
 
-- Nhận diện item.
-- Sinh metadata.
-- Tự động đưa vào tủ đồ.
+Chatbot hỗ trợ người dùng hỏi về thời trang, phối đồ và phong cách cá nhân.
 
----
+## 4.4. Outfit Inspiration
 
-## 4.2. Nhóm chức năng cộng đồng
+Người dùng có thể xem hoặc chia sẻ outfit để tìm cảm hứng phối đồ.
 
-### 4.2.1. Outfit Inspiration Feed
+Tính năng cộng đồng chỉ đóng vai trò hỗ trợ engagement, không phải core chính của dự án.
 
-Người dùng có thể:
+## 4.5. Sell Post
 
-- Chia sẻ outfit.
-- Khám phá outfit từ cộng đồng.
-- Tìm cảm hứng phối đồ mới.
+Người dùng có thể đăng thanh lý quần áo không còn sử dụng theo mô hình C2C.
 
-Có thể hỗ trợ like, comment hoặc lưu outfit tùy phạm vi MVP.
-
-### 4.2.2. Sell Post
-
-Cho phép người dùng đăng bán hoặc thanh lý các món đồ không còn sử dụng theo mô hình C2C.
-
-Closy không tham gia giao dịch và không thu hoa hồng.
+Closy không trực tiếp xử lý giao dịch và không thu hoa hồng trong giai đoạn đầu.
 
 ---
 
-# 5. Định hướng kinh doanh hiện tại
+# 5. Định hướng kinh doanh
 
 ## Giai đoạn MVP
 
-Tập trung vào:
+Closy tập trung vào:
 
-- Digital Wardrobe Management.
-- AI Outfit Recommendation.
-- Outfit Inspiration Community.
+- Quản lý tủ đồ số.
+- AI gợi ý phối đồ.
+- Kiểm chứng nhu cầu sử dụng thật của người dùng.
 
-Mục tiêu là chứng minh người dùng thực sự có nhu cầu quản lý tủ đồ và nhận đề xuất phối đồ bằng AI.
+Mục tiêu chính là có user, hiểu hành vi tủ đồ và kiểm chứng xem người dùng có sẵn sàng tạo tủ đồ số hay không.
 
----
+## Mô hình freemium
+
+Closy có thể có gói free và premium.
+
+Tuy nhiên, premium không nên khóa các tính năng cốt lõi. Hai gói vẫn có cùng nhóm feature chính, nhưng khác nhau ở quota sử dụng AI.
+
+Gói premium chủ yếu dùng để:
+
+- Tăng số lượt AI gợi ý outfit.
+- Tăng số lượt AI phân tích item.
+- Giảm giới hạn sử dụng.
+- Hỗ trợ chi phí vận hành AI.
 
 ## Định hướng dài hạn
 
-Closy có thể phát triển theo mô hình B2B2C.
+Sau khi có đủ user base, Closy có thể hợp tác với brand theo hướng nhẹ và ít vận hành như:
 
-Ngoài việc phục vụ người dùng cuối, nền tảng có thể hợp tác với các thương hiệu thời trang để triển khai:
+- Voucher.
+- Private deal.
+- Sponsored campaign.
+- Affiliate.
+- Styling challenge.
+- Loyalty engagement.
 
-- Loyalty Program.
-- Warranty Service.
-- Repair Service.
-- Trade-in Program.
-- Personalized Promotion.
-
-Trong mô hình này:
-
-- AI Outfit Recommendation và Wardrobe Management là công cụ thu hút và giữ chân người dùng.
-- Brand Partnership là hướng tạo doanh thu dài hạn của nền tảng.
+Closy không nên bắt đầu bằng việc làm chăm sóc khách hàng, đổi trả, bảo hành hoặc vận chuyển thay brand, vì những phần đó dễ làm dự án lệch khỏi core là tủ đồ cá nhân.
