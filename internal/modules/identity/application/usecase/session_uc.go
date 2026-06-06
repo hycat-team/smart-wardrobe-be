@@ -60,6 +60,10 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, apperror.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
 	}
 
+	if err := ensureUserEligibleForLogin(user); err != nil {
+		return nil, err
+	}
+
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
 	refreshExpiry := time.Hour * 24 * time.Duration(uc.cfg.Jwt.RefreshExpirationDays)
 
@@ -91,8 +95,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 	}
 	rt.ID = uuid.New()
 
-	err = uc.refreshTokenRepo.Create(ctx, rt)
-	if err != nil {
+	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
 		return nil, err
 	}
 
@@ -108,23 +111,23 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		return nil, apperror.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
 	}
 
-	oldExpiresAtUtc := claims.ExpiresAt.Time
-	remainingTime := time.Until(oldExpiresAtUtc)
+	oldExpiresAtUTC := claims.ExpiresAt.Time
+	remainingTime := time.Until(oldExpiresAtUTC)
 	if remainingTime <= 0 {
 		return nil, apperror.NewUnauthorized("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.")
 	}
 
-	userId, err := uuid.Parse(claims.Subject)
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return nil, apperror.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.IsDeleted {
-		return nil, apperror.NewUnauthorized("Không tìm thấy người dùng này.")
+	if err := ensureUserEligibleForSession(user); err != nil {
+		return nil, err
 	}
 
 	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
@@ -144,7 +147,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc")
+		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc.")
 	}
 
 	newRefreshToken, err := jwtutils.GenerateToken(
@@ -154,7 +157,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		remainingTime,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc")
+		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc.")
 	}
 
 	rt := &entities.RefreshToken{
@@ -166,13 +169,11 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	rt.ID = uuid.New()
 
 	refreshTokenFn := func(txCtx context.Context) error {
-		err = uc.refreshTokenRepo.RevokeToken(txCtx, input.OldRefreshToken)
-		if err != nil {
+		if err := uc.refreshTokenRepo.RevokeToken(txCtx, input.OldRefreshToken); err != nil {
 			return err
 		}
 
-		err = uc.refreshTokenRepo.Create(txCtx, rt)
-		if err != nil {
+		if err := uc.refreshTokenRepo.Create(txCtx, rt); err != nil {
 			return err
 		}
 		return nil
@@ -194,12 +195,12 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 		return false, apperror.NewUnauthorized("Phiên làm việc không hợp lệ.")
 	}
 
-	userId, err := uuid.Parse(claims.Subject)
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return false, apperror.NewUnauthorized("Phiên làm việc không hợp lệ.")
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
@@ -207,12 +208,10 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 		return false, apperror.NewUnauthorized("Không tìm thấy người dùng.")
 	}
 
-	err = uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken)
-	if err != nil {
+	if err := uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken); err != nil {
 		return false, err
 	}
 
-	// Calculate remaining access token lifetime
 	tokenHandler := &jwt.Parser{}
 	tokenClaims := &jwtutils.CustomClaims{}
 	_, _, err = tokenHandler.ParseUnverified(input.AccessToken, tokenClaims)
@@ -228,4 +227,3 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 }
 
 var _ uc_interfaces.ISessionUseCase = (*SessionUseCase)(nil)
-

@@ -57,8 +57,8 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 	if err != nil {
 		return false, err
 	}
-	if user == nil {
-		return false, apperror.NewNotFound("Email này chưa được đăng ký trong hệ thống.")
+	if err := ensureUserEligibleForRecovery(user); err != nil {
+		return false, err
 	}
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeForgotPassword)
@@ -73,18 +73,17 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		UserId: user.ID.String(),
 	}
 
-	tempUserDataJson, err := json.Marshal(tempData)
+	tempUserDataJSON, err := json.Marshal(tempData)
 	if err != nil {
 		return false, apperror.NewInternalError("Lỗi khi chuyển đổi thông tin tạm thời")
 	}
 
-	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeForgotPassword)
+	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJSON), otpconstants.PurposeForgotPassword)
 	if err != nil {
 		return false, err
 	}
 
-	err = uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
-	if err != nil {
+	if err := uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes); err != nil {
 		return false, apperror.NewInternalError("Lỗi khi gửi email khôi phục mật khẩu")
 	}
 
@@ -92,32 +91,31 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 }
 
 func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context, input dto.ConfirmForgotPasswordOtpReq) (string, error) {
-	tempUserDataJson, err := uc.otpService.VerifyOtp(ctx, input.Email, input.OtpCode, otpconstants.PurposeForgotPassword)
+	tempUserDataJSON, err := uc.otpService.VerifyOtp(ctx, input.Email, input.OtpCode, otpconstants.PurposeForgotPassword)
 	if err != nil {
 		return "", err
 	}
 
-	if len(tempUserDataJson) == 0 {
+	if len(tempUserDataJSON) == 0 {
 		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ")
 	}
 
 	var tempData vo.TempOtpData
-	err = json.Unmarshal([]byte(tempUserDataJson), &tempData)
+	if err := json.Unmarshal([]byte(tempUserDataJSON), &tempData); err != nil {
+		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
+	}
+
+	userID, err := uuid.Parse(tempData.UserId)
 	if err != nil {
 		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
 	}
 
-	userId, err := uuid.Parse(tempData.UserId)
-	if err != nil {
-		return "", apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
-	}
-
-	user, err := uc.userRepo.GetByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return "", err
 	}
-	if user == nil || user.IsDeleted {
-		return "", apperror.NewNotFound("Người dùng không tồn tại.")
+	if err := ensureUserEligibleForRecovery(user); err != nil {
+		return "", err
 	}
 
 	resetToken, err := jwtutils.GenerateToken(
@@ -139,12 +137,12 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 		return false, apperror.NewUnauthorized("Token không hợp lệ.")
 	}
 
-	userId, err := uuid.Parse(claims.Subject)
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return false, apperror.NewUnauthorized("Token không hợp lệ.")
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, userId)
+	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
@@ -161,14 +159,12 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 
 	changePassword := func(txCtx context.Context) error {
 		if input.LogoutAllDevices {
-			err = uc.refreshTokenRepo.RevokeAllByUserID(txCtx, userId)
-			if err != nil {
+			if err := uc.refreshTokenRepo.RevokeAllByUserID(txCtx, userID); err != nil {
 				return err
 			}
 		}
 
-		err = uc.userRepo.Update(txCtx, user)
-		if err != nil {
+		if err := uc.userRepo.Update(txCtx, user); err != nil {
 			return err
 		}
 		return nil
@@ -182,4 +178,3 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 }
 
 var _ uc_interfaces.IPasswordRecoveryUseCase = (*PasswordRecoveryUseCase)(nil)
-

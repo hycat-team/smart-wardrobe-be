@@ -100,7 +100,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
-	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService, iUserRepository)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
 	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeHandler, authMiddleware)
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
