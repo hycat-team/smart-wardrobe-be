@@ -39,7 +39,7 @@ func processWalletTransaction(
 	// to prevent race conditions during concurrent deposits or purchases.
 	wallet, err := walletRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi truy vấn thông tin số dư ví")
+		return apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
 	}
 
 	// Initialize a new wallet if the user does not have one yet.
@@ -58,7 +58,7 @@ func processWalletTransaction(
 	// Validate sufficiency of funds for deductions (where amount is negative).
 	// If the balance is less than the absolute deduction amount, return a bad request error.
 	if amount.IsNegative() && wallet.Balance.LessThan(amount.Neg()) {
-		return apperror.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
+		return apperror.NewBadRequest("Số dư ví không đủ để thực hiện giao dịch.")
 	}
 
 	// Adjust the wallet balance and update the timestamp.
@@ -70,11 +70,11 @@ func processWalletTransaction(
 	// Create a new wallet record if it didn't exist, otherwise update the existing one.
 	if isNewWallet {
 		if err := walletRepo.Create(txCtx, wallet); err != nil {
-			return apperror.NewInternalError("Lỗi khi khởi tạo ví mới")
+			return apperror.NewInternalError("Không thể khởi tạo ví mới.")
 		}
 	} else {
 		if err := walletRepo.Update(txCtx, wallet); err != nil {
-			return apperror.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
+			return apperror.NewInternalError("Không thể cập nhật số dư ví.")
 		}
 	}
 
@@ -91,7 +91,7 @@ func processWalletTransaction(
 
 	// Persist the statement record.
 	if err := statementRepo.Create(txCtx, statement); err != nil {
-		return apperror.NewInternalError("Lỗi khi lưu lịch sử biến động số dư ví")
+		return apperror.NewInternalError("Không thể lưu lịch sử giao dịch ví.")
 	}
 
 	return nil

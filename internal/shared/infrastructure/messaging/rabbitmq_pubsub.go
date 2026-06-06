@@ -29,11 +29,11 @@ func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any)
 
 	return r.ch.PublishWithContext(ctx,
 		ExchangeName, // exchange
-		topic,        // routing key (tên topic/queue)
+		topic,        // routing key (topic/queue name)
 		false,        // mandatory
 		false,        // immediate
 		amqp.Publishing{
-			DeliveryMode: amqp.Persistent, // Tin nhắn bền vững
+			DeliveryMode: amqp.Persistent, // Persistent message
 			ContentType:  "application/json",
 			Body:         body,
 		},

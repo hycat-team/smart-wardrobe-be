@@ -21,6 +21,13 @@ USING hnsw (taste_embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_snapshots_global_hotness_score 
 ON post_score_snapshots (global_hotness_score DESC);
 
+CREATE INDEX IF NOT EXISTS idx_posts_hotness_dirty_at
+ON posts (hotness_dirty_at ASC)
+WHERE hotness_dirty_at IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_posts_created_at
+ON posts (created_at DESC);
+
 -- Tối ưu điều kiện lọc cứng: Chỉ quét các sản phẩm đang ở trạng thái rao bán (status = 1)
 CREATE INDEX IF NOT EXISTS idx_post_items_status 
 ON post_items (status);

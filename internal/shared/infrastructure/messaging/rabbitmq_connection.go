@@ -43,11 +43,11 @@ func (r *RabbitMQClient) connect() error {
 		return fmt.Errorf("could not open RabbitMQ channel: %w", err)
 	}
 
-	// 1. Khởi tạo Topic Exchange linh hoạt, chuẩn Pub/Sub hướng sự kiện
+	// 1. Initialize flexible Topic Exchange, standard event-driven Pub/Sub
 	err = r.ch.ExchangeDeclare(
 		ExchangeName, // exchange name
 		ExchangeType, // exchange type ("topic")
-		true,         // durable (bền vững)
+		true,         // durable
 		false,        // auto-deleted
 		false,        // internal
 		false,        // no-wait
@@ -75,7 +75,7 @@ func (r *RabbitMQClient) connect() error {
 
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
 
-	// 4. Đăng ký lắng nghe NotifyClose để tự động reconnect ngầm khi mất mạng
+	// 4. Register to listen to NotifyClose for auto-reconnection in the background upon disconnection
 	errChan := make(chan *amqp.Error, 1)
 	r.conn.NotifyClose(errChan)
 	go r.handleReconnect(errChan)

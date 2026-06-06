@@ -34,7 +34,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 	}
 
 	if len(activeItems) == 0 {
-		return nil, apperror.NewBadRequest("Tủ đồ của bạn chưa có trang phục khả dụng để phối đồ.")
+		return nil, apperror.NewBadRequest("Tủ đồ của bạn chưa có trang phục thích hợp để phối đồ.")
 	}
 
 	categoryPicked := map[string]bool{}
@@ -75,7 +75,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 	}
 
 	if len(groups) == 0 {
-		return nil, apperror.NewBadRequest("Không tìm thấy bộ phối đồ phù hợp trong tủ đồ hiện tại.")
+		return nil, apperror.NewBadRequest("Không tìm thấy bộ phối đồ nào phù hợp trong tủ đồ của bạn.")
 	}
 
 	systemPrompt := "Bạn là stylist thời trang. Hãy viết giải thích ngắn gọn bằng tiếng Việt cho một bộ phối đồ duy nhất được tạo từ tủ đồ sẵn có của người dùng."
@@ -135,7 +135,7 @@ func (uc *WardrobeUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện.")
+		return nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
 	}
 
 	items, err := uc.messageRepo.GetByContextID(ctx, contextID)
@@ -156,7 +156,7 @@ func (uc *WardrobeUseCase) ArchiveChatSession(ctx context.Context, userID uuid.U
 		return err
 	}
 	if session == nil || session.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy cuộc trò chuyện.")
+		return apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
 	}
 
 	session.IsArchived = true
@@ -173,7 +173,7 @@ func (uc *WardrobeUseCase) ProcessChatMessage(ctx context.Context, userID uuid.U
 		return nil, nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện.")
+		return nil, nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
 	}
 
 	userMessage := &entities.Message{

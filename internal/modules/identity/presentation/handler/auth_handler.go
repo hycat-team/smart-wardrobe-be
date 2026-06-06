@@ -148,7 +148,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 	refreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(refreshToken) == 0 {
-		return apperror.NewBadRequest("Refresh token is missing from cookies.")
+		return apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")
 	}
 
 	input := dto.LogoutReq{
@@ -197,7 +197,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(oldRefreshToken) == 0 {
-		return apperror.NewBadRequest("Refresh token is missing from cookies.")
+		return apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")
 	}
 
 	input := dto.RefreshTokenReq{

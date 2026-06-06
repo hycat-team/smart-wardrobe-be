@@ -10,8 +10,8 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -23,7 +23,7 @@ import (
 
 func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
-		return nil, apperror.NewBadRequest("Danh sách ảnh cắt không được để trống.")
+		return nil, apperror.NewBadRequest("Danh sách hình ảnh tải lên không được để trống.")
 	}
 
 	itemType := itemtype.SystemCatalogItem
@@ -38,13 +38,12 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 		if err != nil {
 			return nil, err
 		}
-
 		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-			return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
+			return nil, apperror.NewForbidden(fmt.Sprintf("Số lượng trang phục tải lên vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
 		}
 	}
 
-	// Tạo nhanh các trang phục mẫu trong DB ở trạng thái Processing
+	// Quick create wardrobe items in DB with Processing status
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
 	for i, itemReq := range input.Items {
 		newItems[i] = &entities.WardrobeItem{
@@ -52,7 +51,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 			CategoryID:    itemReq.CategoryID,
 			ImageUrl:      itemReq.ImageUrl,
 			ImagePublicID: itemReq.ImagePublicID,
-			Status:        wardrobestatus.Processing, // Trạng thái xử lý AI ngầm
+			Status:        wardrobestatus.Processing, // Background AI processing state
 			ItemType:      itemType,
 		}
 	}
@@ -62,7 +61,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 		return nil, err
 	}
 
-	// Đẩy event qua bộ gửi sự kiện trừu tượng (Clean Architecture)
+	// Publish event via event publisher (Clean Architecture)
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i, item := range newItems {
 		job := dto.WardrobeBatchUploadJobDTO{
@@ -129,9 +128,10 @@ func (uc *WardrobeUseCase) handleJobFailure(ctx context.Context, job dto.Wardrob
 		job.RetryCount++
 
 		baseDelay := 60 * time.Second
-		if job.RetryCount == 2 {
+		switch job.RetryCount {
+		case 2:
 			baseDelay = 300 * time.Second
-		} else if job.RetryCount == 3 {
+		case 3:
 			baseDelay = 900 * time.Second
 		}
 
@@ -269,4 +269,3 @@ func (uc *WardrobeUseCase) markJobFailed(ctx context.Context, itemID uuid.UUID) 
 		_ = uc.wardrobeRepo.Update(ctx, item)
 	}
 }
-

@@ -2,7 +2,9 @@ package persistence
 
 import (
 	"context"
+	"time"
 
+	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -27,7 +29,7 @@ func NewPostRepository(db *gorm.DB) repositories.IPostRepository {
 	}
 }
 
-func (r *PostRepository) GetFeed(ctx context.Context, query repositories.FeedQuery) (*repositories.FeedResult, error) {
+func (r *PostRepository) GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error) {
 	pagination := shared_persist.NormalizePagination(shared_dto.PaginationQuery{
 		Page:  query.Page,
 		Limit: query.Limit,
@@ -52,17 +54,17 @@ func (r *PostRepository) GetFeed(ctx context.Context, query repositories.FeedQue
 		return nil, err
 	}
 
-	return &repositories.FeedResult{
+	return &dto.FeedResult{
 		Items:    items,
 		Metadata: shared_persist.BuildPaginationMetadata(pagination, totalItems),
 	}, nil
 }
 
-func (r *PostRepository) GetHotFeedCandidates(ctx context.Context, query repositories.FeedQuery, limit int) ([]*repositories.FeedPostRecord, error) {
+func (r *PostRepository) GetHotFeedCandidates(ctx context.Context, query dto.FeedQuery, limit int) ([]*dto.FeedPostRecord, error) {
 	return r.listFeed(ctx, query, true, limit)
 }
 
-func (r *PostRepository) listFeed(ctx context.Context, query repositories.FeedQuery, forceHot bool, limit int) ([]*repositories.FeedPostRecord, error) {
+func (r *PostRepository) listFeed(ctx context.Context, query dto.FeedQuery, forceHot bool, limit int) ([]*dto.FeedPostRecord, error) {
 	dbQuery := r.GetDB(ctx).
 		Model(&entities.Post{}).
 		Select("posts.*, COALESCE(post_score_snapshots.global_hotness_score, 0) AS global_hotness_score").
@@ -96,10 +98,10 @@ func (r *PostRepository) listFeed(ctx context.Context, query repositories.FeedQu
 		return nil, err
 	}
 
-	result := make([]*repositories.FeedPostRecord, 0, len(rows))
+	result := make([]*dto.FeedPostRecord, 0, len(rows))
 	for _, row := range rows {
 		post := row.Post
-		result = append(result, &repositories.FeedPostRecord{
+		result = append(result, &dto.FeedPostRecord{
 			Post:               &post,
 			GlobalHotnessScore: row.GlobalHotnessScore,
 		})
@@ -135,4 +137,75 @@ func (r *PostRepository) GetDetail(ctx context.Context, postID uuid.UUID) (*enti
 	}
 
 	return post, items, media, nil
+}
+
+func (r *PostRepository) GetDirtyPostIDs(ctx context.Context, limit int) ([]uuid.UUID, error) {
+	var postIDs []uuid.UUID
+	query := r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("hotness_dirty_at IS NOT NULL").
+		Order("hotness_dirty_at ASC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Pluck("id", &postIDs).Error; err != nil {
+		return nil, err
+	}
+	return postIDs, nil
+}
+
+func (r *PostRepository) GetDecayRefreshPostIDs(ctx context.Context, since time.Time, limit int) ([]uuid.UUID, error) {
+	var postIDs []uuid.UUID
+	query := r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("created_at >= ?", since).
+		Order("created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Pluck("id", &postIDs).Error; err != nil {
+		return nil, err
+	}
+	return postIDs, nil
+}
+
+func (r *PostRepository) GetHighScoreStalePostIDs(ctx context.Context, before time.Time, minScore float64, limit int) ([]uuid.UUID, error) {
+	var postIDs []uuid.UUID
+	query := r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Select("posts.id").
+		Joins("JOIN post_score_snapshots ON post_score_snapshots.post_id = posts.id").
+		Where("posts.created_at < ?", before).
+		Where("post_score_snapshots.global_hotness_score >= ?", minScore).
+		Order("post_score_snapshots.global_hotness_score DESC").
+		Order("posts.created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Pluck("posts.id", &postIDs).Error; err != nil {
+		return nil, err
+	}
+	return postIDs, nil
+}
+
+func (r *PostRepository) MarkHotnessDirty(ctx context.Context, postID uuid.UUID) error {
+	now := time.Now()
+	return r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("id = ?", postID).
+		Update("hotness_dirty_at", now).Error
+}
+
+func (r *PostRepository) ClearHotnessDirty(ctx context.Context, postIDs []uuid.UUID) error {
+	if len(postIDs) == 0 {
+		return nil
+	}
+
+	return r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("id IN ?", postIDs).
+		Update("hotness_dirty_at", nil).Error
 }

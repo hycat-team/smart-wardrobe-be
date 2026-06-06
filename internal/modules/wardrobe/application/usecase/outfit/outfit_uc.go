@@ -60,7 +60,7 @@ func (uc *OutfitUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.Up
 }
 
 func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
-	// 1. Kiểm tra giới hạn số lượng Outfit của gói cước
+	// 1. Check outfit limit of the subscription plan
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -72,10 +72,10 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	}
 
 	if len(existingOutfits) >= subOverview.MaxOutfits {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng bộ phối đồ của gói dịch vụ hiện tại (Hiện có: %d/%d bộ đồ).", len(existingOutfits), subOverview.MaxOutfits))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Bạn đã đạt giới hạn số bộ phối đồ tối đa của gói dịch vụ hiện tại (%d/%d bộ).", len(existingOutfits), subOverview.MaxOutfits))
 	}
 
-	// 2. Kiểm tra các Wardrobe Items truyền lên có tồn tại và thuộc về User không
+	// 2. Check if the provided wardrobe items exist and belong to the user
 	itemIDs := make([]uuid.UUID, len(input.Items))
 	for idx, itemReq := range input.Items {
 		itemIDs[idx] = itemReq.WardrobeItemID
@@ -90,18 +90,18 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể dùng để phối đồ.", item.ID))
 			}
 			verifiedMap[item.ID] = item
 		}
 	}
 
-	// Xác thực 100% các items hợp lệ
+	// Verify that all items are valid
 	outfitItems := make([]*entities.OutfitItem, len(input.Items))
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -114,7 +114,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		}
 	}
 
-	// 3. Tiến hành Transaction tạo Outfit
+	// 3. Perform Transaction to create Outfit
 	outfit := &entities.Outfit{
 		UserID:        userID,
 		Name:          input.Name,
@@ -133,16 +133,16 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
-	// 1. Kiểm tra Outfit có tồn tại và thuộc về User không
+	// 1. Check if the Outfit exists and belongs to the User
 	outfit, err := uc.outfitRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
 	}
 
-	// 2. Kiểm tra các Wardrobe Items truyền lên
+	// 2. Check the provided wardrobe items
 	itemIDs := make([]uuid.UUID, len(input.Items))
 	for idx, itemReq := range input.Items {
 		itemIDs[idx] = itemReq.WardrobeItemID
@@ -157,7 +157,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể phối đồ.", item.ID))
+				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể dùng để phối đồ.", item.ID))
 			}
 			verifiedMap[item.ID] = item
 		}
@@ -167,7 +167,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -181,7 +181,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		}
 	}
 
-	// 3. Tiến hành Cập nhật
+	// 3. Perform Update
 	outfit.Name = input.Name
 	outfit.Description = input.Description
 	outfit.CoverImageUrl = input.CoverImageUrl
@@ -215,7 +215,7 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
 	}
 
 	return mapper.MapToOutfitRes(outfit, items), nil
@@ -227,7 +227,7 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 		return err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy bộ phối đồ tương ứng.")
+		return apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
 	}
 
 	return uc.outfitRepo.DeleteOutfit(ctx, id)

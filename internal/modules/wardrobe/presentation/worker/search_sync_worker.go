@@ -35,10 +35,10 @@ func NewSearchSyncWorker(
 		logger:        l,
 	}
 
-	// Đồng bộ lần đầu: đẩy toàn bộ System Catalog Items từ PostgreSQL lên công cụ tìm kiếm
+	// Initial sync: push all System Catalog Items from PostgreSQL to the search engine
 	go w.initialSync()
 
-	// Khởi chạy việc lắng nghe hàng đợi sự kiện đồng bộ thông qua Consumer của tầng Application
+	// Start listening to the sync event queue via the Application layer Consumer
 	go w.startConsume()
 
 	return w
@@ -68,7 +68,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 			return fmt.Errorf("item not found in database for indexing")
 		}
 
-		// Chỉ đồng bộ các wardrobe item của hệ thống (SystemCatalogItem = 1) vào Search Index
+		// Only sync system wardrobe items (SystemCatalogItem = 1) to the Search Index
 		if item.ItemType != 1 {
 			w.logger.Info("[SearchSyncWorker] Skipping user item indexing, only system catalog items are synced to search index",
 				zap.String("itemId", item.ID.String()),
@@ -81,7 +81,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 				zap.String("itemId", item.ID.String()),
 				zap.Error(err),
 			)
-			// Trả về nil thay vì ném lỗi để tránh treo hoặc spam queue khi ES offline
+			// Return nil instead of throwing an error to avoid hanging or queue spam when ES is offline
 			return nil
 		}
 
@@ -91,7 +91,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 				zap.String("itemId", eventPayload.ItemID.String()),
 				zap.Error(err),
 			)
-			// Trả về nil thay vì ném lỗi để tránh treo hoặc spam queue khi ES offline
+			// Return nil instead of throwing an error to avoid hanging or queue spam when ES is offline
 			return nil
 		}
 	}
@@ -99,7 +99,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 	return nil
 }
 
-// initialSync đẩy toàn bộ System Catalog Items từ PostgreSQL lên Search Index khi app khởi chạy
+// initialSync pushes all System Catalog Items from PostgreSQL to the Search Index upon app startup
 func (w *SearchSyncWorker) initialSync() {
 	ctx := context.Background()
 

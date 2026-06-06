@@ -113,7 +113,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
 	}
 
 	response, err := h.wardrobeUseCase.GetChatMessages(c.Request.Context(), userID, contextID)
@@ -142,7 +142,7 @@ func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
 	}
 
 	if err := h.wardrobeUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -171,7 +171,7 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng ID cuộc trò chuyện không hợp lệ.")
+		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
 	}
 
 	var input dto.SendChatMessageReq

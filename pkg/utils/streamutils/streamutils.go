@@ -2,7 +2,7 @@ package streamutils
 
 import "fmt"
 
-// SplitForStream chia chuỗi thành các chunk nhỏ để stream
+// SplitForStream splits a string into small chunks for streaming
 func SplitForStream(content string, chunkSize int) []string {
 	if chunkSize <= 0 || len(content) <= chunkSize {
 		return []string{content}
@@ -19,7 +19,7 @@ func SplitForStream(content string, chunkSize int) []string {
 	return result
 }
 
-// SanitizeSSEData escape chuỗi an toàn cho SSE data format
+// SanitizeSSEData escapes a string safely for SSE data format
 func SanitizeSSEData(content string) string {
 	return fmt.Sprintf("%q", content)
 }

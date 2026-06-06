@@ -42,7 +42,7 @@ func (uc *UserQuotaUseCase) getOrCreateUserSubscription(ctx context.Context, use
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy cấu hình gói hội viên mặc định")
+			return nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
 		}
 
 		sub = &entities.UserSubscription{
@@ -124,7 +124,7 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
+			return nil, apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
 		}
 		plan = p
 	}
@@ -164,14 +164,14 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
+			return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
 		}
 		plan = p
 	}
 
 	newCount := quota.OutfitRecommendCount + count
 	if newCount > plan.AiOutfitDailyQuota {
-		return apperror.NewBadRequest("Hạn mức sử dụng AI tạo trang phục trong ngày đã hết")
+		return apperror.NewBadRequest("Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay.")
 	}
 
 	quota.OutfitRecommendCount = newCount
@@ -197,14 +197,14 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng")
+			return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
 		}
 		plan = p
 	}
 
 	newCount := quota.AiUsageCount + count
 	if newCount > plan.AiChatDailyQuota {
-		return apperror.NewBadRequest("Hạn mức sử dụng AI Chatbot trong ngày đã hết")
+		return apperror.NewBadRequest("Bạn đã dùng hết lượt trò chuyện với AI Chatbot trong hôm nay.")
 	}
 
 	quota.AiUsageCount = newCount

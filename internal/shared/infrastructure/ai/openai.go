@@ -66,7 +66,7 @@ func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProvi
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return "", apperror.NewInternalError("Không nhận được phản hồi văn bản từ OpenAI.")
+		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
 
 	return openAIResp.Choices[0].Message.Content, nil
@@ -135,7 +135,7 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return nil, apperror.NewInternalError("Không nhận được phản hồi phân tích hình ảnh.")
+		return nil, apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
 	}
 
 	var result struct {
@@ -206,7 +206,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		}
 
 		if len(openAIResp.Data) == 0 {
-			return nil, apperror.NewInternalError("Không nhận được phản hồi mã hóa từ OpenAI.")
+			return nil, apperror.NewInternalError("Không thể xử lý dữ liệu đặc trưng của nội dung lúc này.")
 		}
 
 		batchResults := make([][]float32, len(subSlice))

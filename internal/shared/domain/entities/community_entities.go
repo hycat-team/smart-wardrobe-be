@@ -3,9 +3,9 @@ package entities
 import (
 	"time"
 
+	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 
 	"github.com/google/uuid"
@@ -14,15 +14,16 @@ import (
 type Post struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID       uuid.UUID         `gorm:"type:uuid;not null"`
-	User         *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	PostType     posttype.PostType `gorm:"type:varchar(50);not null"`
-	Title        *string           `gorm:"type:varchar(255)"`
-	Content      string            `gorm:"type:text;not null"`
-	ContactInfo  *string           `gorm:"type:varchar(255)"`
-	TotalPrice   float64           `gorm:"type:decimal(12,2);default:0.00"`
-	LikeCount    int               `gorm:"type:int;default:0"`
-	CommentCount int               `gorm:"type:int;default:0"`
+	UserID         uuid.UUID         `gorm:"type:uuid;not null"`
+	User           *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	PostType       posttype.PostType `gorm:"type:varchar(50);not null"`
+	Title          *string           `gorm:"type:varchar(255)"`
+	Content        string            `gorm:"type:text;not null"`
+	ContactInfo    *string           `gorm:"type:varchar(255)"`
+	TotalPrice     float64           `gorm:"type:decimal(12,2);default:0.00"`
+	LikeCount      int               `gorm:"type:int;default:0"`
+	CommentCount   int               `gorm:"type:int;default:0"`
+	HotnessDirtyAt *time.Time        `gorm:"type:timestamp with time zone"`
 }
 
 type PostScoreSnapshot struct {

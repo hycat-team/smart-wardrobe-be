@@ -55,7 +55,7 @@ func (uc *SubscriptionPlanUseCase) GetDefaultSubscriptionPlanID(ctx context.Cont
 		return uuid.Nil, err
 	}
 	if plan == nil {
-		return uuid.Nil, apperror.NewNotFound("Không tìm thấy gói hội viên mặc định")
+		return uuid.Nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
 	}
 	return plan.ID, nil
 }

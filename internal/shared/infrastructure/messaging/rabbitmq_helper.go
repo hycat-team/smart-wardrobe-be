@@ -10,7 +10,7 @@ func (r *RabbitMQClient) DeclareAndBindQueue(queueName, routingKey string) error
 		return fmt.Errorf("RabbitMQ channel is not open")
 	}
 
-	// 1. Khai báo Queue bền vững (Durable)
+	// 1. Declare Durable Queue
 	_, err := r.ch.QueueDeclare(
 		queueName, // queue name
 		true,      // durable
@@ -23,7 +23,7 @@ func (r *RabbitMQClient) DeclareAndBindQueue(queueName, routingKey string) error
 		return fmt.Errorf("failed to declare queue %s: %w", queueName, err)
 	}
 
-	// 2. Bind Queue vào Exchange với routing key tương ứng
+	// 2. Bind Queue to Exchange with the corresponding routing key
 	err = r.ch.QueueBind(
 		queueName,    // queue name
 		routingKey,   // routing key

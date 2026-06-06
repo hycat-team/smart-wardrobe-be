@@ -73,7 +73,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 			return err
 		}
 
-		// Xóa các items cũ liên quan
+		// Delete related old items
 		if err := tx.Where("outfit_id = ?", outfit.ID).Delete(&entities.OutfitItem{}).Error; err != nil {
 			return err
 		}
@@ -94,12 +94,12 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 
 func (r *OutfitRepository) DeleteOutfit(ctx context.Context, id uuid.UUID) error {
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
-		// Xóa các items trung gian trước
+		// Delete intermediate items first
 		if err := tx.Where("outfit_id = ?", id).Delete(&entities.OutfitItem{}).Error; err != nil {
 			return err
 		}
 
-		// Xóa thực thể Outfit (Soft delete hoặc Hard delete dựa trên cấu hình)
+		// Delete Outfit entity (Soft delete or Hard delete based on configuration)
 		if err := tx.Where("id = ?", id).Delete(&entities.Outfit{}).Error; err != nil {
 			return err
 		}

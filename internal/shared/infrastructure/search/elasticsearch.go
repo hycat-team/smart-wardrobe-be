@@ -84,7 +84,7 @@ func (c *ElasticsearchClient) doRequest(ctx context.Context, method, urlPath str
 			zap.String("response", string(respBody)),
 		)
 
-		return nil, apperror.NewError(resp.StatusCode, "Lỗi hệ thống", string(respBody))
+		return nil, apperror.NewError(resp.StatusCode, "Hệ thống gặp sự cố", string(respBody))
 	}
 
 	return respBody, nil
@@ -113,7 +113,7 @@ func (c *ElasticsearchClient) DeleteDocument(ctx context.Context, index, id stri
 	urlPath := fmt.Sprintf("%s/_doc/%s", index, id)
 	_, err := c.doRequest(ctx, http.MethodDelete, urlPath, nil)
 	if err != nil {
-		// Bỏ qua lỗi 404 nếu tài liệu không tồn tại để worker tiếp tục hoạt động mượt mà
+		// Ignore 404 error if document does not exist to let the worker continue running smoothly
 		if strings.Contains(err.Error(), "404") {
 			c.logger.Info("Document not found in Elasticsearch during deletion, skipping",
 				zap.String("index", index),

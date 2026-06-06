@@ -3,8 +3,8 @@ package transferstate
 type TransferState int16
 
 const (
-	None     TransferState = 0 // Chưa bàn giao
-	Pending  TransferState = 1 // Đang chờ nhận đồ
-	Accepted TransferState = 2 // Đã chấp nhận nhận đồ
-	Declined TransferState = 3 // Đã từ chối nhận đồ
+	None     TransferState = 0 // Not transferred yet
+	Pending  TransferState = 1 // Pending receipt of item
+	Accepted TransferState = 2 // Accepted receipt of item
+	Declined TransferState = 3 // Declined receipt of item
 )

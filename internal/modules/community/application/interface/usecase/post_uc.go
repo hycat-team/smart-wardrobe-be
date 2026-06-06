@@ -9,10 +9,22 @@ import (
 )
 
 type IPostUseCase interface {
-	CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error)
+	IPostFeedUseCase
+	IPostWriteUseCase
+	IPostAssetUseCase
+}
+
+type IPostFeedUseCase interface {
 	GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query dto.GetFeedQueryReq) (*dto.GetFeedRes, error)
 	GetPostDetail(ctx context.Context, postID uuid.UUID, viewerUserID *uuid.UUID) (*dto.PostRes, error)
-	GetUploadSignature(ctx context.Context) (*dto.UploadSignatureResult, error)
+}
+
+type IPostWriteUseCase interface {
+	CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error)
 	DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
 	RemovePostItems(ctx context.Context, userID uuid.UUID, postID uuid.UUID, postItemIDs []uuid.UUID) error
+}
+
+type IPostAssetUseCase interface {
+	GetUploadSignature(ctx context.Context) (*dto.UploadSignatureResult, error)
 }

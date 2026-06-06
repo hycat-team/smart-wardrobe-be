@@ -76,25 +76,25 @@ func ToPtr(s string) *string {
 }
 
 func SanitizeFileName(fileName string, salt *string) string {
-	// 1. Chỉ lấy phần tên file, bỏ đường dẫn (Chống Path Traversal)
+	// 1. Only keep the file name, strip directory path (Prevent Path Traversal)
 	name := filepath.Base(fileName)
 
-	// 2. Loại bỏ đuôi file cũ để xử lý riêng
+	// 2. Remove the old file extension to process separately
 	ext := filepath.Ext(name)
 	nameOnly := strings.TrimSuffix(name, ext)
 
-	// 3. Regex: Chỉ giữ lại chữ cái không dấu, số, gạch ngang và gạch dưới
-	// Thay thế tất cả ký tự lạ thành dấu gạch dưới
+	// 3. Regex: Only keep alphanumeric characters, hyphens, and underscores
+	// Replace all special characters with underscores
 	reg := regexp.MustCompile(`[^a-zA-Z0-9\-_]+`)
 	safeName := reg.ReplaceAllString(nameOnly, "_")
 
-	// 4. Giới hạn độ dài tên file (tránh lỗi hệ điều hành)
+	// 4. Limit the file name length (avoid OS errors)
 	if len(safeName) > 100 {
 		safeName = safeName[:100]
 	}
 
-	// 5. Kết hợp với Salt hoặc UnixNano
-	// Nếu salt có giá trị, dùng salt. Nếu không, dùng thời gian hiện tại.
+	// 5. Combine with Salt or UnixNano
+	// If salt is provided, use salt. Otherwise, use current time.
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	if salt != nil && *salt != "" {
 		suffix = *salt

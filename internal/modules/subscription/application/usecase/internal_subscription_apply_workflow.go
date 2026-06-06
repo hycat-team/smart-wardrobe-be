@@ -25,7 +25,7 @@ func applySubscriptionPlan(
 	// to prevent race conditions when multiple operations attempt to modify the same subscription concurrently.
 	sub, err := userSubRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi kiểm tra thông tin gói hội viên hiện tại")
+		return apperror.NewInternalError("Không thể tải thông tin gói hội viên hiện tại.")
 	}
 
 	// Check if this is the first time the user gets a subscription.
@@ -71,11 +71,11 @@ func applySubscriptionPlan(
 	// Persist the changes to the database (Create for new, Update for existing).
 	if isNewSub {
 		if err := userSubRepo.Create(txCtx, sub); err != nil {
-			return apperror.NewInternalError("Lỗi khi kích hoạt gói hội viên mới")
+			return apperror.NewInternalError("Không thể kích hoạt gói hội viên mới.")
 		}
 	} else {
 		if err := userSubRepo.Update(txCtx, sub); err != nil {
-			return apperror.NewInternalError("Lỗi khi cập nhật thời hạn gói hội viên")
+			return apperror.NewInternalError("Không thể cập nhật thời hạn gói hội viên.")
 		}
 	}
 

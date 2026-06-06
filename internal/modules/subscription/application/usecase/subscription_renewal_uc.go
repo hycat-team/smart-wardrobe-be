@@ -45,7 +45,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 	// Fetch the configured default subscription plan ID (usually the Free Plan) for downgrades.
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi tải thông tin cấu hình gói hội viên mặc định")
+		return apperror.NewInternalError("Không thể tải thông tin cấu hình gói hội viên mặc định.")
 	}
 
 	// Initialize pagination state for cursor-based batch processing to avoid memory bloat.
@@ -62,7 +62,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 		// Query a batch of expired, active subscriptions using a cursor (lastUserID & lastExpiresAt).
 		expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptionsBatch(ctx, now, lastUserID, lastExpiresAt, limit)
 		if err != nil {
-			return apperror.NewInternalError("Lỗi khi truy vấn danh sách gói hội viên hết hạn")
+			return apperror.NewInternalError("Không thể truy vấn danh sách gói hội viên hết hạn.")
 		}
 
 		// If no expired subscriptions are returned, processing is complete.

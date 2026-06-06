@@ -31,7 +31,7 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 				res := apperror.Error{
 					Status: http.StatusInternalServerError,
 					Title:  "Lỗi hệ thống",
-					Detail: "Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+					Detail: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên.",
 				}
 
 				if appEnv == "development" || gin.Mode() == gin.DebugMode {
@@ -53,7 +53,7 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 		rawErr := c.Errors.Last().Err
 		appErr := errorutils.ToAppError(rawErr)
 		if appErr == nil {
-			appErr = apperror.NewInternalError("Đã xảy ra lỗi hệ thống")
+			appErr = apperror.NewInternalError("Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.")
 		}
 
 		fields := []zap.Field{

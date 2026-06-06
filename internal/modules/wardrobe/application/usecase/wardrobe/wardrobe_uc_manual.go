@@ -20,15 +20,15 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if item == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy trang phục.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục này.")
 	}
 
 	if item.UserID != userID {
-		return nil, apperror.NewForbidden("Bạn không có quyền cập nhật trang phục này.")
+		return nil, apperror.NewForbidden("Bạn không được phép cập nhật thông tin trang phục này.")
 	}
 
 	if item.Status == wardrobestatus.Sold {
-		return nil, apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã được bán.")
+		return nil, apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã bán.")
 	}
 
 	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
@@ -36,7 +36,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if category == nil {
-		return nil, apperror.NewBadRequest("Danh mục không tồn tại.")
+		return nil, apperror.NewBadRequest("Danh mục trang phục không tồn tại.")
 	}
 
 	tokens := fmt.Sprintf("[CAT:%s][COL:%s][STY:%s][MAT:%s][PAT:%s][FIT:%s][SEA:%s]",
@@ -61,7 +61,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 
 	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
 	if err != nil || len(embeddings) == 0 {
-		return nil, apperror.NewInternalError("Không thể tạo vector biểu diễn văn bản thời trang.")
+		return nil, apperror.NewInternalError("Hệ thống không thể xử lý nội dung văn bản thời trang lúc này.")
 	}
 	embedding := embeddings[0]
 

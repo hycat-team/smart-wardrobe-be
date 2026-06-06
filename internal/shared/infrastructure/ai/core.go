@@ -108,7 +108,7 @@ func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIPr
 		return s.callGoogleVision(ctx, provider, imageUrl, categories)
 	}
 
-	return nil, apperror.NewInternalError("Nhà cung cấp dịch vụ trí tuệ nhân tạo không được hỗ trợ.")
+	return nil, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
 }
 
 func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
@@ -119,7 +119,7 @@ func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider conf
 		return s.callGoogleEmbeddingBatch(ctx, provider, chunks)
 	}
 
-	return nil, apperror.NewInternalError("Nhà cung cấp dịch vụ mã hóa không được hỗ trợ.")
+	return nil, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phân tích dữ liệu này.")
 }
 
 func (s *AIService) tryTextProvider(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
@@ -130,6 +130,6 @@ func (s *AIService) tryTextProvider(ctx context.Context, provider config.APIProv
 		return s.callGoogleText(ctx, provider, systemPrompt, userPrompt)
 	}
 
-	return "", apperror.NewInternalError("Nhà cung cấp dịch vụ tạo sinh văn bản không được hỗ trợ.")
+	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")
 }
 

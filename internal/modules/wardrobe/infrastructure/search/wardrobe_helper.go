@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// parseEsResToSearchRes parse JSON thô từ Elasticsearch sang danh sách SearchWardrobeItemRes
+// parseEsResToSearchRes parses raw JSON from Elasticsearch to a slice of SearchWardrobeItemRes
 func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]*dto.SearchWardrobeItemRes, error) {
 	type esDocSource struct {
 		ID       string `json:"id"`
@@ -38,7 +38,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	}
 
 	if err := json.Unmarshal(respBytes, &esResult); err != nil {
-		return nil, apperror.NewInternalError("Failed to unmarshal raw search response")
+		return nil, apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
 	}
 
 	results := make([]*dto.SearchWardrobeItemRes, len(esResult.Hits.Hits))

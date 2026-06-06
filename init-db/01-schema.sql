@@ -194,6 +194,7 @@ CREATE TABLE posts (
     total_price DECIMAL(12, 2) DEFAULT 0.00,
     like_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
+    hotness_dirty_at TIMESTAMP WITH TIME ZONE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

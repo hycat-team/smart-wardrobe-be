@@ -51,11 +51,11 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 	}
 
 	if req.Amount.LessThan(minPayOSTransactionAmount) {
-		return "", apperror.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VND", minPayOSTransactionAmount.IntPart()))
+		return "", apperror.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VNĐ.", minPayOSTransactionAmount.IntPart()))
 	}
 	amountVND, err := sharedmoney.ToMinorUnits(req.Amount, currency.VND)
 	if err != nil {
-		return "", apperror.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số nguyên VND")
+		return "", apperror.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số tiền nguyên theo đơn vị VND.")
 	}
 
 	bodyMap := map[string]any{

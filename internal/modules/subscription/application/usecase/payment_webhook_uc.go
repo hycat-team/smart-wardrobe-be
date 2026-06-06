@@ -65,7 +65,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	// Verify the webhook authenticity by validating its cryptographic signature with the gateway's public keys.
 	_, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature)
 	if err != nil {
-		return apperror.NewBadRequest("Lỗi khi xác thực chữ ký webhook")
+		return apperror.NewBadRequest("Không thể xác thực chữ ký giao dịch.")
 	}
 
 	// Parse the webhook callback payload structure.
@@ -97,7 +97,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	decoder := json.NewDecoder(bytes.NewReader(rawBody))
 	decoder.UseNumber() // Use json.Number to avoid precision loss on large integer numbers
 	if err := decoder.Decode(&payload); err != nil {
-		return apperror.NewBadRequest("Dữ liệu webhook không đúng định dạng cấu trúc")
+		return apperror.NewBadRequest("Dữ liệu thông báo giao dịch không đúng định dạng.")
 	}
 
 	// Check transaction status codes. Code "00" indicates success.
@@ -124,10 +124,10 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	// Query the matching pending deposit transaction record by its OrderCode.
 	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi truy vấn thông tin giao dịch thanh toán")
+		return apperror.NewInternalError("Không thể truy vấn thông tin giao dịch thanh toán.")
 	}
 	if tx == nil {
-		return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d", payload.Data.OrderCode))
+		return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d.", payload.Data.OrderCode))
 	}
 	if err := sharedmoney.ValidateSupportedCurrency(tx.Currency); err != nil {
 		return err
@@ -135,7 +135,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 
 	// Verify the received payment amount matches the expected record amount to prevent fraud/underpayment.
 	if !webhookAmount.Equal(tx.Amount) {
-		return apperror.NewBadRequest("Số tiền thanh toán thực tế không khớp với số tiền của giao dịch")
+		return apperror.NewBadRequest("Số tiền thanh toán không khớp với số tiền của giao dịch.")
 	}
 
 	// Optimistic check - if the transaction is already marked success, skip reprocessing (idempotency).
@@ -146,7 +146,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	// Serialize gateway data payload for audit logs.
 	rawBytes, err := json.Marshal(payload.Data)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi chuyển đổi thông tin cổng thanh toán")
+		return apperror.NewInternalError("Không thể xử lý thông tin cổng thanh toán.")
 	}
 	detailsStr := string(rawBytes)
 	reference := payload.Data.Reference
@@ -157,10 +157,10 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		// to guarantee thread safety and prevent double-processing (idempotency guard).
 		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
 		if err != nil {
-			return apperror.NewInternalError("Lỗi khi khóa dữ liệu giao dịch")
+			return apperror.NewInternalError("Không thể khóa dữ liệu giao dịch.")
 		}
 		if lockedTx == nil {
-			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d", payload.Data.OrderCode))
+			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy giao dịch thanh toán với mã đơn hàng %d.", payload.Data.OrderCode))
 		}
 
 		// Double-check the status inside the locked transaction context.
@@ -175,7 +175,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		lockedTx.GatewayDetails = &detailsStr
 
 		if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
-			return apperror.NewInternalError("Lỗi khi hoàn tất hồ sơ giao dịch thanh toán")
+			return apperror.NewInternalError("Không thể hoàn tất hồ sơ giao dịch thanh toán.")
 		}
 
 		// Route processing based on the TransactionType.
@@ -226,15 +226,15 @@ func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Contex
 // executeDirectPurchaseWorkflow fetches the targeted subscription plan and applies it.
 func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	if tx.SubscriptionPlanID == nil {
-		return apperror.NewBadRequest("Thiếu liên kết gói hội viên trong giao dịch thanh toán")
+		return apperror.NewBadRequest("Không tìm thấy thông tin gói hội viên liên kết với giao dịch.")
 	}
 
 	plan, err := uc.planRepo.GetByID(txCtx, *tx.SubscriptionPlanID)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi tải thông tin gói hội viên đích")
+		return apperror.NewInternalError("Không thể tải thông tin gói hội viên.")
 	}
 	if plan == nil {
-		return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên đích")
+		return apperror.NewNotFound("Không tìm thấy gói hội viên được yêu cầu.")
 	}
 
 	// Apply the subscription plan configuration to the user's subscription entity.

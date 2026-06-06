@@ -51,7 +51,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if postItem == nil {
-			return apperror.NewNotFound("Không tìm thấy món đồ đăng bán.")
+			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
 		}
 
 		post, err := uc.postRepo.GetByID(txCtx, postItem.PostID)
@@ -59,7 +59,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil || post.UserID != userID {
-			return apperror.NewForbidden("Bạn không có quyền thực hiện hành động này.")
+			return apperror.NewForbidden("Bạn không được phép thực hiện thao tác này.")
 		}
 
 		hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItemID)
@@ -67,7 +67,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if hasOtherActiveTransfer {
-			return apperror.NewBadRequest("Trang phục này đã có listing khác đang chờ giao dịch.")
+			return apperror.NewBadRequest("Trang phục này đang nằm trong một giao dịch khác.")
 		}
 
 		postItem.BuyerUserID = &buyerUserID
@@ -133,11 +133,11 @@ func (uc *ItemTransferUseCase) AcceptTransfer(ctx context.Context, buyerUserID u
 			return err
 		}
 		if item == nil || item.BuyerUserID == nil || *item.BuyerUserID != buyerUserID {
-			return apperror.NewNotFound("Không tìm thấy món đồ đang chờ nhận.")
+			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
 		}
 
 		if item.TransferState != transferstate.Pending {
-			return apperror.NewBadRequest("Yêu cầu bàn giao này đã được xử lý hoặc không còn hiệu lực.")
+			return apperror.NewBadRequest("Yêu cầu chuyển nhượng này đã được xử lý hoặc không còn hiệu lực.")
 		}
 
 		c, err := uc.wardrobeCtr.CopyItemToUser(txCtx, item.ItemID, buyerUserID)
@@ -187,11 +187,11 @@ func (uc *ItemTransferUseCase) DeclineTransfer(ctx context.Context, buyerUserID 
 			return err
 		}
 		if postItem == nil || postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
-			return apperror.NewNotFound("Không tìm thấy món đồ đang chờ nhận.")
+			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
 		}
 
 		if postItem.TransferState != transferstate.Pending {
-			return apperror.NewBadRequest("Yêu cầu bàn giao này đã được xử lý hoặc không còn hiệu lực.")
+			return apperror.NewBadRequest("Yêu cầu chuyển nhượng này đã được xử lý hoặc không còn hiệu lực.")
 		}
 
 		postItem.TransferState = transferstate.Declined

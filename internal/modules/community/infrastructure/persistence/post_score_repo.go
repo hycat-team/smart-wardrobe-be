@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
@@ -41,7 +42,13 @@ func (r *PostScoreRepository) GetScoresByPostIDs(ctx context.Context, postIDs []
 	return result, nil
 }
 
-func (r *PostScoreRepository) ListScoreMetrics(ctx context.Context) ([]*repositories.PostScoreMetric, error) {
+func (r *PostScoreRepository) ListScoreMetricsByPostIDs(
+	ctx context.Context, postIDs []uuid.UUID,
+) ([]*dto.PostScoreMetric, error) {
+	if len(postIDs) == 0 {
+		return []*dto.PostScoreMetric{}, nil
+	}
+
 	var rows []struct {
 		PostID        uuid.UUID `gorm:"column:post_id"`
 		LikeCount     int       `gorm:"column:like_count"`
@@ -52,13 +59,14 @@ func (r *PostScoreRepository) ListScoreMetrics(ctx context.Context) ([]*reposito
 	if err := r.getDB(ctx).
 		Model(&entities.Post{}).
 		Select("id AS post_id, like_count, comment_count, created_at").
+		Where("id IN ?", postIDs).
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	result := make([]*repositories.PostScoreMetric, 0, len(rows))
+	result := make([]*dto.PostScoreMetric, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, &repositories.PostScoreMetric{
+		result = append(result, &dto.PostScoreMetric{
 			PostID:        row.PostID,
 			LikeCount:     row.LikeCount,
 			CommentCount:  row.CommentCount,

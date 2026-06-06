@@ -92,7 +92,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 		return false, err
 	}
 	if sub == nil {
-		return false, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên của người dùng.")
+		return false, apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
 	}
 
 	if sub.IsAutoRenewEnabled == enable {
@@ -100,7 +100,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	}
 
 	if enable && sub.ExpiresAt != nil && sub.ExpiresAt.Before(time.Now()) {
-		return false, apperror.NewBadRequest("Gói hội viên đã hết hạn, không thể thiết lập tự động gia hạn.")
+		return false, apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
 	}
 
 	sub.IsAutoRenewEnabled = enable
@@ -133,7 +133,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+			return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
 		}
 		plan = p
 	}
@@ -168,7 +168,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy thông tin của gói hội viên")
+			return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
 		}
 		plan = p
 	}
@@ -203,7 +203,7 @@ func (uc *SubscriptionUseCase) getOrCreateUserSubscription(ctx context.Context, 
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy cấu hình gói hội viên mặc định")
+			return nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
 		}
 
 		sub = &entities.UserSubscription{

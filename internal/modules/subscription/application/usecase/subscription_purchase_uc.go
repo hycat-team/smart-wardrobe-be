@@ -66,7 +66,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		return nil, err
 	}
 	if plan == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
+		return nil, apperror.NewNotFound("Không tìm thấy gói hội viên được yêu cầu.")
 	}
 
 	// Prevent users from checking out free plans directly.
@@ -105,7 +105,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 
 		// Insert the transaction into the database first.
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
-			return apperror.NewInternalError("Lỗi khi tạo giao dịch thanh toán trực tiếp")
+			return apperror.NewInternalError("Không thể tạo giao dịch thanh toán trực tiếp.")
 		}
 
 		// Configure return/cancel callback URLs for the payment gateway.
@@ -140,7 +140,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		// Update the transaction in database with the generated checkout payment URL.
 		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return apperror.NewInternalError("Lỗi khi liên kết địa chỉ thanh toán")
+			return apperror.NewInternalError("Không thể liên kết địa chỉ thanh toán.")
 		}
 
 		orderCode = tx.OrderCode
@@ -162,10 +162,10 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	// Retrieve the subscription plan details by slug.
 	plan, err := uc.planRepo.GetBySlug(ctx, planSlug)
 	if err != nil {
-		return apperror.NewInternalError("Lỗi khi tìm kiếm thông tin gói cước")
+		return apperror.NewInternalError("Không thể tìm kiếm thông tin gói cước.")
 	}
 	if plan == nil {
-		return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên yêu cầu")
+		return apperror.NewNotFound("Không tìm thấy gói hội viên được yêu cầu.")
 	}
 
 	// Execute the purchase using a database transaction.
@@ -229,7 +229,7 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 func (uc *SubscriptionPurchaseUseCase) getOrInitLockedSubscriptionForPurchase(txCtx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, bool, error) {
 	sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return nil, false, apperror.NewInternalError("Lỗi khi kiểm tra thông tin gói hội viên hiện tại")
+		return nil, false, apperror.NewInternalError("Không thể tải thông tin gói hội viên hiện tại.")
 	}
 	if sub != nil {
 		return sub, false, nil
@@ -246,7 +246,7 @@ func (uc *SubscriptionPurchaseUseCase) getOrInitLockedSubscriptionForPurchase(tx
 func (uc *SubscriptionPurchaseUseCase) getOrInitLockedWalletForPurchase(txCtx context.Context, userID uuid.UUID, now time.Time) (*entities.UserWallet, bool, error) {
 	wallet, err := uc.walletRepo.GetByUserIDWithLock(txCtx, userID)
 	if err != nil {
-		return nil, false, apperror.NewInternalError("Lỗi khi truy vấn thông tin số dư ví")
+		return nil, false, apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
 	}
 	if wallet != nil {
 		return wallet, false, nil
@@ -265,7 +265,7 @@ func (uc *SubscriptionPurchaseUseCase) getOrInitLockedWalletForPurchase(txCtx co
 // Persists the change to the repository.
 func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx context.Context, wallet *entities.UserWallet, isNewWallet bool, amount decimal.Decimal, now time.Time) (decimal.Decimal, error) {
 	if wallet.Balance.LessThan(amount) {
-		return sharedmoney.Zero, apperror.NewBadRequest("Số dư tài khoản nội bộ không đủ để thực hiện giao dịch")
+		return sharedmoney.Zero, apperror.NewBadRequest("Số dư ví không đủ để thực hiện giao dịch.")
 	}
 
 	prevBalance := wallet.Balance
@@ -274,11 +274,11 @@ func (uc *SubscriptionPurchaseUseCase) applyWalletDebitToLockedWallet(txCtx cont
 
 	if isNewWallet {
 		if err := uc.walletRepo.Create(txCtx, wallet); err != nil {
-			return sharedmoney.Zero, apperror.NewInternalError("Lỗi khi khởi tạo ví mới")
+			return sharedmoney.Zero, apperror.NewInternalError("Không thể khởi tạo ví mới.")
 		}
 	} else {
 		if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
-			return sharedmoney.Zero, apperror.NewInternalError("Lỗi khi cập nhật số dư ví tài khoản")
+			return sharedmoney.Zero, apperror.NewInternalError("Không thể cập nhật số dư ví.")
 		}
 	}
 
@@ -297,7 +297,7 @@ func (uc *SubscriptionPurchaseUseCase) createPurchaseWalletStatement(txCtx conte
 	}
 
 	if err := uc.statementRepo.Create(txCtx, statement); err != nil {
-		return apperror.NewInternalError("Lỗi khi lưu lịch sử biến động số dư ví")
+		return apperror.NewInternalError("Không thể lưu lịch sử giao dịch ví.")
 	}
 
 	return nil
@@ -332,13 +332,13 @@ func (uc *SubscriptionPurchaseUseCase) applyPlanToSubscriptionEntity(sub *entiti
 func (uc *SubscriptionPurchaseUseCase) persistSubscriptionForPurchase(txCtx context.Context, sub *entities.UserSubscription, isNewSub bool) error {
 	if isNewSub {
 		if err := uc.userSubRepo.Create(txCtx, sub); err != nil {
-			return apperror.NewInternalError("Lỗi khi kích hoạt gói hội viên mới")
+			return apperror.NewInternalError("Không thể kích hoạt gói hội viên mới.")
 		}
 		return nil
 	}
 
 	if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
-		return apperror.NewInternalError("Lỗi khi cập nhật thời hạn gói hội viên")
+		return apperror.NewInternalError("Không thể cập nhật thời hạn gói hội viên.")
 	}
 
 	return nil
@@ -355,7 +355,7 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 	now time.Time,
 ) error {
 	if !targetPlan.IsActive {
-		return apperror.NewBadRequest("Gói hội viên này hiện đang ngừng hoạt động")
+		return apperror.NewBadRequest("Gói hội viên này hiện đang tạm dừng hoạt động.")
 	}
 
 	hasPending, err := uc.depositTxRepo.HasPendingDirectPurchase(ctx, userID)
@@ -363,7 +363,7 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 		return err
 	}
 	if hasPending {
-		return apperror.NewConflict("Bạn đang có giao dịch thanh toán trực tiếp chờ xử lý. Vui lòng hoàn tất hoặc đợi giao dịch hết hạn.")
+		return apperror.NewConflict("Bạn đang có giao dịch thanh toán chờ xử lý. Vui lòng hoàn tất giao dịch cũ hoặc đợi cho đến khi hết hạn.")
 	}
 
 	if currentSub == nil || !currentSub.IsActive {
@@ -375,15 +375,15 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 		var err error
 		currentPlan, err = uc.planRepo.GetByID(ctx, currentSub.SubscriptionPlanID)
 		if err != nil {
-			return apperror.NewInternalError("Lỗi khi tải thông tin gói hội viên hiện tại")
+			return apperror.NewInternalError("Không thể tải thông tin gói hội viên hiện tại.")
 		}
 		if currentPlan == nil {
-			return apperror.NewInternalError("Không tìm thấy thông tin gói hội viên hiện tại")
+			return apperror.NewInternalError("Không tìm thấy gói hội viên hiện tại.")
 		}
 	}
 
 	if currentSub.SubscriptionPlanID == targetPlan.ID && currentSub.ExpiresAt == nil {
-		return apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này rồi")
+		return apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này.")
 	}
 
 	currentIsPaid := currentPlan.Price.GreaterThan(sharedmoney.Zero)
@@ -391,7 +391,7 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 	targetIsLower := targetPlan.Price.LessThan(currentPlan.Price)
 
 	if currentIsPaid && currentStillValid && targetIsLower {
-		return apperror.NewBadRequest("Gói hội viên hiện tại vẫn còn hiệu lực. Vui lòng tắt tự động gia hạn nếu bạn không muốn gia hạn tiếp.")
+		return apperror.NewBadRequest("Gói hội viên hiện tại của bạn vẫn còn hiệu lực. Vui lòng tắt chế độ tự động gia hạn nếu không có nhu cầu gia hạn tiếp.")
 	}
 
 	return nil

@@ -41,7 +41,7 @@ func (m *RateLimitMiddleware) Handle() gin.HandlerFunc {
 
 		limiter := m.getLimiter(key)
 		if !limiter.Allow() {
-			c.Error(apperror.NewTooManyRequest("Vui lòng thử lại sau. Quá nhiều yêu cầu được gửi từ IP của bạn."))
+			c.Error(apperror.NewTooManyRequest("Bạn đang thao tác quá nhanh. Vui lòng thử lại sau ít phút."))
 			c.Abort()
 			return
 		}

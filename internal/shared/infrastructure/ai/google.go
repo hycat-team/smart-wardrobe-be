@@ -69,7 +69,7 @@ func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProvi
 	}
 
 	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
-		return "", apperror.NewInternalError("Không nhận được phản hồi văn bản từ Google AI.")
+		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
 
 	return googleResp.Candidates[0].Content.Parts[0].Text, nil
@@ -143,7 +143,7 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 	}
 
 	if len(googleResp.Candidates) == 0 || len(googleResp.Candidates[0].Content.Parts) == 0 {
-		return nil, apperror.NewInternalError("Không nhận được phản hồi phân tích hình ảnh từ Google AI.")
+		return nil, apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
 	}
 
 	var result struct {
@@ -230,7 +230,7 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 		}
 
 		if len(googleResp.Embeddings) == 0 {
-			return nil, apperror.NewInternalError("Không nhận được phản hồi mã hóa từ Google AI.")
+			return nil, apperror.NewInternalError("Không thể xử lý dữ liệu đặc trưng của nội dung lúc này.")
 		}
 
 		for _, emb := range googleResp.Embeddings {

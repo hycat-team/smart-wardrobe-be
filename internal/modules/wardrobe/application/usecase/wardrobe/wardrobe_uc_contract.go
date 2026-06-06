@@ -54,7 +54,7 @@ func (uc *WardrobeUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUI
 		return err
 	}
 	if item == nil {
-		return apperror.NewNotFound("Không tìm thấy trang phục.")
+		return apperror.NewNotFound("Không tìm thấy trang phục này.")
 	}
 
 	item.Status = status
@@ -79,13 +79,13 @@ func (uc *WardrobeUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.U
 	for _, itemID := range itemIDs {
 		item, ok := itemMap[itemID]
 		if !ok {
-			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy trang phục ID %s.", itemID))
+			return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy trang phục (Mã: %s).", itemID))
 		}
 		if item.UserID != userID {
-			return apperror.NewForbidden(fmt.Sprintf("Trang phục ID %s không thuộc tủ đồ của bạn.", itemID))
+			return apperror.NewForbidden(fmt.Sprintf("Trang phục (Mã: %s) không thuộc tủ đồ của bạn.", itemID))
 		}
 		if item.Status == wardrobestatus.Sold {
-			return apperror.NewBadRequest(fmt.Sprintf("Trang phục ID %s đã được bán và không thể đăng bài.", itemID))
+			return apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể đăng bài.", itemID))
 		}
 	}
 

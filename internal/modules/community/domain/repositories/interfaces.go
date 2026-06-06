@@ -2,50 +2,31 @@ package repositories
 
 import (
 	"context"
+	"time"
 
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
-type FeedQuery struct {
-	Sort     string
-	Page     int
-	Limit    int
-	UserID   *uuid.UUID
-	PostType *string
-}
-
-type FeedResult struct {
-	Items    []*FeedPostRecord
-	Metadata shared_dto.PaginationMetadata
-}
-
-type FeedPostRecord struct {
-	Post               *entities.Post
-	GlobalHotnessScore float64
-}
-
-type PostScoreMetric struct {
-	PostID        uuid.UUID
-	LikeCount     int
-	CommentCount  int
-	CreatedAtUnix int64
-}
-
 type IPostRepository interface {
 	shared_repos.IGenericRepository[entities.Post, uuid.UUID]
-	GetFeed(ctx context.Context, query FeedQuery) (*FeedResult, error)
-	GetHotFeedCandidates(ctx context.Context, query FeedQuery, limit int) ([]*FeedPostRecord, error)
+	GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error)
+	GetHotFeedCandidates(ctx context.Context, query dto.FeedQuery, limit int) ([]*dto.FeedPostRecord, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Post, error)
 	GetDetail(ctx context.Context, postID uuid.UUID) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error)
+	GetDirtyPostIDs(ctx context.Context, limit int) ([]uuid.UUID, error)
+	GetDecayRefreshPostIDs(ctx context.Context, since time.Time, limit int) ([]uuid.UUID, error)
+	GetHighScoreStalePostIDs(ctx context.Context, before time.Time, minScore float64, limit int) ([]uuid.UUID, error)
+	MarkHotnessDirty(ctx context.Context, postID uuid.UUID) error
+	ClearHotnessDirty(ctx context.Context, postIDs []uuid.UUID) error
 }
 
 type IPostScoreRepository interface {
 	GetScoresByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID]float64, error)
-	ListScoreMetrics(ctx context.Context) ([]*PostScoreMetric, error)
+	ListScoreMetricsByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*dto.PostScoreMetric, error)
 	UpsertScores(ctx context.Context, items []*entities.PostScoreSnapshot) error
 }
 

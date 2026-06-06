@@ -37,7 +37,7 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 		enc.AppendString(t.Format("2006/01/02 - 15:04:05"))
 	}
 
-	// Đặt khoảng trắng làm dấu phân cách mặc định giữa các thành phần
+	// Set space as the default separator between components
 	encoderConfig.ConsoleSeparator = " "
 
 	var core zapcore.Core
@@ -45,7 +45,7 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 	var consoleEncoder zapcore.Encoder
 
 	if env == "Development" || env == "dev" {
-		// Bọc sát dấu | vào hai bên chữ level và giữ nguyên màu sắc hiển thị
+		// Wrap the pipe symbol closely around both sides of the level text and preserve the display color
 		encoderConfig.EncodeLevel = func(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 			var s string
 			switch l {

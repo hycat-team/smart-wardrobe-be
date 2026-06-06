@@ -140,7 +140,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
-	iPostHotnessWorker := worker2.NewPostHotnessWorker(iPostScoreRepository, l)
+	iPostHotnessWorker := worker2.NewPostHotnessWorker(iPostRepository, iPostScoreRepository, l)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
 	wardrobeBatchUploadWorker := worker3.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)

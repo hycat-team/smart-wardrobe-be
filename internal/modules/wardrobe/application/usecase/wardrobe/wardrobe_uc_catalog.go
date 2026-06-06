@@ -20,7 +20,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 		return nil, apperror.NewBadRequest("Danh sách trang phục mẫu không được để trống.")
 	}
 
-	// 1. Kiểm tra giới hạn số lượng trang phục của gói cước
+	// 1. Check wardrobe item limit of the subscription plan
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -32,16 +32,16 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 	}
 
 	if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Vượt quá giới hạn số lượng trang phục của gói dịch vụ hiện tại (Hiện có: %d/%d trang phục, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Số lượng trang phục khởi tạo vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
 	}
 
-	// 2. Fetch Catalog Items mẫu từ Database
+	// 2. Fetch system template catalog items from Database
 	templates, err := uc.wardrobeRepo.GetByIDs(ctx, catalogItemIDs)
 	if err != nil {
 		return nil, err
 	}
 	if len(templates) == 0 {
-		return nil, apperror.NewNotFound("Không tìm thấy bất kỳ trang phục mẫu nào tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục mẫu phù hợp.")
 	}
 
 	newItems := make([]*entities.WardrobeItem, len(templates))
@@ -60,7 +60,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 			Description:   original.Description,
 			Embedding:     original.Embedding,
 			Status:        wardrobestatus.InWardrobe,
-			ItemType:      itemtype.UserItem, // Sau khi copy sang tủ đồ của user, nó trở thành UserItem cá nhân
+			ItemType:      itemtype.UserItem, // Once copied to the user's wardrobe, it becomes a personal UserItem
 		}
 	}
 
@@ -78,4 +78,3 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 
 	return resList, nil
 }
-

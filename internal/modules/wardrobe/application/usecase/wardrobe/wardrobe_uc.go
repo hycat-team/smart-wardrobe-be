@@ -113,7 +113,7 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 		return nil, err
 	}
 	if item == nil || item.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy trang phục tương ứng.")
+		return nil, apperror.NewNotFound("Không tìm thấy trang phục này.")
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -138,7 +138,7 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 	}
 
 	if isLocked {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Trang phục này đã bị khóa do vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tối đa: %d trang phục).", subOverview.MaxWardrobeItems))
+		return nil, apperror.NewForbidden(fmt.Sprintf("Trang phục này đã bị khóa vì tủ đồ vượt quá giới hạn tối đa của gói dịch vụ (Tối đa %d món).", subOverview.MaxWardrobeItems))
 	}
 
 	res := mapper.MapToWardrobeItemRes(item)

@@ -69,7 +69,7 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 	isBlacklisted, err := m.tokenBlacklistService.IsTokenBlacklisted(c.Request.Context(), tokenStr)
 	if err != nil {
 		if required {
-			return apperror.NewInternalError("Không thể kiểm tra trạng thái phiên đăng nhập.")
+			return apperror.NewInternalError("Không thể xác thực trạng thái đăng nhập của bạn.")
 		}
 		return nil
 	}
@@ -99,7 +99,7 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 	user, err := m.userRepo.GetByID(c.Request.Context(), userID)
 	if err != nil {
 		if required {
-			return apperror.NewInternalError("Không thể tải thông tin người dùng.")
+			return apperror.NewInternalError("Không thể lấy thông tin tài khoản của bạn.")
 		}
 		return nil
 	}

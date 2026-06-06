@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InitSSE thiết lập các headers cần thiết cho SSE và trả về http.Flusher
+// InitSSE configures the necessary headers for SSE and returns http.Flusher
 func InitSSE(c *gin.Context) (http.Flusher, error) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -15,7 +15,7 @@ func InitSSE(c *gin.Context) (http.Flusher, error) {
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
-		return nil, apperror.NewInternalError("Máy chủ không hỗ trợ SSE.")
+		return nil, apperror.NewInternalError("Trình duyệt hoặc máy chủ không hỗ trợ kết nối thời gian thực.")
 	}
 	return flusher, nil
 }
