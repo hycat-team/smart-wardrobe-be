@@ -4,6 +4,7 @@ import (
 	"time"
 
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -45,21 +46,31 @@ type LikePostReq struct {
 	IsLiked *bool `json:"isLiked" binding:"required" label:"trạng thái yêu thích"`
 }
 
+type GetFeedQueryReq struct {
+	shared_dto.PaginationQuery
+	Sort     string `form:"sort"`
+	UserID   string `form:"userId"`
+	PostType string `form:"postType"`
+}
+
 type PostRes struct {
-	ID           uuid.UUID       `json:"id"`
-	UserID       uuid.UUID       `json:"userId"`
-	PostType     string          `json:"postType"`
-	Title        *string         `json:"title"`
-	Content      string          `json:"content"`
-	ContactInfo  *string         `json:"contactInfo"`
-	TotalPrice   float64         `json:"totalPrice"`
-	LikeCount    int             `json:"likeCount"`
-	CommentCount int             `json:"commentCount"`
-	Items        []*PostItemRes  `json:"items,omitempty"`
-	Media        []*PostMediaRes `json:"media,omitempty"`
-	Comments     []*CommentRes   `json:"comments,omitempty"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	UpdatedAt    time.Time       `json:"updatedAt"`
+	ID                 uuid.UUID       `json:"id"`
+	UserID             uuid.UUID       `json:"userId"`
+	PostType           string          `json:"postType"`
+	Title              *string         `json:"title"`
+	Content            string          `json:"content"`
+	ContactInfo        *string         `json:"contactInfo"`
+	TotalPrice         float64         `json:"totalPrice"`
+	LikeCount          int             `json:"likeCount"`
+	CommentCount       int             `json:"commentCount"`
+	IsLiked            bool            `json:"isLiked"`
+	GlobalHotnessScore float64         `json:"globalHotnessScore"`
+	FinalFeedScore     float64         `json:"finalFeedScore,omitempty"`
+	Items              []*PostItemRes  `json:"items,omitempty"`
+	Media              []*PostMediaRes `json:"media,omitempty"`
+	Comments           []*CommentRes   `json:"comments,omitempty"`
+	CreatedAt          time.Time       `json:"createdAt"`
+	UpdatedAt          time.Time       `json:"updatedAt"`
 }
 
 type PostItemRes struct {
@@ -93,3 +104,6 @@ type PendingTransferRes struct {
 	Item       *wardrobe_dto.WardrobeItemRes `json:"item"`
 	SellerName string                        `json:"sellerName"`
 }
+
+type UploadSignatureResult = shared_dto.UploadSignatureResult
+type GetFeedRes = shared_dto.PaginationResult[*PostRes]

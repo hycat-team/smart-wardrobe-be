@@ -21,6 +21,7 @@ import (
 	usecase3 "smart-wardrobe-be/internal/modules/community/application/usecase"
 	persistence4 "smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
 	handler4 "smart-wardrobe-be/internal/modules/community/presentation/handler"
+	worker2 "smart-wardrobe-be/internal/modules/community/presentation/worker"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
@@ -39,7 +40,7 @@ import (
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
-	worker2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	worker3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -115,12 +116,13 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	categoryRouter := category2.NewRouter(categoryHandler)
 	iPostRepository := persistence4.NewPostRepository(gormDB)
+	iPostScoreRepository := persistence4.NewPostScoreRepository(gormDB)
 	iPostItemRepository := persistence4.NewPostItemRepository(gormDB)
 	iPostMediaRepository := persistence4.NewPostMediaRepository(gormDB)
 	iCommentRepository := persistence4.NewCommentRepository(gormDB)
-	iPostUseCase := usecase3.NewPostUseCase(iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
-	postHandler := handler4.NewPostHandler(iPostUseCase)
 	iLikeRepository := persistence4.NewLikeRepository(gormDB)
+	iPostUseCase := usecase3.NewPostUseCase(cfg, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
+	postHandler := handler4.NewPostHandler(iPostUseCase)
 	iPostInteractionUseCase := usecase3.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
 	postInteractionHandler := handler4.NewPostInteractionHandler(iPostInteractionUseCase)
 	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
@@ -138,14 +140,16 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
+	iPostHotnessWorker := worker2.NewPostHotnessWorker(iPostScoreRepository, l)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
-	wardrobeBatchUploadWorker := worker2.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeUseCase, l)
+	wardrobeBatchUploadWorker := worker3.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
-	searchSyncWorker := worker2.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
-	iFailedItemsCleanupWorker := worker2.NewFailedItemsCleanupWorker(iWardrobeUseCase, l)
+	searchSyncWorker := worker3.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
+	iFailedItemsCleanupWorker := worker3.NewFailedItemsCleanupWorker(iWardrobeUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:             iSubscriptionRenewalWorker,
+		PostHotnessWorker:         iPostHotnessWorker,
 		WardrobeBatchUploadWorker: wardrobeBatchUploadWorker,
 		ESAsyncWorker:             searchSyncWorker,
 		FailedItemsCleanupWorker:  iFailedItemsCleanupWorker,

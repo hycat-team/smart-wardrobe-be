@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
@@ -53,15 +55,45 @@ func (h *PostHandler) CreatePost(c *gin.Context) error {
 // @Description Lấy feed danh sách bài đăng của cộng đồng sắp xếp theo thứ tự mới nhất/hot nhất
 // @Tags Community
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.PostRes} "Lấy feed thành công"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.GetFeedRes} "Lấy feed thành công"
 // @Router /api/v1/posts [get]
 func (h *PostHandler) GetFeed(c *gin.Context) error {
-	response, err := h.postUC.GetFeed(c.Request.Context())
+	var query dto.GetFeedQueryReq
+	if err := c.ShouldBindQuery(&query); err != nil {
+		return err
+	}
+
+	var viewerUserID *uuid.UUID
+	if userID, err := contextutils.GetUserId(c); err == nil {
+		viewerUserID = &userID
+	}
+
+	query.Sort = strings.TrimSpace(strings.ToLower(query.Sort))
+	query.PostType = strings.TrimSpace(strings.ToUpper(query.PostType))
+
+	response, err := h.postUC.GetFeed(c.Request.Context(), viewerUserID, query)
 	if err != nil {
 		return err
 	}
 
 	shared_pres.Success(c, "Lấy feed thành công", response)
+	return nil
+}
+
+// GetUploadSignature get secure cloudinary signature for post media upload
+// @Summary Lấy chữ ký tải media bài đăng
+// @Description Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp media bài đăng cộng đồng lên
+// @Tags Community
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Chữ ký và thông tin upload"
+// @Router /api/v1/posts/upload-signature [get]
+func (h *PostHandler) GetUploadSignature(c *gin.Context) error {
+	response, err := h.postUC.GetUploadSignature(c.Request.Context())
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy chữ ký tải media bài đăng thành công", response)
 	return nil
 }
 
@@ -79,7 +111,12 @@ func (h *PostHandler) GetPostDetail(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.postUC.GetPostDetail(c.Request.Context(), postID)
+	var viewerUserID *uuid.UUID
+	if userID, err := contextutils.GetUserId(c); err == nil {
+		viewerUserID = &userID
+	}
+
+	response, err := h.postUC.GetPostDetail(c.Request.Context(), postID, viewerUserID)
 	if err != nil {
 		return err
 	}

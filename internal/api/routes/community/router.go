@@ -32,8 +32,10 @@ func NewRouter(
 func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	// Post - Public endpoints
 	publicPosts := group.Group("/posts")
+	publicPosts.Use(r.authMiddleware.OptionalHandle())
 	{
 		publicPosts.GET("", shared_pres.WrapHandler(r.postHandler.GetFeed))
+		publicPosts.GET("/upload-signature", shared_pres.WrapHandler(r.postHandler.GetUploadSignature))
 		publicPosts.GET("/:postID", shared_pres.WrapHandler(r.postHandler.GetPostDetail))
 	}
 

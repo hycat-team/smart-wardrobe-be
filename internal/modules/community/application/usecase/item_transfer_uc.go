@@ -45,33 +45,58 @@ func NewItemTransferUseCase(
 }
 
 func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid.UUID, postItemID uuid.UUID, buyerUserID uuid.UUID) error {
-	postItem, err := uc.postItemRepo.GetByID(ctx, postItemID)
-	if err != nil {
-		return err
-	}
-	if postItem == nil {
-		return apperror.NewNotFound("Không tìm thấy món đồ đăng bán.")
+	markSold := func(txCtx context.Context) error {
+		postItem, err := uc.postItemRepo.GetByID(txCtx, postItemID)
+		if err != nil {
+			return err
+		}
+		if postItem == nil {
+			return apperror.NewNotFound("Không tìm thấy món đồ đăng bán.")
+		}
+
+		post, err := uc.postRepo.GetByID(txCtx, postItem.PostID)
+		if err != nil {
+			return err
+		}
+		if post == nil || post.UserID != userID {
+			return apperror.NewForbidden("Bạn không có quyền thực hiện hành động này.")
+		}
+
+		hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItemID)
+		if err != nil {
+			return err
+		}
+		if hasOtherActiveTransfer {
+			return apperror.NewBadRequest("Trang phục này đã có listing khác đang chờ giao dịch.")
+		}
+
+		postItem.BuyerUserID = &buyerUserID
+		postItem.TransferState = transferstate.Pending
+		postItem.Status = postitemstatus.Sold
+		now := time.Now()
+		postItem.SoldAt = &now
+		if err := uc.postItemRepo.Update(txCtx, postItem); err != nil {
+			return err
+		}
+
+		siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, postItem.ItemID, postItem.ID)
+		if err != nil {
+			return err
+		}
+		for _, sibling := range siblings {
+			if sibling.TransferState == transferstate.Accepted {
+				continue
+			}
+			sibling.Status = postitemstatus.Hidden
+			if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
+				return err
+			}
+		}
+
+		return uc.wardrobeCtr.UpdateItemStatus(txCtx, postItem.ItemID, wardrobestatus.Selling)
 	}
 
-	post, err := uc.postRepo.GetByID(ctx, postItem.PostID)
-	if err != nil {
-		return err
-	}
-	if post == nil || post.UserID != userID {
-		return apperror.NewForbidden("Bạn không có quyền thực hiện hành động này.")
-	}
-
-	if postItem.Status == postitemstatus.Sold {
-		return apperror.NewBadRequest("Món đồ này đã được đánh dấu bán trước đó.")
-	}
-
-	postItem.BuyerUserID = &buyerUserID
-	postItem.TransferState = transferstate.Pending
-	postItem.Status = postitemstatus.Sold
-	now := time.Now()
-	postItem.SoldAt = &now
-
-	return uc.postItemRepo.Update(ctx, postItem)
+	return uc.uow.Execute(ctx, markSold)
 }
 
 func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUserID uuid.UUID) ([]*dto.PendingTransferRes, error) {
@@ -130,6 +155,21 @@ func (uc *ItemTransferUseCase) AcceptTransfer(ctx context.Context, buyerUserID u
 			return err
 		}
 
+		siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, item.ItemID, item.ID)
+		if err != nil {
+			return err
+		}
+		for _, sibling := range siblings {
+			sibling.Status = postitemstatus.Hidden
+			if sibling.TransferState != transferstate.Accepted {
+				sibling.TransferState = transferstate.None
+				sibling.BuyerUserID = nil
+			}
+			if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 
@@ -141,21 +181,54 @@ func (uc *ItemTransferUseCase) AcceptTransfer(ctx context.Context, buyerUserID u
 }
 
 func (uc *ItemTransferUseCase) DeclineTransfer(ctx context.Context, buyerUserID uuid.UUID, postItemID uuid.UUID) error {
-	postItem, err := uc.postItemRepo.GetByID(ctx, postItemID)
-	if err != nil {
-		return err
-	}
-	if postItem == nil || postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
-		return apperror.NewNotFound("Không tìm thấy món đồ đang chờ nhận.")
+	declineTransfer := func(txCtx context.Context) error {
+		postItem, err := uc.postItemRepo.GetByID(txCtx, postItemID)
+		if err != nil {
+			return err
+		}
+		if postItem == nil || postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
+			return apperror.NewNotFound("Không tìm thấy món đồ đang chờ nhận.")
+		}
+
+		if postItem.TransferState != transferstate.Pending {
+			return apperror.NewBadRequest("Yêu cầu bàn giao này đã được xử lý hoặc không còn hiệu lực.")
+		}
+
+		postItem.TransferState = transferstate.Declined
+		postItem.BuyerUserID = nil
+		postItem.Status = postitemstatus.Available
+		postItem.SoldAt = nil
+		if err := uc.postItemRepo.Update(txCtx, postItem); err != nil {
+			return err
+		}
+
+		hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItem.ID)
+		if err != nil {
+			return err
+		}
+		if !hasOtherActiveTransfer {
+			siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, postItem.ItemID, postItem.ID)
+			if err != nil {
+				return err
+			}
+			for _, sibling := range siblings {
+				if sibling.TransferState == transferstate.Accepted {
+					continue
+				}
+				sibling.Status = postitemstatus.Available
+				if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
+					return err
+				}
+			}
+			if err := uc.wardrobeCtr.UpdateItemStatus(txCtx, postItem.ItemID, wardrobestatus.Selling); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
-	if postItem.TransferState != transferstate.Pending {
-		return apperror.NewBadRequest("Yêu cầu bàn giao này đã được xử lý hoặc không còn hiệu lực.")
-	}
-
-	postItem.TransferState = transferstate.Declined
-	return uc.postItemRepo.Update(ctx, postItem)
+	return uc.uow.Execute(ctx, declineTransfer)
 }
 
 var _ uc_interfaces.IItemTransferUseCase = (*ItemTransferUseCase)(nil)
-

@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
-func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.PostMedia, comments []*entities.Comment) *dto.PostRes {
+func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.PostMedia, comments []*entities.Comment, isLiked bool, globalHotnessScore float64, finalFeedScore float64) *dto.PostRes {
 	if post == nil {
 		return nil
 	}
@@ -47,20 +47,23 @@ func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.
 	}
 
 	return &dto.PostRes{
-		ID:           post.ID,
-		UserID:       post.UserID,
-		PostType:     string(post.PostType),
-		Title:        post.Title,
-		Content:      post.Content,
-		ContactInfo:  post.ContactInfo,
-		TotalPrice:   post.TotalPrice,
-		LikeCount:    post.LikeCount,
-		CommentCount: post.CommentCount,
-		Items:        postItems,
-		Media:        postMedia,
-		Comments:     postComments,
-		CreatedAt:    post.CreatedAt,
-		UpdatedAt:    post.UpdatedAt,
+		ID:                 post.ID,
+		UserID:             post.UserID,
+		PostType:           string(post.PostType),
+		Title:              post.Title,
+		Content:            post.Content,
+		ContactInfo:        post.ContactInfo,
+		TotalPrice:         post.TotalPrice,
+		LikeCount:          post.LikeCount,
+		CommentCount:       post.CommentCount,
+		IsLiked:            isLiked,
+		GlobalHotnessScore: globalHotnessScore,
+		FinalFeedScore:     finalFeedScore,
+		Items:              postItems,
+		Media:              postMedia,
+		Comments:           postComments,
+		CreatedAt:          post.CreatedAt,
+		UpdatedAt:          post.UpdatedAt,
 	}
 }
 

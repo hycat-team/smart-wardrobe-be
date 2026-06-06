@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
+	communityWorker "smart-wardrobe-be/internal/modules/community/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"syscall"
@@ -16,10 +17,11 @@ import (
 )
 
 type AppWorkers struct {
-	RenewalWorker            subWorker.ISubscriptionRenewalWorker
+	RenewalWorker             subWorker.ISubscriptionRenewalWorker
+	PostHotnessWorker         communityWorker.IPostHotnessWorker
 	WardrobeBatchUploadWorker *wardrobeWorker.WardrobeBatchUploadWorker
-	ESAsyncWorker            *wardrobeWorker.SearchSyncWorker
-	FailedItemsCleanupWorker wardrobeWorker.IFailedItemsCleanupWorker
+	ESAsyncWorker             *wardrobeWorker.SearchSyncWorker
+	FailedItemsCleanupWorker  wardrobeWorker.IFailedItemsCleanupWorker
 }
 
 type App struct {
@@ -54,6 +56,7 @@ func (a *App) Run() error {
 	fmt.Println("==========================================================")
 
 	a.Workers.RenewalWorker.Start()
+	a.Workers.PostHotnessWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 
 	go func() {
@@ -69,6 +72,7 @@ func (a *App) Run() error {
 	fmt.Println("\nReceived shutdown signal...")
 
 	a.Workers.RenewalWorker.Stop()
+	a.Workers.PostHotnessWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

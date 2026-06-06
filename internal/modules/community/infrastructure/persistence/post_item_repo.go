@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -32,6 +33,38 @@ func (r *PostItemRepository) GetPendingByBuyerID(ctx context.Context, buyerUserI
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("buyer_user_id = ? AND transfer_state = ?", buyerUserID, transferstate.Pending).Find(&items).Error
 	return items, err
+}
+
+func (r *PostItemRepository) GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error) {
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("item_id = ?", itemID).Find(&items).Error
+	return items, err
+}
+
+func (r *PostItemRepository) GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error) {
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).
+		Preload("Post").
+		Where("item_id = ? AND id <> ?", itemID, excludePostItemID).
+		Find(&items).Error
+	return items, err
+}
+
+func (r *PostItemRepository) HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error) {
+	query := r.GetDB(ctx).
+		Model(&entities.PostItem{}).
+		Where("item_id = ?", itemID).
+		Where("(status = ? OR transfer_state = ?)", postitemstatus.Sold, transferstate.Pending)
+
+	if excludePostItemID != nil {
+		query = query.Where("id <> ?", *excludePostItemID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *PostItemRepository) DeleteByPostAndIDs(ctx context.Context, postID uuid.UUID, ids []uuid.UUID) error {

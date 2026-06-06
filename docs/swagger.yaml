@@ -41,6 +41,15 @@ definitions:
     - content
     - postType
     type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.LikePostReq:
     properties:
       isLiked:
@@ -108,8 +117,14 @@ definitions:
         type: string
       createdAt:
         type: string
+      finalFeedScore:
+        type: number
+      globalHotnessScore:
+        type: number
       id:
         type: string
+      isLiked:
+        type: boolean
       items:
         items:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
@@ -153,6 +168,19 @@ definitions:
         type: string
     required:
     - buyerUserId
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult:
+    properties:
+      apiKey:
+        type: string
+      folder:
+        type: string
+      publicId:
+        type: string
+      signature:
+        type: string
+      timestamp:
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq:
     properties:
@@ -707,6 +735,17 @@ definitions:
         type: string
       userId:
         type: string
+    type: object
+  smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
     type: object
   smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult:
     properties:
@@ -1423,9 +1462,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes'
               type: object
       summary: Lấy danh sách bài đăng cộng đồng
       tags:
@@ -1647,6 +1684,25 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Thích / Bỏ thích bài đăng
+      tags:
+      - Community
+  /api/v1/posts/upload-signature:
+    get:
+      description: Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp media
+        bài đăng cộng đồng lên
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chữ ký và thông tin upload
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult'
+              type: object
+      summary: Lấy chữ ký tải media bài đăng
       tags:
       - Community
   /api/v1/subscriptions/me:

@@ -18,7 +18,7 @@ type UserRepository struct {
 
 // NewUserRepository creates a new UserRepository instance
 func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
-	relations := []string{}
+	relations := []string{"StyleProfile"}
 	return &UserRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.User, uuid.UUID](db, relations),
 	}

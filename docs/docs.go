@@ -1058,10 +1058,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes"
                                         }
                                     }
                                 }
@@ -1106,6 +1103,38 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/posts/upload-signature": {
+            "get": {
+                "description": "Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp media bài đăng cộng đồng lên",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Lấy chữ ký tải media bài đăng",
+                "responses": {
+                    "200": {
+                        "description": "Chữ ký và thông tin upload",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult"
                                         }
                                     }
                                 }
@@ -2234,6 +2263,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_community_application_dto.LikePostReq": {
             "type": "object",
             "required": [
@@ -2336,8 +2379,17 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "finalFeedScore": {
+                    "type": "number"
+                },
+                "globalHotnessScore": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isLiked": {
+                    "type": "boolean"
                 },
                 "items": {
                     "type": "array",
@@ -2404,6 +2456,26 @@ const docTemplate = `{
             "properties": {
                 "buyerUserId": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "folder": {
+                    "type": "string"
+                },
+                "publicId": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
                 }
             }
         },
@@ -3237,6 +3309,23 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "totalItems": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
                 }
             }
         },
