@@ -19,16 +19,16 @@ func NewItemTransferHandler(transferUC usecase_interfaces.IItemTransferUseCase) 
 	return &ItemTransferHandler{transferUC: transferUC}
 }
 
-// MarkPostItemSold mark a post item as sold to another user
+// MarkPostItemSold marks a post item as sold to another user.
 // @Summary Đánh dấu món đồ đã bán
-// @Description Đánh dấu trang phục đã được bán cho một người dùng khác và kích hoạt trạng thái bàn giao (transfer)
+// @Description Đánh dấu trang phục đã được bán cho một người dùng khác và kích hoạt trạng thái bàn giao
 // @Tags Community
 // @Accept json
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài post"
+// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
 // @Param body body dto.UpdatePostItemsBuyerReq true "Thông tin người mua"
 // @Success 200 {object} shared_pres.APIResponse "Đánh dấu đã bán thành công"
-// @Router /api/v1/transfers/{postItemID}/mark-sold [post]
+// @Router /api/v1/community/post-items/{postItemID}/mark-sold [post]
 func (h *ItemTransferHandler) MarkPostItemSold(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -52,13 +52,13 @@ func (h *ItemTransferHandler) MarkPostItemSold(c *gin.Context) error {
 	return nil
 }
 
-// GetPendingTransfers get pending transfer items of user
+// GetPendingTransfers gets pending transfer items of the current buyer.
 // @Summary Danh sách trang phục đang chờ nhận bàn giao
-// @Description Lấy danh sách các trang phục do người khác đánh dấu bán cho bạn đang chờ xác nhận nhận về tủ đồ
+// @Description Lấy danh sách các trang phục do người khác đánh dấu bán cho bạn đang chờ xác nhận
 // @Tags Community
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.PostItemRes} "Lấy danh sách đang chờ nhận thành công"
-// @Router /api/v1/transfers/pending [get]
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.PendingTransferRes} "Lấy danh sách đang chờ nhận thành công"
+// @Router /api/v1/community/me/pending-transfers [get]
 func (h *ItemTransferHandler) GetPendingTransfers(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -74,14 +74,36 @@ func (h *ItemTransferHandler) GetPendingTransfers(c *gin.Context) error {
 	return nil
 }
 
-// AcceptTransfer accept item transfer into user's wardrobe
-// @Summary Chấp nhận nhận bàn giao trang phục
-// @Description Đồng ý nhận trang phục đã mua về tủ đồ cá nhân (Trang phục sẽ chuyển quyền sở hữu)
+// GetSellerTransferPosts gets transfer-related posts of the current seller.
+// @Summary Danh sách bài đăng bàn giao của người bán
+// @Description Lấy danh sách các bài đăng của người bán có món đồ đang chờ, được chấp nhận, bị từ chối hoặc đã bán trong luồng bàn giao
 // @Tags Community
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài post"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SellerTransferPostRes} "Lấy danh sách bài đăng bàn giao thành công"
+// @Router /api/v1/community/me/transfer-posts [get]
+func (h *ItemTransferHandler) GetSellerTransferPosts(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	response, err := h.transferUC.GetSellerTransferPosts(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy danh sách bài đăng bàn giao thành công", response)
+	return nil
+}
+
+// AcceptTransfer accepts item transfer into the buyer wardrobe.
+// @Summary Chấp nhận nhận bàn giao trang phục
+// @Description Đồng ý nhận trang phục đã mua về tủ đồ cá nhân
+// @Tags Community
+// @Produce json
+// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.PostItemRes} "Nhận món đồ vào tủ thành công"
-// @Router /api/v1/transfers/{postItemID}/accept [post]
+// @Router /api/v1/community/post-items/{postItemID}/accept [post]
 func (h *ItemTransferHandler) AcceptTransfer(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -101,14 +123,14 @@ func (h *ItemTransferHandler) AcceptTransfer(c *gin.Context) error {
 	return nil
 }
 
-// DeclineTransfer decline item transfer
+// DeclineTransfer declines item transfer.
 // @Summary Từ chối nhận bàn giao trang phục
 // @Description Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
 // @Tags Community
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài post"
+// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
 // @Success 200 {object} shared_pres.APIResponse "Từ chối nhận món đồ thành công"
-// @Router /api/v1/transfers/{postItemID}/decline [post]
+// @Router /api/v1/community/post-items/{postItemID}/decline [post]
 func (h *ItemTransferHandler) DeclineTransfer(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

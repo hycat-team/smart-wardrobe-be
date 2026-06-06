@@ -54,13 +54,18 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 		privatePosts.DELETE("/:postID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.DeleteComment))
 	}
 
-	// Item Transfer (Authenticated)
-	transfers := group.Group("/transfers")
-	transfers.Use(r.authMiddleware.Handle())
+	community := group.Group("/community")
+	community.Use(r.authMiddleware.Handle())
+	me := community.Group("/me")
 	{
-		transfers.GET("/pending", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
-		transfers.POST("/:postItemID/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfer))
-		transfers.POST("/:postItemID/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfer))
-		transfers.POST("/:postItemID/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemSold))
+		me.GET("/pending-transfers", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
+		me.GET("/transfer-posts", shared_pres.WrapHandler(r.transferHandler.GetSellerTransferPosts))
+	}
+
+	postItems := community.Group("/post-items")
+	{
+		postItems.POST("/:postItemID/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfer))
+		postItems.POST("/:postItemID/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfer))
+		postItems.POST("/:postItemID/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemSold))
 	}
 }

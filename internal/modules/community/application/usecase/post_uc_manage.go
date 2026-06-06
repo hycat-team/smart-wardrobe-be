@@ -17,11 +17,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type postWardrobeController interface {
-	VerifyItemsForPost(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) error
-	UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error
-}
-
 func (uc *PostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error) {
 	normalizedPostType, err := uc.normalizePostType(input.PostType)
 	if err != nil {

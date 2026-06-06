@@ -12,7 +12,7 @@ func TestNewInternalErrorCapturesOriginStack(t *testing.T) {
 	if err.Status != 500 {
 		t.Fatalf("expected status 500, got %d", err.Status)
 	}
-	if err.Title == "" || err.Detail != "boom" {
+	if err.Title == "" || err.Message != "boom" {
 		t.Fatalf("unexpected error payload: %+v", err)
 	}
 	if err.Stack() == "" {
@@ -25,6 +25,7 @@ func TestNewInternalErrorCapturesOriginStack(t *testing.T) {
 
 func TestWrapPreservesExistingAppErrorStack(t *testing.T) {
 	original := NewBadRequest("bad input")
+	original.Errors = []ValidationErrorItem{{Field: "email", Message: "Vui lòng nhập email"}}
 
 	wrapped := Wrap(original)
 	appErr, ok := wrapped.(*Error)
@@ -38,6 +39,9 @@ func TestWrapPreservesExistingAppErrorStack(t *testing.T) {
 	if appErr.Stack() != original.Stack() {
 		t.Fatal("expected original stack to be preserved")
 	}
+	if len(appErr.Errors) != 1 || appErr.Errors[0].Field != "email" {
+		t.Fatalf("expected validation errors to be preserved, got %+v", appErr.Errors)
+	}
 }
 
 func TestDefaultConstructorCapturesOriginStack(t *testing.T) {
@@ -46,8 +50,8 @@ func TestDefaultConstructorCapturesOriginStack(t *testing.T) {
 	if err.Status != 401 {
 		t.Fatalf("expected 401, got %d", err.Status)
 	}
-	if err.Detail != "Vui lòng đăng nhập" {
-		t.Fatalf("unexpected detail: %q", err.Detail)
+	if err.Message != "Vui lòng đăng nhập" {
+		t.Fatalf("unexpected message: %q", err.Message)
 	}
 	if err.Stack() == "" {
 		t.Fatal("expected stack to be captured")
@@ -67,7 +71,7 @@ func TestWrapPlainErrorFallsBackToInternalError(t *testing.T) {
 	if appErr.Status != 500 {
 		t.Fatalf("expected 500, got %d", appErr.Status)
 	}
-	if appErr.Detail != "plain failure" {
-		t.Fatalf("unexpected detail: %q", appErr.Detail)
+	if appErr.Message != "plain failure" {
+		t.Fatalf("unexpected message: %q", appErr.Message)
 	}
 }

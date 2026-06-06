@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
@@ -82,6 +83,7 @@ type PostItemRes struct {
 	BuyerUserID   *uuid.UUID                    `json:"buyerUserId"`
 	TransferState int16                         `json:"transferState"`
 	SoldAt        *time.Time                    `json:"soldAt"`
+	DeclinedAt    *time.Time                    `json:"declinedAt,omitempty"`
 }
 
 type PostMediaRes struct {
@@ -103,6 +105,45 @@ type PendingTransferRes struct {
 	PostItemID uuid.UUID                     `json:"postItemId"`
 	Item       *wardrobe_dto.WardrobeItemRes `json:"item"`
 	SellerName string                        `json:"sellerName"`
+}
+
+type TransferBuyerSummaryRes struct {
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	AvatarURL *string   `json:"avatarUrl,omitempty"`
+}
+
+type SellerTransferPostItemRes struct {
+	PostItemID    uuid.UUID                     `json:"postItemId"`
+	Item          *wardrobe_dto.WardrobeItemRes `json:"item"`
+	Price         float64                       `json:"price"`
+	ItemCondition int16                         `json:"itemCondition"`
+	Status        int16                         `json:"status"`
+	TransferState int16                         `json:"transferState"`
+	SoldAt        *time.Time                    `json:"soldAt,omitempty"`
+	DeclinedAt    *time.Time                    `json:"declinedAt,omitempty"`
+	Buyer         *TransferBuyerSummaryRes      `json:"buyer,omitempty"`
+}
+
+type SellerTransferPostRes struct {
+	PostID    uuid.UUID                    `json:"postId"`
+	Title     *string                      `json:"title"`
+	PostType  string                       `json:"postType"`
+	CreatedAt time.Time                    `json:"createdAt"`
+	UpdatedAt time.Time                    `json:"updatedAt"`
+	Items     []*SellerTransferPostItemRes `json:"items"`
+}
+
+func NewTransferBuyerSummary(user *identity_dto.UserRes) *TransferBuyerSummaryRes {
+	if user == nil {
+		return nil
+	}
+
+	return &TransferBuyerSummaryRes{
+		ID:        user.ID,
+		Username:  user.Username,
+		AvatarURL: user.AvatarUrl,
+	}
 }
 
 type UploadSignatureResult = shared_dto.UploadSignatureResult

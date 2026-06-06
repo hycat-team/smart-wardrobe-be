@@ -71,11 +71,11 @@ func ErrForbidden() *Error {
 }
 
 func ErrTokenNotFound() *Error {
-	return NewNotFound("không tìm thấy token")
+	return NewNotFound("Không tìm thấy token")
 }
 
 func ErrSearchIndexNotFound() *Error {
-	return NewNotFound("chỉ mục tìm kiếm chưa tồn tại hoặc đã bị xóa")
+	return NewNotFound("Chỉ mục tìm kiếm chưa tồn tại hoặc đã bị xóa")
 }
 
 func ErrConflictDuplicate() *Error {

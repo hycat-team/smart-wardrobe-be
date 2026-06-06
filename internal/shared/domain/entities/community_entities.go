@@ -46,6 +46,7 @@ type PostItem struct {
 	BuyerUser     *User                         `gorm:"foreignKey:BuyerUserID;constraint:OnDelete:SET NULL"`
 	TransferState transferstate.TransferState   `gorm:"type:smallint;not null;default:0"` // 0 none, 1 pending, 2 accepted, 3 declined
 	SoldAt        *time.Time                    `gorm:"type:timestamp with time zone"`
+	DeclinedAt    *time.Time                    `gorm:"type:timestamp with time zone"`
 }
 
 type PostMedia struct {

@@ -222,6 +222,7 @@ CREATE TABLE post_items (
     buyer_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     transfer_state SMALLINT NOT NULL DEFAULT 0, -- 0: none, 1: pending, 2: accepted, 3: declined
     sold_at TIMESTAMP WITH TIME ZONE,
+    declined_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_post_item UNIQUE (post_id, item_id)

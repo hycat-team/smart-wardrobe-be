@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -46,15 +47,14 @@ func init() {
 		v.RegisterValidation("username", IsUserName)
 		v.RegisterValidation("neqfield", NotEqualField)
 		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
-			if label := strings.TrimSpace(fld.Tag.Get("label")); label != "" {
-				return label
-			}
-
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+			if name == "" {
+				return lowerCamelCase(fld.Name)
+			}
 			if name == "-" {
 				return ""
 			}
-			return humanizeFieldName(name)
+			return name
 		})
 	}
 }
@@ -81,63 +81,124 @@ func humanizeFieldName(name string) string {
 	return strings.TrimSpace(builder.String())
 }
 
+func fieldJSONName(fe validator.FieldError) string {
+	if field := strings.TrimSpace(fe.Field()); field != "" {
+		return field
+	}
+	return lowerCamelCase(fe.StructField())
+}
+
+func fieldLabel(fe validator.FieldError) string {
+	if field := strings.TrimSpace(fe.Field()); field != "" {
+		return humanizeFieldName(field)
+	}
+	return humanizeFieldName(fe.StructField())
+}
+
+func lowerCamelCase(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return name
+	}
+	if strings.Contains(name, "_") {
+		parts := strings.Split(name, "_")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+			if parts[i] == "" {
+				continue
+			}
+			if i == 0 {
+				parts[i] = strings.ToLower(parts[i][:1]) + parts[i][1:]
+				continue
+			}
+			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
+		}
+		return strings.Join(parts, "")
+	}
+	return strings.ToLower(name[:1]) + name[1:]
+}
+
 func TranslateValidationError(err error) *apperror.Error {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
-		msgs := make([]string, 0, len(ve))
+		items := make([]apperror.ValidationErrorItem, 0, len(ve))
 		for _, fe := range ve {
-			var msg string
-			fieldName := fe.Field()
+			fieldName := fieldLabel(fe)
 			paramName := fe.Param()
-
-			switch fe.Tag() {
-			case "required":
-				msg = fmt.Sprintf("Vui lòng nhập %s", fieldName)
-			case "email":
-				msg = "Định dạng email không hợp lệ"
-			case "username":
-				msg = "Username phải dài 4-20 kí tự, chỉ chứa chữ, số, dấu chấm (.), và dấu gạch dưới (_)"
-			case "eqfield":
-				msg = fmt.Sprintf("%s phải giống với %s", fieldName, paramName)
-			case "nefield":
-				msg = fmt.Sprintf("%s phải khác với %s", fieldName, paramName)
-			case "len":
-				msg = fmt.Sprintf("%s phải dài %s kí tự", fieldName, paramName)
-			case "gt":
-				msg = fmt.Sprintf("%s phải lớn hơn %s", fieldName, paramName)
-			case "min":
-				msg = fmt.Sprintf("%s phải dài ít nhất %s kí tự", fieldName, paramName)
-			case "max":
-				if fe.Kind().String() == "int32" || fe.Kind().String() == "int" {
-					msg = fmt.Sprintf("%s không được lớn hơn %s", fieldName, paramName)
-				} else {
-					msg = fmt.Sprintf("%s không được vượt quá %s kí tự", fieldName, paramName)
-				}
-			case "datetime":
-				msg = fmt.Sprintf("%s phải đúng định dạng ngày %s", fieldName, paramName)
-			case "oneof":
-				msg = fmt.Sprintf("%s phải là một trong các giá trị: %s", fieldName, paramName)
-			case "numeric":
-				msg = fmt.Sprintf("%s chỉ được chứa các ký tự số", fieldName)
-			default:
-				msg = fmt.Sprintf("%s: %s không hợp lệ", fieldName, fe.Tag())
-			}
-
-			msgs = append(msgs, msg)
+			msg := validationMessage(fe, fieldName, paramName)
+			items = append(items, apperror.ValidationErrorItem{
+				Field:   fieldJSONName(fe),
+				Message: msg,
+			})
 		}
 
-		return apperror.NewBadRequest(strings.Join(msgs, "; "))
+		appErr := apperror.NewBadRequest("")
+		if len(items) > 0 {
+			appErr.Message = items[0].Message
+			appErr.Errors = items
+		}
+		return appErr
+	}
+
+	var unmarshalTypeErr *json.UnmarshalTypeError
+	if errors.As(err, &unmarshalTypeErr) {
+		appErr := apperror.NewError(
+			http.StatusBadRequest,
+			"Du lieu khong dung dinh dang",
+			"Gia tri so qua lon hoac kieu du lieu khong hop le",
+		)
+		if unmarshalTypeErr.Field != "" {
+			appErr.Errors = []apperror.ValidationErrorItem{{
+				Field:   lowerCamelCase(unmarshalTypeErr.Field),
+				Message: appErr.Message,
+			}}
+		}
+		return appErr
 	}
 
 	if strings.Contains(err.Error(), "unmarshal") {
 		return apperror.NewError(
 			http.StatusBadRequest,
-			"Dữ liệu không đúng định dạng",
-			"Giá trị số quá lớn hoặc kiểu dữ liệu không hợp lệ",
+			"Du lieu khong dung dinh dang",
+			"Gia tri so qua lon hoac kieu du lieu khong hop le",
 		)
 	}
 
 	return apperror.NewBadRequest(err.Error())
+}
+
+func validationMessage(fe validator.FieldError, fieldName, paramName string) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf("Vui lòng nhập %s", fieldName)
+	case "email":
+		return "Định dạng email không hợp lệ"
+	case "username":
+		return "Username phải dài 4-20 kí tự, chỉ chứa chữ, số, dấu chấm (.), và dấu gạch dưới (_)"
+	case "eqfield":
+		return fmt.Sprintf("%s phải giống với %s", fieldName, paramName)
+	case "nefield":
+		return fmt.Sprintf("%s phải khác với %s", fieldName, paramName)
+	case "len":
+		return fmt.Sprintf("%s phải dài %s kí tự", fieldName, paramName)
+	case "gt":
+		return fmt.Sprintf("%s phải lớn hơn %s", fieldName, paramName)
+	case "min":
+		return fmt.Sprintf("%s phải dài ít nhất %s kí tự", fieldName, paramName)
+	case "max":
+		if fe.Kind().String() == "int32" || fe.Kind().String() == "int" {
+			return fmt.Sprintf("%s không được lớn hơn %s", fieldName, paramName)
+		}
+		return fmt.Sprintf("%s không được vượt quá %s kí tự", fieldName, paramName)
+	case "datetime":
+		return fmt.Sprintf("%s phải đúng định dạng ngày %s", fieldName, paramName)
+	case "oneof":
+		return fmt.Sprintf("%s phải là một trong các giá trị: %s", fieldName, paramName)
+	case "numeric":
+		return fmt.Sprintf("%s chỉ được chứa các ký tự số", fieldName)
+	default:
+		return fmt.Sprintf("%s: %s không hợp lệ", fieldName, fe.Tag())
+	}
 }
 
 func BindJSON(c *gin.Context, obj any) error {

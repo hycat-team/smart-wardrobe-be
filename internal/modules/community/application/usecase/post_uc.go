@@ -5,6 +5,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/application/media"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
@@ -28,7 +29,7 @@ type postWriteDependencies struct {
 	postRepo      repositories.IPostRepository
 	postItemRepo  repositories.IPostItemRepository
 	postMediaRepo repositories.IPostMediaRepository
-	wardrobeCtr   postWardrobeController
+	wardrobeCtr   wardrobe_contract.IWardrobeContract
 	uow           shared_repos.IUnitOfWork
 }
 
@@ -48,7 +49,7 @@ func NewPostUseCase(
 	commentRepo repositories.ICommentRepository,
 	likeRepo repositories.ILikeRepository,
 	userRepo identity_repos.IUserRepository,
-	wardrobeCtr postWardrobeController,
+	wardrobeCtr wardrobe_contract.IWardrobeContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IPostUseCase {

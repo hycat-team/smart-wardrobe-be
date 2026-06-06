@@ -23,13 +23,13 @@ func TestToAppErrorWrapsPlainError(t *testing.T) {
 }
 
 func TestMapErrorToProblemMapsSentinel(t *testing.T) {
-	status, title, detail := MapErrorToProblem(apperror.ErrForbidden())
+	status, title, message := MapErrorToProblem(apperror.ErrForbidden())
 
 	if status != 403 {
 		t.Fatalf("expected 403, got %d", status)
 	}
-	if title == "" || detail == "" {
-		t.Fatalf("expected mapped title/detail, got %q / %q", title, detail)
+	if title == "" || message == "" {
+		t.Fatalf("expected mapped title/message, got %q / %q", title, message)
 	}
 }
 

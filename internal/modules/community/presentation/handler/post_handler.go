@@ -59,7 +59,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) error {
 // @Router /api/v1/posts [get]
 func (h *PostHandler) GetFeed(c *gin.Context) error {
 	var query dto.GetFeedQueryReq
-	if err := c.ShouldBindQuery(&query); err != nil {
+	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
 

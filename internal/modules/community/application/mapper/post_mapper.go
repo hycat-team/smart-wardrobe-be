@@ -22,6 +22,7 @@ func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.
 			BuyerUserID:   item.BuyerUserID,
 			TransferState: int16(item.TransferState),
 			SoldAt:        item.SoldAt,
+			DeclinedAt:    item.DeclinedAt,
 		})
 	}
 

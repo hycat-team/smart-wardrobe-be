@@ -27,7 +27,7 @@ func TestGlobalErrorHandlerUsesOriginStackForAppError(t *testing.T) {
 	router := gin.New()
 	router.Use(GlobalErrorHandler(testLogger{}, "development"))
 	router.GET("/boom", func(c *gin.Context) {
-		c.Error(apperror.NewBadRequest("bad request"))
+		c.Error(apperror.NewBadRequest("yêu cầu không hợp lệ"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
@@ -41,11 +41,14 @@ func TestGlobalErrorHandlerUsesOriginStackForAppError(t *testing.T) {
 	var body struct {
 		Status     int      `json:"status"`
 		Title      string   `json:"title"`
-		Detail     string   `json:"detail"`
-		StackTrace []string `json:"stack_trace"`
+		Message    string   `json:"message"`
+		StackTrace []string `json:"stackTrace"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body.Message != "yêu cầu không hợp lệ" {
+		t.Fatalf("expected message to be serialized, got %+v", body)
 	}
 	if len(body.StackTrace) == 0 {
 		t.Fatal("expected stack trace in development mode")
@@ -87,15 +90,15 @@ func TestGlobalErrorHandlerOmitsStackInProduction(t *testing.T) {
 	router := gin.New()
 	router.Use(GlobalErrorHandler(testLogger{}, "production"))
 	router.GET("/prod", func(c *gin.Context) {
-		c.Error(apperror.NewBadRequest("bad request"))
+		c.Error(apperror.NewBadRequest("yêu cầu không hợp lệ"))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/prod", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	if strings.Contains(rec.Body.String(), "stack_trace") {
-		t.Fatalf("expected production response to omit stack_trace, got %s", rec.Body.String())
+	if strings.Contains(rec.Body.String(), "stackTrace") {
+		t.Fatalf("expected production response to omit stackTrace, got %s", rec.Body.String())
 	}
 }
 
@@ -116,7 +119,7 @@ func TestGlobalErrorHandlerReturnsPanicStack(t *testing.T) {
 		t.Fatalf("expected 500, got %d", rec.Code)
 	}
 
-	if !strings.Contains(rec.Body.String(), "stack_trace") {
+	if !strings.Contains(rec.Body.String(), "stackTrace") {
 		t.Fatalf("expected panic response to include stack trace, got %s", rec.Body.String())
 	}
 }

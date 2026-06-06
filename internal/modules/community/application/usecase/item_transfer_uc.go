@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
@@ -75,6 +76,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 		postItem.Status = postitemstatus.Sold
 		now := time.Now()
 		postItem.SoldAt = &now
+		postItem.DeclinedAt = nil
 		if err := uc.postItemRepo.Update(txCtx, postItem); err != nil {
 			return err
 		}
@@ -121,6 +123,88 @@ func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUse
 			SellerName: sellerName,
 		})
 	}
+	return result, nil
+}
+
+func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, sellerUserID uuid.UUID) ([]*dto.SellerTransferPostRes, error) {
+	items, err := uc.postItemRepo.GetTransferItemsBySellerID(ctx, sellerUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	buyersByID := make(map[uuid.UUID]*dto.TransferBuyerSummaryRes)
+	for _, item := range items {
+		if item == nil || item.BuyerUserID == nil {
+			continue
+		}
+		if _, exists := buyersByID[*item.BuyerUserID]; exists {
+			continue
+		}
+
+		userRes, err := uc.identityCtr.GetByID(ctx, *item.BuyerUserID)
+		if err != nil || userRes == nil {
+			continue
+		}
+		buyersByID[*item.BuyerUserID] = dto.NewTransferBuyerSummary(userRes)
+	}
+
+	postsByID := make(map[uuid.UUID]*dto.SellerTransferPostRes)
+	postOrder := make([]uuid.UUID, 0)
+	for _, item := range items {
+		if item == nil || item.Post == nil {
+			continue
+		}
+
+		postRes, exists := postsByID[item.PostID]
+		if !exists {
+			postRes = &dto.SellerTransferPostRes{
+				PostID:    item.Post.ID,
+				Title:     item.Post.Title,
+				PostType:  string(item.Post.PostType),
+				CreatedAt: item.Post.CreatedAt,
+				UpdatedAt: item.Post.UpdatedAt,
+				Items:     make([]*dto.SellerTransferPostItemRes, 0),
+			}
+			postsByID[item.PostID] = postRes
+			postOrder = append(postOrder, item.PostID)
+		}
+
+		var buyer *dto.TransferBuyerSummaryRes
+		if item.BuyerUserID != nil {
+			buyer = buyersByID[*item.BuyerUserID]
+		}
+
+		postRes.Items = append(postRes.Items, &dto.SellerTransferPostItemRes{
+			PostItemID:    item.ID,
+			Item:          mapper.MapWardrobeItem(item.WardrobeItem),
+			Price:         item.Price,
+			ItemCondition: int16(item.ItemCondition),
+			Status:        int16(item.Status),
+			TransferState: int16(item.TransferState),
+			SoldAt:        item.SoldAt,
+			DeclinedAt:    item.DeclinedAt,
+			Buyer:         buyer,
+		})
+	}
+
+	result := make([]*dto.SellerTransferPostRes, 0, len(postOrder))
+	for _, postID := range postOrder {
+		postRes := postsByID[postID]
+		sort.SliceStable(postRes.Items, func(i, j int) bool {
+			left := postRes.Items[i]
+			right := postRes.Items[j]
+			if left.SoldAt == nil || right.SoldAt == nil || left.SoldAt.Equal(*right.SoldAt) {
+				return left.PostItemID.String() < right.PostItemID.String()
+			}
+			return left.SoldAt.After(*right.SoldAt)
+		})
+		result = append(result, postRes)
+	}
+
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].UpdatedAt.After(result[j].UpdatedAt)
+	})
+
 	return result, nil
 }
 
@@ -195,9 +279,9 @@ func (uc *ItemTransferUseCase) DeclineTransfer(ctx context.Context, buyerUserID 
 		}
 
 		postItem.TransferState = transferstate.Declined
-		postItem.BuyerUserID = nil
 		postItem.Status = postitemstatus.Available
-		postItem.SoldAt = nil
+		now := time.Now()
+		postItem.DeclinedAt = &now
 		if err := uc.postItemRepo.Update(txCtx, postItem); err != nil {
 			return err
 		}

@@ -70,7 +70,7 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) (
 	if err != nil {
 		if appErr := apperror.From(err); appErr != nil {
 			notFound := apperror.ErrSearchIndexNotFound()
-			if appErr.Status == notFound.Status && appErr.Detail == notFound.Detail {
+			if appErr.Status == notFound.Status && appErr.Message == notFound.Message {
 				return []*dto.SearchWardrobeItemRes{}, nil
 			}
 		}

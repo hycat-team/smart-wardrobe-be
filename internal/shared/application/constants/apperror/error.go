@@ -6,11 +6,17 @@ import (
 	"runtime/debug"
 )
 
+type ValidationErrorItem struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
 type Error struct {
-	Status     int    `json:"status"`
-	Title      string `json:"title,omitempty"`
-	Detail     string `json:"detail,omitempty"`
-	StackTrace any    `json:"stack_trace,omitempty"`
+	Status     int                   `json:"status"`
+	Title      string                `json:"title,omitempty"`
+	Message    string                `json:"message,omitempty"`
+	Errors     []ValidationErrorItem `json:"errors,omitempty"`
+	StackTrace any                   `json:"stackTrace,omitempty"`
 
 	Cause    error  `json:"-"`
 	rawStack string `json:"-"`
@@ -20,8 +26,8 @@ func (e *Error) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.Detail != "" {
-		return e.Detail
+	if e.Message != "" {
+		return e.Message
 	}
 	if e.Cause != nil {
 		return e.Cause.Error()
@@ -49,11 +55,11 @@ func (e *Error) WithStackTrace(stackTrace any) Error {
 	return res
 }
 
-func New(status int, title, detail string) *Error {
+func New(status int, title, message string) *Error {
 	return &Error{
 		Status:   status,
 		Title:    title,
-		Detail:   detail,
+		Message:  message,
 		rawStack: string(debug.Stack()),
 	}
 }
@@ -78,7 +84,7 @@ func Wrap(err error, fallbackMsg ...string) error {
 	return &Error{
 		Status:   http.StatusInternalServerError,
 		Title:    "Lỗi hệ thống",
-		Detail:   msg,
+		Message:  msg,
 		Cause:    err,
 		rawStack: string(debug.Stack()),
 	}

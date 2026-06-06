@@ -29,9 +29,9 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 				}
 
 				res := apperror.Error{
-					Status: http.StatusInternalServerError,
-					Title:  "Lỗi hệ thống",
-					Detail: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên.",
+					Status:  http.StatusInternalServerError,
+					Title:   "Lỗi hệ thống",
+					Message: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên.",
 				}
 
 				if appEnv == "development" || gin.Mode() == gin.DebugMode {
@@ -59,10 +59,10 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 		fields := []zap.Field{
 			zap.Int("status", appErr.Status),
 			zap.String("title", appErr.Title),
-			zap.String("detail", appErr.Detail),
+			zap.String("message", appErr.Message),
 			zap.String("path", c.Request.URL.Path),
 		}
-		if rawErr != nil && rawErr.Error() != appErr.Detail {
+		if rawErr != nil && rawErr.Error() != appErr.Message {
 			fields = append(fields, zap.String("error", rawErr.Error()))
 		}
 		if source := errorutils.PrimaryStackFrame(appErr.Stack()); source != "" {

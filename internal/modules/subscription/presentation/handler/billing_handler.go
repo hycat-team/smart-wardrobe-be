@@ -177,7 +177,7 @@ func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {
 // @Tags Billing
 // @Accept json
 // @Produce json
-// @Param body body dto.PayOSWebhookReq true "Webhook Payload"
+// @Param body body dto.PayOSWebhookReq true "Dữ liệu Webhook"
 // @Success 200 {object} shared_pres.APIResponse "Kết quả xử lý"
 // @Router /api/v1/subscriptions/payos-webhook [post]
 func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {

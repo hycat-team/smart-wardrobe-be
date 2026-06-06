@@ -199,7 +199,7 @@ func MapErrorToProblem(err error) (int, string, string) {
 	}
 
 	if appErr := ToAppError(err); appErr != nil {
-		return appErr.Status, appErr.Title, appErr.Detail
+		return appErr.Status, appErr.Title, appErr.Message
 	}
 
 	return http.StatusInternalServerError, "Lỗi hệ thống", err.Error()

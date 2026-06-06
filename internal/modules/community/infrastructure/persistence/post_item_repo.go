@@ -35,6 +35,26 @@ func (r *PostItemRepository) GetPendingByBuyerID(ctx context.Context, buyerUserI
 	return items, err
 }
 
+func (r *PostItemRepository) GetTransferItemsBySellerID(ctx context.Context, sellerUserID uuid.UUID) ([]*entities.PostItem, error) {
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).
+		Preload("Post").
+		Where("post_id IN (?)",
+			r.GetDB(ctx).
+				Model(&entities.Post{}).
+				Select("id").
+				Where("user_id = ?", sellerUserID),
+		).
+		Where("(transfer_state IN ? OR status = ?)", []transferstate.TransferState{
+			transferstate.Pending,
+			transferstate.Accepted,
+			transferstate.Declined,
+		}, postitemstatus.Sold).
+		Order("post_id ASC, created_at ASC").
+		Find(&items).Error
+	return items, err
+}
+
 func (r *PostItemRepository) GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("item_id = ?", itemID).Find(&items).Error

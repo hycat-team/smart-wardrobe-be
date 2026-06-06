@@ -34,6 +34,7 @@ type IPostItemRepository interface {
 	shared_repos.IGenericRepository[entities.PostItem, uuid.UUID]
 	GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.PostItem, error)
 	GetPendingByBuyerID(ctx context.Context, buyerUserID uuid.UUID) ([]*entities.PostItem, error)
+	GetTransferItemsBySellerID(ctx context.Context, sellerUserID uuid.UUID) ([]*entities.PostItem, error)
 	GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error)
 	GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error)
 	HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error)

@@ -185,4 +185,9 @@ All developments and future refactoring phases must strictly satisfy the followi
 - All comments, documentation block headers, or Swagger annotations in source code must use plain text formats only.
 - Absolutely **NO** sequential numbering prefixes (e.g., `1.`, `2.`, `01.`, `02.`) and **NO** visual emojis are allowed inside any source code comments.
 
+### F. Language Standards
+- **Vietnamese (with accents / Tiếng Việt có dấu)**: Must be used for all Swagger annotations (such as `@Summary`, `@Description`, `@Param` descriptions, etc.) and all client-facing responses returned to the Front-End (e.g., response messages, detail fields, validation errors, etc.).
+- **English**: Must be used for all internal code comments describing code logic and structure, as well as all system log messages (logger).
+
+
 

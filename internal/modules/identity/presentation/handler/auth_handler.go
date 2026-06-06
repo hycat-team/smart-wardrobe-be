@@ -91,7 +91,7 @@ func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.LoginReq true "Thông tin đăng nhập"
-// @Success 200 {object} shared_pres.APIResponse{data=map[string]string} "accessToken in data"
+// @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) error {
 	var input dto.LoginReq
@@ -192,7 +192,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=map[string]string} "accessToken in data"
+// @Success 200 {object} shared_pres.APIResponse{data=map[string]string} "accessToken trong dữ liệu"
 // @Router /api/v1/auth/refresh-token [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
@@ -337,4 +337,3 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 	shared_pres.Success(c, "Đặt lại mật khẩu thành công", nil)
 	return nil
 }
-
