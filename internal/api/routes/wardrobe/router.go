@@ -3,6 +3,7 @@ package wardrobe
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	wardrobe_handler "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,7 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	}
 
 	privateApi := group.Group("")
-	privateApi.Use(r.authMiddleware.Handle())
+	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 
 	wardrobeApi := privateApi.Group("/wardrobe-items")
 	{

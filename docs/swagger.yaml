@@ -373,6 +373,15 @@ definitions:
     required:
     - firstName
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserStatusReq:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus'
+        enum:
+        - 0
+        - 1
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes:
     properties:
       bodyType:
@@ -838,6 +847,15 @@ definitions:
     x-enum-varnames:
     - Admin
     - Member
+  smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus:
+    enum:
+    - 0
+    - 1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Active
+    - Inactive
   smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus:
     enum:
     - 0
@@ -874,6 +892,95 @@ info:
   title: Smart Wardrobe API Document
   version: "1.0"
 paths:
+  /api/v1/admin/community/comments/{commentID}:
+    delete:
+      description: Cho phép admin xóa bình luận community vi phạm
+      parameters:
+      - description: ID bình luận
+        in: path
+        name: commentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa bình luận thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa bình luận community
+      tags:
+      - Admin
+  /api/v1/admin/community/post-items/{postItemID}:
+    delete:
+      description: Cho phép admin ẩn listing hoặc post item vi phạm khỏi community
+      parameters:
+      - description: ID post item
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ẩn listing thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Ẩn listing community
+      tags:
+      - Admin
+  /api/v1/admin/community/posts/{postID}:
+    delete:
+      description: Cho phép admin xóa bài đăng community vi phạm
+      parameters:
+      - description: ID bài đăng
+        in: path
+        name: postID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa bài đăng thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa bài đăng community
+      tags:
+      - Admin
+  /api/v1/admin/users/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Cho phép admin khóa hoặc mở lại tài khoản member
+      parameters:
+      - description: ID người dùng
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Trạng thái tài khoản mới
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserStatusReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật trạng thái tài khoản thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
+      summary: Cập nhật trạng thái tài khoản người dùng
+      tags:
+      - Admin
   /api/v1/ai/chat/sessions:
     get:
       consumes:

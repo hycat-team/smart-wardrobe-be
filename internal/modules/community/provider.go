@@ -19,6 +19,7 @@ var ProviderSet = wire.NewSet(
 	usecase.NewPostUseCase,
 	usecase.NewPostInteractionUseCase,
 	usecase.NewItemTransferUseCase,
+	handler.NewAdminHandler,
 	handler.NewPostHandler,
 	handler.NewPostInteractionHandler,
 	handler.NewItemTransferHandler,

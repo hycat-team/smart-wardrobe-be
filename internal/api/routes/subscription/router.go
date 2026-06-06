@@ -3,6 +3,7 @@ package subscription
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	subscription_handler "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +36,7 @@ func (r *SubscriptionRouter) Init(group *gin.RouterGroup) {
 
 	// Authenticated subscription endpoints
 	authSubApi := subApi.Group("")
-	authSubApi.Use(r.authMiddleware.Handle())
+	authSubApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 	{
 		authSubApi.GET("/me", shared_pres.WrapHandler(r.subscriptionHandler.GetUserSubscriptionOverview))
 		authSubApi.GET("/me/daily-quota", shared_pres.WrapHandler(r.subscriptionHandler.GetDailyQuota))

@@ -3,6 +3,7 @@ package me
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	identity_handler "smart-wardrobe-be/internal/modules/identity/presentation/handler"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ func NewRouter(h *identity_handler.MeHandler, m *middleware.AuthMiddleware) *MeR
 
 func (r *MeRouter) Init(group *gin.RouterGroup) {
 	meApi := group.Group("/me")
-	meApi.Use(r.authMiddleware.Handle())
+	meApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.meHandler.GetCurrentUser))
 		meApi.PUT("", shared_pres.WrapHandler(r.meHandler.UpdateCurrentUser))

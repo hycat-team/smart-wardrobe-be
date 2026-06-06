@@ -8,6 +8,7 @@ import (
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/application/media"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/logger"
 )
 
 const (
@@ -35,6 +36,7 @@ type postWriteDependencies struct {
 
 type PostUseCase struct {
 	cfg          *config.Config
+	logger       logger.Interface
 	reader       postReadDependencies
 	writer       postWriteDependencies
 	mediaService media.IMediaService
@@ -42,6 +44,7 @@ type PostUseCase struct {
 
 func NewPostUseCase(
 	cfg *config.Config,
+	log logger.Interface,
 	postRepo repositories.IPostRepository,
 	postScoreRepo repositories.IPostScoreRepository,
 	postItemRepo repositories.IPostItemRepository,
@@ -54,7 +57,8 @@ func NewPostUseCase(
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IPostUseCase {
 	return &PostUseCase{
-		cfg: cfg,
+		cfg:    cfg,
+		logger: log,
 		reader: postReadDependencies{
 			postRepo:      postRepo,
 			postScoreRepo: postScoreRepo,

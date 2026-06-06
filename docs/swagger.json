@@ -7,6 +7,146 @@
         "version": "1.0"
     },
     "paths": {
+        "/api/v1/admin/community/comments/{commentID}": {
+            "delete": {
+                "description": "Cho phép admin xóa bình luận community vi phạm",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Xóa bình luận community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID bình luận",
+                        "name": "commentID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa bình luận thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/community/post-items/{postItemID}": {
+            "delete": {
+                "description": "Cho phép admin ẩn listing hoặc post item vi phạm khỏi community",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Ẩn listing community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID post item",
+                        "name": "postItemID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ẩn listing thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/community/posts/{postID}": {
+            "delete": {
+                "description": "Cho phép admin xóa bài đăng community vi phạm",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Xóa bài đăng community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID bài đăng",
+                        "name": "postID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa bài đăng thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{id}/status": {
+            "patch": {
+                "description": "Cho phép admin khóa hoặc mở lại tài khoản member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Cập nhật trạng thái tài khoản người dùng",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID người dùng",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Trạng thái tài khoản mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cập nhật trạng thái tài khoản thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/chat/sessions": {
             "get": {
                 "description": "Lấy tất cả các phiên trò chuyện của người dùng hiện tại với stylist AI",
@@ -2778,6 +2918,22 @@
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserStatusReq": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "enum": [
+                        0,
+                        1
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus"
+                        }
+                    ]
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes": {
             "type": "object",
             "properties": {
@@ -3474,6 +3630,18 @@
             "x-enum-varnames": [
                 "Admin",
                 "Member"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "Active",
+                "Inactive"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus": {

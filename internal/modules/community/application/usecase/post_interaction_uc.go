@@ -9,8 +9,10 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type PostInteractionUseCase struct {
@@ -18,9 +20,11 @@ type PostInteractionUseCase struct {
 	commentRepo repositories.ICommentRepository
 	likeRepo    repositories.ILikeRepository
 	uow         shared_repos.IUnitOfWork
+	logger      logger.Interface
 }
 
 func NewPostInteractionUseCase(
+	log logger.Interface,
 	postRepo repositories.IPostRepository,
 	commentRepo repositories.ICommentRepository,
 	likeRepo repositories.ILikeRepository,
@@ -31,6 +35,7 @@ func NewPostInteractionUseCase(
 		commentRepo: commentRepo,
 		likeRepo:    likeRepo,
 		uow:         uow,
+		logger:      log,
 	}
 }
 
@@ -202,6 +207,50 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return err
 		}
 		return uc.postRepo.MarkHotnessDirty(txCtx, post.ID)
+	}
+
+	return uc.uow.Execute(ctx, deleteComment)
+}
+
+func (uc *PostInteractionUseCase) AdminDeleteComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error {
+	deleteComment := func(txCtx context.Context) error {
+		comment, err := uc.commentRepo.GetByID(txCtx, commentID)
+		if err != nil {
+			return err
+		}
+		if comment == nil {
+			return apperror.NewNotFound("Không tìm thấy bình luận này.")
+		}
+
+		post, err := uc.postRepo.GetByID(txCtx, comment.PostID)
+		if err != nil {
+			return err
+		}
+		if post == nil {
+			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+		}
+
+		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
+			return err
+		}
+
+		if post.CommentCount > 0 {
+			post.CommentCount--
+		}
+		if err := uc.postRepo.Update(txCtx, post); err != nil {
+			return err
+		}
+		if err := uc.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
+			return err
+		}
+
+		uc.logger.Info("[CommunityModeration] Admin deleted comment",
+			zap.String("admin_user_id", adminUserID.String()),
+			zap.String("action", "delete_comment"),
+			zap.String("target_type", "comment"),
+			zap.String("target_id", commentID.String()),
+		)
+		return nil
 	}
 
 	return uc.uow.Execute(ctx, deleteComment)

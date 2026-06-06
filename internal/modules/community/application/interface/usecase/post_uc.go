@@ -23,6 +23,8 @@ type IPostWriteUseCase interface {
 	CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error)
 	DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
 	RemovePostItems(ctx context.Context, userID uuid.UUID, postID uuid.UUID, postItemIDs []uuid.UUID) error
+	AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postID uuid.UUID) error
+	AdminHidePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
 }
 
 type IPostAssetUseCase interface {

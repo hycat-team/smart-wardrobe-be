@@ -8,5 +8,6 @@ import (
 
 var ProviderSet = wire.NewSet(
 	handler.NewAuthHandler,
+	handler.NewAdminHandler,
 	handler.NewMeHandler,
 )

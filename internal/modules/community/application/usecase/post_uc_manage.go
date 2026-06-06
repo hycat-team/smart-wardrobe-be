@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 func (uc *PostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error) {
@@ -201,6 +202,74 @@ func (uc *PostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, po
 	return uc.writer.uow.Execute(ctx, removePostItems)
 }
 
+func (uc *PostUseCase) AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postID uuid.UUID) error {
+	post, err := uc.writer.postRepo.GetByID(ctx, postID)
+	if err != nil {
+		return err
+	}
+	if post == nil {
+		return apperror.NewNotFound("Không tìm thấy bài viết này.")
+	}
+
+	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
+	if err != nil {
+		return err
+	}
+
+	deletePost := func(txCtx context.Context) error {
+		if err := uc.writer.postRepo.Delete(txCtx, postID); err != nil {
+			return err
+		}
+
+		affectedItemIDs := uniqueItemIDs(postItems)
+		for _, itemID := range affectedItemIDs {
+			if err := uc.syncWardrobeStatusByItem(txCtx, itemID); err != nil {
+				return err
+			}
+		}
+
+		uc.logger.Info("[CommunityModeration] Admin deleted post",
+			zap.String("admin_user_id", adminUserID.String()),
+			zap.String("action", "delete_post"),
+			zap.String("target_type", "post"),
+			zap.String("target_id", postID.String()),
+		)
+		return nil
+	}
+
+	return uc.writer.uow.Execute(ctx, deletePost)
+}
+
+func (uc *PostUseCase) AdminHidePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error {
+	postItem, err := uc.writer.postItemRepo.GetByID(ctx, postItemID)
+	if err != nil {
+		return err
+	}
+	if postItem == nil {
+		return apperror.NewNotFound("Không tìm thấy listing này.")
+	}
+
+	hidePostItem := func(txCtx context.Context) error {
+		postItem.Status = postitemstatus.Hidden
+		if err := uc.writer.postItemRepo.Update(txCtx, postItem); err != nil {
+			return err
+		}
+		if err := uc.syncWardrobeStatusByItem(txCtx, postItem.ItemID); err != nil {
+			return err
+		}
+
+		uc.logger.Info("[CommunityModeration] Admin hid post item",
+			zap.String("admin_user_id", adminUserID.String()),
+			zap.String("action", "hide_post_item"),
+			zap.String("target_type", "post_item"),
+			zap.String("target_id", postItemID.String()),
+		)
+		return nil
+	}
+
+	return uc.writer.uow.Execute(ctx, hidePostItem)
+}
+
 func (uc *PostUseCase) validateCreatePostInput(postType posttype.PostType, input dto.CreatePostReq) error {
 	if postType == posttype.Sale {
 		if len(input.ItemIDs) == 0 {
@@ -253,6 +322,17 @@ func uniqueItemIDs(items []*entities.PostItem) []uuid.UUID {
 		}
 		seen[item.ItemID] = struct{}{}
 		result = append(result, item.ItemID)
+	}
+	return result
+}
+
+func filterVisiblePostItems(items []*entities.PostItem) []*entities.PostItem {
+	result := make([]*entities.PostItem, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.Status == postitemstatus.Hidden {
+			continue
+		}
+		result = append(result, item)
 	}
 	return result
 }

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"smart-wardrobe-be/internal/api/routes/admin"
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/category"
 	"smart-wardrobe-be/internal/api/routes/community"
@@ -13,6 +14,7 @@ import (
 )
 
 type AppRouter struct {
+	AdminRouter        *admin.AdminRouter
 	AuthRouter         *auth.AuthRouter
 	MeRouter           *me.MeRouter
 	SubscriptionRouter *subscription.SubscriptionRouter
@@ -23,6 +25,7 @@ type AppRouter struct {
 }
 
 var RouterSet = wire.NewSet(
+	admin.NewRouter,
 	auth.NewRouter,
 	me.NewRouter,
 	subscription.NewRouter,

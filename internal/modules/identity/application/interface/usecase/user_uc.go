@@ -15,6 +15,7 @@ type IUserUseCase interface {
 	GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error)
 	GetAvatarSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error)
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserRes, error)
+	UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error)
 
 	contract.IUserContract
 }

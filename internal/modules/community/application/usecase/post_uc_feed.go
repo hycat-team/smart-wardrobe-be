@@ -113,6 +113,7 @@ func (uc *PostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID 
 		if post == nil {
 			continue
 		}
+		items = filterVisiblePostItems(items)
 		comments, err := uc.reader.commentRepo.GetByPostID(ctx, record.Post.ID)
 		if err != nil {
 			return nil, err
@@ -178,6 +179,7 @@ func (uc *PostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, view
 	if err != nil {
 		return nil, err
 	}
+	items = filterVisiblePostItems(items)
 
 	scoreMap, err := uc.reader.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{postID})
 	if err != nil {

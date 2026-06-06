@@ -3,6 +3,7 @@ package community
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	community_handler "smart-wardrobe-be/internal/modules/community/presentation/handler"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -35,14 +36,14 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	publicPosts.Use(r.authMiddleware.OptionalHandle())
 	{
 		publicPosts.GET("", shared_pres.WrapHandler(r.postHandler.GetFeed))
-		publicPosts.GET("/upload-signature", shared_pres.WrapHandler(r.postHandler.GetUploadSignature))
 		publicPosts.GET("/:postID", shared_pres.WrapHandler(r.postHandler.GetPostDetail))
 	}
 
 	// Post - Private endpoints (Authenticated)
 	privatePosts := group.Group("/posts")
-	privatePosts.Use(r.authMiddleware.Handle())
+	privatePosts.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 	{
+		privatePosts.GET("/upload-signature", shared_pres.WrapHandler(r.postHandler.GetUploadSignature))
 		privatePosts.POST("", shared_pres.WrapHandler(r.postHandler.CreatePost))
 		privatePosts.DELETE("/:postID", shared_pres.WrapHandler(r.postHandler.DeletePost))
 		privatePosts.DELETE("/:postID/items", shared_pres.WrapHandler(r.postHandler.RemovePostItems))
@@ -55,7 +56,7 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	}
 
 	community := group.Group("/community")
-	community.Use(r.authMiddleware.Handle())
+	community.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 	me := community.Group("/me")
 	{
 		me.GET("/pending-transfers", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
