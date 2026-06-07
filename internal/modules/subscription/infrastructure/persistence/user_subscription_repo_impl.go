@@ -42,6 +42,21 @@ func (r *UserSubscriptionRepository) GetByUserID(ctx context.Context, userID uui
 	return &sub, nil
 }
 
+func (r *UserSubscriptionRepository) GetByUserIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.UserSubscription, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+
+	var subs []*entities.UserSubscription
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id IN ? AND is_active = ?", userIDs, true).
+		Find(&subs).Error
+	if err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
 func (r *UserSubscriptionRepository) GetByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
 	var sub entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx).Clauses(clause.Locking{Strength: "UPDATE"})

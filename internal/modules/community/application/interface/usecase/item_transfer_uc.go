@@ -10,9 +10,11 @@ import (
 )
 
 type IItemTransferUseCase interface {
-	MarkPostItemSold(ctx context.Context, userID uuid.UUID, postItemID uuid.UUID, buyerUserID uuid.UUID) error
+	MarkPostItemsSold(ctx context.Context, sellerUserID uuid.UUID, postItemIDs []uuid.UUID, buyerID uuid.UUID) error
 	GetPendingTransfers(ctx context.Context, buyerUserID uuid.UUID) ([]*dto.PendingTransferRes, error)
 	GetSellerTransferPosts(ctx context.Context, sellerUserID uuid.UUID) ([]*dto.SellerTransferPostRes, error)
-	AcceptTransfer(ctx context.Context, buyerUserID uuid.UUID, postItemID uuid.UUID) (*wardrobe_dto.WardrobeItemRes, error)
-	DeclineTransfer(ctx context.Context, buyerUserID uuid.UUID, postItemID uuid.UUID) error
+	AcceptTransfers(ctx context.Context, buyerUserID uuid.UUID, postItemIDs []uuid.UUID) ([]*wardrobe_dto.WardrobeItemRes, error)
+	DeclineTransfers(ctx context.Context, buyerUserID uuid.UUID, postItemIDs []uuid.UUID) error
+	CreateTransferRequests(ctx context.Context, buyerUserID uuid.UUID, postItemIDs []uuid.UUID) error
+	GetTransferRequestsForSeller(ctx context.Context, sellerUserID uuid.UUID, postItemID uuid.UUID) ([]*dto.TransferRequestRes, error)
 }

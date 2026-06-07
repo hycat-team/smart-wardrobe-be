@@ -3,11 +3,11 @@ package persistence
 import (
 	"context"
 	"errors"
-	"strings"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -37,6 +37,21 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entitie
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *UserRepository) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.User, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+
+	var users []*entities.User
+	err := r.GetQueryWithPreload(ctx).
+		Where("id IN ? AND is_deleted = ?", userIDs, false).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 // IsEmailExists checks if email already exists in system
@@ -133,4 +148,3 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 		TotalCount: totalCount,
 	}, nil
 }
-

@@ -2,8 +2,9 @@ package handler
 
 import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -11,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var _ = wardrobe_dto.WardrobeItemRes{}
 
 const (
 	msgTransferMarkSoldSuccess       = "Đánh dấu đã bán thành công"
@@ -28,32 +31,27 @@ func NewItemTransferHandler(transferUC usecase_interfaces.IItemTransferUseCase) 
 	return &ItemTransferHandler{transferUC: transferUC}
 }
 
-// MarkPostItemSold marks a post item as sold to another user.
-// @Summary Đánh dấu món đồ đã bán
-// @Description Đánh dấu trang phục đã được bán cho một người dùng khác và kích hoạt trạng thái bàn giao
+// MarkPostItemsSold marks multiple post items as sold to a buyer.
+// @Summary Đánh dấu các món đồ đã bán (Bulk)
+// @Description Đánh dấu danh sách các trang phục đã được bán cho một người dùng khác (qua buyerId) và kích hoạt trạng thái bàn giao
 // @Tags Transfers
 // @Accept json
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
-// @Param body body dto.UpdatePostItemsBuyerReq true "Thông tin người mua"
+// @Param body body dto.MarkPostItemsSoldReq true "Thông tin người mua và danh sách sản phẩm"
 // @Success 200 {object} shared_pres.APIResponse "Đánh dấu đã bán thành công"
-// @Router /api/v1/transfers/items/{postItemID}/mark-sold [post]
-func (h *ItemTransferHandler) MarkPostItemSold(c *gin.Context) error {
+// @Router /api/v1/transfers/mark-sold [post]
+func (h *ItemTransferHandler) MarkPostItemsSold(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
-	postItemID, err := uuid.Parse(c.Param("postItemID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostItemIDFormat
-	}
 
-	var input dto.UpdatePostItemsBuyerReq
+	var input dto.MarkPostItemsSoldReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	if err := h.transferUC.MarkPostItemSold(c.Request.Context(), userID, postItemID, input.BuyerUserID); err != nil {
+	if err := h.transferUC.MarkPostItemsSold(c.Request.Context(), userID, input.PostItemIDs, input.BuyerID); err != nil {
 		return err
 	}
 
@@ -105,25 +103,27 @@ func (h *ItemTransferHandler) GetSellerTransferPosts(c *gin.Context) error {
 	return nil
 }
 
-// AcceptTransfer accepts item transfer into the buyer wardrobe.
-// @Summary Chấp nhận nhận bàn giao trang phục
-// @Description Đồng ý nhận trang phục đã mua về tủ đồ cá nhân
+// AcceptTransfers accepts item transfers into the buyer wardrobe (Bulk).
+// @Summary Chấp nhận nhận bàn giao danh sách trang phục
+// @Description Đồng ý nhận danh sách trang phục đã mua về tủ đồ cá nhân
 // @Tags Transfers
+// @Accept json
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.PostItemRes} "Nhận món đồ vào tủ thành công"
-// @Router /api/v1/transfers/items/{postItemID}/accept [post]
-func (h *ItemTransferHandler) AcceptTransfer(c *gin.Context) error {
+// @Param body body dto.AcceptTransfersReq true "Danh sách sản phẩm bàn giao"
+// @Success 200 {object} shared_pres.APIResponse{data=[]wardrobe_dto.WardrobeItemRes} "Nhận món đồ vào tủ thành công"
+// @Router /api/v1/transfers/accept [post]
+func (h *ItemTransferHandler) AcceptTransfers(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
-	postItemID, err := uuid.Parse(c.Param("postItemID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostItemIDFormat
+
+	var input dto.AcceptTransfersReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
 	}
 
-	response, err := h.transferUC.AcceptTransfer(c.Request.Context(), userID, postItemID)
+	response, err := h.transferUC.AcceptTransfers(c.Request.Context(), userID, input.PostItemIDs)
 	if err != nil {
 		return err
 	}
@@ -132,28 +132,86 @@ func (h *ItemTransferHandler) AcceptTransfer(c *gin.Context) error {
 	return nil
 }
 
-// DeclineTransfer declines item transfer.
-// @Summary Từ chối nhận bàn giao trang phục
-// @Description Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
+// DeclineTransfers declines item transfers (Bulk).
+// @Summary Từ chối nhận bàn giao danh sách trang phục
+// @Description Từ chối nhận bàn giao danh sách trang phục mua từ bài đăng cộng đồng
 // @Tags Transfers
+// @Accept json
 // @Produce json
-// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
+// @Param body body dto.AcceptTransfersReq true "Danh sách sản phẩm bàn giao"
 // @Success 200 {object} shared_pres.APIResponse "Từ chối nhận món đồ thành công"
-// @Router /api/v1/transfers/items/{postItemID}/decline [post]
-func (h *ItemTransferHandler) DeclineTransfer(c *gin.Context) error {
+// @Router /api/v1/transfers/decline [post]
+func (h *ItemTransferHandler) DeclineTransfers(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
+
+	var input dto.AcceptTransfersReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	if err := h.transferUC.DeclineTransfers(c.Request.Context(), userID, input.PostItemIDs); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgTransferDeclineSuccess, nil)
+	return nil
+}
+
+// CreateTransferRequests creates requests to buy items.
+// @Summary Gửi yêu cầu xin mua trang phục (Bulk)
+// @Description Người mua đăng ký muốn mua một hoặc nhiều món đồ trong bài đăng của người bán
+// @Tags Transfers
+// @Accept json
+// @Produce json
+// @Param body body dto.CreateTransferRequestsReq true "Danh sách sản phẩm xin mua"
+// @Success 200 {object} shared_pres.APIResponse "Gửi yêu cầu xin mua thành công"
+// @Router /api/v1/transfers/requests [post]
+func (h *ItemTransferHandler) CreateTransferRequests(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.CreateTransferRequestsReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	if err := h.transferUC.CreateTransferRequests(c.Request.Context(), userID, input.PostItemIDs); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Gửi yêu cầu xin mua thành công", nil)
+	return nil
+}
+
+// GetTransferRequestsForSeller gets list of requests for a post item.
+// @Summary Lấy danh sách người xin mua của một sản phẩm
+// @Description Người bán xem danh sách những người mua đã gửi yêu cầu xin mua cho món đồ cụ thể
+// @Tags Transfers
+// @Produce json
+// @Param postItemID path string true "ID chi tiết món đồ trong bài đăng"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.TransferRequestRes} "Lấy danh sách người xin mua thành công"
+// @Router /api/v1/transfers/items/{postItemID}/requests [get]
+func (h *ItemTransferHandler) GetTransferRequestsForSeller(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
 	postItemID, err := uuid.Parse(c.Param("postItemID"))
 	if err != nil {
 		return communityerrors.ErrInvalidPostItemIDFormat
 	}
 
-	if err := h.transferUC.DeclineTransfer(c.Request.Context(), userID, postItemID); err != nil {
+	res, err := h.transferUC.GetTransferRequestsForSeller(c.Request.Context(), userID, postItemID)
+	if err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, msgTransferDeclineSuccess, nil)
+	shared_pres.Success(c, "Lấy danh sách người xin mua thành công", res)
 	return nil
 }

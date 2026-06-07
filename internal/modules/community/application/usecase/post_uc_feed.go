@@ -102,15 +102,32 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		}), nil
 	}
 
+	postIDs := make([]uuid.UUID, 0, len(records))
+	postByID := make(map[uuid.UUID]*entities.Post, len(records))
+	for _, record := range records {
+		if record == nil || record.Post == nil {
+			continue
+		}
+		postIDs = append(postIDs, record.Post.ID)
+		postByID[record.Post.ID] = record.Post
+	}
+
+	postItemsByPostID, mediaByPostID, err := uc.loadPostDetailsByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	scoredItems := make([]*scoredPost, 0, len(records))
 	for _, record := range records {
-		post, items, media, err := uc.reader.postRepo.GetDetail(ctx, record.Post.PublicID)
-		if err != nil {
-			return nil, err
-		}
+		post := postByID[record.Post.ID]
 		if post == nil {
 			continue
 		}
+		items := postItemsByPostID[post.ID]
+		if post.PostType == "SALE" && len(items) == 0 {
+			continue
+		}
+		media := mediaByPostID[post.ID]
 
 		styleScore := computeStyleScore(user.StyleProfile.TasteEmbedding, items)
 		finalScore := (record.GlobalHotnessScore * 0.4) + (styleScore * 0.6)
@@ -130,11 +147,11 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		return scoredItems[i].final > scoredItems[j].final
 	})
 
-	postIDs := make([]uuid.UUID, 0, len(scoredItems))
+	likedPostIDs := make([]uuid.UUID, 0, len(scoredItems))
 	for _, item := range scoredItems {
-		postIDs = append(postIDs, item.post.ID)
+		likedPostIDs = append(likedPostIDs, item.post.ID)
 	}
-	likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, viewerUserID, postIDs)
+	likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, viewerUserID, likedPostIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -394,4 +411,36 @@ func cosineDistance(a, b entities.Vector) float64 {
 
 	cosineSimilarity := dot / (math.Sqrt(magA) * math.Sqrt(magB))
 	return 1 - cosineSimilarity
+}
+
+func (uc *UserPostUseCase) loadPostDetailsByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID][]*entities.PostItem, map[uuid.UUID][]*entities.PostMedia, error) {
+	postIDs = uniqueUUIDs(postIDs)
+
+	postItems, err := uc.reader.postItemRepo.GetByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mediaItems, err := uc.reader.postMediaRepo.GetByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	postItemsByPostID := make(map[uuid.UUID][]*entities.PostItem)
+	for _, item := range postItems {
+		if item == nil {
+			continue
+		}
+		postItemsByPostID[item.PostID] = append(postItemsByPostID[item.PostID], item)
+	}
+
+	mediaByPostID := make(map[uuid.UUID][]*entities.PostMedia)
+	for _, item := range mediaItems {
+		if item == nil {
+			continue
+		}
+		mediaByPostID[item.PostID] = append(mediaByPostID[item.PostID], item)
+	}
+
+	return postItemsByPostID, mediaByPostID, nil
 }

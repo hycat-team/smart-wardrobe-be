@@ -27,6 +27,19 @@ func (r *PostMediaRepository) GetByPostID(ctx context.Context, postID uuid.UUID)
 	return items, err
 }
 
+func (r *PostMediaRepository) GetByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*entities.PostMedia, error) {
+	if len(postIDs) == 0 {
+		return nil, nil
+	}
+
+	var items []*entities.PostMedia
+	err := r.GetDB(ctx).
+		Where("post_id IN ?", postIDs).
+		Order("sort_order ASC, created_at ASC").
+		Find(&items).Error
+	return items, err
+}
+
 func (r *PostMediaRepository) BulkCreate(ctx context.Context, items []*entities.PostMedia) error {
 	if len(items) == 0 {
 		return nil

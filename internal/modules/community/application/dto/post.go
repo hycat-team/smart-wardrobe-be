@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 
 	"github.com/google/uuid"
@@ -44,8 +45,26 @@ type UpdatePostReq struct {
 	Media       []PostMediaReq     `json:"media"`
 }
 
-type UpdatePostItemsBuyerReq struct {
-	BuyerUserID uuid.UUID `json:"buyerUserId" binding:"required" label:"người mua"`
+type MarkPostItemsSoldReq struct {
+	BuyerID     uuid.UUID   `json:"buyerId" binding:"required" label:"người mua"`
+	PostItemIDs []uuid.UUID `json:"postItemIds" binding:"required,min=1" label:"danh sách trang phục"`
+}
+
+type CreateTransferRequestsReq struct {
+	PostItemIDs []uuid.UUID `json:"postItemIds" binding:"required,min=1" label:"danh sách trang phục"`
+}
+
+type AcceptTransfersReq struct {
+	PostItemIDs []uuid.UUID `json:"postItemIds" binding:"required,min=1" label:"danh sách trang phục"`
+}
+
+type TransferRequestRes struct {
+	ID        uuid.UUID                   `json:"id"`
+	BuyerID   uuid.UUID                   `json:"buyerId"`
+	Username  string                      `json:"username"`
+	AvatarURL *string                     `json:"avatarUrl,omitempty"`
+	Status    requeststatus.RequestStatus `json:"status"`
+	CreatedAt time.Time                   `json:"createdAt"`
 }
 
 type RemovePostItemsReq struct {

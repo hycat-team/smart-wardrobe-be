@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
@@ -187,6 +186,41 @@ func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.User
 	return mapper.MapToUserRes(user, sub), nil
 }
 
+func (uc *UserUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserRes, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+
+	users, err := uc.userRepo.GetByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	usersByID := make(map[uuid.UUID]*entities.User, len(users))
+	for _, user := range users {
+		if user == nil || user.IsDeleted {
+			continue
+		}
+		usersByID[user.ID] = user
+	}
+
+	subscriptionsByUserID, err := uc.subscriptionContract.GetUserSubscriptionOverviews(ctx, userIDs)
+	if err != nil {
+		subscriptionsByUserID = nil
+	}
+
+	result := make([]*dto.UserRes, 0, len(userIDs))
+	for _, userID := range userIDs {
+		user := usersByID[userID]
+		if user == nil {
+			continue
+		}
+		result = append(result, mapper.MapToUserRes(user, subscriptionsByUserID[user.ID]))
+	}
+
+	return result, nil
+}
+
 func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByUsername(ctx, username)
 	if err != nil {
@@ -293,12 +327,18 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 	}
 
 	resUsers := make([]*dto.UserRes, len(result.Users))
+	userIDs := make([]uuid.UUID, 0, len(result.Users))
+	for _, user := range result.Users {
+		userIDs = append(userIDs, user.ID)
+	}
+
+	subscriptionsByUserID, err := uc.subscriptionContract.GetUserSubscriptionOverviews(ctx, userIDs)
+	if err != nil {
+		subscriptionsByUserID = nil
+	}
+
 	for idx, user := range result.Users {
-		sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, user.ID)
-		if err != nil {
-			sub = nil
-		}
-		resUsers[idx] = mapper.MapToUserRes(user, sub)
+		resUsers[idx] = mapper.MapToUserRes(user, subscriptionsByUserID[user.ID])
 	}
 
 	limit := query.Limit
@@ -325,4 +365,3 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 		},
 	}, nil
 }
-

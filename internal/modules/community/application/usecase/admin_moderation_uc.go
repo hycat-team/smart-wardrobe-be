@@ -12,6 +12,7 @@ import (
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -20,29 +21,32 @@ import (
 )
 
 type AdminCommunityModerationUseCase struct {
-	postRepo     repositories.IPostRepository
-	postItemRepo repositories.IPostItemRepository
-	commentRepo  repositories.ICommentRepository
-	wardrobeCtr  wardrobe_contract.IWardrobeContract
-	uow          shared_repos.IUnitOfWork
-	logger       logger.Interface
+	postRepo      repositories.IPostRepository
+	postItemRepo  repositories.IPostItemRepository
+	postMediaRepo repositories.IPostMediaRepository
+	commentRepo   repositories.ICommentRepository
+	wardrobeCtr   wardrobe_contract.IWardrobeContract
+	uow           shared_repos.IUnitOfWork
+	logger        logger.Interface
 }
 
 func NewAdminCommunityModerationUseCase(
 	log logger.Interface,
 	postRepo repositories.IPostRepository,
 	postItemRepo repositories.IPostItemRepository,
+	postMediaRepo repositories.IPostMediaRepository,
 	commentRepo repositories.ICommentRepository,
 	wardrobeCtr wardrobe_contract.IWardrobeContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IAdminCommunityModerationUseCase {
 	return &AdminCommunityModerationUseCase{
-		postRepo:     postRepo,
-		postItemRepo: postItemRepo,
-		commentRepo:  commentRepo,
-		wardrobeCtr:  wardrobeCtr,
-		uow:          uow,
-		logger:       log,
+		postRepo:      postRepo,
+		postItemRepo:  postItemRepo,
+		postMediaRepo: postMediaRepo,
+		commentRepo:   commentRepo,
+		wardrobeCtr:   wardrobeCtr,
+		uow:           uow,
+		logger:        log,
 	}
 }
 
@@ -234,12 +238,37 @@ func (uc *AdminCommunityModerationUseCase) GetPostsForAdmin(ctx context.Context,
 	}
 
 	resPosts := make([]*dto.PostRes, len(result.Posts))
-	for idx, post := range result.Posts {
-		_, items, media, err := uc.postRepo.GetDetail(ctx, post.PublicID)
-		if err != nil {
-			return nil, err
+	postIDs := make([]uuid.UUID, 0, len(result.Posts))
+	for _, post := range result.Posts {
+		postIDs = append(postIDs, post.ID)
+	}
+
+	postItems, err := uc.postItemRepo.GetByPostIDs(ctx, uniqueUUIDs(postIDs))
+	if err != nil {
+		return nil, err
+	}
+	postItemsByPostID := make(map[uuid.UUID][]*entities.PostItem)
+	for _, item := range postItems {
+		if item == nil {
+			continue
 		}
-		resPosts[idx] = mapper.MapPost(post, items, media, false, 0, 0)
+		postItemsByPostID[item.PostID] = append(postItemsByPostID[item.PostID], item)
+	}
+
+	postMedia, err := uc.postMediaRepo.GetByPostIDs(ctx, uniqueUUIDs(postIDs))
+	if err != nil {
+		return nil, err
+	}
+	postMediaByPostID := make(map[uuid.UUID][]*entities.PostMedia)
+	for _, item := range postMedia {
+		if item == nil {
+			continue
+		}
+		postMediaByPostID[item.PostID] = append(postMediaByPostID[item.PostID], item)
+	}
+
+	for idx, post := range result.Posts {
+		resPosts[idx] = mapper.MapPost(post, postItemsByPostID[post.ID], postMediaByPostID[post.ID], false, 0, 0)
 	}
 
 	limit := query.Limit
@@ -394,4 +423,3 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 }
 
 var _ uc_interfaces.IAdminCommunityModerationUseCase = (*AdminCommunityModerationUseCase)(nil)
-

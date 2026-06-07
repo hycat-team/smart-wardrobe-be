@@ -186,6 +186,63 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 	}, nil
 }
 
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
+	result := make(map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+
+	subs, err := uc.userSubRepo.GetByUserIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	foundUserIDs := make(map[uuid.UUID]struct{}, len(subs))
+	for _, sub := range subs {
+		if sub == nil {
+			continue
+		}
+
+		plan := sub.SubscriptionPlan
+		if plan == nil {
+			plan, err = uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
+			if err != nil {
+				return nil, err
+			}
+			if plan == nil {
+				return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
+			}
+		}
+
+		result[sub.UserID] = &contract.UserSubscriptionOverviewDTO{
+			PlanID:             plan.ID,
+			PlanName:           plan.Name,
+			PlanSlug:           plan.Slug,
+			ExpiresAt:          sub.ExpiresAt,
+			IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
+			MaxWardrobeItems:   plan.MaxWardrobeItems,
+			MaxOutfits:         plan.MaxOutfits,
+			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
+			AiChatDailyQuota:   plan.AiChatDailyQuota,
+		}
+		foundUserIDs[sub.UserID] = struct{}{}
+	}
+
+	for _, userID := range userIDs {
+		if _, exists := foundUserIDs[userID]; exists {
+			continue
+		}
+
+		overview, overviewErr := uc.GetUserSubscriptionOverview(ctx, userID)
+		if overviewErr != nil {
+			return nil, overviewErr
+		}
+		result[userID] = overview
+	}
+
+	return result, nil
+}
+
 // === Helper ===
 
 func (uc *SubscriptionUseCase) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
@@ -239,4 +296,3 @@ func (uc *SubscriptionUseCase) getOrCreateUserDailyQuota(ctx context.Context, us
 	}
 	return quota, nil
 }
-

@@ -75,6 +75,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
 	iPostRepository := persistence3.NewPostRepository(gormDB)
 	iPostItemRepository := persistence3.NewPostItemRepository(gormDB)
+	iPostMediaRepository := persistence3.NewPostMediaRepository(gormDB)
 	iCommentRepository := persistence3.NewCommentRepository(gormDB)
 	iWardrobeItemRepository := persistence4.NewWardrobeItemRepository(gormDB)
 	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
@@ -88,7 +89,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iConversationalContextRepository, iMessageRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, rabbitMQClient, iUnitOfWork)
-	iAdminCommunityModerationUseCase := usecase3.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
+	iAdminCommunityModerationUseCase := usecase3.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
 	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
 	client, err := caching.NewRedisConnection(cfg)
@@ -124,13 +125,13 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	categoryRouter := category2.NewRouter(categoryHandler)
 	iPostScoreRepository := persistence3.NewPostScoreRepository(gormDB)
-	iPostMediaRepository := persistence3.NewPostMediaRepository(gormDB)
 	iLikeRepository := persistence3.NewLikeRepository(gormDB)
 	iUserPostUseCase := usecase3.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
 	postHandler := handler2.NewPostHandler(iUserPostUseCase)
 	iUserPostInteractionUseCase := usecase3.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
 	postInteractionHandler := handler2.NewPostInteractionHandler(iUserPostInteractionUseCase)
-	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
+	iTransferRequestRepository := persistence3.NewTransferRequestRepository(gormDB)
+	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iTransferRequestRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
 	itemTransferHandler := handler2.NewItemTransferHandler(iItemTransferUseCase)
 	communityRouter := community.NewRouter(postHandler, postInteractionHandler, itemTransferHandler, authMiddleware)
 	appRouter := &routes.AppRouter{

@@ -29,6 +29,19 @@ func (r *PostItemRepository) GetByPostID(ctx context.Context, postID uuid.UUID) 
 	return items, err
 }
 
+func (r *PostItemRepository) GetByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*entities.PostItem, error) {
+	if len(postIDs) == 0 {
+		return nil, nil
+	}
+
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).
+		Where("post_id IN ? AND status <> ?", postIDs, postitemstatus.Hidden).
+		Order("created_at ASC").
+		Find(&items).Error
+	return items, err
+}
+
 func (r *PostItemRepository) GetPendingByBuyerID(ctx context.Context, buyerUserID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("buyer_user_id = ? AND transfer_state = ?", buyerUserID, transferstate.Pending).Find(&items).Error
@@ -85,6 +98,20 @@ func (r *PostItemRepository) HasActiveTransfer(ctx context.Context, itemID uuid.
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *PostItemRepository) GetActiveTransfersByItemIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.PostItem, error) {
+	if len(itemIDs) == 0 {
+		return nil, nil
+	}
+
+	var items []*entities.PostItem
+	err := r.GetDB(ctx).
+		Model(&entities.PostItem{}).
+		Where("item_id IN ?", itemIDs).
+		Where("(status = ? OR transfer_state = ?)", postitemstatus.Sold, transferstate.Pending).
+		Find(&items).Error
+	return items, err
 }
 
 func (r *PostItemRepository) DeleteByPostAndIDs(ctx context.Context, postID uuid.UUID, ids []uuid.UUID) error {
@@ -146,3 +173,11 @@ func (r *PostItemRepository) GetPostItemsForAdmin(ctx context.Context, filter re
 	}, nil
 }
 
+func (r *PostItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.PostItem, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).Where("id IN ?", ids).Find(&items).Error
+	return items, err
+}

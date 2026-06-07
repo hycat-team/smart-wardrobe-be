@@ -16,6 +16,7 @@ var ProviderSet = wire.NewSet(
 	persistence.NewPostMediaRepository,
 	persistence.NewCommentRepository,
 	persistence.NewLikeRepository,
+	persistence.NewTransferRequestRepository,
 	usecase.NewUserPostUseCase,
 	usecase.NewPostInteractionUseCase,
 	usecase.NewAdminCommunityModerationUseCase,

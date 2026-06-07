@@ -16,6 +16,7 @@ type ISubscriptionPlanContract interface {
 type IUserSubscriptionContract interface {
 	GetUserSubscription(ctx context.Context, userID uuid.UUID) (*UserSubscriptionDTO, error)
 	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*UserSubscriptionOverviewDTO, error)
+	GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*UserSubscriptionOverviewDTO, error)
 }
 
 // IUserQuotaContract manages daily quota evaluations, updates, and constraints

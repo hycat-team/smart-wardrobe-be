@@ -243,6 +243,19 @@ CREATE TABLE post_media (
 );
 
 -- ========================================================
+-- Bảng quản lý yêu cầu chuyển nhượng trang phục (Transfer Requests)
+-- ========================================================
+CREATE TABLE transfer_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_item_id UUID NOT NULL REFERENCES post_items(id) ON DELETE CASCADE,
+    buyer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status SMALLINT NOT NULL DEFAULT 0, -- 0: Pending, 1: Accepted, 2: Rejected, 3: Canceled
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_pending_request UNIQUE (post_item_id, buyer_id)
+);
+
+-- ========================================================
 -- Bảng bình luận (Comments)
 -- ========================================================
 CREATE TABLE comments (

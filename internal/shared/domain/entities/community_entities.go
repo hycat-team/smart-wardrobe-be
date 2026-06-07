@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 
 	"github.com/google/uuid"
@@ -80,4 +81,13 @@ type Like struct {
 	Post      *Post      `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE"`
 	CommentID *uuid.UUID `gorm:"type:uuid"`
 	Comment   *Comment   `gorm:"foreignKey:CommentID;constraint:OnDelete:CASCADE"`
+}
+
+type TransferRequest struct {
+	AuditableEntity
+	PostItemID uuid.UUID                   `gorm:"type:uuid;not null;uniqueIndex:unique_pending_request"`
+	PostItem   *PostItem                   `gorm:"foreignKey:PostItemID;constraint:OnDelete:CASCADE"`
+	BuyerID    uuid.UUID                   `gorm:"type:uuid;not null;uniqueIndex:unique_pending_request"`
+	Buyer      *User                       `gorm:"foreignKey:BuyerID;constraint:OnDelete:CASCADE"`
+	Status     requeststatus.RequestStatus `gorm:"type:smallint;not null;default:0"`
 }

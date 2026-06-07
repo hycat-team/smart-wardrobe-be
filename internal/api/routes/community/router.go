@@ -62,16 +62,18 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	transfers := group.Group("/transfers")
 	transfers.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
 	
+	// Transfer requests
+	transfers.POST("/requests", shared_pres.WrapHandler(r.transferHandler.CreateTransferRequests))
+	transfers.GET("/items/:postItemID/requests", shared_pres.WrapHandler(r.transferHandler.GetTransferRequestsForSeller))
+
+	// Transfer bulk actions
+	transfers.POST("/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemsSold))
+	transfers.POST("/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfers))
+	transfers.POST("/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfers))
+
 	me := transfers.Group("/me")
 	{
 		me.GET("/pending", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
 		me.GET("/posts", shared_pres.WrapHandler(r.transferHandler.GetSellerTransferPosts))
-	}
-
-	items := transfers.Group("/items")
-	{
-		items.POST("/:postItemID/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfer))
-		items.POST("/:postItemID/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfer))
-		items.POST("/:postItemID/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemSold))
 	}
 }

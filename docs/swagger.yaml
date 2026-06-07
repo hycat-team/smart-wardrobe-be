@@ -1,4 +1,14 @@
 definitions:
+  smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq:
+    properties:
+      postItemIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - postItemIds
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.AddCommentReq:
     properties:
       content:
@@ -73,6 +83,16 @@ definitions:
     - content
     - postType
     type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.CreateTransferRequestsReq:
+    properties:
+      postItemIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - postItemIds
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes:
     properties:
       items:
@@ -88,6 +108,19 @@ definitions:
         type: boolean
     required:
     - isLiked
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.MarkPostItemsSoldReq:
+    properties:
+      buyerId:
+        type: string
+      postItemIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - buyerId
+    - postItemIds
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.PendingTransferRes:
     properties:
@@ -279,19 +312,27 @@ definitions:
       username:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.TransferRequestRes:
+    properties:
+      avatarUrl:
+        type: string
+      buyerId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_requeststatus.RequestStatus'
+      username:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.UpdateCommentReq:
     properties:
       content:
         type: string
     required:
     - content
-    type: object
-  smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq:
-    properties:
-      buyerUserId:
-        type: string
-    required:
-    - buyerUserId
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostReq:
     properties:
@@ -1050,6 +1091,19 @@ definitions:
     x-enum-varnames:
     - Sale
     - Outfit
+  smart-wardrobe-be_internal_shared_domain_constants_requeststatus.RequestStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Pending
+    - Accepted
+    - Rejected
+    - Canceled
   smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
     enum:
     - admin
@@ -2718,15 +2772,18 @@ paths:
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
-  /api/v1/transfers/items/{postItemID}/accept:
+  /api/v1/transfers/accept:
     post:
-      description: Đồng ý nhận trang phục đã mua về tủ đồ cá nhân
+      consumes:
+      - application/json
+      description: Đồng ý nhận danh sách trang phục đã mua về tủ đồ cá nhân
       parameters:
-      - description: ID chi tiết món đồ trong bài đăng
-        in: path
-        name: postItemID
+      - description: Danh sách sản phẩm bàn giao
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq'
       produces:
       - application/json
       responses:
@@ -2737,20 +2794,26 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
               type: object
-      summary: Chấp nhận nhận bàn giao trang phục
+      summary: Chấp nhận nhận bàn giao danh sách trang phục
       tags:
       - Transfers
-  /api/v1/transfers/items/{postItemID}/decline:
+  /api/v1/transfers/decline:
     post:
-      description: Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
+      consumes:
+      - application/json
+      description: Từ chối nhận bàn giao danh sách trang phục mua từ bài đăng cộng
+        đồng
       parameters:
-      - description: ID chi tiết món đồ trong bài đăng
-        in: path
-        name: postItemID
+      - description: Danh sách sản phẩm bàn giao
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq'
       produces:
       - application/json
       responses:
@@ -2758,27 +2821,49 @@ paths:
           description: Từ chối nhận món đồ thành công
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Từ chối nhận bàn giao trang phục
+      summary: Từ chối nhận bàn giao danh sách trang phục
       tags:
       - Transfers
-  /api/v1/transfers/items/{postItemID}/mark-sold:
-    post:
-      consumes:
-      - application/json
-      description: Đánh dấu trang phục đã được bán cho một người dùng khác và kích
-        hoạt trạng thái bàn giao
+  /api/v1/transfers/items/{postItemID}/requests:
+    get:
+      description: Người bán xem danh sách những người mua đã gửi yêu cầu xin mua
+        cho món đồ cụ thể
       parameters:
       - description: ID chi tiết món đồ trong bài đăng
         in: path
         name: postItemID
         required: true
         type: string
-      - description: Thông tin người mua
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách người xin mua thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.TransferRequestRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách người xin mua của một sản phẩm
+      tags:
+      - Transfers
+  /api/v1/transfers/mark-sold:
+    post:
+      consumes:
+      - application/json
+      description: Đánh dấu danh sách các trang phục đã được bán cho một người dùng
+        khác (qua buyerId) và kích hoạt trạng thái bàn giao
+      parameters:
+      - description: Thông tin người mua và danh sách sản phẩm
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq'
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.MarkPostItemsSoldReq'
       produces:
       - application/json
       responses:
@@ -2786,7 +2871,7 @@ paths:
           description: Đánh dấu đã bán thành công
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Đánh dấu món đồ đã bán
+      summary: Đánh dấu các món đồ đã bán (Bulk)
       tags:
       - Transfers
   /api/v1/transfers/me/pending:
@@ -2829,6 +2914,29 @@ paths:
                   type: array
               type: object
       summary: Danh sách bài đăng bàn giao của người bán
+      tags:
+      - Transfers
+  /api/v1/transfers/requests:
+    post:
+      consumes:
+      - application/json
+      description: Người mua đăng ký muốn mua một hoặc nhiều món đồ trong bài đăng
+        của người bán
+      parameters:
+      - description: Danh sách sản phẩm xin mua
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CreateTransferRequestsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Gửi yêu cầu xin mua thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Gửi yêu cầu xin mua trang phục (Bulk)
       tags:
       - Transfers
   /api/v1/wardrobe-items/{id}:

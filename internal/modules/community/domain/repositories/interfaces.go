@@ -29,6 +29,7 @@ type IPostRepository interface {
 	GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error)
 	GetHotFeedCandidates(ctx context.Context, query dto.FeedQuery, limit int) ([]*dto.FeedPostRecord, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Post, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Post, error)
 	GetByPublicID(ctx context.Context, publicID string) (*entities.Post, error)
 	GetDetail(ctx context.Context, postPublicID string) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error)
 	GetDirtyPostIDs(ctx context.Context, limit int) ([]uuid.UUID, error)
@@ -62,19 +63,23 @@ type AdminPostItemListResult struct {
 type IPostItemRepository interface {
 	shared_repos.IGenericRepository[entities.PostItem, uuid.UUID]
 	GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.PostItem, error)
+	GetByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*entities.PostItem, error)
 	GetPendingByBuyerID(ctx context.Context, buyerUserID uuid.UUID) ([]*entities.PostItem, error)
 	GetTransferItemsBySellerID(ctx context.Context, sellerUserID uuid.UUID) ([]*entities.PostItem, error)
 	GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error)
 	GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error)
 	HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error)
+	GetActiveTransfersByItemIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.PostItem, error)
 	DeleteByPostAndIDs(ctx context.Context, postID uuid.UUID, ids []uuid.UUID) error
 	SumVisiblePriceByPostID(ctx context.Context, postID uuid.UUID) (float64, error)
 	GetPostItemsForAdmin(ctx context.Context, filter AdminPostItemFilter) (*AdminPostItemListResult, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.PostItem, error)
 }
 
 type IPostMediaRepository interface {
 	shared_repos.IGenericRepository[entities.PostMedia, uuid.UUID]
 	GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.PostMedia, error)
+	GetByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*entities.PostMedia, error)
 	BulkCreate(ctx context.Context, items []*entities.PostMedia) error
 	DeleteByPostID(ctx context.Context, postID uuid.UUID) error
 }
@@ -95,4 +100,12 @@ type ILikeRepository interface {
 	GetPostLike(ctx context.Context, userID uuid.UUID, postID uuid.UUID) (*entities.Like, error)
 	GetLikedPostIDs(ctx context.Context, userID uuid.UUID, postIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 	GetUsersByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.User, error)
+}
+
+type ITransferRequestRepository interface {
+	shared_repos.IGenericRepository[entities.TransferRequest, uuid.UUID]
+	GetByPostItemID(ctx context.Context, postItemID uuid.UUID) ([]*entities.TransferRequest, error)
+	GetPendingByBuyerAndItems(ctx context.Context, buyerID uuid.UUID, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error)
+	GetByBuyerAndPostItem(ctx context.Context, buyerID uuid.UUID, postItemID uuid.UUID) (*entities.TransferRequest, error)
+	GetByBuyerAndPostItems(ctx context.Context, buyerID uuid.UUID, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error)
 }

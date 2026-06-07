@@ -30,4 +30,7 @@ var (
 	ErrTransferForbidden        = apperror.NewForbidden("Bạn không được phép thực hiện thao tác này.")
 	ErrItemInAnotherTransfer    = apperror.NewBadRequest("Trang phục này đang nằm trong một giao dịch khác.")
 	ErrTransferRequestInvalid   = apperror.NewBadRequest("Yêu cầu chuyển nhượng này đã được xử lý hoặc không còn hiệu lực.")
+	ErrBuyerNotFound            = apperror.NewNotFound("Không tìm thấy người mua được chỉ định.")
+	ErrNoPendingRequest         = apperror.NewBadRequest("Người mua này chưa gửi yêu cầu xin mua sản phẩm này.")
+	ErrBuyerSelfRequest         = apperror.NewBadRequest("Bạn không thể tự gửi yêu cầu mua sản phẩm của chính mình.")
 )

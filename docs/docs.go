@@ -2538,23 +2538,28 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/transfers/items/{postItemID}/accept": {
+        "/api/v1/transfers/accept": {
             "post": {
-                "description": "Đồng ý nhận trang phục đã mua về tủ đồ cá nhân",
+                "description": "Đồng ý nhận danh sách trang phục đã mua về tủ đồ cá nhân",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Transfers"
                 ],
-                "summary": "Chấp nhận nhận bàn giao trang phục",
+                "summary": "Chấp nhận nhận bàn giao danh sách trang phục",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "ID chi tiết món đồ trong bài đăng",
-                        "name": "postItemID",
-                        "in": "path",
-                        "required": true
+                        "description": "Danh sách sản phẩm bàn giao",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -2569,7 +2574,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                            }
                                         }
                                     }
                                 }
@@ -2579,23 +2587,28 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/transfers/items/{postItemID}/decline": {
+        "/api/v1/transfers/decline": {
             "post": {
-                "description": "Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng",
+                "description": "Từ chối nhận bàn giao danh sách trang phục mua từ bài đăng cộng đồng",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Transfers"
                 ],
-                "summary": "Từ chối nhận bàn giao trang phục",
+                "summary": "Từ chối nhận bàn giao danh sách trang phục",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "ID chi tiết món đồ trong bài đăng",
-                        "name": "postItemID",
-                        "in": "path",
-                        "required": true
+                        "description": "Danh sách sản phẩm bàn giao",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -2608,9 +2621,53 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/transfers/items/{postItemID}/mark-sold": {
+        "/api/v1/transfers/items/{postItemID}/requests": {
+            "get": {
+                "description": "Người bán xem danh sách những người mua đã gửi yêu cầu xin mua cho món đồ cụ thể",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transfers"
+                ],
+                "summary": "Lấy danh sách người xin mua của một sản phẩm",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID chi tiết món đồ trong bài đăng",
+                        "name": "postItemID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy danh sách người xin mua thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.TransferRequestRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transfers/mark-sold": {
             "post": {
-                "description": "Đánh dấu trang phục đã được bán cho một người dùng khác và kích hoạt trạng thái bàn giao",
+                "description": "Đánh dấu danh sách các trang phục đã được bán cho một người dùng khác (qua buyerId) và kích hoạt trạng thái bàn giao",
                 "consumes": [
                     "application/json"
                 ],
@@ -2620,22 +2677,15 @@ const docTemplate = `{
                 "tags": [
                     "Transfers"
                 ],
-                "summary": "Đánh dấu món đồ đã bán",
+                "summary": "Đánh dấu các món đồ đã bán (Bulk)",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "ID chi tiết món đồ trong bài đăng",
-                        "name": "postItemID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Thông tin người mua",
+                        "description": "Thông tin người mua và danh sách sản phẩm",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.MarkPostItemsSoldReq"
                         }
                     }
                 ],
@@ -2714,6 +2764,40 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transfers/requests": {
+            "post": {
+                "description": "Người mua đăng ký muốn mua một hoặc nhiều món đồ trong bài đăng của người bán",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transfers"
+                ],
+                "summary": "Gửi yêu cầu xin mua trang phục (Bulk)",
+                "parameters": [
+                    {
+                        "description": "Danh sách sản phẩm xin mua",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CreateTransferRequestsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Gửi yêu cầu xin mua thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
                         }
                     }
                 }
@@ -3050,6 +3134,21 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "smart-wardrobe-be_internal_modules_community_application_dto.AcceptTransfersReq": {
+            "type": "object",
+            "required": [
+                "postItemIds"
+            ],
+            "properties": {
+                "postItemIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_community_application_dto.AddCommentReq": {
             "type": "object",
             "required": [
@@ -3165,6 +3264,21 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_community_application_dto.CreateTransferRequestsReq": {
+            "type": "object",
+            "required": [
+                "postItemIds"
+            ],
+            "properties": {
+                "postItemIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_community_application_dto.GetFeedRes": {
             "type": "object",
             "properties": {
@@ -3187,6 +3301,25 @@ const docTemplate = `{
             "properties": {
                 "isLiked": {
                     "type": "boolean"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_community_application_dto.MarkPostItemsSoldReq": {
+            "type": "object",
+            "required": [
+                "buyerId",
+                "postItemIds"
+            ],
+            "properties": {
+                "buyerId": {
+                    "type": "string"
+                },
+                "postItemIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -3480,6 +3613,29 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_community_application_dto.TransferRequestRes": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "buyerId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_requeststatus.RequestStatus"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_community_application_dto.UpdateCommentReq": {
             "type": "object",
             "required": [
@@ -3487,17 +3643,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
-                    "type": "string"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq": {
-            "type": "object",
-            "required": [
-                "buyerUserId"
-            ],
-            "properties": {
-                "buyerUserId": {
                     "type": "string"
                 }
             }
@@ -4629,6 +4774,22 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "Sale",
                 "Outfit"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_requeststatus.RequestStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "Pending",
+                "Accepted",
+                "Rejected",
+                "Canceled"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug": {

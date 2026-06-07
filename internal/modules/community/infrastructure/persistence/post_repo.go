@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-
 	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -156,6 +155,22 @@ func (r *PostRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*
 		Order("created_at DESC").
 		Find(&items).Error
 	return items, err
+}
+
+func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Post, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var posts []*entities.Post
+	err := r.GetQueryWithPreload(ctx).
+		Joins("JOIN users ON users.id = posts.user_id").
+		Where("posts.id IN ? AND posts.is_deleted = ? AND users.is_deleted = ?", ids, false, false).
+		Find(&posts).Error
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
 
 func (r *PostRepository) GetDetail(ctx context.Context, postPublicID string) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error) {
@@ -315,4 +330,3 @@ func (r *PostRepository) GetPostsForAdmin(ctx context.Context, filter repositori
 		TotalCount: totalCount,
 	}, nil
 }
-

@@ -38,14 +38,12 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 	}
 
 	if normalizedPostType == posttype.Sale {
-		for _, item := range resolvedItems {
-			hasActiveTransfer, err := uc.writer.postItemRepo.HasActiveTransfer(ctx, item.ItemID, nil)
-			if err != nil {
-				return nil, err
-			}
-			if hasActiveTransfer {
-				return nil, communityerrors.ErrActiveTransferExists
-			}
+		activeTransfers, err := uc.writer.postItemRepo.GetActiveTransfersByItemIDs(ctx, itemIDs)
+		if err != nil {
+			return nil, err
+		}
+		if len(activeTransfers) > 0 {
+			return nil, communityerrors.ErrActiveTransferExists
 		}
 	}
 
