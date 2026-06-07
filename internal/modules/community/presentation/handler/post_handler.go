@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	msgPostCreateSuccess              = "Tạo bài đăng thành công"
-	msgPostGetFeedSuccess             = "Lấy feed thành công"
+	msgPostCreateSuccess             = "Tạo bài đăng thành công"
+	msgPostGetFeedSuccess            = "Lấy feed thành công"
 	msgPostGetUploadSignatureSuccess = "Lấy chữ ký tải media bài đăng thành công"
-	msgPostGetDetailSuccess           = "Lấy chi tiết bài đăng thành công"
-	msgPostDeleteSuccess              = "Xóa bài đăng thành công"
-	msgPostRemoveItemsSuccess         = "Gỡ món khỏi bài đăng thành công"
+	msgPostGetDetailSuccess          = "Lấy chi tiết bài đăng thành công"
+	msgPostDeleteSuccess             = "Xóa bài đăng thành công"
+	msgPostRemoveItemsSuccess        = "Gỡ món khỏi bài đăng thành công"
 )
 
 type PostHandler struct {
-	postUC usecase_interfaces.IPostUseCase
+	postUC usecase_interfaces.IUserPostUseCase
 }
 
-func NewPostHandler(postUC usecase_interfaces.IPostUseCase) *PostHandler {
+func NewPostHandler(postUC usecase_interfaces.IUserPostUseCase) *PostHandler {
 	return &PostHandler{postUC: postUC}
 }
 

@@ -11,23 +11,21 @@ import (
 )
 
 const (
-	msgAdminDeletePostSuccess    = "Xóa bài đăng thành công"
-	msgAdminDeleteCommentSuccess = "Xóa bình luận thành công"
+	msgAdminDeletePostSuccess     = "Xóa bài đăng thành công"
+	msgAdminDeleteCommentSuccess  = "Xóa bình luận thành công"
 	msgAdminHidePostItemSuccess   = "Ẩn listing thành công"
+	msgAdminDeletePostItemSuccess = "Xóa listing vi phạm thành công"
 )
 
 type AdminHandler struct {
-	postUC        usecase_interfaces.IPostUseCase
-	interactionUC usecase_interfaces.IPostInteractionUseCase
+	moderationUC usecase_interfaces.IAdminCommunityModerationUseCase
 }
 
 func NewAdminHandler(
-	postUC usecase_interfaces.IPostUseCase,
-	interactionUC usecase_interfaces.IPostInteractionUseCase,
+	moderationUC usecase_interfaces.IAdminCommunityModerationUseCase,
 ) *AdminHandler {
 	return &AdminHandler{
-		postUC:        postUC,
-		interactionUC: interactionUC,
+		moderationUC: moderationUC,
 	}
 }
 
@@ -50,7 +48,7 @@ func (h *AdminHandler) DeletePost(c *gin.Context) error {
 		return communityerrors.ErrInvalidPostIDFormat
 	}
 
-	if err := h.postUC.AdminDeletePost(c.Request.Context(), adminUserID, postID); err != nil {
+	if err := h.moderationUC.AdminDeletePost(c.Request.Context(), adminUserID, postID); err != nil {
 		return err
 	}
 
@@ -77,7 +75,7 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
-	if err := h.interactionUC.AdminDeleteComment(c.Request.Context(), adminUserID, commentID); err != nil {
+	if err := h.moderationUC.AdminDeleteComment(c.Request.Context(), adminUserID, commentID); err != nil {
 		return err
 	}
 
@@ -87,12 +85,12 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 
 // HidePostItem ẩn listing community bằng quyền admin
 // @Summary Ẩn listing community
-// @Description Cho phép admin ẩn listing hoặc post item vi phạm khỏi community
+// @Description Cho phép admin ẩn listing hoặc post item vi phạm khỏi community và giữ nguyên bài đăng cha
 // @Tags Admin
 // @Produce json
 // @Param postItemID path string true "ID post item"
 // @Success 200 {object} shared_pres.APIResponse "Ẩn listing thành công"
-// @Router /api/v1/admin/community/post-items/{postItemID} [delete]
+// @Router /api/v1/admin/community/post-items/{postItemID}/hide [patch]
 func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -104,10 +102,37 @@ func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 		return communityerrors.ErrInvalidPostItemIDFormat
 	}
 
-	if err := h.postUC.AdminHidePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
+	if err := h.moderationUC.AdminHidePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
 		return err
 	}
 
 	shared_pres.Success(c, msgAdminHidePostItemSuccess, nil)
+	return nil
+}
+
+// DeletePostItem xóa listing community vi phạm bằng quyền admin
+// @Summary Xóa listing community
+// @Description Cho phép admin xóa listing hoặc post item vi phạm bằng cách xóa luôn bài đăng cha liên quan
+// @Tags Admin
+// @Produce json
+// @Param postItemID path string true "ID post item"
+// @Success 200 {object} shared_pres.APIResponse "Xóa listing vi phạm thành công"
+// @Router /api/v1/admin/community/post-items/{postItemID} [delete]
+func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
+	adminUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	postItemID, err := uuid.Parse(c.Param("postItemID"))
+	if err != nil {
+		return communityerrors.ErrInvalidPostItemIDFormat
+	}
+
+	if err := h.moderationUC.AdminDeletePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAdminDeletePostItemSuccess, nil)
 	return nil
 }

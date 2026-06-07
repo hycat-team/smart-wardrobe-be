@@ -13,17 +13,17 @@ import (
 )
 
 const (
-	msgInteractionToggleLikeSuccess     = "Cập nhật like thành công"
-	msgInteractionAddCommentSuccess     = "Thêm bình luận thành công"
-	msgInteractionUpdateCommentSuccess  = "Cập nhật bình luận thành công"
-	msgInteractionDeleteCommentSuccess  = "Xóa bình luận thành công"
+	msgInteractionToggleLikeSuccess    = "Cập nhật like thành công"
+	msgInteractionAddCommentSuccess    = "Thêm bình luận thành công"
+	msgInteractionUpdateCommentSuccess = "Cập nhật bình luận thành công"
+	msgInteractionDeleteCommentSuccess = "Xóa bình luận thành công"
 )
 
 type PostInteractionHandler struct {
-	interactionUC usecase_interfaces.IPostInteractionUseCase
+	interactionUC usecase_interfaces.IUserPostInteractionUseCase
 }
 
-func NewPostInteractionHandler(interactionUC usecase_interfaces.IPostInteractionUseCase) *PostInteractionHandler {
+func NewPostInteractionHandler(interactionUC usecase_interfaces.IUserPostInteractionUseCase) *PostInteractionHandler {
 	return &PostInteractionHandler{interactionUC: interactionUC}
 }
 

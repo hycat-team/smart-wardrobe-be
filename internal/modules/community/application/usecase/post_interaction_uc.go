@@ -4,15 +4,13 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 type PostInteractionUseCase struct {
@@ -20,22 +18,19 @@ type PostInteractionUseCase struct {
 	commentRepo repositories.ICommentRepository
 	likeRepo    repositories.ILikeRepository
 	uow         shared_repos.IUnitOfWork
-	logger      logger.Interface
 }
 
 func NewPostInteractionUseCase(
-	log logger.Interface,
 	postRepo repositories.IPostRepository,
 	commentRepo repositories.ICommentRepository,
 	likeRepo repositories.ILikeRepository,
 	uow shared_repos.IUnitOfWork,
-) uc_interfaces.IPostInteractionUseCase {
+) uc_interfaces.IUserPostInteractionUseCase {
 	return &PostInteractionUseCase{
 		postRepo:    postRepo,
 		commentRepo: commentRepo,
 		likeRepo:    likeRepo,
 		uow:         uow,
-		logger:      log,
 	}
 }
 
@@ -212,48 +207,4 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 	return uc.uow.Execute(ctx, deleteComment)
 }
 
-func (uc *PostInteractionUseCase) AdminDeleteComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error {
-	deleteComment := func(txCtx context.Context) error {
-		comment, err := uc.commentRepo.GetByID(txCtx, commentID)
-		if err != nil {
-			return err
-		}
-		if comment == nil {
-			return communityerrors.ErrCommentNotFound
-		}
-
-		post, err := uc.postRepo.GetByID(txCtx, comment.PostID)
-		if err != nil {
-			return err
-		}
-		if post == nil {
-			return communityerrors.ErrPostNotFound
-		}
-
-		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
-			return err
-		}
-
-		if post.CommentCount > 0 {
-			post.CommentCount--
-		}
-		if err := uc.postRepo.Update(txCtx, post); err != nil {
-			return err
-		}
-		if err := uc.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
-			return err
-		}
-
-		uc.logger.Info("[CommunityModeration] Admin deleted comment",
-			zap.String("admin_user_id", adminUserID.String()),
-			zap.String("action", "delete_comment"),
-			zap.String("target_type", "comment"),
-			zap.String("target_id", commentID.String()),
-		)
-		return nil
-	}
-
-	return uc.uow.Execute(ctx, deleteComment)
-}
-
-var _ uc_interfaces.IPostInteractionUseCase = (*PostInteractionUseCase)(nil)
+var _ uc_interfaces.IUserPostInteractionUseCase = (*PostInteractionUseCase)(nil)

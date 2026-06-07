@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	shared_repo_dto "smart-wardrobe-be/internal/modules/community/domain/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -26,7 +26,7 @@ type scoredPost struct {
 	comments  []*entities.Comment
 }
 
-func (uc *PostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query dto.GetFeedQueryReq) (*dto.GetFeedRes, error) {
+func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query dto.GetFeedQueryReq) (*dto.GetFeedRes, error) {
 	feedQuery, err := uc.normalizeFeedQuery(query)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (uc *PostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID, que
 	}, nil
 }
 
-func (uc *PostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*dto.GetFeedRes, error) {
+func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*dto.GetFeedRes, error) {
 	records, err := uc.reader.postRepo.GetHotFeedCandidates(ctx, feedQuery, maxPersonalizedWindow)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (uc *PostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID 
 	}), nil
 }
 
-func (uc *PostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, viewerUserID *uuid.UUID) (*dto.PostRes, error) {
+func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, viewerUserID *uuid.UUID) (*dto.PostRes, error) {
 	post, items, media, err := uc.reader.postRepo.GetDetail(ctx, postID)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func (uc *PostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, view
 	return mapper.MapPost(post, items, media, comments, isLiked, score, score), nil
 }
 
-func (uc *PostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uuid.UUID, items []*dto.PostRes) ([]*dto.PostRes, error) {
+func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uuid.UUID, items []*dto.PostRes) ([]*dto.PostRes, error) {
 	postIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
 		postIDs = append(postIDs, item.ID)
@@ -235,7 +235,7 @@ func paginateFeed(items []*dto.PostRes, pagination shared_dto.PaginationQuery) *
 	}
 }
 
-func (uc *PostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared_repo_dto.FeedQuery, error) {
+func (uc *UserPostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared_repo_dto.FeedQuery, error) {
 	result := shared_repo_dto.FeedQuery{
 		Sort:  strings.ToLower(strings.TrimSpace(query.Sort)),
 		Page:  query.Page,

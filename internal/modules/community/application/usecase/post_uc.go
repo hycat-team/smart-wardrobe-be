@@ -34,7 +34,7 @@ type postWriteDependencies struct {
 	uow           shared_repos.IUnitOfWork
 }
 
-type PostUseCase struct {
+type UserPostUseCase struct {
 	cfg          *config.Config
 	logger       logger.Interface
 	reader       postReadDependencies
@@ -42,7 +42,7 @@ type PostUseCase struct {
 	mediaService media.IMediaService
 }
 
-func NewPostUseCase(
+func NewUserPostUseCase(
 	cfg *config.Config,
 	log logger.Interface,
 	postRepo repositories.IPostRepository,
@@ -55,8 +55,8 @@ func NewPostUseCase(
 	wardrobeCtr wardrobe_contract.IWardrobeContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
-) uc_interfaces.IPostUseCase {
-	return &PostUseCase{
+) uc_interfaces.IUserPostUseCase {
+	return &UserPostUseCase{
 		cfg:    cfg,
 		logger: log,
 		reader: postReadDependencies{
@@ -79,4 +79,4 @@ func NewPostUseCase(
 	}
 }
 
-var _ uc_interfaces.IPostUseCase = (*PostUseCase)(nil)
+var _ uc_interfaces.IUserPostUseCase = (*UserPostUseCase)(nil)

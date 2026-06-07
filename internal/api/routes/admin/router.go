@@ -45,7 +45,8 @@ func (r *AdminRouter) Init(group *gin.RouterGroup) {
 	{
 		adminCommunity.DELETE("/posts/:postID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePost))
 		adminCommunity.DELETE("/comments/:commentID", shared_pres.WrapHandler(r.communityAdminHandler.DeleteComment))
-		adminCommunity.DELETE("/post-items/:postItemID", shared_pres.WrapHandler(r.communityAdminHandler.HidePostItem))
+		adminCommunity.PATCH("/post-items/:postItemID/hide", shared_pres.WrapHandler(r.communityAdminHandler.HidePostItem))
+		adminCommunity.DELETE("/post-items/:postItemID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePostItem))
 	}
 
 	adminWardrobe := admin.Group("/wardrobe-items")

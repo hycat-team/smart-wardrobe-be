@@ -27,7 +27,7 @@ func NewAdminHandler(uc usecase_interfaces.IUserUseCase) *AdminHandler {
 
 // UpdateUserStatus cập nhật trạng thái tài khoản người dùng
 // @Summary Cập nhật trạng thái tài khoản người dùng
-// @Description Cho phép admin khóa hoặc mở lại tài khoản member
+// @Description Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.
 // @Tags Admin
 // @Accept json
 // @Produce json

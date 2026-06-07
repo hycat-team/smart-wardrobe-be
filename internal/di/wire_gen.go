@@ -91,9 +91,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iConversationalContextRepository, iMessageRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, rabbitMQClient, iUnitOfWork)
-	iPostUseCase := usecase3.NewPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
-	iPostInteractionUseCase := usecase3.NewPostInteractionUseCase(l, iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
-	handlerAdminHandler := handler2.NewAdminHandler(iPostUseCase, iPostInteractionUseCase)
+	iUserPostUseCase := usecase3.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
+	iUserPostInteractionUseCase := usecase3.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
+	iAdminCommunityModerationUseCase := usecase3.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
+	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
 	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
 	client, err := caching.NewRedisConnection(cfg)
 	if err != nil {
@@ -127,8 +128,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository)
 	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	categoryRouter := category2.NewRouter(categoryHandler)
-	postHandler := handler2.NewPostHandler(iPostUseCase)
-	postInteractionHandler := handler2.NewPostInteractionHandler(iPostInteractionUseCase)
+	postHandler := handler2.NewPostHandler(iUserPostUseCase)
+	postInteractionHandler := handler2.NewPostInteractionHandler(iUserPostInteractionUseCase)
 	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
 	itemTransferHandler := handler2.NewItemTransferHandler(iItemTransferUseCase)
 	communityRouter := community.NewRouter(postHandler, postInteractionHandler, itemTransferHandler, authMiddleware)
