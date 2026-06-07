@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -34,7 +34,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 	}
 
 	if len(activeItems) == 0 {
-		return nil, apperror.NewBadRequest("Tủ đồ của bạn chưa có trang phục thích hợp để phối đồ.")
+		return nil, wardrobeerrors.ErrNoSuitableItemsForOutfit
 	}
 
 	categoryPicked := map[string]bool{}
@@ -75,7 +75,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 	}
 
 	if len(groups) == 0 {
-		return nil, apperror.NewBadRequest("Không tìm thấy bộ phối đồ nào phù hợp trong tủ đồ của bạn.")
+		return nil, wardrobeerrors.ErrNoOutfitsFound
 	}
 
 	systemPrompt := "Bạn là stylist thời trang. Hãy viết giải thích ngắn gọn bằng tiếng Việt cho một bộ phối đồ duy nhất được tạo từ tủ đồ sẵn có của người dùng."
@@ -135,7 +135,7 @@ func (uc *WardrobeUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
+		return nil, wardrobeerrors.ErrChatNotFound
 	}
 
 	items, err := uc.messageRepo.GetByContextID(ctx, contextID)
@@ -156,7 +156,7 @@ func (uc *WardrobeUseCase) ArchiveChatSession(ctx context.Context, userID uuid.U
 		return err
 	}
 	if session == nil || session.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
+		return wardrobeerrors.ErrChatNotFound
 	}
 
 	session.IsArchived = true
@@ -173,7 +173,7 @@ func (uc *WardrobeUseCase) ProcessChatMessage(ctx context.Context, userID uuid.U
 		return nil, nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, nil, apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
+		return nil, nil, wardrobeerrors.ErrChatNotFound
 	}
 
 	userMessage := &entities.Message{

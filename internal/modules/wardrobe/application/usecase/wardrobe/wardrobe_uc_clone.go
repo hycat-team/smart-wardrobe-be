@@ -2,10 +2,9 @@ package wardrobe
 
 import (
 	"context"
-	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -17,7 +16,7 @@ import (
 
 func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
 	if quantity < 1 || quantity > 5 {
-		return nil, apperror.NewBadRequest("Bạn chỉ có thể tạo từ 1 đến 5 bản sao của trang phục này.")
+		return nil, wardrobeerrors.ErrInvalidCloneQuantity
 	}
 
 	// 1. Check wardrobe item limit of the subscription plan
@@ -31,7 +30,7 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 	if int(currentCount)+quantity > subOverview.MaxWardrobeItems {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Số lượng bản sao vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, quantity))
+		return nil, wardrobeerrors.ErrWardrobeLimitExceededForClone(int(currentCount), subOverview.MaxWardrobeItems, quantity)
 	}
 
 	// 2. Retrieve the original wardrobe item
@@ -40,16 +39,16 @@ func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 	if original == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy trang phục gốc để sao chép.")
+		return nil, wardrobeerrors.ErrOriginalItemToCloneNotFound
 	}
 
 	// Security constraint: Only allow cloning one's own wardrobe items
 	if original.UserID != userID {
-		return nil, apperror.NewForbidden("Bạn không thể sao chép trang phục của người dùng khác.")
+		return nil, wardrobeerrors.ErrCloneOtherUserItemForbidden
 	}
 
 	if original.Status == wardrobestatus.Sold {
-		return nil, apperror.NewBadRequest("Không thể sao chép trang phục đã được bán.")
+		return nil, wardrobeerrors.ErrCloneSoldItem
 	}
 
 	clonedItems := make([]*entities.WardrobeItem, quantity)

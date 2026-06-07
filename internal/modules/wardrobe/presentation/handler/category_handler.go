@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const msgCategoryGetCategoriesSuccess = "Lấy danh sách danh mục thành công"
+
 type CategoryHandler struct {
 	categoryUseCase usecase_interfaces.ICategoryUseCase
 }
@@ -32,6 +34,6 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách danh mục thành công", response)
+	shared_pres.Success(c, msgCategoryGetCategoriesSuccess, response)
 	return nil
 }

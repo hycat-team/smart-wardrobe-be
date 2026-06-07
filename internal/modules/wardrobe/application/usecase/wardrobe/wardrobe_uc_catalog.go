@@ -2,10 +2,9 @@ package wardrobe
 
 import (
 	"context"
-	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -17,7 +16,7 @@ import (
 
 func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	if len(catalogItemIDs) == 0 {
-		return nil, apperror.NewBadRequest("Danh sách trang phục mẫu không được để trống.")
+		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty
 	}
 
 	// 1. Check wardrobe item limit of the subscription plan
@@ -32,7 +31,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 	}
 
 	if int(currentCount)+len(catalogItemIDs) > subOverview.MaxWardrobeItems {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Số lượng trang phục khởi tạo vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(catalogItemIDs)))
+		return nil, wardrobeerrors.ErrWardrobeLimitExceededForCatalog(int(currentCount), subOverview.MaxWardrobeItems, len(catalogItemIDs))
 	}
 
 	// 2. Fetch system template catalog items from Database
@@ -41,7 +40,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 		return nil, err
 	}
 	if len(templates) == 0 {
-		return nil, apperror.NewNotFound("Không tìm thấy trang phục mẫu phù hợp.")
+		return nil, wardrobeerrors.ErrCatalogItemNotFound
 	}
 
 	newItems := make([]*entities.WardrobeItem, len(templates))

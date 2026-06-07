@@ -2,8 +2,8 @@ package search
 
 import (
 	"encoding/json"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 
 	"github.com/google/uuid"
 )
@@ -38,7 +38,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	}
 
 	if err := json.Unmarshal(respBytes, &esResult); err != nil {
-		return nil, apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
+		return nil, wardrobeerrors.ErrSearchItemsFailed
 	}
 
 	results := make([]*dto.SearchWardrobeItemRes, len(esResult.Hits.Hits))

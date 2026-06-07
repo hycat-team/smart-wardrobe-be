@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	msgWardrobeGetUploadSignatureSuccess       = "Lấy chữ ký tải ảnh trang phục thành công"
+	msgWardrobeGetItemsSuccess                 = "Lấy danh sách trang phục thành công"
+	msgWardrobeGetItemByIDSuccess               = "Lấy thông tin chi tiết trang phục thành công"
+	msgWardrobeCloneItemSuccess                = "Nhân bản trang phục thành công"
+	msgWardrobeInitClosetFromCatalogSuccess     = "Khởi tạo nhanh tủ đồ thành công"
+	msgWardrobeBatchUploadItemsSuccess         = "Tải lên và bắt đầu phân tích hàng loạt thành công"
+	msgWardrobeSearchItemsSuccess               = "Tìm kiếm trang phục thành công"
+	msgWardrobeManualClassifySuccess           = "Tự phân loại trang phục thủ công thành công"
+)
+
 type WardrobeHandler struct {
 	wardrobeUseCase usecase_interfaces.IWardrobeUseCase
 }
@@ -35,7 +46,7 @@ func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chữ ký tải ảnh trang phục thành công", signatureRes)
+	shared_pres.Success(c, msgWardrobeGetUploadSignatureSuccess, signatureRes)
 	return nil
 }
 
@@ -57,7 +68,7 @@ func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách trang phục thành công", response)
+	shared_pres.Success(c, msgWardrobeGetItemsSuccess, response)
 	return nil
 }
 
@@ -86,7 +97,7 @@ func (h *WardrobeHandler) GetWardrobeItemByID(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy thông tin chi tiết trang phục thành công", response)
+	shared_pres.Success(c, msgWardrobeGetItemByIDSuccess, response)
 	return nil
 }
 
@@ -122,7 +133,7 @@ func (h *WardrobeHandler) CloneWardrobeItem(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Nhân bản trang phục thành công", response)
+	shared_pres.Created(c, msgWardrobeCloneItemSuccess, response)
 	return nil
 }
 
@@ -151,7 +162,7 @@ func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Khởi tạo nhanh tủ đồ thành công", response)
+	shared_pres.Created(c, msgWardrobeInitClosetFromCatalogSuccess, response)
 	return nil
 }
 
@@ -184,7 +195,7 @@ func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Tải lên và bắt đầu phân tích hàng loạt thành công", response)
+	shared_pres.Created(c, msgWardrobeBatchUploadItemsSuccess, response)
 	return nil
 }
 
@@ -203,7 +214,7 @@ func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Tìm kiếm trang phục thành công", response)
+	shared_pres.Success(c, msgWardrobeSearchItemsSuccess, response)
 	return nil
 }
 
@@ -239,6 +250,6 @@ func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Tự phân loại trang phục thủ công thành công", response)
+	shared_pres.Success(c, msgWardrobeManualClassifySuccess, response)
 	return nil
 }

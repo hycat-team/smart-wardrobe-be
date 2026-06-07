@@ -2,15 +2,14 @@ package outfit
 
 import (
 	"context"
-	"fmt"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
@@ -72,7 +71,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	}
 
 	if len(existingOutfits) >= subOverview.MaxOutfits {
-		return nil, apperror.NewForbidden(fmt.Sprintf("Bạn đã đạt giới hạn số bộ phối đồ tối đa của gói dịch vụ hiện tại (%d/%d bộ).", len(existingOutfits), subOverview.MaxOutfits))
+		return nil, wardrobeerrors.ErrOutfitLimitReached(len(existingOutfits), subOverview.MaxOutfits)
 	}
 
 	// 2. Check if the provided wardrobe items exist and belong to the user
@@ -90,7 +89,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể dùng để phối đồ.", item.ID))
+				return nil, wardrobeerrors.ErrOutfitItemSold(item.ID)
 			}
 			verifiedMap[item.ID] = item
 		}
@@ -101,7 +100,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -139,7 +138,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
+		return nil, wardrobeerrors.ErrOutfitNotFound
 	}
 
 	// 2. Check the provided wardrobe items
@@ -157,7 +156,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for _, item := range verifiedItems {
 		if item.UserID == userID {
 			if item.Status == wardrobestatus.Sold {
-				return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể dùng để phối đồ.", item.ID))
+				return nil, wardrobeerrors.ErrOutfitItemSold(item.ID)
 			}
 			verifiedMap[item.ID] = item
 		}
@@ -167,7 +166,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
-			return nil, apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemReq.WardrobeItemID))
+			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -215,7 +214,7 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
+		return nil, wardrobeerrors.ErrOutfitNotFound
 	}
 
 	return mapper.MapToOutfitRes(outfit, items), nil
@@ -227,7 +226,7 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 		return err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")
+		return wardrobeerrors.ErrOutfitNotFound
 	}
 
 	return uc.outfitRepo.DeleteOutfit(ctx, id)

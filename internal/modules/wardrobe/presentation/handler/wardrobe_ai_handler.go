@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/streamutils"
@@ -13,6 +13,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgAiRecommendOutfitSuccess    = "Tạo gợi ý phối đồ thành công"
+	msgAiCreateChatSessionSuccess  = "Tạo cuộc trò chuyện thành công"
+	msgAiGetChatSessionsSuccess    = "Lấy danh sách cuộc trò chuyện thành công"
+	msgAiGetChatMessagesSuccess    = "Lấy lịch sử tin nhắn thành công"
+	msgAiArchiveChatSessionSuccess = "Lưu trữ cuộc trò chuyện thành công"
 )
 
 // RecommendOutfit recommendations for outfits based on user wardrobe
@@ -40,7 +48,7 @@ func (h *WardrobeHandler) RecommendOutfit(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Tạo gợi ý phối đồ thành công", response)
+	shared_pres.Success(c, msgAiRecommendOutfitSuccess, response)
 	return nil
 }
 
@@ -69,7 +77,7 @@ func (h *WardrobeHandler) CreateChatSession(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Tạo cuộc trò chuyện thành công", response)
+	shared_pres.Created(c, msgAiCreateChatSessionSuccess, response)
 	return nil
 }
 
@@ -92,7 +100,7 @@ func (h *WardrobeHandler) GetChatSessions(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách cuộc trò chuyện thành công", response)
+	shared_pres.Success(c, msgAiGetChatSessionsSuccess, response)
 	return nil
 }
 
@@ -113,7 +121,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
+		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
 	response, err := h.wardrobeUseCase.GetChatMessages(c.Request.Context(), userID, contextID)
@@ -121,7 +129,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy lịch sử tin nhắn thành công", response)
+	shared_pres.Success(c, msgAiGetChatMessagesSuccess, response)
 	return nil
 }
 
@@ -142,14 +150,14 @@ func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
+		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
 	if err := h.wardrobeUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Lưu trữ cuộc trò chuyện thành công", nil)
+	shared_pres.Success(c, msgAiArchiveChatSessionSuccess, nil)
 	return nil
 }
 
@@ -171,7 +179,7 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
+		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
 	var input dto.SendChatMessageReq

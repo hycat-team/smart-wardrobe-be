@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
@@ -23,7 +23,7 @@ import (
 
 func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
-		return nil, apperror.NewBadRequest("Danh sách hình ảnh tải lên không được để trống.")
+		return nil, wardrobeerrors.ErrUploadImagesEmpty
 	}
 
 	itemType := itemtype.SystemCatalogItem
@@ -39,7 +39,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 			return nil, err
 		}
 		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-			return nil, apperror.NewForbidden(fmt.Sprintf("Số lượng trang phục tải lên vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, subOverview.MaxWardrobeItems, len(input.Items)))
+			return nil, wardrobeerrors.ErrWardrobeLimitExceededForUpload(int(currentCount), subOverview.MaxWardrobeItems, len(input.Items))
 		}
 	}
 

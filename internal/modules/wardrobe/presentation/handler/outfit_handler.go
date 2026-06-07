@@ -2,8 +2,8 @@ package handler
 
 import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	_ "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -11,6 +11,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgOutfitGetUploadSignatureSuccess = "Lấy chữ ký tải ảnh bìa bộ phối đồ thành công"
+	msgOutfitSaveSuccess               = "Tạo bộ phối đồ thành công"
+	msgOutfitUpdateSuccess             = "Cập nhật bộ phối đồ thành công"
+	msgOutfitGetOutfitsSuccess         = "Lấy danh sách bộ phối đồ thành công"
+	msgOutfitGetByIDSuccess            = "Lấy chi tiết bộ phối đồ thành công"
+	msgOutfitDeleteSuccess             = "Xóa bộ phối đồ thành công"
 )
 
 type OutfitHandler struct {
@@ -36,7 +45,7 @@ func (h *OutfitHandler) GetUploadSignature(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chữ ký tải ảnh bìa bộ phối đồ thành công", signatureRes)
+	shared_pres.Success(c, msgOutfitGetUploadSignatureSuccess, signatureRes)
 	return nil
 }
 
@@ -65,7 +74,7 @@ func (h *OutfitHandler) SaveOutfit(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Tạo bộ phối đồ thành công", response)
+	shared_pres.Created(c, msgOutfitSaveSuccess, response)
 	return nil
 }
 
@@ -88,7 +97,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã bộ phối đồ không hợp lệ.")
+		return wardrobeerrors.ErrInvalidOutfitIDFormat
 	}
 
 	var input dto.SaveOutfitReq
@@ -101,7 +110,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật bộ phối đồ thành công", response)
+	shared_pres.Success(c, msgOutfitUpdateSuccess, response)
 	return nil
 }
 
@@ -123,7 +132,7 @@ func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách bộ phối đồ thành công", response)
+	shared_pres.Success(c, msgOutfitGetOutfitsSuccess, response)
 	return nil
 }
 
@@ -144,7 +153,7 @@ func (h *OutfitHandler) GetOutfitByID(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã bộ phối đồ không hợp lệ.")
+		return wardrobeerrors.ErrInvalidOutfitIDFormat
 	}
 
 	response, err := h.outfitUseCase.GetOutfitByID(c.Request.Context(), userID, id)
@@ -152,7 +161,7 @@ func (h *OutfitHandler) GetOutfitByID(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chi tiết bộ phối đồ thành công", response)
+	shared_pres.Success(c, msgOutfitGetByIDSuccess, response)
 	return nil
 }
 
@@ -173,7 +182,7 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return apperror.NewBadRequest("Định dạng mã bộ phối đồ không hợp lệ.")
+		return wardrobeerrors.ErrInvalidOutfitIDFormat
 	}
 
 	err = h.outfitUseCase.DeleteOutfit(c.Request.Context(), userID, id)
@@ -181,7 +190,7 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Xóa bộ phối đồ thành công", nil)
+	shared_pres.Success(c, msgOutfitDeleteSuccess, nil)
 	return nil
 }
 

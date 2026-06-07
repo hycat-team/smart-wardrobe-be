@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -20,15 +20,15 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if item == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy trang phục này.")
+		return nil, wardrobeerrors.ErrItemNotFound
 	}
 
 	if item.UserID != userID {
-		return nil, apperror.NewForbidden("Bạn không được phép cập nhật thông tin trang phục này.")
+		return nil, wardrobeerrors.ErrUpdateItemForbidden
 	}
 
 	if item.Status == wardrobestatus.Sold {
-		return nil, apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã bán.")
+		return nil, wardrobeerrors.ErrManualClassifySoldItem
 	}
 
 	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
@@ -36,7 +36,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 		return nil, err
 	}
 	if category == nil {
-		return nil, apperror.NewBadRequest("Danh mục trang phục không tồn tại.")
+		return nil, wardrobeerrors.ErrCategoryNotFound
 	}
 
 	tokens := fmt.Sprintf("[CAT:%s][COL:%s][STY:%s][MAT:%s][PAT:%s][FIT:%s][SEA:%s]",
@@ -61,7 +61,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 
 	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
 	if err != nil || len(embeddings) == 0 {
-		return nil, apperror.NewInternalError("Hệ thống không thể xử lý nội dung văn bản thời trang lúc này.")
+		return nil, wardrobeerrors.ErrProcessFashionTextFailed
 	}
 	embedding := embeddings[0]
 
