@@ -1,286 +1,321 @@
-# UPCOMING BUSINESS REQUIREMENTS & FEATURE EXPANSION SPECIFICATION
+# Đặc tả các yêu cầu nghiệp vụ sắp tới và kế hoạch mở rộng tính năng
 
-This document details the upcoming business requirements, strategic features, and core algorithmic updates designed to optimize user experience, eliminate resource-draining loopholes, minimize cloud computing costs (AI API overhead), and enhance user activation and retention.
+Tài liệu này mô tả các yêu cầu nghiệp vụ sắp tới, các tính năng chiến lược và các cập nhật thuật toán cốt lõi nhằm tối ưu trải nghiệm người dùng, loại bỏ các lỗ hổng gây hao tài nguyên, giảm chi phí AI và tăng mức độ giữ chân người dùng.
 
 ---
 
-## I. SYSTEM ARCHITECTURE EXPANSION OVERVIEW
+## I. Tổng quan mở rộng kiến trúc nghiệp vụ
 
-To resolve critical real-world friction points identified during user testing, six core capability expansions are proposed across Module 2 (Billing & Quota Management) and Module 3 (AI & Wardrobe Engine). These updates ensure high-fidelity styling recommendations while preserving platform cost-efficiency.
+Để giải quyết các friction point đã nhận diện trong quá trình kiểm thử người dùng, nhiều capability mở rộng được đề xuất trên các module Billing, Quota, AI và Wardrobe.
 
 ```mermaid
 graph TD
-    subgraph Module2 [Module 2: Billing & Quota]
-        F1[Swap Quota & Partial Re-roll]
+    subgraph Module2 [Module 2: Billing và Quota]
+        F1[Swap Quota và Partial Re-roll]
+        F7[Chatbot Redirect và đơn giản hóa Quota]
     end
-    subgraph Module3 [Module 3: AI & Wardrobe Engine]
+    subgraph Module3 [Module 3: AI và Wardrobe Engine]
         F2[Cross-validation Shape Workflow]
         F3[Clone Item Utility]
         F4[Batch Matrix Crop Engine]
         F5[Closet Initialization Catalog]
         F6[Garment Lifecycle Decay]
+        F8[AI OOTD Generator]
     end
     Module2 --> Module3
 ```
 
----
+### Phiên bản hiện tại
 
-## II. DETAILED FEATURE SPECIFICATIONS & ALGORITHMIC WORKFLOWS
+Một số capability trong tài liệu này hiện đã được triển khai một phần hoặc triển khai theo hình thức khác trong code hiện tại, ví dụ:
 
-### 1. Swap Quota & Partial Re-roll Pipeline (Module 2)
+- `Clone Item Utility`
+- `Closet Initialization Catalog`
+- nền dữ liệu cho `Garment Lifecycle Decay`
+- `AI Fashion Chatbot` theo phiên
 
-#### A. Business Problem Statement
-Users frequently forget to update their wardrobe items' physical status (e.g., an item is currently dirty or torn). When the AI Outfit Recommendation Engine (Stage 4) suggests an outfit incorporating this unavailable item, the user is forced to consume another unit of their strictly limited **Daily Outfit Quota** to re-roll the entire outfit. Furthermore, a simple "Undo" action creates a screenshot loophole where users "cheat" by capturing recommendations and undoing the action to reclaim their quota.
-
-#### B. Functional Specification
-- **Local Swap UI:** Users can trigger a **"Đổi món này" (Local Swap)** action specifically on a single item within a generated outfit combination.
-- **Quota Protection:** A local swap action **does not consume** an additional daily outfit quota unit.
-- **Quota Guardrail:** Each unique outfit recommendation event (costing 1 Quota) includes a maximum allowance of **two (2) local swaps**. Initiating a 3rd swap requires consuming 1 new Daily Outfit Quota unit.
-
-#### C. Backend Algorithmic Flow & Zero-LLM Local Swap Optimization
-To prevent extreme token accumulation and reduce latency to milliseconds, the partial re-roll feature **completely bypasses LLM invocations**.
-1. **State Update:** Immediately update the target item's `status` to `2 (LAUNDRY/REPAIR)` in the `wardrobe_items` table.
-2. **Persistent Session Retrieval:** When an outfit recommendation session is first generated, the system stores the **IDs of the Top 20 Item Candidates** (Stage 2) in a lightweight relational table `recommendation_sessions` (under `candidate_item_ids` as a compact INT/UUID array). This removes memory constraints and the 15-minute time limit.
-3. **Local HSL & Style Matrix Evaluation:** The backend loads the metadata of these 20 candidates and filters them locally using the Stage 3 Color Complementary/Analogous algorithms and Style Matrix (pure Go calculations).
-4. **Immediate Replacement:** The backend automatically selects the highest-scoring candidate, integrates it into the outfit structure, and updates the DB.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User Client
-    participant API as Backend API
-    participant DB as PostgreSQL DB
-
-    User->>API: Request Local Swap (outfit_id, item_to_replace_id)
-    API->>API: Validate Swap Count (Limit <= 2 per Outfit Session)
-    API->>DB: Set status = 2 (LAUNDRY/REPAIR) for item_to_replace_id
-    API->>DB: Fetch Top 20 Candidate IDs from recommendation_sessions table
-    API->>API: Execute Stage 3 HSL Filters & Style Matrix locally (Pure Go)
-    API->>DB: Persist swapped item into user's outfit list
-    API-->>User: Return updated outfit in real-time (<50ms, 0 Token consumed)
-```
-
-#### D. Architectural Trade-offs Matrix
-
-| Architectural Choice | Pros (System Benefits) | Cons (Technical Costs) |
-| :--- | :--- | :--- |
-| **Zero-LLM Local Swap (Bypass LLM)** | **0 additional tokens consumed** and **0 extra LLM requests** (guaranteeing 1 outfit generation = exactly 1 Gemini request). Latency is cut down from ~2.5 seconds to < 50 milliseconds. | The stylistic rationale text written by the LLM in the initial generation remains unchanged (though minor template-based text tweaks can be applied locally). |
-| **Persistent Session IDs (PostgreSQL Array)** | Removes memory footprint in Redis, completely bypassing the 15-minute timeout. Users can swap items hours or days after recommendation. | Requires a minor DB schema addition (`recommendation_sessions` table or similar relational mapping) to hold the candidate arrays. |
+Tuy nhiên, tài liệu này vẫn giữ nguyên toàn bộ các mô tả roadmap vì chúng còn bao hàm thiết kế mục tiêu hoàn chỉnh, không chỉ là trạng thái implementation hiện tại.
 
 ---
 
-### 2. Cross-Validation Shape Workflow (Module 3)
+## II. Chi tiết các tính năng mở rộng và workflow thuật toán
 
-#### A. Business Problem Statement
-Users often upload photos of themselves wearing loose, oversized clothing. This severely impacts the accuracy of the Vision AI Body Estimation engine, leading to faulty body shape classification in their user profile and resulting in awkward, ill-fitting outfit recommendations from the Stage 4 LLM.
+### 1. Swap Quota và Partial Re-roll Pipeline
 
-#### B. Functional Specification
-- **Vision AI Dry-run:** When a user uploads a personal photo, the Vision AI estimates the body shape parameters and populates the `body_profile` JSONB structure, but sets a status attribute `verified_by_user = false`.
-- **Interactive Form Validator (User Override UX):** The frontend displays the AI-estimated body shape using visually rich cards (e.g., Hourglass, Pear, Rectangle, Inverted Triangle) alongside manual input fields for Key Physical Metrics (Height, Weight, and optional chest/waist/hip measurements).
-- **User Override:** The user has full authority to override the AI's estimation by clicking a card or correcting the numerical indices. Once submitted, the system commits the data with `verified_by_user = true`.
-- **Precedence Rule:** The Stage 4 Outfit Generator must *strictly* prioritize data marked as `verified_by_user = true` when synthesizing style logic.
+#### A. Bài toán nghiệp vụ
 
-#### C. Database Schema Design (JSONB Structure in `users.body_profile`)
+Người dùng có thể quên cập nhật trạng thái vật lý của item, ví dụ item đang bẩn hoặc cần sửa. Khi AI gợi ý một outfit có chứa item không còn sẵn sàng sử dụng, người dùng dễ bị buộc phải tốn thêm quota chỉ để đổi một phần nhỏ của outfit.
+
+#### B. Đặc tả chức năng mục tiêu
+
+- Người dùng có thể bấm **“Đổi món này”** trên một item cụ thể trong outfit đã được tạo.
+- Hành động đổi cục bộ không tiêu tốn thêm một lượt quota outfit mới.
+- Mỗi outfit được tạo từ một lượt quota không giới hạn số lần local swap.
+
+#### C. Luồng xử lý mục tiêu ban đầu
+
+Để tránh tăng token và tăng độ trễ, local swap theo thiết kế mục tiêu sẽ không gọi lại toàn bộ LLM pipeline:
+
+1. Cập nhật trạng thái item được thay.
+2. Lấy lại tập ứng viên item đã lưu của phiên recommendation.
+3. Chạy bộ lọc cục bộ theo màu sắc và style matrix.
+4. Chọn item thay thế và cập nhật outfit.
+
+#### D. Phiên bản hiện tại
+
+Phiên bản hiện tại của backend đã có:
+
+- recommendation API
+- quota AI
+- dữ liệu item, metadata và trạng thái
+- output theo nhóm vai trò với `primary` và `alternatives`
+
+Trong phiên bản hiện tại, local swap không còn nên được hiểu là một flow backend riêng bị giới hạn số lần đổi. Thay vào đó:
+
+- backend trả sẵn các phương án thay thế trong `alternatives`
+- frontend chủ động xử lý trải nghiệm đổi món theo từng vai trò
+- việc local swap không tiêu tốn thêm quota outfit mới
+- số lần local swap không bị giới hạn bởi backend, miễn là còn phương án thay thế phù hợp trong dữ liệu đã trả về
+
+Vì vậy, phần mô tả backend flow ở trên nên được đọc là **thiết kế mục tiêu ban đầu** hoặc hướng mở rộng về sau, không phải ràng buộc của phiên bản hiện tại.
+
+---
+
+### 2. Cross-validation Shape Workflow
+
+#### A. Bài toán nghiệp vụ
+
+Ảnh người dùng mặc đồ rộng có thể làm sai lệch suy luận body shape, kéo theo recommendation thiếu chính xác.
+
+#### B. Đặc tả mục tiêu
+
+- AI suy luận body shape ban đầu.
+- Hệ thống lưu dữ liệu gợi ý với trạng thái chưa được người dùng xác minh.
+- Người dùng có thể ghi đè lại thông tin shape hoặc số đo.
+- Recommendation engine ưu tiên dữ liệu đã được xác minh.
+
+#### C. Cấu trúc dữ liệu mục tiêu
 
 ```json
 {
-  "height_cm": 178.0,
-  "weight_kg": 72.5,
-  "body_shape": "hourglass",
-  "measurements": {
-    "chest_cm": 95.0,
-    "waist_cm": 78.0,
-    "hip_cm": 96.0
-  },
-  "inferred_by_ai": {
-    "body_shape": "rectangle",
-    "confidence_score": 0.68
-  },
-  "verified_by_user": true,
-  "last_updated_at": "2026-05-30T14:30:00Z"
+    "height_cm": 178.0,
+    "weight_kg": 72.5,
+    "body_shape": "hourglass",
+    "measurements": {
+        "chest_cm": 95.0,
+        "waist_cm": 78.0,
+        "hip_cm": 96.0
+    },
+    "inferred_by_ai": {
+        "body_shape": "rectangle",
+        "confidence_score": 0.68
+    },
+    "verified_by_user": true,
+    "last_updated_at": "2026-05-30T14:30:00Z"
 }
 ```
 
----
+#### D. Phiên bản hiện tại
 
-### 3. Clone Item Utility (Module 3)
+Phiên bản hiện tại đã có:
 
-#### A. Business Problem Statement
-Male users in particular typically own multiple identical or highly similar wardrobe items (e.g., five identical black crewneck t-shirts, ten identical white sports socks). Forcing users to photograph, upload, and wait for Vision AI processing on each identical item introduces severe friction during onboarding.
+- `body_profile`
+- cờ `verified_by_user`
+- khả năng cập nhật body profile
 
-#### B. Functional Specification
-- **Quick Clone Action:** The digital closet interface displays a **"Clone"** button next to any existing verified item.
-- **Bulk Clones Creation:** The user inputs the desired quantity ($N$) of duplicates.
-- **Bulk Database Insertion:** The backend executes a Single Bulk SQL `INSERT` to generate $N$ separate records in the `wardrobe_items` table.
-- **Resource & Image Sharing:** All cloned records inherit the metadata (color palette, material, style, category) and the identical `image_url` (stored on Cloudinary) from the parent item.
-- **Vector Sharing:** The system copies the parent item's vector embedding directly to the clones, completely bypassing both the Vision AI extraction pipeline and Vector generation operations.
-
-```mermaid
-graph LR
-    ParentItem["Parent Item Record (ID: 101) <br> Image: cloudinary.com/abc.jpg <br> Embedding: [0.12, -0.45, ...]"]
-    
-    subgraph BulkInsert [Bulk Database Insertion]
-        Clone1["Clone Item 1 (ID: 102) <br> Image: cloudinary.com/abc.jpg <br> Status: 1 (Active)"]
-        Clone2["Clone Item 2 (ID: 103) <br> Image: cloudinary.com/abc.jpg <br> Status: 1 (Active)"]
-        Clone3["Clone Item 3 (ID: 104) <br> Image: cloudinary.com/abc.jpg <br> Status: 2 (Laundry)"]
-    end
-    
-    ParentItem -->|Copy Schema, Image URL, & Vector| Clone1
-    ParentItem -->|Copy Schema, Image URL, & Vector| Clone2
-    ParentItem -->|Copy Schema, Image URL, & Vector| Clone3
-```
-
-- **Business Value:**
-  - Reduces Cloudinary storage consumption by avoiding redundant visual duplicate uploads.
-  - Zero computational overhead (does not invoke Gemini Vision or Embedding models).
-  - Enables independent item tracking (e.g., shirt 1 is "Active", shirt 2 is "Dirty/Laundry").
+Điều đó có nghĩa là workflow này không còn hoàn toàn ở mức ý tưởng. Tuy nhiên, trải nghiệm xác minh nhiều bước bằng UI giàu ngữ cảnh và tích hợp sâu vào recommendation vẫn là mục tiêu mở rộng.
 
 ---
 
-### 4. Batch Matrix Crop Engine (Module 3)
+### 3. Clone Item Utility
 
-#### A. Business Problem Statement
-Digitizing small accessories (necklaces, rings, watches, bracelets) one by one is incredibly tedious. Users want a quick, centralized way to ingest all their minor accessories in a single session.
+#### A. Bài toán nghiệp vụ
 
-#### B. Functional Specification
-- **Batch Flatlay Ingestion:** Users lay out small accessories on a flat surface in a grid-like matrix (2x2 or 3x3 layout) and take a single, high-resolution master photo.
-- **Frontend Interactive Cropping (Grid-Cropper UI):** Upon upload, the frontend opens an interactive grid-cropper overlay. The user can quickly resize and drag coordinate boxes over each item on the canvas.
-- **Parallel Upload & Event Ingestion:** The frontend crops the master canvas into 4 or 9 individual image blobs and uploads them concurrently (Parallel Upload) to the Backend.
-- **Asynchronous In-Memory Queue Ingestion:** The Backend processes these parallel uploads asynchronously using **Go Channels and an In-Memory Worker Pool (Background Workers)**. This eliminates the dependency on heavy external Message Brokers (like RabbitMQ or Kafka), making the architecture simple and highly performant on existing server configurations.
+Người dùng thường sở hữu nhiều item giống nhau. Việc bắt chụp và phân tích AI lặp lại cho từng item gây friction lớn.
 
-```mermaid
-graph TD
-    A[Master Flatlay Image Grid] --> B[Frontend Grid-Cropper UI]
-    B -->|User adjusts 2x2 or 3x3 crop frames| C[Generate N cropped Image Blobs]
-    C -->|Parallel API Upload Requests| D[Backend API Ingestion Layer]
-    D -->|Send Tasks to Go Channel| E[Internal Go Channel / Jobs Queue]
-    E -->|Worker Thread 1| F1[Process Accessory 1 via Vision AI]
-    E -->|Worker Thread 2| F2[Process Accessory 2 via Vision AI]
-    E -->|Worker Thread 3| F3[Process Accessory 3 via Vision AI]
+#### B. Đặc tả mục tiêu
 
-> [!WARNING]
-> **API Rate Limiting & Concurrency Control Requirements:**
-> Under heavy ingestion loads (e.g., a 3x3 accessory grid resulting in 9 simultaneous image processing tasks), executing unthrottled concurrent API requests to external LLM providers (Google Gemini / OpenAI) will trigger a **429 Too Many Requests** error.
-> 
-> **Architectural Enhancements to `core_service.go`:**
-> 1. **Buffered Channel Semaphore:** Implement a concurrent request limiter in the AI Service (e.g., maximum 2 simultaneous Gemini API calls) to restrict peak throughput.
-> 2. **Token Bucket Rate Limiter:** Apply a local rate limiter (`golang.org/x/time/rate`) to strictly respect the RPM (Requests Per Minute) limits of free/low-tier API models.
-> 3. **Exponential Backoff Retry:** Enhance the fallback/retry mechanism to sleep progressively (e.g., 1s, 2s, 4s) when HTTP 429 is encountered, before failing the task.
-```
+- Có nút clone trên item đã xác minh.
+- Người dùng nhập số lượng cần nhân bản.
+- Hệ thống tạo nhiều bản ghi mới bằng bulk insert.
+- Ảnh, metadata và embedding được tái sử dụng từ item gốc.
+
+#### C. Giá trị nghiệp vụ
+
+- Giảm thao tác lặp.
+- Giảm chi phí AI.
+- Giữ mỗi bản sao là một item độc lập để quản lý trạng thái riêng.
+
+#### D. Phiên bản hiện tại
+
+Phiên bản hiện tại đã có route và usecase clone item thật.
+
+Vì vậy, section này hiện nên được hiểu theo hai lớp:
+
+- **Phiên bản hiện tại:** clone item đã tồn tại như capability thực thi.
+- **Thiết kế mục tiêu:** tiếp tục duy trì đầy đủ mục tiêu về tối ưu chi phí, UX và chia sẻ metadata.
 
 ---
 
-### 5. Closet Initialization via Global Fashion Catalog (Module 3)
+### 4. Batch Matrix Crop Engine
 
-#### A. Business Problem Statement
-A blank slate wardrobe creates a high drop-off rate. Users who register (UC-01) want to see the recommendations engine working immediately without spending 10 minutes photographing their closet.
+#### A. Bài toán nghiệp vụ
 
-#### B. Functional Specification
-- **Global Fashion Catalog:** The system maintains a system-owned "Admin" account populated with a curated library of standard "Essential Items" (e.g., standard black/white t-shirts, blue jeans, white sneakers, black trousers, denim jackets) containing clean color taxonomy and pre-calculated vector embeddings.
-- **Onboarding Questionnaire:** During system registration (UC-01), the user is presented with a **"Khởi tạo tủ đồ nhanh" (Quick Closet Initialization)** interface showcasing visual cards of these essentials.
-- **Instant Digitalization:** The user checks the boxes of standard items they own.
-- **Single SQL Query Copier:** The backend duplicates these selected essential assets directly into the user's `wardrobe_items` using a bulk SQL insert query, replicating all classification tags and vector embeddings instantly.
+Việc số hóa từng phụ kiện nhỏ một rất mất thời gian. Người dùng muốn có cách nhập nhiều phụ kiện từ một ảnh tổng.
 
-```sql
--- Conceptual Single SQL Query execution for Instant Closet Initialization
-INSERT INTO wardrobe_items (user_id, category_id, name, color, style, material, image_url, embedding, status, created_at)
-SELECT 
-    $target_user_id, 
-    category_id, 
-    name, 
-    color, 
-    style, 
-    material, 
-    image_url, 
-    embedding, 
-    1, -- Active status
-    NOW()
-FROM wardrobe_items
-WHERE user_id = $system_admin_id AND id IN ($selected_catalog_ids);
-```
+#### B. Đặc tả mục tiêu
 
-- **Business Value:** Instant user activation. Users receive a functional, high-fidelity outfit recommendation within 60 seconds of registration with zero physical photo uploads.
+- Người dùng chụp một ảnh flatlay dạng lưới.
+- Frontend crop ảnh tổng thành nhiều blob ảnh nhỏ.
+- Các ảnh nhỏ được upload song song.
+- Backend xử lý chúng như các job nền.
+
+#### C. Yêu cầu kỹ thuật kèm theo
+
+- giới hạn đồng thời khi gọi AI
+- rate limiter
+- retry với exponential backoff cho lỗi 429
+
+#### D. Phiên bản hiện tại
+
+Phiên bản hiện tại đã có batch upload và xử lý nền từng item, đồng thời đã có retry hoặc backoff ở luồng batch upload.
+
+Nhưng phần `matrix crop` từ ảnh lưới lớn vẫn nên được xem là thiết kế mục tiêu hoặc mở rộng sản phẩm chưa hoàn chỉnh.
 
 ---
 
-### 6. Garment Lifecycle Decay Algorithm (Module 3)
+### 5. Closet Initialization via Global Fashion Catalog
 
-#### A. Business Problem Statement
-Users own clothes they bought years ago but haven't worn in months or years (forgotten or out-of-style garments). Traditional vector retrieval (Stage 2 Cosine Similarity) treats these old, un-interacted garments identically to newly uploaded items, resulting in stale suggestions that ignore the user's shifting fashion habits.
+#### A. Bài toán nghiệp vụ
 
-#### B. Algorithmic Formulation (Mathematical Decay)
-To penalize obsolete items without deleting them, the **Multi-Stage RAG Outfit Engine** scales the raw Cosine similarity scores using a mathematical temporal decay factor based on interaction frequency.
+Người dùng mới dễ rời bỏ nếu tủ đồ số ban đầu hoàn toàn trống.
 
-Let $S_{\text{cosine}}$ be the calculated cosine similarity score between the user query vector and the garment vector. The adjusted score $S_{\text{adjusted}}$ is formulated as:
+#### B. Đặc tả mục tiêu
+
+- Hệ thống có một danh mục item mẫu đã được chuẩn hóa.
+- Người dùng chọn nhanh các item mình đang sở hữu.
+- Backend sao chép dữ liệu mẫu sang tủ đồ người dùng bằng thao tác bulk.
+
+#### C. Giá trị nghiệp vụ
+
+- giảm friction khi onboarding
+- giúp người dùng có dữ liệu để recommendation hoạt động sớm
+
+#### D. Phiên bản hiện tại
+
+Phiên bản hiện tại đã có:
+
+- route `catalog-init`
+- usecase khởi tạo tủ đồ từ catalog hệ thống
+- admin quản trị catalog hệ thống
+
+Do đó, tính năng này hiện đã có thực thi thật trong hệ thống. Tài liệu roadmap vẫn giữ nguyên để bảo toàn mô tả mục tiêu ban đầu và ý nghĩa kinh doanh của nó.
+
+---
+
+### 6. Garment Lifecycle Decay Algorithm
+
+#### A. Bài toán nghiệp vụ
+
+Các item cũ, lâu không dùng có thể làm recommendation trở nên stale nếu luôn được đối xử như item mới.
+
+#### B. Đặc tả thuật toán mục tiêu
+
+Thiết kế cũ mô tả việc nhân điểm cosine với hệ số suy giảm theo thời gian:
 
 $$S_{\text{adjusted}} = S_{\text{cosine}} \times \text{Decay\_Factor}(t)$$
 
-Where:
-- $t$ is the elapsed duration in days since the garment was last recorded in an approved outfit (`last_used_at`), or since its creation date (`created_at`) if never worn.
-- The **Decay Factor** $\text{Decay\_Factor}(t)$ is governed by a half-life exponential formula:
+với:
 
 $$\text{Decay\_Factor}(t) = \begin{cases} 1.0 & \text{if } t \le 180 \text{ days} \\ e^{-\lambda (t - 180)} & \text{if } t > 180 \text{ days} \end{cases}$$
 
-- $\lambda$ represents the decay rate coefficient. If a garment remains completely ignored for more than 180 days (6 months), the decay factor begins scaling down ($0.5$ or $0.2$) pushing the garment toward the tail-end of Stage 2 recommendations.
+#### C. Quy tắc tối ưu dữ liệu mục tiêu
 
-#### C. Database Query Optimization Rule
+Không nên join thời gian thực giữa item và outfit history trong mọi request recommendation. Thay vào đó nên có `last_used_at` trực tiếp trên item.
 
-> [!IMPORTANT]
-> **Performance Optimization Safeguard:** 
-> Do **NOT** execute real-time relational table `JOIN` calculations between `wardrobe_items` and `outfit_items` during the RAG Stage 2 sweep. Doing so creates a performance bottleneck as the user's closet size scales.
->
-> **Solution:** Add a direct `last_used_at` timestamp field to the `wardrobe_items` table schema. Every time a user successfully saves an outfit recommendation, execute an asynchronous atomic database write to touch the `last_used_at` field for all constituent items in that outfit. This keeps Stage 2 Cosine calculations highly efficient as a single-table fast query.
+#### D. Phiên bản hiện tại
 
----
+Phiên bản hiện tại đã có:
 
-### 7. Chatbot Outfit Request Redirect & Quota Simplification (Module 2 & 3)
+- trường `last_used_at`
+- logic chạm `last_used_at` khi lưu hoặc cập nhật outfit
 
-#### A. Business Problem Statement
-The original specification proposed a **"Double Quota Consumption Logic"** (deducting 1 Chatbot Quota + 1 Outfit Quota) if a user requested outfit recommendations inside the conversational AI Chatbot. This logic is highly complex to enforce, ambiguous to the user, and easily leads to frustration when quotas are deducted without clear warning. Additionally, processing complex multi-stage outfit assembly logic within a chat session inflates token usage and increases hallucination risks.
-
-#### B. Functional Specification
-- **Ditch Double Quota:** Completely deprecate and remove the "Double Quota Consumption Logic" proposal.
-- **Intent Classification & Redirection:** When a user initiates a prompt inside the AI Chatbot that expresses an intent to generate or assemble a new outfit (e.g., *"Phối cho tôi một bộ đi chơi tối nay"*, *"Chọn giúp tôi cái quần hợp với áo này"*), the Chatbot's System Prompt / Guardrail will intercept the request.
-- **Gentle User Guidance:** Instead of attempting to recommend and persist outfit combinations in the chat window, the AI Chatbot will block the generation and return a friendly, standardized redirection guidance message:
-
-> *"Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán HSL và AI chuyên dụng của Smart Wardrobe, bạn vui lòng sử dụng chức năng **'Phối đồ' (Outfit Generator)** ngay trên màn hình chính nhé! 👗✨"*
-
-- **Business Value:**
-  - **Transparency:** Promotes an honest, straightforward pricing and quota system with zero unexpected deductions.
-  - **Friction Reduction:** Guides users to the dedicated outfit pipeline (RAG Stages 1-4) which yields far superior styling results compared to pure LLM chat.
-  - **FinOps Optimization:** Substantially reduces input/output token consumption in chat windows (which often carry heavy historical context).
+Điều đó nghĩa là phần nền dữ liệu của lifecycle decay đã có thật. Tuy nhiên, công thức decay đầy đủ như mô tả cũ vẫn là thiết kế mục tiêu cần được giữ trong docs.
 
 ---
 
-### 8. Future Expansion Plan: AI OOTD Generator (Daily Outfit & Weather Integration)
+### 7. Chatbot Outfit Request Redirect và đơn giản hóa Quota
 
-#### A. Business & Economic Problem Statement
-Offering unrestricted AI OOTD (Outfit of the Day) recommendations to thousands of concurrent users creates an extreme financial liability due to heavy input/output token costs on Large Language Models (LLMs). Supporting 10,000 active users requesting daily outfits would compile to millions of tokens per day. This requires a dedicated cost-conscious approach and collaboration with the economics team to model subscription tiers and daily API quotas.
+#### A. Bài toán nghiệp vụ
 
-#### B. Functional Specification (Future Plan)
-- **Automatic Daily Prompting:** Recommend a perfect matching outfit dynamically every morning based on local weather conditions (temperature, rain probability) fetched via weather APIs and the user's scheduled calendar events.
-- **Token Constraints & Quota Guardrail:**
-  - **Free Tier:** Bypasses LLM styling; generates daily matching outfits strictly using local HSL color theory and style matrix matching (zero-LLM, zero-token cost).
-  - **Premium Tier:** Employs advanced Stage 4 Gemini/OpenAI styling prompts to generate highly personalized outfits with written stylistic reasoning, limited to exactly **one (1) daily OOTD generation** per user.
+Việc vừa trừ quota chat vừa trừ quota outfit khi người dùng xin phối đồ trong chatbot là logic gây khó hiểu và dễ tạo cảm giác bị trừ phí không minh bạch.
+
+#### B. Đặc tả mục tiêu
+
+- bỏ logic double quota
+- chatbot phát hiện ý định xin outfit
+- chatbot chuyển hướng người dùng sang tính năng gợi ý phối đồ chuyên dụng
+
+#### C. Thông điệp điều hướng mục tiêu
+
+Chatbot có thể trả lời theo hướng:
+
+> “Để nhận được gợi ý phối đồ chính xác hơn từ công cụ phối đồ chuyên dụng, bạn vui lòng sử dụng tính năng Phối đồ trên màn hình chính.”
+
+#### D. Phiên bản hiện tại
+
+Phiên bản hiện tại đã có tách biệt hai năng lực:
+
+- AI chat theo phiên
+- AI outfit recommendation
+
+Rule redirect cụ thể ở mức intent classification hoặc system prompt vẫn là phần thiết kế mục tiêu nên được giữ lại.
 
 ---
 
-## III. IMPLEMENTATION FEASIBILITY & RISK ASSESSMENT
+### 8. Future Expansion Plan: AI OOTD Generator
 
-Based on the existing codebase audit, the implementation of these six features is **highly feasible** and structurally aligned with the platform's architectural design:
+#### A. Bài toán nghiệp vụ và kinh tế
+
+Gợi ý outfit hằng ngày cho số lượng lớn người dùng có thể tạo áp lực chi phí rất lớn nếu phụ thuộc hoàn toàn vào LLM.
+
+#### B. Đặc tả mục tiêu
+
+- hệ thống gợi ý outfit mỗi ngày dựa trên thời tiết hoặc lịch
+- gói thường có thể dùng logic cục bộ chi phí thấp
+- gói premium có thể dùng AI nâng cao kèm giải thích
+
+#### C. Phiên bản hiện tại
+
+Phiên bản hiện tại chưa nên được mô tả là đã có AI OOTD hoàn chỉnh. Section này vẫn là định hướng sản phẩm dài hạn và cần được giữ nguyên trong docs.
+
+---
+
+## III. Đánh giá tính khả thi và rủi ro triển khai
+
+Dựa trên việc đối chiếu với code hiện tại, có thể đọc bảng này theo hướng:
+
+- một số tính năng đã triển khai một phần hoặc triển khai bản đầu tiên
+- phần còn lại vẫn là mục tiêu mở rộng
 
 ```
 +------------------------------------+------------------+---------------------------------------------------------+
-| Feature Area                       | Feasibility Tier | Primary Technical Recommendation                         |
+| Nhóm tính năng                     | Mức khả thi      | Gợi ý triển khai chính                                  |
 +------------------------------------+------------------+---------------------------------------------------------+
-| 1. Swap Quota & Partial Re-roll    | Very High        | Persist candidate IDs in DB, evaluate Stage 3 locally.  |
-| 2. Cross-Validation Shape Workflow | Very High        | Leverage PostgreSQL JSONB operators to query values.     |
-| 3. Clone Item Utility              | Very High        | Utilize batch INSERT SQL for zero embedding cost.       |
-| 4. Batch Matrix Crop Engine        | High             | Use Go Channels + Rate Limiter & Concurrency Semaphore. |
-| 5. Closet Initialization Catalog   | Very High        | Utilize static global catalog items linked to system ID.|
-| 6. Garment Lifecycle Decay         | High             | Persist last_used_at field directly to save Join cost.  |
-| 7. Chatbot Outfit Redirection      | Very High        | Implement intent matching rules in Chatbot system prompt|
+| Swap Quota và Partial Re-roll      | Rất cao          | Lưu candidate IDs, lọc cục bộ theo stage 3              |
+| Cross-validation Shape Workflow    | Rất cao          | Tận dụng JSONB và body profile đã có                    |
+| Clone Item Utility                 | Rất cao          | Dùng bulk insert, tái sử dụng metadata và embedding     |
+| Batch Matrix Crop Engine           | Cao              | Dùng job nền, semaphore và retry                        |
+| Closet Initialization Catalog      | Rất cao          | Tận dụng danh mục hệ thống hiện có                      |
+| Garment Lifecycle Decay            | Cao              | Dựa trên `last_used_at` đã có trong hệ thống            |
+| Chatbot Outfit Redirect            | Rất cao          | Tách điều hướng ở lớp prompt hoặc orchestration         |
 +------------------------------------+------------------+---------------------------------------------------------+
 ```
 
-This comprehensive, cost-conscious roadmap successfully bridges the gaps in user experience while drastically optimizing infrastructure resource consumption.
+### Kết luận
+
+Roadmap này vẫn còn giá trị vì nó không chỉ mô tả “có hay chưa có”, mà còn mô tả:
+
+- phiên bản mục tiêu của từng capability
+- mức trưởng thành hiện tại của sản phẩm
+- hướng mở rộng tiếp theo mà backend hiện nay đã có nền tảng để tiến tới

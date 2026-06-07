@@ -1,135 +1,263 @@
-# BUSINESS ENGINE & LOGIC SPECIFICATION
+# Đặc tả động cơ nghiệp vụ và logic hệ thống
 
-## I. SYSTEM ROLES & PERMISSIONS (ACTORS)
+## I. Vai trò và quyền trong hệ thống
 
-The system categorizes operational permissions into three primary human roles and two account tiers:
+Hệ thống phân loại quyền vận hành theo ba nhóm vai trò chính và hai tầng hội viên.
 
-- **Guest:** Unregistered visitor. Restricted to read-only views of fashion updates, styling inspirations, and community marketplace entries.
+### Khách
 
-- **Free User:** Standard registered user bound by system resource constraints and lower daily action limits.
+Khách là người chưa đăng nhập.
 
-- **Premium User:** Paid subscriber with elevated system resource limits and expanded daily action counters.
+Khách chỉ được xem ở mức đọc các nội dung công khai như:
 
-- **Admin:** System moderator responsible for authoritative trend publishing, platform enforcement, and user isolation.
+- feed cộng đồng
+- chi tiết bài đăng
+- bình luận và lượt thích của bài đăng
+- danh sách gói hội viên
+
+### Người dùng thường
+
+Người dùng thường là người đã đăng ký và sử dụng gói mặc định hoặc gói không trả phí.
+
+Họ chịu ràng buộc bởi:
+
+- giới hạn số lượng item trong tủ đồ
+- giới hạn số lượng outfit lưu
+- quota ngày cho các chức năng AI
+
+### Người dùng premium
+
+Người dùng premium là người có gói trả phí đang hoạt động.
+
+Họ được mở rộng:
+
+- hạn mức tủ đồ
+- hạn mức outfit
+- quota AI
+- khả năng sử dụng sâu hơn các chức năng cá nhân hóa
+
+### Quản trị viên
+
+Admin là tác nhân điều phối và kiểm soát hệ thống.
+
+Phiên bản hiện tại của backend cho phép admin:
+
+- xem danh sách người dùng
+- cập nhật trạng thái người dùng
+- quản trị bài đăng cộng đồng
+- quản trị bình luận
+- quản trị post item
+- quản trị danh mục hệ thống của wardrobe
+
+### Phiên bản hiện tại
+
+So với mô tả ban đầu, phạm vi quản trị hiện đã rõ ràng hơn và đã được hiện thực qua các route admin riêng.
 
 ---
 
-## II. ACCOUNT TIERS & RESOURCE QUOTAS
+## II. Các tầng hội viên và hạn mức tài nguyên
 
-System enforcement services must dynamically validate action allocations based on the active account subscription tier:
+Hệ thống kiểm soát phân bổ tài nguyên theo gói hội viên đang hoạt động của người dùng.
 
-| Business Constraint Metric                 | Free User Tier   | Premium User Tier |
-| ------------------------------------------ | ---------------- | ----------------- |
-| **Max Wardrobe Capacity** (Physical Items) | Max 50 Items     | Max 150 Items     |
-| **Max Saved Outfits Storage** (Lookbook)   | Max 50 Outfits   | Max 150 Outfits   |
-| **AI Outfit Generation Daily Limit**       | 3 Requests / Day | 28 Requests / Day |
-| **AI Chatbot Consultations Daily Limit**   | 3 Queries / Day  | 30 Queries / Day  |
+| Chỉ số ràng buộc nghiệp vụ              | Gói thường      | Gói premium      |
+| --------------------------------------- | --------------- | ---------------- |
+| **Sức chứa tối đa của tủ đồ**           | 50 item         | 150 item         |
+| **Số outfit lưu tối đa**                | 50 outfit       | 150 outfit       |
+| **Giới hạn gợi ý phối đồ AI mỗi ngày**  | 3 lượt mỗi ngày | 15 lượt mỗi ngày |
+| **Giới hạn tư vấn chatbot AI mỗi ngày** | 3 lượt mỗi ngày | 20 lượt mỗi ngày |
+
+### Phiên bản hiện tại
+
+Các hạn mức này không còn chỉ là quy ước trong tài liệu. Backend hiện đã có:
+
+- API lấy quota ngày
+- API lấy gói hiện tại
+- logic hội viên dùng để kiểm tra giới hạn tủ đồ và outfit
+- auto-renew
+- mua gói bằng thanh toán trực tiếp hoặc bằng ví
+
+### Thiết kế mục tiêu
+
+Các thay đổi sâu hơn về kinh tế học sản phẩm như quota mới, OOTD hằng ngày hay nhiều tầng gói hơn vẫn có thể mở rộng tiếp mà không làm mất đi bảng hạn mức hiện tại.
 
 ---
 
-## III. CORE BUSINESS RULES & ENGINES
+## III. Các quy tắc nghiệp vụ và engine cốt lõi
 
 ### 1. Lazy Reset Quota Engine
 
-To guarantee continuous system availability and bypass compute-heavy midnight cron loops, user quota limits must follow a lazy-evaluation lifecycle:
+Để bảo đảm hệ thống hoạt động liên tục và tránh phụ thuộc hoàn toàn vào cron nửa đêm cho mọi thao tác AI, giới hạn quota ngày được thiết kế theo kiểu lazy evaluation.
 
-- **Trigger:** Initiated exclusively when a user fires their first AI-related operational request (AI Outfit or AI Chatbot).
+#### Quy tắc nghiệp vụ
 
-- **Evaluation Steps:**
+- Trigger xảy ra khi người dùng gọi các chức năng AI.
+- Hệ thống kiểm tra `last_reset_date`.
+- Nếu đã sang ngày mới, hệ thống reset các bộ đếm AI về `0`.
+- Sau đó hệ thống mới xác nhận người dùng còn quota hay không.
 
-1. Fetch the user's `last_reset_date` from the profile.
-2. Compare `last_reset_date` with the current transaction `system_date`.
-3. If `system_date` > `last_reset_date`, execute an atomic update:
+#### Phiên bản hiện tại
 
-- Reset both `outfit_recommend_count` and `ai_usage_count` back to `0`.
-- Update `last_reset_date` to equal the current `system_date`.
+Phiên bản hiện tại đã có API quota ngày và contract quota thực thi ở module subscription.
 
-4. If the check passes (or after a reset occurs), verify that the current count is strictly less than the allowed subscription tier limit.
+Mô tả cũ về lazy reset vẫn được giữ vì đây vẫn là định hướng logic phù hợp với domain. Tuy nhiên, khi đọc tài liệu cần hiểu rằng chi tiết triển khai thực tế nằm ở contract và usecase của subscription hiện tại.
 
 ### 2. Chatbot Outfit Request Redirect Engine
 
-Prevents users from bypassing the separate "AI Outfit" counter by attempting to request outfit combinations inside the conversational AI Chatbot:
+Mục tiêu của rule này là ngăn người dùng lách quota gợi ý phối đồ bằng cách yêu cầu tạo outfit ngay trong AI Fashion Chatbot.
 
-- **Rule Criteria:** When a user initiates a conversation query inside the AI Chatbot expressing an intent to generate, assemble, or recommend a new outfit combination (e.g., asking to match clothing items or create style sets for occasions), the Chatbot's System Prompt / Guardrail intercepts the request.
+#### Quy tắc nghiệp vụ mục tiêu
 
-- **Deduction Rule:** Deduct exactly **0 units** from the AI Outfit recommendation quota and **0 units** from the AI Chatbot quota for outfit generation. The chatbot blocks the generation and returns a standardized, friendly guidance message directing the user to the dedicated **Outfit Generator (Phối đồ)** feature on the home dashboard.
+- Khi chatbot phát hiện ý định tạo outfit hoàn chỉnh, hệ thống không trừ quota outfit và cũng không trừ quota chat cho phần tạo outfit đó.
+- Chatbot chuyển hướng người dùng sang tính năng gợi ý phối đồ chuyên dụng.
+
+#### Phiên bản hiện tại
+
+Backend hiện đã có AI chat theo phiên và AI outfit recommendation tách riêng.
+
+Đối với AI outfit recommendation, kỳ vọng output hiện tại cũng đã chuyển sang dạng có cấu trúc hơn:
+
+- có tiêu đề outfit
+- có phần giải thích
+- có các nhóm item theo vai trò
+- mỗi vai trò có item chính và các item thay thế
+
+Đây là nền phù hợp để các rule nghiệp vụ như local swap, partial re-roll hoặc chọn item thay thế theo từng vai trò phát triển tiếp mà không cần đổi hoàn toàn contract đầu ra.
+
+Tuy nhiên, rule redirect ở mức system prompt hoặc orchestration nâng cao vẫn nên được xem là phần thiết kế mục tiêu hoặc guardrail nghiệp vụ cần duy trì, chứ không nên hiểu là toàn bộ logic đó đã được đóng gói trọn vẹn như mô tả cũ.
 
 ### 3. Automated Wardrobe Digitization Engine
 
-Processes unstructured visual assets to catalog apparel with zero user manual input:
+Engine này xử lý ảnh quần áo để số hóa tủ đồ với ít thao tác tay nhất có thể.
 
-- **Input Stage:** User uploads a singular, flat, clear image of an individual piece of clothing.
+#### Luồng mục tiêu
 
-- **AI Analysis Pipeline:** The system passes the image asset to the vision parsing service to execute:
+- Người dùng tải lên ảnh item.
+- AI phân tích để nhận diện:
+    - loại trang phục
+    - màu sắc chủ đạo
+    - chất liệu
+    - phong cách
+- Sau đó hệ thống lưu item vào tủ đồ số.
 
-- Classification mapping (e.g., Categorizing into T-shirt, jeans, jacket, skirt).
+#### Phiên bản hiện tại
 
-- Primary color extraction (Isolating predominant visual hex/color profiles).
+Hiện backend đã có:
 
-- Material/Fabric detection (e.g., Denim, Cotton, Wool, Leather).
+- batch upload item
+- xử lý nền qua worker
+- AI phân tích ảnh và sinh metadata
+- sinh embedding cho item
+- cập nhật item sau khi xử lý thành công
 
-- Style classification (Tagging items as Casual, Formal, Sporty, Vintage).
+Điều đó có nghĩa là mô tả này đã được triển khai một phần rõ ràng trong code, nhưng hình thức hiện tại là pipeline bất đồng bộ nhiều bước thay vì chỉ là một lời mô tả khái quát.
 
-- **Persistence Condition:** Catalog the finalized item attributes automatically into the user's active digital wardrobe inventory.
+Dữ liệu từ wardrobe hiện cũng là nền đầu vào cho recommendation output theo cấu trúc nhóm vai trò:
 
-### 4. Interactive Fashion Stylist Engine (AI Chatbot)
+- outfit có tiêu đề và phần giải thích
+- từng nhóm item gắn với vai trò cụ thể
+- mỗi vai trò có item ưu tiên và phương án thay thế
 
-Maintains grounded context during continuous, free-form natural language interactions:
+### 4. Interactive Fashion Stylist Engine
 
-- **Constraint Boundaries:** The assistant must strictly ground its styling suggestions using only the items verified as active within the user's digitized closet inventory.
+Chatbot thời trang tương tác có mục tiêu giữ ngữ cảnh và bám sát dữ liệu tủ đồ thật.
 
-- **Hallucination Guardrails:** The context prompt explicitly bans the recommendation of external fashion products, unowned clothing pieces, or fabrications that do not exist within the user's specific closet data.
+#### Quy tắc mục tiêu
 
-- **Context Maintenance:** The service summarizes long conversational interactions dynamically into contextual summaries to preserve long-term dialogue awareness across subsequent conversation updates.
+- Chỉ dựa trên các item có thật trong tủ đồ đã số hóa của người dùng.
+- Hạn chế hallucination về sản phẩm ngoài hệ thống.
+- Có cơ chế duy trì ngữ cảnh hội thoại qua thời gian.
 
-### 5. Peer-to-Peer Marketplace Consignment Logic (C2C)
+#### Phiên bản hiện tại
 
-Provides a bridge enabling items to move smoothly from a user's closet to the community feed space:
+Phiên bản hiện tại đã có:
 
-- **Trigger Action:** A user toggles an active item inside their digital closet and assigns its status to "Selling".
+- tạo phiên chat
+- lấy lịch sử chat
+- lưu trữ phiên
+- gửi tin nhắn theo stream
 
-- **Listing Generation:** The platform automatically constructs a structured public marketplace listing using the item's existing cataloged properties (color, style, category), requiring the user to supply only two mandatory inputs:
+Các mô tả cũ như ReAct agent loop, summary dài hạn hoặc orchestration theo ngưỡng vẫn được giữ như thiết kế mục tiêu của engine này.
 
-1. Target transaction price (`total_price` or item price).
+### 5. Peer-to-Peer Marketplace Consignment Logic
 
-2. Direct user contact coordinates (e.g., Phone number or social link).
+Đây là logic cầu nối giúp một item trong tủ đồ đi vào không gian cộng đồng theo mô hình C2C.
 
-- **Transaction Decoupling:** The platform strictly treats the listing as an informational matchmaker. Financial clearing, payment escrows, item tracking, and physical shipping distributions remain fully decoupled off-platform and occur entirely peer-to-peer.
+#### Quy tắc mục tiêu
 
-### 6. Platform Content Moderation & Account Isolation Rules
+- Người dùng đánh dấu item để bán.
+- Hệ thống dựng bài đăng công khai dựa trên dữ liệu đã có của item.
+- Người dùng chỉ cần cung cấp thêm giá và thông tin liên hệ.
+- Giao dịch tài chính, vận chuyển và hậu kiểm vẫn nằm ngoài nền tảng.
 
-Enforces compliance standards to keep the platform community safe and clear of violations:
+#### Phiên bản hiện tại
 
-- **Content Purging:** Administrators have structural authority to inspect open platform activities, flag anomalies, and execute instant moderation commands to hide or completely delete fraudulent resale listings or abusive commentary.
+Phiên bản hiện tại đã có thêm:
 
-- **Malicious Profile Ban:** When an administrator flags a profile and applies a "Banned" status trigger, the system must forcefully terminate all active authorization tokens linked to that identity across every connected device, blocking any further backend API interactions immediately.
+- bài đăng bán item
+- tạo yêu cầu mua
+- người bán xem các luồng chuyển nhượng
+- đánh dấu đã bán
+- người mua chấp nhận hoặc từ chối
+
+Tức là logic marketplace hiện không còn chỉ ở mức mô tả listing, mà đã có vòng đời chuyển nhượng item rõ hơn.
+
+### 6. Platform Content Moderation và Account Isolation Rules
+
+Hệ thống cần giữ cộng đồng an toàn và giảm nội dung vi phạm.
+
+#### Quy tắc mục tiêu
+
+- Admin có quyền kiểm duyệt hoặc gỡ nội dung vi phạm.
+- Khi khóa tài khoản độc hại, hệ thống có thể cắt quyền truy cập của người dùng đó.
+
+#### Phiên bản hiện tại
+
+Hiện backend đã có:
+
+- cập nhật trạng thái user
+- xóa và khôi phục bài đăng
+- xóa và khôi phục bình luận
+- ẩn hoặc xóa post item
+
+Rule “ban tài khoản và vô hiệu hóa toàn bộ phiên” vẫn là một nguyên tắc nghiệp vụ cần được giữ lại trong docs, dù chi tiết enforcement có thể thay đổi theo implementation.
 
 ---
 
-## IV. ALGORITHMIC GRAPH & USERFLOW REFERENCE
+## IV. Bản đồ use case và luồng người dùng
 
-### 1. Unified Functional Use Case Mapping
+### 1. Bản đồ use case hợp nhất
 
-For reference, below is the logic hierarchy mapped to target actors:
+Sơ đồ dưới đây vẫn có giá trị như một khung nhìn business-level về các năng lực của hệ thống:
 
 ```mermaid
 graph LR
-    subgraph Guest_Actions [Guest Privileges]
-        UC01[Register Account] --- UC02[Login System] --- UC03[View Community Feed] --- UC19[Reset Password via Email Link]
+    subgraph Guest_Actions [Quyền của khách]
+        UC01[Đăng ký tài khoản] --- UC02[Đăng nhập] --- UC03[Xem feed cộng đồng] --- UC19[Đặt lại mật khẩu qua email]
     end
 
-    subgraph Authenticated_Actions [User Tier Operations]
-        UC04[Upload Wardrobe Media] --- UC05[Inspect Closet Catalog]
-        UC06[Modify Item Tags] --- UC07[Soft Delete Wardrobe Item]
-        UC08[Execute RAG Outfit Search] --- UC09[Consult AI Stylist Chat]
-        UC10[Publish Community Insight] --- UC11[Publish Secondhand Resale]
-        UC12[Interact via Like or Comment] --- UC13[Upgrade Subscription Tier]
-        UC17[Auto Extract Tags via Vision AI] --- UC18[Manage Profile Settings]
-        UC20[Logout Active Session]
+    subgraph Authenticated_Actions [Thao tác của người dùng đã xác thực]
+        UC04[Tải ảnh tủ đồ] --- UC05[Xem tủ đồ số]
+        UC06[Chỉnh metadata item] --- UC07[Xóa mềm item]
+        UC08[Gợi ý phối đồ] --- UC09[Tư vấn AI Chat]
+        UC10[Đăng bài cộng đồng] --- UC11[Đăng bài thanh lý]
+        UC12[Tương tác like và comment] --- UC13[Nâng cấp hội viên]
+        UC17[Trích xuất metadata bằng AI] --- UC18[Quản lý hồ sơ]
+        UC20[Đăng xuất]
     end
 
-    subgraph Administrative_Actions [Admin Operations]
-        UC14[Publish Authoritative Trend] --- UC15[Moderate Abusive Content] --- UC16[Freeze Violating Account Profiles]
+    subgraph Administrative_Actions [Thao tác quản trị]
+        UC14[Quản trị nội dung nổi bật hoặc hệ thống] --- UC15[Kiểm duyệt nội dung vi phạm] --- UC16[Cập nhật trạng thái tài khoản]
     end
 
 ```
+
+### Phiên bản hiện tại
+
+So với sơ đồ cũ, khi đọc trong bối cảnh hiện tại cần hiểu rằng:
+
+- `UC08` hiện đã có API recommendation thật
+- `UC09` hiện đã có chat theo phiên và stream
+- `UC11` hiện đã có thêm seller hoặc buyer transfer flow
+- `UC13` hiện đã có cả ví, nạp tiền và mua gói
+
+Tài liệu giữ nguyên tinh thần use case cũ, nhưng cần được đọc cùng với thực trạng backend đã mở rộng đáng kể.

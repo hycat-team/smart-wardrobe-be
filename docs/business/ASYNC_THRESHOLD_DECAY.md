@@ -1,59 +1,155 @@
-# ASYNCHRONOUS THRESHOLD & GRAPH CORRELATION RULES SPECIFICATION
+# Đặc tả các quy tắc bất đồng bộ, ngưỡng và tương quan theo thời gian
 
-## I. ASYNCHRONOUS THRESHOLD-BASED CONVERSATIONAL MEMORY PIPELINE
+## I. Pipeline bộ nhớ hội thoại theo ngưỡng bất đồng bộ
 
-To prevent Context Window inflation and optimize token consumption costs, the system rejects real-time full-history reprocessing. It coordinates an asynchronous, threshold-driven summarization mechanism combined with a sliding window architecture.
+Để tránh phình to context window và tối ưu chi phí token, hệ thống không nên xử lý lại toàn bộ lịch sử hội thoại theo thời gian thực. Thay vào đó, nó phối hợp cơ chế tóm tắt bất đồng bộ theo ngưỡng cùng với sliding window.
 
 ```mermaid
 graph TD
-    A[Ongoing Message Logs Exchange] --> B{Uncompressed Counter >= 10?}
-    B -- No --> C[Maintain Active Low-Latency Stream using Sliding Window: Fetch 5 Raw Messages]
-    B -- Yes --> D[Trigger Background Summary Worker]
-    D --> E[Fetch 10 Raw Messages + Active context_summary String]
-    E --> F[Invoke Compression Prompt to Generate Consolidated Summary Layer]
-    F --> G[Overwrite context_summary & Archive/Clear 10 Old Raw Messages]
+    A[Dòng trao đổi tin nhắn liên tục] --> B{Số tin nhắn thô chưa nén >= 10?}
+    B -- Không --> C[Duy trì tốc độ thấp trễ bằng sliding window với 5 tin nhắn gần nhất]
+    B -- Có --> D[Kích hoạt worker tóm tắt nền]
+    D --> E[Lấy 10 tin nhắn thô + context_summary hiện tại]
+    E --> F[Gọi prompt nén để tạo summary hợp nhất]
+    F --> G[Ghi đè context_summary và dọn hoặc lưu trữ 10 tin nhắn cũ]
 
 ```
 
-### 1. Operational Workflow Mechanics
+### 1. Cơ chế vận hành mục tiêu
 
-- **Active Stream Evaluation (Sliding Window):** During active user interactions, the server interface bypasses historical parsing. It fetches exclusively the $5$ closest raw dialogue entries from the operational log pool to feed directly into the processing context. This logic maintains chatbot interface metrics at a low-latency performance tier.
+- **Đánh giá luồng đang hoạt động:** khi người dùng đang chat, hệ thống chỉ lấy một cửa sổ nhỏ các tin nhắn gần nhất để giữ độ trễ thấp.
+- **Ngưỡng kích hoạt bất đồng bộ:** khi số tin nhắn thô chạm ngưỡng, một tiến trình nền được kích hoạt.
+- **Hợp nhất tiến dần:** worker nén phần hội thoại thô với summary hiện có.
+- **Ghi nhận trạng thái:** summary mới thay thế summary cũ và dữ liệu thô cũ được dọn bớt.
 
-- **Asynchronous Consolidation Trigger:** The coordination service tracks uncompressed dialogue thresholds. The exact moment the local uncompressed conversation counter reaches a limit of **10 raw uncompressed messages**, an isolated background processing task automatically fires.
+### 2. Phiên bản hiện tại
 
-- **Progressive Context Fusion:** The background processing worker isolates the $10$ target uncompressed raw messages and aggregates them alongside the existing string located in the `context_summary` field. This bundle passes to a compression prompt utility to build a consolidated summary layer.
+Phiên bản hiện tại của backend đã có:
 
-- **State Committal:** The resulting data object completely overwrites the existing string inside the `context_summary` destination field. The system immediately clears or archives the $10$ processed raw dialogue lines to reclaim database operations bandwidth.
+- phiên chat AI
+- danh sách phiên
+- lịch sử tin nhắn
+- xử lý phản hồi theo stream
 
-### 2. Architectural Trade-offs Matrix
+Tuy nhiên, pipeline summary nền theo ngưỡng như mô tả trên vẫn nên được xem là **thiết kế mục tiêu hoặc hướng mở rộng kiến trúc**, không mặc định hiểu là toàn bộ cơ chế này đã chạy đầy đủ nếu code chưa thể hiện trọn vẹn.
 
-The engineering choice to build an **Explicit Message Count Counter Limit Trigger (Option 1)** instead of a **Session Inactivity / Client Disconnect Event Trigger (Option 2)** reflects a deliberate technical decision:
+### 3. Ma trận đánh đổi kiến trúc
 
-| Architectural Attribute      | The Pros (Operational Advantages)                                                                                                                                                                                                                                                     | The Cons (System Trade-offs)                                                                                                                                                                                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Context Window Isolation** | Enforcing rolling compression cycles every 10 messages anchors main chatbot prompts to minimal, predictable token dimensions. This bounds conversational API fees and eliminates historical attention degradation during long interactions.                                           | **Elevated Background Token Traffic:** Sustained continuous user messaging profiles generate recurring background summarization invocations. For example, a 100-message chat session triggers exactly 10 sequential compression worker executions.                          |
-| **State Determinism**        | Processing logic stays entirely enclosed on the server tier via an internal calculation check ($\text{if } \text{counter} \ge 10 \rightarrow \text{invoke worker}$). This drops edge-case vulnerabilities tied to unreliable client frontends, such as network drops or tab closures. | **Summary Attrition Risk:** Rolling summarization depends heavily on prompt engineering precision. Suboptimal phrasing can cause a gradual loss of historical data facts (e.g., specific style properties mentioned early in the session) over multiple compression cycles. |
+Tư duy chọn cơ chế ngưỡng tin nhắn thay vì phụ thuộc vào việc người dùng rời phiên vẫn còn giá trị ở mức thiết kế:
+
+| Thuộc tính kiến trúc      | Lợi ích vận hành                                                                                                                                                                                                 | Đánh đổi hệ thống                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Giữ context gọn**       | Việc nén định kỳ giúp prompt chính duy trì kích thước token ổn định, giảm trượt ngữ cảnh và giảm chi phí.                                                                                                      | Phát sinh thêm chi phí nền cho việc tóm tắt nếu người dùng chat rất dài.                                                                                                                                        |
+| **Tính xác định ở server** | Logic kích hoạt nằm hoàn toàn ở phía server, ít phụ thuộc vào hành vi phía client.                                                                                                                               | Nếu prompt tóm tắt không tốt, thông tin cũ có thể bị mờ dần sau nhiều vòng nén.                                                                                                                                |
 
 ---
 
-## II. SYSTEM GLOBAL TRENDING COMPONENT (GLOBAL HOTNESS ALGORITHM)
+## II. Thành phần xu hướng toàn cục của hệ thống cộng đồng
 
-The community feed leverages a gravity-driven algorithm based on interaction velocity and time decay, moving away from purely static or simple chronological presentation orders.
+Feed cộng đồng dùng tư duy gravity và time-decay thay vì chỉ xếp theo thời gian tạo.
 
-### 1. Ingestion Tier: Real-time Interaction Tracking
+### 1. Tầng ghi nhận tương tác thời gian thực
 
-When an active client fires an explicit social interaction (Like or Comment action), the platform executes an atomic increment/decrement operation ($+1$ / $-1$) on the cached counters `like_count` and `comment_count` within the core post state. This execution bypasses complex scoring pathways to keep transaction times minimal.
+Khi người dùng like hoặc comment:
 
-### 2. Analytical Tier: Scheduled Scoring Loop
+- bộ đếm `like_count` và `comment_count` được cập nhật ngay
+- bước này được tối giản để tránh làm chậm tương tác
 
-An isolated background execution cron task runs on a periodic cycle (configured to execute exactly **once every 10 minutes**). It sweeps all articles possessing fresh interaction metrics to compute their popularity rank using a gravity time-decay formula:
+### 2. Tầng phân tích theo lịch
+
+Thiết kế cũ mô tả một job chạy định kỳ để tính lại `global_hotness_score` theo công thức time-decay.
 
 $$\text{global\_hotness\_score} = \frac{(\text{Like\_Count} \times 1) + (\text{Comment\_Count} \times 2) - 1}{(\text{Age\_In\_Hours} + 2)^{G}}$$
 
-### 3. Parameter Boundary Explanations
+### 3. Phiên bản hiện tại
 
-- **Interaction Counter Weights:** `Like_Count` and `Comment_Count` represent the real-time social engagement counters extracted from the data layer. Comments receive double the score weight ($\times 2$) of likes ($\times 1$) because written interaction indicates a higher tier of user retention.
+Phiên bản hiện tại đã có:
 
-- **Temporal Age Variable ($\text{Age\_In\_Hours}$):** Represents the precise decimal duration in hours since the creation timestamp (`created_at`) relative to the active processing execution timestamp.
+- post score snapshot
+- feed hot
+- personalized hot feed
+- logic mark dirty và các lớp repository phục vụ cập nhật score
 
-- **Gravity Coefficient ($G$):** An explicitly assigned gravity time-decay parameter (configured to a default value of $1.5$ or $1.8$). This denominator forces a monotonic decay curve on historical items. It guarantees that older posts automatically lose ranking gravity over time, freeing prime discovery slots for newly published items regardless of the historical engagement volume.
+Điều này cho thấy ý tưởng global hotness vẫn đang tồn tại ở sản phẩm, dù chu kỳ job hoặc chi tiết công thức cụ thể có thể khác implementation lý tưởng trong docs cũ.
+
+### 4. Ý nghĩa của các tham số
+
+- **Like count** và **comment count** vẫn là hai tín hiệu tương tác quan trọng.
+- **Age in hours** vẫn là cơ sở hợp lý để giảm dần lợi thế của bài cũ.
+- **Gravity coefficient** vẫn là biến điều tiết mức suy giảm theo thời gian.
+
+### Thiết kế mục tiêu và phiên bản hiện tại
+
+Tài liệu này giữ nguyên công thức cũ như đặc tả mục tiêu để tránh mất ý tưởng thuật toán, đồng thời khi đọc cần hiểu rằng code hiện tại đang hiện thực hóa cùng tinh thần business nhưng có thể không dùng đúng nguyên văn toàn bộ chi tiết này.
+
+---
+
+## III. Các cơ chế bất đồng bộ đã có thật trong phiên bản hiện tại
+
+Phần dưới đây được bổ sung để phản ánh chính xác hơn trạng thái backend hiện tại mà không xóa đi phần thiết kế cũ.
+
+### 1. Worker gia hạn hội viên tự động
+
+Phiên bản hiện tại đã có worker gia hạn hội viên:
+
+- chạy một lần khi ứng dụng khởi động
+- sau đó chạy theo lịch hằng ngày
+- gọi usecase `ProcessScheduledRenewals`
+
+Đây là cơ chế bất đồng bộ thật đang tồn tại trong hệ thống.
+
+### 2. Worker batch upload wardrobe
+
+Phiên bản hiện tại đã có worker tiêu thụ job batch upload:
+
+- nhận job từ hệ thống phát sự kiện
+- xử lý từng item ở nền
+- gọi AI để phân tích ảnh
+- cập nhật metadata và embedding
+
+Điều này là hiện thực trực tiếp của tư duy “digitization bất đồng bộ” đã được mô tả ở các tài liệu trước.
+
+### 3. Worker dọn item lỗi
+
+Phiên bản hiện tại đã có worker dọn item thất bại:
+
+- chạy lúc khởi động
+- chạy theo lịch định kỳ
+- gọi `CleanupFailedItems`
+
+Vai trò của worker này là giữ cho dữ liệu tủ đồ không bị tích tụ item lỗi lâu ngày.
+
+### 4. Retry và backoff cho job xử lý nền
+
+Phiên bản hiện tại đã có các hành vi thực tế sau:
+
+- phân biệt lỗi tạm thời và lỗi nghiêm trọng
+- retry job với số lần giới hạn
+- tăng dần thời gian chờ giữa các lần retry
+- đánh dấu item thất bại nếu vượt ngưỡng
+
+Đây là phần triển khai thực tế rất quan trọng cần được ghi nhận như hiện trạng của hệ thống.
+
+### 5. Dữ liệu `last_used_at` và suy giảm vòng đời item
+
+Tài liệu cũ nói nhiều về decay theo thời gian.
+
+Phiên bản hiện tại đã có nền dữ liệu để phục vụ hướng này:
+
+- khi người dùng lưu outfit hoặc cập nhật outfit, hệ thống chạm `last_used_at` cho các item liên quan
+
+Điều đó có nghĩa là:
+
+- phần suy giảm vòng đời item chưa nên coi là hoàn tất toàn bộ
+- nhưng nền dữ liệu cho decay logic đã thực sự có trong code
+
+---
+
+## IV. Cách đọc tài liệu này trong bối cảnh hiện tại
+
+Khi đọc tài liệu này, cần phân biệt hai lớp:
+
+- **Thiết kế mục tiêu:** summary theo ngưỡng cho chat, công thức hotness hoàn chỉnh, các engine giảm tải token hoặc correlation sâu hơn
+- **Phiên bản hiện tại:** renewal worker, batch upload worker, cleanup worker, retry và dữ liệu `last_used_at`
+
+Nhờ vậy, tài liệu vẫn giữ nguyên toàn bộ mô tả cũ, nhưng không còn làm người đọc hiểu nhầm rằng mọi phần đều đã được implement giống hệt đặc tả ban đầu.

@@ -1,12 +1,12 @@
-# FASHION COLOR THEORY RULE ENGINE SPECIFICATION
+# Đặc tả engine quy tắc lý thuyết màu sắc thời trang
 
-## I. COLOR SPACE CONVERSION ALGORITHM (RGB TO HSL)
+## I. Thuật toán chuyển đổi không gian màu từ RGB sang HSL
 
-Raw apparel color data is initially stored or extracted as RGB components where $R, G, B \in [0, 255]$. To evaluate human visual characteristics and calculate geometric positions on a color wheel, the system transforms RGB coordinates into the HSL (Hue, Saturation, Lightness) color space.
+Dữ liệu màu trang phục ban đầu thường được lưu hoặc trích xuất dưới dạng RGB với $R, G, B \in [0, 255]$. Để đánh giá đặc tính thị giác của con người và tính toán vị trí trên vòng tròn màu, hệ thống chuyển đổi dữ liệu này sang không gian HSL.
 
-### 1. Input Normalization
+### 1. Chuẩn hóa đầu vào
 
-Convert raw 8-bit integer color channels into fractional coefficients:
+Chuyển ba kênh màu từ thang 8-bit sang hệ số phân số:
 
 $$R' = \frac{R}{255}$$
 
@@ -14,7 +14,7 @@ $$G' = \frac{G}{255}$$
 
 $$B' = \frac{B}{255}$$
 
-Identify boundary extremes and their variance interval:
+Xác định giá trị lớn nhất, nhỏ nhất và độ chênh:
 
 $$C_{max} = \max(R', G', B')$$
 
@@ -22,121 +22,199 @@ $$C_{min} = \min(R', G', B')$$
 
 $$\Delta = C_{max} - C_{min}$$
 
-### 2. Lightness ($L$) Computation
+### 2. Tính độ sáng Lightness ($L$)
 
-Lightness represents the average luminance value bounded between $0.0$ (pure black) and $1.0$ (pure white):
+Độ sáng là mức trung bình về cảm nhận sáng tối của màu:
 
 $$L = \frac{C_{max} + C_{min}}{2}$$
 
-### 3. Saturation ($S$) Computation
+### 3. Tính độ bão hòa Saturation ($S$)
 
-Saturation defines the purity or intensity of the color hue, scaling from $0.0$ (completely grayscale) to $1.0$ (maximum intensity). The math formula branches conditionally based on the calculated $L$ value:
+Độ bão hòa biểu diễn độ tinh khiết của màu:
 
-- **Case 1: Achromatic Grayscale ($\Delta = 0$)**
+- **Trường hợp vô sắc ($\Delta = 0$)**  
+  $$S = 0$$
 
-$$S = 0$$
+- **Trường hợp có sắc độ ($\Delta > 0$)**  
+  $$
+  S = \begin{cases}
+  \frac{\Delta}{C_{max} + C_{min}} & \text{nếu } L \le 0.5 \\
+  \frac{\Delta}{2 - (C_{max} + C_{min})} & \text{nếu } L > 0.5
+  \end{cases}
+  $$
 
-- **Case 2: Chromatic Color ($\Delta > 0$)**
-    $$
-    S = \begin{cases}
-    \frac{\Delta}{C_{max} + C_{min}} & \text{if } L \le 0.5 \ \
-    \frac{\Delta}{2 - (C_{max} + C_{min})} & \text{if } L > 0.5
-    \end{cases}
-    $$
+### 4. Tính Hue ($H$)
 
-### 4. Hue ($H$) Computation
-
-Hue establishes the absolute radial degree location on the 360-degree color wheel wheel profile:
+Hue là vị trí góc của màu trên vòng tròn màu 360 độ:
 
 $$
 H = \begin{cases}
-0^\circ & \text{if } \Delta = 0 \
-60^\circ \times \left( \frac{G' - B'}{\Delta} \bmod 6 \right) & \text{if } C_{max} = R' \
-60^\circ \times \left( \frac{B' - R'}{\Delta} + 2 \right) & \text{if } C_{max} = G' \
-60^\circ \times \left( \frac{R' - G'}{\Delta} + 4 \right) & \text{if } C_{max} = B'
+0^\circ & \text{nếu } \Delta = 0 \\
+60^\circ \times \left( \frac{G' - B'}{\Delta} \bmod 6 \right) & \text{nếu } C_{max} = R' \\
+60^\circ \times \left( \frac{B' - R'}{\Delta} + 2 \right) & \text{nếu } C_{max} = G' \\
+60^\circ \times \left( \frac{R' - G'}{\Delta} + 4 \right) & \text{nếu } C_{max} = B'
 \end{cases}
 $$
 
----
+### Phiên bản hiện tại
 
-## II. ACHROMATIC FILTERING PIPELINE
+Phiên bản hiện tại của hệ thống chưa nên bị hiểu là toàn bộ công thức trên đang được sử dụng như một engine hình học hoàn chỉnh trong mọi luồng.
 
-Before running geometric angle pairings, the system filters out neutral colors lacking a fixed chromatic anchor point. These items can safely pair with any other shade.
+Tuy nhiên, dữ liệu màu vẫn đang có vai trò thật trong backend hiện tại:
 
-- **Rule Validation Filter:** An apparel item is classified into the `Neutral_Pool` instead of the `Chroma_Pool` if it meets any of the following boundary metrics:
+- được AI trích xuất khi xử lý ảnh item
+- được lưu thành metadata của item
+- được dùng trong rich text context để sinh embedding
 
-- **Black Isolation:** Lightness $L \le 10\%$
-
-- **White Isolation:** Lightness $L \ge 90\%$
-
-- **Gray Isolation:** Saturation $S \le 10\%$
+Nói cách khác, phần công thức vẫn được giữ như nền tảng lý thuyết mục tiêu, còn vai trò hiện tại của màu sắc là dữ liệu đầu vào quan trọng cho AI và cho các hướng phối đồ nâng cao.
 
 ---
 
-## III. GEOMETRIC COLOR COHESION PAIRING
+## II. Pipeline lọc màu vô sắc
 
-For clothing items retaining structural colors (`Chroma_Pool`), the rule engine executes a combinatorial permutation iteration. It loops through distinct items across contrasting categories to compute absolute radial angular deviation over the color wheel boundaries:
+Trước khi chạy các phép ghép cặp theo góc hình học, hệ thống tách các màu trung tính ra khỏi các màu có điểm neo sắc độ rõ ràng.
+
+- Một item được xếp vào `Neutral_Pool` thay vì `Chroma_Pool` nếu thỏa một trong các điều kiện:
+  - **Đen:** $L \le 10\%$
+  - **Trắng:** $L \ge 90\%$
+  - **Xám:** $S \le 10\%$
+
+### Thiết kế mục tiêu
+
+Thiết kế này giúp hệ thống:
+
+- tránh ép các màu trung tính vào các luật hình học không cần thiết
+- cho phép item trung tính kết hợp linh hoạt hơn
+
+### Phiên bản hiện tại
+
+Phiên bản hiện tại của code chưa nên được mô tả là đã hiện thực đầy đủ pipeline `Neutral_Pool` hoặc `Chroma_Pool` theo đúng đặc tả cũ ở mọi bước recommendation.
+
+Tuy vậy, khái niệm này vẫn nên được giữ trong docs vì:
+
+- nó là nền lý thuyết hợp lý cho hệ phối đồ
+- nó có thể được dùng lại trong local swap, recommendation nâng cao hoặc các bộ lọc cục bộ sau này
+
+---
+
+## III. Quy tắc phối màu hình học
+
+Với các item còn mang màu sắc có cấu trúc rõ, engine sẽ tính độ lệch góc trên vòng tròn màu:
 
 $$\Delta H = |H_{\text{Item1}} - H_{\text{Item2}}|$$
 
 $$\Delta H_{\text{final}} = \min(\Delta H, 360^\circ - \Delta H)$$
 
-### 1. Analogous Styling Combination
+### 1. Tổ hợp màu tương đồng
 
-This routine isolates adjacent color configurations on the wheel layout to construct harmonious, low-contrast ensembles.
+Mục tiêu là tạo các outfit hài hòa và ít tương phản.
 
-- **Primary Constraint:**
+- **Ràng buộc chính:**
 
 $$\Delta H_{\text{final}} < 30^\circ$$
 
-- **Visual Contrast Adjustment Rule:** To prevent flat, monotonal looks and inject depth, the items must display a minimum luminance separation:
+- **Ràng buộc tương phản sáng tối tối thiểu:**
 
 $$|L_{\text{Item1}} - L_{\text{Item2}}| \ge 15\%$$
 
-### 2. Complementary Styling Combination
+### 2. Tổ hợp màu bổ sung
 
-This routine pairs polar opposite color nodes across the wheel diameter to formulate high-impact, striking contrast palettes.
+Mục tiêu là tạo phối màu tương phản mạnh.
 
-- **Primary Constraint (Allowing a $15^\circ$ Margin of Error):**
+- **Ràng buộc chính:**
 
 $$165^\circ \le \Delta H_{\text{final}} \le 195^\circ$$
 
+### Phiên bản hiện tại
+
+Các quy tắc này vẫn được giữ nguyên trong tài liệu như **engine lý thuyết mục tiêu** của hệ thống phối đồ.
+
+Ở trạng thái hiện tại:
+
+- backend đã có AI recommendation
+- backend đã có metadata màu
+- backend đã có các mô tả trong tài liệu khác về stage lọc màu hoặc style matrix
+
+Nhưng không nên khẳng định quá mức rằng mọi công thức ở đây đang chạy trực tiếp và đầy đủ trong toàn bộ implementation hiện tại nếu code chưa thể hiện rõ từng bước.
+
 ---
 
-## IV. DATA PAYLOAD INTERACTION SCHEME
+## IV. Sơ đồ tương tác dữ liệu đầu ra
 
-Once the backend RAM matrix finishes calculating these combinatorial pairs, it packages the payload into a structured schema ready for downstream LLM analysis (For example, please make changes if necessary.):
+Sau khi backend hoàn thành việc tính toán các cặp phối màu, payload có thể được đóng gói thành schema chuẩn cho các bước AI hoặc tổng hợp phía sau.
 
 ```json
 {
-    "user_context": {
-        "body_profile": "..."
-    },
-    "pre_validated_pairs": {
-        "complementary_suggestions": [
-            {
-                "set_id": "pair_01",
-                "top": {
-                    "id": "uuid-1",
-                    "name": "Áo thun Cam",
-                    "hex": "#FF5733",
-                    "hsl": [11, 100, 60]
-                },
-                "bottom": {
-                    "id": "uuid-2",
-                    "name": "Quần jean Xanh dương",
-                    "hex": "#2E4053",
-                    "hsl": [210, 28, 25]
-                },
-                "calculated_delta_hue": 199
-            }
-        ],
-        "neutral_matchings": [
-            {
-                "top_id": "uuid-1",
-                "neutral_bottom_id": "uuid-black-jeans"
-            }
-        ]
-    }
+  "user_context": {
+    "body_profile": "..."
+  },
+  "pre_validated_pairs": {
+    "complementary_suggestions": [
+      {
+        "set_id": "pair_01",
+        "top": {
+          "id": "uuid-1",
+          "name": "Áo thun cam",
+          "hex": "#FF5733",
+          "hsl": [11, 100, 60]
+        },
+        "bottom": {
+          "id": "uuid-2",
+          "name": "Quần jean xanh dương",
+          "hex": "#2E4053",
+          "hsl": [210, 28, 25]
+        },
+        "calculated_delta_hue": 199
+      }
+    ],
+    "neutral_matchings": [
+      {
+        "top_id": "uuid-1",
+        "neutral_bottom_id": "uuid-black-jeans"
+      }
+    ]
+  }
 }
 ```
+
+### Định hướng đầu ra mục tiêu theo recommendation hiện tại
+
+Khi đối chiếu với DTO recommendation hiện tại, lớp dữ liệu màu và các cặp đã tiền kiểm có thể được dùng như đầu vào để tạo ra output nghiệp vụ ở dạng:
+
+```json
+{
+  "title": "Bộ casual đi chơi cuối tuần",
+  "explanation": "Phối hợp tông trung tính với điểm nhấn màu nhẹ, phù hợp thời tiết và phong cách người dùng",
+  "items": [
+    {
+      "role": "top",
+      "primary": { "id": "uuid-1" },
+      "alternatives": [{ "id": "uuid-3" }]
+    },
+    {
+      "role": "bottom",
+      "primary": { "id": "uuid-2" },
+      "alternatives": [{ "id": "uuid-4" }]
+    }
+  ]
+}
+```
+
+Schema này cho thấy dữ liệu lý thuyết màu không nhất thiết phải đi thẳng ra ngoài dưới dạng cặp màu thuần túy. Thay vào đó, nó có thể được tiêu hóa thành:
+
+- tiêu đề outfit
+- giải thích lựa chọn
+- các nhóm item theo vai trò
+- item chính và item thay thế cho từng vai trò
+
+### Phiên bản hiện tại
+
+Schema trên vẫn là mô tả rất hữu ích của **dữ liệu mục tiêu** cho các bước tổng hợp outfit bằng AI hoặc các bộ lọc cục bộ.
+
+Ở backend hiện tại:
+
+- item đã có dữ liệu màu và embedding
+- rich text context đã sử dụng metadata màu
+- recommendation engine đã có nền dữ liệu để tiến dần tới dạng payload như trên
+
+Do đó, phần này không bị loại bỏ mà được hiểu là mô hình dữ liệu đích cho các phiên bản recommendation sâu hơn.
