@@ -7,7 +7,7 @@ import (
 )
 
 type IWardrobeSearchService interface {
-	SearchItems(ctx context.Context, query string) ([]*dto.SearchWardrobeItemRes, error)
+	SearchItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error)
 }
 
 type IWardrobeSearchIndexService interface {

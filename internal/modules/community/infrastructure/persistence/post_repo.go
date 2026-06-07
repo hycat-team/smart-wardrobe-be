@@ -2,11 +2,13 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -29,16 +31,53 @@ func NewPostRepository(db *gorm.DB) repositories.IPostRepository {
 	}
 }
 
+func (r *PostRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Post, error) {
+	var post entities.Post
+	err := r.GetQueryWithPreload(ctx).
+		Joins("JOIN users ON users.id = posts.user_id").
+		Where("posts.id = ? AND posts.is_deleted = ? AND users.is_deleted = ?", id, false, false).
+		First(&post).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &post, nil
+}
+
+func (r *PostRepository) GetByPublicID(ctx context.Context, publicID string) (*entities.Post, error) {
+	var post entities.Post
+	err := r.GetQueryWithPreload(ctx).
+		Joins("JOIN users ON users.id = posts.user_id").
+		Where("posts.public_id = ? AND posts.is_deleted = ? AND users.is_deleted = ?", publicID, false, false).
+		First(&post).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &post, nil
+}
+
+func (r *PostRepository) baseFeedQuery(ctx context.Context) *gorm.DB {
+	return r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Joins("JOIN users ON users.id = posts.user_id").
+		Where("posts.is_deleted = ? AND users.is_deleted = ?", false, false).
+		Where("posts.post_type <> ? OR EXISTS (SELECT 1 FROM post_items WHERE post_items.post_id = posts.id AND post_items.status <> ?)", "SALE", postitemstatus.Hidden)
+}
+
 func (r *PostRepository) GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error) {
 	pagination := shared_persist.NormalizePagination(shared_dto.PaginationQuery{
 		Page:  query.Page,
 		Limit: query.Limit,
 	})
-	baseQuery := r.GetDB(ctx).
-		Model(&entities.Post{})
+	baseQuery := r.baseFeedQuery(ctx)
 
-	if query.UserID != nil {
-		baseQuery = baseQuery.Where("posts.user_id = ?", *query.UserID)
+	if query.Username != nil {
+		baseQuery = baseQuery.Where("users.username = ?", *query.Username)
 	}
 	if query.PostType != nil {
 		baseQuery = baseQuery.Where("posts.post_type = ?", *query.PostType)
@@ -65,13 +104,12 @@ func (r *PostRepository) GetHotFeedCandidates(ctx context.Context, query dto.Fee
 }
 
 func (r *PostRepository) listFeed(ctx context.Context, query dto.FeedQuery, forceHot bool, limit int) ([]*dto.FeedPostRecord, error) {
-	dbQuery := r.GetDB(ctx).
-		Model(&entities.Post{}).
+	dbQuery := r.baseFeedQuery(ctx).
 		Select("posts.*, COALESCE(post_score_snapshots.global_hotness_score, 0) AS global_hotness_score").
 		Joins("LEFT JOIN post_score_snapshots ON post_score_snapshots.post_id = posts.id")
 
-	if query.UserID != nil {
-		dbQuery = dbQuery.Where("posts.user_id = ?", *query.UserID)
+	if query.Username != nil {
+		dbQuery = dbQuery.Where("users.username = ?", *query.Username)
 	}
 	if query.PostType != nil {
 		dbQuery = dbQuery.Where("posts.post_type = ?", *query.PostType)
@@ -111,12 +149,15 @@ func (r *PostRepository) listFeed(ctx context.Context, query dto.FeedQuery, forc
 
 func (r *PostRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Post, error) {
 	var items []*entities.Post
-	err := r.GetQueryWithPreload(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&items).Error
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id = ? AND is_deleted = ?", userID, false).
+		Order("created_at DESC").
+		Find(&items).Error
 	return items, err
 }
 
-func (r *PostRepository) GetDetail(ctx context.Context, postID uuid.UUID) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error) {
-	post, err := r.GetByID(ctx, postID)
+func (r *PostRepository) GetDetail(ctx context.Context, postPublicID string) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error) {
+	post, err := r.GetByPublicID(ctx, postPublicID)
 	if err != nil || post == nil {
 		return post, nil, nil, err
 	}
@@ -125,14 +166,21 @@ func (r *PostRepository) GetDetail(ctx context.Context, postID uuid.UUID) (*enti
 	if err := r.GetDB(ctx).
 		Preload("WardrobeItem").
 		Preload("WardrobeItem.Category").
-		Where("post_id = ?", postID).
+		Where("post_id = ? AND status <> ?", post.ID, postitemstatus.Hidden).
 		Order("created_at ASC").
 		Find(&items).Error; err != nil {
 		return nil, nil, nil, err
 	}
 
+	if post.PostType == "SALE" && len(items) == 0 {
+		return nil, nil, nil, nil
+	}
+
 	var media []*entities.PostMedia
-	if err := r.GetDB(ctx).Where("post_id = ?", postID).Order("sort_order ASC, created_at ASC").Find(&media).Error; err != nil {
+	if err := r.GetDB(ctx).
+		Where("post_id = ?", post.ID).
+		Order("sort_order ASC, created_at ASC").
+		Find(&media).Error; err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -143,7 +191,7 @@ func (r *PostRepository) GetDirtyPostIDs(ctx context.Context, limit int) ([]uuid
 	var postIDs []uuid.UUID
 	query := r.GetDB(ctx).
 		Model(&entities.Post{}).
-		Where("hotness_dirty_at IS NOT NULL").
+		Where("hotness_dirty_at IS NOT NULL AND is_deleted = ?", false).
 		Order("hotness_dirty_at ASC")
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -159,7 +207,7 @@ func (r *PostRepository) GetDecayRefreshPostIDs(ctx context.Context, since time.
 	var postIDs []uuid.UUID
 	query := r.GetDB(ctx).
 		Model(&entities.Post{}).
-		Where("created_at >= ?", since).
+		Where("created_at >= ? AND is_deleted = ?", since, false).
 		Order("created_at DESC")
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -177,7 +225,7 @@ func (r *PostRepository) GetHighScoreStalePostIDs(ctx context.Context, before ti
 		Model(&entities.Post{}).
 		Select("posts.id").
 		Joins("JOIN post_score_snapshots ON post_score_snapshots.post_id = posts.id").
-		Where("posts.created_at < ?", before).
+		Where("posts.created_at < ? AND posts.is_deleted = ?", before, false).
 		Where("post_score_snapshots.global_hotness_score >= ?", minScore).
 		Order("post_score_snapshots.global_hotness_score DESC").
 		Order("posts.created_at DESC")
@@ -195,7 +243,7 @@ func (r *PostRepository) MarkHotnessDirty(ctx context.Context, postID uuid.UUID)
 	now := time.Now()
 	return r.GetDB(ctx).
 		Model(&entities.Post{}).
-		Where("id = ?", postID).
+		Where("id = ? AND is_deleted = ?", postID, false).
 		Update("hotness_dirty_at", now).Error
 }
 
@@ -206,6 +254,13 @@ func (r *PostRepository) ClearHotnessDirty(ctx context.Context, postIDs []uuid.U
 
 	return r.GetDB(ctx).
 		Model(&entities.Post{}).
-		Where("id IN ?", postIDs).
+		Where("id IN ? AND is_deleted = ?", postIDs, false).
 		Update("hotness_dirty_at", nil).Error
+}
+
+func (r *PostRepository) SoftDelete(ctx context.Context, postID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("id = ? AND is_deleted = ?", postID, false).
+		Update("is_deleted", true).Error
 }

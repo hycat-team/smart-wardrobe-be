@@ -32,7 +32,7 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem) *dto.
 		Description:   outfit.Description,
 		CoverImageUrl: outfit.CoverImageUrl,
 		CoverPublicID: outfit.CoverPublicID,
-		Status:        int16(outfit.Status),
+		Status:        outfit.Status,
 		CreatedAt:     outfit.CreatedAt,
 		UpdatedAt:     outfit.UpdatedAt,
 		Items:         itemDTOs,

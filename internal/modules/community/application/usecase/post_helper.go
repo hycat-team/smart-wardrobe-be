@@ -1,0 +1,203 @@
+package usecase
+
+import (
+	"context"
+	"crypto/rand"
+	"strings"
+
+	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
+	"smart-wardrobe-be/internal/modules/community/domain/repositories"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
+	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+
+	"github.com/google/uuid"
+)
+
+const postPublicIDPrefix = "p_"
+
+var base62Alphabet = []byte("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+
+type resolvedPostItemInput struct {
+	ItemID        uuid.UUID
+	Price         float64
+	ItemCondition itemcondition.ItemCondition
+}
+
+func newPostPublicID() (string, error) {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+
+	chars := make([]byte, 16)
+	for i, b := range buf {
+		chars[i] = base62Alphabet[int(b)%len(base62Alphabet)]
+	}
+	return postPublicIDPrefix + string(chars), nil
+}
+
+func (uc *UserPostUseCase) generateUniquePostPublicID(ctx context.Context) (string, error) {
+	for i := 0; i < 10; i++ {
+		publicID, err := newPostPublicID()
+		if err != nil {
+			return "", err
+		}
+		post, err := uc.writer.postRepo.GetByPublicID(ctx, publicID)
+		if err != nil {
+			return "", err
+		}
+		if post == nil {
+			return publicID, nil
+		}
+	}
+	return "", communityerrors.ErrInvalidPostPublicIDFormat
+}
+
+func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType posttype.PostType, items []community_dto.PostItemInputReq) ([]resolvedPostItemInput, error) {
+	result := make([]resolvedPostItemInput, 0, len(items))
+	if len(items) == 0 {
+		return result, nil
+	}
+
+	itemIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		itemIDs = append(itemIDs, item.ItemID)
+	}
+
+	wardrobeItems, err := uc.writer.wardrobeCtr.GetItemsByIDs(ctx, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+	wardrobeByID := make(map[uuid.UUID]*entities.WardrobeItem, len(wardrobeItems))
+	for _, item := range wardrobeItems {
+		wardrobeByID[item.ID] = item
+	}
+
+	for _, item := range items {
+		resolved := resolvedPostItemInput{
+			ItemID:        item.ItemID,
+			ItemCondition: itemcondition.Standard,
+		}
+		if item.ItemCondition != nil {
+			resolved.ItemCondition = *item.ItemCondition
+		}
+
+		if item.Price != nil {
+			resolved.Price = *item.Price
+		} else if wardrobeItem := wardrobeByID[item.ItemID]; wardrobeItem != nil && wardrobeItem.Price != nil {
+			resolved.Price = *wardrobeItem.Price
+		} else if postType == posttype.Sale {
+			return nil, communityerrors.ErrPostItemPriceRequired
+		}
+
+		result = append(result, resolved)
+	}
+
+	return result, nil
+}
+
+func (uc *UserPostUseCase) syncPostTotalPrice(ctx context.Context, postID uuid.UUID) error {
+	return syncPostTotalPrice(ctx, uc.writer.postRepo, uc.writer.postItemRepo, postID)
+}
+
+func syncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {
+	total, err := postItemRepo.SumVisiblePriceByPostID(ctx, postID)
+	if err != nil {
+		return err
+	}
+
+	post, err := postRepo.GetByID(ctx, postID)
+	if err != nil {
+		return err
+	}
+	if post == nil {
+		return nil
+	}
+
+	post.TotalPrice = total
+	return postRepo.Update(ctx, post)
+}
+
+func toPostSharePath(publicID string) string {
+	return "/posts/" + publicID
+}
+
+func mapUserDisplayFields(user *entities.User) (string, string, *string) {
+	if user == nil {
+		return "", "", nil
+	}
+
+	firstName := ""
+	lastName := ""
+	if user.FirstName != nil {
+		firstName = *user.FirstName
+	}
+	if user.LastName != nil {
+		lastName = *user.LastName
+	}
+
+	return firstName, lastName, user.AvatarUrl
+}
+
+func mapCommentUserRes(comment *entities.Comment) (string, string, string, *string) {
+	if comment == nil || comment.User == nil {
+		return "", "", "", nil
+	}
+
+	firstName, lastName, avatarURL := mapUserDisplayFields(comment.User)
+	return comment.User.Username, firstName, lastName, avatarURL
+}
+
+func mapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
+	if user == nil {
+		return nil
+	}
+
+	firstName, lastName, avatarURL := mapUserDisplayFields(user)
+	return &community_dto.PostLikeUserRes{
+		ID:        user.ID,
+		Username:  user.Username,
+		FirstName: firstName,
+		LastName:  lastName,
+		AvatarURL: avatarURL,
+	}
+}
+
+func normalizePostPublicID(raw string) (string, error) {
+	publicID := strings.TrimSpace(raw)
+	if !strings.HasPrefix(publicID, postPublicIDPrefix) || len(publicID) != len(postPublicIDPrefix)+16 {
+		return "", communityerrors.ErrInvalidPostPublicIDFormat
+	}
+	return publicID, nil
+}
+
+func mapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
+	if comment == nil {
+		return nil
+	}
+
+	username, firstName, lastName, avatarURL := mapCommentUserRes(comment)
+	return &community_dto.CommentRes{
+		ID:              comment.ID,
+		UserID:          comment.UserID,
+		Username:        username,
+		FirstName:       firstName,
+		LastName:        lastName,
+		AvatarURL:       avatarURL,
+		Content:         comment.Content,
+		ParentCommentID: comment.ParentCommentID,
+		CreatedAt:       comment.CreatedAt,
+	}
+}
+
+func mapTransferBuyerSummary(user *identity_dto.UserRes) *community_dto.TransferBuyerSummaryRes {
+	return community_dto.NewTransferBuyerSummary(user)
+}
+
+func isVisiblePostItem(item *entities.PostItem) bool {
+	return item != nil && item.Status != postitemstatus.Hidden
+}

@@ -2,6 +2,7 @@ package outfit
 
 import (
 	"context"
+	"time"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
@@ -128,6 +129,10 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 
+	if err := uc.touchLastUsedAt(ctx, itemIDs); err != nil {
+		uc.logger.Warn("Failed to update wardrobe last_used_at after saving outfit")
+	}
+
 	return mapper.MapToOutfitRes(outfit, outfitItems), nil
 }
 
@@ -191,6 +196,10 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, err
 	}
 
+	if err := uc.touchLastUsedAt(ctx, itemIDs); err != nil {
+		uc.logger.Warn("Failed to update wardrobe last_used_at after updating outfit")
+	}
+
 	return mapper.MapToOutfitRes(outfit, outfitItems), nil
 }
 
@@ -232,3 +241,7 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 	return uc.outfitRepo.DeleteOutfit(ctx, id)
 }
 
+func (uc *OutfitUseCase) touchLastUsedAt(ctx context.Context, itemIDs []uuid.UUID) error {
+	now := time.Now().UTC()
+	return uc.wardrobeRepo.TouchLastUsedAt(ctx, itemIDs, now)
+}

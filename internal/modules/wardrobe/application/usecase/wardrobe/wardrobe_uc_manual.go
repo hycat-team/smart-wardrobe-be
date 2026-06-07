@@ -73,6 +73,7 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 	item.Fit = &input.Fit
 	item.Seasonality = &input.Seasonality
 	item.Description = &description
+	item.Price = input.Price
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
 
@@ -90,4 +91,3 @@ func (uc *WardrobeUseCase) ManualClassify(ctx context.Context, userID uuid.UUID,
 
 	return mapper.MapToWardrobeItemRes(item), nil
 }
-

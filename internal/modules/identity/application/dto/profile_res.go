@@ -3,27 +3,28 @@ package dto
 import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type UserRes struct {
-	ID           uuid.UUID           `json:"id"`
-	Username     string              `json:"username"`
-	Email        string              `json:"email"`
-	RoleSlug     roleslug.RoleSlug   `json:"roleSlug"`
-	FirstName    string              `json:"firstName"`
-	LastName     string              `json:"lastName,omitempty"`
-	Address      string              `json:"address,omitempty"`
-	Gender       gender.Gender       `json:"gender"`
-	Status       int                 `json:"status"`
-	CreatedAt    time.Time           `json:"createdAt"`
-	Subscription UserSubscriptionRes `json:"subscription"`
-	// Quota        *UserQuotaRes       `json:"quota,omitempty"`
-	BodyProfile    *UserBodyProfileRes `json:"bodyProfile,omitempty"`
-	AvatarUrl      *string             `json:"avatarUrl,omitempty"`
-	AvatarPublicID *string             `json:"avatarPublicId,omitempty"`
+	ID             uuid.UUID             `json:"id"`
+	Username       string                `json:"username"`
+	Email          string                `json:"email"`
+	RoleSlug       roleslug.RoleSlug     `json:"roleSlug"`
+	FirstName      string                `json:"firstName"`
+	LastName       string                `json:"lastName,omitempty"`
+	DateOfBirth    *string               `json:"dateOfBirth,omitempty"`
+	Address        string                `json:"address,omitempty"`
+	Gender         gender.Gender         `json:"gender"`
+	Status         userstatus.UserStatus `json:"status"`
+	CreatedAt      time.Time             `json:"createdAt"`
+	Subscription   UserSubscriptionRes   `json:"subscription"`
+	BodyProfile    *UserBodyProfileRes   `json:"bodyProfile,omitempty"`
+	AvatarUrl      *string               `json:"avatarUrl,omitempty"`
+	AvatarPublicID *string               `json:"avatarPublicId,omitempty"`
 }
 
 type UpdateAvatarReq struct {
@@ -49,12 +50,22 @@ type UserQuotaRes struct {
 }
 
 type UserBodyProfileRes struct {
-	Height             float64 `json:"height"`
-	Weight             float64 `json:"weight"`
-	BodyType           string  `json:"bodyType"`
-	FitPreference      string  `json:"fitPreference"`
-	SkinTone           string  `json:"skinTone"`
-	EstimatedBodyShape string  `json:"estimatedBodyShape"`
-	RecommendedSize    string  `json:"recommendedSize"`
-	StylingNotes       string  `json:"stylingNotes"`
+	HeightCM       float64                  `json:"heightCm"`
+	WeightKG       float64                  `json:"weightKg"`
+	BodyShape      string                   `json:"bodyShape"`
+	Measurements   *UserBodyMeasurementsRes `json:"measurements,omitempty"`
+	InferredByAI   *UserInferredBodyRes     `json:"inferredByAi,omitempty"`
+	VerifiedByUser bool                     `json:"verifiedByUser"`
+	LastUpdatedAt  *time.Time               `json:"lastUpdatedAt,omitempty"`
+}
+
+type UserBodyMeasurementsRes struct {
+	ChestCM float64 `json:"chestCm,omitempty"`
+	WaistCM float64 `json:"waistCm,omitempty"`
+	HipCM   float64 `json:"hipCm,omitempty"`
+}
+
+type UserInferredBodyRes struct {
+	BodyShape       string   `json:"bodyShape"`
+	ConfidenceScore *float64 `json:"confidenceScore,omitempty"`
 }

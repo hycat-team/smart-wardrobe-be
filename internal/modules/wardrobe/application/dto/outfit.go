@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,16 +24,16 @@ type SaveOutfitItemReq struct {
 }
 
 type OutfitRes struct {
-	ID            uuid.UUID        `json:"id"`
-	UserID        uuid.UUID        `json:"user_id"`
-	Name          string           `json:"name"`
-	Description   *string          `json:"description"`
-	CoverImageUrl *string          `json:"cover_image_url"`
-	CoverPublicID *string          `json:"cover_public_id"`
-	Status        int16            `json:"status"`
-	CreatedAt     time.Time        `json:"created_at"`
-	UpdatedAt     time.Time        `json:"updated_at"`
-	Items         []*OutfitItemRes `json:"items,omitempty"`
+	ID            uuid.UUID                 `json:"id"`
+	UserID        uuid.UUID                 `json:"user_id"`
+	Name          string                    `json:"name"`
+	Description   *string                   `json:"description"`
+	CoverImageUrl *string                   `json:"cover_image_url"`
+	CoverPublicID *string                   `json:"cover_public_id"`
+	Status        outfitstatus.OutfitStatus `json:"status"`
+	CreatedAt     time.Time                 `json:"created_at"`
+	UpdatedAt     time.Time                 `json:"updated_at"`
+	Items         []*OutfitItemRes          `json:"items,omitempty"`
 }
 
 type OutfitItemRes struct {

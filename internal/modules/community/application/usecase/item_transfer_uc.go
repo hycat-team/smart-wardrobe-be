@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -93,8 +93,14 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
 				return err
 			}
+			if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, sibling.PostID); err != nil {
+				return err
+			}
 		}
 
+		if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, post.ID); err != nil {
+			return err
+		}
 		return uc.wardrobeCtr.UpdateItemStatus(txCtx, postItem.ItemID, wardrobestatus.Selling)
 	}
 
@@ -160,7 +166,7 @@ func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, selle
 			postRes = &dto.SellerTransferPostRes{
 				PostID:    item.Post.ID,
 				Title:     item.Post.Title,
-				PostType:  string(item.Post.PostType),
+				PostType:  item.Post.PostType,
 				CreatedAt: item.Post.CreatedAt,
 				UpdatedAt: item.Post.UpdatedAt,
 				Items:     make([]*dto.SellerTransferPostItemRes, 0),
@@ -178,9 +184,9 @@ func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, selle
 			PostItemID:    item.ID,
 			Item:          mapper.MapWardrobeItem(item.WardrobeItem),
 			Price:         item.Price,
-			ItemCondition: int16(item.ItemCondition),
-			Status:        int16(item.Status),
-			TransferState: int16(item.TransferState),
+			ItemCondition: item.ItemCondition,
+			Status:        item.Status,
+			TransferState: item.TransferState,
 			SoldAt:        item.SoldAt,
 			DeclinedAt:    item.DeclinedAt,
 			Buyer:         buyer,
@@ -252,8 +258,14 @@ func (uc *ItemTransferUseCase) AcceptTransfer(ctx context.Context, buyerUserID u
 			if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
 				return err
 			}
+			if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, sibling.PostID); err != nil {
+				return err
+			}
 		}
 
+		if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, item.PostID); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -303,12 +315,18 @@ func (uc *ItemTransferUseCase) DeclineTransfer(ctx context.Context, buyerUserID 
 				if err := uc.postItemRepo.Update(txCtx, sibling); err != nil {
 					return err
 				}
+				if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, sibling.PostID); err != nil {
+					return err
+				}
 			}
 			if err := uc.wardrobeCtr.UpdateItemStatus(txCtx, postItem.ItemID, wardrobestatus.Selling); err != nil {
 				return err
 			}
 		}
 
+		if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postItem.PostID); err != nil {
+			return err
+		}
 		return nil
 	}
 

@@ -103,7 +103,7 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 func (w *SearchSyncWorker) initialSync() {
 	ctx := context.Background()
 
-	items, err := w.wardrobeRepo.GetItems(ctx, nil, itemtype.SystemCatalogItem)
+	items, err := w.wardrobeRepo.GetItems(ctx, nil, nil, itemtype.SystemCatalogItem)
 	if err != nil {
 		w.logger.Error("[SearchSyncWorker] Failed to fetch system catalog items for initial sync", zap.Error(err))
 		return

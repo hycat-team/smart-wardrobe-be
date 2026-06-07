@@ -56,3 +56,18 @@ func (r *LikeRepository) GetLikedPostIDs(ctx context.Context, userID uuid.UUID, 
 	}
 	return result, nil
 }
+
+func (r *LikeRepository) GetUsersByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.User, error) {
+	var users []*entities.User
+	err := r.GetDB(ctx).
+		Model(&entities.User{}).
+		Select("users.*").
+		Joins("JOIN likes ON likes.user_id = users.id").
+		Where("likes.post_id = ? AND users.is_deleted = ?", postID, false).
+		Order("likes.created_at DESC").
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}

@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,8 +25,8 @@ type SendChatMessageReq struct {
 }
 
 type ChatMessageRes struct {
-	ID        uuid.UUID `json:"id"`
-	Sender    string    `json:"sender"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        uuid.UUID                   `json:"id"`
+	Sender    messagesender.MessageSender `json:"sender"`
+	Content   string                      `json:"content"`
+	CreatedAt time.Time                   `json:"createdAt"`
 }

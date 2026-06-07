@@ -27,6 +27,7 @@ func (r *MeRouter) Init(group *gin.RouterGroup) {
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.meHandler.GetCurrentUser))
 		meApi.PUT("", shared_pres.WrapHandler(r.meHandler.UpdateCurrentUser))
+		meApi.PUT("/body-profile", shared_pres.WrapHandler(r.meHandler.UpdateBodyProfile))
 		meApi.PUT("/change-password", shared_pres.WrapHandler(r.meHandler.ChangePassword))
 		meApi.GET("/avatar-signature", shared_pres.WrapHandler(r.meHandler.GetAvatarSignature))
 		meApi.PUT("/avatar", shared_pres.WrapHandler(r.meHandler.UpdateAvatar))

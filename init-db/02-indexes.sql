@@ -58,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_user_subscriptions_plan_id ON user_subscriptions 
 
 -- Tối ưu luồng lấy danh sách đồ trong tủ theo danh mục thời trang phân loại
 CREATE INDEX IF NOT EXISTS idx_wardrobe_items_category_id ON wardrobe_items (category_id);
+CREATE INDEX IF NOT EXISTS idx_wardrobe_items_last_used_at ON wardrobe_items (last_used_at);
 
 -- Cải tiến UNIQUE ràng buộc kết hợp điều kiện (Conditional Unique Indexes) cho luồng Like
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_post ON likes (user_id, post_id) WHERE post_id IS NOT NULL;

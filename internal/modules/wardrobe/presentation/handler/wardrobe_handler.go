@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	msgWardrobeGetUploadSignatureSuccess       = "Lấy chữ ký tải ảnh trang phục thành công"
-	msgWardrobeGetItemsSuccess                 = "Lấy danh sách trang phục thành công"
-	msgWardrobeGetItemByIDSuccess               = "Lấy thông tin chi tiết trang phục thành công"
-	msgWardrobeCloneItemSuccess                = "Nhân bản trang phục thành công"
-	msgWardrobeInitClosetFromCatalogSuccess     = "Khởi tạo nhanh tủ đồ thành công"
-	msgWardrobeBatchUploadItemsSuccess         = "Tải lên và bắt đầu phân tích hàng loạt thành công"
-	msgWardrobeSearchItemsSuccess               = "Tìm kiếm trang phục thành công"
-	msgWardrobeManualClassifySuccess           = "Tự phân loại trang phục thủ công thành công"
+	msgWardrobeGetUploadSignatureSuccess    = "Lấy chữ ký tải ảnh trang phục thành công"
+	msgWardrobeGetItemsSuccess              = "Lấy danh sách trang phục thành công"
+	msgWardrobeGetItemByIDSuccess           = "Lấy thông tin chi tiết trang phục thành công"
+	msgWardrobeCloneItemSuccess             = "Nhân bản trang phục thành công"
+	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
+	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
+	msgWardrobeSearchItemsSuccess           = "Tìm kiếm trang phục thành công"
+	msgWardrobeManualClassifySuccess        = "Tự phân loại trang phục thủ công thành công"
 )
 
 type WardrobeHandler struct {
@@ -55,6 +55,7 @@ func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
 // @Description Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói
 // @Tags Wardrobe
 // @Produce json
+// @Param category_slug query string false "Slug danh mục cần lọc"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục"
 // @Router /api/v1/me/wardrobe-items [get]
 func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
@@ -63,7 +64,12 @@ func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.GetWardrobeItems(c.Request.Context(), userID)
+	var query dto.GetWardrobeItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.GetWardrobeItems(c.Request.Context(), userID, query)
 	if err != nil {
 		return err
 	}
@@ -205,10 +211,15 @@ func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Tags Wardrobe
 // @Produce json
 // @Param q query string false "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)"
+// @Param category_slug query string false "Slug danh mục cần lọc"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.SearchWardrobeItemRes} "Danh sách trang phục tìm thấy"
 // @Router /api/v1/wardrobe-items/search [get]
 func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
-	query := c.Query("q")
+	var query dto.SearchWardrobeItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
 	response, err := h.wardrobeUseCase.SearchWardrobeItems(c.Request.Context(), query)
 	if err != nil {
 		return err

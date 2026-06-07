@@ -36,7 +36,10 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	publicPosts.Use(r.authMiddleware.OptionalHandle())
 	{
 		publicPosts.GET("", shared_pres.WrapHandler(r.postHandler.GetFeed))
-		publicPosts.GET("/:postID", shared_pres.WrapHandler(r.postHandler.GetPostDetail))
+		publicPosts.GET("/:postPublicID", shared_pres.WrapHandler(r.postHandler.GetPostDetail))
+		publicPosts.GET("/:postPublicID/comments", shared_pres.WrapHandler(r.postHandler.GetPostComments))
+		publicPosts.GET("/:postPublicID/comments/:commentID/replies", shared_pres.WrapHandler(r.postHandler.GetCommentReplies))
+		publicPosts.GET("/:postPublicID/likes", shared_pres.WrapHandler(r.postHandler.GetPostLikes))
 	}
 
 	// Post - Private endpoints (Authenticated)
@@ -45,14 +48,15 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	{
 		privatePosts.GET("/upload-signature", shared_pres.WrapHandler(r.postHandler.GetUploadSignature))
 		privatePosts.POST("", shared_pres.WrapHandler(r.postHandler.CreatePost))
-		privatePosts.DELETE("/:postID", shared_pres.WrapHandler(r.postHandler.DeletePost))
-		privatePosts.DELETE("/:postID/items", shared_pres.WrapHandler(r.postHandler.RemovePostItems))
+		privatePosts.PUT("/:postPublicID", shared_pres.WrapHandler(r.postHandler.UpdatePost))
+		privatePosts.DELETE("/:postPublicID", shared_pres.WrapHandler(r.postHandler.DeletePost))
+		privatePosts.DELETE("/:postPublicID/items", shared_pres.WrapHandler(r.postHandler.RemovePostItems))
 
 		// Post Interaction (Likes & Comments)
-		privatePosts.PUT("/:postID/like", shared_pres.WrapHandler(r.interactionHandler.TogglePostLike))
-		privatePosts.POST("/:postID/comments", shared_pres.WrapHandler(r.interactionHandler.AddComment))
-		privatePosts.PUT("/:postID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.UpdateComment))
-		privatePosts.DELETE("/:postID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.DeleteComment))
+		privatePosts.PUT("/:postPublicID/like", shared_pres.WrapHandler(r.interactionHandler.TogglePostLike))
+		privatePosts.POST("/:postPublicID/comments", shared_pres.WrapHandler(r.interactionHandler.AddComment))
+		privatePosts.PUT("/:postPublicID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.UpdateComment))
+		privatePosts.DELETE("/:postPublicID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.DeleteComment))
 	}
 
 	community := group.Group("/community")

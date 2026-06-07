@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"strings"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
@@ -36,9 +37,13 @@ func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.
 	return count, nil
 }
 
-func (r *WardrobeItemRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	err := r.GetQueryWithPreload(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&items).Error
+	query := r.GetQueryWithPreload(ctx).Where("user_id = ? AND is_deleted = ?", userID, false)
+	if categorySlug != nil && *categorySlug != "" {
+		query = query.Joins("JOIN categories ON categories.id = wardrobe_items.category_id").Where("categories.slug = ?", *categorySlug)
+	}
+	err := query.Order("created_at DESC").Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -64,11 +69,14 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
 	db := r.GetQueryWithPreload(ctx)
 
-	db = db.Where("item_type = ?", itemType)
+	db = db.Where("item_type = ? AND wardrobe_items.is_deleted = ?", itemType, false)
+	if categorySlug != nil && *categorySlug != "" {
+		db = db.Joins("JOIN categories ON categories.id = wardrobe_items.category_id").Where("categories.slug = ?", *categorySlug)
+	}
 
 	if query != nil && *query != "" {
 		queryStr := strings.ToLower(*query)
@@ -102,4 +110,15 @@ func (r *WardrobeItemRepository) GetFailedItemsForCleanup(ctx context.Context, l
 		return nil, err
 	}
 	return items, nil
+}
+
+func (r *WardrobeItemRepository) TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	return r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("id IN ?", ids).
+		Update("last_used_at", usedAt).Error
 }

@@ -12,20 +12,28 @@ func NewWardrobeSearchService(searchEngine *shared_search.ElasticsearchClient) s
 	return &WardrobeSearchService{searchEngine: searchEngine}
 }
 
-func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) ([]*dto.SearchWardrobeItemRes, error) {
+func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error) {
 	var esQuery map[string]any
+	filters := []map[string]any{
+		{
+			"term": map[string]any{
+				"item_type": 1,
+			},
+		},
+	}
+	if query.CategorySlug != "" {
+		filters = append(filters, map[string]any{
+			"term": map[string]any{
+				"category.slug.keyword": query.CategorySlug,
+			},
+		})
+	}
 
-	if query == "" {
+	if query.Query == "" {
 		esQuery = map[string]any{
 			"query": map[string]any{
 				"bool": map[string]any{
-					"filter": []map[string]any{
-						{
-							"term": map[string]any{
-								"item_type": 1,
-							},
-						},
-					},
+					"filter": filters,
 				},
 			},
 			"size": 50,
@@ -37,7 +45,7 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) (
 					"must": []map[string]any{
 						{
 							"multi_match": map[string]any{
-								"query": query,
+								"query": query.Query,
 								"fields": []string{
 									"category.name^3",
 									"color^2",
@@ -53,13 +61,7 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query string) (
 							},
 						},
 					},
-					"filter": []map[string]any{
-						{
-							"term": map[string]any{
-								"item_type": 1,
-							},
-						},
-					},
+					"filter": filters,
 				},
 			},
 			"size": 50,

@@ -34,21 +34,16 @@ func NewAdminHandler(
 // @Description Cho phép admin xóa bài đăng community vi phạm
 // @Tags Admin
 // @Produce json
-// @Param postID path string true "ID bài đăng"
+// @Param postPublicID path string true "Mã công khai bài đăng"
 // @Success 200 {object} shared_pres.APIResponse "Xóa bài đăng thành công"
-// @Router /api/v1/admin/community/posts/{postID} [delete]
+// @Router /api/v1/admin/community/posts/{postPublicID} [delete]
 func (h *AdminHandler) DeletePost(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	postID, err := uuid.Parse(c.Param("postID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostIDFormat
-	}
-
-	if err := h.moderationUC.AdminDeletePost(c.Request.Context(), adminUserID, postID); err != nil {
+	if err := h.moderationUC.AdminDeletePost(c.Request.Context(), adminUserID, c.Param("postPublicID")); err != nil {
 		return err
 	}
 

@@ -34,6 +34,7 @@ func (uc *WardrobeUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid
 		Fit:           sourceItem.Fit,
 		Seasonality:   sourceItem.Seasonality,
 		Description:   sourceItem.Description,
+		Price:         sourceItem.Price,
 		Status:        wardrobestatus.InWardrobe,
 		ItemType:      itemtype.UserItem,
 		Embedding:     sourceItem.Embedding,
@@ -91,3 +92,6 @@ func (uc *WardrobeUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.U
 	return nil
 }
 
+func (uc *WardrobeUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
+	return uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
+}

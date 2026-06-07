@@ -26,10 +26,10 @@ type WardrobeItemRes struct {
 	Pattern       string                            `json:"pattern"`
 	Fit           string                            `json:"fit"`
 	Seasonality   string                            `json:"seasonality"`
+	Price         *float64                          `json:"price,omitempty"`
 	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
 	IsLocked      bool                              `json:"isLocked"`
 	CreatedAt     time.Time                         `json:"createdAt"`
-	// Description   string                            `json:"description"`
 }
 
 type CloneWardrobeItemReq struct {
@@ -76,8 +76,17 @@ type SearchWardrobeItemRes struct {
 	Pattern       string       `json:"pattern"`
 	Fit           string       `json:"fit"`
 	Seasonality   string       `json:"seasonality"`
+	Price         *float64     `json:"price,omitempty"`
 	IsSystem      bool         `json:"isSystem"`
-	// Description   string       `json:"description"`
+}
+
+type GetWardrobeItemsQueryReq struct {
+	CategorySlug string `form:"category_slug"`
+}
+
+type SearchWardrobeItemsQueryReq struct {
+	Query        string `form:"q"`
+	CategorySlug string `form:"category_slug"`
 }
 
 type ManualClassifyReq struct {
@@ -88,4 +97,5 @@ type ManualClassifyReq struct {
 	Pattern     string    `json:"pattern" binding:"required" label:"họa tiết"`
 	Fit         string    `json:"fit" binding:"required" label:"dáng mặc"`
 	Seasonality string    `json:"seasonality" binding:"required" label:"mùa phù hợp"`
+	Price       *float64  `json:"price,omitempty"`
 }

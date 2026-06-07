@@ -57,6 +57,19 @@ func (r *UserRepository) IsUsernameExists(ctx context.Context, username string) 
 	return count > 0, nil
 }
 
+// GetByUsername searches for a user by username.
+func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*entities.User, error) {
+	var user entities.User
+	err := r.GetDB(ctx).Where("username = ? AND is_deleted = ?", username, false).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 // GetByUsernameOrEmail searches for a user by email or username
 func (r *UserRepository) GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error) {
 	var user entities.User

@@ -81,13 +81,18 @@ func (uc *WardrobeUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
 
-func (uc *WardrobeUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID)
+	var categorySlug *string
+	if query.CategorySlug != "" {
+		categorySlug = &query.CategorySlug
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, categorySlug)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +126,7 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 	}
 
 	// Read active items list to determine lock status by order
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID)
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -144,4 +149,3 @@ func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.
 	res.IsLocked = false
 	return res, nil
 }
-

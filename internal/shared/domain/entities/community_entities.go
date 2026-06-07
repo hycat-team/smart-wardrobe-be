@@ -16,6 +16,7 @@ type Post struct {
 	SoftDeleteEntity
 	UserID         uuid.UUID         `gorm:"type:uuid;not null"`
 	User           *User             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	PublicID       string            `gorm:"type:varchar(32);uniqueIndex;not null"`
 	PostType       posttype.PostType `gorm:"type:varchar(50);not null"`
 	Title          *string           `gorm:"type:varchar(255)"`
 	Content        string            `gorm:"type:text;not null"`

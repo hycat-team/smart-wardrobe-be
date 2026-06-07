@@ -6,17 +6,18 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/mapper"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
-	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -121,6 +122,52 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 	return mapper.MapToUserRes(user, sub), nil
 }
 
+func (uc *UserUseCase) UpdateBodyProfile(ctx context.Context, userID uuid.UUID, input dto.UpdateBodyProfileReq) (*dto.UserRes, error) {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.IsDeleted {
+		return nil, identityerrors.ErrUserProfileNotFound
+	}
+
+	now := time.Now().UTC()
+	profile := &entities.BodyProfile{
+		HeightCM:       input.HeightCM,
+		WeightKG:       input.WeightKG,
+		BodyShape:      input.BodyShape,
+		VerifiedByUser: input.VerifiedByUser,
+		LastUpdatedAt:  &now,
+	}
+
+	if input.Measurements != nil {
+		profile.Measurements = &entities.BodyMeasurements{
+			ChestCM: input.Measurements.ChestCM,
+			WaistCM: input.Measurements.WaistCM,
+			HipCM:   input.Measurements.HipCM,
+		}
+	}
+
+	if input.InferredByAI != nil {
+		profile.InferredByAI = &entities.InferredBodyProfile{
+			BodyShape:       input.InferredByAI.BodyShape,
+			ConfidenceScore: input.InferredByAI.ConfidenceScore,
+		}
+	}
+
+	user.UpdateBodyProfile(profile)
+	if err := uc.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	return mapper.MapToUserRes(user, sub), nil
+}
+
 func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -131,6 +178,23 @@ func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.User
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	return mapper.MapToUserRes(user, sub), nil
+}
+
+func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto.UserRes, error) {
+	user, err := uc.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.IsDeleted {
+		return nil, identityerrors.ErrUserProfileNotFound
+	}
+
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, user.ID)
 	if err != nil {
 		sub = nil
 	}

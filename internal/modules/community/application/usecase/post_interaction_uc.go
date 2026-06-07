@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 
-	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
+	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -34,9 +34,14 @@ func NewPostInteractionUseCase(
 	}
 }
 
-func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uuid.UUID, postID uuid.UUID, isLiked bool) error {
+func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uuid.UUID, postPublicID string, isLiked bool) error {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return err
+	}
+
 	togglePostLike := func(txCtx context.Context) error {
-		post, err := uc.postRepo.GetByID(txCtx, postID)
+		post, err := uc.postRepo.GetByPublicID(txCtx, normalizedPublicID)
 		if err != nil {
 			return err
 		}
@@ -44,7 +49,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 			return communityerrors.ErrPostNotFound
 		}
 
-		like, err := uc.likeRepo.GetPostLike(txCtx, userID, postID)
+		like, err := uc.likeRepo.GetPostLike(txCtx, userID, post.ID)
 		if err != nil {
 			return err
 		}
@@ -55,7 +60,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 			}
 
 			post.LikeCount++
-			postIDCopy := postID
+			postIDCopy := post.ID
 			if err := uc.likeRepo.Create(txCtx, &entities.Like{
 				UserID: userID,
 				PostID: &postIDCopy,
@@ -90,11 +95,16 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 	return uc.uow.Execute(ctx, togglePostLike)
 }
 
-func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UUID, postID uuid.UUID, content string) (*dto.CommentRes, error) {
+func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UUID, postPublicID string, input community_dto.AddCommentReq) (*community_dto.CommentRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
 	var comment *entities.Comment
 
 	addComment := func(txCtx context.Context) error {
-		post, err := uc.postRepo.GetByID(txCtx, postID)
+		post, err := uc.postRepo.GetByPublicID(txCtx, normalizedPublicID)
 		if err != nil {
 			return err
 		}
@@ -102,10 +112,21 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 			return communityerrors.ErrPostNotFound
 		}
 
+		if input.ParentCommentID != nil {
+			parentComment, err := uc.commentRepo.GetByIDAndPostID(txCtx, *input.ParentCommentID, post.ID)
+			if err != nil {
+				return err
+			}
+			if parentComment == nil || parentComment.ParentCommentID != nil {
+				return communityerrors.ErrCommentReplyTargetInvalid
+			}
+		}
+
 		comment = &entities.Comment{
-			PostID:  postID,
-			UserID:  userID,
-			Content: content,
+			PostID:          post.ID,
+			UserID:          userID,
+			ParentCommentID: input.ParentCommentID,
+			Content:         input.Content,
 		}
 
 		if err := uc.commentRepo.Create(txCtx, comment); err != nil {
@@ -123,19 +144,23 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 
-	return &dto.CommentRes{
-		ID:        comment.ID,
-		UserID:    comment.UserID,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt,
-	}, nil
+	comment, err = uc.commentRepo.GetByID(ctx, comment.ID)
+	if err != nil {
+		return nil, err
+	}
+	return mapCommentRes(comment), nil
 }
 
-func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid.UUID, postID uuid.UUID, commentID uuid.UUID, content string) (*dto.CommentRes, error) {
+func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID, content string) (*community_dto.CommentRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
 	var comment *entities.Comment
 
 	updateComment := func(txCtx context.Context) error {
-		post, err := uc.postRepo.GetByID(txCtx, postID)
+		post, err := uc.postRepo.GetByPublicID(txCtx, normalizedPublicID)
 		if err != nil {
 			return err
 		}
@@ -143,7 +168,7 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 			return communityerrors.ErrPostNotFound
 		}
 
-		comment, err = uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
+		comment, err = uc.commentRepo.GetByIDAndPostID(txCtx, commentID, post.ID)
 		if err != nil {
 			return err
 		}
@@ -162,17 +187,21 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	return &dto.CommentRes{
-		ID:        comment.ID,
-		UserID:    comment.UserID,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt,
-	}, nil
+	comment, err = uc.commentRepo.GetByID(ctx, comment.ID)
+	if err != nil {
+		return nil, err
+	}
+	return mapCommentRes(comment), nil
 }
 
-func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid.UUID, postID uuid.UUID, commentID uuid.UUID) error {
+func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID) error {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return err
+	}
+
 	deleteComment := func(txCtx context.Context) error {
-		post, err := uc.postRepo.GetByID(txCtx, postID)
+		post, err := uc.postRepo.GetByPublicID(txCtx, normalizedPublicID)
 		if err != nil {
 			return err
 		}
@@ -180,7 +209,7 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return communityerrors.ErrPostNotFound
 		}
 
-		comment, err := uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
+		comment, err := uc.commentRepo.GetByIDAndPostID(txCtx, commentID, post.ID)
 		if err != nil {
 			return err
 		}
@@ -191,12 +220,27 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return communityerrors.ErrDeleteCommentForbidden
 		}
 
-		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
+		if err := uc.commentRepo.SoftDelete(txCtx, commentID); err != nil {
 			return err
 		}
 
-		if post.CommentCount > 0 {
-			post.CommentCount--
+		decrement := 1
+		if comment.ParentCommentID == nil {
+			replies, err := uc.commentRepo.GetRepliesByParentID(txCtx, post.ID, commentID)
+			if err != nil {
+				return err
+			}
+			if len(replies) > 0 {
+				decrement += len(replies)
+				if err := uc.commentRepo.SoftDeleteByParentID(txCtx, commentID); err != nil {
+					return err
+				}
+			}
+		}
+
+		post.CommentCount -= decrement
+		if post.CommentCount < 0 {
+			post.CommentCount = 0
 		}
 		if err := uc.postRepo.Update(txCtx, post); err != nil {
 			return err

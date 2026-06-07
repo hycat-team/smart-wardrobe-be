@@ -29,6 +29,12 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 		genderVal = *user.Gender
 	}
 
+	var dobStr *string
+	if user.DateOfBirth != nil {
+		formatted := user.DateOfBirth.Format("2006-01-02")
+		dobStr = &formatted
+	}
+
 	res := &dto.UserRes{
 		ID:             user.ID,
 		Username:       user.Username,
@@ -36,9 +42,10 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 		RoleSlug:       user.RoleSlug,
 		FirstName:      firstNameStr,
 		LastName:       lastNameStr,
+		DateOfBirth:    dobStr,
 		Address:        addressStr,
 		Gender:         genderVal,
-		Status:         int(user.Status),
+		Status:         user.Status,
 		CreatedAt:      user.CreatedAt,
 		AvatarUrl:      user.AvatarUrl,
 		AvatarPublicID: user.AvatarPublicID,
@@ -58,15 +65,32 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 	}
 
 	if user.BodyProfile != nil {
+		var measurements *dto.UserBodyMeasurementsRes
+		if user.BodyProfile.Measurements != nil {
+			measurements = &dto.UserBodyMeasurementsRes{
+				ChestCM: user.BodyProfile.Measurements.ChestCM,
+				WaistCM: user.BodyProfile.Measurements.WaistCM,
+				HipCM:   user.BodyProfile.Measurements.HipCM,
+			}
+		}
+
+		var inferredByAI *dto.UserInferredBodyRes
+		if user.BodyProfile.InferredByAI != nil {
+			inferredByAI = &dto.UserInferredBodyRes{
+				BodyShape:       user.BodyProfile.InferredByAI.BodyShape,
+				ConfidenceScore: user.BodyProfile.InferredByAI.ConfidenceScore,
+			}
+		}
+
+		effectiveProfile := user.GetEffectiveBodyProfile()
 		res.BodyProfile = &dto.UserBodyProfileRes{
-			Height:             user.BodyProfile.Height,
-			Weight:             user.BodyProfile.Weight,
-			BodyType:           user.BodyProfile.BodyType,
-			FitPreference:      user.BodyProfile.FitPreference,
-			SkinTone:           user.BodyProfile.SkinTone,
-			EstimatedBodyShape: user.BodyProfile.EstimatedBodyShape,
-			RecommendedSize:    user.BodyProfile.RecommendedSize,
-			StylingNotes:       user.BodyProfile.StylingNotes,
+			HeightCM:       user.BodyProfile.HeightCM,
+			WeightKG:       user.BodyProfile.WeightKG,
+			BodyShape:      effectiveProfile.BodyShape,
+			Measurements:   measurements,
+			InferredByAI:   inferredByAI,
+			VerifiedByUser: user.BodyProfile.VerifiedByUser,
+			LastUpdatedAt:  user.BodyProfile.LastUpdatedAt,
 		}
 	}
 

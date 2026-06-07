@@ -11,7 +11,7 @@ type FeedQuery struct {
 	Sort     string
 	Page     int
 	Limit    int
-	UserID   *uuid.UUID
+	Username *string
 	PostType *string
 }
 

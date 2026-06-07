@@ -4,10 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
+	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -16,22 +15,31 @@ import (
 	"github.com/google/uuid"
 )
 
-func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error) {
+func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, input community_dto.CreatePostReq) (*community_dto.PostRes, error) {
 	normalizedPostType, err := uc.normalizePostType(input.PostType)
 	if err != nil {
 		return nil, err
 	}
-	if err := uc.validateCreatePostInput(normalizedPostType, input); err != nil {
+	if err := uc.validateCreatePostInput(normalizedPostType, input.Content, input.ContactInfo, input.Items); err != nil {
 		return nil, err
 	}
 
-	if err := uc.writer.wardrobeCtr.VerifyItemsForPost(ctx, userID, input.ItemIDs); err != nil {
+	itemIDs := make([]uuid.UUID, 0, len(input.Items))
+	for _, item := range input.Items {
+		itemIDs = append(itemIDs, item.ItemID)
+	}
+	if err := uc.writer.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
+		return nil, err
+	}
+
+	resolvedItems, err := uc.resolvePostItems(ctx, normalizedPostType, input.Items)
+	if err != nil {
 		return nil, err
 	}
 
 	if normalizedPostType == posttype.Sale {
-		for _, itemID := range input.ItemIDs {
-			hasActiveTransfer, err := uc.writer.postItemRepo.HasActiveTransfer(ctx, itemID, nil)
+		for _, item := range resolvedItems {
+			hasActiveTransfer, err := uc.writer.postItemRepo.HasActiveTransfer(ctx, item.ItemID, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -41,17 +49,18 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 		}
 	}
 
+	publicID, err := uc.generateUniquePostPublicID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	post := &entities.Post{
-		UserID:   userID,
-		PostType: normalizedPostType,
-		Title:    input.Title,
-		Content:  input.Content,
-	}
-	if input.ContactInfo != nil {
-		post.ContactInfo = input.ContactInfo
-	}
-	if input.TotalPrice != nil {
-		post.TotalPrice = *input.TotalPrice
+		UserID:      userID,
+		PublicID:    publicID,
+		PostType:    normalizedPostType,
+		Title:       input.Title,
+		Content:     input.Content,
+		ContactInfo: input.ContactInfo,
 	}
 
 	createPost := func(txCtx context.Context) error {
@@ -62,13 +71,13 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 			return err
 		}
 
-		postItems := make([]*entities.PostItem, 0, len(input.ItemIDs))
-		for _, itemID := range input.ItemIDs {
+		postItems := make([]*entities.PostItem, 0, len(resolvedItems))
+		for _, item := range resolvedItems {
 			postItems = append(postItems, &entities.PostItem{
 				PostID:        post.ID,
-				ItemID:        itemID,
-				Price:         post.TotalPrice,
-				ItemCondition: itemcondition.Standard,
+				ItemID:        item.ItemID,
+				Price:         item.Price,
+				ItemCondition: item.ItemCondition,
 				Status:        postitemstatus.Available,
 			})
 		}
@@ -95,31 +104,163 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 		}
 
 		if normalizedPostType == posttype.Sale {
-			for _, itemID := range input.ItemIDs {
-				if err := uc.writer.wardrobeCtr.UpdateItemStatus(txCtx, itemID, wardrobestatus.Selling); err != nil {
+			for _, item := range resolvedItems {
+				if err := uc.writer.wardrobeCtr.UpdateItemStatus(txCtx, item.ItemID, wardrobestatus.Selling); err != nil {
 					return err
 				}
 			}
 		}
 
-		return nil
+		return uc.syncPostTotalPrice(txCtx, post.ID)
 	}
 
 	if err := uc.writer.uow.Execute(ctx, createPost); err != nil {
 		return nil, err
 	}
 
-	return uc.GetPostDetail(ctx, post.ID, &userID)
+	return uc.GetPostDetail(ctx, post.PublicID, &userID)
 }
 
-func (uc *UserPostUseCase) GetUploadSignature(ctx context.Context) (*dto.UploadSignatureResult, error) {
+func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, postPublicID string, input community_dto.UpdatePostReq) (*community_dto.PostRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if post == nil || post.UserID != userID {
+		return nil, communityerrors.ErrPostNotFound
+	}
+
+	if err := uc.validateCreatePostInput(post.PostType, input.Content, input.ContactInfo, input.Items); err != nil {
+		return nil, err
+	}
+
+	itemIDs := make([]uuid.UUID, 0, len(input.Items))
+	for _, item := range input.Items {
+		itemIDs = append(itemIDs, item.ItemID)
+	}
+	if err := uc.writer.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
+		return nil, err
+	}
+
+	resolvedItems, err := uc.resolvePostItems(ctx, post.PostType, input.Items)
+	if err != nil {
+		return nil, err
+	}
+
+	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	updatePost := func(txCtx context.Context) error {
+		post.Title = input.Title
+		post.Content = input.Content
+		post.ContactInfo = input.ContactInfo
+		if err := uc.writer.postRepo.Update(txCtx, post); err != nil {
+			return err
+		}
+
+		currentByItemID := make(map[uuid.UUID]*entities.PostItem, len(currentItems))
+		for _, item := range currentItems {
+			currentByItemID[item.ItemID] = item
+		}
+
+		nextItemIDs := make(map[uuid.UUID]struct{}, len(resolvedItems))
+		for _, item := range resolvedItems {
+			nextItemIDs[item.ItemID] = struct{}{}
+			existing, ok := currentByItemID[item.ItemID]
+			if ok {
+				existing.Price = item.Price
+				existing.ItemCondition = item.ItemCondition
+				existing.Status = postitemstatus.Available
+				if err := uc.writer.postItemRepo.Update(txCtx, existing); err != nil {
+					return err
+				}
+				continue
+			}
+
+			if err := uc.writer.postItemRepo.Create(txCtx, &entities.PostItem{
+				PostID:        post.ID,
+				ItemID:        item.ItemID,
+				Price:         item.Price,
+				ItemCondition: item.ItemCondition,
+				Status:        postitemstatus.Available,
+			}); err != nil {
+				return err
+			}
+		}
+
+		removedWardrobeItems := make([]uuid.UUID, 0)
+		for _, current := range currentItems {
+			if _, ok := nextItemIDs[current.ItemID]; ok {
+				continue
+			}
+			removedWardrobeItems = append(removedWardrobeItems, current.ItemID)
+			if err := uc.writer.postItemRepo.Delete(txCtx, current.ID); err != nil {
+				return err
+			}
+		}
+
+		if err := uc.writer.postMediaRepo.DeleteByPostID(txCtx, post.ID); err != nil {
+			return err
+		}
+		mediaItems := make([]*entities.PostMedia, 0, len(input.Media))
+		for _, item := range input.Media {
+			mediaItems = append(mediaItems, &entities.PostMedia{
+				PostID:    post.ID,
+				MediaType: item.MediaType,
+				MediaURL:  item.MediaURL,
+				PublicID:  item.PublicID,
+				SortOrder: item.SortOrder,
+			})
+		}
+		if len(mediaItems) > 0 {
+			if err := uc.writer.postMediaRepo.BulkCreate(txCtx, mediaItems); err != nil {
+				return err
+			}
+		}
+
+		if err := uc.syncPostTotalPrice(txCtx, post.ID); err != nil {
+			return err
+		}
+		if err := uc.writer.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
+			return err
+		}
+
+		for _, itemID := range removedWardrobeItems {
+			if err := syncWardrobeStatusByItem(txCtx, uc.writer.postItemRepo, uc.writer.wardrobeCtr, itemID); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	if err := uc.writer.uow.Execute(ctx, updatePost); err != nil {
+		return nil, err
+	}
+
+	return uc.GetPostDetail(ctx, post.PublicID, &userID)
+}
+
+func (uc *UserPostUseCase) GetUploadSignature(ctx context.Context) (*community_dto.UploadSignatureResult, error) {
 	return uc.mediaService.GenerateUploadSignature(ctx, shared_dto.UploadSignatureParams{
 		Folder: uc.cfg.Cloudinary.PostFolder,
 	})
 }
 
-func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error {
-	post, err := uc.writer.postRepo.GetByID(ctx, postID)
+func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, postPublicID string) error {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return err
+	}
+
+	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return err
 	}
@@ -127,18 +268,17 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 		return communityerrors.ErrPostNotFound
 	}
 
-	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
+	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return err
 	}
 
 	deletePost := func(txCtx context.Context) error {
-		if err := uc.writer.postRepo.Delete(txCtx, postID); err != nil {
+		if err := uc.writer.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 			return err
 		}
 
-		affectedItemIDs := uniqueItemIDs(postItems)
-		for _, itemID := range affectedItemIDs {
+		for _, itemID := range uniqueItemIDs(postItems) {
 			if err := syncWardrobeStatusByItem(txCtx, uc.writer.postItemRepo, uc.writer.wardrobeCtr, itemID); err != nil {
 				return err
 			}
@@ -149,8 +289,13 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 	return uc.writer.uow.Execute(ctx, deletePost)
 }
 
-func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, postID uuid.UUID, postItemIDs []uuid.UUID) error {
-	post, err := uc.writer.postRepo.GetByID(ctx, postID)
+func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, postPublicID string, postItemIDs []uuid.UUID) error {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return err
+	}
+
+	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return err
 	}
@@ -158,7 +303,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		return communityerrors.ErrPostNotFound
 	}
 
-	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
+	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return err
 	}
@@ -175,16 +320,22 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 			affectedWardrobeItems = append(affectedWardrobeItems, item.ItemID)
 			continue
 		}
-		remainingCount++
+		if isVisiblePostItem(item) {
+			remainingCount++
+		}
 	}
 
 	removePostItems := func(txCtx context.Context) error {
-		if err := uc.writer.postItemRepo.DeleteByPostAndIDs(txCtx, postID, postItemIDs); err != nil {
+		if err := uc.writer.postItemRepo.DeleteByPostAndIDs(txCtx, post.ID, postItemIDs); err != nil {
+			return err
+		}
+
+		if err := uc.syncPostTotalPrice(txCtx, post.ID); err != nil {
 			return err
 		}
 
 		if remainingCount == 0 {
-			if err := uc.writer.postRepo.Delete(txCtx, postID); err != nil {
+			if err := uc.writer.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 				return err
 			}
 		}
@@ -194,42 +345,34 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 				return err
 			}
 		}
-		return nil
+		return uc.writer.postRepo.MarkHotnessDirty(txCtx, post.ID)
 	}
 
 	return uc.writer.uow.Execute(ctx, removePostItems)
 }
 
-func (uc *UserPostUseCase) validateCreatePostInput(postType posttype.PostType, input dto.CreatePostReq) error {
+func (uc *UserPostUseCase) validateCreatePostInput(postType posttype.PostType, content string, contactInfo *string, items []community_dto.PostItemInputReq) error {
+	if strings.TrimSpace(content) == "" {
+		return communityerrors.ErrInvalidPostType
+	}
 	if postType == posttype.Sale {
-		if len(input.ItemIDs) == 0 {
+		if len(items) == 0 {
 			return communityerrors.ErrPostSaleItemsRequired
 		}
-		if input.ContactInfo == nil || strings.TrimSpace(*input.ContactInfo) == "" {
+		if contactInfo == nil || strings.TrimSpace(*contactInfo) == "" {
 			return communityerrors.ErrPostContactInfoRequired
 		}
 	}
 	return nil
 }
 
-func (uc *UserPostUseCase) normalizePostType(raw string) (posttype.PostType, error) {
-	switch strings.ToUpper(strings.TrimSpace(raw)) {
-	case string(posttype.Outfit):
+func (uc *UserPostUseCase) normalizePostType(raw posttype.PostType) (posttype.PostType, error) {
+	switch posttype.PostType(strings.ToUpper(strings.TrimSpace(string(raw)))) {
+	case posttype.Outfit:
 		return posttype.Outfit, nil
-	case string(posttype.Sale):
+	case posttype.Sale:
 		return posttype.Sale, nil
 	default:
 		return "", communityerrors.ErrInvalidPostType
 	}
-}
-
-func filterVisiblePostItems(items []*entities.PostItem) []*entities.PostItem {
-	result := make([]*entities.PostItem, 0, len(items))
-	for _, item := range items {
-		if item == nil || item.Status == postitemstatus.Hidden {
-			continue
-		}
-		result = append(result, item)
-	}
-	return result
 }

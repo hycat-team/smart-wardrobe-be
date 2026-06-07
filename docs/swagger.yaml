@@ -32,7 +32,11 @@ definitions:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq'
         type: array
       postType:
-        type: string
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_posttype.PostType'
+        enum:
+        - OUTFIT
+        - SALE
       title:
         type: string
       totalPrice:
@@ -77,15 +81,15 @@ definitions:
       item:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
       itemCondition:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_itemcondition.ItemCondition'
       price:
         type: number
       soldAt:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus'
       transferState:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState'
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq:
     properties:
@@ -147,7 +151,7 @@ definitions:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostMediaRes'
         type: array
       postType:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_posttype.PostType'
       title:
         type: string
       totalPrice:
@@ -175,7 +179,7 @@ definitions:
       item:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
       itemCondition:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_itemcondition.ItemCondition'
       postItemId:
         type: string
       price:
@@ -183,9 +187,9 @@ definitions:
       soldAt:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus'
       transferState:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState'
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.SellerTransferPostRes:
     properties:
@@ -198,7 +202,7 @@ definitions:
       postId:
         type: string
       postType:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_posttype.PostType'
       title:
         type: string
       updatedAt:
@@ -428,7 +432,7 @@ definitions:
       roleSlug:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug'
       status:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus'
       subscription:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes'
       username:
@@ -542,7 +546,7 @@ definitions:
       id:
         type: string
       sender:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender'
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes:
     properties:
@@ -642,7 +646,7 @@ definitions:
       name:
         type: string
       status:
-        type: integer
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus'
       updated_at:
         type: string
       user_id:
@@ -839,6 +843,53 @@ definitions:
     - Male
     - Female
     - Other
+  smart-wardrobe-be_internal_shared_domain_constants_itemcondition.ItemCondition:
+    enum:
+    - 1
+    format: int32
+    type: integer
+    x-enum-comments:
+      Standard: Default
+    x-enum-descriptions:
+    - Default
+    x-enum-varnames:
+    - Standard
+  smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender:
+    enum:
+    - user
+    - ai
+    type: string
+    x-enum-varnames:
+    - User
+    - AI
+  smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus:
+    enum:
+    - 0
+    - 1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Draft
+    - Active
+  smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Hidden
+    - Available
+    - Sold
+  smart-wardrobe-be_internal_shared_domain_constants_posttype.PostType:
+    enum:
+    - SALE
+    - OUTFIT
+    type: string
+    x-enum-varnames:
+    - Sale
+    - Outfit
   smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
     enum:
     - admin
@@ -847,6 +898,29 @@ definitions:
     x-enum-varnames:
     - Admin
     - Member
+  smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    format: int32
+    type: integer
+    x-enum-comments:
+      Accepted: Accepted receipt of item
+      Declined: Declined receipt of item
+      None: Not transferred yet
+      Pending: Pending receipt of item
+    x-enum-descriptions:
+    - Not transferred yet
+    - Pending receipt of item
+    - Accepted receipt of item
+    - Declined receipt of item
+    x-enum-varnames:
+    - None
+    - Pending
+    - Accepted
+    - Declined
   smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus:
     enum:
     - 0
@@ -913,7 +987,8 @@ paths:
       - Admin
   /api/v1/admin/community/post-items/{postItemID}:
     delete:
-      description: Cho phép admin xóa listing hoặc post item vi phạm bằng cách xóa luôn bài đăng cha liên quan
+      description: Cho phép admin xóa listing hoặc post item vi phạm bằng cách xóa
+        luôn bài đăng cha liên quan
       parameters:
       - description: ID post item
         in: path
@@ -932,7 +1007,8 @@ paths:
       - Admin
   /api/v1/admin/community/post-items/{postItemID}/hide:
     patch:
-      description: Cho phép admin ẩn listing hoặc post item vi phạm khỏi community và giữ nguyên bài đăng cha
+      description: Cho phép admin ẩn listing hoặc post item vi phạm khỏi community
+        và giữ nguyên bài đăng cha
       parameters:
       - description: ID post item
         in: path
@@ -972,7 +1048,9 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.
+      description: Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang
+        inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn
+        hiệu lực đến hết TTL theo cơ chế JWT stateless.
       parameters:
       - description: ID người dùng
         in: path
@@ -1742,6 +1820,27 @@ paths:
     get:
       description: Lấy feed danh sách bài đăng của cộng đồng sắp xếp theo thứ tự mới
         nhất/hot nhất
+      parameters:
+      - description: 'Tiêu chí sắp xếp: hot hoặc newest'
+        in: query
+        name: sort
+        type: string
+      - description: Số trang, mặc định là 1
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng phần tử mỗi trang, mặc định là 20
+        in: query
+        name: limit
+        type: integer
+      - description: Lọc theo ID người dùng đăng bài
+        in: query
+        name: userId
+        type: string
+      - description: 'Lọc theo loại bài đăng: OUTFIT hoặc SALE'
+        in: query
+        name: postType
+        type: string
       produces:
       - application/json
       responses:

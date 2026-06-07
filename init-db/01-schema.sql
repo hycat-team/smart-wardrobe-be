@@ -142,9 +142,11 @@ CREATE TABLE wardrobe_items (
     fit VARCHAR(50),
     seasonality VARCHAR(100),
     description TEXT,
+    price DECIMAL(12, 2),
     status SMALLINT NOT NULL DEFAULT 0, -- 'in_wardrobe', 'selling', 'sold'
     item_type SMALLINT NOT NULL DEFAULT 0, -- 0: UserItem, 1: SystemCatalogItem
     embedding VECTOR(768),
+    last_used_at TIMESTAMP WITH TIME ZONE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -187,6 +189,7 @@ CREATE TABLE outfit_items (
 CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    public_id VARCHAR(32) NOT NULL UNIQUE,
     post_type VARCHAR(50) NOT NULL,
     title VARCHAR(255),
     content TEXT NOT NULL,

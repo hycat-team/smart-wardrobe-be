@@ -50,9 +50,11 @@ type WardrobeItem struct {
 	Fit           *string                           `gorm:"type:varchar(50)"`
 	Seasonality   *string                           `gorm:"type:varchar(100)"`
 	Description   *string                           `gorm:"type:text"`
+	Price         *float64                          `gorm:"type:decimal(12,2)"`
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
 	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"` // 0: UserItem, 1: SystemCatalogItem
 	Embedding     Vector                            `gorm:"type:vector(768)"`
+	LastUsedAt    *time.Time                        `gorm:"type:timestamp with time zone"`
 }
 
 type Outfit struct {

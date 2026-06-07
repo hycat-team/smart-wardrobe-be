@@ -93,3 +93,15 @@ func (r *PostItemRepository) DeleteByPostAndIDs(ctx context.Context, postID uuid
 	}
 	return r.GetDB(ctx).Where("post_id = ? AND id IN ?", postID, ids).Delete(&entities.PostItem{}).Error
 }
+
+func (r *PostItemRepository) SumVisiblePriceByPostID(ctx context.Context, postID uuid.UUID) (float64, error) {
+	var total float64
+	if err := r.GetDB(ctx).
+		Model(&entities.PostItem{}).
+		Select("COALESCE(SUM(price), 0)").
+		Where("post_id = ? AND status <> ?", postID, postitemstatus.Hidden).
+		Scan(&total).Error; err != nil {
+		return 0, err
+	}
+	return total, nil
+}

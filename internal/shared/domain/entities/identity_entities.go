@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
@@ -27,6 +28,23 @@ type User struct {
 	StyleProfile   *UserStyleProfile     `gorm:"foreignKey:UserID"`
 	AvatarUrl      *string               `gorm:"type:varchar(500)"`
 	AvatarPublicID *string               `gorm:"type:varchar(255)"`
+}
+
+func (u *User) GetEffectiveBodyProfile() *bodyProfile {
+	if u == nil || u.BodyProfile == nil {
+		return nil
+	}
+
+	effective := *u.BodyProfile
+	if effective.VerifiedByUser && strings.TrimSpace(effective.BodyShape) != "" {
+		return &effective
+	}
+
+	if effective.InferredByAI != nil && strings.TrimSpace(effective.InferredByAI.BodyShape) != "" {
+		effective.BodyShape = strings.TrimSpace(effective.InferredByAI.BodyShape)
+	}
+
+	return &effective
 }
 
 type UserStyleProfile struct {

@@ -26,6 +26,10 @@ func (u *User) UpdateAvatar(avatarUrl string, avatarPublicID string) {
 	u.AvatarPublicID = &avatarPublicID
 }
 
+func (u *User) UpdateBodyProfile(profile *bodyProfile) {
+	u.BodyProfile = profile
+}
+
 func (u *User) UpdateStatus(status userstatus.UserStatus) {
 	u.Status = status
 }

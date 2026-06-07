@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
+	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -33,26 +33,22 @@ func NewPostInteractionHandler(interactionUC usecase_interfaces.IUserPostInterac
 // @Tags Community
 // @Accept json
 // @Produce json
-// @Param postID path string true "ID bài đăng"
-// @Param body body dto.LikePostReq true "Trạng thái thích"
+// @Param postPublicID path string true "Mã công khai bài đăng"
+// @Param body body community_dto.LikePostReq true "Trạng thái thích"
 // @Success 200 {object} shared_pres.APIResponse "Cập nhật like thành công"
-// @Router /api/v1/posts/{postID}/like [put]
+// @Router /api/v1/posts/{postPublicID}/like [put]
 func (h *PostInteractionHandler) TogglePostLike(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
-	postID, err := uuid.Parse(c.Param("postID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostIDFormat
-	}
 
-	var input dto.LikePostReq
+	var input community_dto.LikePostReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	if err := h.interactionUC.TogglePostLike(c.Request.Context(), userID, postID, *input.IsLiked); err != nil {
+	if err := h.interactionUC.TogglePostLike(c.Request.Context(), userID, c.Param("postPublicID"), *input.IsLiked); err != nil {
 		return err
 	}
 
@@ -62,30 +58,26 @@ func (h *PostInteractionHandler) TogglePostLike(c *gin.Context) error {
 
 // AddComment add comment to post
 // @Summary Thêm bình luận vào bài viết
-// @Description Tạo bình luận mới dưới bài viết cộng đồng
+// @Description Tạo bình luận mới hoặc phản hồi trực tiếp vào bình luận cấp đầu của bài viết cộng đồng
 // @Tags Community
 // @Accept json
 // @Produce json
-// @Param postID path string true "ID bài đăng"
-// @Param body body dto.AddCommentReq true "Nội dung bình luận"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.CommentRes} "Thêm bình luận thành công"
-// @Router /api/v1/posts/{postID}/comments [post]
+// @Param postPublicID path string true "Mã công khai bài đăng"
+// @Param body body community_dto.AddCommentReq true "Nội dung bình luận"
+// @Success 201 {object} shared_pres.APIResponse{data=community_dto.CommentRes} "Thêm bình luận thành công"
+// @Router /api/v1/posts/{postPublicID}/comments [post]
 func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
-	postID, err := uuid.Parse(c.Param("postID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostIDFormat
-	}
 
-	var input dto.AddCommentReq
+	var input community_dto.AddCommentReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	response, err := h.interactionUC.AddComment(c.Request.Context(), userID, postID, input.Content)
+	response, err := h.interactionUC.AddComment(c.Request.Context(), userID, c.Param("postPublicID"), input)
 	if err != nil {
 		return err
 	}
@@ -100,31 +92,27 @@ func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
 // @Tags Community
 // @Accept json
 // @Produce json
-// @Param postID path string true "ID bài đăng"
+// @Param postPublicID path string true "Mã công khai bài đăng"
 // @Param commentID path string true "ID bình luận"
-// @Param body body dto.UpdateCommentReq true "Nội dung bình luận mới"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.CommentRes} "Cập nhật bình luận thành công"
-// @Router /api/v1/posts/{postID}/comments/{commentID} [put]
+// @Param body body community_dto.UpdateCommentReq true "Nội dung bình luận mới"
+// @Success 200 {object} shared_pres.APIResponse{data=community_dto.CommentRes} "Cập nhật bình luận thành công"
+// @Router /api/v1/posts/{postPublicID}/comments/{commentID} [put]
 func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
-	}
-	postID, err := uuid.Parse(c.Param("postID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostIDFormat
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
 		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
-	var input dto.UpdateCommentReq
+	var input community_dto.UpdateCommentReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	response, err := h.interactionUC.UpdateComment(c.Request.Context(), userID, postID, commentID, input.Content)
+	response, err := h.interactionUC.UpdateComment(c.Request.Context(), userID, c.Param("postPublicID"), commentID, input.Content)
 	if err != nil {
 		return err
 	}
@@ -139,25 +127,21 @@ func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
 // @Tags Community
 // @Accept json
 // @Produce json
-// @Param postID path string true "ID bài đăng"
+// @Param postPublicID path string true "Mã công khai bài đăng"
 // @Param commentID path string true "ID bình luận"
 // @Success 200 {object} shared_pres.APIResponse "Xóa bình luận thành công"
-// @Router /api/v1/posts/{postID}/comments/{commentID} [delete]
+// @Router /api/v1/posts/{postPublicID}/comments/{commentID} [delete]
 func (h *PostInteractionHandler) DeleteComment(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
-	}
-	postID, err := uuid.Parse(c.Param("postID"))
-	if err != nil {
-		return communityerrors.ErrInvalidPostIDFormat
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
 		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
-	if err := h.interactionUC.DeleteComment(c.Request.Context(), userID, postID, commentID); err != nil {
+	if err := h.interactionUC.DeleteComment(c.Request.Context(), userID, c.Param("postPublicID"), commentID); err != nil {
 		return err
 	}
 

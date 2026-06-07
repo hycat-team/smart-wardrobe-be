@@ -21,7 +21,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID)
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (uc *WardrobeUseCase) ProcessChatMessage(ctx context.Context, userID uuid.U
 	if isOutfitIntent(content) {
 		responseText = "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."
 	} else {
-		wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID)
+		wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -304,7 +304,7 @@ func mapChatSession(item *entities.ConversationalContext) *dto.ChatSessionRes {
 func mapChatMessage(item *entities.Message) *dto.ChatMessageRes {
 	return &dto.ChatMessageRes{
 		ID:        item.ID,
-		Sender:    string(item.Sender),
+		Sender:    item.Sender,
 		Content:   item.Content,
 		CreatedAt: item.CreatedAt,
 	}
@@ -402,4 +402,3 @@ func isOutfitIntent(content string) bool {
 	}
 	return false
 }
-

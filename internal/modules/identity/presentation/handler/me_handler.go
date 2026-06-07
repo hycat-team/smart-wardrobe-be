@@ -11,10 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Success messages for MeHandler
 const (
 	successGetProfile         = "Lấy thông tin cá nhân thành công"
 	successUpdateProfile      = "Cập nhật thông tin cá nhân thành công"
+	successUpdateBodyProfile  = "Cập nhật hồ sơ cơ thể thành công"
 	successChangePassword     = "Đổi mật khẩu thành công"
 	successGetAvatarSignature = "Lấy chữ ký tải ảnh đại diện thành công"
 	successUpdateAvatar       = "Cập nhật ảnh đại diện thành công"
@@ -79,6 +79,35 @@ func (h *MeHandler) UpdateCurrentUser(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, successUpdateProfile, response)
+	return nil
+}
+
+// UpdateBodyProfile update current user body profile
+// @Summary Cập nhật hồ sơ cơ thể
+// @Description Cập nhật hồ sơ cơ thể đã xác nhận thủ công hoặc dữ liệu AI suy luận để phục vụ gợi ý phối đồ chính xác hơn
+// @Tags Me
+// @Accept json
+// @Produce json
+// @Param body body dto.UpdateBodyProfileReq true "Thông tin hồ sơ cơ thể"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "Thông tin người dùng sau khi cập nhật hồ sơ cơ thể"
+// @Router /api/v1/me/body-profile [put]
+func (h *MeHandler) UpdateBodyProfile(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.UpdateBodyProfileReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.userUseCase.UpdateBodyProfile(c.Request.Context(), userID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, successUpdateBodyProfile, response)
 	return nil
 }
 

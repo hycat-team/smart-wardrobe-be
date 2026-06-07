@@ -32,6 +32,7 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem) *dto.WardrobeItemRes {
 		Pattern:       stringutils.GetString(item.Pattern),
 		Fit:           stringutils.GetString(item.Fit),
 		Seasonality:   stringutils.GetString(item.Seasonality),
+		Price:         item.Price,
 		Status:        item.Status,
 		CreatedAt:     item.CreatedAt,
 		// Description:   stringutils.GetString(item.Description),
@@ -63,6 +64,7 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem) *dto.SearchWardrobe
 		Pattern:       stringutils.GetString(item.Pattern),
 		Fit:           stringutils.GetString(item.Fit),
 		Seasonality:   stringutils.GetString(item.Seasonality),
+		Price:         item.Price,
 		IsSystem:      item.ItemType == 1,
 		// Description:   stringutils.GetString(item.Description),
 	}

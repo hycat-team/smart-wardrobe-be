@@ -42,8 +42,8 @@ func NewAdminCommunityModerationUseCase(
 	}
 }
 
-func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postID uuid.UUID) error {
-	post, err := uc.postRepo.GetByID(ctx, postID)
+func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error {
+	post, err := uc.postRepo.GetByPublicID(ctx, postPublicID)
 	if err != nil {
 		return err
 	}
@@ -51,18 +51,17 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, 
 		return communityerrors.ErrPostNotFound
 	}
 
-	postItems, err := uc.postItemRepo.GetByPostID(ctx, postID)
+	postItems, err := uc.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return err
 	}
 
 	deletePost := func(txCtx context.Context) error {
-		if err := uc.postRepo.Delete(txCtx, postID); err != nil {
+		if err := uc.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 			return err
 		}
 
-		affectedItemIDs := uniqueItemIDs(postItems)
-		for _, itemID := range affectedItemIDs {
+		for _, itemID := range uniqueItemIDs(postItems) {
 			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
 				return err
 			}
@@ -72,7 +71,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, 
 			zap.String("admin_user_id", adminUserID.String()),
 			zap.String("action", "delete_post"),
 			zap.String("target_type", "post"),
-			zap.String("target_id", postID.String()),
+			zap.String("target_id", postPublicID),
 		)
 		return nil
 	}
@@ -95,6 +94,9 @@ func (uc *AdminCommunityModerationUseCase) AdminHidePostItem(ctx context.Context
 			return err
 		}
 		if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, postItem.ItemID); err != nil {
+			return err
+		}
+		if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postItem.PostID); err != nil {
 			return err
 		}
 
@@ -133,12 +135,11 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePostItem(ctx context.Conte
 			return err
 		}
 
-		if err := uc.postRepo.Delete(txCtx, post.ID); err != nil {
+		if err := uc.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 			return err
 		}
 
-		affectedItemIDs := uniqueItemIDs(postItems)
-		for _, itemID := range affectedItemIDs {
+		for _, itemID := range uniqueItemIDs(postItems) {
 			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
 				return err
 			}
@@ -149,7 +150,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePostItem(ctx context.Conte
 			zap.String("action", "delete_post_item"),
 			zap.String("target_type", "post_item"),
 			zap.String("target_id", postItemID.String()),
-			zap.String("post_id", post.ID.String()),
+			zap.String("post_id", post.PublicID),
 		)
 		return nil
 	}
@@ -175,12 +176,25 @@ func (uc *AdminCommunityModerationUseCase) AdminDeleteComment(ctx context.Contex
 			return communityerrors.ErrPostNotFound
 		}
 
-		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
+		if err := uc.commentRepo.SoftDelete(txCtx, commentID); err != nil {
 			return err
 		}
 
-		if post.CommentCount > 0 {
-			post.CommentCount--
+		decrement := 1
+		if comment.ParentCommentID == nil {
+			replies, err := uc.commentRepo.GetRepliesByParentID(txCtx, post.ID, commentID)
+			if err != nil {
+				return err
+			}
+			decrement += len(replies)
+			if err := uc.commentRepo.SoftDeleteByParentID(txCtx, commentID); err != nil {
+				return err
+			}
+		}
+
+		post.CommentCount -= decrement
+		if post.CommentCount < 0 {
+			post.CommentCount = 0
 		}
 		if err := uc.postRepo.Update(txCtx, post); err != nil {
 			return err

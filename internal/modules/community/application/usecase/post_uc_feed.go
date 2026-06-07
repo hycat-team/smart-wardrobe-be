@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/modules/community/application/errors"
-	"smart-wardrobe-be/internal/modules/community/application/mapper"
+	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
+	community_mapper "smart-wardrobe-be/internal/modules/community/application/mapper"
 	shared_repo_dto "smart-wardrobe-be/internal/modules/community/domain/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -23,10 +23,9 @@ type scoredPost struct {
 	final     float64
 	postItems []*entities.PostItem
 	media     []*entities.PostMedia
-	comments  []*entities.Comment
 }
 
-func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query dto.GetFeedQueryReq) (*dto.GetFeedRes, error) {
+func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query community_dto.GetFeedQueryReq) (*community_dto.GetFeedRes, error) {
 	feedQuery, err := uc.normalizeFeedQuery(query)
 	if err != nil {
 		return nil, err
@@ -54,11 +53,10 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 		}
 	}
 
-	items := make([]*dto.PostRes, 0, len(feedResult.Items))
+	items := make([]*community_dto.PostRes, 0, len(feedResult.Items))
 	for _, record := range feedResult.Items {
-		items = append(items, mapper.MapPost(
+		items = append(items, community_mapper.MapPost(
 			record.Post,
-			nil,
 			nil,
 			nil,
 			likedMap[record.Post.ID],
@@ -67,20 +65,20 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 		))
 	}
 
-	return &dto.GetFeedRes{
+	return &community_dto.GetFeedRes{
 		Items:    items,
 		Metadata: feedResult.Metadata,
 	}, nil
 }
 
-func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*dto.GetFeedRes, error) {
+func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*community_dto.GetFeedRes, error) {
 	records, err := uc.reader.postRepo.GetHotFeedCandidates(ctx, feedQuery, maxPersonalizedWindow)
 	if err != nil {
 		return nil, err
 	}
 	if len(records) == 0 {
-		return &dto.GetFeedRes{
-			Items: []*dto.PostRes{},
+		return &community_dto.GetFeedRes{
+			Items: []*community_dto.PostRes{},
 			Metadata: shared_persist.BuildPaginationMetadata(shared_dto.PaginationQuery{
 				Page:  feedQuery.Page,
 				Limit: feedQuery.Limit,
@@ -93,9 +91,9 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		return nil, err
 	}
 	if user == nil || user.StyleProfile == nil || len(user.StyleProfile.TasteEmbedding) == 0 {
-		items := make([]*dto.PostRes, 0, len(records))
+		items := make([]*community_dto.PostRes, 0, len(records))
 		for _, record := range records {
-			items = append(items, mapper.MapPost(record.Post, nil, nil, nil, false, record.GlobalHotnessScore, record.GlobalHotnessScore))
+			items = append(items, community_mapper.MapPost(record.Post, nil, nil, false, record.GlobalHotnessScore, record.GlobalHotnessScore))
 		}
 		items, _ = uc.applyLikeStatus(ctx, viewerUserID, items)
 		return paginateFeed(items, shared_dto.PaginationQuery{
@@ -106,17 +104,12 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 
 	scoredItems := make([]*scoredPost, 0, len(records))
 	for _, record := range records {
-		post, items, media, err := uc.reader.postRepo.GetDetail(ctx, record.Post.ID)
+		post, items, media, err := uc.reader.postRepo.GetDetail(ctx, record.Post.PublicID)
 		if err != nil {
 			return nil, err
 		}
 		if post == nil {
 			continue
-		}
-		items = filterVisiblePostItems(items)
-		comments, err := uc.reader.commentRepo.GetByPostID(ctx, record.Post.ID)
-		if err != nil {
-			return nil, err
 		}
 
 		styleScore := computeStyleScore(user.StyleProfile.TasteEmbedding, items)
@@ -127,7 +120,6 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 			final:     finalScore,
 			postItems: items,
 			media:     media,
-			comments:  comments,
 		})
 	}
 
@@ -147,13 +139,12 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		return nil, err
 	}
 
-	items := make([]*dto.PostRes, 0, len(scoredItems))
+	items := make([]*community_dto.PostRes, 0, len(scoredItems))
 	for _, item := range scoredItems {
-		items = append(items, mapper.MapPost(
+		items = append(items, community_mapper.MapPost(
 			item.post,
 			item.postItems,
 			item.media,
-			item.comments,
 			likedMap[item.post.ID],
 			item.global,
 			item.final,
@@ -166,8 +157,13 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 	}), nil
 }
 
-func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, viewerUserID *uuid.UUID) (*dto.PostRes, error) {
-	post, items, media, err := uc.reader.postRepo.GetDetail(ctx, postID)
+func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID string, viewerUserID *uuid.UUID) (*community_dto.PostRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, items, media, err := uc.reader.postRepo.GetDetail(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,31 +171,111 @@ func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, 
 		return nil, communityerrors.ErrPostNotFound
 	}
 
-	comments, err := uc.reader.commentRepo.GetByPostID(ctx, postID)
-	if err != nil {
-		return nil, err
-	}
-	items = filterVisiblePostItems(items)
-
-	scoreMap, err := uc.reader.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{postID})
+	scoreMap, err := uc.reader.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{post.ID})
 	if err != nil {
 		return nil, err
 	}
 
 	isLiked := false
 	if viewerUserID != nil {
-		likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, []uuid.UUID{postID})
+		likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, []uuid.UUID{post.ID})
 		if err != nil {
 			return nil, err
 		}
-		isLiked = likedMap[postID]
+		isLiked = likedMap[post.ID]
 	}
 
-	score := scoreMap[postID]
-	return mapper.MapPost(post, items, media, comments, isLiked, score, score), nil
+	score := scoreMap[post.ID]
+	return community_mapper.MapPost(post, items, media, isLiked, score, score), nil
 }
 
-func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uuid.UUID, items []*dto.PostRes) ([]*dto.PostRes, error) {
+func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID string) ([]*community_dto.CommentRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if post == nil {
+		return nil, communityerrors.ErrPostNotFound
+	}
+
+	items, err := uc.reader.commentRepo.GetTopLevelByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*community_dto.CommentRes, 0, len(items))
+	for _, item := range items {
+		result = append(result, mapCommentRes(item))
+	}
+	return result, nil
+}
+
+func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID string, commentID uuid.UUID) ([]*community_dto.CommentRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if post == nil {
+		return nil, communityerrors.ErrPostNotFound
+	}
+
+	parentComment, err := uc.reader.commentRepo.GetByIDAndPostID(ctx, commentID, post.ID)
+	if err != nil {
+		return nil, err
+	}
+	if parentComment == nil || parentComment.ParentCommentID != nil {
+		return nil, communityerrors.ErrCommentReplyTargetInvalid
+	}
+
+	items, err := uc.reader.commentRepo.GetRepliesByParentID(ctx, post.ID, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*community_dto.CommentRes, 0, len(items))
+	for _, item := range items {
+		result = append(result, mapCommentRes(item))
+	}
+	return result, nil
+}
+
+func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string) ([]*community_dto.PostLikeUserRes, error) {
+	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if post == nil {
+		return nil, communityerrors.ErrPostNotFound
+	}
+
+	users, err := uc.reader.likeRepo.GetUsersByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*community_dto.PostLikeUserRes, 0, len(users))
+	for _, user := range users {
+		result = append(result, mapLikeUserRes(user))
+	}
+	return result, nil
+}
+
+func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uuid.UUID, items []*community_dto.PostRes) ([]*community_dto.PostRes, error) {
 	postIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
 		postIDs = append(postIDs, item.ID)
@@ -214,12 +290,12 @@ func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uui
 	return items, nil
 }
 
-func paginateFeed(items []*dto.PostRes, pagination shared_dto.PaginationQuery) *dto.GetFeedRes {
+func paginateFeed(items []*community_dto.PostRes, pagination shared_dto.PaginationQuery) *community_dto.GetFeedRes {
 	pagination = shared_persist.NormalizePagination(pagination)
 	start := shared_persist.Offset(pagination)
 	if start >= len(items) {
-		return &dto.GetFeedRes{
-			Items:    []*dto.PostRes{},
+		return &community_dto.GetFeedRes{
+			Items:    []*community_dto.PostRes{},
 			Metadata: shared_persist.BuildPaginationMetadata(pagination, int64(len(items))),
 		}
 	}
@@ -229,13 +305,13 @@ func paginateFeed(items []*dto.PostRes, pagination shared_dto.PaginationQuery) *
 		end = len(items)
 	}
 
-	return &dto.GetFeedRes{
+	return &community_dto.GetFeedRes{
 		Items:    items[start:end],
 		Metadata: shared_persist.BuildPaginationMetadata(pagination, int64(len(items))),
 	}
 }
 
-func (uc *UserPostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared_repo_dto.FeedQuery, error) {
+func (uc *UserPostUseCase) normalizeFeedQuery(query community_dto.GetFeedQueryReq) (shared_repo_dto.FeedQuery, error) {
 	result := shared_repo_dto.FeedQuery{
 		Sort:  strings.ToLower(strings.TrimSpace(query.Sort)),
 		Page:  query.Page,
@@ -253,12 +329,9 @@ func (uc *UserPostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared
 	if result.Limit <= 0 {
 		result.Limit = defaultFeedLimit
 	}
-	if query.UserID != "" {
-		parsed, err := uuid.Parse(query.UserID)
-		if err != nil {
-			return shared_repo_dto.FeedQuery{}, communityerrors.ErrInvalidUserIDFormat
-		}
-		result.UserID = &parsed
+	if query.Username != "" {
+		username := strings.TrimSpace(query.Username)
+		result.Username = &username
 	}
 	if query.PostType != "" {
 		postType, err := uc.normalizePostType(query.PostType)

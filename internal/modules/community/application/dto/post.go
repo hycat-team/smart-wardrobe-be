@@ -6,6 +6,10 @@ import (
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
+	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 
 	"github.com/google/uuid"
 )
@@ -17,14 +21,27 @@ type PostMediaReq struct {
 	SortOrder int16   `json:"sortOrder"`
 }
 
+type PostItemInputReq struct {
+	ItemID        uuid.UUID                    `json:"itemId" binding:"required" label:"trang phục"`
+	Price         *float64                     `json:"price,omitempty"`
+	ItemCondition *itemcondition.ItemCondition `json:"itemCondition,omitempty"`
+}
+
 type CreatePostReq struct {
-	PostType    string         `json:"postType" binding:"required" label:"loại bài đăng"`
-	Title       *string        `json:"title"`
-	Content     string         `json:"content" binding:"required" label:"nội dung"`
-	ContactInfo *string        `json:"contactInfo"`
-	TotalPrice  *float64       `json:"totalPrice"`
-	ItemIDs     []uuid.UUID    `json:"itemIds"`
-	Media       []PostMediaReq `json:"media"`
+	PostType    posttype.PostType  `json:"postType" binding:"required,oneof=OUTFIT SALE" label:"loại bài đăng"`
+	Title       *string            `json:"title"`
+	Content     string             `json:"content" binding:"required" label:"nội dung"`
+	ContactInfo *string            `json:"contactInfo"`
+	Items       []PostItemInputReq `json:"items"`
+	Media       []PostMediaReq     `json:"media"`
+}
+
+type UpdatePostReq struct {
+	Title       *string            `json:"title"`
+	Content     string             `json:"content" binding:"required" label:"nội dung"`
+	ContactInfo *string            `json:"contactInfo"`
+	Items       []PostItemInputReq `json:"items"`
+	Media       []PostMediaReq     `json:"media"`
 }
 
 type UpdatePostItemsBuyerReq struct {
@@ -36,7 +53,8 @@ type RemovePostItemsReq struct {
 }
 
 type AddCommentReq struct {
-	Content string `json:"content" binding:"required" label:"nội dung bình luận"`
+	Content         string     `json:"content" binding:"required" label:"nội dung bình luận"`
+	ParentCommentID *uuid.UUID `json:"parentCommentId,omitempty"`
 }
 
 type UpdateCommentReq struct {
@@ -49,39 +67,44 @@ type LikePostReq struct {
 
 type GetFeedQueryReq struct {
 	shared_dto.PaginationQuery
-	Sort     string `form:"sort"`
-	UserID   string `form:"userId"`
-	PostType string `form:"postType"`
+	Sort     string            `form:"sort"`
+	Username string            `form:"username"`
+	PostType posttype.PostType `form:"postType" binding:"omitempty,oneof=OUTFIT SALE" label:"loại bài đăng"`
 }
 
 type PostRes struct {
-	ID                 uuid.UUID       `json:"id"`
-	UserID             uuid.UUID       `json:"userId"`
-	PostType           string          `json:"postType"`
-	Title              *string         `json:"title"`
-	Content            string          `json:"content"`
-	ContactInfo        *string         `json:"contactInfo"`
-	TotalPrice         float64         `json:"totalPrice"`
-	LikeCount          int             `json:"likeCount"`
-	CommentCount       int             `json:"commentCount"`
-	IsLiked            bool            `json:"isLiked"`
-	GlobalHotnessScore float64         `json:"globalHotnessScore"`
-	FinalFeedScore     float64         `json:"finalFeedScore,omitempty"`
-	Items              []*PostItemRes  `json:"items,omitempty"`
-	Media              []*PostMediaRes `json:"media,omitempty"`
-	Comments           []*CommentRes   `json:"comments,omitempty"`
-	CreatedAt          time.Time       `json:"createdAt"`
-	UpdatedAt          time.Time       `json:"updatedAt"`
+	ID                 uuid.UUID         `json:"id"`
+	PublicID           string            `json:"publicId"`
+	UserID             uuid.UUID         `json:"userId"`
+	Username           string            `json:"username"`
+	FirstName          string            `json:"firstName,omitempty"`
+	LastName           string            `json:"lastName,omitempty"`
+	AvatarURL          *string           `json:"avatarUrl,omitempty"`
+	PostType           posttype.PostType `json:"postType"`
+	Title              *string           `json:"title"`
+	Content            string            `json:"content"`
+	ContactInfo        *string           `json:"contactInfo"`
+	TotalPrice         float64           `json:"totalPrice"`
+	LikeCount          int               `json:"likeCount"`
+	CommentCount       int               `json:"commentCount"`
+	IsLiked            bool              `json:"isLiked"`
+	GlobalHotnessScore float64           `json:"globalHotnessScore"`
+	FinalFeedScore     float64           `json:"finalFeedScore,omitempty"`
+	SharePath          string            `json:"sharePath"`
+	Items              []*PostItemRes    `json:"items,omitempty"`
+	Media              []*PostMediaRes   `json:"media,omitempty"`
+	CreatedAt          time.Time         `json:"createdAt"`
+	UpdatedAt          time.Time         `json:"updatedAt"`
 }
 
 type PostItemRes struct {
 	ID            uuid.UUID                     `json:"id"`
 	Item          *wardrobe_dto.WardrobeItemRes `json:"item"`
 	Price         float64                       `json:"price"`
-	ItemCondition int16                         `json:"itemCondition"`
-	Status        int16                         `json:"status"`
+	ItemCondition itemcondition.ItemCondition   `json:"itemCondition"`
+	Status        postitemstatus.PostItemStatus `json:"status"`
 	BuyerUserID   *uuid.UUID                    `json:"buyerUserId"`
-	TransferState int16                         `json:"transferState"`
+	TransferState transferstate.TransferState   `json:"transferState"`
 	SoldAt        *time.Time                    `json:"soldAt"`
 	DeclinedAt    *time.Time                    `json:"declinedAt,omitempty"`
 }
@@ -95,10 +118,23 @@ type PostMediaRes struct {
 }
 
 type CommentRes struct {
+	ID              uuid.UUID  `json:"id"`
+	UserID          uuid.UUID  `json:"userId"`
+	Username        string     `json:"username"`
+	FirstName       string     `json:"firstName,omitempty"`
+	LastName        string     `json:"lastName,omitempty"`
+	AvatarURL       *string    `json:"avatarUrl,omitempty"`
+	Content         string     `json:"content"`
+	ParentCommentID *uuid.UUID `json:"parentCommentId,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}
+
+type PostLikeUserRes struct {
 	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"userId"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
+	Username  string    `json:"username"`
+	FirstName string    `json:"firstName,omitempty"`
+	LastName  string    `json:"lastName,omitempty"`
+	AvatarURL *string   `json:"avatarUrl,omitempty"`
 }
 
 type PendingTransferRes struct {
@@ -117,9 +153,9 @@ type SellerTransferPostItemRes struct {
 	PostItemID    uuid.UUID                     `json:"postItemId"`
 	Item          *wardrobe_dto.WardrobeItemRes `json:"item"`
 	Price         float64                       `json:"price"`
-	ItemCondition int16                         `json:"itemCondition"`
-	Status        int16                         `json:"status"`
-	TransferState int16                         `json:"transferState"`
+	ItemCondition itemcondition.ItemCondition   `json:"itemCondition"`
+	Status        postitemstatus.PostItemStatus `json:"status"`
+	TransferState transferstate.TransferState   `json:"transferState"`
 	SoldAt        *time.Time                    `json:"soldAt,omitempty"`
 	DeclinedAt    *time.Time                    `json:"declinedAt,omitempty"`
 	Buyer         *TransferBuyerSummaryRes      `json:"buyer,omitempty"`
@@ -128,7 +164,7 @@ type SellerTransferPostItemRes struct {
 type SellerTransferPostRes struct {
 	PostID    uuid.UUID                    `json:"postId"`
 	Title     *string                      `json:"title"`
-	PostType  string                       `json:"postType"`
+	PostType  posttype.PostType            `json:"postType"`
 	CreatedAt time.Time                    `json:"createdAt"`
 	UpdatedAt time.Time                    `json:"updatedAt"`
 	Items     []*SellerTransferPostItemRes `json:"items"`
