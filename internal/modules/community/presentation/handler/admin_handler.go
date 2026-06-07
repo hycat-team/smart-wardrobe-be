@@ -1,12 +1,19 @@
 package handler
 
 import (
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgAdminDeletePostSuccess    = "Xóa bài đăng thành công"
+	msgAdminDeleteCommentSuccess = "Xóa bình luận thành công"
+	msgAdminHidePostItemSuccess   = "Ẩn listing thành công"
 )
 
 type AdminHandler struct {
@@ -40,14 +47,14 @@ func (h *AdminHandler) DeletePost(c *gin.Context) error {
 
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	if err := h.postUC.AdminDeletePost(c.Request.Context(), adminUserID, postID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Xóa bài đăng thành công", nil)
+	shared_pres.Success(c, msgAdminDeletePostSuccess, nil)
 	return nil
 }
 
@@ -67,14 +74,14 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
 	if err := h.interactionUC.AdminDeleteComment(c.Request.Context(), adminUserID, commentID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Xóa bình luận thành công", nil)
+	shared_pres.Success(c, msgAdminDeleteCommentSuccess, nil)
 	return nil
 }
 
@@ -94,13 +101,13 @@ func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 
 	postItemID, err := uuid.Parse(c.Param("postItemID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostItemIDFormat
 	}
 
 	if err := h.postUC.AdminHidePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Ẩn listing thành công", nil)
+	shared_pres.Success(c, msgAdminHidePostItemSuccess, nil)
 	return nil
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -9,6 +10,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgInteractionToggleLikeSuccess     = "Cập nhật like thành công"
+	msgInteractionAddCommentSuccess     = "Thêm bình luận thành công"
+	msgInteractionUpdateCommentSuccess  = "Cập nhật bình luận thành công"
+	msgInteractionDeleteCommentSuccess  = "Xóa bình luận thành công"
 )
 
 type PostInteractionHandler struct {
@@ -36,7 +44,7 @@ func (h *PostInteractionHandler) TogglePostLike(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	var input dto.LikePostReq
@@ -48,7 +56,7 @@ func (h *PostInteractionHandler) TogglePostLike(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật like thành công", nil)
+	shared_pres.Success(c, msgInteractionToggleLikeSuccess, nil)
 	return nil
 }
 
@@ -69,7 +77,7 @@ func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	var input dto.AddCommentReq
@@ -82,7 +90,7 @@ func (h *PostInteractionHandler) AddComment(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Thêm bình luận thành công", response)
+	shared_pres.Created(c, msgInteractionAddCommentSuccess, response)
 	return nil
 }
 
@@ -104,11 +112,11 @@ func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
 	var input dto.UpdateCommentReq
@@ -121,7 +129,7 @@ func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật bình luận thành công", response)
+	shared_pres.Success(c, msgInteractionUpdateCommentSuccess, response)
 	return nil
 }
 
@@ -142,17 +150,17 @@ func (h *PostInteractionHandler) DeleteComment(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidCommentIDFormat
 	}
 
 	if err := h.interactionUC.DeleteComment(c.Request.Context(), userID, postID, commentID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Xóa bình luận thành công", nil)
+	shared_pres.Success(c, msgInteractionDeleteCommentSuccess, nil)
 	return nil
 }

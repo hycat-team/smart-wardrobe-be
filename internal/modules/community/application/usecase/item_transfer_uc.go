@@ -12,7 +12,7 @@ import (
 	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -52,7 +52,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if postItem == nil {
-			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
+			return communityerrors.ErrRequestedProductNotFound
 		}
 
 		post, err := uc.postRepo.GetByID(txCtx, postItem.PostID)
@@ -60,7 +60,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil || post.UserID != userID {
-			return apperror.NewForbidden("Bạn không được phép thực hiện thao tác này.")
+			return communityerrors.ErrTransferForbidden
 		}
 
 		hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItemID)
@@ -68,7 +68,7 @@ func (uc *ItemTransferUseCase) MarkPostItemSold(ctx context.Context, userID uuid
 			return err
 		}
 		if hasOtherActiveTransfer {
-			return apperror.NewBadRequest("Trang phục này đang nằm trong một giao dịch khác.")
+			return communityerrors.ErrItemInAnotherTransfer
 		}
 
 		postItem.BuyerUserID = &buyerUserID
@@ -217,11 +217,11 @@ func (uc *ItemTransferUseCase) AcceptTransfer(ctx context.Context, buyerUserID u
 			return err
 		}
 		if item == nil || item.BuyerUserID == nil || *item.BuyerUserID != buyerUserID {
-			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
+			return communityerrors.ErrRequestedProductNotFound
 		}
 
 		if item.TransferState != transferstate.Pending {
-			return apperror.NewBadRequest("Yêu cầu chuyển nhượng này đã được xử lý hoặc không còn hiệu lực.")
+			return communityerrors.ErrTransferRequestInvalid
 		}
 
 		c, err := uc.wardrobeCtr.CopyItemToUser(txCtx, item.ItemID, buyerUserID)
@@ -271,11 +271,11 @@ func (uc *ItemTransferUseCase) DeclineTransfer(ctx context.Context, buyerUserID 
 			return err
 		}
 		if postItem == nil || postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
-			return apperror.NewNotFound("Không tìm thấy sản phẩm được yêu cầu.")
+			return communityerrors.ErrRequestedProductNotFound
 		}
 
 		if postItem.TransferState != transferstate.Pending {
-			return apperror.NewBadRequest("Yêu cầu chuyển nhượng này đã được xử lý hoặc không còn hiệu lực.")
+			return communityerrors.ErrTransferRequestInvalid
 		}
 
 		postItem.TransferState = transferstate.Declined

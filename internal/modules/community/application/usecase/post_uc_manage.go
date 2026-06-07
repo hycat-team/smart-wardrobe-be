@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
@@ -38,7 +38,7 @@ func (uc *PostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, input d
 				return nil, err
 			}
 			if hasActiveTransfer {
-				return nil, apperror.NewBadRequest("Trang phục này đang có giao dịch chờ xử lý, không thể đăng bán thêm.")
+				return nil, communityerrors.ErrActiveTransferExists
 			}
 		}
 	}
@@ -126,7 +126,7 @@ func (uc *PostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, postID 
 		return err
 	}
 	if post == nil || post.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy bài viết này.")
+		return communityerrors.ErrPostNotFound
 	}
 
 	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
@@ -157,7 +157,7 @@ func (uc *PostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, po
 		return err
 	}
 	if post == nil || post.UserID != userID {
-		return apperror.NewNotFound("Không tìm thấy bài viết này.")
+		return communityerrors.ErrPostNotFound
 	}
 
 	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
@@ -208,7 +208,7 @@ func (uc *PostUseCase) AdminDeletePost(ctx context.Context, adminUserID uuid.UUI
 		return err
 	}
 	if post == nil {
-		return apperror.NewNotFound("Không tìm thấy bài viết này.")
+		return communityerrors.ErrPostNotFound
 	}
 
 	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, postID)
@@ -246,7 +246,7 @@ func (uc *PostUseCase) AdminHidePostItem(ctx context.Context, adminUserID uuid.U
 		return err
 	}
 	if postItem == nil {
-		return apperror.NewNotFound("Không tìm thấy listing này.")
+		return communityerrors.ErrPostItemNotFound
 	}
 
 	hidePostItem := func(txCtx context.Context) error {
@@ -273,10 +273,10 @@ func (uc *PostUseCase) AdminHidePostItem(ctx context.Context, adminUserID uuid.U
 func (uc *PostUseCase) validateCreatePostInput(postType posttype.PostType, input dto.CreatePostReq) error {
 	if postType == posttype.Sale {
 		if len(input.ItemIDs) == 0 {
-			return apperror.NewBadRequest("Bài viết đăng bán phải chứa ít nhất một sản phẩm.")
+			return communityerrors.ErrPostSaleItemsRequired
 		}
 		if input.ContactInfo == nil || strings.TrimSpace(*input.ContactInfo) == "" {
-			return apperror.NewBadRequest("Bài viết đăng bán phải đính kèm thông tin liên hệ.")
+			return communityerrors.ErrPostContactInfoRequired
 		}
 	}
 	return nil
@@ -289,7 +289,7 @@ func (uc *PostUseCase) normalizePostType(raw string) (posttype.PostType, error) 
 	case string(posttype.Sale):
 		return posttype.Sale, nil
 	default:
-		return "", apperror.NewBadRequest("Hình thức bài viết không hợp lệ.")
+		return "", communityerrors.ErrInvalidPostType
 	}
 }
 

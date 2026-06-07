@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
@@ -46,7 +46,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 			return err
 		}
 		if post == nil {
-			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+			return communityerrors.ErrPostNotFound
 		}
 
 		like, err := uc.likeRepo.GetPostLike(txCtx, userID, postID)
@@ -104,7 +104,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 			return err
 		}
 		if post == nil {
-			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+			return communityerrors.ErrPostNotFound
 		}
 
 		comment = &entities.Comment{
@@ -145,7 +145,7 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil {
-			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+			return communityerrors.ErrPostNotFound
 		}
 
 		comment, err = uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
@@ -153,10 +153,10 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 			return err
 		}
 		if comment == nil {
-			return apperror.NewNotFound("Không tìm thấy bình luận này.")
+			return communityerrors.ErrCommentNotFound
 		}
 		if comment.UserID != userID {
-			return apperror.NewForbidden("Bạn không được phép chỉnh sửa bình luận này.")
+			return communityerrors.ErrEditCommentForbidden
 		}
 
 		comment.Content = content
@@ -182,7 +182,7 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil {
-			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+			return communityerrors.ErrPostNotFound
 		}
 
 		comment, err := uc.commentRepo.GetByIDAndPostID(txCtx, commentID, postID)
@@ -190,10 +190,10 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return err
 		}
 		if comment == nil {
-			return apperror.NewNotFound("Không tìm thấy bình luận này.")
+			return communityerrors.ErrCommentNotFound
 		}
 		if comment.UserID != userID {
-			return apperror.NewForbidden("Bạn không được phép xóa bình luận này.")
+			return communityerrors.ErrDeleteCommentForbidden
 		}
 
 		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {
@@ -219,7 +219,7 @@ func (uc *PostInteractionUseCase) AdminDeleteComment(ctx context.Context, adminU
 			return err
 		}
 		if comment == nil {
-			return apperror.NewNotFound("Không tìm thấy bình luận này.")
+			return communityerrors.ErrCommentNotFound
 		}
 
 		post, err := uc.postRepo.GetByID(txCtx, comment.PostID)
@@ -227,7 +227,7 @@ func (uc *PostInteractionUseCase) AdminDeleteComment(ctx context.Context, adminU
 			return err
 		}
 		if post == nil {
-			return apperror.NewNotFound("Không tìm thấy bài viết này.")
+			return communityerrors.ErrPostNotFound
 		}
 
 		if err := uc.commentRepo.Delete(txCtx, commentID); err != nil {

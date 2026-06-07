@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -11,6 +12,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgPostCreateSuccess              = "Tạo bài đăng thành công"
+	msgPostGetFeedSuccess             = "Lấy feed thành công"
+	msgPostGetUploadSignatureSuccess = "Lấy chữ ký tải media bài đăng thành công"
+	msgPostGetDetailSuccess           = "Lấy chi tiết bài đăng thành công"
+	msgPostDeleteSuccess              = "Xóa bài đăng thành công"
+	msgPostRemoveItemsSuccess         = "Gỡ món khỏi bài đăng thành công"
 )
 
 type PostHandler struct {
@@ -46,7 +56,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, "Tạo bài đăng thành công", response)
+	shared_pres.Created(c, msgPostCreateSuccess, response)
 	return nil
 }
 
@@ -76,7 +86,7 @@ func (h *PostHandler) GetFeed(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy feed thành công", response)
+	shared_pres.Success(c, msgPostGetFeedSuccess, response)
 	return nil
 }
 
@@ -93,7 +103,7 @@ func (h *PostHandler) GetUploadSignature(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chữ ký tải media bài đăng thành công", response)
+	shared_pres.Success(c, msgPostGetUploadSignatureSuccess, response)
 	return nil
 }
 
@@ -108,7 +118,7 @@ func (h *PostHandler) GetUploadSignature(c *gin.Context) error {
 func (h *PostHandler) GetPostDetail(c *gin.Context) error {
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	var viewerUserID *uuid.UUID
@@ -121,7 +131,7 @@ func (h *PostHandler) GetPostDetail(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chi tiết bài đăng thành công", response)
+	shared_pres.Success(c, msgPostGetDetailSuccess, response)
 	return nil
 }
 
@@ -140,14 +150,14 @@ func (h *PostHandler) DeletePost(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	if err := h.postUC.DeletePost(c.Request.Context(), userID, postID); err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, "Xóa bài đăng thành công", nil)
+	shared_pres.Success(c, msgPostDeleteSuccess, nil)
 	return nil
 }
 
@@ -168,7 +178,7 @@ func (h *PostHandler) RemovePostItems(c *gin.Context) error {
 	}
 	postID, err := uuid.Parse(c.Param("postID"))
 	if err != nil {
-		return err
+		return communityerrors.ErrInvalidPostIDFormat
 	}
 
 	var input dto.RemovePostItemsReq
@@ -180,6 +190,6 @@ func (h *PostHandler) RemovePostItems(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Gỡ món khỏi bài đăng thành công", nil)
+	shared_pres.Success(c, msgPostRemoveItemsSuccess, nil)
 	return nil
 }

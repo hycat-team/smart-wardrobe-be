@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	shared_repo_dto "smart-wardrobe-be/internal/modules/community/domain/dto"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/modules/community/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -172,7 +172,7 @@ func (uc *PostUseCase) GetPostDetail(ctx context.Context, postID uuid.UUID, view
 		return nil, err
 	}
 	if post == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy bài viết này.")
+		return nil, communityerrors.ErrPostNotFound
 	}
 
 	comments, err := uc.reader.commentRepo.GetByPostID(ctx, postID)
@@ -245,7 +245,7 @@ func (uc *PostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared_rep
 		result.Sort = "hot"
 	}
 	if result.Sort != "hot" && result.Sort != "newest" {
-		return shared_repo_dto.FeedQuery{}, apperror.NewBadRequest("Tiêu chí sắp xếp không hợp lệ.")
+		return shared_repo_dto.FeedQuery{}, communityerrors.ErrInvalidSortCriterion
 	}
 	if result.Page <= 0 {
 		result.Page = 1
@@ -256,7 +256,7 @@ func (uc *PostUseCase) normalizeFeedQuery(query dto.GetFeedQueryReq) (shared_rep
 	if query.UserID != "" {
 		parsed, err := uuid.Parse(query.UserID)
 		if err != nil {
-			return shared_repo_dto.FeedQuery{}, apperror.NewBadRequest("Mã định danh người dùng không hợp lệ.")
+			return shared_repo_dto.FeedQuery{}, communityerrors.ErrInvalidUserIDFormat
 		}
 		result.UserID = &parsed
 	}
