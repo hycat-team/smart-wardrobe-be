@@ -59,18 +59,19 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 		privatePosts.DELETE("/:postPublicID/comments/:commentID", shared_pres.WrapHandler(r.interactionHandler.DeleteComment))
 	}
 
-	community := group.Group("/community")
-	community.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
-	me := community.Group("/me")
+	transfers := group.Group("/transfers")
+	transfers.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	
+	me := transfers.Group("/me")
 	{
-		me.GET("/pending-transfers", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
-		me.GET("/transfer-posts", shared_pres.WrapHandler(r.transferHandler.GetSellerTransferPosts))
+		me.GET("/pending", shared_pres.WrapHandler(r.transferHandler.GetPendingTransfers))
+		me.GET("/posts", shared_pres.WrapHandler(r.transferHandler.GetSellerTransferPosts))
 	}
 
-	postItems := community.Group("/post-items")
+	items := transfers.Group("/items")
 	{
-		postItems.POST("/:postItemID/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfer))
-		postItems.POST("/:postItemID/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfer))
-		postItems.POST("/:postItemID/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemSold))
+		items.POST("/:postItemID/accept", shared_pres.WrapHandler(r.transferHandler.AcceptTransfer))
+		items.POST("/:postItemID/decline", shared_pres.WrapHandler(r.transferHandler.DeclineTransfer))
+		items.POST("/:postItemID/mark-sold", shared_pres.WrapHandler(r.transferHandler.MarkPostItemSold))
 	}
 }

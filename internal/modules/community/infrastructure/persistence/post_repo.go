@@ -3,7 +3,9 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
+
 
 	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
@@ -264,3 +266,53 @@ func (r *PostRepository) SoftDelete(ctx context.Context, postID uuid.UUID) error
 		Where("id = ? AND is_deleted = ?", postID, false).
 		Update("is_deleted", true).Error
 }
+
+func (r *PostRepository) Restore(ctx context.Context, postID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.Post{}).
+		Where("id = ? AND is_deleted = ?", postID, true).
+		Update("is_deleted", false).Error
+}
+
+func (r *PostRepository) GetPostsForAdmin(ctx context.Context, filter repositories.AdminPostFilter) (*repositories.AdminPostListResult, error) {
+	db := r.GetDB(ctx).Model(&entities.Post{}).Preload("User")
+
+	if filter.IsDeleted != nil {
+		db = db.Where("posts.is_deleted = ?", *filter.IsDeleted)
+	}
+
+	if filter.PostType != nil && *filter.PostType != "" {
+		db = db.Where("posts.post_type = ?", *filter.PostType)
+	}
+
+	if filter.Query != nil && *filter.Query != "" {
+		qStr := "%" + strings.ToLower(*filter.Query) + "%"
+		db = db.Where("LOWER(posts.content) LIKE ? OR LOWER(posts.title) LIKE ?", qStr, qStr)
+	}
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	offset := (filter.Page - 1) * filter.Limit
+	if offset < 0 {
+		offset = 0
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	var posts []*entities.Post
+	err := db.Order("posts.created_at DESC").Offset(offset).Limit(limit).Find(&posts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &repositories.AdminPostListResult{
+		Posts:      posts,
+		TotalCount: totalCount,
+	}, nil
+}
+

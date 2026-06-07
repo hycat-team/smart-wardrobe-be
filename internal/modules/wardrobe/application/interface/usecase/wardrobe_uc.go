@@ -27,4 +27,8 @@ type IWardrobeUseCase interface {
 	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error)
 	ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
 	ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error)
+
+	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error)
+	UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error)
+	DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error
 }

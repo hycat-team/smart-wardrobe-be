@@ -99,3 +99,20 @@ type ManualClassifyReq struct {
 	Seasonality string    `json:"seasonality" binding:"required" label:"mùa phù hợp"`
 	Price       *float64  `json:"price,omitempty"`
 }
+
+type GetSystemCatalogItemsQueryReq struct {
+	Query        *string `form:"q"`
+	CategorySlug *string `form:"category_slug"`
+}
+
+type UpdateSystemCatalogItemReq struct {
+	CategoryID  *uuid.UUID `json:"categoryId" label:"danh mục"`
+	Color       *string    `json:"color" label:"màu sắc"`
+	Style       *string    `json:"style" label:"phong cách"`
+	Material    *string    `json:"material" label:"chất liệu"`
+	Pattern     *string    `json:"pattern" label:"họa tiết"`
+	Fit         *string    `json:"fit" label:"dáng mặc"`
+	Seasonality *string    `json:"seasonality" label:"mùa phù hợp"`
+	Price       *float64   `json:"price,omitempty"`
+}
+

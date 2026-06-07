@@ -77,3 +77,82 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 
 	return resList, nil
 }
+
+func (uc *WardrobeUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
+	if err != nil {
+		return nil, err
+	}
+
+	resList := make([]*dto.WardrobeItemRes, len(items))
+	for i, item := range items {
+		resList[i] = mapper.MapToWardrobeItemRes(item)
+		resList[i].IsLocked = false
+	}
+	return resList, nil
+}
+
+func (uc *WardrobeUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error) {
+	item, err := uc.wardrobeRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
+		return nil, wardrobeerrors.ErrCatalogItemNotFound
+	}
+
+	if input.CategoryID != nil {
+		category, err := uc.categoryRepo.GetByID(ctx, *input.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		if category == nil {
+			return nil, wardrobeerrors.ErrCategoryNotFound
+		}
+		item.CategoryID = input.CategoryID
+		item.Category = category
+	}
+
+	if input.Color != nil {
+		item.Color = input.Color
+	}
+	if input.Style != nil {
+		item.Style = input.Style
+	}
+	if input.Material != nil {
+		item.Material = input.Material
+	}
+	if input.Pattern != nil {
+		item.Pattern = input.Pattern
+	}
+	if input.Fit != nil {
+		item.Fit = input.Fit
+	}
+	if input.Seasonality != nil {
+		item.Seasonality = input.Seasonality
+	}
+	if input.Price != nil {
+		item.Price = input.Price
+	}
+
+	if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
+		return nil, err
+	}
+
+	res := mapper.MapToWardrobeItemRes(item)
+	res.IsLocked = false
+	return res, nil
+}
+
+func (uc *WardrobeUseCase) DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error {
+	item, err := uc.wardrobeRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
+		return wardrobeerrors.ErrCatalogItemNotFound
+	}
+
+	return uc.wardrobeRepo.Delete(ctx, id)
+}
+

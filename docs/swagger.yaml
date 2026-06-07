@@ -3,18 +3,48 @@ definitions:
     properties:
       content:
         type: string
+      parentCommentId:
+        type: string
     required:
     - content
     type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.AdminPostItemListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.AdminPostListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.CommentRes:
     properties:
+      avatarUrl:
+        type: string
       content:
         type: string
       createdAt:
         type: string
+      firstName:
+        type: string
       id:
         type: string
+      lastName:
+        type: string
+      parentCommentId:
+        type: string
       userId:
+        type: string
+      username:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.CreatePostReq:
@@ -23,9 +53,9 @@ definitions:
         type: string
       content:
         type: string
-      itemIds:
+      items:
         items:
-          type: string
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemInputReq'
         type: array
       media:
         items:
@@ -39,8 +69,6 @@ definitions:
         - SALE
       title:
         type: string
-      totalPrice:
-        type: number
     required:
     - content
     - postType
@@ -70,6 +98,17 @@ definitions:
       sellerName:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostItemInputReq:
+    properties:
+      itemCondition:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_itemcondition.ItemCondition'
+      itemId:
+        type: string
+      price:
+        type: number
+    required:
+    - itemId
+    type: object
   smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes:
     properties:
       buyerUserId:
@@ -90,6 +129,19 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus'
       transferState:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState'
+    type: object
+  smart-wardrobe-be_internal_modules_community_application_dto.PostLikeUserRes:
+    properties:
+      avatarUrl:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+      username:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq:
     properties:
@@ -120,12 +172,10 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.PostRes:
     properties:
+      avatarUrl:
+        type: string
       commentCount:
         type: integer
-      comments:
-        items:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CommentRes'
-        type: array
       contactInfo:
         type: string
       content:
@@ -134,16 +184,22 @@ definitions:
         type: string
       finalFeedScore:
         type: number
+      firstName:
+        type: string
       globalHotnessScore:
         type: number
       id:
         type: string
+      isDeleted:
+        type: boolean
       isLiked:
         type: boolean
       items:
         items:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
         type: array
+      lastName:
+        type: string
       likeCount:
         type: integer
       media:
@@ -152,6 +208,10 @@ definitions:
         type: array
       postType:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_posttype.PostType'
+      publicId:
+        type: string
+      sharePath:
+        type: string
       title:
         type: string
       totalPrice:
@@ -159,6 +219,8 @@ definitions:
       updatedAt:
         type: string
       userId:
+        type: string
+      username:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_community_application_dto.RemovePostItemsReq:
@@ -231,18 +293,33 @@ definitions:
     required:
     - buyerUserId
     type: object
-  smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult:
+  smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostReq:
     properties:
-      apiKey:
+      contactInfo:
         type: string
-      folder:
+      content:
         type: string
-      publicId:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemInputReq'
+        type: array
+      media:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostMediaReq'
+        type: array
+      title:
         type: string
-      signature:
-        type: string
-      timestamp:
-        type: integer
+    required:
+    - content
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
     type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.ChangePasswordReq:
     properties:
@@ -279,6 +356,17 @@ definitions:
     required:
     - email
     - otpCode
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.InferredBodyProfileReq:
+    properties:
+      bodyShape:
+        type: string
+      confidenceScore:
+        maximum: 1
+        minimum: 0
+        type: number
+    required:
+    - bodyShape
     type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq:
     properties:
@@ -356,6 +444,39 @@ definitions:
     - avatarPublicId
     - avatarUrl
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UpdateBodyMeasurementsReq:
+    properties:
+      chestCm:
+        minimum: 0
+        type: number
+      hipCm:
+        minimum: 0
+        type: number
+      waistCm:
+        minimum: 0
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UpdateBodyProfileReq:
+    properties:
+      bodyShape:
+        type: string
+      heightCm:
+        minimum: 0
+        type: number
+      inferredByAi:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.InferredBodyProfileReq'
+      measurements:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateBodyMeasurementsReq'
+      verifiedByUser:
+        type: boolean
+      weightKg:
+        minimum: 0
+        type: number
+    required:
+    - bodyShape
+    - heightCm
+    - weightKg
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UpdateProfileReq:
     properties:
       address:
@@ -386,23 +507,37 @@ definitions:
         - 0
         - 1
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyMeasurementsRes:
+    properties:
+      chestCm:
+        type: number
+      hipCm:
+        type: number
+      waistCm:
+        type: number
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes:
     properties:
-      bodyType:
+      bodyShape:
         type: string
-      estimatedBodyShape:
-        type: string
-      fitPreference:
-        type: string
-      height:
+      heightCm:
         type: number
-      recommendedSize:
+      inferredByAi:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserInferredBodyRes'
+      lastUpdatedAt:
         type: string
-      skinTone:
+      measurements:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyMeasurementsRes'
+      verifiedByUser:
+        type: boolean
+      weightKg:
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserInferredBodyRes:
+    properties:
+      bodyShape:
         type: string
-      stylingNotes:
-        type: string
-      weight:
+      confidenceScore:
         type: number
     type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UserRes:
@@ -414,10 +549,10 @@ definitions:
       avatarUrl:
         type: string
       bodyProfile:
-        allOf:
-        - $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes'
-        description: Quota        *UserQuotaRes       `json:"quota,omitempty"`
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserBodyProfileRes'
       createdAt:
+        type: string
+      dateOfBirth:
         type: string
       email:
         type: string
@@ -599,6 +734,8 @@ definitions:
         type: string
       pattern:
         type: string
+      price:
+        type: number
       seasonality:
         type: string
       style:
@@ -752,6 +889,8 @@ definitions:
         type: string
       pattern:
         type: string
+      price:
+        type: number
       seasonality:
         type: string
       style:
@@ -763,6 +902,25 @@ definitions:
         type: string
     required:
     - content
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateSystemCatalogItemReq:
+    properties:
+      categoryId:
+        type: string
+      color:
+        type: string
+      fit:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      price:
+        type: number
+      seasonality:
+        type: string
+      style:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq:
     properties:
@@ -798,6 +956,8 @@ definitions:
         type: string
       pattern:
         type: string
+      price:
+        type: number
       seasonality:
         type: string
       status:
@@ -966,7 +1126,7 @@ info:
   title: Smart Wardrobe API Document
   version: "1.0"
 paths:
-  /api/v1/admin/community/comments/{commentID}:
+  /api/v1/admin/comments/{commentID}:
     delete:
       description: Cho phép admin xóa bình luận community vi phạm
       parameters:
@@ -985,7 +1145,64 @@ paths:
       summary: Xóa bình luận community
       tags:
       - Admin
-  /api/v1/admin/community/post-items/{postItemID}:
+  /api/v1/admin/comments/{commentID}/restore:
+    patch:
+      description: Cho phép admin khôi phục bình luận community đã bị soft delete
+      parameters:
+      - description: ID bình luận
+        in: path
+        name: commentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Khôi phục bình luận thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Khôi phục bình luận community
+      tags:
+      - Admin
+  /api/v1/admin/post-items:
+    get:
+      consumes:
+      - application/json
+      description: Cho phép admin lấy danh sách listing phân trang và lọc theo status,
+        transfer state.
+      parameters:
+      - description: Trạng thái listing
+        in: query
+        name: status
+        type: integer
+      - description: Trạng thái giao dịch
+        in: query
+        name: transferState
+        type: integer
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng phần tử mỗi trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách sản phẩm bài đăng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AdminPostItemListRes'
+              type: object
+      summary: Lấy danh sách listing (Admin)
+      tags:
+      - Admin
+  /api/v1/admin/post-items/{postItemID}:
     delete:
       description: Cho phép admin xóa listing hoặc post item vi phạm bằng cách xóa
         luôn bài đăng cha liên quan
@@ -1005,7 +1222,7 @@ paths:
       summary: Xóa listing community
       tags:
       - Admin
-  /api/v1/admin/community/post-items/{postItemID}/hide:
+  /api/v1/admin/post-items/{postItemID}/hide:
     patch:
       description: Cho phép admin ẩn listing hoặc post item vi phạm khỏi community
         và giữ nguyên bài đăng cha
@@ -1025,13 +1242,54 @@ paths:
       summary: Ẩn listing community
       tags:
       - Admin
-  /api/v1/admin/community/posts/{postID}:
+  /api/v1/admin/posts:
+    get:
+      consumes:
+      - application/json
+      description: Cho phép admin lấy danh sách bài đăng phân trang, tìm kiếm và lọc.
+      parameters:
+      - description: Loại bài đăng (OUTFIT, SALE)
+        in: query
+        name: postType
+        type: string
+      - description: Trạng thái bị xóa
+        in: query
+        name: isDeleted
+        type: boolean
+      - description: Từ khóa tìm kiếm (content, title)
+        in: query
+        name: q
+        type: string
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng phần tử mỗi trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách bài đăng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.AdminPostListRes'
+              type: object
+      summary: Lấy danh sách bài đăng (Admin)
+      tags:
+      - Admin
+  /api/v1/admin/posts/{postPublicID}:
     delete:
       description: Cho phép admin xóa bài đăng community vi phạm
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       produces:
@@ -1042,6 +1300,67 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Xóa bài đăng community
+      tags:
+      - Admin
+  /api/v1/admin/posts/{postPublicID}/restore:
+    patch:
+      description: Cho phép admin khôi phục bài đăng community đã bị soft delete
+      parameters:
+      - description: Mã công khai bài đăng
+        in: path
+        name: postPublicID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Khôi phục bài đăng thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Khôi phục bài đăng community
+      tags:
+      - Admin
+  /api/v1/admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và
+        lọc theo trạng thái/phân quyền.
+      parameters:
+      - description: Phân quyền (e.g. member, admin)
+        in: query
+        name: roleSlug
+        type: string
+      - description: Trạng thái hoạt động
+        in: query
+        name: isActive
+        type: boolean
+      - description: Từ khóa tìm kiếm (username, email, họ tên)
+        in: query
+        name: q
+        type: string
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng phần tử mỗi trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách tài khoản thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes'
+              type: object
+      summary: Lấy danh sách người dùng
       tags:
       - Admin
   /api/v1/admin/users/{id}/status:
@@ -1076,6 +1395,86 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
               type: object
       summary: Cập nhật trạng thái tài khoản người dùng
+      tags:
+      - Admin
+  /api/v1/admin/wardrobe-items:
+    get:
+      description: Cho phép Admin lấy danh sách trang phục mẫu hệ thống để quản lý
+      parameters:
+      - description: Từ khóa tìm kiếm
+        in: query
+        name: q
+        type: string
+      - description: Slug danh mục
+        in: query
+        name: category_slug
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách trang phục mẫu
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách trang phục mẫu (Admin)
+      tags:
+      - Admin
+  /api/v1/admin/wardrobe-items/{id}:
+    delete:
+      description: Cho phép Admin xóa một trang phục mẫu hệ thống
+      parameters:
+      - description: ID trang phục mẫu
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa trang phục mẫu (Admin)
+      tags:
+      - Admin
+    put:
+      consumes:
+      - application/json
+      description: Cho phép Admin cập nhật thông tin thuộc tính của một trang phục
+        mẫu hệ thống
+      parameters:
+      - description: ID trang phục mẫu
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thông tin cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateSystemCatalogItemReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thông tin trang phục mẫu sau cập nhật
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+              type: object
+      summary: Cập nhật trang phục mẫu (Admin)
       tags:
       - Admin
   /api/v1/ai/chat/sessions:
@@ -1424,119 +1823,6 @@ paths:
       summary: Lấy tất cả danh mục trang phục
       tags:
       - Category
-  /api/v1/community/me/pending-transfers:
-    get:
-      description: Lấy danh sách các trang phục do người khác đánh dấu bán cho bạn
-        đang chờ xác nhận
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Lấy danh sách đang chờ nhận thành công
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PendingTransferRes'
-                  type: array
-              type: object
-      summary: Danh sách trang phục đang chờ nhận bàn giao
-      tags:
-      - Community
-  /api/v1/community/me/transfer-posts:
-    get:
-      description: Lấy danh sách các bài đăng của người bán có món đồ đang chờ, được
-        chấp nhận, bị từ chối hoặc đã bán trong luồng bàn giao
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Lấy danh sách bài đăng bàn giao thành công
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.SellerTransferPostRes'
-                  type: array
-              type: object
-      summary: Danh sách bài đăng bàn giao của người bán
-      tags:
-      - Community
-  /api/v1/community/post-items/{postItemID}/accept:
-    post:
-      description: Đồng ý nhận trang phục đã mua về tủ đồ cá nhân
-      parameters:
-      - description: ID chi tiết món đồ trong bài đăng
-        in: path
-        name: postItemID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Nhận món đồ vào tủ thành công
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
-              type: object
-      summary: Chấp nhận nhận bàn giao trang phục
-      tags:
-      - Community
-  /api/v1/community/post-items/{postItemID}/decline:
-    post:
-      description: Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
-      parameters:
-      - description: ID chi tiết món đồ trong bài đăng
-        in: path
-        name: postItemID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Từ chối nhận món đồ thành công
-          schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Từ chối nhận bàn giao trang phục
-      tags:
-      - Community
-  /api/v1/community/post-items/{postItemID}/mark-sold:
-    post:
-      consumes:
-      - application/json
-      description: Đánh dấu trang phục đã được bán cho một người dùng khác và kích
-        hoạt trạng thái bàn giao
-      parameters:
-      - description: ID chi tiết món đồ trong bài đăng
-        in: path
-        name: postItemID
-        required: true
-        type: string
-      - description: Thông tin người mua
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Đánh dấu đã bán thành công
-          schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      summary: Đánh dấu món đồ đã bán
-      tags:
-      - Community
   /api/v1/me:
     get:
       consumes:
@@ -1631,6 +1917,34 @@ paths:
       summary: Lấy chữ ký tải ảnh đại diện
       tags:
       - Me
+  /api/v1/me/body-profile:
+    put:
+      consumes:
+      - application/json
+      description: Cập nhật hồ sơ cơ thể đã xác nhận thủ công hoặc dữ liệu AI suy
+        luận để phục vụ gợi ý phối đồ chính xác hơn
+      parameters:
+      - description: Thông tin hồ sơ cơ thể
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateBodyProfileReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thông tin người dùng sau khi cập nhật hồ sơ cơ thể
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
+      summary: Cập nhật hồ sơ cơ thể
+      tags:
+      - Me
   /api/v1/me/change-password:
     put:
       consumes:
@@ -1677,6 +1991,11 @@ paths:
     get:
       description: Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp
         dụng trạng thái khóa động nếu hạ cấp gói
+      parameters:
+      - description: Slug danh mục cần lọc
+        in: query
+        name: category_slug
+        type: string
       produces:
       - application/json
       responses:
@@ -1819,7 +2138,7 @@ paths:
   /api/v1/posts:
     get:
       description: Lấy feed danh sách bài đăng của cộng đồng sắp xếp theo thứ tự mới
-        nhất/hot nhất
+        nhất hoặc hot nhất
       parameters:
       - description: 'Tiêu chí sắp xếp: hot hoặc newest'
         in: query
@@ -1833,9 +2152,9 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: Lọc theo ID người dùng đăng bài
+      - description: Lọc theo username người dùng đăng bài
         in: query
-        name: userId
+        name: username
         type: string
       - description: 'Lọc theo loại bài đăng: OUTFIT hoặc SALE'
         in: query
@@ -1882,13 +2201,13 @@ paths:
       summary: Tạo bài đăng cộng đồng mới
       tags:
       - Community
-  /api/v1/posts/{postID}:
+  /api/v1/posts/{postPublicID}:
     delete:
       description: Xóa bài đăng của chính người dùng hiện tại
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       produces:
@@ -1902,12 +2221,12 @@ paths:
       tags:
       - Community
     get:
-      description: Lấy thông tin chi tiết của một bài đăng cụ thể kèm danh sách bình
-        luận
+      description: Lấy thông tin chi tiết của một bài đăng cụ thể không bao gồm danh
+        sách bình luận và danh sách người thích
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       produces:
@@ -1925,15 +2244,72 @@ paths:
       summary: Lấy chi tiết bài đăng
       tags:
       - Community
-  /api/v1/posts/{postID}/comments:
+    put:
+      consumes:
+      - application/json
+      description: Cập nhật nội dung, media và danh sách món đồ của bài đăng
+      parameters:
+      - description: Mã công khai bài đăng
+        in: path
+        name: postPublicID
+        required: true
+        type: string
+      - description: Nội dung bài đăng
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật bài đăng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostRes'
+              type: object
+      summary: Cập nhật bài đăng cộng đồng
+      tags:
+      - Community
+  /api/v1/posts/{postPublicID}/comments:
+    get:
+      description: Lấy danh sách bình luận F0 của bài đăng cụ thể
+      parameters:
+      - description: Mã công khai bài đăng
+        in: path
+        name: postPublicID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách bình luận thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CommentRes'
+                  type: array
+              type: object
+      summary: Lấy bình luận cấp đầu của bài đăng
+      tags:
+      - Community
     post:
       consumes:
       - application/json
-      description: Tạo bình luận mới dưới bài viết cộng đồng
+      description: Tạo bình luận mới hoặc phản hồi trực tiếp vào bình luận cấp đầu
+        của bài viết cộng đồng
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       - description: Nội dung bình luận
@@ -1957,16 +2333,16 @@ paths:
       summary: Thêm bình luận vào bài viết
       tags:
       - Community
-  /api/v1/posts/{postID}/comments/{commentID}:
+  /api/v1/posts/{postPublicID}/comments/{commentID}:
     delete:
       consumes:
       - application/json
       description: Xóa bình luận thuộc bài viết cộng đồng của chính người dùng hiện
         tại
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       - description: ID bình luận
@@ -1989,9 +2365,9 @@ paths:
       - application/json
       description: Chỉnh sửa nội dung bình luận thuộc bài viết cộng đồng
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       - description: ID bình luận
@@ -2020,15 +2396,46 @@ paths:
       summary: Cập nhật bình luận của bài viết
       tags:
       - Community
-  /api/v1/posts/{postID}/items:
+  /api/v1/posts/{postPublicID}/comments/{commentID}/replies:
+    get:
+      description: Lấy danh sách bình luận F1 của một bình luận F0 cụ thể
+      parameters:
+      - description: Mã công khai bài đăng
+        in: path
+        name: postPublicID
+        required: true
+        type: string
+      - description: ID bình luận cấp đầu
+        in: path
+        name: commentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách phản hồi thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.CommentRes'
+                  type: array
+              type: object
+      summary: Lấy phản hồi của một bình luận cấp đầu
+      tags:
+      - Community
+  /api/v1/posts/{postPublicID}/items:
     delete:
       consumes:
       - application/json
       description: Gỡ một hoặc nhiều món đồ ra khỏi danh sách bán trong bài đăng
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       - description: Danh sách ID các món đồ cần gỡ
@@ -2047,16 +2454,16 @@ paths:
       summary: Gỡ món đồ khỏi bài đăng
       tags:
       - Community
-  /api/v1/posts/{postID}/like:
+  /api/v1/posts/{postPublicID}/like:
     put:
       consumes:
       - application/json
       description: Like hoặc unlike một bài viết trên cộng đồng bằng cách gửi trạng
         thái rõ ràng
       parameters:
-      - description: ID bài đăng
+      - description: Mã công khai bài đăng
         in: path
-        name: postID
+        name: postPublicID
         required: true
         type: string
       - description: Trạng thái thích
@@ -2075,6 +2482,32 @@ paths:
       summary: Thích / Bỏ thích bài đăng
       tags:
       - Community
+  /api/v1/posts/{postPublicID}/likes:
+    get:
+      description: Lấy danh sách người dùng đã thích bài đăng để hiển thị kiểu Facebook
+      parameters:
+      - description: Mã công khai bài đăng
+        in: path
+        name: postPublicID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách người thích thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostLikeUserRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách người thích bài đăng
+      tags:
+      - Community
   /api/v1/posts/upload-signature:
     get:
       description: Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp media
@@ -2089,7 +2522,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UploadSignatureResult'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult'
               type: object
       summary: Lấy chữ ký tải media bài đăng
       tags:
@@ -2285,6 +2718,119 @@ paths:
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
+  /api/v1/transfers/items/{postItemID}/accept:
+    post:
+      description: Đồng ý nhận trang phục đã mua về tủ đồ cá nhân
+      parameters:
+      - description: ID chi tiết món đồ trong bài đăng
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nhận món đồ vào tủ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PostItemRes'
+              type: object
+      summary: Chấp nhận nhận bàn giao trang phục
+      tags:
+      - Transfers
+  /api/v1/transfers/items/{postItemID}/decline:
+    post:
+      description: Từ chối nhận bàn giao trang phục mua từ bài đăng cộng đồng
+      parameters:
+      - description: ID chi tiết món đồ trong bài đăng
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Từ chối nhận món đồ thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Từ chối nhận bàn giao trang phục
+      tags:
+      - Transfers
+  /api/v1/transfers/items/{postItemID}/mark-sold:
+    post:
+      consumes:
+      - application/json
+      description: Đánh dấu trang phục đã được bán cho một người dùng khác và kích
+        hoạt trạng thái bàn giao
+      parameters:
+      - description: ID chi tiết món đồ trong bài đăng
+        in: path
+        name: postItemID
+        required: true
+        type: string
+      - description: Thông tin người mua
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.UpdatePostItemsBuyerReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Đánh dấu đã bán thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Đánh dấu món đồ đã bán
+      tags:
+      - Transfers
+  /api/v1/transfers/me/pending:
+    get:
+      description: Lấy danh sách các trang phục do người khác đánh dấu bán cho bạn
+        đang chờ xác nhận
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách đang chờ nhận thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.PendingTransferRes'
+                  type: array
+              type: object
+      summary: Danh sách trang phục đang chờ nhận bàn giao
+      tags:
+      - Transfers
+  /api/v1/transfers/me/posts:
+    get:
+      description: Lấy danh sách các bài đăng của người bán có món đồ đang chờ, được
+        chấp nhận, bị từ chối hoặc đã bán trong luồng bàn giao
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách bài đăng bàn giao thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_community_application_dto.SellerTransferPostRes'
+                  type: array
+              type: object
+      summary: Danh sách bài đăng bàn giao của người bán
+      tags:
+      - Transfers
   /api/v1/wardrobe-items/{id}:
     get:
       description: Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn
@@ -2447,6 +2993,10 @@ paths:
       - description: 'Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)'
         in: query
         name: q
+        type: string
+      - description: Slug danh mục cần lọc
+        in: query
+        name: category_slug
         type: string
       produces:
       - application/json

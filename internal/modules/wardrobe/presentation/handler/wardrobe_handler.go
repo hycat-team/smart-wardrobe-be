@@ -21,6 +21,9 @@ const (
 	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
 	msgWardrobeSearchItemsSuccess           = "Tìm kiếm trang phục thành công"
 	msgWardrobeManualClassifySuccess        = "Tự phân loại trang phục thủ công thành công"
+	msgWardrobeGetCatalogItemsSuccess       = "Lấy danh sách trang phục mẫu thành công"
+	msgWardrobeUpdateCatalogItemSuccess     = "Cập nhật trang phục mẫu thành công"
+	msgWardrobeDeleteCatalogItemSuccess     = "Xóa trang phục mẫu thành công"
 )
 
 type WardrobeHandler struct {
@@ -264,3 +267,82 @@ func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
 	shared_pres.Success(c, msgWardrobeManualClassifySuccess, response)
 	return nil
 }
+
+// GetCatalogItemsAdmin gets all system catalog templates (Admin)
+// @Summary Lấy danh sách trang phục mẫu (Admin)
+// @Description Cho phép Admin lấy danh sách trang phục mẫu hệ thống để quản lý
+// @Tags Admin
+// @Produce json
+// @Param q query string false "Từ khóa tìm kiếm"
+// @Param category_slug query string false "Slug danh mục"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục mẫu"
+// @Router /api/v1/admin/wardrobe-items [get]
+func (h *WardrobeHandler) GetCatalogItemsAdmin(c *gin.Context) error {
+	var query dto.GetSystemCatalogItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.GetSystemCatalogItems(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgWardrobeGetCatalogItemsSuccess, response)
+	return nil
+}
+
+// UpdateCatalogItemAdmin updates a system catalog item (Admin)
+// @Summary Cập nhật trang phục mẫu (Admin)
+// @Description Cho phép Admin cập nhật thông tin thuộc tính của một trang phục mẫu hệ thống
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path string true "ID trang phục mẫu"
+// @Param body body dto.UpdateSystemCatalogItemReq true "Thông tin cập nhật"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Thông tin trang phục mẫu sau cập nhật"
+// @Router /api/v1/admin/wardrobe-items/{id} [put]
+func (h *WardrobeHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
+	idStr := c.Param("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		return err
+	}
+
+	var input dto.UpdateSystemCatalogItemReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.wardrobeUseCase.UpdateSystemCatalogItem(c.Request.Context(), itemID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgWardrobeUpdateCatalogItemSuccess, response)
+	return nil
+}
+
+// DeleteCatalogItemAdmin deletes a system catalog item (Admin)
+// @Summary Xóa trang phục mẫu (Admin)
+// @Description Cho phép Admin xóa một trang phục mẫu hệ thống
+// @Tags Admin
+// @Produce json
+// @Param id path string true "ID trang phục mẫu"
+// @Success 200 {object} shared_pres.APIResponse "Xóa thành công"
+// @Router /api/v1/admin/wardrobe-items/{id} [delete]
+func (h *WardrobeHandler) DeleteCatalogItemAdmin(c *gin.Context) error {
+	idStr := c.Param("id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		return err
+	}
+
+	if err := h.wardrobeUseCase.DeleteSystemCatalogItem(c.Request.Context(), itemID); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgWardrobeDeleteCatalogItemSuccess, nil)
+	return nil
+}
+

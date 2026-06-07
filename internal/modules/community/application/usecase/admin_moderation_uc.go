@@ -2,11 +2,15 @@ package usecase
 
 import (
 	"context"
+	"math"
 
+	"smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
@@ -215,4 +219,179 @@ func (uc *AdminCommunityModerationUseCase) AdminDeleteComment(ctx context.Contex
 	return uc.uow.Execute(ctx, deleteComment)
 }
 
+func (uc *AdminCommunityModerationUseCase) GetPostsForAdmin(ctx context.Context, query dto.AdminGetPostsQueryReq) (*dto.AdminPostListRes, error) {
+	filter := repositories.AdminPostFilter{
+		PostType:  query.PostType,
+		IsDeleted: query.IsDeleted,
+		Query:     query.Query,
+		Page:      query.Page,
+		Limit:     query.Limit,
+	}
+
+	result, err := uc.postRepo.GetPostsForAdmin(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	resPosts := make([]*dto.PostRes, len(result.Posts))
+	for idx, post := range result.Posts {
+		_, items, media, err := uc.postRepo.GetDetail(ctx, post.PublicID)
+		if err != nil {
+			return nil, err
+		}
+		resPosts[idx] = mapper.MapPost(post, items, media, false, 0, 0)
+	}
+
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+
+	totalPages := 0
+	if limit > 0 && result.TotalCount > 0 {
+		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.PostRes]{
+		Items: resPosts,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: result.TotalCount,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+
+func (uc *AdminCommunityModerationUseCase) GetPostItemsForAdmin(ctx context.Context, query dto.AdminGetPostItemsQueryReq) (*dto.AdminPostItemListRes, error) {
+	filter := repositories.AdminPostItemFilter{
+		Status:        query.Status,
+		TransferState: query.TransferState,
+		Page:          query.Page,
+		Limit:         query.Limit,
+	}
+
+	result, err := uc.postItemRepo.GetPostItemsForAdmin(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	resItems := make([]*dto.PostItemRes, len(result.PostItems))
+	for idx, item := range result.PostItems {
+		resItems[idx] = mapper.MapPostItem(item)
+	}
+
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+
+	totalPages := 0
+	if limit > 0 && result.TotalCount > 0 {
+		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.PostItemRes]{
+		Items: resItems,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: result.TotalCount,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+
+func (uc *AdminCommunityModerationUseCase) AdminRestorePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error {
+	post, err := uc.postRepo.GetByPublicID(ctx, postPublicID)
+	if err != nil {
+		return err
+	}
+	if post == nil {
+		return communityerrors.ErrPostNotFound
+	}
+
+	postItems, err := uc.postItemRepo.GetByPostID(ctx, post.ID)
+	if err != nil {
+		return err
+	}
+
+	restorePost := func(txCtx context.Context) error {
+		if err := uc.postRepo.Restore(txCtx, post.ID); err != nil {
+			return err
+		}
+
+		for _, itemID := range uniqueItemIDs(postItems) {
+			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
+				return err
+			}
+		}
+
+		uc.logger.Info("[CommunityModeration] Admin restored post",
+			zap.String("admin_user_id", adminUserID.String()),
+			zap.String("action", "restore_post"),
+			zap.String("target_type", "post"),
+			zap.String("target_id", postPublicID),
+		)
+		return nil
+	}
+
+	return uc.uow.Execute(ctx, restorePost)
+}
+
+func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error {
+	restoreComment := func(txCtx context.Context) error {
+		comment, err := uc.commentRepo.GetByID(txCtx, commentID)
+		if err != nil {
+			return err
+		}
+		if comment == nil {
+			return communityerrors.ErrCommentNotFound
+		}
+		if !comment.IsDeleted {
+			return nil
+		}
+
+		post, err := uc.postRepo.GetByID(txCtx, comment.PostID)
+		if err != nil {
+			return err
+		}
+		if post == nil {
+			return communityerrors.ErrPostNotFound
+		}
+
+		if err := uc.commentRepo.Restore(txCtx, commentID); err != nil {
+			return err
+		}
+
+		increment := 1
+		post.CommentCount += increment
+		if err := uc.postRepo.Update(txCtx, post); err != nil {
+			return err
+		}
+		if err := uc.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
+			return err
+		}
+
+		uc.logger.Info("[CommunityModeration] Admin restored comment",
+			zap.String("admin_user_id", adminUserID.String()),
+			zap.String("action", "restore_comment"),
+			zap.String("target_type", "comment"),
+			zap.String("target_id", commentID.String()),
+		)
+		return nil
+	}
+
+	return uc.uow.Execute(ctx, restoreComment)
+}
+
 var _ uc_interfaces.IAdminCommunityModerationUseCase = (*AdminCommunityModerationUseCase)(nil)
+

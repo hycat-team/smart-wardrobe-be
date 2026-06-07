@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"smart-wardrobe-be/internal/modules/community/application/dto"
 	"smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
+	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +17,10 @@ const (
 	msgAdminDeleteCommentSuccess  = "Xóa bình luận thành công"
 	msgAdminHidePostItemSuccess   = "Ẩn listing thành công"
 	msgAdminDeletePostItemSuccess = "Xóa listing vi phạm thành công"
+	msgAdminRestorePostSuccess     = "Khôi phục bài đăng thành công"
+	msgAdminRestoreCommentSuccess  = "Khôi phục bình luận thành công"
+	msgAdminGetPostsSuccess       = "Lấy danh sách bài đăng thành công"
+	msgAdminGetPostItemsSuccess   = "Lấy danh sách sản phẩm bài đăng thành công"
 )
 
 type AdminHandler struct {
@@ -36,7 +42,7 @@ func NewAdminHandler(
 // @Produce json
 // @Param postPublicID path string true "Mã công khai bài đăng"
 // @Success 200 {object} shared_pres.APIResponse "Xóa bài đăng thành công"
-// @Router /api/v1/admin/community/posts/{postPublicID} [delete]
+// @Router /api/v1/admin/posts/{postPublicID} [delete]
 func (h *AdminHandler) DeletePost(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -58,7 +64,7 @@ func (h *AdminHandler) DeletePost(c *gin.Context) error {
 // @Produce json
 // @Param commentID path string true "ID bình luận"
 // @Success 200 {object} shared_pres.APIResponse "Xóa bình luận thành công"
-// @Router /api/v1/admin/community/comments/{commentID} [delete]
+// @Router /api/v1/admin/comments/{commentID} [delete]
 func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -85,7 +91,7 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 // @Produce json
 // @Param postItemID path string true "ID post item"
 // @Success 200 {object} shared_pres.APIResponse "Ẩn listing thành công"
-// @Router /api/v1/admin/community/post-items/{postItemID}/hide [patch]
+// @Router /api/v1/admin/post-items/{postItemID}/hide [patch]
 func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -112,7 +118,7 @@ func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 // @Produce json
 // @Param postItemID path string true "ID post item"
 // @Success 200 {object} shared_pres.APIResponse "Xóa listing vi phạm thành công"
-// @Router /api/v1/admin/community/post-items/{postItemID} [delete]
+// @Router /api/v1/admin/post-items/{postItemID} [delete]
 func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -131,3 +137,108 @@ func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
 	shared_pres.Success(c, msgAdminDeletePostItemSuccess, nil)
 	return nil
 }
+
+// GetPosts lấy danh sách bài đăng cho Admin
+// @Summary Lấy danh sách bài đăng (Admin)
+// @Description Cho phép admin lấy danh sách bài đăng phân trang, tìm kiếm và lọc.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param postType query string false "Loại bài đăng (OUTFIT, SALE)"
+// @Param isDeleted query boolean false "Trạng thái bị xóa"
+// @Param q query string false "Từ khóa tìm kiếm (content, title)"
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostListRes} "Lấy danh sách bài đăng thành công"
+// @Router /api/v1/admin/posts [get]
+func (h *AdminHandler) GetPosts(c *gin.Context) error {
+	var query dto.AdminGetPostsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.moderationUC.GetPostsForAdmin(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAdminGetPostsSuccess, response)
+	return nil
+}
+
+// GetPostItems lấy danh sách listing cho Admin
+// @Summary Lấy danh sách listing (Admin)
+// @Description Cho phép admin lấy danh sách listing phân trang và lọc theo status, transfer state.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param status query int false "Trạng thái listing"
+// @Param transferState query int false "Trạng thái giao dịch"
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostItemListRes} "Lấy danh sách sản phẩm bài đăng thành công"
+// @Router /api/v1/admin/post-items [get]
+func (h *AdminHandler) GetPostItems(c *gin.Context) error {
+	var query dto.AdminGetPostItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.moderationUC.GetPostItemsForAdmin(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAdminGetPostItemsSuccess, response)
+	return nil
+}
+
+// RestorePost khôi phục bài đăng community bằng quyền admin
+// @Summary Khôi phục bài đăng community
+// @Description Cho phép admin khôi phục bài đăng community đã bị soft delete
+// @Tags Admin
+// @Produce json
+// @Param postPublicID path string true "Mã công khai bài đăng"
+// @Success 200 {object} shared_pres.APIResponse "Khôi phục bài đăng thành công"
+// @Router /api/v1/admin/posts/{postPublicID}/restore [patch]
+func (h *AdminHandler) RestorePost(c *gin.Context) error {
+	adminUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.moderationUC.AdminRestorePost(c.Request.Context(), adminUserID, c.Param("postPublicID")); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAdminRestorePostSuccess, nil)
+	return nil
+}
+
+// RestoreComment khôi phục bình luận community bằng quyền admin
+// @Summary Khôi phục bình luận community
+// @Description Cho phép admin khôi phục bình luận community đã bị soft delete
+// @Tags Admin
+// @Produce json
+// @Param commentID path string true "ID bình luận"
+// @Success 200 {object} shared_pres.APIResponse "Khôi phục bình luận thành công"
+// @Router /api/v1/admin/comments/{commentID}/restore [patch]
+func (h *AdminHandler) RestoreComment(c *gin.Context) error {
+	adminUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	commentID, err := uuid.Parse(c.Param("commentID"))
+	if err != nil {
+		return communityerrors.ErrInvalidCommentIDFormat
+	}
+
+	if err := h.moderationUC.AdminRestoreComment(c.Request.Context(), adminUserID, commentID); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAdminRestoreCommentSuccess, nil)
+	return nil
+}
+

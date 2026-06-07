@@ -11,6 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type AdminPostFilter struct {
+	PostType  *string
+	IsDeleted *bool
+	Query     *string
+	Page      int
+	Limit     int
+}
+
+type AdminPostListResult struct {
+	Posts      []*entities.Post
+	TotalCount int64
+}
+
 type IPostRepository interface {
 	shared_repos.IGenericRepository[entities.Post, uuid.UUID]
 	GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error)
@@ -24,12 +37,26 @@ type IPostRepository interface {
 	MarkHotnessDirty(ctx context.Context, postID uuid.UUID) error
 	ClearHotnessDirty(ctx context.Context, postIDs []uuid.UUID) error
 	SoftDelete(ctx context.Context, postID uuid.UUID) error
+	Restore(ctx context.Context, postID uuid.UUID) error
+	GetPostsForAdmin(ctx context.Context, filter AdminPostFilter) (*AdminPostListResult, error)
 }
 
 type IPostScoreRepository interface {
 	GetScoresByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID]float64, error)
 	ListScoreMetricsByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*dto.PostScoreMetric, error)
 	UpsertScores(ctx context.Context, items []*entities.PostScoreSnapshot) error
+}
+
+type AdminPostItemFilter struct {
+	Status        *int
+	TransferState *int
+	Page          int
+	Limit         int
+}
+
+type AdminPostItemListResult struct {
+	PostItems  []*entities.PostItem
+	TotalCount int64
 }
 
 type IPostItemRepository interface {
@@ -42,6 +69,7 @@ type IPostItemRepository interface {
 	HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error)
 	DeleteByPostAndIDs(ctx context.Context, postID uuid.UUID, ids []uuid.UUID) error
 	SumVisiblePriceByPostID(ctx context.Context, postID uuid.UUID) (float64, error)
+	GetPostItemsForAdmin(ctx context.Context, filter AdminPostItemFilter) (*AdminPostItemListResult, error)
 }
 
 type IPostMediaRepository interface {
@@ -59,6 +87,7 @@ type ICommentRepository interface {
 	GetByIDAndPostID(ctx context.Context, commentID uuid.UUID, postID uuid.UUID) (*entities.Comment, error)
 	SoftDelete(ctx context.Context, commentID uuid.UUID) error
 	SoftDeleteByParentID(ctx context.Context, parentCommentID uuid.UUID) error
+	Restore(ctx context.Context, commentID uuid.UUID) error
 }
 
 type ILikeRepository interface {

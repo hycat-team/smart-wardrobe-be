@@ -17,6 +17,7 @@ type AdminHandler struct {
 
 const (
 	successUpdateUserStatus = "Cập nhật trạng thái tài khoản thành công"
+	successGetUsers         = "Lấy danh sách tài khoản thành công"
 )
 
 func NewAdminHandler(uc usecase_interfaces.IUserUseCase) *AdminHandler {
@@ -59,3 +60,32 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 	shared_pres.Success(c, successUpdateUserStatus, response)
 	return nil
 }
+
+// GetUsers lấy danh sách người dùng cho Admin
+// @Summary Lấy danh sách người dùng
+// @Description Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param roleSlug query string false "Phân quyền (e.g. member, admin)"
+// @Param isActive query boolean false "Trạng thái hoạt động"
+// @Param q query string false "Từ khóa tìm kiếm (username, email, họ tên)"
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminUserListRes} "Lấy danh sách tài khoản thành công"
+// @Router /api/v1/admin/users [get]
+func (h *AdminHandler) GetUsers(c *gin.Context) error {
+	var query dto.GetUsersQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.userUseCase.GetUsersForAdmin(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, successGetUsers, response)
+	return nil
+}
+

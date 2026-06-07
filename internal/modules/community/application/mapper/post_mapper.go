@@ -6,6 +6,23 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
+func MapPostItem(item *entities.PostItem) *community_dto.PostItemRes {
+	if item == nil {
+		return nil
+	}
+	return &community_dto.PostItemRes{
+		ID:            item.ID,
+		Item:          MapWardrobeItem(item.WardrobeItem),
+		Price:         item.Price,
+		ItemCondition: item.ItemCondition,
+		Status:        item.Status,
+		BuyerUserID:   item.BuyerUserID,
+		TransferState: item.TransferState,
+		SoldAt:        item.SoldAt,
+		DeclinedAt:    item.DeclinedAt,
+	}
+}
+
 func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.PostMedia, isLiked bool, globalHotnessScore float64, finalFeedScore float64) *community_dto.PostRes {
 	if post == nil {
 		return nil
@@ -13,17 +30,7 @@ func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.
 
 	postItems := make([]*community_dto.PostItemRes, 0, len(items))
 	for _, item := range items {
-		postItems = append(postItems, &community_dto.PostItemRes{
-			ID:            item.ID,
-			Item:          MapWardrobeItem(item.WardrobeItem),
-			Price:         item.Price,
-			ItemCondition: item.ItemCondition,
-			Status:        item.Status,
-			BuyerUserID:   item.BuyerUserID,
-			TransferState: item.TransferState,
-			SoldAt:        item.SoldAt,
-			DeclinedAt:    item.DeclinedAt,
-		})
+		postItems = append(postItems, MapPostItem(item))
 	}
 
 	postMedia := make([]*community_dto.PostMediaRes, 0, len(media))
@@ -75,6 +82,7 @@ func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.
 		Media:              postMedia,
 		CreatedAt:          post.CreatedAt,
 		UpdatedAt:          post.UpdatedAt,
+		IsDeleted:          post.IsDeleted,
 	}
 }
 

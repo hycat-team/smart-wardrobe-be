@@ -38,19 +38,35 @@ func (r *AdminRouter) Init(group *gin.RouterGroup) {
 
 	adminUsers := admin.Group("/users")
 	{
+		adminUsers.GET("", shared_pres.WrapHandler(r.identityAdminHandler.GetUsers))
 		adminUsers.PATCH("/:id/status", shared_pres.WrapHandler(r.identityAdminHandler.UpdateUserStatus))
 	}
 
-	adminCommunity := admin.Group("/community")
+	adminPosts := admin.Group("/posts")
 	{
-		adminCommunity.DELETE("/posts/:postPublicID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePost))
-		adminCommunity.DELETE("/comments/:commentID", shared_pres.WrapHandler(r.communityAdminHandler.DeleteComment))
-		adminCommunity.PATCH("/post-items/:postItemID/hide", shared_pres.WrapHandler(r.communityAdminHandler.HidePostItem))
-		adminCommunity.DELETE("/post-items/:postItemID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePostItem))
+		adminPosts.GET("", shared_pres.WrapHandler(r.communityAdminHandler.GetPosts))
+		adminPosts.DELETE("/:postPublicID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePost))
+		adminPosts.PATCH("/:postPublicID/restore", shared_pres.WrapHandler(r.communityAdminHandler.RestorePost))
+	}
+
+	adminComments := admin.Group("/comments")
+	{
+		adminComments.DELETE("/:commentID", shared_pres.WrapHandler(r.communityAdminHandler.DeleteComment))
+		adminComments.PATCH("/:commentID/restore", shared_pres.WrapHandler(r.communityAdminHandler.RestoreComment))
+	}
+
+	adminPostItems := admin.Group("/post-items")
+	{
+		adminPostItems.GET("", shared_pres.WrapHandler(r.communityAdminHandler.GetPostItems))
+		adminPostItems.PATCH("/:postItemID/hide", shared_pres.WrapHandler(r.communityAdminHandler.HidePostItem))
+		adminPostItems.DELETE("/:postItemID", shared_pres.WrapHandler(r.communityAdminHandler.DeletePostItem))
 	}
 
 	adminWardrobe := admin.Group("/wardrobe-items")
 	{
+		adminWardrobe.GET("", shared_pres.WrapHandler(r.wardrobeHandler.GetCatalogItemsAdmin))
+		adminWardrobe.PUT("/:id", shared_pres.WrapHandler(r.wardrobeHandler.UpdateCatalogItemAdmin))
+		adminWardrobe.DELETE("/:id", shared_pres.WrapHandler(r.wardrobeHandler.DeleteCatalogItemAdmin))
 		adminWardrobe.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeHandler.GetUploadSignature))
 		adminWardrobe.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeHandler.BatchUploadWardrobeItems))
 	}

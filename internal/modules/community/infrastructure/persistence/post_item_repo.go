@@ -105,3 +105,44 @@ func (r *PostItemRepository) SumVisiblePriceByPostID(ctx context.Context, postID
 	}
 	return total, nil
 }
+
+func (r *PostItemRepository) GetPostItemsForAdmin(ctx context.Context, filter repositories.AdminPostItemFilter) (*repositories.AdminPostItemListResult, error) {
+	db := r.GetDB(ctx).Model(&entities.PostItem{}).
+		Preload("Post").
+		Preload("WardrobeItem").
+		Preload("WardrobeItem.Category")
+
+	if filter.Status != nil {
+		db = db.Where("post_items.status = ?", *filter.Status)
+	}
+
+	if filter.TransferState != nil {
+		db = db.Where("post_items.transfer_state = ?", *filter.TransferState)
+	}
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	offset := (filter.Page - 1) * filter.Limit
+	if offset < 0 {
+		offset = 0
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	var items []*entities.PostItem
+	err := db.Order("post_items.created_at DESC").Offset(offset).Limit(limit).Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &repositories.AdminPostItemListResult{
+		PostItems:  items,
+		TotalCount: totalCount,
+	}, nil
+}
+

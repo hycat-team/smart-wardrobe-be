@@ -95,6 +95,7 @@ type PostRes struct {
 	Media              []*PostMediaRes   `json:"media,omitempty"`
 	CreatedAt          time.Time         `json:"createdAt"`
 	UpdatedAt          time.Time         `json:"updatedAt"`
+	IsDeleted          bool              `json:"isDeleted,omitempty"`
 }
 
 type PostItemRes struct {

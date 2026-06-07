@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"math"
 	"time"
+
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
@@ -275,3 +277,52 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 
 	return mapper.MapToUserRes(targetUser, sub), nil
 }
+
+func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQueryReq) (*dto.AdminUserListRes, error) {
+	filter := repositories.UserFilter{
+		RoleSlug: query.RoleSlug,
+		IsActive: query.IsActive,
+		Query:    query.Query,
+		Page:     query.Page,
+		Limit:    query.Limit,
+	}
+
+	result, err := uc.userRepo.GetUsersForAdmin(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	resUsers := make([]*dto.UserRes, len(result.Users))
+	for idx, user := range result.Users {
+		sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, user.ID)
+		if err != nil {
+			sub = nil
+		}
+		resUsers[idx] = mapper.MapToUserRes(user, sub)
+	}
+
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+
+	totalPages := 0
+	if limit > 0 && result.TotalCount > 0 {
+		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.UserRes]{
+		Items: resUsers,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: result.TotalCount,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+

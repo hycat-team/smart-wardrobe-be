@@ -93,3 +93,11 @@ func (r *CommentRepository) SoftDeleteByParentID(ctx context.Context, parentComm
 		Where("parent_comment_id = ? AND is_deleted = ?", parentCommentID, false).
 		Update("is_deleted", true).Error
 }
+
+func (r *CommentRepository) Restore(ctx context.Context, commentID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.Comment{}).
+		Where("id = ? AND is_deleted = ?", commentID, true).
+		Update("is_deleted", false).Error
+}
+

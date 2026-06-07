@@ -3,7 +3,9 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -82,3 +84,53 @@ func (r *UserRepository) GetByUsernameOrEmail(ctx context.Context, loginName str
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositories.UserFilter) (*repositories.UserListResult, error) {
+	db := r.GetDB(ctx).Model(&entities.User{}).Where("users.is_deleted = ?", false)
+
+	if filter.RoleSlug != nil && *filter.RoleSlug != "" {
+		db = db.Where("users.role_slug = ?", *filter.RoleSlug)
+	}
+
+	if filter.IsActive != nil {
+		status := userstatus.Active
+		if !*filter.IsActive {
+			status = userstatus.Inactive
+		}
+		db = db.Where("users.status = ?", status)
+	}
+
+	if filter.Query != nil && *filter.Query != "" {
+		queryStr := "%" + strings.ToLower(*filter.Query) + "%"
+		db = db.Where(
+			"LOWER(users.username) LIKE ? OR LOWER(users.email) LIKE ? OR LOWER(COALESCE(users.first_name, '')) LIKE ? OR LOWER(COALESCE(users.last_name, '')) LIKE ?",
+			queryStr, queryStr, queryStr, queryStr,
+		)
+	}
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	var users []*entities.User
+	offset := (filter.Page - 1) * filter.Limit
+	if offset < 0 {
+		offset = 0
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	err := db.Order("users.created_at DESC").Offset(offset).Limit(limit).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &repositories.UserListResult{
+		Users:      users,
+		TotalCount: totalCount,
+	}, nil
+}
+

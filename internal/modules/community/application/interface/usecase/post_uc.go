@@ -25,6 +25,10 @@ type IAdminCommunityModerationUseCase interface {
 	AdminHidePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
 	AdminDeletePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
 	AdminDeleteComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error
+	GetPostsForAdmin(ctx context.Context, query dto.AdminGetPostsQueryReq) (*dto.AdminPostListRes, error)
+	GetPostItemsForAdmin(ctx context.Context, query dto.AdminGetPostItemsQueryReq) (*dto.AdminPostItemListRes, error)
+	AdminRestorePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error
+	AdminRestoreComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error
 }
 
 type IPostFeedUseCase interface {
