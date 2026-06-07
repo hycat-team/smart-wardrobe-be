@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
@@ -45,7 +45,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 	// Fetch the configured default subscription plan ID (usually the Free Plan) for downgrades.
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
-		return apperror.NewInternalError("Không thể tải thông tin cấu hình gói hội viên mặc định.")
+		return subscriptionerrors.ErrDefaultPlanLoadFailed
 	}
 
 	// Initialize pagination state for cursor-based batch processing to avoid memory bloat.
@@ -62,7 +62,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 		// Query a batch of expired, active subscriptions using a cursor (lastUserID & lastExpiresAt).
 		expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptionsBatch(ctx, now, lastUserID, lastExpiresAt, limit)
 		if err != nil {
-			return apperror.NewInternalError("Không thể truy vấn danh sách gói hội viên hết hạn.")
+			return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed
 		}
 
 		// If no expired subscriptions are returned, processing is complete.

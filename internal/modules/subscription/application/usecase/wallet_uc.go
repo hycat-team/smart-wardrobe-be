@@ -6,10 +6,10 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
@@ -90,7 +90,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	}
 
 	if err = uc.uow.Execute(ctx, createNewWallet); err != nil || wallet == nil {
-		return nil, apperror.NewNotFound("Không tìm thấy thông tin ví của tài khoản.")
+		return nil, subscriptionerrors.ErrWalletNotFound
 	}
 
 	return &dto.WalletDTO{
@@ -126,7 +126,7 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {
 	amount, err := sharedmoney.FromFloatAmount(req.Amount)
 	if err != nil {
-		return nil, apperror.NewBadRequest("Số tiền nạp không hợp lệ.")
+		return nil, subscriptionerrors.ErrInvalidDepositAmount
 	}
 
 	var checkoutURL string
@@ -144,7 +144,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		}
 
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
-			return apperror.NewInternalError("Không thể khởi tạo giao dịch nạp tiền.")
+			return subscriptionerrors.ErrDepositInitFailed
 		}
 
 		returnURL := req.ReturnUrl
@@ -158,7 +158,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
 		if err != nil {
-			return apperror.NewBadRequest("Số tiền nạp vào ví phải là số tiền nguyên theo đơn vị VND.")
+			return subscriptionerrors.ErrDepositMustBeInteger
 		}
 		description := fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND)
 		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
@@ -174,7 +174,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return apperror.NewInternalError("Không thể cập nhật thông tin liên kết thanh toán.")
+			return subscriptionerrors.ErrPaymentLinkUpdateFailed
 		}
 
 		orderCode = tx.OrderCode

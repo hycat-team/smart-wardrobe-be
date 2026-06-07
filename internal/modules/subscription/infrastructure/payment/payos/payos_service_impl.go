@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
@@ -51,11 +51,11 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 	}
 
 	if req.Amount.LessThan(minPayOSTransactionAmount) {
-		return "", apperror.NewBadRequest(fmt.Sprintf("Số tiền thanh toán tối thiểu qua cổng PayOS là %d VNĐ.", minPayOSTransactionAmount.IntPart()))
+		return "", subscriptionerrors.ErrPayosMinAmount(minPayOSTransactionAmount.IntPart())
 	}
 	amountVND, err := sharedmoney.ToMinorUnits(req.Amount, currency.VND)
 	if err != nil {
-		return "", apperror.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số tiền nguyên theo đơn vị VND.")
+		return "", subscriptionerrors.ErrPayosMustBeInteger
 	}
 
 	bodyMap := map[string]any{

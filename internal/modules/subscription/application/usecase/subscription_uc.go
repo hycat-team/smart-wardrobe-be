@@ -6,10 +6,10 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -92,7 +92,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 		return false, err
 	}
 	if sub == nil {
-		return false, apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
+		return false, subscriptionerrors.ErrUserSubscriptionNotFound
 	}
 
 	if sub.IsAutoRenewEnabled == enable {
@@ -100,7 +100,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	}
 
 	if enable && sub.ExpiresAt != nil && sub.ExpiresAt.Before(time.Now()) {
-		return false, apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
+		return false, subscriptionerrors.ErrSubscriptionExpiredAutoRenew
 	}
 
 	sub.IsAutoRenewEnabled = enable
@@ -133,7 +133,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
+			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
 		}
 		plan = p
 	}
@@ -168,7 +168,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
+			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
 		}
 		plan = p
 	}
@@ -203,7 +203,7 @@ func (uc *SubscriptionUseCase) getOrCreateUserSubscription(ctx context.Context, 
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
+			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
 		}
 
 		sub = &entities.UserSubscription{

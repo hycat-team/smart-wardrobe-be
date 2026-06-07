@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -42,7 +42,7 @@ func (uc *UserQuotaUseCase) getOrCreateUserSubscription(ctx context.Context, use
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
+			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
 		}
 
 		sub = &entities.UserSubscription{
@@ -124,7 +124,7 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 			return nil, err
 		}
 		if p == nil {
-			return nil, apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
+			return nil, subscriptionerrors.ErrUserSubscriptionNotFound
 		}
 		plan = p
 	}
@@ -164,14 +164,14 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
+			return subscriptionerrors.ErrUserSubscriptionNotFound
 		}
 		plan = p
 	}
 
 	newCount := quota.OutfitRecommendCount + count
 	if newCount > plan.AiOutfitDailyQuota {
-		return apperror.NewBadRequest("Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay.")
+		return subscriptionerrors.ErrAiOutfitQuotaExceeded
 	}
 
 	quota.OutfitRecommendCount = newCount
@@ -197,14 +197,14 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 			return err
 		}
 		if p == nil {
-			return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
+			return subscriptionerrors.ErrUserSubscriptionNotFound
 		}
 		plan = p
 	}
 
 	newCount := quota.AiUsageCount + count
 	if newCount > plan.AiChatDailyQuota {
-		return apperror.NewBadRequest("Bạn đã dùng hết lượt trò chuyện với AI Chatbot trong hôm nay.")
+		return subscriptionerrors.ErrAiChatQuotaExceeded
 	}
 
 	quota.AiUsageCount = newCount

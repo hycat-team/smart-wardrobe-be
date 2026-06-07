@@ -15,6 +15,15 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	successGetWallet              = "Lấy thông tin ví thành công"
+	successGetWalletStatements    = "Lấy lịch sử ví thành công"
+	successCreateWalletTopUp      = "Khởi tạo giao dịch nạp tiền thành công"
+	successCreateDirectPurchase   = "Khởi tạo giao dịch đăng ký thành công"
+	successPurchasePlanWithWallet = "Đăng ký gói hội viên thành công"
+	successProcessPayOSWebhook    = "Xử lý thông báo thanh toán thành công"
+)
+
 type BillingHandler struct {
 	logger                logger.Interface
 	walletUseCase         usecase_interfaces.IWalletUseCase
@@ -44,6 +53,7 @@ func NewBillingHandler(
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse "Số dư ví"
 // @Router /api/v1/subscriptions/me/wallet [get]
+// func (h *BillingHandler) GetWallet(c *gin.Context) error {
 func (h *BillingHandler) GetWallet(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -55,7 +65,7 @@ func (h *BillingHandler) GetWallet(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy thông tin ví thành công", walletDTO)
+	shared_pres.Success(c, successGetWallet, walletDTO)
 	return nil
 }
 
@@ -78,7 +88,7 @@ func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy lịch sử ví thành công", statements)
+	shared_pres.Success(c, successGetWalletStatements, statements)
 	return nil
 }
 
@@ -107,7 +117,7 @@ func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Khởi tạo giao dịch nạp tiền thành công", paymentLink)
+	shared_pres.Success(c, successCreateWalletTopUp, paymentLink)
 	return nil
 }
 
@@ -136,7 +146,7 @@ func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Khởi tạo giao dịch đăng ký thành công", paymentLink)
+	shared_pres.Success(c, successCreateDirectPurchase, paymentLink)
 	return nil
 }
 
@@ -167,7 +177,7 @@ func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Đăng ký gói hội viên thành công", nil)
+	shared_pres.Success(c, successPurchasePlanWithWallet, nil)
 	return nil
 }
 
@@ -199,6 +209,6 @@ func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Xử lý thông báo thanh toán thành công", nil)
+	shared_pres.Success(c, successProcessPayOSWebhook, nil)
 	return nil
 }

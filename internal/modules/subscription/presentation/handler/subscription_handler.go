@@ -10,6 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	successGetUserSubscriptionOverview = "Lấy thông tin gói hội viên hiện tại thành công"
+	successGetDailyQuota               = "Lấy hạn ngạch sử dụng thành công"
+	successSetAutoRenewStatus          = "Thay đổi trạng thái tự động gia hạn thành công"
+	successGetPlans                    = "Lấy danh sách gói Premium thành công"
+)
+
 type SubscriptionHandler struct {
 	subscriptionUseCase usecase_interfaces.ISubscriptionUseCase
 }
@@ -39,7 +46,7 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy thông tin gói hội viên hiện tại thành công", overviewDTO)
+	shared_pres.Success(c, successGetUserSubscriptionOverview, overviewDTO)
 	return nil
 }
 
@@ -62,7 +69,7 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy hạn ngạch sử dụng thành công", quotaDTO)
+	shared_pres.Success(c, successGetDailyQuota, quotaDTO)
 	return nil
 }
 
@@ -91,7 +98,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Thay đổi trạng thái tự động gia hạn thành công", gin.H{
+	shared_pres.Success(c, successSetAutoRenewStatus, gin.H{
 		"is_auto_renew_enabled": isEnabled,
 	})
 	return nil
@@ -111,6 +118,6 @@ func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách gói Premium thành công", plans)
+	shared_pres.Success(c, successGetPlans, plans)
 	return nil
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/google/uuid"
@@ -55,7 +55,7 @@ func (uc *SubscriptionPlanUseCase) GetDefaultSubscriptionPlanID(ctx context.Cont
 		return uuid.Nil, err
 	}
 	if plan == nil {
-		return uuid.Nil, apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
+		return uuid.Nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
 	}
 	return plan.ID, nil
 }
