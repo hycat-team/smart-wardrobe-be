@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -52,12 +52,12 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, err
 	}
 	if user == nil {
-		return nil, apperror.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
+		return nil, identityerrors.ErrInvalidCredentials
 	}
 
 	isValid := uc.passwordHasher.VerifyPassword(input.Password, user.PasswordHash)
 	if !isValid {
-		return nil, apperror.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
+		return nil, identityerrors.ErrInvalidCredentials
 	}
 
 	if err := ensureUserEligibleForLogin(user); err != nil {
@@ -74,7 +74,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc")
+		return nil, identityerrors.ErrSessionIssueFailed
 	}
 
 	refreshToken, err := jwtutils.GenerateToken(
@@ -84,7 +84,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		refreshExpiry,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc")
+		return nil, identityerrors.ErrSessionIssueFailed
 	}
 
 	rt := &entities.RefreshToken{
@@ -108,18 +108,18 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenReq) (*dto.TokenRes, error) {
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.OldRefreshToken, jwttype.RefreshToken)
 	if err != nil {
-		return nil, apperror.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
+		return nil, identityerrors.ErrInvalidSession
 	}
 
 	oldExpiresAtUTC := claims.ExpiresAt.Time
 	remainingTime := time.Until(oldExpiresAtUTC)
 	if remainingTime <= 0 {
-		return nil, apperror.NewUnauthorized("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.")
+		return nil, identityerrors.ErrTokenExpired
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return nil, apperror.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
+		return nil, identityerrors.ErrInvalidSession
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -135,7 +135,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		return nil, err
 	}
 	if existingToken == nil || existingToken.IsRevoked {
-		return nil, apperror.NewUnauthorized("Phiên làm việc không hợp lệ. Vui lòng đăng nhập lại.")
+		return nil, identityerrors.ErrInvalidSession
 	}
 
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
@@ -147,7 +147,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc.")
+		return nil, identityerrors.ErrSessionCreateFailed
 	}
 
 	newRefreshToken, err := jwtutils.GenerateToken(
@@ -157,7 +157,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		remainingTime,
 	)
 	if err != nil {
-		return nil, apperror.NewInternalError("Lỗi khi cấp phiên làm việc.")
+		return nil, identityerrors.ErrSessionCreateFailed
 	}
 
 	rt := &entities.RefreshToken{
@@ -192,12 +192,12 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, error) {
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.RefreshToken, jwttype.RefreshToken)
 	if err != nil {
-		return false, apperror.NewUnauthorized("Phiên làm việc không hợp lệ.")
+		return false, identityerrors.ErrInvalidSessionGeneric
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return false, apperror.NewUnauthorized("Phiên làm việc không hợp lệ.")
+		return false, identityerrors.ErrInvalidSessionGeneric
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -205,7 +205,7 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, apperror.NewUnauthorized("Không tìm thấy người dùng.")
+		return false, identityerrors.ErrUserNotFoundGeneric
 	}
 
 	if err := uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken); err != nil {

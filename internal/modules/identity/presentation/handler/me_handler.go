@@ -11,6 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Success messages for MeHandler
+const (
+	successGetProfile         = "Lấy thông tin cá nhân thành công"
+	successUpdateProfile      = "Cập nhật thông tin cá nhân thành công"
+	successChangePassword     = "Đổi mật khẩu thành công"
+	successGetAvatarSignature = "Lấy chữ ký tải ảnh đại diện thành công"
+	successUpdateAvatar       = "Cập nhật ảnh đại diện thành công"
+)
+
 type MeHandler struct {
 	userUseCase usecase_interfaces.IUserUseCase
 }
@@ -40,7 +49,7 @@ func (h *MeHandler) GetCurrentUser(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy thông tin cá nhân thành công", userRes)
+	shared_pres.Success(c, successGetProfile, userRes)
 	return nil
 }
 
@@ -69,7 +78,7 @@ func (h *MeHandler) UpdateCurrentUser(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật thông tin cá nhân thành công", response)
+	shared_pres.Success(c, successUpdateProfile, response)
 	return nil
 }
 
@@ -98,7 +107,7 @@ func (h *MeHandler) ChangePassword(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Đổi mật khẩu thành công", nil)
+	shared_pres.Success(c, successChangePassword, nil)
 	return nil
 }
 
@@ -120,7 +129,7 @@ func (h *MeHandler) GetAvatarSignature(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy chữ ký tải ảnh đại diện thành công", signatureRes)
+	shared_pres.Success(c, successGetAvatarSignature, signatureRes)
 	return nil
 }
 
@@ -149,6 +158,6 @@ func (h *MeHandler) UpdateAvatar(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật ảnh đại diện thành công", response)
+	shared_pres.Success(c, successUpdateAvatar, response)
 	return nil
 }

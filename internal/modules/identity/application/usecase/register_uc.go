@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -14,7 +13,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
@@ -55,7 +54,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if usernameExists {
-		return false, apperror.NewConflict(fmt.Sprintf("Tài khoản '%s' đã tồn tại.", input.Username))
+		return false, identityerrors.ErrUsernameExists(input.Username)
 	}
 
 	emailExists, err := uc.userRepo.IsEmailExists(ctx, input.Email)
@@ -63,7 +62,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if emailExists {
-		return false, apperror.NewConflict(fmt.Sprintf("Email '%s' đã tồn tại.", input.Email))
+		return false, identityerrors.ErrEmailExists(input.Email)
 	}
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeRegistration)
@@ -71,7 +70,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if isCooldown {
-		return false, apperror.NewTooManyRequest("Vui lòng đợi 1 phút trước khi yêu cầu OTP mới.")
+		return false, identityerrors.ErrOtpCooldown
 	}
 
 	hashedPass, err := uc.passwordHasher.HashPassword(input.Password)
@@ -82,7 +81,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 	if input.DateOfBirth != "" {
 		_, err := time.Parse(time.DateOnly, input.DateOfBirth)
 		if err != nil {
-			return false, apperror.NewBadRequest("Ngày sinh không hợp lệ. Vui lòng định dạng yyyy-mm-dd.")
+			return false, identityerrors.ErrInvalidDob
 		}
 	}
 
@@ -104,7 +103,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	tempUserDataJson, err := json.Marshal(cacheModel)
 	if err != nil {
-		return false, apperror.NewInternalError("Lỗi khi chuyển đổi thông tin người dùng")
+		return false, identityerrors.ErrJsonConvertFailed
 	}
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeRegistration)
@@ -114,7 +113,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
 	if err != nil {
-		return false, apperror.NewInternalError("Lỗi khi gửi email xác nhận OTP")
+		return false, identityerrors.ErrOtpEmailSendFailed
 	}
 
 	return true, nil
@@ -127,18 +126,18 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	}
 
 	if len(tempUserDataJson) == 0 {
-		return false, apperror.NewInternalError("Lấy thông tin đăng ký thất bại")
+		return false, identityerrors.ErrOtpVerificationFail
 	}
 
 	var registerData vo.TempUserCacheModel
 	err = json.Unmarshal([]byte(tempUserDataJson), &registerData)
 	if err != nil {
-		return false, apperror.NewInternalError("Thông tin đăng ký không hợp lệ.")
+		return false, identityerrors.ErrOtpDataInvalid
 	}
 
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
-		return false, apperror.NewInternalError("Ngày sinh không hợp lệ.")
+		return false, identityerrors.ErrInvalidDob
 	}
 
 	gen := gender.Gender(registerData.Gender)
@@ -160,7 +159,7 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 
 	err = uc.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return false, apperror.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
+		return false, identityerrors.ErrAccountCreationFailed
 	}
 
 	return true, nil

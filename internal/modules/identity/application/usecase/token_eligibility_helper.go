@@ -1,20 +1,18 @@
 package usecase
 
 import (
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
-const contactSupportMessage = "Tài khoản đã bị khoá hoặc vô hiệu hoá. Vui lòng liên hệ CSKH."
-
 func ensureUserEligibleForLogin(user *entities.User) error {
 	if user == nil {
-		return apperror.NewBadRequest("Sai tài khoản hoặc mật khẩu.")
+		return identityerrors.ErrInvalidCredentials
 	}
 
 	if user.IsDeleted || user.Status != userstatus.Active {
-		return apperror.NewForbidden(contactSupportMessage)
+		return identityerrors.ErrAccountDisabled
 	}
 
 	return nil
@@ -22,11 +20,11 @@ func ensureUserEligibleForLogin(user *entities.User) error {
 
 func ensureUserEligibleForSession(user *entities.User) error {
 	if user == nil || user.IsDeleted {
-		return apperror.NewUnauthorized("Không tìm thấy người dùng này.")
+		return identityerrors.ErrUserNotFoundDetailed
 	}
 
 	if user.Status != userstatus.Active {
-		return apperror.NewUnauthorized(contactSupportMessage)
+		return identityerrors.ErrAccountDisabledAuth
 	}
 
 	return nil
@@ -34,11 +32,11 @@ func ensureUserEligibleForSession(user *entities.User) error {
 
 func ensureUserEligibleForRecovery(user *entities.User) error {
 	if user == nil || user.IsDeleted {
-		return apperror.NewNotFound("Email này chưa được đăng kí trong hệ thống.")
+		return identityerrors.ErrEmailNotRegistered
 	}
 
 	if user.Status != userstatus.Active {
-		return apperror.NewForbidden(contactSupportMessage)
+		return identityerrors.ErrAccountDisabled
 	}
 
 	return nil

@@ -15,6 +15,10 @@ type AdminHandler struct {
 	userUseCase usecase_interfaces.IUserUseCase
 }
 
+const (
+	successUpdateUserStatus = "Cập nhật trạng thái tài khoản thành công"
+)
+
 func NewAdminHandler(uc usecase_interfaces.IUserUseCase) *AdminHandler {
 	return &AdminHandler{
 		userUseCase: uc,
@@ -52,6 +56,6 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Cập nhật trạng thái tài khoản thành công", response)
+	shared_pres.Success(c, successUpdateUserStatus, response)
 	return nil
 }

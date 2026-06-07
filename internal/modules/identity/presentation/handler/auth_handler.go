@@ -7,12 +7,24 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
+)
+
+// Success messages for AuthHandler
+const (
+	successRegister              = "Đã nhận thông tin đăng kí. Vui lòng kiểm tra email để lấy OTP xác thực."
+	successConfirmRegisterOtp    = "Xác thực tài khoản thành công."
+	successLogin                 = "Đăng nhập thành công"
+	successLogout                = "Đăng xuất thành công"
+	successRefreshToken          = "Xoay vòng token thành công"
+	successForgotPassword        = "Yêu cầu khôi phục mật khẩu thành công. Vui lòng kiểm tra email để lấy OTP xác thực."
+	successConfirmForgotPassword = "Xác thực OTP thành công"
+	successResetPassword         = "Đặt lại mật khẩu thành công"
 )
 
 type AuthHandler struct {
@@ -56,7 +68,7 @@ func (h *AuthHandler) Register(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Đã nhận thông tin đăng kí. Vui lòng kiểm tra email để lấy OTP xác thực.", nil)
+	shared_pres.Success(c, successRegister, nil)
 	return nil
 }
 
@@ -80,7 +92,7 @@ func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Xác thực tài khoản thành công.", nil)
+	shared_pres.Success(c, successConfirmRegisterOtp, nil)
 	return nil
 }
 
@@ -128,7 +140,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, "Đăng nhập thành công", nil)
+	shared_pres.Success(c, successLogin, nil)
 	return nil
 }
 
@@ -148,7 +160,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 	refreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(refreshToken) == 0 {
-		return apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")
+		return identityerrors.ErrCookieTokenMissing
 	}
 
 	input := dto.LogoutReq{
@@ -182,7 +194,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, "Đăng xuất thành công", nil)
+	shared_pres.Success(c, successLogout, nil)
 	return nil
 }
 
@@ -197,7 +209,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(oldRefreshToken) == 0 {
-		return apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")
+		return identityerrors.ErrCookieTokenMissing
 	}
 
 	input := dto.RefreshTokenReq{
@@ -233,7 +245,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, "Xoay vòng token thành công", nil)
+	shared_pres.Success(c, successRefreshToken, nil)
 	return nil
 }
 
@@ -257,7 +269,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Yêu cầu khôi phục mật khẩu thành công. Vui lòng kiểm tra email để lấy OTP xác thực.", nil)
+	shared_pres.Success(c, successForgotPassword, nil)
 	return nil
 }
 
@@ -294,7 +306,7 @@ func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, "Xác thực OTP thành công", nil)
+	shared_pres.Success(c, successConfirmForgotPassword, nil)
 	return nil
 }
 
@@ -315,7 +327,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 
 	resetToken, err := c.Cookie(contextutils.CookieForgotPasswordToken)
 	if err != nil || len(resetToken) == 0 {
-		return apperror.NewUnauthorized("Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng thực hiện lại yêu cầu.")
+		return identityerrors.ErrTokenExpiredRecovery
 	}
 
 	_, err = h.recoveryUC.ResetPassword(c.Request.Context(), input, resetToken)
@@ -334,6 +346,6 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, "Đặt lại mật khẩu thành công", nil)
+	shared_pres.Success(c, successResetPassword, nil)
 	return nil
 }
