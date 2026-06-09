@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/colorutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -204,6 +205,38 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	item.Description = &aiMeta.Description
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
+
+	resolved := false
+	if aiMeta.ColorHex != "" {
+		h, s, l, err := colorutils.HexToHSL(aiMeta.ColorHex)
+		if err == nil {
+			item.ColorHex = &aiMeta.ColorHex
+			item.ColorHue = &h
+			item.ColorSaturation = &s
+			item.ColorLightness = &l
+			resolved = true
+		}
+	}
+
+	if !resolved && aiMeta.Color != "" {
+		// Fallback to resolving HSL from the color name (e.g. "xanh navy", "đỏ")
+		h, s, l, hex, ok := colorutils.ResolveHSLFromColorName(aiMeta.Color)
+		if ok {
+			item.ColorHex = &hex
+			item.ColorHue = &h
+			item.ColorSaturation = &s
+			item.ColorLightness = &l
+			resolved = true
+		}
+	}
+
+	if !resolved {
+		uc.logger.Warn("[WardrobeBatchUploadWorker] Failed to resolve HSL for item",
+			zap.String("item_id", item.ID.String()),
+			zap.String("color_hex", aiMeta.ColorHex),
+			zap.String("color_name", aiMeta.Color),
+		)
+	}
 
 	if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
 		uc.handleJobFailure(ctx, job, err)

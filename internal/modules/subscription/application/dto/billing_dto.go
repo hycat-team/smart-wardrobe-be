@@ -3,10 +3,15 @@ package dto
 import (
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type GetWalletStatementsQueryReq struct {
+	shared_dto.PaginationQuery
+}
 
 type WalletDTO struct {
 	UserID    uuid.UUID         `json:"userID"`

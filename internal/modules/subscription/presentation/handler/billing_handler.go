@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -14,6 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+var _ shared_dto.PaginationQuery
 
 const (
 	successGetWallet              = "Lấy thông tin ví thành công"
@@ -75,7 +78,9 @@ func (h *BillingHandler) GetWallet(c *gin.Context) error {
 // @Tags Billing
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Danh sách lịch sử giao dịch"
+// @Param page query int false "Số trang (mặc định: 1)"
+// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WalletStatementDTO]} "Danh sách lịch sử giao dịch"
 // @Router /api/v1/subscriptions/me/wallet/statements [get]
 func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -83,7 +88,12 @@ func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 		return err
 	}
 
-	statements, err := h.walletUseCase.GetWalletStatements(c.Request.Context(), userID)
+	var query dto.GetWalletStatementsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	statements, err := h.walletUseCase.GetWalletStatements(c.Request.Context(), userID, query)
 	if err != nil {
 		return err
 	}

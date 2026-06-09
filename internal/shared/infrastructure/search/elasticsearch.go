@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -21,16 +22,22 @@ type ElasticsearchClient struct {
 	cfg        *config.Config
 	logger     logger.Interface
 	httpClient *http.Client
+	isHealthy  int32 // 0 = unhealthy, 1 = healthy
 }
 
 func NewElasticsearchClient(cfg *config.Config, l logger.Interface) *ElasticsearchClient {
-	return &ElasticsearchClient{
+	client := &ElasticsearchClient{
 		cfg:    cfg,
 		logger: l,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 5 * time.Second,
 		},
+		isHealthy: 1,
 	}
+
+	go client.startHealthCheck()
+
+	return client
 }
 
 func (c *ElasticsearchClient) getAddress() string {
@@ -131,12 +138,75 @@ func (c *ElasticsearchClient) DeleteDocument(ctx context.Context, index, id stri
 	return nil
 }
 
+func (c *ElasticsearchClient) IsHealthy() bool {
+	return atomic.LoadInt32(&c.isHealthy) == 1
+}
+
+func (c *ElasticsearchClient) startHealthCheck() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	// Initial check on startup
+	c.checkHealth()
+
+	for range ticker.C {
+		c.checkHealth()
+	}
+}
+
+func (c *ElasticsearchClient) checkHealth() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	fullUrl := c.getAddress()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullUrl, nil)
+	if err != nil {
+		atomic.StoreInt32(&c.isHealthy, 0)
+		return
+	}
+
+	if c.cfg.Elasticsearch.User != "" && c.cfg.Elasticsearch.Password != "" {
+		req.SetBasicAuth(c.cfg.Elasticsearch.User, c.cfg.Elasticsearch.Password)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if atomic.SwapInt32(&c.isHealthy, 0) == 1 {
+			c.logger.Warn("Elasticsearch health check failed, marking as UNHEALTHY", zap.Error(err))
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if atomic.SwapInt32(&c.isHealthy, 1) == 0 {
+			c.logger.Info("Elasticsearch health check recovered, marking as HEALTHY")
+		}
+	} else {
+		if atomic.SwapInt32(&c.isHealthy, 0) == 1 {
+			c.logger.Warn("Elasticsearch health check returned non-OK status", zap.Int("status", resp.StatusCode))
+		}
+	}
+}
+
 func (c *ElasticsearchClient) Search(ctx context.Context, index string, queryBody any) ([]byte, error) {
+	if !c.IsHealthy() {
+		return nil, fmt.Errorf("elasticsearch is currently unhealthy (circuit breaker active)")
+	}
+
 	body, err := json.Marshal(queryBody)
 	if err != nil {
 		return nil, err
 	}
 
 	urlPath := fmt.Sprintf("%s/_search", index)
-	return c.doRequest(ctx, http.MethodPost, urlPath, body)
+	resp, err := c.doRequest(ctx, http.MethodPost, urlPath, body)
+	if err != nil {
+		// Instantly mark as unhealthy on request failure (e.g. connection refused, network timeout)
+		if atomic.SwapInt32(&c.isHealthy, 0) == 1 {
+			c.logger.Warn("Elasticsearch request failed, tripping circuit breaker to UNHEALTHY")
+		}
+		return nil, err
+	}
+	return resp, nil
 }

@@ -58,5 +58,21 @@ func buildItemDocument(item *entities.WardrobeItem) map[string]any {
 		}
 	}
 
+	if item.Price != nil {
+		doc["price"] = *item.Price
+	}
+	if item.ColorHex != nil {
+		doc["color_hex"] = *item.ColorHex
+	}
+	if item.ColorHue != nil {
+		doc["color_hue"] = *item.ColorHue
+	}
+	if item.ColorSaturation != nil {
+		doc["color_saturation"] = *item.ColorSaturation
+	}
+	if item.ColorLightness != nil {
+		doc["color_lightness"] = *item.ColorLightness
+	}
+
 	return doc
 }

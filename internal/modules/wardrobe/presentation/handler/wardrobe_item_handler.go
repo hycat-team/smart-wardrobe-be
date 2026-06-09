@@ -3,7 +3,7 @@ package handler
 import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	_ "smart-wardrobe-be/internal/shared/application/dto"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var _ shared_dto.PaginationQuery
 
 const (
 	msgWardrobeGetUploadSignatureSuccess    = "Lấy chữ ký tải ảnh trang phục thành công"
@@ -49,7 +51,7 @@ func NewWardrobeItemHandler(
 // @Description Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh trang phục lên
 // @Tags Wardrobe
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Chữ ký và thông tin upload"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.UploadSignatureResult} "Chữ ký và thông tin upload"
 // @Router /api/v1/wardrobe-items/upload-signature [get]
 func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
 	signatureRes, err := h.itemUseCase.GetUploadSignature(c.Request.Context())
@@ -66,8 +68,10 @@ func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
 // @Description Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp dụng trạng thái khóa động nếu hạ cấp gói
 // @Tags Wardrobe
 // @Produce json
+// @Param page query int false "Số trang (mặc định: 1)"
+// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
 // @Param category_slug query string false "Slug danh mục cần lọc"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục"
 // @Router /api/v1/me/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -219,9 +223,11 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Description Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.
 // @Tags Wardrobe
 // @Produce json
+// @Param page query int false "Số trang (mặc định: 1)"
+// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
 // @Param q query string false "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)"
 // @Param category_slug query string false "Slug danh mục cần lọc"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SearchWardrobeItemRes} "Danh sách trang phục tìm thấy"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.SearchWardrobeItemRes]} "Danh sách trang phục tìm thấy"
 // @Router /api/v1/wardrobe-items/search [get]
 func (h *WardrobeItemHandler) SearchWardrobeItems(c *gin.Context) error {
 	var query dto.SearchWardrobeItemsQueryReq
@@ -278,9 +284,11 @@ func (h *WardrobeItemHandler) ManualClassify(c *gin.Context) error {
 // @Description Cho phép Admin lấy danh sách trang phục mẫu hệ thống để quản lý
 // @Tags Admin
 // @Produce json
+// @Param page query int false "Số trang (mặc định: 1)"
+// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
 // @Param q query string false "Từ khóa tìm kiếm"
 // @Param category_slug query string false "Slug danh mục"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục mẫu"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục mẫu"
 // @Router /api/v1/admin/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetCatalogItemsAdmin(c *gin.Context) error {
 	var query dto.GetSystemCatalogItemsQueryReq

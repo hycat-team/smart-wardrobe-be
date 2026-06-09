@@ -3,6 +3,7 @@ package dto
 type FashionMetadataResult struct {
 	CategorySlug string `json:"category_slug"`
 	Color        string `json:"color"`
+	ColorHex     string `json:"color_hex"`
 	Style        string `json:"style"`
 	Material     string `json:"material"`
 	Pattern      string `json:"pattern"`

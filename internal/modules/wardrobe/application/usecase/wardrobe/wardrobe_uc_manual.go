@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/colorutils"
 
 	"github.com/google/uuid"
 )
@@ -76,6 +77,13 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	item.Price = input.Price
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
+
+	if h, s, l, hex, ok := colorutils.ResolveHSLFromColorName(input.Color); ok {
+		item.ColorHex = &hex
+		item.ColorHue = &h
+		item.ColorSaturation = &s
+		item.ColorLightness = &l
+	}
 
 	err = uc.wardrobeRepo.Update(ctx, item)
 	if err != nil {

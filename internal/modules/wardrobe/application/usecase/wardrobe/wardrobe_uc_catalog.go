@@ -2,9 +2,12 @@ package wardrobe
 
 import (
 	"context"
+	"math"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -13,6 +16,54 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// ... InitClosetFromCatalog omitted, let's keep targetContent precise ...
+func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	totalItems, err := uc.wardrobeRepo.CountItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
+	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem, paginationQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	resList := make([]*dto.WardrobeItemRes, len(items))
+	for i, item := range items {
+		resList[i] = mapper.MapToWardrobeItemRes(item)
+		resList[i].IsLocked = false
+	}
+
+	totalPages := 0
+	if limit > 0 && totalItems > 0 {
+		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
+		Items: resList,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
 
 func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	if len(catalogItemIDs) == 0 {
@@ -78,19 +129,6 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 	return resList, nil
 }
 
-func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
-	items, err := uc.wardrobeRepo.GetItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
-	if err != nil {
-		return nil, err
-	}
-
-	resList := make([]*dto.WardrobeItemRes, len(items))
-	for i, item := range items {
-		resList[i] = mapper.MapToWardrobeItemRes(item)
-		resList[i].IsLocked = false
-	}
-	return resList, nil
-}
 
 func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, id)
@@ -139,6 +177,13 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		return nil, err
 	}
 
+	payload := dto.WardrobeEventPayload{
+		ItemID: item.ID,
+		UserID: item.UserID,
+		Action: eventconstants.ActionUpdated,
+	}
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeUpdated, payload)
+
 	res := mapper.MapToWardrobeItemRes(item)
 	res.IsLocked = false
 	return res, nil
@@ -153,5 +198,16 @@ func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, i
 		return wardrobeerrors.ErrCatalogItemNotFound
 	}
 
-	return uc.wardrobeRepo.Delete(ctx, id)
+	if err := uc.wardrobeRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	payload := dto.WardrobeEventPayload{
+		ItemID: id,
+		UserID: item.UserID,
+		Action: eventconstants.ActionDeleted,
+	}
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+
+	return nil
 }

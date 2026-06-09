@@ -2,6 +2,7 @@ package outfit
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -203,8 +204,27 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	return mapper.MapToOutfitRes(outfit, outfitItems), nil
 }
 
-func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID) ([]*dto.OutfitRes, error) {
-	outfits, err := uc.outfitRepo.GetByUserID(ctx, userID)
+func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitRes], error) {
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	totalItems, err := uc.outfitRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
+	outfits, err := uc.outfitRepo.GetByUserIDPaginated(ctx, userID, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +234,20 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID) ([]*d
 		resList[idx] = mapper.MapToOutfitRes(outfit, nil)
 	}
 
-	return resList, nil
+	totalPages := 0
+	if limit > 0 && totalItems > 0 {
+		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.OutfitRes]{
+		Items: resList,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}, nil
 }
 
 func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.OutfitRes, error) {

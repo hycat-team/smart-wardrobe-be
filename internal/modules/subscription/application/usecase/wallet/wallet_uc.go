@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
@@ -10,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
@@ -101,15 +103,34 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	}, nil
 }
 
-func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UUID) ([]*dto.WalletStatementDTO, error) {
-	statements, err := uc.statementRepo.GetByUserID(ctx, userID)
+func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UUID, query dto.GetWalletStatementsQueryReq) (*shared_dto.PaginationResult[*dto.WalletStatementDTO], error) {
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	totalItems, err := uc.statementRepo.CountByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	dtos := make([]*dto.WalletStatementDTO, 0, len(statements))
-	for _, s := range statements {
-		dtos = append(dtos, &dto.WalletStatementDTO{
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
+	statements, err := uc.statementRepo.GetByUserID(ctx, userID, paginationQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]*dto.WalletStatementDTO, len(statements))
+	for idx, s := range statements {
+		dtos[idx] = &dto.WalletStatementDTO{
 			ID:              s.ID,
 			UserID:          s.UserID,
 			Amount:          sharedmoney.ToFloat(s.Amount),
@@ -118,9 +139,23 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 			NewBalance:      sharedmoney.ToFloat(s.NewBalance),
 			Description:     s.Description,
 			CreatedAt:       s.CreatedAt,
-		})
+		}
 	}
-	return dtos, nil
+
+	totalPages := 0
+	if limit > 0 && totalItems > 0 {
+		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.WalletStatementDTO]{
+		Items: dtos,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}, nil
 }
 
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {

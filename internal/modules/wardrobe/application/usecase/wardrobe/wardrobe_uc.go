@@ -2,6 +2,7 @@ package wardrobe
 
 import (
 	"context"
+	"math"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
@@ -117,7 +118,7 @@ func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context) (*shared_
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
 
-func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,27 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		categorySlug = &query.CategorySlug
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, categorySlug)
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	totalItems, err := uc.wardrobeRepo.CountByUserIDAndCategory(ctx, userID, categorySlug)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserIDPaginated(ctx, userID, categorySlug, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +157,8 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for idx, item := range items {
 		res := mapper.MapToWardrobeItemRes(item)
-		if idx >= subOverview.MaxWardrobeItems {
+		globalIdx := offset + idx
+		if globalIdx >= subOverview.MaxWardrobeItems {
 			res.IsLocked = true
 		} else {
 			res.IsLocked = false
@@ -144,7 +166,20 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		resList[idx] = res
 	}
 
-	return resList, nil
+	totalPages := 0
+	if limit > 0 && totalItems > 0 {
+		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
+	}
+
+	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
+		Items: resList,
+		Metadata: shared_dto.PaginationMetadata{
+			Page:       page,
+			Limit:      limit,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}, nil
 }
 
 func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error) {

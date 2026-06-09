@@ -4,7 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	_ "smart-wardrobe-be/internal/shared/application/dto"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var _ shared_dto.PaginationQuery
 
 const (
 	msgOutfitGetUploadSignatureSuccess = "Lấy chữ ký tải ảnh bìa bộ phối đồ thành công"
@@ -37,7 +39,7 @@ func NewOutfitHandler(uc usecase_interfaces.IOutfitUseCase) *OutfitHandler {
 // @Description Lấy thông tin chữ ký bảo mật từ Cloudinary để upload ảnh cover của outfit từ Client
 // @Tags Outfits
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Lấy chữ ký thành công"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.UploadSignatureResult} "Lấy chữ ký thành công"
 // @Router /api/v1/outfits/upload-signature [get]
 func (h *OutfitHandler) GetUploadSignature(c *gin.Context) error {
 	signatureRes, err := h.outfitUseCase.GetUploadSignature(c.Request.Context())
@@ -119,7 +121,9 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 // @Description Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.
 // @Tags Outfits
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.OutfitRes} "Danh sách bộ phối đồ"
+// @Param page query int false "Số trang (mặc định: 1)"
+// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.OutfitRes]} "Danh sách bộ phối đồ"
 // @Router /api/v1/me/outfits [get]
 func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -127,7 +131,12 @@ func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.outfitUseCase.GetOutfits(c.Request.Context(), userID)
+	var query dto.GetOutfitsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	response, err := h.outfitUseCase.GetOutfits(c.Request.Context(), userID, query)
 	if err != nil {
 		return err
 	}

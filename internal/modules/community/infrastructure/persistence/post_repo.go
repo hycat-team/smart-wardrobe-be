@@ -321,17 +321,14 @@ func (r *PostRepository) GetPostsForAdmin(ctx context.Context, filter repositori
 		return nil, err
 	}
 
-	offset := (filter.Page - 1) * filter.Limit
-	if offset < 0 {
-		offset = 0
-	}
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 20
-	}
-
 	var posts []*entities.Post
-	err := db.Order("posts.created_at DESC").Offset(offset).Limit(limit).Find(&posts).Error
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	err := db.Order("posts.created_at DESC").Find(&posts).Error
 	if err != nil {
 		return nil, err
 	}

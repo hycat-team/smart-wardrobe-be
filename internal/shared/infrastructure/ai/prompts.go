@@ -30,6 +30,7 @@ JSON Schema format:
 {
   "category_slug": "The selected category slug from the list (e.g. 'ao', 'quan', etc.)",
   "color": "Color name in natural Vietnamese fashion context, including shades (e.g. 'Đen mun', 'Trắng sữa', 'Xanh olive', etc.)",
+  "color_hex": "The 6-character hexadecimal color code representing the dominant background or base color of the item (e.g. '#000000', '#FFFFFF', '#556B2F', etc.). If the item is multicolored or patterned, choose the dominant background/base color.",
   "style": "Fashion style in Vietnamese (e.g. 'Đường phố', 'Tối giản', 'Y2K', 'Cổ điển', etc.)",
   "material": "Material composition in Vietnamese (e.g. 'Vải Denim co giãn', 'Vải thun Cotton dày', 'Len dệt kim', etc.)",
   "pattern": "Pattern details or graphic prints in Vietnamese (e.g. 'In graphic lớn ở lưng', 'Trơn không họa tiết', 'Kẻ sọc ngang', etc.)",

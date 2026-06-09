@@ -449,6 +449,18 @@ const docTemplate = `{
                 "summary": "Lấy danh sách trang phục mẫu (Admin)",
                 "parameters": [
                     {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Từ khóa tìm kiếm",
                         "name": "q",
@@ -473,10 +485,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes"
                                         }
                                     }
                                 }
@@ -1361,6 +1370,20 @@ const docTemplate = `{
                     "Outfits"
                 ],
                 "summary": "Lấy danh sách bộ phối đồ của tôi",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Danh sách bộ phối đồ",
@@ -1373,10 +1396,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_OutfitRes"
                                         }
                                     }
                                 }
@@ -1398,6 +1418,18 @@ const docTemplate = `{
                 "summary": "Lấy danh sách trang phục",
                 "parameters": [
                     {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Slug danh mục cần lọc",
                         "name": "category_slug",
@@ -1416,10 +1448,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes"
                                         }
                                     }
                                 }
@@ -2437,11 +2466,37 @@ const docTemplate = `{
                     "Billing"
                 ],
                 "summary": "Lấy lịch sử giao dịch ví nội bộ",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Danh sách lịch sử giao dịch",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_subscription_application_dto_WalletStatementDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2913,6 +2968,18 @@ const docTemplate = `{
                 "summary": "Tìm kiếm trang phục có sẵn của hệ thống (Elasticsearch CQRS)",
                 "parameters": [
                     {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)",
                         "name": "q",
@@ -2937,10 +3004,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes"
                                         }
                                     }
                                 }
@@ -4163,6 +4227,35 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "newBalance": {
+                    "type": "number"
+                },
+                "previousBalance": {
+                    "type": "number"
+                },
+                "transactionType": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_walletstatementtype.WalletStatementType"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq": {
             "type": "object",
             "required": [
@@ -4520,6 +4613,18 @@ const docTemplate = `{
                 "color": {
                     "type": "string"
                 },
+                "colorHex": {
+                    "type": "string"
+                },
+                "colorHue": {
+                    "type": "number"
+                },
+                "colorLightness": {
+                    "type": "number"
+                },
+                "colorSaturation": {
+                    "type": "number"
+                },
                 "fit": {
                     "type": "string"
                 },
@@ -4619,6 +4724,18 @@ const docTemplate = `{
                 "color": {
                     "type": "string"
                 },
+                "colorHex": {
+                    "type": "string"
+                },
+                "colorHue": {
+                    "type": "number"
+                },
+                "colorLightness": {
+                    "type": "number"
+                },
+                "colorSaturation": {
+                    "type": "number"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -4674,6 +4791,62 @@ const docTemplate = `{
                 },
                 "totalPages": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_subscription_application_dto_WalletStatementDTO": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_OutfitRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
                 }
             }
         },
@@ -4841,6 +5014,19 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "Active",
                 "Inactive"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_walletstatementtype.WalletStatementType": {
+            "type": "string",
+            "enum": [
+                "TOPUP",
+                "SUBSCRIPTION_PURCHASE",
+                "SUBSCRIPTION_RENEWAL"
+            ],
+            "x-enum-varnames": [
+                "Topup",
+                "SubscriptionPurchase",
+                "SubscriptionRenewal"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus": {

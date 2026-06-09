@@ -12,7 +12,17 @@ func NewWardrobeSearchService(searchEngine *shared_search.ElasticsearchClient) s
 	return &WardrobeSearchService{searchEngine: searchEngine}
 }
 
-func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error) {
+func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, int64, error) {
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	from := (page - 1) * limit
+
 	var esQuery map[string]any
 	filters := []map[string]any{
 		{
@@ -36,7 +46,8 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.Searc
 					"filter": filters,
 				},
 			},
-			"size": 50,
+			"from": from,
+			"size": limit,
 		}
 	} else {
 		esQuery = map[string]any{
@@ -64,7 +75,8 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.Searc
 					"filter": filters,
 				},
 			},
-			"size": 50,
+			"from": from,
+			"size": limit,
 		}
 	}
 
@@ -73,11 +85,15 @@ func (s *WardrobeSearchService) SearchItems(ctx context.Context, query dto.Searc
 		if appErr := apperror.From(err); appErr != nil {
 			notFound := apperror.ErrSearchIndexNotFound()
 			if appErr.Status == notFound.Status && appErr.Message == notFound.Message {
-				return []*dto.SearchWardrobeItemRes{}, nil
+				return []*dto.SearchWardrobeItemRes{}, 0, nil
 			}
 		}
-		return nil, err
+		return nil, 0, err
 	}
 
 	return s.parseSearchWardrobeItemRes(respBytes)
+}
+
+func (s *WardrobeSearchService) IsHealthy() bool {
+	return s.searchEngine.IsHealthy()
 }

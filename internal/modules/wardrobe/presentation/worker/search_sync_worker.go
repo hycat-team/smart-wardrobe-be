@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
@@ -16,10 +18,11 @@ import (
 )
 
 type SearchSyncWorker struct {
-	eventConsumer event.ISearchSyncEventConsumer
-	searchIndex   search.IWardrobeSearchIndexService
-	wardrobeRepo  repositories.IWardrobeItemRepository
-	logger        logger.Interface
+	eventConsumer   event.ISearchSyncEventConsumer
+	searchIndex     search.IWardrobeSearchIndexService
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	logger          logger.Interface
+	initialSyncDone int32 // 0 = not done, 1 = done
 }
 
 func NewSearchSyncWorker(
@@ -29,14 +32,15 @@ func NewSearchSyncWorker(
 	l logger.Interface,
 ) *SearchSyncWorker {
 	w := &SearchSyncWorker{
-		eventConsumer: eventConsumer,
-		searchIndex:   searchIndex,
-		wardrobeRepo:  wardrobeRepo,
-		logger:        l,
+		eventConsumer:   eventConsumer,
+		searchIndex:     searchIndex,
+		wardrobeRepo:    wardrobeRepo,
+		logger:          l,
+		initialSyncDone: 0,
 	}
 
-	// Initial sync: push all System Catalog Items from PostgreSQL to the search engine
-	go w.initialSync()
+	// Manage initial sync and recovery of search index in background loop
+	go w.manageInitialSyncAndRecovery()
 
 	// Start listening to the sync event queue via the Application layer Consumer
 	go w.startConsume()
@@ -81,7 +85,9 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 				zap.String("itemId", item.ID.String()),
 				zap.Error(err),
 			)
-			// Return nil instead of throwing an error to avoid hanging or queue spam when ES is offline
+			if !w.searchIndex.IsHealthy() {
+				return fmt.Errorf("elasticsearch is offline: %w", err)
+			}
 			return nil
 		}
 
@@ -91,7 +97,9 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 				zap.String("itemId", eventPayload.ItemID.String()),
 				zap.Error(err),
 			)
-			// Return nil instead of throwing an error to avoid hanging or queue spam when ES is offline
+			if !w.searchIndex.IsHealthy() {
+				return fmt.Errorf("elasticsearch is offline: %w", err)
+			}
 			return nil
 		}
 	}
@@ -99,10 +107,27 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 	return nil
 }
 
-// initialSync pushes all System Catalog Items from PostgreSQL to the Search Index upon app startup
-func (w *SearchSyncWorker) initialSync() {
-	ctx := context.Background()
+func (w *SearchSyncWorker) manageInitialSyncAndRecovery() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 
+	w.tryInitialSync()
+
+	for range ticker.C {
+		if atomic.LoadInt32(&w.initialSyncDone) == 1 {
+			return
+		}
+		w.tryInitialSync()
+	}
+}
+
+func (w *SearchSyncWorker) tryInitialSync() {
+	if !w.searchIndex.IsHealthy() {
+		w.logger.Info("[SearchSyncWorker] Elasticsearch is unhealthy, postponing initial sync")
+		return
+	}
+
+	ctx := context.Background()
 	items, err := w.wardrobeRepo.GetItems(ctx, nil, nil, itemtype.SystemCatalogItem)
 	if err != nil {
 		w.logger.Error("[SearchSyncWorker] Failed to fetch system catalog items for initial sync", zap.Error(err))
@@ -110,23 +135,27 @@ func (w *SearchSyncWorker) initialSync() {
 	}
 
 	if len(items) == 0 {
-		w.logger.Info("[SearchSyncWorker] No system catalog items found in PostgreSQL, skipping initial sync")
+		w.logger.Info("[SearchSyncWorker] No system catalog items found in PostgreSQL, initial sync marked as complete")
+		atomic.StoreInt32(&w.initialSyncDone, 1)
 		return
 	}
+
+	w.logger.Info("[SearchSyncWorker] Starting initial sync of system catalog items to search index...", zap.Int("total", len(items)))
 
 	successCount := 0
 	for _, item := range items {
 		if err := w.searchIndex.IndexItem(ctx, item); err != nil {
-			w.logger.Warn("[SearchSyncWorker] Failed to index system catalog item during initial sync. Elasticsearch might be offline. Aborting initial sync to prevent log spam.",
+			w.logger.Warn("[SearchSyncWorker] Failed to index system catalog item during initial sync. Elasticsearch might have gone offline.",
 				zap.Error(err),
 			)
-			break
+			return
 		}
 		successCount++
 	}
 
-	w.logger.Info("[SearchSyncWorker] Initial sync process completed",
+	w.logger.Info("[SearchSyncWorker] Initial sync process completed successfully",
 		zap.Int("total", len(items)),
 		zap.Int("indexed", successCount),
 	)
+	atomic.StoreInt32(&w.initialSyncDone, 1)
 }

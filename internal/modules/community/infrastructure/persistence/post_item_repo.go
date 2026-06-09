@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -177,17 +178,14 @@ func (r *PostItemRepository) GetPostItemsForAdmin(ctx context.Context, filter re
 		return nil, err
 	}
 
-	offset := (filter.Page - 1) * filter.Limit
-	if offset < 0 {
-		offset = 0
-	}
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 20
-	}
-
 	var items []*entities.PostItem
-	err := db.Order("post_items.created_at DESC").Offset(offset).Limit(limit).Find(&items).Error
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	err := db.Order("post_items.created_at DESC").Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

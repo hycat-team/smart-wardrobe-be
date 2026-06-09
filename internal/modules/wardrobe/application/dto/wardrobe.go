@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -20,8 +21,12 @@ type WardrobeItemRes struct {
 	Category      *CategoryRes                      `json:"category,omitempty"`
 	ImageUrl      string                            `json:"imageUrl"`
 	ImagePublicID string                            `json:"imagePublicId"`
-	Color         string                            `json:"color"`
-	Style         string                            `json:"style"`
+	Color           string                            `json:"color"`
+	ColorHex        string                            `json:"colorHex"`
+	ColorHue        *float64                          `json:"colorHue,omitempty"`
+	ColorSaturation *float64                          `json:"colorSaturation,omitempty"`
+	ColorLightness  *float64                          `json:"colorLightness,omitempty"`
+	Style           string                            `json:"style"`
 	Material      string                            `json:"material"`
 	Pattern       string                            `json:"pattern"`
 	Fit           string                            `json:"fit"`
@@ -66,25 +71,31 @@ type WardrobeEventPayload struct {
 }
 
 type SearchWardrobeItemRes struct {
-	ID            uuid.UUID    `json:"id"`
-	Category      *CategoryRes `json:"category,omitempty"`
-	ImageUrl      string       `json:"imageUrl"`
-	ImagePublicID string       `json:"imagePublicId"`
-	Color         string       `json:"color"`
-	Style         string       `json:"style"`
-	Material      string       `json:"material"`
-	Pattern       string       `json:"pattern"`
-	Fit           string       `json:"fit"`
-	Seasonality   string       `json:"seasonality"`
-	Price         *float64     `json:"price,omitempty"`
-	IsSystem      bool         `json:"isSystem"`
+	ID              uuid.UUID    `json:"id"`
+	Category        *CategoryRes `json:"category,omitempty"`
+	ImageUrl        string       `json:"imageUrl"`
+	ImagePublicID   string       `json:"imagePublicId"`
+	Color           string       `json:"color"`
+	ColorHex        string       `json:"colorHex"`
+	ColorHue        *float64     `json:"colorHue,omitempty"`
+	ColorSaturation *float64     `json:"colorSaturation,omitempty"`
+	ColorLightness  *float64     `json:"colorLightness,omitempty"`
+	Style           string       `json:"style"`
+	Material        string       `json:"material"`
+	Pattern         string       `json:"pattern"`
+	Fit             string       `json:"fit"`
+	Seasonality     string       `json:"seasonality"`
+	Price           *float64     `json:"price,omitempty"`
+	IsSystem        bool         `json:"isSystem"`
 }
 
 type GetWardrobeItemsQueryReq struct {
+	shared_dto.PaginationQuery
 	CategorySlug string `form:"category_slug"`
 }
 
 type SearchWardrobeItemsQueryReq struct {
+	shared_dto.PaginationQuery
 	Query        string `form:"q"`
 	CategorySlug string `form:"category_slug"`
 }
@@ -101,8 +112,13 @@ type ManualClassifyReq struct {
 }
 
 type GetSystemCatalogItemsQueryReq struct {
+	shared_dto.PaginationQuery
 	Query        *string `form:"q"`
 	CategorySlug *string `form:"category_slug"`
+}
+
+type GetOutfitsQueryReq struct {
+	shared_dto.PaginationQuery
 }
 
 type UpdateSystemCatalogItemReq struct {

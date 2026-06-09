@@ -19,10 +19,10 @@ type IWardrobeUseCase interface {
 
 type IWardrobeItemUseCase interface {
 	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
-	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error)
+	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
-	SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error)
+	SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error)
 	ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error)
 }
 
@@ -37,7 +37,7 @@ type IWardrobeAIUseCase interface {
 
 type IWardrobeCatalogUseCase interface {
 	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
-	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error)
+	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
 	UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error)
 	DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error
 }

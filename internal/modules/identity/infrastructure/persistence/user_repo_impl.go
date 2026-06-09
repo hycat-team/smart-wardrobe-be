@@ -5,6 +5,7 @@ import (
 	"errors"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -147,16 +148,13 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 	}
 
 	var users []*entities.User
-	offset := (filter.Page - 1) * filter.Limit
-	if offset < 0 {
-		offset = 0
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
 	}
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 20
-	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
 
-	err := db.Order("users.created_at DESC").Offset(offset).Limit(limit).Find(&users).Error
+	err := db.Order("users.created_at DESC").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
