@@ -103,7 +103,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iRegisterUseCase := usecase2.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
 	iSessionUseCase := usecase2.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
-	iPasswordRecoveryUseCase := usecase2.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, cfg, iUnitOfWork)
+	iPasswordRecoveryUseCase := usecase2.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
 	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
 	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	meHandler := handler.NewMeHandler(iUserUseCase)

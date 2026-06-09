@@ -22,14 +22,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const forgotPasswordBlacklistPrefix = "blacklist:forgot_password:"
+
 type PasswordRecoveryUseCase struct {
-	userRepo         repositories.IUserRepository
-	refreshTokenRepo repositories.IRefreshTokenRepository
-	otpService       identity.IOtpService
-	emailService     communication.IEmailService
-	passwordHasher   security.IPasswordHasher
-	cfg              *config.Config
-	uow              shared_repos.IUnitOfWork
+	userRepo              repositories.IUserRepository
+	refreshTokenRepo      repositories.IRefreshTokenRepository
+	otpService            identity.IOtpService
+	emailService          communication.IEmailService
+	passwordHasher        security.IPasswordHasher
+	tokenBlacklistService security.ITokenBlacklistService
+	cfg                   *config.Config
+	uow                   shared_repos.IUnitOfWork
 }
 
 func NewPasswordRecoveryUseCase(
@@ -38,17 +41,19 @@ func NewPasswordRecoveryUseCase(
 	otpService identity.IOtpService,
 	emailService communication.IEmailService,
 	passwordHasher security.IPasswordHasher,
+	tokenBlacklistService security.ITokenBlacklistService,
 	cfg *config.Config,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IPasswordRecoveryUseCase {
 	return &PasswordRecoveryUseCase{
-		userRepo:         userRepo,
-		refreshTokenRepo: refreshTokenRepo,
-		otpService:       otpService,
-		emailService:     emailService,
-		passwordHasher:   passwordHasher,
-		cfg:              cfg,
-		uow:              uow,
+		userRepo:              userRepo,
+		refreshTokenRepo:      refreshTokenRepo,
+		otpService:            otpService,
+		emailService:          emailService,
+		passwordHasher:        passwordHasher,
+		tokenBlacklistService: tokenBlacklistService,
+		cfg:                   cfg,
+		uow:                   uow,
 	}
 }
 
@@ -132,6 +137,14 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 }
 
 func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.ResetPasswordReq, resetToken string) (bool, error) {
+	isBlacklisted, err := uc.tokenBlacklistService.IsTokenBlacklistedWithPrefix(ctx, resetToken, forgotPasswordBlacklistPrefix)
+	if err != nil {
+		return false, err
+	}
+	if isBlacklisted {
+		return false, identityerrors.ErrInvalidToken
+	}
+
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), resetToken, jwttype.ResetPasswordToken)
 	if err != nil {
 		return false, identityerrors.ErrInvalidToken
@@ -172,6 +185,15 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 
 	if err := uc.uow.Execute(ctx, changePassword); err != nil {
 		return false, err
+	}
+
+	// Blacklist the reset token for its remaining duration
+	if claims.ExpiresAt != nil {
+		expTime := claims.ExpiresAt.Time
+		remainingTime := time.Until(expTime)
+		if remainingTime > 0 {
+			_ = uc.tokenBlacklistService.BlacklistTokenWithPrefix(ctx, resetToken, forgotPasswordBlacklistPrefix, remainingTime)
+		}
 	}
 
 	return true, nil

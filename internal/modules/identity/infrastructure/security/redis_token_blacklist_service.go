@@ -38,3 +38,20 @@ func (s *RedisTokenBlacklistService) IsTokenBlacklisted(ctx context.Context, tok
 	}
 	return exists > 0, nil
 }
+
+func (s *RedisTokenBlacklistService) BlacklistTokenWithPrefix(ctx context.Context, token string, prefix string, expiry time.Duration) error {
+	if expiry <= 0 {
+		return nil
+	}
+	key := prefix + token
+	return s.redisClient.Set(ctx, key, "revoked", expiry).Err()
+}
+
+func (s *RedisTokenBlacklistService) IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error) {
+	key := prefix + token
+	exists, err := s.redisClient.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	return exists > 0, nil
+}
