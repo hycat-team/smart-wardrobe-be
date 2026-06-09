@@ -135,7 +135,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	categoryRouter := category2.NewRouter(categoryHandler)
 	iPostScoreRepository := persistence3.NewPostScoreRepository(gormDB)
 	iLikeRepository := persistence3.NewLikeRepository(gormDB)
-	iUserPostUseCase := post.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
+	iUserPostUseCase := post.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserUseCase, iWardrobeUseCase, iMediaService, iUnitOfWork)
 	postHandler := handler2.NewPostHandler(iUserPostUseCase)
 	iUserPostInteractionUseCase := post_interaction.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
 	postInteractionHandler := handler2.NewPostInteractionHandler(iUserPostInteractionUseCase)

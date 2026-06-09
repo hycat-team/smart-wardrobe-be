@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -31,4 +32,5 @@ type IUserRepository interface {
 	IsUsernameExists(ctx context.Context, username string) (bool, error)
 	GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
+	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error)
 }

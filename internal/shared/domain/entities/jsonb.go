@@ -110,6 +110,8 @@ type InferredBodyProfile = inferredBodyProfile
 
 type preferredColors []string
 
+type PreferredColors = preferredColors
+
 func (p preferredColors) Value() (driver.Value, error) {
 	return json.Marshal(p)
 }

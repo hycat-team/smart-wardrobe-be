@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -98,6 +99,23 @@ func (r *UserRepository) GetByUsernameOrEmail(ctx context.Context, loginName str
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *UserRepository) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
+	var profile entities.UserStyleProfile
+	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&profile).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &dto.UserStyleProfileRes{
+		UserID:          profile.UserID,
+		TasteEmbedding:  profile.TasteEmbedding,
+		PreferredColors: profile.PreferredColors,
+	}, nil
 }
 
 func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositories.UserFilter) (*repositories.UserListResult, error) {

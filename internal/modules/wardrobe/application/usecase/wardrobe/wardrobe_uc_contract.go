@@ -92,6 +92,15 @@ func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userI
 	return nil
 }
 
-func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
-	return uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
+func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*dto.WardrobeItemRes, 0, len(items))
+	for _, item := range items {
+		result = append(result, mapper.MapToWardrobeItemRes(item))
+	}
+	return result, nil
 }

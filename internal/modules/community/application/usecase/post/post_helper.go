@@ -9,6 +9,7 @@ import (
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
@@ -75,7 +76,7 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 	if err != nil {
 		return nil, err
 	}
-	wardrobeByID := make(map[uuid.UUID]*entities.WardrobeItem, len(wardrobeItems))
+	wardrobeByID := make(map[uuid.UUID]*wardrobe_dto.WardrobeItemRes, len(wardrobeItems))
 	for _, item := range wardrobeItems {
 		wardrobeByID[item.ID] = item
 	}

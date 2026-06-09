@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,6 +48,12 @@ type UserQuotaRes struct {
 	OutfitRecommendCount int       `json:"outfitRecommendCount"`
 	AiUsageCount         int       `json:"aiUsageCount"`
 	LastResetDate        time.Time `json:"lastResetDate"`
+}
+
+type UserStyleProfileRes struct {
+	UserID          uuid.UUID                 `json:"userId"`
+	TasteEmbedding  entities.Vector           `json:"tasteEmbedding,omitempty"`
+	PreferredColors *entities.PreferredColors `json:"preferredColors,omitempty"`
 }
 
 type UserBodyProfileRes struct {

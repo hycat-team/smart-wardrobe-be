@@ -4,7 +4,7 @@ import (
 	"smart-wardrobe-be/config"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/application/media"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -23,7 +23,7 @@ type postFeedDependencies struct {
 	postMediaRepo repositories.IPostMediaRepository
 	commentRepo   repositories.ICommentRepository
 	likeRepo      repositories.ILikeRepository
-	userRepo      identity_repos.IUserRepository
+	identityCtr   identity_contract.IUserContract
 }
 
 type postPublishingDependencies struct {
@@ -51,7 +51,7 @@ func NewUserPostUseCase(
 	postMediaRepo repositories.IPostMediaRepository,
 	commentRepo repositories.ICommentRepository,
 	likeRepo repositories.ILikeRepository,
-	userRepo identity_repos.IUserRepository,
+	identityCtr identity_contract.IUserContract,
 	wardrobeCtr wardrobe_contract.IWardrobeContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
@@ -66,7 +66,7 @@ func NewUserPostUseCase(
 			postMediaRepo: postMediaRepo,
 			commentRepo:   commentRepo,
 			likeRepo:      likeRepo,
-			userRepo:      userRepo,
+			identityCtr:   identityCtr,
 		},
 		publishing: postPublishingDependencies{
 			postRepo:      postRepo,

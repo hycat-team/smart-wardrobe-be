@@ -24,13 +24,13 @@ import (
 )
 
 type UserUseCase struct {
-	userRepo             repositories.IUserRepository
-	passwordHasher       security.IPasswordHasher
-	refreshTokenRepo     repositories.IRefreshTokenRepository
+	userRepo              repositories.IUserRepository
+	passwordHasher        security.IPasswordHasher
+	refreshTokenRepo      repositories.IRefreshTokenRepository
 	tokenBlacklistService security.ITokenBlacklistService
-	subscriptionContract subscription_contract.IUserSubscriptionContract
-	mediaService         media.IMediaService
-	cfg                  *config.Config
+	subscriptionContract  subscription_contract.IUserSubscriptionContract
+	mediaService          media.IMediaService
+	cfg                   *config.Config
 }
 
 func NewUserUseCase(
@@ -43,13 +43,13 @@ func NewUserUseCase(
 	cfg *config.Config,
 ) uc_interfaces.IUserUseCase {
 	return &UserUseCase{
-		userRepo:             userRepo,
-		passwordHasher:       passwordHasher,
-		refreshTokenRepo:     refreshTokenRepo,
+		userRepo:              userRepo,
+		passwordHasher:        passwordHasher,
+		refreshTokenRepo:      refreshTokenRepo,
 		tokenBlacklistService: tokenBlacklistService,
-		subscriptionContract: subscriptionContract,
-		mediaService:         mediaService,
-		cfg:                  cfg,
+		subscriptionContract:  subscriptionContract,
+		mediaService:          mediaService,
+		cfg:                   cfg,
 	}
 }
 
@@ -239,6 +239,10 @@ func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto
 	}
 
 	return mapper.MapToUserRes(user, sub), nil
+}
+
+func (uc *UserUseCase) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
+	return uc.userRepo.GetStyleProfile(ctx, userID)
 }
 
 func (uc *UserUseCase) GetAvatarSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {

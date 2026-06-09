@@ -86,11 +86,11 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		}, nil
 	}
 
-	user, err := uc.feed.userRepo.GetByID(ctx, viewerUserID)
+	styleProfile, err := uc.feed.identityCtr.GetStyleProfile(ctx, viewerUserID)
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.StyleProfile == nil || len(user.StyleProfile.TasteEmbedding) == 0 {
+	if styleProfile == nil || len(styleProfile.TasteEmbedding) == 0 {
 		items := make([]*community_dto.PostRes, 0, len(records))
 		for _, record := range records {
 			items = append(items, community_mapper.MapPost(record.Post, nil, nil, false, record.GlobalHotnessScore, record.GlobalHotnessScore))
@@ -129,7 +129,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		}
 		media := mediaByPostID[post.ID]
 
-		styleScore := computeStyleScore(user.StyleProfile.TasteEmbedding, items)
+		styleScore := computeStyleScore(styleProfile.TasteEmbedding, items)
 		finalScore := (record.GlobalHotnessScore * 0.4) + (styleScore * 0.6)
 		scoredItems = append(scoredItems, &scoredPost{
 			post:      post,
