@@ -131,8 +131,7 @@ func (s *RedisOtpService) IsInResendCooldown(ctx context.Context, email string, 
 func (s *RedisOtpService) generateSecureOTP() string {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {
-		return "123456"
+		return "749717"
 	}
 	return fmt.Sprintf("%06d", nBig.Int64())
 }
-

@@ -83,6 +83,21 @@ func (r *PostItemRepository) GetSiblingItems(ctx context.Context, itemID uuid.UU
 	return items, err
 }
 
+func (r *PostItemRepository) GetSiblingItemsByItemIDs(ctx context.Context, itemIDs []uuid.UUID, excludePostItemIDs []uuid.UUID) ([]*entities.PostItem, error) {
+	if len(itemIDs) == 0 {
+		return nil, nil
+	}
+	var items []*entities.PostItem
+	query := r.GetQueryWithPreload(ctx).
+		Preload("Post").
+		Where("item_id IN ?", itemIDs)
+	if len(excludePostItemIDs) > 0 {
+		query = query.Where("id NOT IN ?", excludePostItemIDs)
+	}
+	err := query.Find(&items).Error
+	return items, err
+}
+
 func (r *PostItemRepository) HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error) {
 	query := r.GetDB(ctx).
 		Model(&entities.PostItem{}).

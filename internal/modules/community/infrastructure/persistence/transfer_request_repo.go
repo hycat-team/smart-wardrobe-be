@@ -67,3 +67,12 @@ func (r *TransferRequestRepository) GetByBuyerAndPostItems(ctx context.Context, 
 	}
 	return items, nil
 }
+
+func (r *TransferRequestRepository) GetByPostItemIDs(ctx context.Context, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error) {
+	if len(postItemIDs) == 0 {
+		return nil, nil
+	}
+	var items []*entities.TransferRequest
+	err := r.GetQueryWithPreload(ctx).Where("post_item_id IN ?", postItemIDs).Find(&items).Error
+	return items, err
+}

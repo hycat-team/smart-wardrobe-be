@@ -74,6 +74,7 @@ type IPostItemRepository interface {
 	SumVisiblePriceByPostID(ctx context.Context, postID uuid.UUID) (float64, error)
 	GetPostItemsForAdmin(ctx context.Context, filter AdminPostItemFilter) (*AdminPostItemListResult, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.PostItem, error)
+	GetSiblingItemsByItemIDs(ctx context.Context, itemIDs []uuid.UUID, excludePostItemIDs []uuid.UUID) ([]*entities.PostItem, error)
 }
 
 type IPostMediaRepository interface {
@@ -108,4 +109,5 @@ type ITransferRequestRepository interface {
 	GetPendingByBuyerAndItems(ctx context.Context, buyerID uuid.UUID, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error)
 	GetByBuyerAndPostItem(ctx context.Context, buyerID uuid.UUID, postItemID uuid.UUID) (*entities.TransferRequest, error)
 	GetByBuyerAndPostItems(ctx context.Context, buyerID uuid.UUID, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error)
+	GetByPostItemIDs(ctx context.Context, postItemIDs []uuid.UUID) ([]*entities.TransferRequest, error)
 }

@@ -175,6 +175,22 @@ func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID 
 
 		postsToSync := make(map[uuid.UUID]bool)
 
+		// Batch fetch Sibling Items
+		itemIDs := make([]uuid.UUID, 0, len(postItems))
+		for _, pi := range postItems {
+			itemIDs = append(itemIDs, pi.ItemID)
+		}
+		siblings, err := uc.postItemRepo.GetSiblingItemsByItemIDs(txCtx, itemIDs, postItemIDs)
+		if err != nil {
+			return err
+		}
+		siblingsMap := make(map[uuid.UUID][]*entities.PostItem)
+		for _, sib := range siblings {
+			if sib != nil {
+				siblingsMap[sib.ItemID] = append(siblingsMap[sib.ItemID], sib)
+			}
+		}
+
 		for _, item := range postItems {
 			if item.BuyerUserID == nil || *item.BuyerUserID != buyerUserID {
 				return communityerrors.ErrRequestedProductNotFound
@@ -200,11 +216,7 @@ func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID 
 
 			postsToSync[item.PostID] = true
 
-			siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, item.ItemID, item.ID)
-			if err != nil {
-				return err
-			}
-			for _, sibling := range siblings {
+			for _, sibling := range siblingsMap[item.ItemID] {
 				sibling.Status = postitemstatus.Hidden
 				if sibling.TransferState != transferstate.Accepted {
 					sibling.TransferState = transferstate.None
@@ -249,6 +261,49 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 
 		postsToSync := make(map[uuid.UUID]bool)
 
+		// Batch fetch Buyer Pending Requests
+		buyerReqs, err := uc.transferRequestRepo.GetByBuyerAndPostItems(txCtx, buyerUserID, postItemIDs)
+		if err != nil {
+			return err
+		}
+		buyerReqMap := make(map[uuid.UUID]*entities.TransferRequest)
+		for _, br := range buyerReqs {
+			if br != nil {
+				buyerReqMap[br.PostItemID] = br
+			}
+		}
+
+		// Batch fetch Active Transfers
+		itemIDs := make([]uuid.UUID, 0, len(postItems))
+		for _, pi := range postItems {
+			itemIDs = append(itemIDs, pi.ItemID)
+		}
+		activeTransfers, err := uc.postItemRepo.GetActiveTransfersByItemIDs(txCtx, itemIDs)
+		if err != nil {
+			return err
+		}
+		activeTransferMap := make(map[uuid.UUID]map[uuid.UUID]bool)
+		for _, at := range activeTransfers {
+			if at != nil {
+				if _, ok := activeTransferMap[at.ItemID]; !ok {
+					activeTransferMap[at.ItemID] = make(map[uuid.UUID]bool)
+				}
+				activeTransferMap[at.ItemID][at.ID] = true
+			}
+		}
+
+		// Batch fetch Sibling Items
+		siblings, err := uc.postItemRepo.GetSiblingItemsByItemIDs(txCtx, itemIDs, postItemIDs)
+		if err != nil {
+			return err
+		}
+		siblingsMap := make(map[uuid.UUID][]*entities.PostItem)
+		for _, sib := range siblings {
+			if sib != nil {
+				siblingsMap[sib.ItemID] = append(siblingsMap[sib.ItemID], sib)
+			}
+		}
+
 		for _, postItem := range postItems {
 			if postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
 				return communityerrors.ErrRequestedProductNotFound
@@ -267,10 +322,7 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 
 			postsToSync[postItem.PostID] = true
 
-			buyerReq, err := uc.transferRequestRepo.GetByBuyerAndPostItem(txCtx, buyerUserID, postItem.ID)
-			if err != nil {
-				return err
-			}
+			buyerReq := buyerReqMap[postItem.ID]
 			if buyerReq != nil {
 				buyerReq.Status = requeststatus.Canceled
 				if err := uc.transferRequestRepo.Update(txCtx, buyerReq); err != nil {
@@ -278,16 +330,18 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 				}
 			}
 
-			hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItem.ID)
-			if err != nil {
-				return err
-			}
-			if !hasOtherActiveTransfer {
-				siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, postItem.ItemID, postItem.ID)
-				if err != nil {
-					return err
+			hasOtherActiveTransfer := false
+			if trans, ok := activeTransferMap[postItem.ItemID]; ok {
+				for atID := range trans {
+					if atID != postItem.ID {
+						hasOtherActiveTransfer = true
+						break
+					}
 				}
-				for _, sibling := range siblings {
+			}
+
+			if !hasOtherActiveTransfer {
+				for _, sibling := range siblingsMap[postItem.ItemID] {
 					if sibling.TransferState == transferstate.Accepted {
 						continue
 					}

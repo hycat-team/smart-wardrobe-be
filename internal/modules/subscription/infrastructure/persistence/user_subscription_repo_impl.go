@@ -117,3 +117,10 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 	}
 	return &sub, nil
 }
+
+func (r *UserSubscriptionRepository) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {
+	if len(subs) == 0 {
+		return nil
+	}
+	return r.GetDB(ctx).Create(&subs).Error
+}

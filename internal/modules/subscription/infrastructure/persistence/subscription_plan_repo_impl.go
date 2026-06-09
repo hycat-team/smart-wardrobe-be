@@ -38,6 +38,23 @@ func (r *SubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*entit
 	return &plan, nil
 }
 
+func (r *SubscriptionPlanRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var plans []*entities.SubscriptionPlan
+	err := r.GetDB(ctx).
+		Where("id IN ?", ids).
+		Find(&plans).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return plans, nil
+}
+
 func (r *SubscriptionPlanRepository) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	var plan entities.SubscriptionPlan
 	err := r.GetDB(ctx).

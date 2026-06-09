@@ -8,9 +8,11 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -33,30 +35,100 @@ func (uc *ItemTransferUseCase) MarkPostItemsSold(ctx context.Context, sellerUser
 
 		postsToSync := make(map[uuid.UUID]bool)
 
+		// Batch fetch all Posts
+		postIDs := make([]uuid.UUID, 0, len(postItems))
+		for _, pi := range postItems {
+			postIDs = append(postIDs, pi.PostID)
+		}
+		posts, err := uc.postRepo.GetByIDs(txCtx, postIDs)
+		if err != nil {
+			return err
+		}
+		postMap := make(map[uuid.UUID]*entities.Post)
+		for _, p := range posts {
+			if p != nil {
+				postMap[p.ID] = p
+			}
+		}
+
+		// Batch fetch Active Transfers
+		itemIDs := make([]uuid.UUID, 0, len(postItems))
+		for _, pi := range postItems {
+			itemIDs = append(itemIDs, pi.ItemID)
+		}
+		activeTransfers, err := uc.postItemRepo.GetActiveTransfersByItemIDs(txCtx, itemIDs)
+		if err != nil {
+			return err
+		}
+		activeTransferMap := make(map[uuid.UUID]map[uuid.UUID]bool)
+		for _, at := range activeTransfers {
+			if at != nil {
+				if _, ok := activeTransferMap[at.ItemID]; !ok {
+					activeTransferMap[at.ItemID] = make(map[uuid.UUID]bool)
+				}
+				activeTransferMap[at.ItemID][at.ID] = true
+			}
+		}
+
+		// Batch fetch Buyer Pending Requests
+		buyerReqs, err := uc.transferRequestRepo.GetByBuyerAndPostItems(txCtx, buyerID, postItemIDs)
+		if err != nil {
+			return err
+		}
+		buyerReqMap := make(map[uuid.UUID]*entities.TransferRequest)
+		for _, br := range buyerReqs {
+			if br != nil {
+				buyerReqMap[br.PostItemID] = br
+			}
+		}
+
+		// Batch fetch Other Requests to reject
+		otherReqs, err := uc.transferRequestRepo.GetByPostItemIDs(txCtx, postItemIDs)
+		if err != nil {
+			return err
+		}
+		otherReqsMap := make(map[uuid.UUID][]*entities.TransferRequest)
+		for _, r := range otherReqs {
+			if r != nil {
+				otherReqsMap[r.PostItemID] = append(otherReqsMap[r.PostItemID], r)
+			}
+		}
+
+		// Batch fetch Sibling Items
+		siblings, err := uc.postItemRepo.GetSiblingItemsByItemIDs(txCtx, itemIDs, postItemIDs)
+		if err != nil {
+			return err
+		}
+		siblingsMap := make(map[uuid.UUID][]*entities.PostItem)
+		for _, sib := range siblings {
+			if sib != nil {
+				siblingsMap[sib.ItemID] = append(siblingsMap[sib.ItemID], sib)
+			}
+		}
+
 		for _, postItem := range postItems {
 			// Validate quyền sở hữu bài đăng của seller
-			post, err := uc.postRepo.GetByID(txCtx, postItem.PostID)
-			if err != nil {
-				return err
-			}
+			post := postMap[postItem.PostID]
 			if post == nil || post.UserID != sellerUserID {
 				return communityerrors.ErrTransferForbidden
 			}
 
 			// Kiểm tra xem món đồ này có giao dịch active nào khác không
-			hasOtherActiveTransfer, err := uc.postItemRepo.HasActiveTransfer(txCtx, postItem.ItemID, &postItem.ID)
-			if err != nil {
-				return err
+			hasOtherActiveTransfer := false
+			if trans, ok := activeTransferMap[postItem.ItemID]; ok {
+				for atID := range trans {
+					if atID != postItem.ID {
+						hasOtherActiveTransfer = true
+						break
+					}
+				}
 			}
 			if hasOtherActiveTransfer {
 				return communityerrors.ErrItemInAnotherTransfer
 			}
 
 			// Kiểm tra yêu cầu xin mua (TransferRequest) của buyer này đối với post item
-			buyerReq, err := uc.transferRequestRepo.GetByBuyerAndPostItem(txCtx, buyerID, postItem.ID)
-			if err != nil {
-				return err
-			}
+			buyerReq := buyerReqMap[postItem.ID]
 			if buyerReq == nil || buyerReq.Status != requeststatus.Pending {
 				return communityerrors.ErrNoPendingRequest
 			}
@@ -68,11 +140,7 @@ func (uc *ItemTransferUseCase) MarkPostItemsSold(ctx context.Context, sellerUser
 			}
 
 			// Từ chối các yêu cầu xin mua khác của món đồ này
-			otherReqs, err := uc.transferRequestRepo.GetByPostItemID(txCtx, postItem.ID)
-			if err != nil {
-				return err
-			}
-			for _, otherReq := range otherReqs {
+			for _, otherReq := range otherReqsMap[postItem.ID] {
 				if otherReq.BuyerID != buyerID && otherReq.Status == requeststatus.Pending {
 					otherReq.Status = requeststatus.Rejected
 					if err := uc.transferRequestRepo.Update(txCtx, otherReq); err != nil {
@@ -94,11 +162,7 @@ func (uc *ItemTransferUseCase) MarkPostItemsSold(ctx context.Context, sellerUser
 			postsToSync[postItem.PostID] = true
 
 			// Tìm các sibling items (món đồ đăng ở bài khác) và ẩn đi
-			siblings, err := uc.postItemRepo.GetSiblingItems(txCtx, postItem.ItemID, postItem.ID)
-			if err != nil {
-				return err
-			}
-			for _, sibling := range siblings {
+			for _, sibling := range siblingsMap[postItem.ItemID] {
 				if sibling.TransferState == transferstate.Accepted {
 					continue
 				}
@@ -236,6 +300,25 @@ func (uc *ItemTransferUseCase) GetTransferRequestsForSeller(ctx context.Context,
 		return nil, err
 	}
 
+	var buyerIDsToFetch []uuid.UUID
+	for _, r := range reqs {
+		if r.Buyer == nil {
+			buyerIDsToFetch = append(buyerIDsToFetch, r.BuyerID)
+		}
+	}
+
+	buyerMap := make(map[uuid.UUID]*identity_dto.UserRes)
+	if len(buyerIDsToFetch) > 0 {
+		buyers, err := uc.identityCtr.GetByIDs(ctx, buyerIDsToFetch)
+		if err == nil {
+			for _, b := range buyers {
+				if b != nil {
+					buyerMap[b.ID] = b
+				}
+			}
+		}
+	}
+
 	result := make([]*dto.TransferRequestRes, 0, len(reqs))
 	for _, r := range reqs {
 		username := "Người dùng ẩn danh"
@@ -243,12 +326,9 @@ func (uc *ItemTransferUseCase) GetTransferRequestsForSeller(ctx context.Context,
 		if r.Buyer != nil {
 			username = r.Buyer.Username
 			avatarURL = r.Buyer.AvatarUrl
-		} else {
-			userRes, err := uc.identityCtr.GetByID(ctx, r.BuyerID)
-			if err == nil && userRes != nil {
-				username = userRes.Username
-				avatarURL = userRes.AvatarUrl
-			}
+		} else if b, exists := buyerMap[r.BuyerID]; exists {
+			username = b.Username
+			avatarURL = b.AvatarUrl
 		}
 
 		result = append(result, &dto.TransferRequestRes{
