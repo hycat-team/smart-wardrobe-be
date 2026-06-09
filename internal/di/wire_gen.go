@@ -16,20 +16,28 @@ import (
 	"smart-wardrobe-be/internal/api/routes/community"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
-	"smart-wardrobe-be/internal/api/routes/subscription"
+	subscription2 "smart-wardrobe-be/internal/api/routes/subscription"
 	wardrobe2 "smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
-	usecase3 "smart-wardrobe-be/internal/modules/community/application/usecase"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/admin_moderation"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/item_transfer"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post_interaction"
 	persistence3 "smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/community/presentation/handler"
 	worker2 "smart-wardrobe-be/internal/modules/community/presentation/worker"
-	usecase2 "smart-wardrobe-be/internal/modules/identity/application/usecase"
+	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
-	"smart-wardrobe-be/internal/modules/subscription/application/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler4 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
@@ -61,22 +69,22 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserRepository := persistence.NewUserRepository(gormDB)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
+	client, err := caching.NewRedisConnection(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
 	iUnitOfWork := db.NewGormUnitOfWork(gormDB)
 	iUserSubscriptionRepository := persistence2.NewUserSubscriptionRepository(gormDB)
 	iSubscriptionPlanRepository := persistence2.NewSubscriptionPlanRepository(gormDB)
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
 	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
 	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
-	iSubscriptionPlanUseCase := usecase.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
-	iUserQuotaUseCase := usecase.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
-	iSubscriptionUseCase := usecase.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
+	iSubscriptionPlanUseCase := plan.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
+	iUserQuotaUseCase := quota.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
+	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
 	iMediaService := media.NewCloudinaryService(cfg)
-	client, err := caching.NewRedisConnection(cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
-	iUserUseCase := usecase2.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
 	iPostRepository := persistence3.NewPostRepository(gormDB)
 	iPostItemRepository := persistence3.NewPostItemRepository(gormDB)
@@ -94,17 +102,16 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iConversationalContextRepository, iMessageRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, rabbitMQClient, iUnitOfWork)
-	iAdminCommunityModerationUseCase := usecase3.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
+	iAdminCommunityModerationUseCase := admin_moderation.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
 	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
 	wardrobeItemHandler := handler3.NewWardrobeItemHandler(iWardrobeUseCase, iWardrobeUseCase, iWardrobeUseCase)
-	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iWardrobeUseCase)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
 	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeItemHandler, authMiddleware)
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
-	iRegisterUseCase := usecase2.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
-	iSessionUseCase := usecase2.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
-	iPasswordRecoveryUseCase := usecase2.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
+	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
+	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
+	iPasswordRecoveryUseCase := usecase.NewPasswordRecoveryUseCase(iUserRepository, iRefreshTokenRepository, iOtpService, iEmailService, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
 	authHandler := handler.NewAuthHandler(iRegisterUseCase, iSessionUseCase, iPasswordRecoveryUseCase, cfg)
 	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	meHandler := handler.NewMeHandler(iUserUseCase)
@@ -112,11 +119,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	subscriptionHandler := handler4.NewSubscriptionHandler(iSubscriptionUseCase)
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
-	iWalletUseCase := usecase.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iSubscriptionPurchaseUseCase := usecase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iPaymentWebhookUseCase := usecase.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, l)
+	iWalletUseCase := wallet.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, l)
 	billingHandler := handler4.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
-	subscriptionRouter := subscription.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
+	subscriptionRouter := subscription2.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
+	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iWardrobeUseCase)
 	wardrobeRouter := wardrobe2.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
 	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
@@ -127,12 +135,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	categoryRouter := category2.NewRouter(categoryHandler)
 	iPostScoreRepository := persistence3.NewPostScoreRepository(gormDB)
 	iLikeRepository := persistence3.NewLikeRepository(gormDB)
-	iUserPostUseCase := usecase3.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
+	iUserPostUseCase := post.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserRepository, iWardrobeUseCase, iMediaService, iUnitOfWork)
 	postHandler := handler2.NewPostHandler(iUserPostUseCase)
-	iUserPostInteractionUseCase := usecase3.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
+	iUserPostInteractionUseCase := post_interaction.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
 	postInteractionHandler := handler2.NewPostInteractionHandler(iUserPostInteractionUseCase)
 	iTransferRequestRepository := persistence3.NewTransferRequestRepository(gormDB)
-	iItemTransferUseCase := usecase3.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iTransferRequestRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
+	iItemTransferUseCase := item_transfer.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iTransferRequestRepository, iUserUseCase, iWardrobeUseCase, iUnitOfWork)
 	itemTransferHandler := handler2.NewItemTransferHandler(iItemTransferUseCase)
 	communityRouter := community.NewRouter(postHandler, postInteractionHandler, itemTransferHandler, authMiddleware)
 	appRouter := &routes.AppRouter{

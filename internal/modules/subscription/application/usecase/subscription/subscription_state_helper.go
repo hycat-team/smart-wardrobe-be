@@ -1,4 +1,4 @@
-package usecase
+package subscription
 
 import (
 	"context"
@@ -12,25 +12,25 @@ import (
 	"github.com/google/uuid"
 )
 
-type subscriptionStateSupport struct {
+type SubscriptionStateSupport struct {
 	userSubRepo repositories.IUserSubscriptionRepository
 	planRepo    repositories.ISubscriptionPlanRepository
 	quotaRepo   repositories.IUserDailyQuotaRepository
 }
 
-func newSubscriptionStateSupport(
+func NewSubscriptionStateSupport(
 	userSubRepo repositories.IUserSubscriptionRepository,
 	planRepo repositories.ISubscriptionPlanRepository,
 	quotaRepo repositories.IUserDailyQuotaRepository,
-) *subscriptionStateSupport {
-	return &subscriptionStateSupport{
+) *SubscriptionStateSupport {
+	return &SubscriptionStateSupport{
 		userSubRepo: userSubRepo,
 		planRepo:    planRepo,
 		quotaRepo:   quotaRepo,
 	}
 }
 
-func (s *subscriptionStateSupport) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
+func (s *SubscriptionStateSupport) GetOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
 	sub, err := s.userSubRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (s *subscriptionStateSupport) getOrCreateUserSubscription(ctx context.Conte
 	return sub, nil
 }
 
-func (s *subscriptionStateSupport) getOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+func (s *SubscriptionStateSupport) GetOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
 	quota, err := s.quotaRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (s *subscriptionStateSupport) getOrCreateUserDailyQuota(ctx context.Context
 	return quota, nil
 }
 
-func (s *subscriptionStateSupport) loadPlanForSubscription(ctx context.Context, sub *entities.UserSubscription) (*entities.SubscriptionPlan, error) {
+func (s *SubscriptionStateSupport) LoadPlanForSubscription(ctx context.Context, sub *entities.UserSubscription) (*entities.SubscriptionPlan, error) {
 	if sub.SubscriptionPlan != nil {
 		return sub.SubscriptionPlan, nil
 	}
@@ -91,7 +91,7 @@ func (s *subscriptionStateSupport) loadPlanForSubscription(ctx context.Context, 
 	return plan, nil
 }
 
-func (s *subscriptionStateSupport) resolveSubscriptionPlans(ctx context.Context, subs []*entities.UserSubscription) (map[uuid.UUID]*entities.SubscriptionPlan, error) {
+func (s *SubscriptionStateSupport) ResolveSubscriptionPlans(ctx context.Context, subs []*entities.UserSubscription) (map[uuid.UUID]*entities.SubscriptionPlan, error) {
 	planByID := make(map[uuid.UUID]*entities.SubscriptionPlan, len(subs))
 	missingPlanIDs := make([]uuid.UUID, 0)
 	seenMissingPlanIDs := make(map[uuid.UUID]struct{})
@@ -129,7 +129,7 @@ func (s *subscriptionStateSupport) resolveSubscriptionPlans(ctx context.Context,
 	return planByID, nil
 }
 
-func buildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *contract.UserSubscriptionDTO {
+func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *contract.UserSubscriptionDTO {
 	return &contract.UserSubscriptionDTO{
 		PlanID:               plan.ID,
 		PlanName:             plan.Name,
@@ -146,7 +146,7 @@ func buildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 	}
 }
 
-func buildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *contract.UserSubscriptionOverviewDTO {
+func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *contract.UserSubscriptionOverviewDTO {
 	return &contract.UserSubscriptionOverviewDTO{
 		PlanID:             plan.ID,
 		PlanName:           plan.Name,

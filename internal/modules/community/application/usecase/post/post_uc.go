@@ -1,4 +1,4 @@
-package usecase
+package post
 
 import (
 	"smart-wardrobe-be/config"

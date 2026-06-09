@@ -1,4 +1,4 @@
-package usecase
+package quota
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -17,7 +18,7 @@ type UserQuotaUseCase struct {
 	quotaRepo    repositories.IUserDailyQuotaRepository
 	subRepo      repositories.IUserSubscriptionRepository
 	planRepo     repositories.ISubscriptionPlanRepository
-	stateSupport *subscriptionStateSupport
+	stateSupport *subscription.SubscriptionStateSupport
 }
 
 func NewUserQuotaUseCase(
@@ -29,13 +30,13 @@ func NewUserQuotaUseCase(
 		quotaRepo:    quotaRepo,
 		subRepo:      subRepo,
 		planRepo:     planRepo,
-		stateSupport: newSubscriptionStateSupport(subRepo, planRepo, quotaRepo),
+		stateSupport: subscription.NewSubscriptionStateSupport(subRepo, planRepo, quotaRepo),
 	}
 }
 
 // checkAndResetDailyQuota fetches the user's daily quota and lazily performs reset if a new day has arrived
 func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
-	quota, err := uc.stateSupport.getOrCreateUserDailyQuota(ctx, userID)
+	quota, err := uc.stateSupport.GetOrCreateUserDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID 
 
 // GetAndResetDailyQuota evaluates daily resets lazily and retrieves the fresh resource counters
 func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,17 +72,17 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 		return nil, err
 	}
 
-	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
 
-	return buildUserSubscriptionDTO(sub, plan, quota), nil
+	return subscription.BuildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // UpdateOutfitQuota alters daily recommended outfit generations count
 func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 		return err
 	}
 
-	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 
 // UpdateAiChatQuota alters daily AI chatbot usage count
 func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -117,7 +118,7 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 		return err
 	}
 
-	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return err
 	}

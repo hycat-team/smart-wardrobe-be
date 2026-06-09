@@ -1,4 +1,4 @@
-package usecase
+package webhook
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
@@ -216,7 +218,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 
 func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
-	if err := processWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now); err != nil {
+	if err := wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now); err != nil {
 		return err
 	}
 	return nil
@@ -237,7 +239,7 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 	}
 
 	// Apply the subscription plan configuration to the user's subscription entity.
-	if err := applySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now); err != nil {
+	if err := subscription.ApplySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now); err != nil {
 		return err
 	}
 

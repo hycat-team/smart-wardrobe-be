@@ -1,4 +1,4 @@
-package usecase
+package item_transfer
 
 import "github.com/google/uuid"
 

@@ -2,23 +2,28 @@ package application
 
 import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/subscription/application/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 
 	"github.com/google/wire"
 )
 
 var ProviderSet = wire.NewSet(
-	usecase.NewSubscriptionUseCase,
+	subscription.NewSubscriptionUseCase,
 	wire.Bind(new(contract.IUserSubscriptionContract), new(uc_interfaces.ISubscriptionUseCase)),
 
-	usecase.NewSubscriptionPlanUseCase,
+	plan.NewSubscriptionPlanUseCase,
 	wire.Bind(new(contract.ISubscriptionPlanContract), new(uc_interfaces.ISubscriptionPlanUseCase)),
 
-	usecase.NewUserQuotaUseCase,
+	quota.NewUserQuotaUseCase,
 	wire.Bind(new(contract.IUserQuotaContract), new(uc_interfaces.IUserQuotaUseCase)),
 
-	usecase.NewWalletUseCase,
-	usecase.NewSubscriptionPurchaseUseCase,
-	usecase.NewPaymentWebhookUseCase,
+	wallet.NewWalletUseCase,
+	purchase.NewSubscriptionPurchaseUseCase,
+	webhook.NewPaymentWebhookUseCase,
 )

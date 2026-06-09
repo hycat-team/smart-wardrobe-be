@@ -1,4 +1,4 @@
-package usecase
+package post
 
 import (
 	"context"
@@ -175,7 +175,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 }
 
 func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID string, viewerUserID *uuid.UUID) (*community_dto.PostRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID strin
 }
 
 func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID string) ([]*community_dto.CommentRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,13 +227,13 @@ func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID str
 
 	result := make([]*community_dto.CommentRes, 0, len(items))
 	for _, item := range items {
-		result = append(result, mapCommentRes(item))
+		result = append(result, MapCommentRes(item))
 	}
 	return result, nil
 }
 
 func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID string, commentID uuid.UUID) ([]*community_dto.CommentRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -261,13 +261,13 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 
 	result := make([]*community_dto.CommentRes, 0, len(items))
 	for _, item := range items {
-		result = append(result, mapCommentRes(item))
+		result = append(result, MapCommentRes(item))
 	}
 	return result, nil
 }
 
 func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string) ([]*community_dto.PostLikeUserRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -443,4 +443,22 @@ func (uc *UserPostUseCase) loadPostDetailsByPostIDs(ctx context.Context, postIDs
 	}
 
 	return postItemsByPostID, mediaByPostID, nil
+}
+
+func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	result := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+
+	return result
 }

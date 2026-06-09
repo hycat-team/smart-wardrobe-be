@@ -1,4 +1,4 @@
-package usecase
+package wallet
 
 import (
 	"context"

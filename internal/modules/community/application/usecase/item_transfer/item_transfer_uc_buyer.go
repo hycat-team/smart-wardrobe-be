@@ -1,4 +1,4 @@
-package usecase
+package item_transfer
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/requeststatus"
@@ -230,7 +231,7 @@ func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID 
 		}
 
 		for postID := range postsToSync {
-			if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postID); err != nil {
+			if err := post.SyncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postID); err != nil {
 				return err
 			}
 		}
@@ -358,7 +359,7 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 		}
 
 		for postID := range postsToSync {
-			if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postID); err != nil {
+			if err := post.SyncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postID); err != nil {
 				return err
 			}
 		}

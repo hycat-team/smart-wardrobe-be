@@ -1,4 +1,4 @@
-package usecase
+package post
 
 import (
 	"context"
@@ -120,7 +120,7 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 }
 
 func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, postPublicID string, input community_dto.UpdatePostReq) (*community_dto.PostRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		}
 
 		for _, itemID := range removedWardrobeItems {
-			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
+			if err := SyncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -253,7 +253,7 @@ func (uc *UserPostUseCase) GetUploadSignature(ctx context.Context) (*community_d
 }
 
 func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, postPublicID string) error {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return err
 	}
@@ -276,8 +276,8 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 			return err
 		}
 
-		for _, itemID := range uniqueItemIDs(postItems) {
-			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
+		for _, itemID := range UniqueItemIDs(postItems) {
+			if err := SyncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -288,7 +288,7 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 }
 
 func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, postPublicID string, postItemIDs []uuid.UUID) error {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		}
 
 		for _, itemID := range affectedWardrobeItems {
-			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
+			if err := SyncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}

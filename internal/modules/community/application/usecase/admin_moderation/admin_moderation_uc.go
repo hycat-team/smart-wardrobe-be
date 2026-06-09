@@ -1,4 +1,4 @@
-package usecase
+package admin_moderation
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/community/application/mapper"
+	postusecase "smart-wardrobe-be/internal/modules/community/application/usecase/post"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -69,8 +70,8 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, 
 			return err
 		}
 
-		for _, itemID := range uniqueItemIDs(postItems) {
-			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
+		for _, itemID := range postusecase.UniqueItemIDs(postItems) {
+			if err := postusecase.SyncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -101,10 +102,10 @@ func (uc *AdminCommunityModerationUseCase) AdminHidePostItem(ctx context.Context
 		if err := uc.postItemRepo.Update(txCtx, postItem); err != nil {
 			return err
 		}
-		if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, postItem.ItemID); err != nil {
+		if err := postusecase.SyncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, postItem.ItemID); err != nil {
 			return err
 		}
-		if err := syncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postItem.PostID); err != nil {
+		if err := postusecase.SyncPostTotalPrice(txCtx, uc.postRepo, uc.postItemRepo, postItem.PostID); err != nil {
 			return err
 		}
 
@@ -147,8 +148,8 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePostItem(ctx context.Conte
 			return err
 		}
 
-		for _, itemID := range uniqueItemIDs(postItems) {
-			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
+		for _, itemID := range postusecase.UniqueItemIDs(postItems) {
+			if err := postusecase.SyncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -358,8 +359,8 @@ func (uc *AdminCommunityModerationUseCase) AdminRestorePost(ctx context.Context,
 			return err
 		}
 
-		for _, itemID := range uniqueItemIDs(postItems) {
-			if err := syncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
+		for _, itemID := range postusecase.UniqueItemIDs(postItems) {
+			if err := postusecase.SyncWardrobeStatusByItem(txCtx, uc.postItemRepo, uc.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -449,3 +450,21 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 }
 
 var _ uc_interfaces.IAdminCommunityModerationUseCase = (*AdminCommunityModerationUseCase)(nil)
+
+func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	result := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+
+	return result
+}

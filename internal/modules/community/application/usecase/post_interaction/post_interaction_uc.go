@@ -1,4 +1,4 @@
-package usecase
+package post_interaction
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -35,7 +36,7 @@ func NewPostInteractionUseCase(
 }
 
 func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uuid.UUID, postPublicID string, isLiked bool) error {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := post.NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return err
 	}
@@ -96,7 +97,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 }
 
 func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UUID, postPublicID string, input community_dto.AddCommentReq) (*community_dto.CommentRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := post.NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -148,11 +149,11 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 	if err != nil {
 		return nil, err
 	}
-	return mapCommentRes(comment), nil
+	return post.MapCommentRes(comment), nil
 }
 
 func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID, content string) (*community_dto.CommentRes, error) {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := post.NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -191,11 +192,11 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 	if err != nil {
 		return nil, err
 	}
-	return mapCommentRes(comment), nil
+	return post.MapCommentRes(comment), nil
 }
 
 func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID) error {
-	normalizedPublicID, err := normalizePostPublicID(postPublicID)
+	normalizedPublicID, err := post.NormalizePostPublicID(postPublicID)
 	if err != nil {
 		return err
 	}

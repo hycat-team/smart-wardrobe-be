@@ -1,4 +1,4 @@
-package usecase
+package subscription
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// applySubscriptionPlan is an internal workflow to encapsulate the logic
+// ApplySubscriptionPlan is an internal workflow to encapsulate the logic
 // for applying or extending a subscription plan for a given user.
 // It must be executed within a UnitOfWork transaction context (txCtx) to ensure atomicity.
-func applySubscriptionPlan(
+func ApplySubscriptionPlan(
 	txCtx context.Context,
 	userSubRepo repositories.IUserSubscriptionRepository,
 	userID uuid.UUID,

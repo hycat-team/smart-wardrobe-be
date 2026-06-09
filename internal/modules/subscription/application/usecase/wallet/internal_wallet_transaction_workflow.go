@@ -1,4 +1,4 @@
-package usecase
+package wallet
 
 import (
 	"context"
@@ -15,11 +15,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// processWalletTransaction is an internal workflow to encapsulate the logic
+// ProcessWalletTransaction is an internal workflow to encapsulate the logic
 // for safely modifying a user's wallet balance and recording the transaction statement.
 // It must be executed within a UnitOfWork transaction context (txCtx) to guarantee ACID properties.
 // A negative amount indicates a deduction, while a positive amount indicates a top-up.
-func processWalletTransaction(
+func ProcessWalletTransaction(
 	txCtx context.Context,
 	walletRepo repositories.IUserWalletRepository,
 	statementRepo repositories.IWalletStatementRepository,

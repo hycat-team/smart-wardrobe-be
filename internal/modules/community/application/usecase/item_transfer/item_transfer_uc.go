@@ -1,4 +1,4 @@
-package usecase
+package item_transfer
 
 import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"

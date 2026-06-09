@@ -1,4 +1,4 @@
-package usecase
+package subscription
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type SubscriptionUseCase struct {
 	quotaRepo     repositories.IUserDailyQuotaRepository
 	cfg           *config.Config
 	log           logger.Interface
-	stateSupport  *subscriptionStateSupport
+	stateSupport  *SubscriptionStateSupport
 
 	planContract  contract.ISubscriptionPlanContract
 	quotaContract contract.IUserQuotaContract
@@ -55,7 +55,7 @@ func NewSubscriptionUseCase(
 		quotaRepo:     quotaRepo,
 		cfg:           cfg,
 		log:           log,
-		stateSupport:  newSubscriptionStateSupport(userSubRepo, planRepo, quotaRepo),
+		stateSupport:  NewSubscriptionStateSupport(userSubRepo, planRepo, quotaRepo),
 		planContract:  planContract,
 		quotaContract: quotaContract,
 	}
@@ -118,37 +118,37 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 
 // GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
 func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	quota, err := uc.stateSupport.getOrCreateUserDailyQuota(ctx, userID)
+	quota, err := uc.stateSupport.GetOrCreateUserDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
 
-	return buildUserSubscriptionDTO(sub, plan, quota), nil
+	return BuildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
-	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
 
-	return buildUserSubscriptionOverviewDTO(sub, plan), nil
+	return BuildUserSubscriptionOverviewDTO(sub, plan), nil
 }
 
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
@@ -165,7 +165,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 	// Keep the query pattern batch-safe even if a repository change accidentally drops
 	// the SubscriptionPlan preload in the future. We resolve every missing plan in one
 	// batched lookup instead of issuing one query per subscription row.
-	planByID, err := uc.stateSupport.resolveSubscriptionPlans(ctx, subs)
+	planByID, err := uc.stateSupport.ResolveSubscriptionPlans(ctx, subs)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
 		}
 
-		result[sub.UserID] = buildUserSubscriptionOverviewDTO(sub, plan)
+		result[sub.UserID] = BuildUserSubscriptionOverviewDTO(sub, plan)
 		foundUserIDs[sub.UserID] = struct{}{}
 	}
 
@@ -218,7 +218,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 		}
 
 		for _, sub := range newSubs {
-			result[sub.UserID] = buildUserSubscriptionOverviewDTO(sub, defaultPlan)
+			result[sub.UserID] = BuildUserSubscriptionOverviewDTO(sub, defaultPlan)
 		}
 	}
 

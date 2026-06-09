@@ -1,4 +1,4 @@
-package usecase
+package post
 
 import (
 	"context"
@@ -9,9 +9,12 @@ import (
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -101,10 +104,10 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 }
 
 func (uc *UserPostUseCase) syncPostTotalPrice(ctx context.Context, postID uuid.UUID) error {
-	return syncPostTotalPrice(ctx, uc.publishing.postRepo, uc.publishing.postItemRepo, postID)
+	return SyncPostTotalPrice(ctx, uc.publishing.postRepo, uc.publishing.postItemRepo, postID)
 }
 
-func syncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {
+func SyncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {
 	total, err := postItemRepo.SumVisiblePriceByPostID(ctx, postID)
 	if err != nil {
 		return err
@@ -167,7 +170,7 @@ func mapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
 	}
 }
 
-func normalizePostPublicID(raw string) (string, error) {
+func NormalizePostPublicID(raw string) (string, error) {
 	publicID := strings.TrimSpace(raw)
 	if !strings.HasPrefix(publicID, postPublicIDPrefix) || len(publicID) != len(postPublicIDPrefix)+16 {
 		return "", communityerrors.ErrInvalidPostPublicIDFormat
@@ -175,7 +178,7 @@ func normalizePostPublicID(raw string) (string, error) {
 	return publicID, nil
 }
 
-func mapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
+func MapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
 	if comment == nil {
 		return nil
 	}
@@ -200,4 +203,42 @@ func mapTransferBuyerSummary(user *identity_dto.UserRes) *community_dto.Transfer
 
 func isVisiblePostItem(item *entities.PostItem) bool {
 	return item != nil && item.Status != postitemstatus.Hidden
+}
+
+func SyncWardrobeStatusByItem(
+	ctx context.Context,
+	postItemRepo repositories.IPostItemRepository,
+	wardrobeCtr wardrobe_contract.IWardrobeContract,
+	itemID uuid.UUID,
+) error {
+	postItems, err := postItemRepo.GetActiveByItemID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+
+	nextStatus := wardrobestatus.InWardrobe
+	for _, item := range postItems {
+		if item.TransferState == transferstate.Accepted || item.Status == postitemstatus.Sold {
+			nextStatus = wardrobestatus.Sold
+			break
+		}
+		if item.Status == postitemstatus.Available || item.TransferState == transferstate.Pending {
+			nextStatus = wardrobestatus.Selling
+		}
+	}
+
+	return wardrobeCtr.UpdateItemStatus(ctx, itemID, nextStatus)
+}
+
+func UniqueItemIDs(items []*entities.PostItem) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(items))
+	result := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if _, ok := seen[item.ItemID]; ok {
+			continue
+		}
+		seen[item.ItemID] = struct{}{}
+		result = append(result, item.ItemID)
+	}
+	return result
 }
