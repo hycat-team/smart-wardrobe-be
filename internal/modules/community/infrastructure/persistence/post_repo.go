@@ -48,11 +48,22 @@ func (r *PostRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.P
 }
 
 func (r *PostRepository) GetByPublicID(ctx context.Context, publicID string) (*entities.Post, error) {
+	return r.getByPublicID(ctx, publicID, false)
+}
+
+func (r *PostRepository) GetByPublicIDIncludingDeleted(ctx context.Context, publicID string) (*entities.Post, error) {
+	return r.getByPublicID(ctx, publicID, true)
+}
+
+func (r *PostRepository) getByPublicID(ctx context.Context, publicID string, includeDeleted bool) (*entities.Post, error) {
 	var post entities.Post
-	err := r.GetQueryWithPreload(ctx).
+	query := r.GetQueryWithPreload(ctx).
 		Joins("JOIN users ON users.id = posts.user_id").
-		Where("posts.public_id = ? AND posts.is_deleted = ? AND users.is_deleted = ?", publicID, false, false).
-		First(&post).Error
+		Where("posts.public_id = ? AND users.is_deleted = ?", publicID, false)
+	if !includeDeleted {
+		query = query.Where("posts.is_deleted = ?", false)
+	}
+	err := query.First(&post).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

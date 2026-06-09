@@ -10,21 +10,23 @@ import (
 )
 
 type WardrobeRouter struct {
-	wardrobeHandler *wardrobe_handler.WardrobeHandler
-	authMiddleware  *middleware.AuthMiddleware
+	itemHandler    *wardrobe_handler.WardrobeItemHandler
+	aiHandler      *wardrobe_handler.WardrobeAIHandler
+	authMiddleware *middleware.AuthMiddleware
 }
 
-func NewRouter(h *wardrobe_handler.WardrobeHandler, m *middleware.AuthMiddleware) *WardrobeRouter {
+func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *wardrobe_handler.WardrobeAIHandler, m *middleware.AuthMiddleware) *WardrobeRouter {
 	return &WardrobeRouter{
-		wardrobeHandler: h,
-		authMiddleware:  m,
+		itemHandler:    itemHandler,
+		aiHandler:      aiHandler,
+		authMiddleware: m,
 	}
 }
 
 func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	publicApi := group.Group("/wardrobe-items")
 	{
-		publicApi.GET("/search", shared_pres.WrapHandler(r.wardrobeHandler.SearchWardrobeItems))
+		publicApi.GET("/search", shared_pres.WrapHandler(r.itemHandler.SearchWardrobeItems))
 	}
 
 	privateApi := group.Group("")
@@ -32,26 +34,26 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 
 	wardrobeApi := privateApi.Group("/wardrobe-items")
 	{
-		wardrobeApi.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeHandler.GetUploadSignature))
-		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItemByID))
-		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.wardrobeHandler.CloneWardrobeItem))
-		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.wardrobeHandler.InitClosetFromCatalog))
-		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeHandler.BatchUploadWardrobeItems))
-		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.wardrobeHandler.ManualClassify))
+		wardrobeApi.GET("/upload-signature", shared_pres.WrapHandler(r.itemHandler.GetUploadSignature))
+		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItemByID))
+		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.itemHandler.CloneWardrobeItem))
+		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.itemHandler.InitClosetFromCatalog))
+		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.itemHandler.BatchUploadWardrobeItems))
+		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.itemHandler.ManualClassify))
 	}
 
 	aiApi := privateApi.Group("/ai")
 	{
-		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.wardrobeHandler.RecommendOutfit))
-		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.wardrobeHandler.CreateChatSession))
-		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.wardrobeHandler.GetChatSessions))
-		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.wardrobeHandler.GetChatMessages))
-		aiApi.PATCH("/chat/sessions/:contextID/archive", shared_pres.WrapHandler(r.wardrobeHandler.ArchiveChatSession))
-		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.wardrobeHandler.StreamChatMessage))
+		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.aiHandler.RecommendOutfit))
+		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.CreateChatSession))
+		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.GetChatSessions))
+		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.aiHandler.GetChatMessages))
+		aiApi.PATCH("/chat/sessions/:contextID/archive", shared_pres.WrapHandler(r.aiHandler.ArchiveChatSession))
+		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.aiHandler.StreamChatMessage))
 	}
 
 	meApi := privateApi.Group("/me/wardrobe-items")
 	{
-		meApi.GET("", shared_pres.WrapHandler(r.wardrobeHandler.GetWardrobeItems))
+		meApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItems))
 	}
 }

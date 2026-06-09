@@ -26,13 +26,21 @@ const (
 	msgWardrobeDeleteCatalogItemSuccess     = "Xóa trang phục mẫu thành công"
 )
 
-type WardrobeHandler struct {
-	wardrobeUseCase usecase_interfaces.IWardrobeUseCase
+type WardrobeItemHandler struct {
+	itemUseCase    usecase_interfaces.IWardrobeItemUseCase
+	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase
+	workerUseCase  usecase_interfaces.IWardrobeWorkerUseCase
 }
 
-func NewWardrobeHandler(uc usecase_interfaces.IWardrobeUseCase) *WardrobeHandler {
-	return &WardrobeHandler{
-		wardrobeUseCase: uc,
+func NewWardrobeItemHandler(
+	itemUseCase usecase_interfaces.IWardrobeItemUseCase,
+	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase,
+	workerUseCase usecase_interfaces.IWardrobeWorkerUseCase,
+) *WardrobeItemHandler {
+	return &WardrobeItemHandler{
+		itemUseCase:    itemUseCase,
+		catalogUseCase: catalogUseCase,
+		workerUseCase:  workerUseCase,
 	}
 }
 
@@ -43,8 +51,8 @@ func NewWardrobeHandler(uc usecase_interfaces.IWardrobeUseCase) *WardrobeHandler
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Chữ ký và thông tin upload"
 // @Router /api/v1/wardrobe-items/upload-signature [get]
-func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
-	signatureRes, err := h.wardrobeUseCase.GetUploadSignature(c.Request.Context())
+func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
+	signatureRes, err := h.itemUseCase.GetUploadSignature(c.Request.Context())
 	if err != nil {
 		return err
 	}
@@ -61,7 +69,7 @@ func (h *WardrobeHandler) GetUploadSignature(c *gin.Context) error {
 // @Param category_slug query string false "Slug danh mục cần lọc"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục"
 // @Router /api/v1/me/wardrobe-items [get]
-func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
+func (h *WardrobeItemHandler) GetWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -72,7 +80,7 @@ func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.GetWardrobeItems(c.Request.Context(), userID, query)
+	response, err := h.itemUseCase.GetWardrobeItems(c.Request.Context(), userID, query)
 	if err != nil {
 		return err
 	}
@@ -89,19 +97,18 @@ func (h *WardrobeHandler) GetWardrobeItems(c *gin.Context) error {
 // @Param id path string true "ID trang phục"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục"
 // @Router /api/v1/wardrobe-items/{id} [get]
-func (h *WardrobeHandler) GetWardrobeItemByID(c *gin.Context) error {
+func (h *WardrobeItemHandler) GetWardrobeItemByID(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	idStr := c.Param("id")
-	itemID, err := uuid.Parse(idStr)
+	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.GetWardrobeItemByID(c.Request.Context(), userID, itemID)
+	response, err := h.itemUseCase.GetWardrobeItemByID(c.Request.Context(), userID, itemID)
 	if err != nil {
 		return err
 	}
@@ -120,14 +127,13 @@ func (h *WardrobeHandler) GetWardrobeItemByID(c *gin.Context) error {
 // @Param body body dto.CloneWardrobeItemReq true "Số lượng nhân bản"
 // @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục được nhân bản"
 // @Router /api/v1/wardrobe-items/{id}/clone [post]
-func (h *WardrobeHandler) CloneWardrobeItem(c *gin.Context) error {
+func (h *WardrobeItemHandler) CloneWardrobeItem(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	idStr := c.Param("id")
-	itemID, err := uuid.Parse(idStr)
+	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -137,7 +143,7 @@ func (h *WardrobeHandler) CloneWardrobeItem(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.CloneWardrobeItem(c.Request.Context(), userID, itemID, input.Quantity)
+	response, err := h.itemUseCase.CloneWardrobeItem(c.Request.Context(), userID, itemID, input.Quantity)
 	if err != nil {
 		return err
 	}
@@ -155,7 +161,7 @@ func (h *WardrobeHandler) CloneWardrobeItem(c *gin.Context) error {
 // @Param body body dto.InitClosetFromCatalogReq true "Danh sách ID trang phục mẫu"
 // @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục cá nhân được tạo"
 // @Router /api/v1/wardrobe-items/catalog-init [post]
-func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
+func (h *WardrobeItemHandler) InitClosetFromCatalog(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -166,7 +172,7 @@ func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.InitClosetFromCatalog(c.Request.Context(), userID, input.CatalogItemIDs)
+	response, err := h.catalogUseCase.InitClosetFromCatalog(c.Request.Context(), userID, input.CatalogItemIDs)
 	if err != nil {
 		return err
 	}
@@ -184,7 +190,7 @@ func (h *WardrobeHandler) InitClosetFromCatalog(c *gin.Context) error {
 // @Param body body dto.BatchUploadWardrobeItemsReq true "Danh sách ảnh trang phục cắt"
 // @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm"
 // @Router /api/v1/wardrobe-items/batch-upload [post]
-func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
+func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -199,7 +205,7 @@ func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, roleSlug, input)
+	response, err := h.workerUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, roleSlug, input)
 	if err != nil {
 		return err
 	}
@@ -217,13 +223,13 @@ func (h *WardrobeHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Param category_slug query string false "Slug danh mục cần lọc"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.SearchWardrobeItemRes} "Danh sách trang phục tìm thấy"
 // @Router /api/v1/wardrobe-items/search [get]
-func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
+func (h *WardrobeItemHandler) SearchWardrobeItems(c *gin.Context) error {
 	var query dto.SearchWardrobeItemsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.SearchWardrobeItems(c.Request.Context(), query)
+	response, err := h.itemUseCase.SearchWardrobeItems(c.Request.Context(), query)
 	if err != nil {
 		return err
 	}
@@ -242,14 +248,13 @@ func (h *WardrobeHandler) SearchWardrobeItems(c *gin.Context) error {
 // @Param body body dto.ManualClassifyReq true "Thông tin phân loại thủ công"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục sau khi cập nhật"
 // @Router /api/v1/wardrobe-items/{id}/manual-classify [put]
-func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
+func (h *WardrobeItemHandler) ManualClassify(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	idStr := c.Param("id")
-	itemID, err := uuid.Parse(idStr)
+	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -259,7 +264,7 @@ func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.ManualClassify(c.Request.Context(), userID, itemID, input)
+	response, err := h.itemUseCase.ManualClassify(c.Request.Context(), userID, itemID, input)
 	if err != nil {
 		return err
 	}
@@ -277,13 +282,13 @@ func (h *WardrobeHandler) ManualClassify(c *gin.Context) error {
 // @Param category_slug query string false "Slug danh mục"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục mẫu"
 // @Router /api/v1/admin/wardrobe-items [get]
-func (h *WardrobeHandler) GetCatalogItemsAdmin(c *gin.Context) error {
+func (h *WardrobeItemHandler) GetCatalogItemsAdmin(c *gin.Context) error {
 	var query dto.GetSystemCatalogItemsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.GetSystemCatalogItems(c.Request.Context(), query)
+	response, err := h.catalogUseCase.GetSystemCatalogItems(c.Request.Context(), query)
 	if err != nil {
 		return err
 	}
@@ -302,9 +307,8 @@ func (h *WardrobeHandler) GetCatalogItemsAdmin(c *gin.Context) error {
 // @Param body body dto.UpdateSystemCatalogItemReq true "Thông tin cập nhật"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Thông tin trang phục mẫu sau cập nhật"
 // @Router /api/v1/admin/wardrobe-items/{id} [put]
-func (h *WardrobeHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
-	idStr := c.Param("id")
-	itemID, err := uuid.Parse(idStr)
+func (h *WardrobeItemHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
+	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -314,7 +318,7 @@ func (h *WardrobeHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.UpdateSystemCatalogItem(c.Request.Context(), itemID, input)
+	response, err := h.catalogUseCase.UpdateSystemCatalogItem(c.Request.Context(), itemID, input)
 	if err != nil {
 		return err
 	}
@@ -331,18 +335,16 @@ func (h *WardrobeHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
 // @Param id path string true "ID trang phục mẫu"
 // @Success 200 {object} shared_pres.APIResponse "Xóa thành công"
 // @Router /api/v1/admin/wardrobe-items/{id} [delete]
-func (h *WardrobeHandler) DeleteCatalogItemAdmin(c *gin.Context) error {
-	idStr := c.Param("id")
-	itemID, err := uuid.Parse(idStr)
+func (h *WardrobeItemHandler) DeleteCatalogItemAdmin(c *gin.Context) error {
+	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return err
 	}
 
-	if err := h.wardrobeUseCase.DeleteSystemCatalogItem(c.Request.Context(), itemID); err != nil {
+	if err := h.catalogUseCase.DeleteSystemCatalogItem(c.Request.Context(), itemID); err != nil {
 		return err
 	}
 
 	shared_pres.Success(c, msgWardrobeDeleteCatalogItemSuccess, nil)
 	return nil
 }
-

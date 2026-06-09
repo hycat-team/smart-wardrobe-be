@@ -74,6 +74,16 @@ func (r *PostItemRepository) GetByItemID(ctx context.Context, itemID uuid.UUID) 
 	return items, err
 }
 
+func (r *PostItemRepository) GetActiveByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error) {
+	var items []*entities.PostItem
+	err := r.GetQueryWithPreload(ctx).
+		Preload("Post").
+		Joins("JOIN posts ON posts.id = post_items.post_id").
+		Where("post_items.item_id = ? AND posts.is_deleted = ?", itemID, false).
+		Find(&items).Error
+	return items, err
+}
+
 func (r *PostItemRepository) GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).

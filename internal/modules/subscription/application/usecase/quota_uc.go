@@ -14,9 +14,10 @@ import (
 )
 
 type UserQuotaUseCase struct {
-	quotaRepo repositories.IUserDailyQuotaRepository
-	subRepo   repositories.IUserSubscriptionRepository
-	planRepo  repositories.ISubscriptionPlanRepository
+	quotaRepo    repositories.IUserDailyQuotaRepository
+	subRepo      repositories.IUserSubscriptionRepository
+	planRepo     repositories.ISubscriptionPlanRepository
+	stateSupport *subscriptionStateSupport
 }
 
 func NewUserQuotaUseCase(
@@ -25,63 +26,16 @@ func NewUserQuotaUseCase(
 	planRepo repositories.ISubscriptionPlanRepository,
 ) uc_interfaces.IUserQuotaUseCase {
 	return &UserQuotaUseCase{
-		quotaRepo: quotaRepo,
-		subRepo:   subRepo,
-		planRepo:  planRepo,
+		quotaRepo:    quotaRepo,
+		subRepo:      subRepo,
+		planRepo:     planRepo,
+		stateSupport: newSubscriptionStateSupport(subRepo, planRepo, quotaRepo),
 	}
-}
-
-func (uc *UserQuotaUseCase) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
-	sub, err := uc.subRepo.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if sub == nil {
-		defaultPlan, err := uc.planRepo.GetDefaultPlan(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if defaultPlan == nil {
-			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
-		}
-
-		sub = &entities.UserSubscription{
-			UserID:             userID,
-			SubscriptionPlanID: defaultPlan.ID,
-			IsActive:           true,
-			SubscriptionPlan:   defaultPlan,
-		}
-		err = uc.subRepo.Create(ctx, sub)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sub, nil
-}
-
-func (uc *UserQuotaUseCase) getOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
-	quota, err := uc.quotaRepo.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if quota == nil {
-		quota = &entities.UserDailyQuota{
-			UserID:               userID,
-			OutfitRecommendCount: 0,
-			AiUsageCount:         0,
-			LastResetDate:        time.Now(),
-		}
-		err = uc.quotaRepo.Create(ctx, quota)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return quota, nil
 }
 
 // checkAndResetDailyQuota fetches the user's daily quota and lazily performs reset if a new day has arrived
 func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
-	quota, err := uc.getOrCreateUserDailyQuota(ctx, userID)
+	quota, err := uc.stateSupport.getOrCreateUserDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +61,7 @@ func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID 
 
 // GetAndResetDailyQuota evaluates daily resets lazily and retrieves the fresh resource counters
 func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,37 +71,17 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 		return nil, err
 	}
 
-	plan := sub.SubscriptionPlan
-	if plan == nil {
-		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			return nil, subscriptionerrors.ErrUserSubscriptionNotFound
-		}
-		plan = p
+	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	if err != nil {
+		return nil, err
 	}
 
-	return &contract.UserSubscriptionDTO{
-		PlanID:               plan.ID,
-		PlanName:             plan.Name,
-		PlanSlug:             plan.Slug,
-		ExpiresAt:            sub.ExpiresAt,
-		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
-		MaxWardrobeItems:     plan.MaxWardrobeItems,
-		MaxOutfits:           plan.MaxOutfits,
-		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:     plan.AiChatDailyQuota,
-		OutfitRecommendCount: quota.OutfitRecommendCount,
-		AiUsageCount:         quota.AiUsageCount,
-		LastResetDate:        quota.LastResetDate,
-	}, nil
+	return buildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // UpdateOutfitQuota alters daily recommended outfit generations count
 func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -157,16 +91,9 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 		return err
 	}
 
-	plan := sub.SubscriptionPlan
-	if plan == nil {
-		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
-		if err != nil {
-			return err
-		}
-		if p == nil {
-			return subscriptionerrors.ErrUserSubscriptionNotFound
-		}
-		plan = p
+	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	if err != nil {
+		return err
 	}
 
 	newCount := quota.OutfitRecommendCount + count
@@ -180,7 +107,7 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 
 // UpdateAiChatQuota alters daily AI chatbot usage count
 func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.UUID, count int) error {
-	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -190,16 +117,9 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 		return err
 	}
 
-	plan := sub.SubscriptionPlan
-	if plan == nil {
-		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
-		if err != nil {
-			return err
-		}
-		if p == nil {
-			return subscriptionerrors.ErrUserSubscriptionNotFound
-		}
-		plan = p
+	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	if err != nil {
+		return err
 	}
 
 	newCount := quota.AiUsageCount + count
@@ -210,4 +130,3 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 	quota.AiUsageCount = newCount
 	return uc.quotaRepo.Update(ctx, quota)
 }
-

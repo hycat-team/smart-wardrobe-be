@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
@@ -21,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeWorkerUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
 		return nil, wardrobeerrors.ErrUploadImagesEmpty
 	}
@@ -43,7 +42,6 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 		}
 	}
 
-	// Quick create wardrobe items in DB with Processing status
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
 	for i, itemReq := range input.Items {
 		newItems[i] = &entities.WardrobeItem{
@@ -51,17 +49,15 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 			CategoryID:    itemReq.CategoryID,
 			ImageUrl:      itemReq.ImageUrl,
 			ImagePublicID: itemReq.ImagePublicID,
-			Status:        wardrobestatus.Processing, // Background AI processing state
+			Status:        wardrobestatus.Processing,
 			ItemType:      itemType,
 		}
 	}
 
-	err := uc.wardrobeRepo.BulkCreate(ctx, newItems)
-	if err != nil {
+	if err := uc.wardrobeRepo.BulkCreate(ctx, newItems); err != nil {
 		return nil, err
 	}
 
-	// Publish event via event publisher (Clean Architecture)
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i, item := range newItems {
 		job := dto.WardrobeBatchUploadJobDTO{
@@ -72,7 +68,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 			ImagePublicID: item.ImagePublicID,
 		}
 
-		err = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
+		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
 		if err != nil {
 			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
 			item.Status = wardrobestatus.Failed
@@ -86,44 +82,7 @@ func (uc *WardrobeUseCase) BatchUploadWardrobeItems(ctx context.Context, userID 
 	return resList, nil
 }
 
-func isTransientError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errStr := strings.ToLower(err.Error())
-
-	if strings.Contains(errStr, "safety") ||
-		strings.Contains(errStr, "blocked") ||
-		strings.Contains(errStr, "invalid image") ||
-		strings.Contains(errStr, "unsupported media type") ||
-		strings.Contains(errStr, "corrupted") ||
-		strings.Contains(errStr, "no fashion item") ||
-		strings.Contains(errStr, "not found") {
-		return false
-	}
-
-	if strings.Contains(errStr, "timeout") ||
-		strings.Contains(errStr, "deadline exceeded") ||
-		strings.Contains(errStr, "429") ||
-		strings.Contains(errStr, "too many requests") ||
-		strings.Contains(errStr, "502") ||
-		strings.Contains(errStr, "503") ||
-		strings.Contains(errStr, "504") ||
-		strings.Contains(errStr, "connection refused") ||
-		strings.Contains(errStr, "eof") {
-		return true
-	}
-
-	if strings.Contains(errStr, "http 400") ||
-		strings.Contains(errStr, "http 401") ||
-		strings.Contains(errStr, "http 403") {
-		return false
-	}
-
-	return true
-}
-
-func (uc *WardrobeUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error) {
+func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error) {
 	if isTransientError(err) && job.RetryCount < 3 {
 		job.RetryCount++
 
@@ -159,7 +118,7 @@ func (uc *WardrobeUseCase) handleJobFailure(ctx context.Context, job dto.Wardrob
 	uc.markJobFailed(ctx, job.ItemID)
 }
 
-func (uc *WardrobeUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error {
+func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error {
 	categories, err := uc.categoryRepo.GetAll(ctx)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, fmt.Errorf("category lookup failed: %w", err))
@@ -246,8 +205,7 @@ func (uc *WardrobeUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, 
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
 
-	err = uc.wardrobeRepo.Update(ctx, item)
-	if err != nil {
+	if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
 	}
@@ -262,7 +220,7 @@ func (uc *WardrobeUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, 
 	return nil
 }
 
-func (uc *WardrobeUseCase) markJobFailed(ctx context.Context, itemID uuid.UUID) {
+func (uc *WardrobeWorkerUseCase) markJobFailed(ctx context.Context, itemID uuid.UUID) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
 	if err == nil && item != nil {
 		item.Status = wardrobestatus.Failed

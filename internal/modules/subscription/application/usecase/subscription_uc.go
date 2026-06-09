@@ -28,6 +28,7 @@ type SubscriptionUseCase struct {
 	quotaRepo     repositories.IUserDailyQuotaRepository
 	cfg           *config.Config
 	log           logger.Interface
+	stateSupport  *subscriptionStateSupport
 
 	planContract  contract.ISubscriptionPlanContract
 	quotaContract contract.IUserQuotaContract
@@ -54,6 +55,7 @@ func NewSubscriptionUseCase(
 		quotaRepo:     quotaRepo,
 		cfg:           cfg,
 		log:           log,
+		stateSupport:  newSubscriptionStateSupport(userSubRepo, planRepo, quotaRepo),
 		planContract:  planContract,
 		quotaContract: quotaContract,
 	}
@@ -116,74 +118,37 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 
 // GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
 func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	quota, err := uc.getOrCreateUserDailyQuota(ctx, userID)
+	quota, err := uc.stateSupport.getOrCreateUserDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	plan := sub.SubscriptionPlan
-	if plan == nil {
-		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
-		}
-		plan = p
+	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	if err != nil {
+		return nil, err
 	}
 
-	return &contract.UserSubscriptionDTO{
-		PlanID:               plan.ID,
-		PlanName:             plan.Name,
-		PlanSlug:             plan.Slug,
-		ExpiresAt:            sub.ExpiresAt,
-		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
-		MaxWardrobeItems:     plan.MaxWardrobeItems,
-		MaxOutfits:           plan.MaxOutfits,
-		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:     plan.AiChatDailyQuota,
-		OutfitRecommendCount: quota.OutfitRecommendCount,
-		AiUsageCount:         quota.AiUsageCount,
-		LastResetDate:        quota.LastResetDate,
-	}, nil
+	return buildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
-	sub, err := uc.getOrCreateUserSubscription(ctx, userID)
+	sub, err := uc.stateSupport.getOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	plan := sub.SubscriptionPlan
-	if plan == nil {
-		p, err := uc.planRepo.GetByID(ctx, sub.SubscriptionPlanID)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
-		}
-		plan = p
+	plan, err := uc.stateSupport.loadPlanForSubscription(ctx, sub)
+	if err != nil {
+		return nil, err
 	}
 
-	return &contract.UserSubscriptionOverviewDTO{
-		PlanID:             plan.ID,
-		PlanName:           plan.Name,
-		PlanSlug:           plan.Slug,
-		ExpiresAt:          sub.ExpiresAt,
-		IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
-		MaxWardrobeItems:   plan.MaxWardrobeItems,
-		MaxOutfits:         plan.MaxOutfits,
-		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:   plan.AiChatDailyQuota,
-	}, nil
+	return buildUserSubscriptionOverviewDTO(sub, plan), nil
 }
 
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
@@ -200,7 +165,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 	// Keep the query pattern batch-safe even if a repository change accidentally drops
 	// the SubscriptionPlan preload in the future. We resolve every missing plan in one
 	// batched lookup instead of issuing one query per subscription row.
-	planByID, err := uc.resolveSubscriptionPlans(ctx, subs)
+	planByID, err := uc.stateSupport.resolveSubscriptionPlans(ctx, subs)
 	if err != nil {
 		return nil, err
 	}
@@ -216,17 +181,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
 		}
 
-		result[sub.UserID] = &contract.UserSubscriptionOverviewDTO{
-			PlanID:             plan.ID,
-			PlanName:           plan.Name,
-			PlanSlug:           plan.Slug,
-			ExpiresAt:          sub.ExpiresAt,
-			IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
-			MaxWardrobeItems:   plan.MaxWardrobeItems,
-			MaxOutfits:         plan.MaxOutfits,
-			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-			AiChatDailyQuota:   plan.AiChatDailyQuota,
-		}
+		result[sub.UserID] = buildUserSubscriptionOverviewDTO(sub, plan)
 		foundUserIDs[sub.UserID] = struct{}{}
 	}
 
@@ -238,11 +193,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 	}
 
 	if len(missingUserIDs) > 0 {
-		defaultPlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defaultPlan, err := uc.planRepo.GetByID(ctx, defaultPlanID)
+		defaultPlan, err := uc.planRepo.GetDefaultPlan(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -254,7 +205,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 		for _, userID := range missingUserIDs {
 			newSub := &entities.UserSubscription{
 				UserID:             userID,
-				SubscriptionPlanID: defaultPlanID,
+				SubscriptionPlanID: defaultPlan.ID,
 				SubscriptionPlan:   defaultPlan,
 				IsActive:           true,
 				IsAutoRenewEnabled: false,
@@ -267,111 +218,9 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 		}
 
 		for _, sub := range newSubs {
-			result[sub.UserID] = &contract.UserSubscriptionOverviewDTO{
-				PlanID:             defaultPlan.ID,
-				PlanName:           defaultPlan.Name,
-				PlanSlug:           defaultPlan.Slug,
-				ExpiresAt:          sub.ExpiresAt,
-				IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
-				MaxWardrobeItems:   defaultPlan.MaxWardrobeItems,
-				MaxOutfits:         defaultPlan.MaxOutfits,
-				AiOutfitDailyQuota: defaultPlan.AiOutfitDailyQuota,
-				AiChatDailyQuota:   defaultPlan.AiChatDailyQuota,
-			}
+			result[sub.UserID] = buildUserSubscriptionOverviewDTO(sub, defaultPlan)
 		}
 	}
 
 	return result, nil
-}
-
-// === Helper ===
-
-func (uc *SubscriptionUseCase) getOrCreateUserSubscription(ctx context.Context, userID uuid.UUID) (*entities.UserSubscription, error) {
-	sub, err := uc.userSubRepo.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if sub == nil {
-		defaultPlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defaultPlan, err := uc.planRepo.GetByID(ctx, defaultPlanID)
-		if err != nil {
-			return nil, err
-		}
-		if defaultPlan == nil {
-			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
-		}
-
-		sub = &entities.UserSubscription{
-			UserID:             userID,
-			SubscriptionPlanID: defaultPlanID,
-			IsActive:           true,
-			SubscriptionPlan:   defaultPlan,
-		}
-		err = uc.userSubRepo.Create(ctx, sub)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sub, nil
-}
-
-func (uc *SubscriptionUseCase) resolveSubscriptionPlans(ctx context.Context, subs []*entities.UserSubscription) (map[uuid.UUID]*entities.SubscriptionPlan, error) {
-	planByID := make(map[uuid.UUID]*entities.SubscriptionPlan, len(subs))
-	missingPlanIDs := make([]uuid.UUID, 0)
-	seenMissingPlanIDs := make(map[uuid.UUID]struct{})
-
-	for _, sub := range subs {
-		if sub == nil {
-			continue
-		}
-		if sub.SubscriptionPlan != nil {
-			planByID[sub.SubscriptionPlanID] = sub.SubscriptionPlan
-			continue
-		}
-		if _, exists := seenMissingPlanIDs[sub.SubscriptionPlanID]; exists {
-			continue
-		}
-		seenMissingPlanIDs[sub.SubscriptionPlanID] = struct{}{}
-		missingPlanIDs = append(missingPlanIDs, sub.SubscriptionPlanID)
-	}
-
-	if len(missingPlanIDs) == 0 {
-		return planByID, nil
-	}
-
-	plans, err := uc.planRepo.GetByIDs(ctx, missingPlanIDs)
-	if err != nil {
-		return nil, err
-	}
-	for _, plan := range plans {
-		if plan == nil {
-			continue
-		}
-		planByID[plan.ID] = plan
-	}
-
-	return planByID, nil
-}
-
-func (uc *SubscriptionUseCase) getOrCreateUserDailyQuota(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
-	quota, err := uc.quotaRepo.GetByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if quota == nil {
-		quota = &entities.UserDailyQuota{
-			UserID:               userID,
-			OutfitRecommendCount: 0,
-			AiUsageCount:         0,
-			LastResetDate:        time.Now(),
-		}
-		err = uc.quotaRepo.Create(ctx, quota)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return quota, nil
 }

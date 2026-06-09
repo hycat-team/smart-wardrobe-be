@@ -28,7 +28,7 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 	for _, item := range input.Items {
 		itemIDs = append(itemIDs, item.ItemID)
 	}
-	if err := uc.writer.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
+	if err := uc.publishing.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,7 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 	}
 
 	if normalizedPostType == posttype.Sale {
-		activeTransfers, err := uc.writer.postItemRepo.GetActiveTransfersByItemIDs(ctx, itemIDs)
+		activeTransfers, err := uc.publishing.postItemRepo.GetActiveTransfersByItemIDs(ctx, itemIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -62,10 +62,10 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 	}
 
 	createPost := func(txCtx context.Context) error {
-		if err := uc.writer.postRepo.Create(txCtx, post); err != nil {
+		if err := uc.publishing.postRepo.Create(txCtx, post); err != nil {
 			return err
 		}
-		if err := uc.writer.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
+		if err := uc.publishing.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
 			return err
 		}
 
@@ -80,7 +80,7 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 			})
 		}
 		for _, item := range postItems {
-			if err := uc.writer.postItemRepo.Create(txCtx, item); err != nil {
+			if err := uc.publishing.postItemRepo.Create(txCtx, item); err != nil {
 				return err
 			}
 		}
@@ -96,14 +96,14 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 			})
 		}
 		if len(mediaItems) > 0 {
-			if err := uc.writer.postMediaRepo.BulkCreate(txCtx, mediaItems); err != nil {
+			if err := uc.publishing.postMediaRepo.BulkCreate(txCtx, mediaItems); err != nil {
 				return err
 			}
 		}
 
 		if normalizedPostType == posttype.Sale {
 			for _, item := range resolvedItems {
-				if err := uc.writer.wardrobeCtr.UpdateItemStatus(txCtx, item.ItemID, wardrobestatus.Selling); err != nil {
+				if err := uc.publishing.wardrobeCtr.UpdateItemStatus(txCtx, item.ItemID, wardrobestatus.Selling); err != nil {
 					return err
 				}
 			}
@@ -112,7 +112,7 @@ func (uc *UserPostUseCase) CreatePost(ctx context.Context, userID uuid.UUID, inp
 		return uc.syncPostTotalPrice(txCtx, post.ID)
 	}
 
-	if err := uc.writer.uow.Execute(ctx, createPost); err != nil {
+	if err := uc.publishing.uow.Execute(ctx, createPost); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +125,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		return nil, err
 	}
 
-	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.publishing.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 	for _, item := range input.Items {
 		itemIDs = append(itemIDs, item.ItemID)
 	}
-	if err := uc.writer.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
+	if err := uc.publishing.wardrobeCtr.VerifyItemsForPost(ctx, userID, itemIDs); err != nil {
 		return nil, err
 	}
 
@@ -150,7 +150,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		return nil, err
 	}
 
-	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
+	currentItems, err := uc.publishing.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		post.Title = input.Title
 		post.Content = input.Content
 		post.ContactInfo = input.ContactInfo
-		if err := uc.writer.postRepo.Update(txCtx, post); err != nil {
+		if err := uc.publishing.postRepo.Update(txCtx, post); err != nil {
 			return err
 		}
 
@@ -176,13 +176,13 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 				existing.Price = item.Price
 				existing.ItemCondition = item.ItemCondition
 				existing.Status = postitemstatus.Available
-				if err := uc.writer.postItemRepo.Update(txCtx, existing); err != nil {
+				if err := uc.publishing.postItemRepo.Update(txCtx, existing); err != nil {
 					return err
 				}
 				continue
 			}
 
-			if err := uc.writer.postItemRepo.Create(txCtx, &entities.PostItem{
+			if err := uc.publishing.postItemRepo.Create(txCtx, &entities.PostItem{
 				PostID:        post.ID,
 				ItemID:        item.ItemID,
 				Price:         item.Price,
@@ -199,12 +199,12 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 				continue
 			}
 			removedWardrobeItems = append(removedWardrobeItems, current.ItemID)
-			if err := uc.writer.postItemRepo.Delete(txCtx, current.ID); err != nil {
+			if err := uc.publishing.postItemRepo.Delete(txCtx, current.ID); err != nil {
 				return err
 			}
 		}
 
-		if err := uc.writer.postMediaRepo.DeleteByPostID(txCtx, post.ID); err != nil {
+		if err := uc.publishing.postMediaRepo.DeleteByPostID(txCtx, post.ID); err != nil {
 			return err
 		}
 		mediaItems := make([]*entities.PostMedia, 0, len(input.Media))
@@ -218,7 +218,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 			})
 		}
 		if len(mediaItems) > 0 {
-			if err := uc.writer.postMediaRepo.BulkCreate(txCtx, mediaItems); err != nil {
+			if err := uc.publishing.postMediaRepo.BulkCreate(txCtx, mediaItems); err != nil {
 				return err
 			}
 		}
@@ -226,12 +226,12 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		if err := uc.syncPostTotalPrice(txCtx, post.ID); err != nil {
 			return err
 		}
-		if err := uc.writer.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
+		if err := uc.publishing.postRepo.MarkHotnessDirty(txCtx, post.ID); err != nil {
 			return err
 		}
 
 		for _, itemID := range removedWardrobeItems {
-			if err := syncWardrobeStatusByItem(txCtx, uc.writer.postItemRepo, uc.writer.wardrobeCtr, itemID); err != nil {
+			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
@@ -239,7 +239,7 @@ func (uc *UserPostUseCase) UpdatePost(ctx context.Context, userID uuid.UUID, pos
 		return nil
 	}
 
-	if err := uc.writer.uow.Execute(ctx, updatePost); err != nil {
+	if err := uc.publishing.uow.Execute(ctx, updatePost); err != nil {
 		return nil, err
 	}
 
@@ -258,7 +258,7 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 		return err
 	}
 
-	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.publishing.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return err
 	}
@@ -266,25 +266,25 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 		return communityerrors.ErrPostNotFound
 	}
 
-	postItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
+	postItems, err := uc.publishing.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return err
 	}
 
 	deletePost := func(txCtx context.Context) error {
-		if err := uc.writer.postRepo.SoftDelete(txCtx, post.ID); err != nil {
+		if err := uc.publishing.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 			return err
 		}
 
 		for _, itemID := range uniqueItemIDs(postItems) {
-			if err := syncWardrobeStatusByItem(txCtx, uc.writer.postItemRepo, uc.writer.wardrobeCtr, itemID); err != nil {
+			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	return uc.writer.uow.Execute(ctx, deletePost)
+	return uc.publishing.uow.Execute(ctx, deletePost)
 }
 
 func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID, postPublicID string, postItemIDs []uuid.UUID) error {
@@ -293,7 +293,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		return err
 	}
 
-	post, err := uc.writer.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.publishing.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		return communityerrors.ErrPostNotFound
 	}
 
-	currentItems, err := uc.writer.postItemRepo.GetByPostID(ctx, post.ID)
+	currentItems, err := uc.publishing.postItemRepo.GetByPostID(ctx, post.ID)
 	if err != nil {
 		return err
 	}
@@ -324,7 +324,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 	}
 
 	removePostItems := func(txCtx context.Context) error {
-		if err := uc.writer.postItemRepo.DeleteByPostAndIDs(txCtx, post.ID, postItemIDs); err != nil {
+		if err := uc.publishing.postItemRepo.DeleteByPostAndIDs(txCtx, post.ID, postItemIDs); err != nil {
 			return err
 		}
 
@@ -333,20 +333,20 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		}
 
 		if remainingCount == 0 {
-			if err := uc.writer.postRepo.SoftDelete(txCtx, post.ID); err != nil {
+			if err := uc.publishing.postRepo.SoftDelete(txCtx, post.ID); err != nil {
 				return err
 			}
 		}
 
 		for _, itemID := range affectedWardrobeItems {
-			if err := syncWardrobeStatusByItem(txCtx, uc.writer.postItemRepo, uc.writer.wardrobeCtr, itemID); err != nil {
+			if err := syncWardrobeStatusByItem(txCtx, uc.publishing.postItemRepo, uc.publishing.wardrobeCtr, itemID); err != nil {
 				return err
 			}
 		}
-		return uc.writer.postRepo.MarkHotnessDirty(txCtx, post.ID)
+		return uc.publishing.postRepo.MarkHotnessDirty(txCtx, post.ID)
 	}
 
-	return uc.writer.uow.Execute(ctx, removePostItems)
+	return uc.publishing.uow.Execute(ctx, removePostItems)
 }
 
 func (uc *UserPostUseCase) validateCreatePostInput(postType posttype.PostType, content string, contactInfo *string, items []community_dto.PostItemInputReq) error {

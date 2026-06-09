@@ -22,7 +22,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type WardrobeUseCase struct {
+type wardrobeUseCaseSupport struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
@@ -36,6 +36,34 @@ type WardrobeUseCase struct {
 	userQuotaCtr    contract.IUserQuotaContract
 	eventPublisher  event.IEventPublisher
 	uow             shared_repos.IUnitOfWork
+}
+
+type WardrobeItemUseCase struct {
+	*wardrobeUseCaseSupport
+}
+
+type WardrobeAIUseCase struct {
+	*wardrobeUseCaseSupport
+}
+
+type WardrobeCatalogUseCase struct {
+	*wardrobeUseCaseSupport
+}
+
+type WardrobeWorkerUseCase struct {
+	*wardrobeUseCaseSupport
+}
+
+type WardrobeContractUseCase struct {
+	*wardrobeUseCaseSupport
+}
+
+type WardrobeUseCase struct {
+	*WardrobeItemUseCase
+	*WardrobeAIUseCase
+	*WardrobeCatalogUseCase
+	*WardrobeWorkerUseCase
+	*WardrobeContractUseCase
 }
 
 func NewWardrobeUseCase(
@@ -53,7 +81,7 @@ func NewWardrobeUseCase(
 	eventPublisher event.IEventPublisher,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeUseCase {
-	return &WardrobeUseCase{
+	support := &wardrobeUseCaseSupport{
 		cfg:             cfg,
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
@@ -68,9 +96,17 @@ func NewWardrobeUseCase(
 		eventPublisher:  eventPublisher,
 		uow:             uow,
 	}
+
+	return &WardrobeUseCase{
+		WardrobeItemUseCase:     &WardrobeItemUseCase{wardrobeUseCaseSupport: support},
+		WardrobeAIUseCase:       &WardrobeAIUseCase{wardrobeUseCaseSupport: support},
+		WardrobeCatalogUseCase:  &WardrobeCatalogUseCase{wardrobeUseCaseSupport: support},
+		WardrobeWorkerUseCase:   &WardrobeWorkerUseCase{wardrobeUseCaseSupport: support},
+		WardrobeContractUseCase: &WardrobeContractUseCase{wardrobeUseCaseSupport: support},
+	}
 }
 
-func (uc *WardrobeUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error) {
+func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error) {
 	folder := uc.cfg.Cloudinary.ItemFolder
 	if folder == "" {
 		folder = "smart_wardrobe/items"
@@ -81,7 +117,7 @@ func (uc *WardrobeUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
 
-func (uc *WardrobeUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -111,7 +147,7 @@ func (uc *WardrobeUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUI
 	return resList, nil
 }
 
-func (uc *WardrobeUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

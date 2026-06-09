@@ -16,7 +16,7 @@ const (
 	maxPersonalizedWindow = 100
 )
 
-type postReadDependencies struct {
+type postFeedDependencies struct {
 	postRepo      repositories.IPostRepository
 	postScoreRepo repositories.IPostScoreRepository
 	postItemRepo  repositories.IPostItemRepository
@@ -26,7 +26,7 @@ type postReadDependencies struct {
 	userRepo      identity_repos.IUserRepository
 }
 
-type postWriteDependencies struct {
+type postPublishingDependencies struct {
 	postRepo      repositories.IPostRepository
 	postItemRepo  repositories.IPostItemRepository
 	postMediaRepo repositories.IPostMediaRepository
@@ -37,8 +37,8 @@ type postWriteDependencies struct {
 type UserPostUseCase struct {
 	cfg          *config.Config
 	logger       logger.Interface
-	reader       postReadDependencies
-	writer       postWriteDependencies
+	feed         postFeedDependencies
+	publishing   postPublishingDependencies
 	mediaService media.IMediaService
 }
 
@@ -59,7 +59,7 @@ func NewUserPostUseCase(
 	return &UserPostUseCase{
 		cfg:    cfg,
 		logger: log,
-		reader: postReadDependencies{
+		feed: postFeedDependencies{
 			postRepo:      postRepo,
 			postScoreRepo: postScoreRepo,
 			postItemRepo:  postItemRepo,
@@ -68,7 +68,7 @@ func NewUserPostUseCase(
 			likeRepo:      likeRepo,
 			userRepo:      userRepo,
 		},
-		writer: postWriteDependencies{
+		publishing: postPublishingDependencies{
 			postRepo:      postRepo,
 			postItemRepo:  postItemRepo,
 			postMediaRepo: postMediaRepo,

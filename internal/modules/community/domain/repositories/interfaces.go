@@ -31,6 +31,7 @@ type IPostRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Post, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Post, error)
 	GetByPublicID(ctx context.Context, publicID string) (*entities.Post, error)
+	GetByPublicIDIncludingDeleted(ctx context.Context, publicID string) (*entities.Post, error)
 	GetDetail(ctx context.Context, postPublicID string) (*entities.Post, []*entities.PostItem, []*entities.PostMedia, error)
 	GetDirtyPostIDs(ctx context.Context, limit int) ([]uuid.UUID, error)
 	GetDecayRefreshPostIDs(ctx context.Context, since time.Time, limit int) ([]uuid.UUID, error)
@@ -67,6 +68,7 @@ type IPostItemRepository interface {
 	GetPendingByBuyerID(ctx context.Context, buyerUserID uuid.UUID) ([]*entities.PostItem, error)
 	GetTransferItemsBySellerID(ctx context.Context, sellerUserID uuid.UUID) ([]*entities.PostItem, error)
 	GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error)
+	GetActiveByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error)
 	GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error)
 	HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error)
 	GetActiveTransfersByItemIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.PostItem, error)
@@ -90,7 +92,10 @@ type ICommentRepository interface {
 	GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.Comment, error)
 	GetTopLevelByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.Comment, error)
 	GetRepliesByParentID(ctx context.Context, postID uuid.UUID, parentCommentID uuid.UUID) ([]*entities.Comment, error)
+	GetRepliesByParentIDIncludingDeleted(ctx context.Context, postID uuid.UUID, parentCommentID uuid.UUID) ([]*entities.Comment, error)
+	GetByIDIncludingDeleted(ctx context.Context, id uuid.UUID) (*entities.Comment, error)
 	GetByIDAndPostID(ctx context.Context, commentID uuid.UUID, postID uuid.UUID) (*entities.Comment, error)
+	GetByIDAndPostIDIncludingDeleted(ctx context.Context, commentID uuid.UUID, postID uuid.UUID) (*entities.Comment, error)
 	SoftDelete(ctx context.Context, commentID uuid.UUID) error
 	SoftDeleteByParentID(ctx context.Context, parentCommentID uuid.UUID) error
 	Restore(ctx context.Context, commentID uuid.UUID) error

@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (uc *WardrobeUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
 	if quantity < 1 || quantity > 5 {
 		return nil, wardrobeerrors.ErrInvalidCloneQuantity
 	}

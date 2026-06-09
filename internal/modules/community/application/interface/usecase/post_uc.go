@@ -9,15 +9,13 @@ import (
 )
 
 type IPostUseCase interface {
-	IPostFeedUseCase
-	IPostWriteUseCase
-	IPostAssetUseCase
+	ICommunityFeedUseCase
+	IPostPublishingUseCase
 }
 
 type IUserPostUseCase interface {
-	IPostFeedUseCase
-	IUserPostWriteUseCase
-	IPostAssetUseCase
+	ICommunityFeedUseCase
+	IUserPostManagementUseCase
 }
 
 type IAdminCommunityModerationUseCase interface {
@@ -31,7 +29,7 @@ type IAdminCommunityModerationUseCase interface {
 	AdminRestoreComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error
 }
 
-type IPostFeedUseCase interface {
+type ICommunityFeedUseCase interface {
 	GetFeed(ctx context.Context, viewerUserID *uuid.UUID, query dto.GetFeedQueryReq) (*dto.GetFeedRes, error)
 	GetPostDetail(ctx context.Context, postPublicID string, viewerUserID *uuid.UUID) (*dto.PostRes, error)
 	GetPostComments(ctx context.Context, postPublicID string) ([]*dto.CommentRes, error)
@@ -39,29 +37,18 @@ type IPostFeedUseCase interface {
 	GetPostLikes(ctx context.Context, postPublicID string) ([]*dto.PostLikeUserRes, error)
 }
 
-type IPostWriteUseCase interface {
+type IPostPublishingUseCase interface {
 	CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error)
 	UpdatePost(ctx context.Context, userID uuid.UUID, postPublicID string, input dto.UpdatePostReq) (*dto.PostRes, error)
 	DeletePost(ctx context.Context, userID uuid.UUID, postPublicID string) error
 	RemovePostItems(ctx context.Context, userID uuid.UUID, postPublicID string, postItemIDs []uuid.UUID) error
-	AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error
-	AdminHidePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
-	AdminDeletePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
+	GetUploadSignature(ctx context.Context) (*dto.UploadSignatureResult, error)
 }
 
-type IUserPostWriteUseCase interface {
+type IUserPostManagementUseCase interface {
 	CreatePost(ctx context.Context, userID uuid.UUID, input dto.CreatePostReq) (*dto.PostRes, error)
 	UpdatePost(ctx context.Context, userID uuid.UUID, postPublicID string, input dto.UpdatePostReq) (*dto.PostRes, error)
 	DeletePost(ctx context.Context, userID uuid.UUID, postPublicID string) error
 	RemovePostItems(ctx context.Context, userID uuid.UUID, postPublicID string, postItemIDs []uuid.UUID) error
-}
-
-type IAdminPostModerationUseCase interface {
-	AdminDeletePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error
-	AdminHidePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
-	AdminDeletePostItem(ctx context.Context, adminUserID uuid.UUID, postItemID uuid.UUID) error
-}
-
-type IPostAssetUseCase interface {
 	GetUploadSignature(ctx context.Context) (*dto.UploadSignatureResult, error)
 }

@@ -340,7 +340,7 @@ func (uc *AdminCommunityModerationUseCase) GetPostItemsForAdmin(ctx context.Cont
 }
 
 func (uc *AdminCommunityModerationUseCase) AdminRestorePost(ctx context.Context, adminUserID uuid.UUID, postPublicID string) error {
-	post, err := uc.postRepo.GetByPublicID(ctx, postPublicID)
+	post, err := uc.postRepo.GetByPublicIDIncludingDeleted(ctx, postPublicID)
 	if err != nil {
 		return err
 	}
@@ -378,7 +378,7 @@ func (uc *AdminCommunityModerationUseCase) AdminRestorePost(ctx context.Context,
 
 func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Context, adminUserID uuid.UUID, commentID uuid.UUID) error {
 	restoreComment := func(txCtx context.Context) error {
-		comment, err := uc.commentRepo.GetByID(txCtx, commentID)
+		comment, err := uc.commentRepo.GetByIDIncludingDeleted(txCtx, commentID)
 		if err != nil {
 			return err
 		}
@@ -397,11 +397,37 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 			return communityerrors.ErrPostNotFound
 		}
 
+		if comment.ParentCommentID != nil {
+			parentComment, err := uc.commentRepo.GetByIDIncludingDeleted(txCtx, *comment.ParentCommentID)
+			if err != nil {
+				return err
+			}
+			if parentComment == nil || parentComment.IsDeleted {
+				return communityerrors.ErrCommentReplyTargetInvalid
+			}
+		}
+
 		if err := uc.commentRepo.Restore(txCtx, commentID); err != nil {
 			return err
 		}
 
 		increment := 1
+		if comment.ParentCommentID == nil {
+			replies, err := uc.commentRepo.GetRepliesByParentIDIncludingDeleted(txCtx, post.ID, commentID)
+			if err != nil {
+				return err
+			}
+			for _, reply := range replies {
+				if reply == nil || !reply.IsDeleted {
+					continue
+				}
+				if err := uc.commentRepo.Restore(txCtx, reply.ID); err != nil {
+					return err
+				}
+				increment++
+			}
+		}
+
 		post.CommentCount += increment
 		if err := uc.postRepo.Update(txCtx, post); err != nil {
 			return err

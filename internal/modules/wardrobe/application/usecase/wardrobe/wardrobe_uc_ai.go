@@ -2,7 +2,6 @@ package wardrobe
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error) {
+func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error) {
 	if err := uc.userQuotaCtr.UpdateOutfitQuota(ctx, userID, 1); err != nil {
 		return nil, err
 	}
@@ -97,7 +96,7 @@ func (uc *WardrobeUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID
 	}, nil
 }
 
-func (uc *WardrobeUseCase) CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error) {
+func (uc *WardrobeAIUseCase) CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error) {
 	sessionTitle := "Cuộc trò chuyện mới"
 	if title != nil && strings.TrimSpace(*title) != "" {
 		sessionTitle = strings.TrimSpace(*title)
@@ -116,7 +115,7 @@ func (uc *WardrobeUseCase) CreateChatSession(ctx context.Context, userID uuid.UU
 	return mapChatSession(entity), nil
 }
 
-func (uc *WardrobeUseCase) GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error) {
+func (uc *WardrobeAIUseCase) GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error) {
 	items, err := uc.contextRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -129,7 +128,7 @@ func (uc *WardrobeUseCase) GetChatSessions(ctx context.Context, userID uuid.UUID
 	return res, nil
 }
 
-func (uc *WardrobeUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error) {
+func (uc *WardrobeAIUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error) {
 	session, err := uc.contextRepo.GetByID(ctx, contextID)
 	if err != nil {
 		return nil, err
@@ -150,7 +149,7 @@ func (uc *WardrobeUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID
 	return res, nil
 }
 
-func (uc *WardrobeUseCase) ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error {
+func (uc *WardrobeAIUseCase) ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error {
 	session, err := uc.contextRepo.GetByID(ctx, contextID)
 	if err != nil {
 		return err
@@ -163,7 +162,7 @@ func (uc *WardrobeUseCase) ArchiveChatSession(ctx context.Context, userID uuid.U
 	return uc.contextRepo.Update(ctx, session)
 }
 
-func (uc *WardrobeUseCase) ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error) {
+func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error) {
 	if err := uc.userQuotaCtr.UpdateAiChatQuota(ctx, userID, 1); err != nil {
 		return nil, nil, err
 	}
@@ -237,7 +236,7 @@ func (uc *WardrobeUseCase) ProcessChatMessage(ctx context.Context, userID uuid.U
 	return mapChatMessage(userMessage), mapChatMessage(aiMessage), nil
 }
 
-func (uc *WardrobeUseCase) compressChatContext(ctx context.Context, session *entities.ConversationalContext) error {
+func (uc *WardrobeAIUseCase) compressChatContext(ctx context.Context, session *entities.ConversationalContext) error {
 	count, err := uc.messageRepo.CountByContextID(ctx, session.ID)
 	if err != nil {
 		return err
@@ -260,7 +259,10 @@ func (uc *WardrobeUseCase) compressChatContext(ctx context.Context, session *ent
 		builder.WriteString("\n")
 	}
 	for _, item := range oldest {
-		fmt.Fprintf(&builder, "%s: %s\n", item.Sender, item.Content)
+		builder.WriteString(string(item.Sender))
+		builder.WriteString(": ")
+		builder.WriteString(item.Content)
+		builder.WriteString("\n")
 	}
 
 	summary, err := uc.aiService.GenerateText(
@@ -288,117 +290,4 @@ func (uc *WardrobeUseCase) compressChatContext(ctx context.Context, session *ent
 	}
 
 	return uc.uow.Execute(ctx, updateSession)
-}
-
-func mapChatSession(item *entities.ConversationalContext) *dto.ChatSessionRes {
-	return &dto.ChatSessionRes{
-		ID:             item.ID,
-		Title:          item.Title,
-		ContextSummary: item.ContextSummary,
-		IsArchived:     item.IsArchived,
-		CreatedAt:      item.CreatedAt,
-		UpdatedAt:      item.UpdatedAt,
-	}
-}
-
-func mapChatMessage(item *entities.Message) *dto.ChatMessageRes {
-	return &dto.ChatMessageRes{
-		ID:        item.ID,
-		Sender:    item.Sender,
-		Content:   item.Content,
-		CreatedAt: item.CreatedAt,
-	}
-}
-
-func buildRecommendationPrompt(groups []*dto.RecommendedItemGroup, input dto.RecommendOutfitReq) string {
-	var builder strings.Builder
-	builder.WriteString("Hãy viết một đoạn giải thích cho bộ phối đồ sau:\n")
-	for _, group := range groups {
-		builder.WriteString("- ")
-		builder.WriteString(group.Role)
-		builder.WriteString(": ")
-		if group.Primary != nil && group.Primary.Category != nil {
-			builder.WriteString(group.Primary.Category.Name)
-		}
-		if group.Primary != nil && group.Primary.Color != "" {
-			builder.WriteString(" / ")
-			builder.WriteString(group.Primary.Color)
-		}
-		builder.WriteString("\n")
-	}
-	if input.Occasion != nil {
-		builder.WriteString("Occasion: ")
-		builder.WriteString(*input.Occasion)
-		builder.WriteString("\n")
-	}
-	if input.StyleTarget != nil {
-		builder.WriteString("Style target: ")
-		builder.WriteString(*input.StyleTarget)
-		builder.WriteString("\n")
-	}
-	if input.Season != nil {
-		builder.WriteString("Season: ")
-		builder.WriteString(*input.Season)
-		builder.WriteString("\n")
-	}
-	if input.Weather != nil {
-		builder.WriteString("Weather: ")
-		builder.WriteString(*input.Weather)
-		builder.WriteString("\n")
-	}
-	if input.Details != nil {
-		builder.WriteString("Chi tiết thêm: ")
-		builder.WriteString(*input.Details)
-		builder.WriteString("\n")
-	}
-	return builder.String()
-}
-
-func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message) string {
-	var builder strings.Builder
-	builder.WriteString("Bạn là stylist AI của Smart Wardrobe. Chỉ được dựa trên trang phục có trong tủ đồ người dùng. Không gợi ý mua sản phẩm ngoài hệ thống.\n")
-	if strings.TrimSpace(summary) != "" {
-		builder.WriteString("Tom tat hoi thoai truoc do:\n")
-		builder.WriteString(summary)
-		builder.WriteString("\n")
-	}
-
-	builder.WriteString("Trang phuc hien co:\n")
-	limit := min(len(wardrobeItems), 20)
-
-	for i := range limit {
-		item := wardrobeItems[i]
-		builder.WriteString("- ")
-		if item.Category != nil {
-			builder.WriteString(item.Category.Name)
-			builder.WriteString(" ")
-		}
-		if item.Color != nil {
-			builder.WriteString(*item.Color)
-			builder.WriteString(" ")
-		}
-		if item.Style != nil {
-			builder.WriteString(*item.Style)
-			builder.WriteString(" ")
-		}
-		builder.WriteString("\n")
-	}
-
-	builder.WriteString("5 tin nhan gan nhat:\n")
-	for _, item := range recent {
-		fmt.Fprintf(&builder, "%s: %s\n", item.Sender, item.Content)
-	}
-
-	return builder.String()
-}
-
-func isOutfitIntent(content string) bool {
-	lowered := strings.ToLower(content)
-	keywords := []string{"phoi do", "outfit", "mac gi", "goi y do", "chon quan ao", "phoi cho toi"}
-	for _, keyword := range keywords {
-		if strings.Contains(lowered, keyword) {
-			return true
-		}
-	}
-	return false
 }

@@ -19,7 +19,7 @@ func syncWardrobeStatusByItem(
 	wardrobeCtr wardrobe_contract.IWardrobeContract,
 	itemID uuid.UUID,
 ) error {
-	postItems, err := postItemRepo.GetByItemID(ctx, itemID)
+	postItems, err := postItemRepo.GetActiveByItemID(ctx, itemID)
 	if err != nil {
 		return err
 	}

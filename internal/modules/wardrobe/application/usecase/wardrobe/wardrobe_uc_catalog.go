@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	if len(catalogItemIDs) == 0 {
 		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty
 	}
@@ -78,7 +78,7 @@ func (uc *WardrobeUseCase) InitClosetFromCatalog(ctx context.Context, userID uui
 	return resList, nil
 }
 
-func (uc *WardrobeUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error) {
 	items, err := uc.wardrobeRepo.GetItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (uc *WardrobeUseCase) GetSystemCatalogItems(ctx context.Context, query dto.
 	return resList, nil
 }
 
-func (uc *WardrobeUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error) {
+func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (uc *WardrobeUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.
 	return res, nil
 }
 
-func (uc *WardrobeUseCase) DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error {
+func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error {
 	item, err := uc.wardrobeRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -155,4 +155,3 @@ func (uc *WardrobeUseCase) DeleteSystemCatalogItem(ctx context.Context, id uuid.
 
 	return uc.wardrobeRepo.Delete(ctx, id)
 }
-

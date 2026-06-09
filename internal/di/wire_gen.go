@@ -71,7 +71,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserQuotaUseCase := usecase.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
 	iSubscriptionUseCase := usecase.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
 	iMediaService := media.NewCloudinaryService(cfg)
-	iUserUseCase := usecase2.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iSubscriptionUseCase, iMediaService, cfg)
+	client, err := caching.NewRedisConnection(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
+	iUserUseCase := usecase2.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
 	iPostRepository := persistence3.NewPostRepository(gormDB)
 	iPostItemRepository := persistence3.NewPostItemRepository(gormDB)
@@ -91,14 +96,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeUseCase := wardrobe.NewWardrobeUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iConversationalContextRepository, iMessageRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, rabbitMQClient, iUnitOfWork)
 	iAdminCommunityModerationUseCase := usecase3.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeUseCase, iUnitOfWork)
 	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
-	wardrobeHandler := handler3.NewWardrobeHandler(iWardrobeUseCase)
-	client, err := caching.NewRedisConnection(cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-	iTokenBlacklistService := security.NewRedisTokenBlacklistService(client)
+	wardrobeItemHandler := handler3.NewWardrobeItemHandler(iWardrobeUseCase, iWardrobeUseCase, iWardrobeUseCase)
+	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iWardrobeUseCase)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
-	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeHandler, authMiddleware)
+	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeItemHandler, authMiddleware)
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iRegisterUseCase := usecase2.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
@@ -116,7 +117,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPaymentWebhookUseCase := usecase.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, l)
 	billingHandler := handler4.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
-	wardrobeRouter := wardrobe2.NewRouter(wardrobeHandler, authMiddleware)
+	wardrobeRouter := wardrobe2.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
 	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
 	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)

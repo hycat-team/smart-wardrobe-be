@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (uc *WardrobeUseCase) CleanupFailedItems(ctx context.Context) error {
+func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
 	limit := 100
 	totalDeleted := 0
 

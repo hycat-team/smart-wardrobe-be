@@ -27,6 +27,7 @@ type UserUseCase struct {
 	userRepo             repositories.IUserRepository
 	passwordHasher       security.IPasswordHasher
 	refreshTokenRepo     repositories.IRefreshTokenRepository
+	tokenBlacklistService security.ITokenBlacklistService
 	subscriptionContract subscription_contract.IUserSubscriptionContract
 	mediaService         media.IMediaService
 	cfg                  *config.Config
@@ -36,6 +37,7 @@ func NewUserUseCase(
 	userRepo repositories.IUserRepository,
 	passwordHasher security.IPasswordHasher,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
+	tokenBlacklistService security.ITokenBlacklistService,
 	subscriptionContract subscription_contract.IUserSubscriptionContract,
 	mediaService media.IMediaService,
 	cfg *config.Config,
@@ -44,6 +46,7 @@ func NewUserUseCase(
 		userRepo:             userRepo,
 		passwordHasher:       passwordHasher,
 		refreshTokenRepo:     refreshTokenRepo,
+		tokenBlacklistService: tokenBlacklistService,
 		subscriptionContract: subscriptionContract,
 		mediaService:         mediaService,
 		cfg:                  cfg,
@@ -300,6 +303,11 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 
 	if input.Status == userstatus.Inactive {
 		if err := uc.refreshTokenRepo.RevokeAllByUserID(ctx, targetUserID); err != nil {
+			return nil, err
+		}
+
+		accessTokenTTL := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
+		if err := uc.tokenBlacklistService.BlacklistUser(ctx, targetUserID, accessTokenTTL); err != nil {
 			return nil, err
 		}
 	}

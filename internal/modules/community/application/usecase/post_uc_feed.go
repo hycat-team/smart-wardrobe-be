@@ -35,7 +35,7 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 		return uc.getPersonalizedHotFeed(ctx, *viewerUserID, feedQuery)
 	}
 
-	feedResult, err := uc.reader.postRepo.GetFeed(ctx, feedQuery)
+	feedResult, err := uc.feed.postRepo.GetFeed(ctx, feedQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 
 	likedMap := make(map[uuid.UUID]bool)
 	if viewerUserID != nil {
-		likedMap, err = uc.reader.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, postIDs)
+		likedMap, err = uc.feed.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, postIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 }
 
 func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*community_dto.GetFeedRes, error) {
-	records, err := uc.reader.postRepo.GetHotFeedCandidates(ctx, feedQuery, maxPersonalizedWindow)
+	records, err := uc.feed.postRepo.GetHotFeedCandidates(ctx, feedQuery, maxPersonalizedWindow)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		}, nil
 	}
 
-	user, err := uc.reader.userRepo.GetByID(ctx, viewerUserID)
+	user, err := uc.feed.userRepo.GetByID(ctx, viewerUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 	for _, item := range scoredItems {
 		likedPostIDs = append(likedPostIDs, item.post.ID)
 	}
-	likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, viewerUserID, likedPostIDs)
+	likedMap, err := uc.feed.likeRepo.GetLikedPostIDs(ctx, viewerUserID, likedPostIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID strin
 		return nil, err
 	}
 
-	post, items, media, err := uc.reader.postRepo.GetDetail(ctx, normalizedPublicID)
+	post, items, media, err := uc.feed.postRepo.GetDetail(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -188,14 +188,14 @@ func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID strin
 		return nil, communityerrors.ErrPostNotFound
 	}
 
-	scoreMap, err := uc.reader.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{post.ID})
+	scoreMap, err := uc.feed.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{post.ID})
 	if err != nil {
 		return nil, err
 	}
 
 	isLiked := false
 	if viewerUserID != nil {
-		likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, []uuid.UUID{post.ID})
+		likedMap, err := uc.feed.likeRepo.GetLikedPostIDs(ctx, *viewerUserID, []uuid.UUID{post.ID})
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +212,7 @@ func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID str
 		return nil, err
 	}
 
-	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.feed.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID str
 		return nil, communityerrors.ErrPostNotFound
 	}
 
-	items, err := uc.reader.commentRepo.GetTopLevelByPostID(ctx, post.ID)
+	items, err := uc.feed.commentRepo.GetTopLevelByPostID(ctx, post.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 		return nil, err
 	}
 
-	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.feed.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 		return nil, communityerrors.ErrPostNotFound
 	}
 
-	parentComment, err := uc.reader.commentRepo.GetByIDAndPostID(ctx, commentID, post.ID)
+	parentComment, err := uc.feed.commentRepo.GetByIDAndPostID(ctx, commentID, post.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 		return nil, communityerrors.ErrCommentReplyTargetInvalid
 	}
 
-	items, err := uc.reader.commentRepo.GetRepliesByParentID(ctx, post.ID, commentID)
+	items, err := uc.feed.commentRepo.GetRepliesByParentID(ctx, post.ID, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string
 		return nil, err
 	}
 
-	post, err := uc.reader.postRepo.GetByPublicID(ctx, normalizedPublicID)
+	post, err := uc.feed.postRepo.GetByPublicID(ctx, normalizedPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string
 		return nil, communityerrors.ErrPostNotFound
 	}
 
-	users, err := uc.reader.likeRepo.GetUsersByPostID(ctx, post.ID)
+	users, err := uc.feed.likeRepo.GetUsersByPostID(ctx, post.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uui
 	for _, item := range items {
 		postIDs = append(postIDs, item.ID)
 	}
-	likedMap, err := uc.reader.likeRepo.GetLikedPostIDs(ctx, viewerUserID, postIDs)
+	likedMap, err := uc.feed.likeRepo.GetLikedPostIDs(ctx, viewerUserID, postIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -416,12 +416,12 @@ func cosineDistance(a, b entities.Vector) float64 {
 func (uc *UserPostUseCase) loadPostDetailsByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID][]*entities.PostItem, map[uuid.UUID][]*entities.PostMedia, error) {
 	postIDs = uniqueUUIDs(postIDs)
 
-	postItems, err := uc.reader.postItemRepo.GetByPostIDs(ctx, postIDs)
+	postItems, err := uc.feed.postItemRepo.GetByPostIDs(ctx, postIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mediaItems, err := uc.reader.postMediaRepo.GetByPostIDs(ctx, postIDs)
+	mediaItems, err := uc.feed.postMediaRepo.GetByPostIDs(ctx, postIDs)
 	if err != nil {
 		return nil, nil, err
 	}

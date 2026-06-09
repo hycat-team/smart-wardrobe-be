@@ -46,7 +46,7 @@ func (uc *UserPostUseCase) generateUniquePostPublicID(ctx context.Context) (stri
 		if err != nil {
 			return "", err
 		}
-		post, err := uc.writer.postRepo.GetByPublicID(ctx, publicID)
+		post, err := uc.publishing.postRepo.GetByPublicID(ctx, publicID)
 		if err != nil {
 			return "", err
 		}
@@ -68,7 +68,7 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 		itemIDs = append(itemIDs, item.ItemID)
 	}
 
-	wardrobeItems, err := uc.writer.wardrobeCtr.GetItemsByIDs(ctx, itemIDs)
+	wardrobeItems, err := uc.publishing.wardrobeCtr.GetItemsByIDs(ctx, itemIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 }
 
 func (uc *UserPostUseCase) syncPostTotalPrice(ctx context.Context, postID uuid.UUID) error {
-	return syncPostTotalPrice(ctx, uc.writer.postRepo, uc.writer.postItemRepo, postID)
+	return syncPostTotalPrice(ctx, uc.publishing.postRepo, uc.publishing.postItemRepo, postID)
 }
 
 func syncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {

@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (uc *WardrobeUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid.UUID, targetUserID uuid.UUID) (*dto.WardrobeItemRes, error) {
+func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid.UUID, targetUserID uuid.UUID) (*dto.WardrobeItemRes, error) {
 	sourceItem, err := uc.wardrobeRepo.GetByID(ctx, sourceItemID)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (uc *WardrobeUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid
 	return mapper.MapToWardrobeItemRes(cloned), nil
 }
 
-func (uc *WardrobeUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
+func (uc *WardrobeContractUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
 	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (uc *WardrobeUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUI
 	return uc.wardrobeRepo.Update(ctx, item)
 }
 
-func (uc *WardrobeUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) error {
+func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) error {
 	if len(itemIDs) == 0 {
 		return nil
 	}
@@ -92,6 +92,6 @@ func (uc *WardrobeUseCase) VerifyItemsForPost(ctx context.Context, userID uuid.U
 	return nil
 }
 
-func (uc *WardrobeUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
+func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
 	return uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
 }

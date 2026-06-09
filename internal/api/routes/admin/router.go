@@ -14,20 +14,20 @@ import (
 type AdminRouter struct {
 	identityAdminHandler  *identity_handler.AdminHandler
 	communityAdminHandler *community_handler.AdminHandler
-	wardrobeHandler       *wardrobe_handler.WardrobeHandler
+	wardrobeItemHandler   *wardrobe_handler.WardrobeItemHandler
 	authMiddleware        *middleware.AuthMiddleware
 }
 
 func NewRouter(
 	identityAdminHandler *identity_handler.AdminHandler,
 	communityAdminHandler *community_handler.AdminHandler,
-	wardrobeHandler *wardrobe_handler.WardrobeHandler,
+	wardrobeItemHandler *wardrobe_handler.WardrobeItemHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) *AdminRouter {
 	return &AdminRouter{
 		identityAdminHandler:  identityAdminHandler,
 		communityAdminHandler: communityAdminHandler,
-		wardrobeHandler:       wardrobeHandler,
+		wardrobeItemHandler:   wardrobeItemHandler,
 		authMiddleware:        authMiddleware,
 	}
 }
@@ -64,10 +64,10 @@ func (r *AdminRouter) Init(group *gin.RouterGroup) {
 
 	adminWardrobe := admin.Group("/wardrobe-items")
 	{
-		adminWardrobe.GET("", shared_pres.WrapHandler(r.wardrobeHandler.GetCatalogItemsAdmin))
-		adminWardrobe.PUT("/:id", shared_pres.WrapHandler(r.wardrobeHandler.UpdateCatalogItemAdmin))
-		adminWardrobe.DELETE("/:id", shared_pres.WrapHandler(r.wardrobeHandler.DeleteCatalogItemAdmin))
-		adminWardrobe.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeHandler.GetUploadSignature))
-		adminWardrobe.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeHandler.BatchUploadWardrobeItems))
+		adminWardrobe.GET("", shared_pres.WrapHandler(r.wardrobeItemHandler.GetCatalogItemsAdmin))
+		adminWardrobe.PUT("/:id", shared_pres.WrapHandler(r.wardrobeItemHandler.UpdateCatalogItemAdmin))
+		adminWardrobe.DELETE("/:id", shared_pres.WrapHandler(r.wardrobeItemHandler.DeleteCatalogItemAdmin))
+		adminWardrobe.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeItemHandler.GetUploadSignature))
+		adminWardrobe.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeItemHandler.BatchUploadWardrobeItems))
 	}
 }

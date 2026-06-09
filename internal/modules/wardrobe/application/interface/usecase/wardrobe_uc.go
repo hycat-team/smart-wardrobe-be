@@ -11,24 +11,39 @@ import (
 
 type IWardrobeUseCase interface {
 	IWardrobeContractUseCase
+	IWardrobeItemUseCase
+	IWardrobeAIUseCase
+	IWardrobeCatalogUseCase
+	IWardrobeWorkerUseCase
+}
+
+type IWardrobeItemUseCase interface {
 	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
 	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) ([]*dto.WardrobeItemRes, error)
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
-	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
-	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
-	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error
 	SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error)
 	ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error)
-	CleanupFailedItems(ctx context.Context) error
+}
+
+type IWardrobeAIUseCase interface {
 	RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error)
 	CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error)
 	GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error)
 	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error)
 	ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
 	ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error)
+}
 
+type IWardrobeCatalogUseCase interface {
+	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
 	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) ([]*dto.WardrobeItemRes, error)
 	UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error)
 	DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error
+}
+
+type IWardrobeWorkerUseCase interface {
+	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
+	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error
+	CleanupFailedItems(ctx context.Context) error
 }

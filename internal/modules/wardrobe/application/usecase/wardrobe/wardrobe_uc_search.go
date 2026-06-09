@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (uc *WardrobeUseCase) SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) ([]*dto.SearchWardrobeItemRes, error) {
 	respBytes, err := uc.searchEngine.SearchItems(ctx, query)
 	if err != nil {
 		uc.logger.Warn("[SearchWardrobeItems] Search failed, fallback to Repository", zap.Error(err))

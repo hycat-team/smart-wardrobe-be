@@ -3,6 +3,8 @@ package security
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ITokenBlacklistService interface {
@@ -10,4 +12,6 @@ type ITokenBlacklistService interface {
 	IsTokenBlacklisted(ctx context.Context, token string) (bool, error)
 	BlacklistTokenWithPrefix(ctx context.Context, token string, prefix string, expiry time.Duration) error
 	IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error)
+	BlacklistUser(ctx context.Context, userID uuid.UUID, expiry time.Duration) error
+	IsUserBlacklisted(ctx context.Context, userID uuid.UUID) (bool, error)
 }

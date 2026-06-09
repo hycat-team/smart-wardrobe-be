@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/streamutils"
@@ -23,6 +24,14 @@ const (
 	msgAiArchiveChatSessionSuccess = "Lưu trữ cuộc trò chuyện thành công"
 )
 
+type WardrobeAIHandler struct {
+	aiUseCase usecase_interfaces.IWardrobeAIUseCase
+}
+
+func NewWardrobeAIHandler(aiUseCase usecase_interfaces.IWardrobeAIUseCase) *WardrobeAIHandler {
+	return &WardrobeAIHandler{aiUseCase: aiUseCase}
+}
+
 // RecommendOutfit recommendations for outfits based on user wardrobe
 // @Summary Gợi ý phối đồ từ tủ đồ
 // @Description Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách
@@ -32,7 +41,7 @@ const (
 // @Param body body dto.RecommendOutfitReq true "Yêu cầu gợi ý phối đồ"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.RecommendedOutfitRes} "Gợi ý phối đồ thành công"
 // @Router /api/v1/ai/outfit-recommendations [post]
-func (h *WardrobeHandler) RecommendOutfit(c *gin.Context) error {
+func (h *WardrobeAIHandler) RecommendOutfit(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -43,7 +52,7 @@ func (h *WardrobeHandler) RecommendOutfit(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.RecommendOutfit(c.Request.Context(), userID, input)
+	response, err := h.aiUseCase.RecommendOutfit(c.Request.Context(), userID, input)
 	if err != nil {
 		return err
 	}
@@ -61,7 +70,7 @@ func (h *WardrobeHandler) RecommendOutfit(c *gin.Context) error {
 // @Param body body dto.CreateChatSessionReq true "Yêu cầu tạo cuộc trò chuyện"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.ChatSessionRes} "Tạo cuộc trò chuyện thành công"
 // @Router /api/v1/ai/chat/sessions [post]
-func (h *WardrobeHandler) CreateChatSession(c *gin.Context) error {
+func (h *WardrobeAIHandler) CreateChatSession(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -72,7 +81,7 @@ func (h *WardrobeHandler) CreateChatSession(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.CreateChatSession(c.Request.Context(), userID, input.Title)
+	response, err := h.aiUseCase.CreateChatSession(c.Request.Context(), userID, input.Title)
 	if err != nil {
 		return err
 	}
@@ -89,13 +98,13 @@ func (h *WardrobeHandler) CreateChatSession(c *gin.Context) error {
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.ChatSessionRes} "Lấy danh sách cuộc trò chuyện thành công"
 // @Router /api/v1/ai/chat/sessions [get]
-func (h *WardrobeHandler) GetChatSessions(c *gin.Context) error {
+func (h *WardrobeAIHandler) GetChatSessions(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	response, err := h.wardrobeUseCase.GetChatSessions(c.Request.Context(), userID)
+	response, err := h.aiUseCase.GetChatSessions(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -113,7 +122,7 @@ func (h *WardrobeHandler) GetChatSessions(c *gin.Context) error {
 // @Param contextID path string true "ID cuộc trò chuyện"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.ChatMessageRes} "Lấy lịch sử tin nhắn thành công"
 // @Router /api/v1/ai/chat/sessions/{contextID}/messages [get]
-func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
+func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -124,7 +133,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
-	response, err := h.wardrobeUseCase.GetChatMessages(c.Request.Context(), userID, contextID)
+	response, err := h.aiUseCase.GetChatMessages(c.Request.Context(), userID, contextID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +151,7 @@ func (h *WardrobeHandler) GetChatMessages(c *gin.Context) error {
 // @Param contextID path string true "ID cuộc trò chuyện"
 // @Success 200 {object} shared_pres.APIResponse "Lưu trữ cuộc trò chuyện thành công"
 // @Router /api/v1/ai/chat/sessions/{contextID}/archive [patch]
-func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
+func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -153,7 +162,7 @@ func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
 		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
-	if err := h.wardrobeUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
+	if err := h.aiUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
 		return err
 	}
 
@@ -171,7 +180,7 @@ func (h *WardrobeHandler) ArchiveChatSession(c *gin.Context) error {
 // @Param body body dto.SendChatMessageReq true "Nội dung tin nhắn gửi đi"
 // @Success 200 {string} string "Stream Server-Sent Events (SSE) phản hồi từ AI"
 // @Router /api/v1/ai/chat/sessions/{contextID}/messages/stream [post]
-func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
+func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -187,7 +196,7 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 		return err
 	}
 
-	_, aiMessage, err := h.wardrobeUseCase.ProcessChatMessage(c.Request.Context(), userID, contextID, input.Content)
+	_, aiMessage, err := h.aiUseCase.ProcessChatMessage(c.Request.Context(), userID, contextID, input.Content)
 	if err != nil {
 		return err
 	}
@@ -213,4 +222,3 @@ func (h *WardrobeHandler) StreamChatMessage(c *gin.Context) error {
 	flusher.Flush()
 	return nil
 }
-

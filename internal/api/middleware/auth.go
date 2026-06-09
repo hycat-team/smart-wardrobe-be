@@ -90,6 +90,21 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 		}
 		return nil
 	}
+	userID, _ := uuid.Parse(claims.Subject)
+
+	isUserBlacklisted, err := m.tokenBlacklistService.IsUserBlacklisted(c.Request.Context(), userID)
+	if err != nil {
+		if required {
+			return apperror.NewInternalError("Không thể xác thực trạng thái đăng nhập của bạn.")
+		}
+		return nil
+	}
+	if isUserBlacklisted {
+		if required {
+			return apperror.ErrUnauthorized()
+		}
+		return nil
+	}
 
 	c.Set(contextutils.CtxUserId, claims.Subject)
 	c.Set(contextutils.CtxEmail, claims.Email)
