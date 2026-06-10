@@ -61,8 +61,8 @@ Hệ thống kiểm soát phân bổ tài nguyên theo gói hội viên đang ho
 
 | Chỉ số ràng buộc nghiệp vụ              | Gói thường      | Gói premium      |
 | --------------------------------------- | --------------- | ---------------- |
-| **Sức chứa tối đa của tủ đồ**           | 50 item         | 150 item         |
-| **Số outfit lưu tối đa**                | 50 outfit       | 150 outfit       |
+| **Sức chứa tối đa của tủ đồ**           | 100 item        | 300 item         |
+| **Số outfit lưu tối đa**                | 100 outfit      | 300 outfit       |
 | **Giới hạn gợi ý phối đồ AI mỗi ngày**  | 3 lượt mỗi ngày | 15 lượt mỗi ngày |
 | **Giới hạn tư vấn chatbot AI mỗi ngày** | 3 lượt mỗi ngày | 20 lượt mỗi ngày |
 
