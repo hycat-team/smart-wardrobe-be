@@ -74,8 +74,10 @@ var (
 
 	// AI & Chat
 	ErrNoSuitableItemsForOutfit = apperror.NewBadRequest("Tủ đồ của bạn chưa có trang phục thích hợp để phối đồ.")
+	ErrMinimumWardrobeItemsRequired = apperror.NewBadRequest("Tủ đồ của bạn cần có ít nhất 5 trang phục để hệ thống có thể tiến hành phối đồ. Hãy đăng tải thêm đồ nhé!")
 	ErrNoOutfitsFound           = apperror.NewBadRequest("Không tìm thấy bộ phối đồ nào phù hợp trong tủ đồ của bạn.")
 	ErrChatNotFound             = apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
+	ErrInvalidOutfitStructure   = apperror.NewInternalError("Cấu trúc bộ phối đồ từ AI không hợp lệ.")
 
 	// Outfits
 	ErrOutfitNotFound = apperror.NewNotFound("Không tìm thấy bộ phối đồ này.")

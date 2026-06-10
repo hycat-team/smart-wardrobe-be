@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -31,6 +32,17 @@ func (r *MessageRepository) GetByContextID(ctx context.Context, contextID uuid.U
 		return nil, err
 	}
 
+	return items, nil
+}
+
+func (r *MessageRepository) GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Message, error) {
+	var items []*entities.Message
+	query := r.GetDB(ctx).Where("context_id = ?", contextID)
+	db := shared_persist.ApplyPagination(query, pagination)
+	err := db.Order("created_at ASC").Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 

@@ -1,4 +1,4 @@
-package wardrobe
+package worker
 
 import "strings"
 

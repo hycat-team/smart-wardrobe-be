@@ -1,4 +1,4 @@
-package wardrobe
+package ai
 
 import (
 	"context"
@@ -7,94 +7,12 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 )
-
-func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error) {
-	if err := uc.userQuotaCtr.UpdateOutfitQuota(ctx, userID, 1); err != nil {
-		return nil, err
-	}
-
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	activeItems := make([]*entities.WardrobeItem, 0, len(items))
-	for _, item := range items {
-		if item.Status == wardrobestatus.InWardrobe {
-			activeItems = append(activeItems, item)
-		}
-	}
-
-	if len(activeItems) == 0 {
-		return nil, wardrobeerrors.ErrNoSuitableItemsForOutfit
-	}
-
-	categoryPicked := map[string]bool{}
-	groups := make([]*dto.RecommendedItemGroup, 0)
-	for _, item := range activeItems {
-		categoryName := "Trang phuc"
-		categoryKey := "uncategorized"
-		if item.Category != nil {
-			categoryName = item.Category.Name
-			categoryKey = item.Category.Slug
-		}
-		if categoryPicked[categoryKey] {
-			continue
-		}
-
-		group := &dto.RecommendedItemGroup{
-			Role:         categoryName,
-			Primary:      mapper.MapToWardrobeItemRes(item),
-			Alternatives: make([]*dto.WardrobeItemRes, 0, 2),
-		}
-		for _, candidate := range activeItems {
-			if candidate.ID == item.ID || candidate.CategoryID == nil || item.CategoryID == nil {
-				continue
-			}
-			if *candidate.CategoryID == *item.CategoryID {
-				group.Alternatives = append(group.Alternatives, mapper.MapToWardrobeItemRes(candidate))
-			}
-			if len(group.Alternatives) == 2 {
-				break
-			}
-		}
-
-		groups = append(groups, group)
-		categoryPicked[categoryKey] = true
-		if len(groups) == 4 {
-			break
-		}
-	}
-
-	if len(groups) == 0 {
-		return nil, wardrobeerrors.ErrNoOutfitsFound
-	}
-
-	systemPrompt := "Bạn là stylist thời trang. Hãy viết giải thích ngắn gọn bằng tiếng Việt cho một bộ phối đồ duy nhất được tạo từ tủ đồ sẵn có của người dùng."
-	userPrompt := buildRecommendationPrompt(groups, input)
-	explanation, err := uc.aiService.GenerateText(ctx, systemPrompt, userPrompt)
-	if err != nil || strings.TrimSpace(explanation) == "" {
-		explanation = "Bộ phối đồ này ưu tiên sự linh hoạt và khả năng thay thế từng món ngay trên giao diện mà không cần gọi lại backend."
-	}
-
-	title := "Gợi ý phối đồ"
-	if input.Occasion != nil && strings.TrimSpace(*input.Occasion) != "" {
-		title = "Gợi ý phối đồ cho " + strings.TrimSpace(*input.Occasion)
-	}
-
-	return &dto.RecommendedOutfitRes{
-		Title:       title,
-		Explanation: explanation,
-		Items:       groups,
-	}, nil
-}
 
 func (uc *WardrobeAIUseCase) CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error) {
 	sessionTitle := "Cuộc trò chuyện mới"
@@ -128,7 +46,7 @@ func (uc *WardrobeAIUseCase) GetChatSessions(ctx context.Context, userID uuid.UU
 	return res, nil
 }
 
-func (uc *WardrobeAIUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error) {
+func (uc *WardrobeAIUseCase) GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, query dto.GetChatMessagesQueryReq) (*shared_dto.PaginationResult[*dto.ChatMessageRes], error) {
 	session, err := uc.contextRepo.GetByID(ctx, contextID)
 	if err != nil {
 		return nil, err
@@ -137,7 +55,26 @@ func (uc *WardrobeAIUseCase) GetChatMessages(ctx context.Context, userID uuid.UU
 		return nil, wardrobeerrors.ErrChatNotFound
 	}
 
-	items, err := uc.messageRepo.GetByContextID(ctx, contextID)
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	totalItems, err := uc.messageRepo.CountByContextID(ctx, contextID)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
+	items, err := uc.messageRepo.GetByContextIDPaginated(ctx, contextID, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +83,11 @@ func (uc *WardrobeAIUseCase) GetChatMessages(ctx context.Context, userID uuid.UU
 	for i, item := range items {
 		res[i] = mapChatMessage(item)
 	}
-	return res, nil
+
+	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{
+		Items:    res,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
+	}, nil
 }
 
 func (uc *WardrobeAIUseCase) ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error {
@@ -267,7 +208,7 @@ func (uc *WardrobeAIUseCase) compressChatContext(ctx context.Context, session *e
 
 	summary, err := uc.aiService.GenerateText(
 		ctx,
-		"Bạn là trợ lý có nhiệm vụ tóm tắt hội thoại thời trang bằng tiếng Việt, ngắn gọn và giữ đủ các thông tin gu mặc quan trọng.",
+		"You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.",
 		builder.String(),
 	)
 	if err != nil || strings.TrimSpace(summary) == "" {

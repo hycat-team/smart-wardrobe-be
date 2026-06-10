@@ -691,7 +691,7 @@ const docTemplate = `{
         },
         "/api/v1/ai/chat/sessions/{contextID}/messages": {
             "get": {
-                "description": "Lấy toàn bộ các tin nhắn trong một phiên trò chuyện cụ thể",
+                "description": "Lấy toàn bộ các tin nhắn trong một phiên trò chuyện cụ thể (phân trang)",
                 "consumes": [
                     "application/json"
                 ],
@@ -709,6 +709,18 @@ const docTemplate = `{
                         "name": "contextID",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -723,10 +735,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatMessageRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_ChatMessageRes"
                                         }
                                     }
                                 }
@@ -779,7 +788,7 @@ const docTemplate = `{
         },
         "/api/v1/ai/outfit-recommendations": {
             "post": {
-                "description": "Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách",
+                "description": "Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách.\n\nCác trường trong Request Body:\n- occasion (Dịp phối đồ, gợi ý: casual, work, date, party, sport,...)\n- styleTarget (Phong cách hướng tới, gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant,...)\n- season (Mùa phối đồ, enum: spring, summer, autumn, winter, all)\n- weather (Thời tiết hiện tại, gợi ý: hot, cold, warm, cool, rainy,...)\n- colorTone (Tông màu phối đồ, gợi ý: light, dark, pastel, earthy, neon,...)\n- details (Ghi chú thêm bằng tay - tự do)",
                 "consumes": [
                     "application/json"
                 ],
@@ -4491,20 +4500,40 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendOutfitReq": {
             "type": "object",
             "properties": {
+                "colorTone": {
+                    "description": "Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)",
+                    "type": "string",
+                    "example": "light"
+                },
                 "details": {
+                    "description": "Ghi chú thêm bằng tay (free text)",
                     "type": "string"
                 },
                 "occasion": {
-                    "type": "string"
+                    "description": "Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)",
+                    "type": "string",
+                    "example": "casual"
                 },
                 "season": {
-                    "type": "string"
+                    "description": "Mùa phối đồ\n@enums spring,summer,autumn,winter,all",
+                    "type": "string",
+                    "enum": [
+                        "spring",
+                        "summer",
+                        "autumn",
+                        "winter",
+                        "all"
+                    ]
                 },
                 "styleTarget": {
-                    "type": "string"
+                    "description": "Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant, hoặc nhập phong cách tùy ý)",
+                    "type": "string",
+                    "example": "minimalist"
                 },
                 "weather": {
-                    "type": "string"
+                    "description": "Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)",
+                    "type": "string",
+                    "example": "warm"
                 }
             }
         },
@@ -4531,11 +4560,17 @@ const docTemplate = `{
                 "explanation": {
                     "type": "string"
                 },
+                "isFallback": {
+                    "type": "boolean"
+                },
                 "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendedItemGroup"
                     }
+                },
+                "remainingQuota": {
+                    "type": "integer"
                 },
                 "title": {
                     "type": "string"
@@ -4801,6 +4836,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_ChatMessageRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatMessageRes"
                     }
                 },
                 "metadata": {

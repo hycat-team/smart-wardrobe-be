@@ -8,7 +8,6 @@ import (
 	"smart-wardrobe-be/config"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/logger"
 
 	"golang.org/x/time/rate"
@@ -42,20 +41,20 @@ func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService
 	}
 }
 
-func (s *AIService) AnalyzeFashionImage(ctx context.Context, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
+func (s *AIService) AnalyzeImage(ctx context.Context, imageUrl string, prompt string) (string, error) {
 	if err := s.limiter.Wait(ctx); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	return executeWithFallback(
 		s.logger,
-		"AnalyzeFashionImage",
+		"AnalyzeImage",
 		s.cfg.AI.VisionFallback,
-		func() (*dto.FashionMetadataResult, error) {
-			return s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl, categories)
+		func() (string, error) {
+			return s.tryVisionProvider(ctx, s.cfg.AI.VisionPrimary, imageUrl, prompt)
 		},
-		func() (*dto.FashionMetadataResult, error) {
-			return s.tryVisionProvider(ctx, s.cfg.AI.VisionFallback, imageUrl, categories)
+		func() (string, error) {
+			return s.tryVisionProvider(ctx, s.cfg.AI.VisionFallback, imageUrl, prompt)
 		},
 	)
 }
@@ -100,15 +99,15 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt string, userP
 	)
 }
 
-func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
+func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIVision(ctx, provider, imageUrl, categories)
+		return s.callOpenAIVision(ctx, provider, imageUrl, prompt)
 	case ProviderGemini:
-		return s.callGoogleVision(ctx, provider, imageUrl, categories)
+		return s.callGoogleVision(ctx, provider, imageUrl, prompt)
 	}
 
-	return nil, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
+	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
 }
 
 func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
@@ -132,4 +131,3 @@ func (s *AIService) tryTextProvider(ctx context.Context, provider config.APIProv
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")
 }
-

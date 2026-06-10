@@ -13,13 +13,13 @@ import (
 
 type WardrobeBatchUploadWorker struct {
 	jobConsumer event.IWardrobeBatchUploadJobConsumer
-	useCase     uc_interfaces.IWardrobeUseCase
+	useCase     uc_interfaces.IWardrobeWorkerUseCase
 	logger      logger.Interface
 }
 
 func NewWardrobeBatchUploadWorker(
 	jobConsumer event.IWardrobeBatchUploadJobConsumer,
-	useCase uc_interfaces.IWardrobeUseCase,
+	useCase uc_interfaces.IWardrobeWorkerUseCase,
 	l logger.Interface,
 ) *WardrobeBatchUploadWorker {
 	w := &WardrobeBatchUploadWorker{

@@ -3,7 +3,6 @@ package wallet
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
@@ -142,19 +141,9 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 		}
 	}
 
-	totalPages := 0
-	if limit > 0 && totalItems > 0 {
-		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.WalletStatementDTO]{
-		Items: dtos,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+		Items:    dtos,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
 	}, nil
 }
 

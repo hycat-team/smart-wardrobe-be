@@ -213,3 +213,40 @@ func (r *WardrobeItemRepository) TouchLastUsedAt(ctx context.Context, ids []uuid
 		Where("id IN ?", ids).
 		Update("last_used_at", usedAt).Error
 }
+
+func (r *WardrobeItemRepository) GetSimilarItemsByVectorAndCategory(
+	ctx context.Context,
+	userID uuid.UUID,
+	categoryID uuid.UUID,
+	vector entities.Vector,
+	limit int,
+) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id = ? AND category_id = ? AND status = ? AND is_deleted = ?", userID, categoryID, wardrobestatus.InWardrobe, false).
+		Order(gorm.Expr("embedding <=> ?", vector)).
+		Limit(limit).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *WardrobeItemRepository) GetRecentlyActiveItemsByCategory(
+	ctx context.Context,
+	userID uuid.UUID,
+	categoryID uuid.UUID,
+	limit int,
+) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id = ? AND category_id = ? AND status = ? AND is_deleted = ?", userID, categoryID, wardrobestatus.InWardrobe, false).
+		Order("last_used_at DESC NULLS LAST, created_at DESC").
+		Limit(limit).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"math"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -362,18 +361,8 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 		page = 1
 	}
 
-	totalPages := 0
-	if limit > 0 && result.TotalCount > 0 {
-		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.UserRes]{
-		Items: resUsers,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: result.TotalCount,
-			TotalPages: totalPages,
-		},
+		Items:    resUsers,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }

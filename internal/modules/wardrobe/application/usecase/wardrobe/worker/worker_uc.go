@@ -1,25 +1,64 @@
-package wardrobe
+package worker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/event"
+	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/colorutils"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+type WardrobeWorkerUseCase struct {
+	logger          logger.Interface
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	categoryRepo    repositories.ICategoryRepository
+	mediaService    media.IMediaService
+	aiService       ai.IAIService
+	userSubContract contract.IUserSubscriptionContract
+	eventPublisher  event.IEventPublisher
+}
+
+func NewWardrobeWorkerUseCase(
+	logger logger.Interface,
+	wardrobeRepo repositories.IWardrobeItemRepository,
+	categoryRepo repositories.ICategoryRepository,
+	mediaService media.IMediaService,
+	aiService ai.IAIService,
+	userSubContract contract.IUserSubscriptionContract,
+	eventPublisher event.IEventPublisher,
+) uc_interfaces.IWardrobeWorkerUseCase {
+	return &WardrobeWorkerUseCase{
+		logger:          logger,
+		wardrobeRepo:    wardrobeRepo,
+		categoryRepo:    categoryRepo,
+		mediaService:    mediaService,
+		aiService:       aiService,
+		userSubContract: userSubContract,
+		eventPublisher:  eventPublisher,
+	}
+}
 
 func (uc *WardrobeWorkerUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
@@ -143,11 +182,29 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 		}
 	}
 
-	aiMeta, err := uc.aiService.AnalyzeFashionImage(ctx, job.ImageUrl, aiCatRefs)
+	prompt := getVisionSystemPrompt(aiCatRefs)
+	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, prompt)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
 	}
+
+	var result struct {
+		shared_dto.FashionMetadataResult
+		Error string `json:"error"`
+	}
+	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
+	if err := json.Unmarshal([]byte(cleanedJSON), &result); err != nil {
+		uc.handleJobFailure(ctx, job, fmt.Errorf("failed to parse JSON from AI: %w", err))
+		return nil
+	}
+
+	if result.Error != "" {
+		uc.handleJobFailure(ctx, job, fmt.Errorf("AI Error: %s", result.Error))
+		return nil
+	}
+
+	aiMeta := result.FashionMetadataResult
 
 	var detectedCategoryID *uuid.UUID
 	detectedCategoryName := "Khác"
@@ -219,7 +276,6 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	}
 
 	if !resolved && aiMeta.Color != "" {
-		// Fallback to resolving HSL from the color name (e.g. "xanh navy", "đỏ")
 		h, s, l, hex, ok := colorutils.ResolveHSLFromColorName(aiMeta.Color)
 		if ok {
 			item.ColorHex = &hex
@@ -259,4 +315,56 @@ func (uc *WardrobeWorkerUseCase) markJobFailed(ctx context.Context, itemID uuid.
 		item.Status = wardrobestatus.Failed
 		_ = uc.wardrobeRepo.Update(ctx, item)
 	}
+}
+
+func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
+	limit := 100
+	totalDeleted := 0
+
+	for {
+		items, err := uc.wardrobeRepo.GetFailedItemsForCleanup(ctx, limit)
+		if err != nil {
+			return fmt.Errorf("failed to fetch items for cleanup: %w", err)
+		}
+
+		if len(items) == 0 {
+			break
+		}
+
+		for _, item := range items {
+			if item.ImagePublicID != "" {
+				if err := uc.mediaService.DeleteImage(ctx, item.ImagePublicID); err != nil {
+					uc.logger.Warn("[CleanupFailedItems] Failed to delete image from Cloudinary",
+						zap.String("item_id", item.ID.String()),
+						zap.String("public_id", item.ImagePublicID),
+						zap.Error(err),
+					)
+				}
+			}
+
+			if err := uc.wardrobeRepo.Delete(ctx, item.ID); err != nil {
+				uc.logger.Error("[CleanupFailedItems] Failed to delete item from database",
+					zap.String("item_id", item.ID.String()),
+					zap.Error(err),
+				)
+				return fmt.Errorf("failed to delete item %s: %w", item.ID.String(), err)
+			}
+
+			payload := dto.WardrobeEventPayload{
+				ItemID: item.ID,
+				UserID: item.UserID,
+				Action: eventconstants.ActionDeleted,
+			}
+			_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+
+			totalDeleted++
+		}
+
+		if len(items) < limit {
+			break
+		}
+	}
+
+	uc.logger.Info("[CleanupFailedItems] Successfully cleaned up failed items", zap.Int("count", totalDeleted))
+	return nil
 }

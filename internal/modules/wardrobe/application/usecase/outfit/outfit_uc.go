@@ -2,7 +2,6 @@ package outfit
 
 import (
 	"context"
-	"math"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -234,19 +233,9 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 		resList[idx] = mapper.MapToOutfitRes(outfit, nil)
 	}
 
-	totalPages := 0
-	if limit > 0 && totalItems > 0 {
-		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
-		Items: resList,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+		Items:    resList,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
 	}, nil
 }
 

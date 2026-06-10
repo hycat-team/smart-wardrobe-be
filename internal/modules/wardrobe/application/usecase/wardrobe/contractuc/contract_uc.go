@@ -1,4 +1,4 @@
-package wardrobe
+package contractuc
 
 import (
 	"context"
@@ -6,12 +6,26 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/contract"
 
 	"github.com/google/uuid"
 )
+
+type WardrobeContractUseCase struct {
+	wardrobeRepo repositories.IWardrobeItemRepository
+}
+
+func NewWardrobeContractUseCase(
+	wardrobeRepo repositories.IWardrobeItemRepository,
+) contract.IWardrobeContract {
+	return &WardrobeContractUseCase{
+		wardrobeRepo: wardrobeRepo,
+	}
+}
 
 func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceItemID uuid.UUID, targetUserID uuid.UUID) (*dto.WardrobeItemRes, error) {
 	sourceItem, err := uc.wardrobeRepo.GetByID(ctx, sourceItemID)

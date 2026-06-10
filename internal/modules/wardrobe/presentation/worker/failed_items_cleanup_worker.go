@@ -16,13 +16,13 @@ type IFailedItemsCleanupWorker interface {
 }
 
 type FailedItemsCleanupWorker struct {
-	useCase    uc_interfaces.IWardrobeUseCase
+	useCase    uc_interfaces.IWardrobeWorkerUseCase
 	cronEngine *cron.Cron
 	log        logger.Interface
 }
 
 func NewFailedItemsCleanupWorker(
-	useCase uc_interfaces.IWardrobeUseCase,
+	useCase uc_interfaces.IWardrobeWorkerUseCase,
 	log logger.Interface,
 ) IFailedItemsCleanupWorker {
 	return &FailedItemsCleanupWorker{

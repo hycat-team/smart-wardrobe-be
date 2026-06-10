@@ -2,7 +2,6 @@ package admin_moderation
 
 import (
 	"context"
-	"math"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
@@ -281,19 +280,9 @@ func (uc *AdminCommunityModerationUseCase) GetPostsForAdmin(ctx context.Context,
 		page = 1
 	}
 
-	totalPages := 0
-	if limit > 0 && result.TotalCount > 0 {
-		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.PostRes]{
-		Items: resPosts,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: result.TotalCount,
-			TotalPages: totalPages,
-		},
+		Items:    resPosts,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
 
@@ -324,19 +313,9 @@ func (uc *AdminCommunityModerationUseCase) GetPostItemsForAdmin(ctx context.Cont
 		page = 1
 	}
 
-	totalPages := 0
-	if limit > 0 && result.TotalCount > 0 {
-		totalPages = int(math.Ceil(float64(result.TotalCount) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.PostItemRes]{
-		Items: resItems,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: result.TotalCount,
-			TotalPages: totalPages,
-		},
+		Items:    resItems,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
 

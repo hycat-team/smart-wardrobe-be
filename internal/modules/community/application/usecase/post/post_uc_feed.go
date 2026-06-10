@@ -12,7 +12,6 @@ import (
 	shared_repo_dto "smart-wardrobe-be/internal/modules/community/domain/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
 )
@@ -79,7 +78,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 	if len(records) == 0 {
 		return &community_dto.GetFeedRes{
 			Items: []*community_dto.PostRes{},
-			Metadata: shared_persist.BuildPaginationMetadata(shared_dto.PaginationQuery{
+			Metadata: shared_dto.BuildPaginationMetadata(shared_dto.PaginationQuery{
 				Page:  feedQuery.Page,
 				Limit: feedQuery.Limit,
 			}, 0),
@@ -308,12 +307,12 @@ func (uc *UserPostUseCase) applyLikeStatus(ctx context.Context, viewerUserID uui
 }
 
 func paginateFeed(items []*community_dto.PostRes, pagination shared_dto.PaginationQuery) *community_dto.GetFeedRes {
-	pagination = shared_persist.NormalizePagination(pagination)
-	start := shared_persist.Offset(pagination)
+	pagination = pagination.Normalize()
+	start := pagination.Offset()
 	if start >= len(items) {
 		return &community_dto.GetFeedRes{
 			Items:    []*community_dto.PostRes{},
-			Metadata: shared_persist.BuildPaginationMetadata(pagination, int64(len(items))),
+			Metadata: shared_dto.BuildPaginationMetadata(pagination, int64(len(items))),
 		}
 	}
 
@@ -324,7 +323,7 @@ func paginateFeed(items []*community_dto.PostRes, pagination shared_dto.Paginati
 
 	return &community_dto.GetFeedRes{
 		Items:    items[start:end],
-		Metadata: shared_persist.BuildPaginationMetadata(pagination, int64(len(items))),
+		Metadata: shared_dto.BuildPaginationMetadata(pagination, int64(len(items))),
 	}
 }
 

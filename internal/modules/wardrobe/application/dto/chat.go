@@ -1,6 +1,7 @@
 package dto
 
 import (
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
 	"time"
 
@@ -9,6 +10,10 @@ import (
 
 type CreateChatSessionReq struct {
 	Title *string `json:"title"`
+}
+
+type GetChatMessagesQueryReq struct {
+	shared_dto.PaginationQuery
 }
 
 type ChatSessionRes struct {

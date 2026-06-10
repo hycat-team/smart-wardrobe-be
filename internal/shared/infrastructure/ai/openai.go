@@ -10,9 +10,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
 func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
@@ -72,9 +70,7 @@ func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProvi
 	return openAIResp.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, categories []dto.AICategoryRef) (*dto.FashionMetadataResult, error) {
-	prompt := getVisionSystemPrompt(categories)
-
+func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]any{
@@ -101,25 +97,25 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", provider.Endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
 	resp, err := s.cli.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+		return "", fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
 	}
 
 	var openAIResp struct {
@@ -131,27 +127,14 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if len(openAIResp.Choices) == 0 {
-		return nil, apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
+		return "", apperror.NewInternalError("Không thể nhận kết quả phân tích hình ảnh từ hệ thống trí tuệ nhân tạo.")
 	}
 
-	var result struct {
-		dto.FashionMetadataResult
-		Error string `json:"error"`
-	}
-	cleanContent := stringutils.CleanJSONMarkdown(openAIResp.Choices[0].Message.Content)
-	if err := json.Unmarshal([]byte(cleanContent), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
-	}
-
-	if result.Error != "" {
-		return nil, fmt.Errorf("OpenAI AI Error: %s", result.Error)
-	}
-
-	return &result.FashionMetadataResult, nil
+	return openAIResp.Choices[0].Message.Content, nil
 }
 
 func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {

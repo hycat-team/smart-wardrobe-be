@@ -1,23 +1,45 @@
-package wardrobe
+package catalog
 
 import (
 	"context"
-	"math"
 
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-
 	"github.com/google/uuid"
 )
 
-// ... InitClosetFromCatalog omitted, let's keep targetContent precise ...
+type WardrobeCatalogUseCase struct {
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	categoryRepo    repositories.ICategoryRepository
+	userSubContract contract.IUserSubscriptionContract
+	eventPublisher  event.IEventPublisher
+}
+
+func NewWardrobeCatalogUseCase(
+	wardrobeRepo repositories.IWardrobeItemRepository,
+	categoryRepo repositories.ICategoryRepository,
+	userSubContract contract.IUserSubscriptionContract,
+	eventPublisher event.IEventPublisher,
+) uc_interfaces.IWardrobeCatalogUseCase {
+	return &WardrobeCatalogUseCase{
+		wardrobeRepo:    wardrobeRepo,
+		categoryRepo:    categoryRepo,
+		userSubContract: userSubContract,
+		eventPublisher:  eventPublisher,
+	}
+}
+
 func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
 	page := query.Page
 	if page <= 0 {
@@ -49,19 +71,9 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		resList[i].IsLocked = false
 	}
 
-	totalPages := 0
-	if limit > 0 && totalItems > 0 {
-		totalPages = int(math.Ceil(float64(totalItems) / float64(limit)))
-	}
-
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
-		Items: resList,
-		Metadata: shared_dto.PaginationMetadata{
-			Page:       page,
-			Limit:      limit,
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+		Items:    resList,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
 	}, nil
 }
 
@@ -70,7 +82,6 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty
 	}
 
-	// 1. Check wardrobe item limit of the subscription plan
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -85,7 +96,6 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, wardrobeerrors.ErrWardrobeLimitExceededForCatalog(int(currentCount), subOverview.MaxWardrobeItems, len(catalogItemIDs))
 	}
 
-	// 2. Fetch system template catalog items from Database
 	templates, err := uc.wardrobeRepo.GetByIDs(ctx, catalogItemIDs)
 	if err != nil {
 		return nil, err
@@ -110,7 +120,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 			Description:   original.Description,
 			Embedding:     original.Embedding,
 			Status:        wardrobestatus.InWardrobe,
-			ItemType:      itemtype.UserItem, // Once copied to the user's wardrobe, it becomes a personal UserItem
+			ItemType:      itemtype.UserItem,
 		}
 	}
 
@@ -128,7 +138,6 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 
 	return resList, nil
 }
-
 
 func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, id)

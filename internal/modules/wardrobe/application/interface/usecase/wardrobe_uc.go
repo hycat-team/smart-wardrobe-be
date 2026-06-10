@@ -9,14 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type IWardrobeUseCase interface {
-	IWardrobeContractUseCase
-	IWardrobeItemUseCase
-	IWardrobeAIUseCase
-	IWardrobeCatalogUseCase
-	IWardrobeWorkerUseCase
-}
-
 type IWardrobeItemUseCase interface {
 	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
 	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
@@ -30,7 +22,7 @@ type IWardrobeAIUseCase interface {
 	RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error)
 	CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error)
 	GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error)
-	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) ([]*dto.ChatMessageRes, error)
+	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, query dto.GetChatMessagesQueryReq) (*shared_dto.PaginationResult[*dto.ChatMessageRes], error)
 	ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
 	ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error)
 }

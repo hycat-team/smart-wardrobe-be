@@ -1,16 +1,18 @@
 package wardrobe
 
 import (
-	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	category_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
-	wardrobe_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
-	"smart-wardrobe-be/internal/modules/wardrobe/contract"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
-	"smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	presentation_worker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 
 	"github.com/google/wire"
 )
@@ -25,19 +27,20 @@ var ProviderSet = wire.NewSet(
 	search.NewWardrobeSearchIndexService,
 	messaging.NewWardrobeBatchUploadJobConsumer,
 	messaging.NewSearchSyncEventConsumer,
-	wardrobe_uc.NewWardrobeUseCase,
-	wire.Bind(new(contract.IWardrobeContract), new(uc_interfaces.IWardrobeUseCase)),
-	wire.Bind(new(uc_interfaces.IWardrobeItemUseCase), new(uc_interfaces.IWardrobeUseCase)),
-	wire.Bind(new(uc_interfaces.IWardrobeCatalogUseCase), new(uc_interfaces.IWardrobeUseCase)),
-	wire.Bind(new(uc_interfaces.IWardrobeWorkerUseCase), new(uc_interfaces.IWardrobeUseCase)),
-	wire.Bind(new(uc_interfaces.IWardrobeAIUseCase), new(uc_interfaces.IWardrobeUseCase)),
+
+	item.NewWardrobeItemUseCase,
+	ai.NewWardrobeAIUseCase,
+	catalog.NewWardrobeCatalogUseCase,
+	worker.NewWardrobeWorkerUseCase,
+	contractuc.NewWardrobeContractUseCase,
+
 	outfit_uc.NewOutfitUseCase,
 	category_uc.NewCategoryUseCase,
 	handler.NewWardrobeItemHandler,
 	handler.NewWardrobeAIHandler,
 	handler.NewOutfitHandler,
 	handler.NewCategoryHandler,
-	worker.NewWardrobeBatchUploadWorker,
-	worker.NewSearchSyncWorker,
-	worker.NewFailedItemsCleanupWorker,
+	presentation_worker.NewWardrobeBatchUploadWorker,
+	presentation_worker.NewSearchSyncWorker,
+	presentation_worker.NewFailedItemsCleanupWorker,
 )

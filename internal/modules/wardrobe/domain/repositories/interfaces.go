@@ -25,6 +25,8 @@ type IWardrobeItemRepository interface {
 	CountItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) (int64, error)
 	GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.WardrobeItem, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
+	GetSimilarItemsByVectorAndCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, vector entities.Vector, limit int) ([]*entities.WardrobeItem, error)
+	GetRecentlyActiveItemsByCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
 }
 
 type ICategoryRepository interface {
@@ -50,6 +52,7 @@ type IConversationalContextRepository interface {
 type IMessageRepository interface {
 	shared_repos.IGenericRepository[entities.Message, uuid.UUID]
 	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*entities.Message, error)
+	GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Message, error)
 	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
