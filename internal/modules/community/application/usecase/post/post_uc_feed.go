@@ -56,8 +56,8 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 	for _, record := range feedResult.Items {
 		items = append(items, community_mapper.MapPost(
 			record.Post,
-			nil,
-			nil,
+			getVisiblePostItems(record.Post),
+			record.Post.Media,
 			likedMap[record.Post.ID],
 			record.GlobalHotnessScore,
 			record.GlobalHotnessScore,
@@ -92,7 +92,14 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 	if styleProfile == nil || len(styleProfile.TasteEmbedding) == 0 {
 		items := make([]*community_dto.PostRes, 0, len(records))
 		for _, record := range records {
-			items = append(items, community_mapper.MapPost(record.Post, nil, nil, false, record.GlobalHotnessScore, record.GlobalHotnessScore))
+			items = append(items, community_mapper.MapPost(
+				record.Post,
+				getVisiblePostItems(record.Post),
+				record.Post.Media,
+				false,
+				record.GlobalHotnessScore,
+				record.GlobalHotnessScore,
+			))
 		}
 		items, _ = uc.applyLikeStatus(ctx, viewerUserID, items)
 		return paginateFeed(items, shared_dto.PaginationQuery{
@@ -101,41 +108,26 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		}), nil
 	}
 
-	postIDs := make([]uuid.UUID, 0, len(records))
-	postByID := make(map[uuid.UUID]*entities.Post, len(records))
+	scoredItems := make([]*scoredPost, 0, len(records))
 	for _, record := range records {
 		if record == nil || record.Post == nil {
 			continue
 		}
-		postIDs = append(postIDs, record.Post.ID)
-		postByID[record.Post.ID] = record.Post
-	}
+		post := record.Post
+		visibleItems := getVisiblePostItems(post)
 
-	postItemsByPostID, mediaByPostID, err := uc.loadPostDetailsByPostIDs(ctx, postIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	scoredItems := make([]*scoredPost, 0, len(records))
-	for _, record := range records {
-		post := postByID[record.Post.ID]
-		if post == nil {
+		if post.PostType == "SALE" && len(visibleItems) == 0 {
 			continue
 		}
-		items := postItemsByPostID[post.ID]
-		if post.PostType == "SALE" && len(items) == 0 {
-			continue
-		}
-		media := mediaByPostID[post.ID]
 
-		styleScore := computeStyleScore(styleProfile.TasteEmbedding, items)
+		styleScore := computeStyleScore(styleProfile.TasteEmbedding, visibleItems)
 		finalScore := (record.GlobalHotnessScore * 0.4) + (styleScore * 0.6)
 		scoredItems = append(scoredItems, &scoredPost{
 			post:      post,
 			global:    record.GlobalHotnessScore,
 			final:     finalScore,
-			postItems: items,
-			media:     media,
+			postItems: visibleItems,
+			media:     post.Media,
 		})
 	}
 

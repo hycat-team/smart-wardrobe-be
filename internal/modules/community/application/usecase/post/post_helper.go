@@ -206,6 +206,19 @@ func isVisiblePostItem(item *entities.PostItem) bool {
 	return item != nil && item.Status != postitemstatus.Hidden
 }
 
+func getVisiblePostItems(post *entities.Post) []*entities.PostItem {
+	if post == nil || len(post.Items) == 0 {
+		return nil
+	}
+	visibleItems := make([]*entities.PostItem, 0, len(post.Items))
+	for _, item := range post.Items {
+		if isVisiblePostItem(item) {
+			visibleItems = append(visibleItems, item)
+		}
+	}
+	return visibleItems
+}
+
 func SyncWardrobeStatusByItem(
 	ctx context.Context,
 	postItemRepo repositories.IPostItemRepository,

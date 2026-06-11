@@ -26,6 +26,8 @@ type Post struct {
 	LikeCount      int               `gorm:"type:int;default:0"`
 	CommentCount   int               `gorm:"type:int;default:0"`
 	HotnessDirtyAt *time.Time        `gorm:"type:timestamp with time zone"`
+	Items          []*PostItem       `gorm:"foreignKey:PostID"`
+	Media          []*PostMedia      `gorm:"foreignKey:PostID"`
 }
 
 type PostScoreSnapshot struct {

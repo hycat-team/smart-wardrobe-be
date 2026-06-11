@@ -28,7 +28,9 @@ type PostRepository struct {
 
 func NewPostRepository(db *gorm.DB) repositories.IPostRepository {
 	return &PostRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.Post, uuid.UUID](db, []string{"User"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.Post, uuid.UUID](
+			db, []string{"User", "Items", "Media", "Items.WardrobeItem", "Items.WardrobeItem.Category"},
+		),
 	}
 }
 
@@ -74,8 +76,7 @@ func (r *PostRepository) getByPublicID(ctx context.Context, publicID string, inc
 }
 
 func (r *PostRepository) baseFeedQuery(ctx context.Context) *gorm.DB {
-	return r.GetDB(ctx).
-		Model(&entities.Post{}).
+	return r.GetQueryWithPreload(ctx).
 		Joins("JOIN users ON users.id = posts.user_id").
 		Where("posts.is_deleted = ? AND users.is_deleted = ?", false, false).
 		Where("posts.post_type <> ? OR EXISTS (SELECT 1 FROM post_items WHERE post_items.post_id = posts.id AND post_items.status <> ?)", "SALE", postitemstatus.Hidden)
