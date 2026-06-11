@@ -823,24 +823,24 @@ definitions:
     properties:
       id:
         type: string
-      layer_order:
+      layerOrder:
         type: integer
-      position_x:
+      positionX:
         type: number
-      position_y:
+      positionY:
         type: number
       scale:
         type: number
-      wardrobe_item:
+      wardrobeItem:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes:
     properties:
-      cover_image_url:
+      coverImageUrl:
         type: string
-      cover_public_id:
+      coverPublicId:
         type: string
-      created_at:
+      createdAt:
         type: string
       description:
         type: string
@@ -854,9 +854,9 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus'
-      updated_at:
+      updatedAt:
         type: string
-      user_id:
+      userId:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.RecommendOutfitReq:
@@ -924,34 +924,27 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq:
     properties:
-      layer_order:
+      layerOrder:
         type: integer
-      position_x:
-        maximum: 1
-        minimum: 0
+      positionX:
         type: number
-      position_y:
-        maximum: 1
-        minimum: 0
+      positionY:
         type: number
       scale:
-        maximum: 10
         minimum: 0.1
         type: number
-      wardrobe_item_id:
+      wardrobeItemId:
         type: string
     required:
-    - layer_order
-    - position_x
-    - position_y
+    - layerOrder
     - scale
-    - wardrobe_item_id
+    - wardrobeItemId
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitReq:
     properties:
-      cover_image_url:
+      coverImageUrl:
         type: string
-      cover_public_id:
+      coverPublicId:
         maxLength: 255
         type: string
       description:

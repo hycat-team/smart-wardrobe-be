@@ -8,39 +8,39 @@ import (
 )
 
 type SaveOutfitReq struct {
-	Name          string              `json:"name" binding:"required,max=255" label:"tên bộ phối"`
+	Name          string              `json:"name" binding:"required,max=255" label:"tên bắt buộc"`
 	Description   *string             `json:"description" binding:"omitempty" label:"mô tả"`
-	CoverImageUrl *string             `json:"cover_image_url" binding:"omitempty,url" label:"đường dẫn ảnh bìa"`
-	CoverPublicID *string             `json:"cover_public_id" binding:"omitempty,max=255" label:"mã ảnh bìa"`
+	CoverImageUrl *string             `json:"coverImageUrl" binding:"omitempty,url" label:"đường dẫn ảnh bìa"`
+	CoverPublicID *string             `json:"coverPublicId" binding:"omitempty,max=255" label:"mã ảnh bìa"`
 	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive" label:"danh sách món đồ"`
 }
 
 type SaveOutfitItemReq struct {
-	WardrobeItemID uuid.UUID `json:"wardrobe_item_id" binding:"required" label:"mã trang phục"`
-	PositionX      float64   `json:"position_x" binding:"required,min=0,max=1" label:"vị trí X"`
-	PositionY      float64   `json:"position_y" binding:"required,min=0,max=1" label:"vị trí Y"`
-	Scale          float64   `json:"scale" binding:"required,min=0.1,max=10" label:"tỷ lệ hiển thị"`
-	LayerOrder     int16     `json:"layer_order" binding:"required" label:"thứ tự lớp"`
+	WardrobeItemID uuid.UUID `json:"wardrobeItemId" binding:"required" label:"mã trang phục"`
+	PositionX      float64   `json:"positionX" label:"vị trí X"`
+	PositionY      float64   `json:"positionY" label:"vị trí Y"`
+	Scale          float64   `json:"scale" binding:"required,min=0.1" label:"tỉ lệ hiển thị"`
+	LayerOrder     int16     `json:"layerOrder" binding:"required" label:"thứ tự lớp"`
 }
 
 type OutfitRes struct {
 	ID            uuid.UUID                 `json:"id"`
-	UserID        uuid.UUID                 `json:"user_id"`
+	UserID        uuid.UUID                 `json:"userId"`
 	Name          string                    `json:"name"`
 	Description   *string                   `json:"description"`
-	CoverImageUrl *string                   `json:"cover_image_url"`
-	CoverPublicID *string                   `json:"cover_public_id"`
+	CoverImageUrl *string                   `json:"coverImageUrl"`
+	CoverPublicID *string                   `json:"coverPublicId"`
 	Status        outfitstatus.OutfitStatus `json:"status"`
-	CreatedAt     time.Time                 `json:"created_at"`
-	UpdatedAt     time.Time                 `json:"updated_at"`
+	CreatedAt     time.Time                 `json:"createdAt"`
+	UpdatedAt     time.Time                 `json:"updatedAt"`
 	Items         []*OutfitItemRes          `json:"items,omitempty"`
 }
 
 type OutfitItemRes struct {
 	ID           uuid.UUID        `json:"id"`
-	WardrobeItem *WardrobeItemRes `json:"wardrobe_item"`
-	PositionX    float64          `json:"position_x"`
-	PositionY    float64          `json:"position_y"`
+	WardrobeItem *WardrobeItemRes `json:"wardrobeItem"`
+	PositionX    float64          `json:"positionX"`
+	PositionY    float64          `json:"positionY"`
 	Scale        float64          `json:"scale"`
-	LayerOrder   int16            `json:"layer_order"`
+	LayerOrder   int16            `json:"layerOrder"`
 }

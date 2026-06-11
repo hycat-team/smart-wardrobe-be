@@ -4511,19 +4511,19 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "layer_order": {
+                "layerOrder": {
                     "type": "integer"
                 },
-                "position_x": {
+                "positionX": {
                     "type": "number"
                 },
-                "position_y": {
+                "positionY": {
                     "type": "number"
                 },
                 "scale": {
                     "type": "number"
                 },
-                "wardrobe_item": {
+                "wardrobeItem": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
                 }
             }
@@ -4531,13 +4531,13 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes": {
             "type": "object",
             "properties": {
-                "cover_image_url": {
+                "coverImageUrl": {
                     "type": "string"
                 },
-                "cover_public_id": {
+                "coverPublicId": {
                     "type": "string"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "description": {
@@ -4558,10 +4558,10 @@ const docTemplate = `{
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 },
-                "user_id": {
+                "userId": {
                     "type": "string"
                 }
             }
@@ -4649,32 +4649,25 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq": {
             "type": "object",
             "required": [
-                "layer_order",
-                "position_x",
-                "position_y",
+                "layerOrder",
                 "scale",
-                "wardrobe_item_id"
+                "wardrobeItemId"
             ],
             "properties": {
-                "layer_order": {
+                "layerOrder": {
                     "type": "integer"
                 },
-                "position_x": {
-                    "type": "number",
-                    "maximum": 1,
-                    "minimum": 0
+                "positionX": {
+                    "type": "number"
                 },
-                "position_y": {
-                    "type": "number",
-                    "maximum": 1,
-                    "minimum": 0
+                "positionY": {
+                    "type": "number"
                 },
                 "scale": {
                     "type": "number",
-                    "maximum": 10,
                     "minimum": 0.1
                 },
-                "wardrobe_item_id": {
+                "wardrobeItemId": {
                     "type": "string"
                 }
             }
@@ -4686,10 +4679,10 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
-                "cover_image_url": {
+                "coverImageUrl": {
                     "type": "string"
                 },
-                "cover_public_id": {
+                "coverPublicId": {
                     "type": "string",
                     "maxLength": 255
                 },
