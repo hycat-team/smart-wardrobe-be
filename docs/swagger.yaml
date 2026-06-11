@@ -723,6 +723,16 @@ definitions:
     required:
     - items
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq:
+    properties:
+      ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - ids
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes:
     properties:
       id:
@@ -3229,6 +3239,29 @@ paths:
       summary: Số hóa trang phục hàng loạt
       tags:
       - Wardrobe
+  /api/v1/wardrobe-items/bulk:
+    delete:
+      consumes:
+      - application/json
+      description: Cho phép người dùng chọn và xóa mềm hàng loạt trang phục khỏi tủ
+        đồ để giải phóng quota dung lượng.
+      parameters:
+      - description: Danh sách ID trang phục cần xóa
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa hàng loạt trang phục thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa hàng loạt trang phục
+      tags:
+      - Wardrobe
   /api/v1/wardrobe-items/catalog-init:
     post:
       consumes:
@@ -3257,6 +3290,20 @@ paths:
                   type: array
               type: object
       summary: Khởi tạo nhanh tủ đồ cá nhân
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/locked:
+    delete:
+      description: Tự động quét và xóa mềm toàn bộ trang phục vượt quá hạn mức sử
+        dụng (bị khóa) của người dùng để giải phóng quota.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa toàn bộ trang phục bị khóa thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa toàn bộ trang phục bị khóa
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/search:

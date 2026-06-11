@@ -132,3 +132,8 @@ type UpdateSystemCatalogItemReq struct {
 	Price       *float64   `json:"price,omitempty"`
 }
 
+type BulkDeleteItemsReq struct {
+	IDs []uuid.UUID `json:"ids" binding:"required,min=1"`
+}
+
+

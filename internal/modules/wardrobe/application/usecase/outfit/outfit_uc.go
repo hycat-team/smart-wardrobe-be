@@ -10,6 +10,7 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -96,12 +97,22 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		}
 	}
 
+	userItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
+
 	// Verify that all items are valid
 	outfitItems := make([]*entities.OutfitItem, len(input.Items))
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
 			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
+		}
+
+		if lockedMap[itemReq.WardrobeItemID] {
+			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
@@ -137,6 +148,11 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	// 1. Check if the Outfit exists and belongs to the User
 	outfit, err := uc.outfitRepo.GetByID(ctx, id)
 	if err != nil {
@@ -167,11 +183,21 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		}
 	}
 
+	userItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
+
 	outfitItems := make([]*entities.OutfitItem, len(input.Items))
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
 		if !ok {
 			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
+		}
+
+		if lockedMap[itemReq.WardrobeItemID] {
+			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{

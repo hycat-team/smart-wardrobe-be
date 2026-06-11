@@ -2916,6 +2916,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/wardrobe-items/bulk": {
+            "delete": {
+                "description": "Cho phép người dùng chọn và xóa mềm hàng loạt trang phục khỏi tủ đồ để giải phóng quota dung lượng.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Xóa hàng loạt trang phục",
+                "parameters": [
+                    {
+                        "description": "Danh sách ID trang phục cần xóa",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa hàng loạt trang phục thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/wardrobe-items/catalog-init": {
             "post": {
                 "description": "Sao chép hàng loạt các trang phục mẫu (Global Catalog) từ hệ thống sang tủ đồ cá nhân của user, không tốn quota AI",
@@ -2960,6 +2994,26 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/locked": {
+            "delete": {
+                "description": "Tự động quét và xóa mềm toàn bộ trang phục vượt quá hạn mức sử dụng (bị khóa) của người dùng để giải phóng quota.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Xóa toàn bộ trang phục bị khóa",
+                "responses": {
+                    "200": {
+                        "description": "Xóa toàn bộ trang phục bị khóa thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
                         }
                     }
                 }
@@ -4304,6 +4358,21 @@ const docTemplate = `{
                     "minItems": 1,
                     "items": {
                         "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq": {
+            "type": "object",
+            "required": [
+                "ids"
+            ],
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

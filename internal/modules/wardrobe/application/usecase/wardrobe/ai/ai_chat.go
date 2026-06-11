@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -131,12 +132,19 @@ func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid
 	if isOutfitIntent(content) {
 		responseText = "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."
 	} else {
+		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		systemPrompt := buildChatSystemPrompt(session.ContextSummary, wardrobeItems, recent)
+		activeWardrobeItems := shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+
+		systemPrompt := buildChatSystemPrompt(session.ContextSummary, activeWardrobeItems, recent)
 		responseText, err = uc.aiService.GenerateText(ctx, systemPrompt, content)
 		if err != nil {
 			return nil, nil, err

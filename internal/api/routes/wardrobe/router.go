@@ -31,10 +31,11 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 
 	privateApi := group.Group("")
 	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
-
 	wardrobeApi := privateApi.Group("/wardrobe-items")
 	{
 		wardrobeApi.GET("/upload-signature", shared_pres.WrapHandler(r.itemHandler.GetUploadSignature))
+		wardrobeApi.DELETE("/bulk", shared_pres.WrapHandler(r.itemHandler.DeleteWardrobeItemsBulk))
+		wardrobeApi.DELETE("/locked", shared_pres.WrapHandler(r.itemHandler.DeleteLockedWardrobeItems))
 		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItemByID))
 		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.itemHandler.CloneWardrobeItem))
 		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.itemHandler.InitClosetFromCatalog))

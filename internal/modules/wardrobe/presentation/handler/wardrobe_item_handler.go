@@ -26,6 +26,8 @@ const (
 	msgWardrobeGetCatalogItemsSuccess       = "Lấy danh sách trang phục mẫu thành công"
 	msgWardrobeUpdateCatalogItemSuccess     = "Cập nhật trang phục mẫu thành công"
 	msgWardrobeDeleteCatalogItemSuccess     = "Xóa trang phục mẫu thành công"
+	msgWardrobeDeleteItemsBulkSuccess       = "Xóa hàng loạt trang phục thành công"
+	msgWardrobeDeleteLockedItemsSuccess     = "Xóa toàn bộ trang phục bị khóa thành công"
 )
 
 type WardrobeItemHandler struct {
@@ -209,7 +211,7 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.workerUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, roleSlug, input)
+	response, err := h.itemUseCase.BatchUploadWardrobeItems(c.Request.Context(), userID, roleSlug, input)
 	if err != nil {
 		return err
 	}
@@ -354,5 +356,56 @@ func (h *WardrobeItemHandler) DeleteCatalogItemAdmin(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, msgWardrobeDeleteCatalogItemSuccess, nil)
+	return nil
+}
+
+// DeleteWardrobeItemsBulk delete multiple wardrobe items
+// @Summary Xóa hàng loạt trang phục
+// @Description Cho phép người dùng chọn và xóa mềm hàng loạt trang phục khỏi tủ đồ để giải phóng quota dung lượng.
+// @Tags Wardrobe
+// @Accept json
+// @Produce json
+// @Param body body dto.BulkDeleteItemsReq true "Danh sách ID trang phục cần xóa"
+// @Success 200 {object} shared_pres.APIResponse "Xóa hàng loạt trang phục thành công"
+// @Router /api/v1/wardrobe-items/bulk [delete]
+func (h *WardrobeItemHandler) DeleteWardrobeItemsBulk(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.BulkDeleteItemsReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	err = h.itemUseCase.DeleteWardrobeItemsBulk(c.Request.Context(), userID, input.IDs)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgWardrobeDeleteItemsBulkSuccess, nil)
+	return nil
+}
+
+// DeleteLockedWardrobeItems delete all locked wardrobe items due to quota
+// @Summary Xóa toàn bộ trang phục bị khóa
+// @Description Tự động quét và xóa mềm toàn bộ trang phục vượt quá hạn mức sử dụng (bị khóa) của người dùng để giải phóng quota.
+// @Tags Wardrobe
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse "Xóa toàn bộ trang phục bị khóa thành công"
+// @Router /api/v1/wardrobe-items/locked [delete]
+func (h *WardrobeItemHandler) DeleteLockedWardrobeItems(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	err = h.itemUseCase.DeleteLockedWardrobeItems(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgWardrobeDeleteLockedItemsSuccess, nil)
 	return nil
 }

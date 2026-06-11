@@ -3,9 +3,11 @@ package contractuc
 import (
 	"context"
 
+	subcontract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -16,14 +18,17 @@ import (
 )
 
 type WardrobeContractUseCase struct {
-	wardrobeRepo repositories.IWardrobeItemRepository
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	userSubContract subcontract.IUserSubscriptionContract
 }
 
 func NewWardrobeContractUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
+	userSubContract subcontract.IUserSubscriptionContract,
 ) contract.IWardrobeContract {
 	return &WardrobeContractUseCase{
-		wardrobeRepo: wardrobeRepo,
+		wardrobeRepo:    wardrobeRepo,
+		userSubContract: userSubContract,
 	}
 }
 
@@ -80,6 +85,18 @@ func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userI
 		return nil
 	}
 
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	userItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return err
+	}
+
+	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
+
 	items, err := uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
 	if err != nil {
 		return err
@@ -100,6 +117,9 @@ func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userI
 		}
 		if item.Status == wardrobestatus.Sold {
 			return wardrobeerrors.ErrItemSoldWithID(itemID)
+		}
+		if lockedMap[itemID] {
+			return wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
 		}
 	}
 

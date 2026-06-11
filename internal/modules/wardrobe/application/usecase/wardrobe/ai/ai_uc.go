@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
@@ -11,6 +12,7 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
@@ -21,7 +23,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type LLMOutfitResponse struct {
+type llmOutfitResponse struct {
 	Title       string `json:"title"`
 	Explanation string `json:"explanation"`
 	Items       []struct {
@@ -66,19 +68,52 @@ func NewWardrobeAIUseCase(
 
 func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error) {
 	// Giai đoạn 1: Kiểm tra Quota & Kiểm tra số lượng tối thiểu
-	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
+	activeItems, quotaDTO, err := uc.validateAndGetActiveItems(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
+
+	// Giai đoạn 2: Lọc thô ứng viên (Smart Filtering)
+	candidates, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	if err != nil {
+		return nil, err
+	}
+
+	// Giai đoạn 3: Phối đồ tinh tế (AI & Fallback HSL)
+	finalRes, err := uc.generateOutfitRecommendation(ctx, candidates, input)
+	if err != nil {
+		finalRes = runLocalHSLMatching(candidates, input)
+	}
+
+	// Giai đoạn 4: Trừ Quota sau khi thành công
+	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {
+		return nil, err
+	}
+
+	return finalRes, nil
+}
+
+// validateAndGetActiveItems performs Stage 1: Validation & Active Items Retrieval.
+func (uc *WardrobeAIUseCase) validateAndGetActiveItems(ctx context.Context, userID uuid.UUID) ([]*entities.WardrobeItem, *contract.UserSubscriptionDTO, error) {
+	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
 	if quotaDTO.OutfitRecommendCount >= quotaDTO.AiOutfitDailyQuota {
-		return nil, subscriptionerrors.ErrAiOutfitQuotaExceeded
+		return nil, nil, subscriptionerrors.ErrAiOutfitQuotaExceeded
 	}
 
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	items = shared.FilterActiveItems(items, subOverview.MaxWardrobeItems)
 	activeItems := make([]*entities.WardrobeItem, 0, len(items))
 	for _, item := range items {
 		if item.Status == wardrobestatus.InWardrobe && !item.IsDeleted {
@@ -87,10 +122,14 @@ func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UU
 	}
 
 	if len(activeItems) < 5 {
-		return nil, wardrobeerrors.ErrMinimumWardrobeItemsRequired
+		return nil, nil, wardrobeerrors.ErrMinimumWardrobeItemsRequired
 	}
 
-	// Giai đoạn 2: Lọc thô ứng viên (Smart Filtering)
+	return activeItems, quotaDTO, nil
+}
+
+// filterCandidates performs Stage 2: Candidate Filtering.
+func (uc *WardrobeAIUseCase) filterCandidates(ctx context.Context, userID uuid.UUID, activeItems []*entities.WardrobeItem, input dto.RecommendOutfitReq) ([]*entities.WardrobeItem, error) {
 	var candidates []*entities.WardrobeItem
 
 	if len(activeItems) <= 15 {
@@ -141,6 +180,7 @@ func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UU
 
 		var queryVector entities.Vector
 		useVectorSearch := false
+
 		if input.Details != nil && strings.TrimSpace(*input.Details) != "" {
 			vecs, err := uc.aiService.GenerateEmbeddings(ctx, []string{*input.Details})
 			if err == nil && len(vecs) > 0 && len(vecs[0]) == 768 {
@@ -225,115 +265,111 @@ func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UU
 		}
 	}
 
-	// Giai đoạn 3: Phối đồ tinh tế (AI & Fallback HSL)
+	return candidates, nil
+}
+
+// generateOutfitRecommendation performs Stage 3: AI Recommendation & Parsing.
+func (uc *WardrobeAIUseCase) generateOutfitRecommendation(ctx context.Context, candidates []*entities.WardrobeItem, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error) {
 	systemPrompt := "You are a professional AI fashion stylist. Return ONLY a valid JSON payload for the outfit recommendation. Do not include markdown code block formatting."
 	userPrompt := buildRecommendationPrompt(candidates, input)
 
-	var groups []*dto.RecommendedItemGroup
-	var title string
-	var explanation string
-	var llmErr error
-
 	responseText, llmErr := uc.aiService.GenerateText(ctx, systemPrompt, userPrompt)
-
-	if llmErr == nil && responseText != "" {
-		cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
-		var llmRes LLMOutfitResponse
-		if err := json.Unmarshal([]byte(cleanedJSON), &llmRes); err == nil {
-			candidateMap := make(map[uuid.UUID]*entities.WardrobeItem)
-			for _, c := range candidates {
-				candidateMap[c.ID] = c
-			}
-
-			validGroups := make([]*dto.RecommendedItemGroup, 0)
-			for _, groupItem := range llmRes.Items {
-				role := strings.ToLower(groupItem.Role)
-				primaryUUID, pErr := uuid.Parse(groupItem.PrimaryID)
-				var primaryItem *entities.WardrobeItem
-				if pErr == nil {
-					primaryItem = candidateMap[primaryUUID]
-				}
-
-				if primaryItem == nil {
-					for _, c := range candidates {
-						if c.Category != nil && c.Category.Slug == role {
-							primaryItem = c
-							break
-						}
-					}
-				}
-
-				if primaryItem == nil {
-					continue
-				}
-
-				alternatives := make([]*dto.WardrobeItemRes, 0)
-				for _, altID := range groupItem.AlternativeIDs {
-					altUUID, altErr := uuid.Parse(altID)
-					if altErr == nil {
-						if altItem, ok := candidateMap[altUUID]; ok && altItem.Category != nil && altItem.Category.Slug == role && altItem.ID != primaryItem.ID {
-							alternatives = append(alternatives, mapper.MapToWardrobeItemRes(altItem))
-						}
-					}
-					if len(alternatives) == 2 {
-						break
-					}
-				}
-
-				if len(alternatives) < 2 {
-					for _, c := range candidates {
-						if c.ID != primaryItem.ID && c.Category != nil && c.Category.Slug == role {
-							alreadyAdded := false
-							for _, a := range alternatives {
-								if a.ID == c.ID {
-									alreadyAdded = true
-									break
-								}
-							}
-							if !alreadyAdded {
-								alternatives = append(alternatives, mapper.MapToWardrobeItemRes(c))
-							}
-						}
-						if len(alternatives) == 2 {
-							break
-						}
-					}
-				}
-
-				validGroups = append(validGroups, &dto.RecommendedItemGroup{
-					Role:         role,
-					Primary:      mapper.MapToWardrobeItemRes(primaryItem),
-					Alternatives: alternatives,
-				})
-			}
-
-			if len(validGroups) > 0 {
-				groups = validGroups
-				title = llmRes.Title
-				explanation = llmRes.Explanation
-			} else {
-				llmErr = wardrobeerrors.ErrInvalidOutfitStructure
-			}
-		} else {
-			llmErr = err
-		}
+	if llmErr != nil {
+		return nil, llmErr
+	}
+	if responseText == "" {
+		return nil, fmt.Errorf("empty response from LLM")
 	}
 
-	var finalRes *dto.RecommendedOutfitRes
-	if llmErr != nil || len(groups) == 0 {
-		finalRes = runLocalHSLMatching(candidates, input)
-	} else {
-		finalRes = &dto.RecommendedOutfitRes{
-			Title:       title,
-			Explanation: explanation,
-			Items:       groups,
-			IsFallback:  false,
-		}
-	}
-
-	// Giai đoạn 4: Trừ Quota sau khi thành công
-	if err := uc.userQuotaCtr.UpdateOutfitQuota(ctx, userID, 1); err != nil {
+	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
+	var llmRes llmOutfitResponse
+	if err := json.Unmarshal([]byte(cleanedJSON), &llmRes); err != nil {
 		return nil, err
+	}
+
+	candidateMap := make(map[uuid.UUID]*entities.WardrobeItem)
+	for _, c := range candidates {
+		candidateMap[c.ID] = c
+	}
+
+	validGroups := make([]*dto.RecommendedItemGroup, 0)
+	for _, groupItem := range llmRes.Items {
+		role := strings.ToLower(groupItem.Role)
+		primaryUUID, pErr := uuid.Parse(groupItem.PrimaryID)
+		var primaryItem *entities.WardrobeItem
+		if pErr == nil {
+			primaryItem = candidateMap[primaryUUID]
+		}
+
+		if primaryItem == nil {
+			for _, c := range candidates {
+				if c.Category != nil && c.Category.Slug == role {
+					primaryItem = c
+					break
+				}
+			}
+		}
+
+		if primaryItem == nil {
+			continue
+		}
+
+		alternatives := make([]*dto.WardrobeItemRes, 0)
+		for _, altID := range groupItem.AlternativeIDs {
+			altUUID, altErr := uuid.Parse(altID)
+			if altErr == nil {
+				if altItem, ok := candidateMap[altUUID]; ok && altItem.Category != nil && altItem.Category.Slug == role && altItem.ID != primaryItem.ID {
+					alternatives = append(alternatives, mapper.MapToWardrobeItemRes(altItem))
+				}
+			}
+			if len(alternatives) == 2 {
+				break
+			}
+		}
+
+		if len(alternatives) < 2 {
+			for _, c := range candidates {
+				if c.ID != primaryItem.ID && c.Category != nil && c.Category.Slug == role {
+					alreadyAdded := false
+					for _, a := range alternatives {
+						if a.ID == c.ID {
+							alreadyAdded = true
+							break
+						}
+					}
+					if !alreadyAdded {
+						alternatives = append(alternatives, mapper.MapToWardrobeItemRes(c))
+					}
+				}
+				if len(alternatives) == 2 {
+					break
+				}
+			}
+		}
+
+		validGroups = append(validGroups, &dto.RecommendedItemGroup{
+			Role:         role,
+			Primary:      mapper.MapToWardrobeItemRes(primaryItem),
+			Alternatives: alternatives,
+		})
+	}
+
+	if len(validGroups) == 0 {
+		return nil, wardrobeerrors.ErrInvalidOutfitStructure
+	}
+
+	return &dto.RecommendedOutfitRes{
+		Title:       llmRes.Title,
+		Explanation: llmRes.Explanation,
+		Items:       validGroups,
+		IsFallback:  false,
+	}, nil
+}
+
+// updateQuotaAndConstructResponse performs Stage 4: Quota Update & Response Construction.
+func (uc *WardrobeAIUseCase) updateQuotaAndConstructResponse(ctx context.Context, userID uuid.UUID, finalRes *dto.RecommendedOutfitRes, quotaDTO *contract.UserSubscriptionDTO) error {
+	if err := uc.userQuotaCtr.UpdateOutfitQuota(ctx, userID, 1); err != nil {
+		return err
 	}
 
 	updatedQuota, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
@@ -347,5 +383,5 @@ func (uc *WardrobeAIUseCase) RecommendOutfit(ctx context.Context, userID uuid.UU
 		finalRes.RemainingQuota = 0
 	}
 
-	return finalRes, nil
+	return nil
 }

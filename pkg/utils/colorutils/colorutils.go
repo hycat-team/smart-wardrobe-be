@@ -110,3 +110,16 @@ func ResolveHSLFromColorName(colorStr string) (h, s, l float64, hex string, foun
 
 	return 0, 0, 0, "", false
 }
+
+// ResolveFashionColor resolves HSL values and HEX string, prioritizing hex code over color name.
+func ResolveFashionColor(colorName, colorHex string) (h, s, l float64, hex string, ok bool) {
+	if colorHex != "" {
+		if hVal, sVal, lVal, err := HexToHSL(colorHex); err == nil {
+			return hVal, sVal, lVal, colorHex, true
+		}
+	}
+	if colorName != "" {
+		return ResolveHSLFromColorName(colorName)
+	}
+	return 0, 0, 0, "", false
+}

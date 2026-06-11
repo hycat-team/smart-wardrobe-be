@@ -9,17 +9,14 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/logger"
@@ -58,68 +55,6 @@ func NewWardrobeWorkerUseCase(
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
 	}
-}
-
-func (uc *WardrobeWorkerUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
-	if len(input.Items) == 0 {
-		return nil, wardrobeerrors.ErrUploadImagesEmpty
-	}
-
-	itemType := itemtype.SystemCatalogItem
-	if currentRole == roleslug.User {
-		itemType = itemtype.UserItem
-		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-
-		currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
-			return nil, wardrobeerrors.ErrWardrobeLimitExceededForUpload(int(currentCount), subOverview.MaxWardrobeItems, len(input.Items))
-		}
-	}
-
-	newItems := make([]*entities.WardrobeItem, len(input.Items))
-	for i, itemReq := range input.Items {
-		newItems[i] = &entities.WardrobeItem{
-			UserID:        userID,
-			CategoryID:    itemReq.CategoryID,
-			ImageUrl:      itemReq.ImageUrl,
-			ImagePublicID: itemReq.ImagePublicID,
-			Status:        wardrobestatus.Processing,
-			ItemType:      itemType,
-		}
-	}
-
-	if err := uc.wardrobeRepo.BulkCreate(ctx, newItems); err != nil {
-		return nil, err
-	}
-
-	resList := make([]*dto.WardrobeItemRes, len(newItems))
-	for i, item := range newItems {
-		job := dto.WardrobeBatchUploadJobDTO{
-			ItemID:        item.ID,
-			UserID:        userID,
-			CategoryID:    item.CategoryID,
-			ImageUrl:      item.ImageUrl,
-			ImagePublicID: item.ImagePublicID,
-		}
-
-		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
-		if err != nil {
-			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
-			item.Status = wardrobestatus.Failed
-			_ = uc.wardrobeRepo.Update(ctx, item)
-		}
-
-		resList[i] = mapper.MapToWardrobeItemRes(item)
-		resList[i].IsLocked = false
-	}
-
-	return resList, nil
 }
 
 func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error) {
@@ -221,27 +156,13 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 		}
 	}
 
-	richTextContext := fmt.Sprintf(
-		"Danh mục trang phục: %s, Thuộc tính màu sắc: %s, Định hình phong cách thiết kế: %s, Chất liệu: %s, Họa tiết: %s, Kiểu dáng: %s, Mùa phù hợp: %s. Mô tả chi tiết: %s",
-		detectedCategoryName,
-		aiMeta.Color,
-		aiMeta.Style,
-		aiMeta.Material,
-		aiMeta.Pattern,
-		aiMeta.Fit,
-		aiMeta.Seasonality,
-		aiMeta.Description,
-	)
+	richTextContext := shared.BuildRichTextContext(detectedCategoryName, aiMeta.Color, aiMeta.Style, aiMeta.Material, aiMeta.Pattern, aiMeta.Fit, aiMeta.Seasonality, aiMeta.Description)
 
-	embeddings, err := uc.aiService.GenerateEmbeddings(ctx, []string{richTextContext})
-	if err != nil || len(embeddings) == 0 {
-		if err == nil {
-			err = fmt.Errorf("no embeddings returned")
-		}
+	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
+	if err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
 	}
-	embedding := embeddings[0]
 
 	item, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
 	if err != nil || item == nil {
@@ -263,30 +184,12 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
 
-	resolved := false
-	if aiMeta.ColorHex != "" {
-		h, s, l, err := colorutils.HexToHSL(aiMeta.ColorHex)
-		if err == nil {
-			item.ColorHex = &aiMeta.ColorHex
-			item.ColorHue = &h
-			item.ColorSaturation = &s
-			item.ColorLightness = &l
-			resolved = true
-		}
-	}
-
-	if !resolved && aiMeta.Color != "" {
-		h, s, l, hex, ok := colorutils.ResolveHSLFromColorName(aiMeta.Color)
-		if ok {
-			item.ColorHex = &hex
-			item.ColorHue = &h
-			item.ColorSaturation = &s
-			item.ColorLightness = &l
-			resolved = true
-		}
-	}
-
-	if !resolved {
+	if h, s, l, hex, ok := colorutils.ResolveFashionColor(aiMeta.Color, aiMeta.ColorHex); ok {
+		item.ColorHex = &hex
+		item.ColorHue = &h
+		item.ColorSaturation = &s
+		item.ColorLightness = &l
+	} else {
 		uc.logger.Warn("[WardrobeBatchUploadWorker] Failed to resolve HSL for item",
 			zap.String("item_id", item.ID.String()),
 			zap.String("color_hex", aiMeta.ColorHex),

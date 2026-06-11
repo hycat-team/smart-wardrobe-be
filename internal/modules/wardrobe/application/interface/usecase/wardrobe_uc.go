@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
 type IWardrobeItemUseCase interface {
 	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
 	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
@@ -16,6 +15,9 @@ type IWardrobeItemUseCase interface {
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
 	SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error)
 	ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error)
+	DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
+	DeleteLockedWardrobeItems(ctx context.Context, userID uuid.UUID) error
+	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
 }
 
 type IWardrobeAIUseCase interface {
@@ -35,7 +37,6 @@ type IWardrobeCatalogUseCase interface {
 }
 
 type IWardrobeWorkerUseCase interface {
-	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
 	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error
 	CleanupFailedItems(ctx context.Context) error
 }

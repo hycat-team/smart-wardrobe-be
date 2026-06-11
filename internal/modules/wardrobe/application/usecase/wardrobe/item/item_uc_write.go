@@ -1,0 +1,328 @@
+package item
+
+import (
+	"context"
+	"fmt"
+
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/colorutils"
+
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+)
+
+func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
+	if quantity < 1 || quantity > 5 {
+		return nil, wardrobeerrors.ErrInvalidCloneQuantity
+	}
+
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if int(currentCount)+quantity > subOverview.MaxWardrobeItems {
+		return nil, wardrobeerrors.ErrWardrobeLimitExceededForClone(int(currentCount), subOverview.MaxWardrobeItems, quantity)
+	}
+
+	original, err := uc.wardrobeRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if original == nil {
+		return nil, wardrobeerrors.ErrOriginalItemToCloneNotFound
+	}
+
+	if original.UserID != userID {
+		return nil, wardrobeerrors.ErrCloneOtherUserItemForbidden
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if shared.IsItemLocked(items, id, subOverview.MaxWardrobeItems) {
+		return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+	}
+
+	if original.Status == wardrobestatus.Sold {
+		return nil, wardrobeerrors.ErrCloneSoldItem
+	}
+
+	clonedItems := make([]*entities.WardrobeItem, quantity)
+	for i := range quantity {
+		clonedItems[i] = &entities.WardrobeItem{
+			UserID:        userID,
+			CategoryID:    original.CategoryID,
+			ImageUrl:      original.ImageUrl,
+			ImagePublicID: original.ImagePublicID,
+			Color:         original.Color,
+			Style:         original.Style,
+			Material:      original.Material,
+			Pattern:       original.Pattern,
+			Fit:           original.Fit,
+			Seasonality:   original.Seasonality,
+			Description:   original.Description,
+			Embedding:     original.Embedding,
+			Status:        wardrobestatus.InWardrobe,
+			ItemType:      itemtype.UserItem,
+		}
+	}
+
+	err = uc.wardrobeRepo.BulkCreate(ctx, clonedItems)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cloned := range clonedItems {
+		payload := dto.WardrobeEventPayload{
+			ItemID: cloned.ID,
+			UserID: cloned.UserID,
+			Action: "created",
+		}
+		_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
+	}
+
+	resList := make([]*dto.WardrobeItemRes, quantity)
+	for i := range quantity {
+		clonedItems[i].Category = original.Category
+		resList[i] = mapper.MapToWardrobeItemRes(clonedItems[i])
+		resList[i].IsLocked = false
+	}
+
+	return resList, nil
+}
+
+func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error) {
+	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, wardrobeerrors.ErrItemNotFound
+	}
+
+	if item.UserID != userID {
+		return nil, wardrobeerrors.ErrUpdateItemForbidden
+	}
+
+	if item.Status == wardrobestatus.Sold {
+		return nil, wardrobeerrors.ErrManualClassifySoldItem
+	}
+
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if shared.IsItemLocked(items, itemID, subOverview.MaxWardrobeItems) {
+		return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+	}
+
+	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	if category == nil {
+		return nil, wardrobeerrors.ErrCategoryNotFound
+	}
+
+	freeForm := fmt.Sprintf("Món đồ thời trang %s màu %s phong cách %s được làm từ %s với họa tiết %s, dáng %s thích hợp mặc vào %s.",
+		category.Name, input.Color, input.Style, input.Material, input.Pattern, input.Fit, input.Seasonality)
+
+	richTextContext := shared.BuildRichTextContext(category.Name, input.Color, input.Style, input.Material, input.Pattern, input.Fit, input.Seasonality, freeForm)
+
+	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
+	if err != nil {
+		return nil, wardrobeerrors.ErrProcessFashionTextFailed
+	}
+
+	item.CategoryID = &category.ID
+	item.Color = &input.Color
+	item.Style = &input.Style
+	item.Material = &input.Material
+	item.Pattern = &input.Pattern
+	item.Fit = &input.Fit
+	item.Seasonality = &input.Seasonality
+	item.Description = &freeForm
+	item.Price = input.Price
+	item.Embedding = entities.Vector(embedding)
+	item.Status = wardrobestatus.InWardrobe
+
+	if h, s, l, hex, ok := colorutils.ResolveFashionColor(input.Color, ""); ok {
+		item.ColorHex = &hex
+		item.ColorHue = &h
+		item.ColorSaturation = &s
+		item.ColorLightness = &l
+	}
+
+	err = uc.wardrobeRepo.Update(ctx, item)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := dto.WardrobeEventPayload{
+		ItemID: item.ID,
+		UserID: item.UserID,
+		Action: eventconstants.ActionCreated,
+	}
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
+
+	return mapper.MapToWardrobeItemRes(item), nil
+}
+
+func (uc *WardrobeItemUseCase) DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	items, err := uc.wardrobeRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	itemMap := make(map[uuid.UUID]*entities.WardrobeItem)
+	for _, item := range items {
+		itemMap[item.ID] = item
+	}
+
+	for _, id := range ids {
+		item, exists := itemMap[id]
+		if !exists || item.IsDeleted {
+			return wardrobeerrors.ErrItemNotFound
+		}
+		if item.UserID != userID {
+			return wardrobeerrors.ErrUpdateItemForbidden
+		}
+	}
+
+	for _, id := range ids {
+		item := itemMap[id]
+		item.IsDeleted = true
+		if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
+			return err
+		}
+
+		payload := dto.WardrobeEventPayload{
+			ItemID: item.ID,
+			UserID: item.UserID,
+			Action: eventconstants.ActionDeleted,
+		}
+		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+	}
+
+	return nil
+}
+
+func (uc *WardrobeItemUseCase) DeleteLockedWardrobeItems(ctx context.Context, userID uuid.UUID) error {
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return err
+	}
+
+	var lockedItems []*entities.WardrobeItem
+	for idx, item := range items {
+		if idx >= subOverview.MaxWardrobeItems {
+			lockedItems = append(lockedItems, item)
+		}
+	}
+
+	for _, item := range lockedItems {
+		item.IsDeleted = true
+		if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
+			return err
+		}
+
+		payload := dto.WardrobeEventPayload{
+			ItemID: item.ID,
+			UserID: item.UserID,
+			Action: eventconstants.ActionDeleted,
+		}
+		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+	}
+
+	return nil
+}
+
+func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
+	if len(input.Items) == 0 {
+		return nil, wardrobeerrors.ErrUploadImagesEmpty
+	}
+
+	itemType := itemtype.SystemCatalogItem
+	if currentRole == roleslug.User {
+		itemType = itemtype.UserItem
+		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if int(currentCount)+len(input.Items) > subOverview.MaxWardrobeItems {
+			return nil, wardrobeerrors.ErrWardrobeLimitExceededForUpload(int(currentCount), subOverview.MaxWardrobeItems, len(input.Items))
+		}
+	}
+
+	newItems := make([]*entities.WardrobeItem, len(input.Items))
+	for i, itemReq := range input.Items {
+		newItems[i] = &entities.WardrobeItem{
+			UserID:        userID,
+			CategoryID:    itemReq.CategoryID,
+			ImageUrl:      itemReq.ImageUrl,
+			ImagePublicID: itemReq.ImagePublicID,
+			Status:        wardrobestatus.Processing,
+			ItemType:      itemType,
+		}
+	}
+
+	if err := uc.wardrobeRepo.BulkCreate(ctx, newItems); err != nil {
+		return nil, err
+	}
+
+	resList := make([]*dto.WardrobeItemRes, len(newItems))
+	for i, item := range newItems {
+		job := dto.WardrobeBatchUploadJobDTO{
+			ItemID:        item.ID,
+			UserID:        userID,
+			CategoryID:    item.CategoryID,
+			ImageUrl:      item.ImageUrl,
+			ImagePublicID: item.ImagePublicID,
+		}
+
+		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
+		if err != nil {
+			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
+			item.Status = wardrobestatus.Failed
+			_ = uc.wardrobeRepo.Update(ctx, item)
+		}
+
+		resList[i] = mapper.MapToWardrobeItemRes(item)
+		resList[i].IsLocked = false
+	}
+
+	return resList, nil
+}

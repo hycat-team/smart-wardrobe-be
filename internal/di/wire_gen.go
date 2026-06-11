@@ -95,7 +95,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPostMediaRepository := persistence3.NewPostMediaRepository(gormDB)
 	iCommentRepository := persistence3.NewCommentRepository(gormDB)
 	iWardrobeItemRepository := persistence4.NewWardrobeItemRepository(gormDB)
-	iWardrobeContract := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository)
+	iWardrobeContract := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository, iSubscriptionUseCase)
 	iAdminCommunityModerationUseCase := admin_moderation.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeContract, iUnitOfWork)
 	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
 	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
