@@ -14,4 +14,6 @@ type ITokenBlacklistService interface {
 	IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error)
 	BlacklistUser(ctx context.Context, userID uuid.UUID, expiry time.Duration) error
 	IsUserBlacklisted(ctx context.Context, userID uuid.UUID) (bool, error)
+	UnblacklistUser(ctx context.Context, userID uuid.UUID) error
+	CheckBlacklist(ctx context.Context, token string, userID uuid.UUID) (tokenBlacklisted bool, userBlacklisted bool, err error)
 }

@@ -77,3 +77,30 @@ func (s *RedisTokenBlacklistService) IsUserBlacklisted(ctx context.Context, user
 	}
 	return exists > 0, nil
 }
+
+func (s *RedisTokenBlacklistService) UnblacklistUser(ctx context.Context, userID uuid.UUID) error {
+	key := userBlacklistPrefix + userID.String()
+	return s.redisClient.Del(ctx, key).Err()
+}
+
+func (s *RedisTokenBlacklistService) CheckBlacklist(ctx context.Context, token string, userID uuid.UUID) (bool, bool, error) {
+	tokenKey := blacklistPrefix + token
+	userKey := userBlacklistPrefix + userID.String()
+
+	results, err := s.redisClient.MGet(ctx, tokenKey, userKey).Result()
+	if err != nil {
+		return false, false, err
+	}
+
+	tokenBlacklisted := false
+	userBlacklisted := false
+
+	if len(results) > 0 && results[0] != nil {
+		tokenBlacklisted = true
+	}
+	if len(results) > 1 && results[1] != nil {
+		userBlacklisted = true
+	}
+
+	return tokenBlacklisted, userBlacklisted, nil
+}

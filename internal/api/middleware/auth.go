@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/config"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	identity_security "smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
@@ -62,20 +63,6 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 		return nil
 	}
 
-	isBlacklisted, err := m.tokenBlacklistService.IsTokenBlacklisted(c.Request.Context(), tokenStr)
-	if err != nil {
-		if required {
-			return apperror.NewInternalError("Không thể xác thực trạng thái đăng nhập của bạn.")
-		}
-		return nil
-	}
-	if isBlacklisted {
-		if required {
-			return apperror.ErrUnauthorized()
-		}
-		return nil
-	}
-
 	claims, err := jwtutils.ValidateToken([]byte(m.cfg.Jwt.Secret), tokenStr, jwttype.AccessToken)
 	if err != nil {
 		if required {
@@ -84,24 +71,32 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 		return nil
 	}
 
-	if _, err := uuid.Parse(claims.Subject); err != nil {
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
 		if required {
 			return apperror.ErrInvalidAccessToken()
 		}
 		return nil
 	}
-	userID, _ := uuid.Parse(claims.Subject)
 
-	isUserBlacklisted, err := m.tokenBlacklistService.IsUserBlacklisted(c.Request.Context(), userID)
+	tokenBlacklisted, userBlacklisted, err := m.tokenBlacklistService.CheckBlacklist(c.Request.Context(), tokenStr, userID)
 	if err != nil {
 		if required {
 			return apperror.NewInternalError("Không thể xác thực trạng thái đăng nhập của bạn.")
 		}
 		return nil
 	}
-	if isUserBlacklisted {
+
+	if tokenBlacklisted {
 		if required {
-			return apperror.ErrUnauthorized()
+			return apperror.NewUnauthorized("Phiên làm việc không hợp lệ hoặc đã đăng xuất. Vui lòng đăng nhập lại.")
+		}
+		return nil
+	}
+
+	if userBlacklisted {
+		if required {
+			return identityerrors.ErrAccountDisabledAuth
 		}
 		return nil
 	}

@@ -304,13 +304,18 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 		return nil, err
 	}
 
-	if input.Status == userstatus.Inactive {
+	switch input.Status {
+	case userstatus.Inactive:
 		if err := uc.refreshTokenRepo.RevokeAllByUserID(ctx, targetUserID); err != nil {
 			return nil, err
 		}
 
 		accessTokenTTL := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
 		if err := uc.tokenBlacklistService.BlacklistUser(ctx, targetUserID, accessTokenTTL); err != nil {
+			return nil, err
+		}
+	case userstatus.Active:
+		if err := uc.tokenBlacklistService.UnblacklistUser(ctx, targetUserID); err != nil {
 			return nil, err
 		}
 	}

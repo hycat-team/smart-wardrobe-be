@@ -64,6 +64,11 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, err
 	}
 
+	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, user.ID)
+	if err == nil && isBlacklisted {
+		return nil, identityerrors.ErrAccountDisabled
+	}
+
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
 	refreshExpiry := time.Hour * 24 * time.Duration(uc.cfg.Jwt.RefreshExpirationDays)
 
@@ -128,6 +133,11 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 	}
 	if err := ensureUserEligibleForSession(user); err != nil {
 		return nil, err
+	}
+
+	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, userID)
+	if err == nil && isBlacklisted {
+		return nil, identityerrors.ErrAccountDisabledAuth
 	}
 
 	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
