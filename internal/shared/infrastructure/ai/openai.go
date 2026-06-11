@@ -13,6 +13,98 @@ import (
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
+func (s *AIService) callOpenAITextStream(
+	ctx context.Context,
+	provider config.APIProviderConfig,
+	systemPrompt string,
+	userPrompt string,
+) (<-chan string, <-chan error) {
+	textChan := make(chan string, 100)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(textChan)
+		defer close(errChan)
+
+		payload := map[string]any{
+			"model": provider.Model,
+			"messages": []map[string]string{
+				{
+					"role":    "system",
+					"content": systemPrompt,
+				},
+				{
+					"role":    "user",
+					"content": userPrompt,
+				},
+			},
+			"stream": true,
+		}
+
+		bodyBytes, err := json.Marshal(payload)
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", provider.Endpoint, bytes.NewReader(bodyBytes))
+		if err != nil {
+			errChan <- err
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
+
+		resp, err := s.cli.Do(req)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			respBytes, _ := io.ReadAll(resp.Body)
+			errChan <- fmt.Errorf("OpenAI Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			return
+		}
+
+		err = parseSSEStream(resp.Body, func(data string) error {
+			if data == "[DONE]" {
+				return io.EOF
+			}
+
+			var openAIResp struct {
+				Choices []struct {
+					Delta struct {
+						Content string `json:"content"`
+					} `json:"delta"`
+				} `json:"choices"`
+			}
+
+			if err := json.Unmarshal([]byte(data), &openAIResp); err != nil {
+				return err
+			}
+
+			if len(openAIResp.Choices) > 0 {
+				text := openAIResp.Choices[0].Delta.Content
+				if text != "" {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case textChan <- text:
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil && err != io.EOF && err != context.Canceled {
+			errChan <- err
+		}
+	}()
+
+	return textChan, errChan
+}
+
 func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,

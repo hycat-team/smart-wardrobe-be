@@ -142,6 +142,9 @@ func LoadConfig() *Config {
 			User:      getEnv("ELASTICSEARCH_USER", ""),
 			Password:  getEnv("ELASTICSEARCH_PASSWORD", ""),
 		},
+		Community: Community{
+			MaxPersonalizedWindow: getEnvInt("COMMUNITY_MAX_PERSONALIZED_WINDOW", 100),
+		},
 	}
 
 	if err := validateConfig(cfg); err != nil {

@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	defaultFeedLimit      = 20
-	maxPersonalizedWindow = 100
+	defaultFeedLimit = 20
 )
 
 type postFeedDependencies struct {

@@ -16,6 +16,93 @@ import (
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
+func (s *AIService) callGoogleTextStream(
+	ctx context.Context,
+	provider config.APIProviderConfig,
+	systemPrompt string,
+	userPrompt string,
+) (<-chan string, <-chan error) {
+	textChan := make(chan string, 100)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(textChan)
+		defer close(errChan)
+
+		payload := map[string]any{
+			"contents": []map[string]any{
+				{
+					"parts": []map[string]string{
+						{
+							"text": systemPrompt + "\n\n" + userPrompt,
+						},
+					},
+				},
+			},
+		}
+
+		bodyBytes, err := json.Marshal(payload)
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		url := fmt.Sprintf("%s/%s:streamGenerateContent?alt=sse&key=%s", provider.Endpoint, provider.Model, provider.ApiKey)
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
+		if err != nil {
+			errChan <- err
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := s.cli.Do(req)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			respBytes, _ := io.ReadAll(resp.Body)
+			errChan <- fmt.Errorf("Google Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			return
+		}
+
+		err = parseSSEStream(resp.Body, func(data string) error {
+			var googleResp struct {
+				Candidates []struct {
+					Content struct {
+						Parts []struct {
+							Text string `json:"text"`
+						} `json:"parts"`
+					} `json:"content"`
+				} `json:"candidates"`
+			}
+
+			if err := json.Unmarshal([]byte(data), &googleResp); err != nil {
+				return err
+			}
+
+			if len(googleResp.Candidates) > 0 && len(googleResp.Candidates[0].Content.Parts) > 0 {
+				text := googleResp.Candidates[0].Content.Parts[0].Text
+				if text != "" {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case textChan <- text:
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil && err != context.Canceled {
+			errChan <- err
+		}
+	}()
+
+	return textChan, errChan
+}
+
 func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
 	payload := map[string]any{
 		"contents": []map[string]any{

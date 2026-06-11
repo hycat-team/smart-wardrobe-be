@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"context"
 	"fmt"
-	"time"
+	"strings"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -214,7 +215,10 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 		return err
 	}
 
-	_, aiMessage, err := h.aiUseCase.ProcessChatMessage(c.Request.Context(), userID, contextID, input.Content)
+	streamCtx, cancelStream := context.WithCancel(c.Request.Context())
+	defer cancelStream()
+
+	textChan, commitFn, err := h.aiUseCase.ProcessChatMessageStream(streamCtx, userID, contextID, input.Content)
 	if err != nil {
 		return err
 	}
@@ -224,19 +228,31 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 		return err
 	}
 
-	chunks := streamutils.SplitForStream(aiMessage.Content, 24)
-	for _, chunk := range chunks {
-		if _, err := fmt.Fprintf(c.Writer, "event: chunk\ndata: %s\n\n", streamutils.SanitizeSSEData(chunk)); err != nil {
-			return err
+	success := false
+	defer func() {
+		_ = commitFn(success)
+	}()
+
+	var accumulated strings.Builder
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return nil
+		case text, ok := <-textChan:
+			if !ok {
+				success = true
+				if _, err := fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", streamutils.SanitizeSSEData(accumulated.String())); err != nil {
+					return err
+				}
+				flusher.Flush()
+				return nil
+			}
+
+			accumulated.WriteString(text)
+			if _, err := fmt.Fprintf(c.Writer, "event: chunk\ndata: %s\n\n", streamutils.SanitizeSSEData(text)); err != nil {
+				return err
+			}
+			flusher.Flush()
 		}
-		flusher.Flush()
-		time.Sleep(25 * time.Millisecond)
 	}
-
-	if _, err := fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", streamutils.SanitizeSSEData(aiMessage.Content)); err != nil {
-		return err
-	}
-
-	flusher.Flush()
-	return nil
 }

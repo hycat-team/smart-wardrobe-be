@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/logger"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -97,6 +98,144 @@ func (s *AIService) GenerateText(ctx context.Context, systemPrompt string, userP
 			return s.tryTextProvider(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
 		},
 	)
+}
+
+func (s *AIService) GenerateTextStream(
+	ctx context.Context,
+	systemPrompt string,
+	userPrompt string,
+) (<-chan string, <-chan error) {
+	outTextChan := make(chan string, 100)
+	outErrChan := make(chan error, 1)
+
+	if err := s.limiter.Wait(ctx); err != nil {
+		outErrChan <- err
+		close(outTextChan)
+		close(outErrChan)
+		return outTextChan, outErrChan
+	}
+
+	go func() {
+		defer close(outTextChan)
+		defer close(outErrChan)
+
+		primText, primErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
+
+		// Wait for first token or error from primary
+		select {
+		case <-ctx.Done():
+			outErrChanSend(outErrChan, ctx.Err())
+			return
+		case err, ok := <-primErr:
+			if ok && err != nil {
+				// Primary failed! Switch to fallback if available
+				if s.cfg.AI.TextFallback.Provider != "" {
+					s.logger.Warn("Primary stream provider failed, switching to fallback",
+						zap.String("operation", "GenerateTextStream"),
+						zap.Error(err),
+					)
+					fbText, fbErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
+					forwardStream(ctx, fbText, fbErr, outTextChan, outErrChan)
+					return
+				}
+				// No fallback, fail permanently
+				s.logger.Error("Primary stream provider failed permanently without fallback",
+					zap.String("operation", "GenerateTextStream"),
+					zap.Error(err),
+				)
+				outErrChanSend(outErrChan, err)
+				return
+			}
+		case text, ok := <-primText:
+			if ok {
+				// Primary succeeded! Send first chunk and keep forwarding
+				outTextChan <- text
+				forwardStream(ctx, primText, primErr, outTextChan, outErrChan)
+				return
+			}
+		}
+	}()
+
+	return outTextChan, outErrChan
+}
+
+func forwardStream(
+	ctx context.Context,
+	inText <-chan string,
+	inErr <-chan error,
+	outText chan<- string,
+	outErr chan<- error,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			outErrChanSend(outErr, ctx.Err())
+			return
+		case err, ok := <-inErr:
+			if ok && err != nil {
+				outErrChanSend(outErr, err)
+				return
+			}
+			if !ok {
+				// inErr closed, forward any remaining text
+				for t := range inText {
+					select {
+					case <-ctx.Done():
+						outErrChanSend(outErr, ctx.Err())
+						return
+					case outText <- t:
+					}
+				}
+				return
+			}
+		case text, ok := <-inText:
+			if ok {
+				select {
+				case <-ctx.Done():
+					outErrChanSend(outErr, ctx.Err())
+					return
+				case outText <- text:
+				}
+			} else {
+				// inText closed, forward any remaining error
+				for e := range inErr {
+					if e != nil {
+						outErrChanSend(outErr, e)
+						return
+					}
+				}
+				return
+			}
+		}
+	}
+}
+
+func outErrChanSend(outErr chan<- error, err error) {
+	select {
+	case outErr <- err:
+	default:
+	}
+}
+
+func (s *AIService) tryTextProviderStream(
+	ctx context.Context,
+	provider config.APIProviderConfig,
+	systemPrompt string,
+	userPrompt string,
+) (<-chan string, <-chan error) {
+	switch provider.Provider {
+	case ProviderOpenAI:
+		return s.callOpenAITextStream(ctx, provider, systemPrompt, userPrompt)
+	case ProviderGemini:
+		return s.callGoogleTextStream(ctx, provider, systemPrompt, userPrompt)
+	}
+
+	errChan := make(chan error, 1)
+	errChan <- apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")
+	close(errChan)
+	textChan := make(chan string)
+	close(textChan)
+	return textChan, errChan
 }
 
 func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {

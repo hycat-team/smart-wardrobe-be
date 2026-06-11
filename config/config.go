@@ -15,6 +15,7 @@ type Config struct {
 	AI            AIServiceConfig
 	RabbitMQ      RabbitMQ
 	Elasticsearch Elasticsearch
+	Community     Community
 }
 
 type Elasticsearch struct {
@@ -128,4 +129,8 @@ type RateLimit struct {
 	TokenLimit           int
 	TokensPerPeriod      int
 	ReplenishmentSeconds int
+}
+
+type Community struct {
+	MaxPersonalizedWindow int
 }

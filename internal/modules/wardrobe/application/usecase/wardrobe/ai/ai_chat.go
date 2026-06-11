@@ -5,10 +5,12 @@ import (
 	"strings"
 	"time"
 
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
@@ -102,6 +104,162 @@ func (uc *WardrobeAIUseCase) ArchiveChatSession(ctx context.Context, userID uuid
 
 	session.IsArchived = true
 	return uc.contextRepo.Update(ctx, session)
+}
+
+func (uc *WardrobeAIUseCase) ProcessChatMessageStream(
+	ctx context.Context,
+	userID uuid.UUID,
+	contextID uuid.UUID,
+	content string,
+) (<-chan string, func(success bool) error, error) {
+	// 1. Soft quota check
+	quota, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if quota.AiUsageCount >= quota.AiChatDailyQuota {
+		return nil, nil, subscriptionerrors.ErrAiChatQuotaExceeded
+	}
+
+	// 2. Fetch session and verify ownership
+	session, err := uc.contextRepo.GetByID(ctx, contextID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if session == nil || session.UserID != userID {
+		return nil, nil, wardrobeerrors.ErrChatNotFound
+	}
+
+	// 3. Check for outfit recommendation intent (static reply fallback)
+	if isOutfitIntent(content) {
+		textChan := make(chan string, 1)
+		textChan <- "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."
+		close(textChan)
+
+		commitCallback := func(success bool) error {
+			if !success {
+				return nil
+			}
+
+			userMessage := &entities.Message{
+				ContextID: contextID,
+				Sender:    messagesender.User,
+				Content:   content,
+			}
+			aiMessage := &entities.Message{
+				ContextID: contextID,
+				Sender:    messagesender.AI,
+				Content:   "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính.",
+			}
+
+			return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+				if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
+					return err
+				}
+				if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
+					return err
+				}
+				if err := uc.messageRepo.Create(txCtx, aiMessage); err != nil {
+					return err
+				}
+				session.UpdatedAt = time.Now()
+				if err := uc.contextRepo.Update(txCtx, session); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+
+		return textChan, commitCallback, nil
+	}
+
+	// 4. Generate system prompt using history and active wardrobe items
+	recent, err := uc.messageRepo.GetRecentByContextID(ctx, contextID, 5)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	activeWardrobeItems := shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+	systemPrompt := buildChatSystemPrompt(session.ContextSummary, activeWardrobeItems, recent)
+
+	// 5. Call stream generation in AI Service
+	aiTextChan, aiErrChan := uc.aiService.GenerateTextStream(ctx, systemPrompt, content)
+
+	outTextChan := make(chan string, 100)
+	var fullResponseBuilder strings.Builder
+
+	go func() {
+		defer close(outTextChan)
+		for t := range aiTextChan {
+			fullResponseBuilder.WriteString(t)
+			outTextChan <- t
+		}
+	}()
+
+	commitCallback := func(success bool) error {
+		if !success {
+			return nil
+		}
+
+		select {
+		case err, ok := <-aiErrChan:
+			if ok && err != nil {
+				return err
+			}
+		default:
+		}
+
+		fullResponse := fullResponseBuilder.String()
+		if fullResponse == "" {
+			return apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
+		}
+
+		userMessage := &entities.Message{
+			ContextID: contextID,
+			Sender:    messagesender.User,
+			Content:   content,
+		}
+		aiMessage := &entities.Message{
+			ContextID: contextID,
+			Sender:    messagesender.AI,
+			Content:   fullResponse,
+		}
+
+		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+			if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
+				return err
+			}
+			if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
+				return err
+			}
+			if err := uc.messageRepo.Create(txCtx, aiMessage); err != nil {
+				return err
+			}
+			session.UpdatedAt = time.Now()
+			if err := uc.contextRepo.Update(txCtx, session); err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		_ = uc.compressChatContext(ctx, session)
+		return nil
+	}
+
+	return outTextChan, commitCallback, nil
 }
 
 func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error) {

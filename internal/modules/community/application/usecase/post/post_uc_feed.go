@@ -71,7 +71,7 @@ func (uc *UserPostUseCase) GetFeed(ctx context.Context, viewerUserID *uuid.UUID,
 }
 
 func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUserID uuid.UUID, feedQuery shared_repo_dto.FeedQuery) (*community_dto.GetFeedRes, error) {
-	records, err := uc.feed.postRepo.GetHotFeedCandidates(ctx, feedQuery, maxPersonalizedWindow)
+	records, err := uc.feed.postRepo.GetHotFeedCandidates(ctx, feedQuery, uc.cfg.Community.MaxPersonalizedWindow)
 	if err != nil {
 		return nil, err
 	}
