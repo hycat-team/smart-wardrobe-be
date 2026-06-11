@@ -34,15 +34,15 @@ func TestMapErrorToProblemMapsSentinel(t *testing.T) {
 }
 
 func TestFilterStackTraceArrayKeepsProjectFrames(t *testing.T) {
-	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/pkg/utils/errorutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/errorutils/errorutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
+	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/otherutils/otherutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
 
 	filtered := FilterStackTraceArray(stack)
 	joined := strings.Join(filtered, "\n")
 
-	if !strings.Contains(joined, "smart-wardrobe-be/pkg/utils/errorutils.TestFilterStackTraceArrayKeepsProjectFrames") {
+	if !strings.Contains(joined, "smart-wardrobe-be/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames") {
 		t.Fatalf("expected project frame to be kept, got %v", filtered)
 	}
-	if strings.Contains(joined, "\n\t/work/pkg/utils/errorutils/errorutils_test.go:1") {
+	if strings.Contains(joined, "\n\t/work/pkg/utils/otherutils/otherutils_test.go:1") {
 		t.Fatalf("expected file line to be compacted into one frame, got %v", filtered)
 	}
 	if strings.Contains(joined, "runtime.goexit") {

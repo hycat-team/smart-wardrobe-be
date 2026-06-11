@@ -10,6 +10,8 @@ import (
 var ignoredStackPaths = []string{
 	"smart-wardrobe-be/internal/shared/application/constants/apperror/",
 	"/internal/shared/application/constants/apperror/",
+	"smart-wardrobe-be/pkg/utils/errorutils/",
+	"/pkg/utils/errorutils/",
 }
 
 var ignoredStackFunctions = []string{

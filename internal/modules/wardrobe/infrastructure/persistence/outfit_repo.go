@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"sort"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -17,7 +19,7 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
-	relations := []string{"Wardrobe.Category"}
+	relations := []string{"Items.Wardrobe.Category"}
 	return &OutfitRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}
@@ -54,18 +56,19 @@ func (r *OutfitRepository) CountByUserID(ctx context.Context, userID uuid.UUID) 
 
 func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*entities.Outfit, []*entities.OutfitItem, error) {
 	var outfit entities.Outfit
-	err := r.GetDB(ctx).Where("id = ?", id).First(&outfit).Error
+	err := r.GetQueryWithPreload(ctx).Where("id = ?", id).First(&outfit).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, nil
+		}
 		return nil, nil, err
 	}
 
-	var items []*entities.OutfitItem
-	err = r.GetQueryWithPreload(ctx).Where("outfit_id = ?", id).Order("layer_order ASC").Find(&items).Error
-	if err != nil {
-		return nil, nil, err
-	}
+	sort.Slice(outfit.Items, func(i, j int) bool {
+		return outfit.Items[i].LayerOrder < outfit.Items[j].LayerOrder
+	})
 
-	return &outfit, items, nil
+	return &outfit, outfit.Items, nil
 }
 
 func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error {

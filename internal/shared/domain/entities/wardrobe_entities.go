@@ -71,6 +71,7 @@ type Outfit struct {
 	CoverImageUrl *string                   `gorm:"type:varchar(500)"`
 	CoverPublicID *string                   `gorm:"type:varchar(255)"`
 	Status        outfitstatus.OutfitStatus `gorm:"type:smallint;not null;default:1"` // 1: Active, 0: Draft
+	Items         []*OutfitItem             `gorm:"foreignKey:OutfitID;constraint:OnDelete:CASCADE"`
 }
 
 type OutfitItem struct {
