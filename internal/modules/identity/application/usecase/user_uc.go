@@ -295,8 +295,8 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 	if targetUser == nil || targetUser.IsDeleted {
 		return nil, identityerrors.ErrUserProfileNotFound
 	}
-	if targetUser.RoleSlug != roleslug.Member {
-		return nil, identityerrors.ErrMemberStatusOnly
+	if targetUser.RoleSlug != roleslug.User {
+		return nil, identityerrors.ErrUserStatusOnly
 	}
 
 	targetUser.Status = input.Status

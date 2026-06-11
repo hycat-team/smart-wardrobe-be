@@ -26,7 +26,7 @@ func NewRouter(
 
 func (r *OutfitRouter) Init(parentGroup *gin.RouterGroup) {
 	privateApi := parentGroup.Group("")
-	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 
 	outfitApi := privateApi.Group("/outfits")
 	{

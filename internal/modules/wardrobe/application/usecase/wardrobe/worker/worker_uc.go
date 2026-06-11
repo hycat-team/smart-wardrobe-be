@@ -66,7 +66,7 @@ func (uc *WardrobeWorkerUseCase) BatchUploadWardrobeItems(ctx context.Context, u
 	}
 
 	itemType := itemtype.SystemCatalogItem
-	if currentRole == roleslug.Member {
+	if currentRole == roleslug.User {
 		itemType = itemtype.UserItem
 		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 		if err != nil {

@@ -60,7 +60,7 @@ var (
 	ErrAccountDisabled       = apperror.NewForbidden(contactSupportMessage)
 	ErrAccountDisabledAuth   = apperror.NewUnauthorized(contactSupportMessage)
 	ErrSelfStatusUpdate      = apperror.NewForbidden("Bạn không thể tự thay đổi trạng thái tài khoản admin của chính mình.")
-	ErrMemberStatusOnly      = apperror.NewForbidden("Chỉ có thể thay đổi trạng thái tài khoản member.")
+	ErrUserStatusOnly        = apperror.NewForbidden("Chỉ có thể thay đổi trạng thái tài khoản user.")
 
 	// Lỗi riêng biệt ở Presentation Layer (Cookie/HTTP)
 	ErrCookieTokenMissing    = apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")

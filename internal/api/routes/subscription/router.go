@@ -36,7 +36,7 @@ func (r *SubscriptionRouter) Init(group *gin.RouterGroup) {
 
 	// Authenticated subscription endpoints
 	authSubApi := subApi.Group("")
-	authSubApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	authSubApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	{
 		authSubApi.GET("/me", shared_pres.WrapHandler(r.subscriptionHandler.GetUserSubscriptionOverview))
 		authSubApi.GET("/me/daily-quota", shared_pres.WrapHandler(r.subscriptionHandler.GetDailyQuota))

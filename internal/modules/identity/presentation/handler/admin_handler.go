@@ -28,7 +28,7 @@ func NewAdminHandler(uc usecase_interfaces.IUserUseCase) *AdminHandler {
 
 // UpdateUserStatus cập nhật trạng thái tài khoản người dùng
 // @Summary Cập nhật trạng thái tài khoản người dùng
-// @Description Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.
+// @Description Cho phép admin khóa hoặc mở lại tài khoản user. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.
 // @Tags Admin
 // @Accept json
 // @Produce json
@@ -67,7 +67,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param roleSlug query string false "Phân quyền (e.g. member, admin)"
+// @Param roleSlug query string false "Phân quyền (e.g. user, admin)"
 // @Param isActive query boolean false "Trạng thái hoạt động"
 // @Param q query string false "Từ khóa tìm kiếm (username, email, họ tên)"
 // @Param page query int false "Số trang"

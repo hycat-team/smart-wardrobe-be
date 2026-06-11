@@ -30,7 +30,7 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	}
 
 	privateApi := group.Group("")
-	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 
 	wardrobeApi := privateApi.Group("/wardrobe-items")
 	{

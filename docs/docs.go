@@ -333,7 +333,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Phân quyền (e.g. member, admin)",
+                        "description": "Phân quyền (e.g. user, admin)",
                         "name": "roleSlug",
                         "in": "query"
                     },
@@ -386,7 +386,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/users/{id}/status": {
             "patch": {
-                "description": "Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.",
+                "description": "Cho phép admin khóa hoặc mở lại tài khoản user. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5018,11 +5018,11 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "admin",
-                "member"
+                "user"
             ],
             "x-enum-varnames": [
                 "Admin",
-                "Member"
+                "User"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState": {

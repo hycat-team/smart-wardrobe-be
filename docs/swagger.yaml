@@ -1215,11 +1215,11 @@ definitions:
   smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
     enum:
     - admin
-    - member
+    - user
     type: string
     x-enum-varnames:
     - Admin
-    - Member
+    - User
   smart-wardrobe-be_internal_shared_domain_constants_transferstate.TransferState:
     enum:
     - 0
@@ -1500,7 +1500,7 @@ paths:
       description: Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và
         lọc theo trạng thái/phân quyền.
       parameters:
-      - description: Phân quyền (e.g. member, admin)
+      - description: Phân quyền (e.g. user, admin)
         in: query
         name: roleSlug
         type: string
@@ -1539,9 +1539,9 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Cho phép admin khóa hoặc mở lại tài khoản member. Khi khóa sang
-        inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn
-        hiệu lực đến hết TTL theo cơ chế JWT stateless.
+      description: Cho phép admin khóa hoặc mở lại tài khoản user. Khi khóa sang inactive,
+        hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực
+        đến hết TTL theo cơ chế JWT stateless.
       parameters:
       - description: ID người dùng
         in: path

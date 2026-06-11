@@ -44,7 +44,7 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 
 	// Post - Private endpoints (Authenticated)
 	privatePosts := group.Group("/posts")
-	privatePosts.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	privatePosts.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	{
 		privatePosts.GET("/upload-signature", shared_pres.WrapHandler(r.postHandler.GetUploadSignature))
 		privatePosts.POST("", shared_pres.WrapHandler(r.postHandler.CreatePost))
@@ -60,7 +60,7 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 	}
 
 	transfers := group.Group("/transfers")
-	transfers.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Member))
+	transfers.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	
 	// Transfer requests
 	transfers.POST("/requests", shared_pres.WrapHandler(r.transferHandler.CreateTransferRequests))
