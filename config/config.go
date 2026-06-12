@@ -16,6 +16,7 @@ type Config struct {
 	RabbitMQ      RabbitMQ
 	Elasticsearch Elasticsearch
 	Community     Community
+	RAG           RAG
 }
 
 type Elasticsearch struct {
@@ -134,3 +135,10 @@ type RateLimit struct {
 type Community struct {
 	MaxPersonalizedWindow int
 }
+
+type RAG struct {
+	RecentlyWornPenaltyDays int
+	LongUnwornBonusDays     int
+	RrfKParameter           int
+}
+

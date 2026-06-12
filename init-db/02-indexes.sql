@@ -66,3 +66,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_comment ON likes (user_id, com
 
 -- Tối ưu luồng quét các gói cước hết hạn cần gia hạn tự động theo lô (Batch Processing)
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_active_expires ON user_subscriptions (is_active, expires_at, user_id);
+
+-- ========================================================
+-- CHỈ MỤC TÌM KIẾM TỪ KHÓA (LEXICAL GIN INDEX)
+-- ========================================================
+
+-- Tối ưu tìm kiếm FTS (Full-Text Search) trên các thuộc tính thời trang của tủ đồ
+CREATE INDEX IF NOT EXISTS idx_wardrobe_items_lexical_search 
+ON wardrobe_items 
+USING gin (
+  to_tsvector('simple', 
+    coalesce(color, '') || ' ' || 
+    coalesce(style, '') || ' ' || 
+    coalesce(material, '') || ' ' || 
+    coalesce(pattern, '') || ' ' || 
+    coalesce(fit, '') || ' ' || 
+    coalesce(description, '')
+  )
+);

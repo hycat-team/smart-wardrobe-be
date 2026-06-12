@@ -145,6 +145,11 @@ func LoadConfig() *Config {
 		Community: Community{
 			MaxPersonalizedWindow: getEnvInt("COMMUNITY_MAX_PERSONALIZED_WINDOW", 100),
 		},
+		RAG: RAG{
+			RecentlyWornPenaltyDays: getEnvInt("RAG_RECENTLY_WORN_PENALTY_DAYS", 3),
+			LongUnwornBonusDays:     getEnvInt("RAG_LONG_UNWORN_BONUS_DAYS", 14),
+			RrfKParameter:           getEnvInt("RAG_RRF_K_PARAMETER", 30),
+		},
 	}
 
 	if err := validateConfig(cfg); err != nil {

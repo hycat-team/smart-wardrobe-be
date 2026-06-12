@@ -27,6 +27,7 @@ type IWardrobeItemRepository interface {
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
 	GetSimilarItemsByVectorAndCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, vector entities.Vector, limit int) ([]*entities.WardrobeItem, error)
 	GetRecentlyActiveItemsByCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
+	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, keywords []string, limit int) ([]*entities.WardrobeItem, error)
 }
 
 type ICategoryRepository interface {

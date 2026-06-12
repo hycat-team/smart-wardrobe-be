@@ -131,7 +131,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	subscriptionRouter := subscription2.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
 	iConversationalContextRepository := persistence4.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence4.NewMessageRepository(gormDB)
-	iWardrobeAIUseCase := ai2.NewWardrobeAIUseCase(iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iCategoryRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
+	iWardrobeAIUseCase := ai2.NewWardrobeAIUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iCategoryRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
 	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iWardrobeAIUseCase)
 	wardrobeRouter := wardrobe.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
 	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)

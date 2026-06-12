@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -378,4 +379,130 @@ func mapChatMessage(item *entities.Message) *dto.ChatMessageRes {
 		CreatedAt: item.CreatedAt,
 	}
 }
+
+// scoreCandidateItem runs a rule-based re-ranking score for a single wardrobe item based on parsed user intent:
+// - Style matching (+0.3 bonus)
+// - Occasion matching (+0.2 bonus)
+// - Color tone matching (light/dark/earthy) (+0.2 bonus)
+// - Neutral color versatility (+0.1 bonus)
+// - Weather appropriateness (outerwear bonus in cold weather, penalty in hot weather)
+// - Recently Worn Penalty (up to -0.4 penalty if worn within recentlyWornDays)
+// - Long Unworn / New Item Bonus (+0.15 bonus if not worn recently and matches style or occasion)
+func scoreCandidateItem(
+	item *entities.WardrobeItem,
+	intent dto.ParsedIntent,
+	recentlyWornDays int,
+	longUnwornDays int,
+) (float64, []string) {
+	var score float64 = 1.0
+	var reasonTags []string
+
+	// Rule 1: Style Matching
+	styleMatched := false
+	if item.Style != nil && len(intent.StyleTarget) > 0 {
+		itemStyle := strings.ToLower(*item.Style)
+		for _, target := range intent.StyleTarget {
+			if strings.Contains(itemStyle, strings.ToLower(target)) {
+				score += 0.3
+				styleMatched = true
+				reasonTags = append(reasonTags, "style-match:"+target)
+				break
+			}
+		}
+	}
+
+	// Rule 2: Occasion Matching (checked against item description and style properties)
+	if intent.Occasion != "" {
+		occ := strings.ToLower(intent.Occasion)
+		descMatch := false
+		if item.Description != nil && strings.Contains(strings.ToLower(*item.Description), occ) {
+			descMatch = true
+		}
+		if item.Style != nil && strings.Contains(strings.ToLower(*item.Style), occ) {
+			descMatch = true
+		}
+		if descMatch {
+			score += 0.2
+			reasonTags = append(reasonTags, "occasion-match:"+occ)
+		}
+	}
+
+	// Rule 3: Color Tone Matching using HSL values
+	if intent.ColorTone != "" && item.ColorLightness != nil {
+		tone := strings.ToLower(intent.ColorTone)
+		l := *item.ColorLightness
+		if tone == "light" && l >= 60.0 {
+			// Light color lightness threshold >= 60%
+			score += 0.2
+			reasonTags = append(reasonTags, "color-tone:light")
+		} else if tone == "dark" && l <= 40.0 {
+			// Dark color lightness threshold <= 40%
+			score += 0.2
+			reasonTags = append(reasonTags, "color-tone:dark")
+		} else if tone == "earthy" && item.ColorHue != nil && item.ColorSaturation != nil {
+			h := *item.ColorHue
+			s := *item.ColorSaturation
+			// Earthy tones (browns, beiges, olives): Hue 20-50 or 80-120, Saturation <= 50, Lightness 20-70
+			if ((h >= 20.0 && h <= 50.0) || (h >= 80.0 && h <= 120.0)) && s <= 50.0 && l >= 20.0 && l <= 70.0 {
+				score += 0.2
+				reasonTags = append(reasonTags, "color-tone:earthy")
+			}
+		}
+	}
+
+	// Rule 4: Neutral Color Versatility (neutrals coordinate easily, so they receive a small bonus)
+	if isNeutral(item) {
+		score += 0.1
+		reasonTags = append(reasonTags, "neutral-versatility")
+	}
+
+	// Rule 5: Weather Appropriateness
+	isColdContext := false
+	for _, pc := range intent.PositiveConstraints {
+		if pc == "cold" || pc == "cool" || pc == "rainy" {
+			isColdContext = true
+			break
+		}
+	}
+
+	if item.Category != nil {
+		slug := item.Category.Slug
+		if isColdContext && slug == "ao-khoac" {
+			// Cold weather demands outerwear (+0.4)
+			score += 0.4
+			reasonTags = append(reasonTags, "weather-appropriate:outerwear")
+		} else if !isColdContext && slug == "ao-khoac" {
+			// Hot weather discourages outerwear (-0.3)
+			score -= 0.3
+		}
+	}
+
+	// Rule 6: Wear Frequency Scoring (Recently Worn Penalty / Long Unworn Bonus)
+	if item.LastUsedAt != nil {
+		duration := time.Since(*item.LastUsedAt)
+		daysSinceUsed := int(duration.Hours() / 24)
+
+		if daysSinceUsed < recentlyWornDays {
+			// Penalize linearly based on how recently the item was worn (up to -0.4)
+			penalty := float64(recentlyWornDays-daysSinceUsed) / float64(recentlyWornDays) * 0.4
+			score -= penalty
+			reasonTags = append(reasonTags, fmt.Sprintf("recently-worn-penalty:-%.2f", penalty))
+		} else if daysSinceUsed > longUnwornDays {
+			// Award a bonus if the item hasn't been worn in a long time and fits the context
+			if styleMatched || intent.Occasion != "" {
+				score += 0.15
+				reasonTags = append(reasonTags, "long-unworn-bonus")
+			}
+		}
+	} else {
+		// Award bonus to new/never-worn items if they match style or occasion
+		if styleMatched || intent.Occasion != "" {
+			score += 0.15
+			reasonTags = append(reasonTags, "new-item-bonus")
+		}
+	}
+
+	return score, reasonTags
+}
+
 

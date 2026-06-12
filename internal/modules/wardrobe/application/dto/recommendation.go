@@ -48,3 +48,14 @@ type PendingTransferRes struct {
 	Item       *WardrobeItemRes `json:"item"`
 	SellerName string           `json:"sellerName"`
 }
+
+type ParsedIntent struct {
+	SemanticQuery       string   `json:"semantic_query"`
+	ExactKeywords       []string `json:"exact_keywords"`
+	Occasion            string   `json:"occasion"`
+	StyleTarget         []string `json:"style_target"`
+	ColorTone           string   `json:"color_tone"`
+	PositiveConstraints []string `json:"positive_constraints"`
+	NegativeConstraints []string `json:"negative_constraints"`
+}
+

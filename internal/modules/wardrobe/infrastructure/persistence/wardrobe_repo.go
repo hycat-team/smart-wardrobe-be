@@ -250,3 +250,64 @@ func (r *WardrobeItemRepository) GetRecentlyActiveItemsByCategory(
 	}
 	return items, nil
 }
+
+// GetHybridCandidates performs a multi-stage hybrid search combining:
+// - Vector search (cosine similarity on pgvector embeddings)
+// - Lexical search (full-text search GIN index on text attributes)
+// - Fallback options (if one of them is empty or fails)
+// The results are fused using a weighted combination:
+// Score = 0.7 * (1.0 - Cosine Distance) + 0.3 * (Text Search Rank)
+func (r *WardrobeItemRepository) GetHybridCandidates(
+	ctx context.Context,
+	userID uuid.UUID,
+	semanticVector entities.Vector,
+	keywords []string,
+	limit int,
+) ([]*entities.WardrobeItem, error) {
+	var items []*entities.WardrobeItem
+	// Base query filtering active, non-deleted wardrobe items owned by the specified user
+	db := r.GetQueryWithPreload(ctx).
+		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
+			userID, wardrobestatus.InWardrobe, false)
+
+	hasVector := len(semanticVector) > 0
+	hasKeywords := len(keywords) > 0
+
+	// Case 1: Both vector and keyword search parameters are available (Hybrid Search)
+	if hasVector && hasKeywords {
+		kwStr := strings.Join(keywords, " ")
+		// Weighted score: 70% weight for semantic vector similarity, 30% for full-text search rank (ts_rank_cd)
+		// <=> operator calculates cosine distance, so (1.0 - distance) yields cosine similarity
+		// simple config is utilized for fast matching without language-specific stemming
+		err := db.Order(gorm.Expr(
+			"0.7 * (1.0 - (wardrobe_items.embedding <=> ?)) + 0.3 * ts_rank_cd(to_tsvector('simple', coalesce(wardrobe_items.color, '') || ' ' || coalesce(wardrobe_items.style, '') || ' ' || coalesce(wardrobe_items.material, '') || ' ' || coalesce(wardrobe_items.pattern, '') || ' ' || coalesce(wardrobe_items.fit, '') || ' ' || coalesce(wardrobe_items.description, '')), plainto_tsquery('simple', ?)) DESC",
+			semanticVector, kwStr,
+		)).
+		Limit(limit).
+		Find(&items).Error
+		return items, err
+	} else if hasVector {
+		// Case 2: Only vector search is available (pure semantic retrieval ordered by closest cosine distance)
+		err := db.Order(gorm.Expr("wardrobe_items.embedding <=> ?", semanticVector)).
+			Limit(limit).
+			Find(&items).Error
+		return items, err
+	} else if hasKeywords {
+		// Case 3: Only keywords are available (pure lexical retrieval utilizing GIN index matching with @@)
+		kwStr := strings.Join(keywords, " ")
+		err := db.Where(gorm.Expr(
+			"to_tsvector('simple', coalesce(wardrobe_items.color, '') || ' ' || coalesce(wardrobe_items.style, '') || ' ' || coalesce(wardrobe_items.material, '') || ' ' || coalesce(wardrobe_items.pattern, '') || ' ' || coalesce(wardrobe_items.fit, '') || ' ' || coalesce(wardrobe_items.description, '')) @@ plainto_tsquery('simple', ?)",
+			kwStr,
+		)).
+		Limit(limit).
+		Find(&items).Error
+		return items, err
+	}
+
+	// Case 4: Fallback retrieval (default to most recently created items)
+	err := db.Order("wardrobe_items.created_at DESC").
+		Limit(limit).
+		Find(&items).Error
+	return items, err
+}
+

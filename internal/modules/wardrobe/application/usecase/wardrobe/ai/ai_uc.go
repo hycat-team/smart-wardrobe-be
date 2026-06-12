@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
+	"smart-wardrobe-be/config"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
@@ -34,6 +37,7 @@ type llmOutfitResponse struct {
 }
 
 type WardrobeAIUseCase struct {
+	cfg             *config.Config
 	contextRepo     repositories.IConversationalContextRepository
 	messageRepo     repositories.IMessageRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
@@ -42,9 +46,11 @@ type WardrobeAIUseCase struct {
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	uow             shared_repos.IUnitOfWork
+	nlpParser       *LocalNLPParser
 }
 
 func NewWardrobeAIUseCase(
+	cfg *config.Config,
 	contextRepo repositories.IConversationalContextRepository,
 	messageRepo repositories.IMessageRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
@@ -55,6 +61,7 @@ func NewWardrobeAIUseCase(
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeAIUseCase {
 	return &WardrobeAIUseCase{
+		cfg:             cfg,
 		contextRepo:     contextRepo,
 		messageRepo:     messageRepo,
 		wardrobeRepo:    wardrobeRepo,
@@ -63,6 +70,7 @@ func NewWardrobeAIUseCase(
 		userSubContract: userSubContract,
 		userQuotaCtr:    userQuotaCtr,
 		uow:             uow,
+		nlpParser:       NewLocalNLPParser(),
 	}
 }
 
@@ -128,144 +136,105 @@ func (uc *WardrobeAIUseCase) validateAndGetActiveItems(ctx context.Context, user
 	return activeItems, quotaDTO, nil
 }
 
-// filterCandidates performs Stage 2: Candidate Filtering.
+// filterCandidates thực hiện Giai đoạn 2: Lọc ứng viên bằng Advanced RAG (Local NLP Parser + Hybrid Search + Re-ranking).
 func (uc *WardrobeAIUseCase) filterCandidates(ctx context.Context, userID uuid.UUID, activeItems []*entities.WardrobeItem, input dto.RecommendOutfitReq) ([]*entities.WardrobeItem, error) {
-	var candidates []*entities.WardrobeItem
+	// Chạy bộ phân tách ý định Local NLP Parser từ thông tin chi tiết dạng free-text
+	freeText := ""
+	if input.Details != nil {
+		freeText = *input.Details
+	}
+	intent := uc.nlpParser.Parse(freeText)
 
-	if len(activeItems) <= 15 {
-		if input.ColorTone != nil && *input.ColorTone != "" {
-			tone := strings.ToLower(*input.ColorTone)
-			filtered := make([]*entities.WardrobeItem, 0)
-			for _, item := range activeItems {
-				if item.ColorLightness != nil {
-					l := *item.ColorLightness
-					if (tone == "dark" || strings.Contains(tone, "trầm") || strings.Contains(tone, "tối")) && l < 40.0 {
-						filtered = append(filtered, item)
-					} else if (tone == "light" || strings.Contains(tone, "sáng")) && l >= 60.0 {
-						filtered = append(filtered, item)
-					}
-				}
-			}
-			if len(filtered) > 0 {
-				candidates = filtered
-			} else {
-				candidates = activeItems
-			}
-		} else {
-			candidates = activeItems
-		}
-	} else {
-		categories, err := uc.categoryRepo.GetAll(ctx)
-		if err != nil {
-			return nil, err
-		}
+	// Gộp ý định đã phân tách với các bộ lọc rõ ràng được chọn từ giao diện người dùng (nếu có)
+	if input.Occasion != nil && *input.Occasion != "" {
+		intent.Occasion = *input.Occasion
+	}
+	if input.ColorTone != nil && *input.ColorTone != "" {
+		intent.ColorTone = *input.ColorTone
+	}
 
-		catMap := make(map[string]uuid.UUID)
-		for _, cat := range categories {
-			catMap[cat.Slug] = cat.ID
-		}
+	// Tạo embedding cho truy vấn với timeout tối đa 2 giây để đảm bảo hệ thống ổn định
+	var queryVector entities.Vector
+	if intent.SemanticQuery != "" {
+		embedCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
 
-		targets := []struct {
-			slug  string
-			limit int
-		}{
-			{"ao", 5},
-			{"quan", 5},
-			{"giay", 3},
-			{"ao-khoac", 3},
-			{"vay", 2},
-			{"mu", 1},
-			{"phu-kien", 1},
-		}
-
-		var queryVector entities.Vector
-		useVectorSearch := false
-
-		if input.Details != nil && strings.TrimSpace(*input.Details) != "" {
-			vecs, err := uc.aiService.GenerateEmbeddings(ctx, []string{*input.Details})
-			if err == nil && len(vecs) > 0 && len(vecs[0]) == 768 {
-				queryVector = entities.Vector(vecs[0])
-				useVectorSearch = true
-			}
-		}
-
-		catCandidates := make(map[string][]*entities.WardrobeItem)
-		for _, tgt := range targets {
-			catID, exists := catMap[tgt.slug]
-			if !exists {
-				continue
-			}
-
-			var catItems []*entities.WardrobeItem
-			var catErr error
-
-			if useVectorSearch {
-				catItems, catErr = uc.wardrobeRepo.GetSimilarItemsByVectorAndCategory(ctx, userID, catID, queryVector, tgt.limit)
-			} else {
-				catItems, catErr = uc.wardrobeRepo.GetRecentlyActiveItemsByCategory(ctx, userID, catID, tgt.limit)
-			}
-
-			if catErr == nil {
-				if input.ColorTone != nil && *input.ColorTone != "" {
-					tone := strings.ToLower(*input.ColorTone)
-					var filtered []*entities.WardrobeItem
-					for _, item := range catItems {
-						if item.ColorLightness != nil {
-							l := *item.ColorLightness
-							if (tone == "dark" || strings.Contains(tone, "trầm") || strings.Contains(tone, "tối")) && l < 40.0 {
-								filtered = append(filtered, item)
-							} else if (tone == "light" || strings.Contains(tone, "sáng")) && l >= 60.0 {
-								filtered = append(filtered, item)
-							}
-						}
-					}
-					if len(filtered) > 0 {
-						catItems = filtered
-					}
-				}
-				catCandidates[tgt.slug] = catItems
-			}
-		}
-
-		for _, catItems := range catCandidates {
-			candidates = append(candidates, catItems...)
-		}
-
-		// Backfill
-		if len(candidates) < 20 && len(candidates) < len(activeItems) {
-			takenIDs := make(map[uuid.UUID]bool)
-			for _, c := range candidates {
-				takenIDs[c.ID] = true
-			}
-
-			for _, item := range activeItems {
-				if !takenIDs[item.ID] {
-					if input.ColorTone != nil && *input.ColorTone != "" {
-						tone := strings.ToLower(*input.ColorTone)
-						if item.ColorLightness != nil {
-							l := *item.ColorLightness
-							isDarkTone := tone == "dark" || strings.Contains(tone, "trầm") || strings.Contains(tone, "tối")
-							isLightTone := tone == "light" || strings.Contains(tone, "sáng")
-							if (isDarkTone && l >= 40.0) || (isLightTone && l < 60.0) {
-								continue
-							}
-						}
-					}
-					candidates = append(candidates, item)
-					takenIDs[item.ID] = true
-					if len(candidates) >= 20 {
-						break
-					}
-				}
-			}
-		}
-
-		if len(candidates) > 20 {
-			candidates = candidates[:20]
+		vecs, err := uc.aiService.GenerateEmbeddings(embedCtx, []string{intent.SemanticQuery})
+		if err == nil && len(vecs) > 0 && len(vecs[0]) == 768 {
+			queryVector = entities.Vector(vecs[0])
 		}
 	}
 
-	return candidates, nil
+	// Thực hiện tìm kiếm kết hợp (Hybrid Search) để lấy ra tối đa 40 ứng viên từ cơ sở dữ liệu
+	candidates, err := uc.wardrobeRepo.GetHybridCandidates(ctx, userID, queryVector, intent.ExactKeywords, 40)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nếu số lượng ứng viên tìm được ít hơn 20, bù đắp từ danh sách đồ đang hoạt động khác để đảm bảo đủ lựa chọn
+	if len(candidates) < 20 && len(candidates) < len(activeItems) {
+		takenIDs := make(map[uuid.UUID]bool)
+		for _, c := range candidates {
+			takenIDs[c.ID] = true
+		}
+		for _, item := range activeItems {
+			if !takenIDs[item.ID] {
+				candidates = append(candidates, item)
+				takenIDs[item.ID] = true
+				if len(candidates) >= 20 {
+					break
+				}
+			}
+		}
+	}
+
+	type candidateScore struct {
+		item  *entities.WardrobeItem
+		score float64
+		tags  []string
+	}
+
+	recentlyWornDays := uc.cfg.RAG.RecentlyWornPenaltyDays
+	longUnwornDays := uc.cfg.RAG.LongUnwornBonusDays
+
+	// Chấm điểm Re-ranking dựa trên các quy tắc thời trang (phù hợp phong cách, dịp lễ, thời tiết, tần suất mặc)
+	scored := make([]candidateScore, len(candidates))
+	for i, item := range candidates {
+		score, tags := scoreCandidateItem(item, intent, recentlyWornDays, longUnwornDays)
+		scored[i] = candidateScore{
+			item:  item,
+			score: score,
+			tags:  tags,
+		}
+	}
+
+	// Sắp xếp ứng viên giảm dần theo điểm số phù hợp
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	// Giới hạn trong khoảng 15-20 ứng viên để tối ưu token truyền cho prompt của LLM Stylist
+	limit := min(len(scored), 20)
+	if limit < 15 && len(scored) >= 15 {
+		limit = 15
+	}
+
+	// Tạo danh sách cuối cùng và chèn các tag giải thích vào Description trong bộ nhớ để LLM Stylist hiểu lý do phối
+	finalCandidates := make([]*entities.WardrobeItem, limit)
+	for i := 0; i < limit; i++ {
+		finalCandidates[i] = scored[i].item
+		if len(scored[i].tags) > 0 {
+			tagsStr := strings.Join(scored[i].tags, ", ")
+			desc := ""
+			if finalCandidates[i].Description != nil {
+				desc = *finalCandidates[i].Description
+			}
+			newDesc := desc + " [Fashion Tags: " + tagsStr + "]"
+			finalCandidates[i].Description = &newDesc
+		}
+	}
+
+	return finalCandidates, nil
 }
 
 // generateOutfitRecommendation performs Stage 3: AI Recommendation & Parsing.
