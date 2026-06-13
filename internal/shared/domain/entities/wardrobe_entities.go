@@ -78,7 +78,7 @@ type OutfitItem struct {
 	OutfitID   uuid.UUID     `gorm:"type:uuid;primaryKey"`
 	Outfit     *Outfit       `gorm:"foreignKey:OutfitID;constraint:OnDelete:CASCADE"`
 	ItemID     uuid.UUID     `gorm:"type:uuid;primaryKey"`
-	Wardrobe   *WardrobeItem `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
+	WardrobeItem *WardrobeItem `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
 	PositionX  float64       `gorm:"type:double precision;not null;default:0.0"`
 	PositionY  float64       `gorm:"type:double precision;not null;default:0.0"`
 	Scale      float64       `gorm:"type:double precision;not null;default:1.0"`

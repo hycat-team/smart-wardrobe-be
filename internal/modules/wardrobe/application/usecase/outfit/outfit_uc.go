@@ -116,12 +116,12 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
-			ItemID:     itemReq.WardrobeItemID,
-			Wardrobe:   verifiedItem,
-			PositionX:  itemReq.PositionX,
-			PositionY:  itemReq.PositionY,
-			Scale:      itemReq.Scale,
-			LayerOrder: itemReq.LayerOrder,
+			ItemID:       itemReq.WardrobeItemID,
+			WardrobeItem: verifiedItem,
+			PositionX:    itemReq.PositionX,
+			PositionY:    itemReq.PositionY,
+			Scale:        itemReq.Scale,
+			LayerOrder:   itemReq.LayerOrder,
 		}
 	}
 
@@ -201,13 +201,13 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		}
 
 		outfitItems[idx] = &entities.OutfitItem{
-			OutfitID:   id,
-			ItemID:     itemReq.WardrobeItemID,
-			Wardrobe:   verifiedItem,
-			PositionX:  itemReq.PositionX,
-			PositionY:  itemReq.PositionY,
-			Scale:      itemReq.Scale,
-			LayerOrder: itemReq.LayerOrder,
+			OutfitID:     id,
+			ItemID:       itemReq.WardrobeItemID,
+			WardrobeItem: verifiedItem,
+			PositionX:    itemReq.PositionX,
+			PositionY:    itemReq.PositionY,
+			Scale:        itemReq.Scale,
+			LayerOrder:   itemReq.LayerOrder,
 		}
 	}
 

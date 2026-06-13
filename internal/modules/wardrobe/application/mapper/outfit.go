@@ -16,7 +16,7 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem) *dto.
 		for idx, item := range items {
 			itemDTOs[idx] = &dto.OutfitItemRes{
 				ID:           item.ItemID,
-				WardrobeItem: MapToWardrobeItemRes(item.Wardrobe),
+				WardrobeItem: MapToWardrobeItemRes(item.WardrobeItem),
 				PositionX:    item.PositionX,
 				PositionY:    item.PositionY,
 				Scale:        item.Scale,
