@@ -162,6 +162,7 @@ func LoadConfig() *Config {
 			StaleMinutes:       getEnvInt("WARDROBE_PROCESSING_STALE_MINUTES", 20),
 			MaxRetryCount:      getEnvInt("WARDROBE_PROCESSING_MAX_RETRIES", 3),
 			RecoveryScanCron:   getEnv("WARDROBE_RECOVERY_SCAN_CRON", "0 */5 * * * *"),
+			CategoryCacheTTLSeconds: getEnvInt("WARDROBE_CATEGORY_CACHE_TTL_SECONDS", 300),
 		},
 	}
 
@@ -203,6 +204,9 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.Wardrobe.StaleMinutes <= 0 || cfg.Wardrobe.MaxRetryCount <= 0 || strings.TrimSpace(cfg.Wardrobe.RecoveryScanCron) == "" {
 		return fmt.Errorf("wardrobe processing recovery configuration is invalid")
+	}
+	if cfg.Wardrobe.CategoryCacheTTLSeconds <= 0 {
+		return fmt.Errorf("wardrobe category cache ttl must be greater than 0")
 	}
 
 	return nil

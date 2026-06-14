@@ -28,6 +28,7 @@ type WardrobeProcessing struct {
 	StaleMinutes       int
 	MaxRetryCount      int
 	RecoveryScanCron   string
+	CategoryCacheTTLSeconds int
 }
 
 type Startup struct {

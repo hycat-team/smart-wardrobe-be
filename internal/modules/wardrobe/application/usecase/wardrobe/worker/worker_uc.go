@@ -31,7 +31,7 @@ type WardrobeWorkerUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryRepo    repositories.ICategoryRepository
+	categoryCtx     *VisionCategoryContextProvider
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
@@ -44,7 +44,7 @@ func NewWardrobeWorkerUseCase(
 	cfg *config.Config,
 	logger logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	categoryRepo repositories.ICategoryRepository,
+	categoryCtx *VisionCategoryContextProvider,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
@@ -54,7 +54,7 @@ func NewWardrobeWorkerUseCase(
 		cfg:             cfg,
 		logger:          logger,
 		wardrobeRepo:    wardrobeRepo,
-		categoryRepo:    categoryRepo,
+		categoryCtx:     categoryCtx,
 		mediaService:    mediaService,
 		aiService:       aiService,
 		userSubContract: userSubContract,
@@ -107,31 +107,13 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 		return nil
 	}
 
-	categories, err := uc.categoryRepo.GetAll(ctx)
+	visionCtx, err := uc.categoryCtx.Get(ctx)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, fmt.Errorf("category lookup failed: %w", err))
 		return nil
 	}
 
-	aiCatRefs := make([]dto.AICategoryRef, len(categories))
-	categoryMap := make(map[string]uuid.UUID)
-	categoryNameMap := make(map[uuid.UUID]string)
-	var otherCategoryID uuid.UUID
-
-	for i, cat := range categories {
-		aiCatRefs[i] = dto.AICategoryRef{
-			Name: cat.Name,
-			Slug: cat.Slug,
-		}
-		categoryMap[cat.Slug] = cat.ID
-		categoryNameMap[cat.ID] = cat.Name
-		if cat.Slug == "other" {
-			otherCategoryID = cat.ID
-		}
-	}
-
-	prompt := getVisionSystemPrompt(aiCatRefs)
-	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, prompt)
+	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, visionCtx.Prompt)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
@@ -165,14 +147,14 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	var detectedCategoryID *uuid.UUID
 	detectedCategoryName := "Khác"
 
-	if id, exists := categoryMap[aiMeta.CategorySlug]; exists {
+	if id, exists := visionCtx.CategoryMap[aiMeta.CategorySlug]; exists {
 		detectedCategoryID = &id
-		if name, existsName := categoryNameMap[id]; existsName {
+		if name, existsName := visionCtx.CategoryNameMap[id]; existsName {
 			detectedCategoryName = name
 		}
-	} else if otherCategoryID != uuid.Nil {
-		detectedCategoryID = &otherCategoryID
-		if name, existsName := categoryNameMap[otherCategoryID]; existsName {
+	} else if visionCtx.OtherCategoryID != uuid.Nil {
+		detectedCategoryID = &visionCtx.OtherCategoryID
+		if name, existsName := visionCtx.CategoryNameMap[visionCtx.OtherCategoryID]; existsName {
 			detectedCategoryName = name
 		}
 	}

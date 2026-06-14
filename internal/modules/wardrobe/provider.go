@@ -33,6 +33,7 @@ var ProviderSet = wire.NewSet(
 	chat.NewWardrobeChatUseCase,
 	recommendation.NewOutfitRecommendationUseCase,
 	catalog.NewWardrobeCatalogUseCase,
+	worker.NewVisionCategoryContextProvider,
 	worker.NewWardrobeWorkerUseCase,
 	contractuc.NewWardrobeContractUseCase,
 
