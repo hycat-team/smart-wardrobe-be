@@ -14,8 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// VisionCategoryContext keeps the prebuilt vision prompt and category lookup maps for worker jobs.
-type VisionCategoryContext struct {
+// VisionCategorySnapshot stores the prompt and category lookups needed by wardrobe image analysis.
+type VisionCategorySnapshot struct {
 	Prompt          string
 	CategoryMap     map[string]uuid.UUID
 	CategoryNameMap map[uuid.UUID]string
@@ -24,65 +24,65 @@ type VisionCategoryContext struct {
 	ExpiresAt       time.Time
 }
 
-// VisionCategoryContextProvider caches wardrobe category context for vision worker jobs.
-type VisionCategoryContextProvider struct {
+// VisionCategoryCache keeps a short-lived in-memory snapshot of wardrobe categories for worker jobs.
+type VisionCategoryCache struct {
 	categoryRepo repositories.ICategoryRepository
 	logger       logger.Interface
 	ttl          time.Duration
 
 	cacheMu sync.RWMutex
-	cached  *VisionCategoryContext
+	cached  *VisionCategorySnapshot
 }
 
-// NewVisionCategoryContextProvider creates an in-memory category context cache for wardrobe workers.
-func NewVisionCategoryContextProvider(
+// NewVisionCategoryCache creates the in-memory wardrobe category cache used by vision workers.
+func NewVisionCategoryCache(
 	cfg *config.Config,
 	categoryRepo repositories.ICategoryRepository,
 	logger logger.Interface,
-) *VisionCategoryContextProvider {
-	return &VisionCategoryContextProvider{
+) *VisionCategoryCache {
+	return &VisionCategoryCache{
 		categoryRepo: categoryRepo,
 		logger:       logger,
 		ttl:          time.Duration(cfg.Wardrobe.CategoryCacheTTLSeconds) * time.Second,
 	}
 }
 
-// Get returns the cached category context or reloads it when the TTL has expired.
-func (p *VisionCategoryContextProvider) Get(ctx context.Context) (*VisionCategoryContext, error) {
+// Get returns a cached category snapshot or reloads it when the cache expires.
+func (c *VisionCategoryCache) Get(ctx context.Context) (*VisionCategorySnapshot, error) {
 	now := time.Now().UTC()
-	p.cacheMu.RLock()
-	if snapshot := p.cached; snapshot != nil && snapshot.ExpiresAt.After(now) {
-		p.cacheMu.RUnlock()
+	c.cacheMu.RLock()
+	if snapshot := c.cached; snapshot != nil && snapshot.ExpiresAt.After(now) {
+		c.cacheMu.RUnlock()
 		return snapshot, nil
 	}
-	p.cacheMu.RUnlock()
+	c.cacheMu.RUnlock()
 
-	p.cacheMu.Lock()
-	defer p.cacheMu.Unlock()
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
 
 	now = time.Now().UTC()
-	if snapshot := p.cached; snapshot != nil && snapshot.ExpiresAt.After(now) {
+	if snapshot := c.cached; snapshot != nil && snapshot.ExpiresAt.After(now) {
 		return snapshot, nil
 	}
 
-	snapshot, err := p.reload(ctx, now)
+	snapshot, err := c.reload(ctx, now)
 	if err != nil {
-		if p.cached != nil {
-			p.logger.Warn("[VisionCategoryContextProvider] Failed to refresh category context, reusing stale cache",
+		if c.cached != nil {
+			c.logger.Warn("[VisionCategoryCache] Failed to refresh category snapshot, reusing stale cache",
 				zap.Error(err),
-				zap.Time("expires_at", p.cached.ExpiresAt),
+				zap.Time("expires_at", c.cached.ExpiresAt),
 			)
-			return p.cached, nil
+			return c.cached, nil
 		}
 		return nil, err
 	}
 
-	p.cached = snapshot
+	c.cached = snapshot
 	return snapshot, nil
 }
 
-func (p *VisionCategoryContextProvider) reload(ctx context.Context, now time.Time) (*VisionCategoryContext, error) {
-	categories, err := p.categoryRepo.GetAll(ctx)
+func (c *VisionCategoryCache) reload(ctx context.Context, now time.Time) (*VisionCategorySnapshot, error) {
+	categories, err := c.categoryRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,12 +104,12 @@ func (p *VisionCategoryContextProvider) reload(ctx context.Context, now time.Tim
 		}
 	}
 
-	return &VisionCategoryContext{
+	return &VisionCategorySnapshot{
 		Prompt:          getVisionSystemPrompt(aiCatRefs),
 		CategoryMap:     categoryMap,
 		CategoryNameMap: categoryNameMap,
 		OtherCategoryID: otherCategoryID,
 		LoadedAt:        now,
-		ExpiresAt:       now.Add(p.ttl),
+		ExpiresAt:       now.Add(c.ttl),
 	}, nil
 }

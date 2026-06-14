@@ -79,7 +79,12 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 	for i, item := range items {
 		res[i] = mapChatMessage(item)
 	}
-	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{Items: res, Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(res))}, nil
+	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{
+		Items: res,
+		Metadata: shared.BuildCurrentPageMetadata(
+			query.PaginationQuery, len(res),
+		),
+	}, nil
 }
 
 // ArchiveChatSession archives a user-owned chat session without deleting its history.

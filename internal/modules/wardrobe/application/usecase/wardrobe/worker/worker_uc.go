@@ -27,24 +27,29 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	processingFailureReasonMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
+	autoRetryExceededMessage       = "Đã vượt quá số lần thử xử lý tự động."
+)
+
+// WardrobeWorkerUseCase orchestrates asynchronous wardrobe item processing and recovery workflows.
 type WardrobeWorkerUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryCtx     *VisionCategoryContextProvider
+	categoryCache   *VisionCategoryCache
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 }
 
-const processingFailureReasonMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
-
+// NewWardrobeWorkerUseCase creates the worker use case responsible for AI item processing jobs.
 func NewWardrobeWorkerUseCase(
 	cfg *config.Config,
 	logger logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	categoryCtx *VisionCategoryContextProvider,
+	categoryCache *VisionCategoryCache,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
@@ -54,7 +59,7 @@ func NewWardrobeWorkerUseCase(
 		cfg:             cfg,
 		logger:          logger,
 		wardrobeRepo:    wardrobeRepo,
-		categoryCtx:     categoryCtx,
+		categoryCache:   categoryCache,
 		mediaService:    mediaService,
 		aiService:       aiService,
 		userSubContract: userSubContract,
@@ -62,162 +67,47 @@ func NewWardrobeWorkerUseCase(
 	}
 }
 
-func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error) {
-	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
-		job.RetryCount++
-
-		baseDelay := time.Duration(uc.cfg.Wardrobe.RetryDelay1Seconds) * time.Second
-		switch job.RetryCount {
-		case 2:
-			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay2Seconds) * time.Second
-		case 3:
-			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay3Seconds) * time.Second
-		}
-
-		jitter := time.Duration(1+rand.Intn(10)) * time.Second
-		delay := baseDelay + jitter
-
-		uc.logger.Warn(fmt.Sprintf("[WardrobeBatchUploadWorker] Transient error encountered. Scheduling retry %d/3 in %v", job.RetryCount, delay),
-			zap.String("item_id", job.ItemID.String()),
-			zap.Error(err),
-		)
-
-		time.AfterFunc(delay, func() {
-			publishCtx := context.Background()
-			if republishErr := uc.eventPublisher.Publish(publishCtx, eventconstants.TopicWardrobeBatchUpload, job); republishErr != nil {
-				uc.logger.Error("[WardrobeBatchUploadWorker] Failed to republish retry job", zap.Error(republishErr))
-			}
-		})
-		return
-	}
-
-	uc.logger.Error(fmt.Sprintf("[WardrobeBatchUploadWorker] Fatal error or max retries exceeded. Marking item as Failed. RetryCount: %d", job.RetryCount),
-		zap.String("item_id", job.ItemID.String()),
-		zap.Error(err),
-	)
-	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
-}
-
+// ProcessBackgroundBatchUploadJob analyzes a processing wardrobe item and finalizes its AI metadata.
 func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error {
-	item, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
+	item, err := uc.loadProcessableItem(ctx, job)
 	if err != nil {
 		return err
 	}
-	if item == nil || item.Status != wardrobestatus.Processing || item.ProcessingVersion != job.ProcessingVersion {
+	if item == nil {
 		return nil
 	}
 
-	visionCtx, err := uc.categoryCtx.Get(ctx)
+	snapshot, err := uc.categoryCache.Get(ctx)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, fmt.Errorf("category lookup failed: %w", err))
 		return nil
 	}
 
-	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, visionCtx.Prompt)
+	aiMeta, err := uc.analyzeWardrobeImage(ctx, job, snapshot)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
 	}
 
-	var result struct {
-		dto.FashionMetadataResult
-		Error string `json:"error"`
-	}
-	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
-	if err := json.Unmarshal([]byte(cleanedJSON), &result); err != nil {
-		uc.handleJobFailure(ctx, job, fmt.Errorf("failed to parse JSON from AI: %w", err))
-		return nil
-	}
-
-	if result.Error != "" {
-		uc.handleJobFailure(ctx, job, fmt.Errorf("AI Error: %s", result.Error))
-		return nil
-	}
-
-	aiMeta := result.FashionMetadataResult
 	if !aiMeta.IsSingleItem {
-		reason := aiMeta.ReviewReason
-		if reason == "" {
-			reason = "uncertain_category"
-		}
-		_, _ = uc.wardrobeRepo.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reason)
+		uc.markNeedsReview(ctx, job, aiMeta.ReviewReason)
 		return nil
 	}
 
-	var detectedCategoryID *uuid.UUID
-	detectedCategoryName := "Khác"
-
-	if id, exists := visionCtx.CategoryMap[aiMeta.CategorySlug]; exists {
-		detectedCategoryID = &id
-		if name, existsName := visionCtx.CategoryNameMap[id]; existsName {
-			detectedCategoryName = name
-		}
-	} else if visionCtx.OtherCategoryID != uuid.Nil {
-		detectedCategoryID = &visionCtx.OtherCategoryID
-		if name, existsName := visionCtx.CategoryNameMap[visionCtx.OtherCategoryID]; existsName {
-			detectedCategoryName = name
-		}
-	}
-
-	richTextContext := shared.BuildRichTextContext(detectedCategoryName, aiMeta.Color, aiMeta.Style, aiMeta.Material, aiMeta.Pattern, aiMeta.Fit, aiMeta.Seasonality, aiMeta.Description)
-
-	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
+	updateMap, err := uc.buildCompletedItemUpdate(ctx, aiMeta, snapshot, job.ItemID)
 	if err != nil {
 		uc.handleJobFailure(ctx, job, err)
 		return nil
 	}
 
-	updateMap := map[string]any{
-		"category_id":  detectedCategoryID,
-		"color":        aiMeta.Color,
-		"style":        aiMeta.Style,
-		"material":     aiMeta.Material,
-		"pattern":      aiMeta.Pattern,
-		"fit":          aiMeta.Fit,
-		"seasonality":  aiMeta.Seasonality,
-		"description":  aiMeta.Description,
-		"embedding":    entities.Vector(embedding),
-	}
-	if h, s, l, hex, ok := colorutils.ResolveFashionColor(aiMeta.Color, aiMeta.ColorHex); ok {
-		updateMap["color_hex"] = hex
-		updateMap["color_hue"] = h
-		updateMap["color_saturation"] = s
-		updateMap["color_lightness"] = l
-	} else {
-		uc.logger.Warn("[WardrobeBatchUploadWorker] Failed to resolve HSL for item",
-			zap.String("item_id", job.ItemID.String()),
-			zap.String("color_hex", aiMeta.ColorHex),
-			zap.String("color_name", aiMeta.Color),
-		)
-		updateMap["color_hex"] = nil
-		updateMap["color_hue"] = nil
-		updateMap["color_saturation"] = nil
-		updateMap["color_lightness"] = nil
-	}
-
-	completed, err := uc.wardrobeRepo.CompleteProcessingSuccess(ctx, job.ItemID, job.ProcessingVersion, updateMap)
-	if err != nil {
+	if err := uc.completeProcessedItem(ctx, job, updateMap); err != nil {
 		uc.handleJobFailure(ctx, job, err)
-		return nil
 	}
-	if !completed {
-		return nil
-	}
-
-	payload := dto.WardrobeEventPayload{
-		ItemID: job.ItemID,
-		UserID: job.UserID,
-		Action: eventconstants.ActionCreated,
-	}
-	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 
 	return nil
 }
 
-func (uc *WardrobeWorkerUseCase) markJobFailed(ctx context.Context, itemID uuid.UUID) {
-	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, itemID, 0, "Xử lý trang phục thất bại.", nil)
-}
-
+// CleanupFailedItems removes failed items older than the retention window and publishes delete events.
 func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
 	limit := 100
 	totalDeleted := 0
@@ -257,7 +147,6 @@ func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
 				Action: eventconstants.ActionDeleted,
 			}
 			_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
-
 			totalDeleted++
 		}
 
@@ -270,6 +159,7 @@ func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
 	return nil
 }
 
+// RecoverStaleProcessingItems republishes stale processing items or marks them failed when retries are exhausted.
 func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context) error {
 	staleBefore := time.Now().UTC().Add(-time.Duration(uc.cfg.Wardrobe.StaleMinutes) * time.Minute)
 	items, err := uc.wardrobeRepo.GetStaleProcessingItems(ctx, staleBefore, 100)
@@ -279,7 +169,7 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 
 	for _, item := range items {
 		if item.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
-			failed, err := uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.ProcessingVersion, "Đã vượt quá số lần thử xử lý tự động.", nil)
+			failed, err := uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.ProcessingVersion, autoRetryExceededMessage, nil)
 			if err != nil {
 				return err
 			}
@@ -298,20 +188,191 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 			continue
 		}
 
-		job := dto.WardrobeBatchUploadJobDTO{
-			ItemID:            claimedItem.ID,
-			UserID:            claimedItem.UserID,
-			CategoryID:        claimedItem.CategoryID,
-			ImageUrl:          claimedItem.ImageUrl,
-			ImagePublicID:     claimedItem.ImagePublicID,
-			RetryCount:        claimedItem.ProcessingRetryCount,
-			ProcessingVersion: claimedItem.ProcessingVersion,
-		}
-		if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job); err != nil {
+		if err := uc.publishProcessingRetry(ctx, claimedItem); err != nil {
 			_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, claimedItem.ID, claimedItem.ProcessingVersion, processingFailureReasonMessage, nil)
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error) {
+	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
+		job.RetryCount++
+
+		baseDelay := time.Duration(uc.cfg.Wardrobe.RetryDelay1Seconds) * time.Second
+		switch job.RetryCount {
+		case 2:
+			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay2Seconds) * time.Second
+		case 3:
+			baseDelay = time.Duration(uc.cfg.Wardrobe.RetryDelay3Seconds) * time.Second
+		}
+
+		jitter := time.Duration(1+rand.Intn(10)) * time.Second
+		delay := baseDelay + jitter
+
+		uc.logger.Warn(fmt.Sprintf("[WardrobeBatchUploadWorker] Transient error encountered. Scheduling retry %d/3 in %v", job.RetryCount, delay),
+			zap.String("item_id", job.ItemID.String()),
+			zap.Error(err),
+		)
+
+		time.AfterFunc(delay, func() {
+			publishCtx := context.Background()
+			if republishErr := uc.eventPublisher.Publish(publishCtx, eventconstants.TopicWardrobeBatchUpload, job); republishErr != nil {
+				uc.logger.Error("[WardrobeBatchUploadWorker] Failed to republish retry job", zap.Error(republishErr))
+			}
+		})
+		return
+	}
+
+	uc.logger.Error(fmt.Sprintf("[WardrobeBatchUploadWorker] Fatal error or max retries exceeded. Marking item as Failed. RetryCount: %d", job.RetryCount),
+		zap.String("item_id", job.ItemID.String()),
+		zap.Error(err),
+	)
+	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
+}
+
+func (uc *WardrobeWorkerUseCase) loadProcessableItem(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) (*entities.WardrobeItem, error) {
+	item, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.Status != wardrobestatus.Processing || item.ProcessingVersion != job.ProcessingVersion {
+		return nil, nil
+	}
+	return item, nil
+}
+
+func (uc *WardrobeWorkerUseCase) analyzeWardrobeImage(
+	ctx context.Context,
+	job dto.WardrobeBatchUploadJobDTO,
+	snapshot *VisionCategorySnapshot,
+) (*dto.FashionMetadataResult, error) {
+	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, snapshot.Prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		dto.FashionMetadataResult
+		Error string `json:"error"`
+	}
+	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
+	if err := json.Unmarshal([]byte(cleanedJSON), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
+	}
+	if result.Error != "" {
+		return nil, fmt.Errorf("AI Error: %s", result.Error)
+	}
+
+	return &result.FashionMetadataResult, nil
+}
+
+func (uc *WardrobeWorkerUseCase) markNeedsReview(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, reviewReason string) {
+	if reviewReason == "" {
+		reviewReason = "uncertain_category"
+	}
+	_, _ = uc.wardrobeRepo.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reviewReason)
+}
+
+func (uc *WardrobeWorkerUseCase) buildCompletedItemUpdate(
+	ctx context.Context,
+	aiMeta *dto.FashionMetadataResult,
+	snapshot *VisionCategorySnapshot,
+	itemID uuid.UUID,
+) (map[string]any, error) {
+	detectedCategoryID, detectedCategoryName := resolveDetectedCategory(aiMeta.CategorySlug, snapshot)
+	richTextContext := shared.BuildRichTextContext(detectedCategoryName, aiMeta.Color, aiMeta.Style, aiMeta.Material, aiMeta.Pattern, aiMeta.Fit, aiMeta.Seasonality, aiMeta.Description)
+
+	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
+	if err != nil {
+		return nil, err
+	}
+
+	updateMap := map[string]any{
+		"category_id": detectedCategoryID,
+		"color":       aiMeta.Color,
+		"style":       aiMeta.Style,
+		"material":    aiMeta.Material,
+		"pattern":     aiMeta.Pattern,
+		"fit":         aiMeta.Fit,
+		"seasonality": aiMeta.Seasonality,
+		"description": aiMeta.Description,
+		"embedding":   entities.Vector(embedding),
+	}
+	applyResolvedColor(updateMap, aiMeta, uc.logger, itemID)
+	return updateMap, nil
+}
+
+func (uc *WardrobeWorkerUseCase) completeProcessedItem(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, updateMap map[string]any) error {
+	completed, err := uc.wardrobeRepo.CompleteProcessingSuccess(ctx, job.ItemID, job.ProcessingVersion, updateMap)
+	if err != nil {
+		return err
+	}
+	if !completed {
+		return nil
+	}
+
+	payload := dto.WardrobeEventPayload{
+		ItemID: job.ItemID,
+		UserID: job.UserID,
+		Action: eventconstants.ActionCreated,
+	}
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
+	return nil
+}
+
+func (uc *WardrobeWorkerUseCase) publishProcessingRetry(ctx context.Context, item *entities.WardrobeItem) error {
+	job := dto.WardrobeBatchUploadJobDTO{
+		ItemID:            item.ID,
+		UserID:            item.UserID,
+		CategoryID:        item.CategoryID,
+		ImageUrl:          item.ImageUrl,
+		ImagePublicID:     item.ImagePublicID,
+		RetryCount:        item.ProcessingRetryCount,
+		ProcessingVersion: item.ProcessingVersion,
+	}
+
+	return uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
+}
+
+func resolveDetectedCategory(categorySlug string, snapshot *VisionCategorySnapshot) (*uuid.UUID, string) {
+	detectedCategoryName := "Khác"
+
+	if id, exists := snapshot.CategoryMap[categorySlug]; exists {
+		if name, existsName := snapshot.CategoryNameMap[id]; existsName {
+			detectedCategoryName = name
+		}
+		return &id, detectedCategoryName
+	}
+
+	if snapshot.OtherCategoryID != uuid.Nil {
+		if name, existsName := snapshot.CategoryNameMap[snapshot.OtherCategoryID]; existsName {
+			detectedCategoryName = name
+		}
+		return &snapshot.OtherCategoryID, detectedCategoryName
+	}
+
+	return nil, detectedCategoryName
+}
+
+func applyResolvedColor(updateMap map[string]any, aiMeta *dto.FashionMetadataResult, logger logger.Interface, itemID uuid.UUID) {
+	if h, s, l, hex, ok := colorutils.ResolveFashionColor(aiMeta.Color, aiMeta.ColorHex); ok {
+		updateMap["color_hex"] = hex
+		updateMap["color_hue"] = h
+		updateMap["color_saturation"] = s
+		updateMap["color_lightness"] = l
+		return
+	}
+
+	logger.Warn("[WardrobeBatchUploadWorker] Failed to resolve HSL for item",
+		zap.String("item_id", itemID.String()),
+		zap.String("color_hex", aiMeta.ColorHex),
+		zap.String("color_name", aiMeta.Color),
+	)
+	updateMap["color_hex"] = nil
+	updateMap["color_hue"] = nil
+	updateMap["color_saturation"] = nil
+	updateMap["color_lightness"] = nil
 }

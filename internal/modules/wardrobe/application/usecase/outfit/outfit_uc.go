@@ -256,7 +256,7 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
 		Items:    resList,
-		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
 	}, nil
 }
 

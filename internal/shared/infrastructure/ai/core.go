@@ -119,101 +119,92 @@ func (s *AIService) GenerateTextStream(
 		defer close(outTextChan)
 		defer close(outErrChan)
 
-		primText, primErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
-
-		// Wait for first token or error from primary
-		select {
-		case <-ctx.Done():
-			outErrChanSend(outErrChan, ctx.Err())
-			return
-		case err, ok := <-primErr:
-			if ok && err != nil {
-				// Primary failed! Switch to fallback if available
-				if s.cfg.AI.TextFallback.Provider != "" {
-					s.logger.Warn("Primary stream provider failed, switching to fallback",
-						zap.String("operation", "GenerateTextStream"),
-						zap.Error(err),
-					)
-					fbText, fbErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
-					forwardStream(ctx, fbText, fbErr, outTextChan, outErrChan)
-					return
-				}
-				// No fallback, fail permanently
-				s.logger.Error("Primary stream provider failed permanently without fallback",
-					zap.String("operation", "GenerateTextStream"),
-					zap.Error(err),
-				)
-				outErrChanSend(outErrChan, err)
-				return
-			}
-		case text, ok := <-primText:
-			if ok {
-				// Primary succeeded! Send first chunk and keep forwarding
-				outTextChan <- text
-				forwardStream(ctx, primText, primErr, outTextChan, outErrChan)
-				return
-			}
+		if err := s.streamTextWithFallback(ctx, systemPrompt, userPrompt, outTextChan); err != nil {
+			outErrChanSend(outErrChan, err)
 		}
 	}()
 
 	return outTextChan, outErrChan
 }
 
-func forwardStream(
-	ctx context.Context,
-	inText <-chan string,
-	inErr <-chan error,
-	outText chan<- string,
-	outErr chan<- error,
-) {
-	for {
-		select {
-		case <-ctx.Done():
-			outErrChanSend(outErr, ctx.Err())
-			return
-		case err, ok := <-inErr:
-			if ok && err != nil {
-				outErrChanSend(outErr, err)
-				return
-			}
-			if !ok {
-				// inErr closed, forward any remaining text
-				for t := range inText {
-					select {
-					case <-ctx.Done():
-						outErrChanSend(outErr, ctx.Err())
-						return
-					case outText <- t:
-					}
-				}
-				return
-			}
-		case text, ok := <-inText:
-			if ok {
-				select {
-				case <-ctx.Done():
-					outErrChanSend(outErr, ctx.Err())
-					return
-				case outText <- text:
-				}
-			} else {
-				// inText closed, forward any remaining error
-				for e := range inErr {
-					if e != nil {
-						outErrChanSend(outErr, e)
-						return
-					}
-				}
-				return
-			}
-		}
-	}
-}
-
 func outErrChanSend(outErr chan<- error, err error) {
 	select {
 	case outErr <- err:
 	default:
+	}
+}
+
+// GenerateTextStream streams text from the primary provider and falls back only when the stream fails before producing content.
+func (s *AIService) streamTextWithFallback(ctx context.Context, systemPrompt string, userPrompt string, outText chan<- string) error {
+	primaryText, primaryErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
+	produced, err := s.forwardProviderStream(ctx, primaryText, primaryErr, outText)
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+	if produced || s.cfg.AI.TextFallback.Provider == "" {
+		if !produced {
+			s.logger.Error("Primary stream provider failed permanently without fallback",
+				zap.String("operation", "GenerateTextStream"),
+				zap.Error(err),
+			)
+		}
+		return err
+	}
+
+	s.logger.Warn("Primary stream provider failed before first chunk, switching to fallback",
+		zap.String("operation", "GenerateTextStream"),
+		zap.Error(err),
+	)
+
+	fallbackText, fallbackErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
+	_, fallbackStreamErr := s.forwardProviderStream(ctx, fallbackText, fallbackErr, outText)
+	return fallbackStreamErr
+}
+
+// forwardProviderStream forwards provider chunks to the caller and reports whether any content was produced.
+func (s *AIService) forwardProviderStream(
+	ctx context.Context,
+	inText <-chan string,
+	inErr <-chan error,
+	outText chan<- string,
+) (bool, error) {
+	produced := false
+
+	for {
+		select {
+		case <-ctx.Done():
+			return produced, ctx.Err()
+		case text, ok := <-inText:
+			if ok {
+				produced = true
+				select {
+				case <-ctx.Done():
+					return produced, ctx.Err()
+				case outText <- text:
+				}
+				continue
+			}
+
+			if err, ok := <-inErr; ok && err != nil {
+				return produced, err
+			}
+			return produced, nil
+		case err, ok := <-inErr:
+			if ok && err != nil {
+				return produced, err
+			}
+			if !ok {
+				for text := range inText {
+					produced = true
+					select {
+					case <-ctx.Done():
+						return produced, ctx.Err()
+					case outText <- text:
+					}
+				}
+				return produced, nil
+			}
+		}
 	}
 }
 

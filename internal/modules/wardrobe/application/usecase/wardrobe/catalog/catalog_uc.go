@@ -69,7 +69,7 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
 	}, nil
 }
 

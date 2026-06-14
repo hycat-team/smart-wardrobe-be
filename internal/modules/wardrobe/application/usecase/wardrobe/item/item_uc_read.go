@@ -116,7 +116,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
 	}, nil
 }
 
@@ -147,7 +147,7 @@ func (uc *WardrobeItemUseCase) GetPendingWardrobeItems(ctx context.Context, user
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
 	}, nil
 }
 
@@ -224,6 +224,6 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 
 	return &shared_dto.PaginationResult[*dto.SearchWardrobeItemRes]{
 		Items:    results,
-		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(results)),
+		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(results)),
 	}, nil
 }
