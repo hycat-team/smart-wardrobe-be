@@ -3,7 +3,8 @@ package wardrobe
 import (
 	category_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/chat"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
@@ -29,7 +30,8 @@ var ProviderSet = wire.NewSet(
 	messaging.NewSearchSyncEventConsumer,
 
 	item.NewWardrobeItemUseCase,
-	ai.NewWardrobeAIUseCase,
+	chat.NewWardrobeChatUseCase,
+	recommendation.NewOutfitRecommendationUseCase,
 	catalog.NewWardrobeCatalogUseCase,
 	worker.NewWardrobeWorkerUseCase,
 	contractuc.NewWardrobeContractUseCase,

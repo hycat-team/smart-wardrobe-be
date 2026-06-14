@@ -26,6 +26,36 @@ import (
 	"go.uber.org/zap"
 )
 
+// WebhookPayload represents the payment gateway callback body used by the webhook processor.
+type WebhookPayload struct {
+	Code      string             `json:"code"`
+	Desc      string             `json:"desc"`
+	Success   bool               `json:"success"`
+	Data      WebhookPayloadData `json:"data"`
+	Signature string             `json:"signature"`
+}
+
+// WebhookPayloadData stores the transaction-specific fields of the gateway callback.
+type WebhookPayloadData struct {
+	OrderCode              int64       `json:"orderCode"`
+	Amount                 json.Number `json:"amount"`
+	Description            string      `json:"description"`
+	AccountNumber          string      `json:"accountNumber"`
+	Reference              string      `json:"reference"`
+	TransactionDateTime    string      `json:"transactionDateTime"`
+	Currency               string      `json:"currency"`
+	PaymentLinkId          string      `json:"paymentLinkId"`
+	Code                   string      `json:"code"`
+	Desc                   string      `json:"desc"`
+	CounterAccountBankId   string      `json:"counterAccountBankId"`
+	CounterAccountBankName string      `json:"counterAccountBankName"`
+	CounterAccountName     string      `json:"counterAccountName"`
+	CounterAccountNumber   string      `json:"counterAccountNumber"`
+	VirtualAccountName     string      `json:"virtualAccountName"`
+	VirtualAccountNumber   string      `json:"virtualAccountNumber"`
+}
+
+// PaymentWebhookUseCase handles verified payment gateway callbacks and applies their side effects.
 type PaymentWebhookUseCase struct {
 	cfg            *config.Config
 	walletRepo     repositories.IUserWalletRepository
@@ -38,6 +68,7 @@ type PaymentWebhookUseCase struct {
 	log            logger.Interface
 }
 
+// NewPaymentWebhookUseCase builds the payment webhook processor with all required collaborators.
 func NewPaymentWebhookUseCase(
 	cfg *config.Config,
 	walletRepo repositories.IUserWalletRepository,
@@ -62,141 +93,33 @@ func NewPaymentWebhookUseCase(
 	}
 }
 
+// ProcessWebhook verifies, validates, and applies a successful payment callback exactly once.
 func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []byte, signature string) error {
-	// Verify the webhook authenticity by validating its cryptographic signature with the gateway's public keys.
-	_, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature)
+	payload, err := uc.parseVerifiedWebhookPayload(ctx, rawBody, signature)
 	if err != nil {
-		return subscriptionerrors.ErrVerifySignatureFailed
+		return err
 	}
 
-	// Parse the webhook callback payload structure.
-	var payload struct {
-		Code    string `json:"code"`
-		Desc    string `json:"desc"`
-		Success bool   `json:"success"`
-		Data    struct {
-			OrderCode              int64       `json:"orderCode"`
-			Amount                 json.Number `json:"amount"`
-			Description            string      `json:"description"`
-			AccountNumber          string      `json:"accountNumber"`
-			Reference              string      `json:"reference"`
-			TransactionDateTime    string      `json:"transactionDateTime"`
-			Currency               string      `json:"currency"`
-			PaymentLinkId          string      `json:"paymentLinkId"`
-			Code                   string      `json:"code"`
-			Desc                   string      `json:"desc"`
-			CounterAccountBankId   string      `json:"counterAccountBankId"`
-			CounterAccountBankName string      `json:"counterAccountBankName"`
-			CounterAccountName     string      `json:"counterAccountName"`
-			CounterAccountNumber   string      `json:"counterAccountNumber"`
-			VirtualAccountName     string      `json:"virtualAccountName"`
-			VirtualAccountNumber   string      `json:"virtualAccountNumber"`
-		} `json:"data"`
-		Signature string `json:"signature"`
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(rawBody))
-	decoder.UseNumber() // Use json.Number to avoid precision loss on large integer numbers
-	if err := decoder.Decode(&payload); err != nil {
-		return subscriptionerrors.ErrWebhookPayloadMalformed
-	}
-
-	// Check transaction status codes. Code "00" indicates success.
-	// If the transaction failed on the gateway side, we just return nil (we don't credit users).
-	if payload.Code != "00" || payload.Data.Code != "00" {
-		uc.log.Warn("Ignored unsuccessful payment webhook",
-			zap.Int64("order_code", payload.Data.OrderCode),
-			zap.String("gateway_code", payload.Code),
-			zap.String("gateway_data_code", payload.Data.Code),
-			zap.String("result", "ignored_non_success"),
-		)
+	if !uc.isSuccessfulWebhook(payload) {
+		uc.logIgnoredWebhook(payload)
 		return nil
 	}
 
-	// Convert amount string from payload to decimal.
-	webhookAmount, err := decimal.NewFromString(payload.Data.Amount.String())
+	tx, webhookAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)
 	if err != nil {
-		return subscriptionerrors.ErrInvalidAmount
-	}
-	if err := sharedmoney.ValidateSupportedCurrencyText(payload.Data.Currency); err != nil {
 		return err
 	}
 
-	// Query the matching pending deposit transaction record by its OrderCode.
-	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
-	if err != nil {
-		return subscriptionerrors.ErrQueryTransactionFailed
-	}
-	if tx == nil {
-		return subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
-	}
-	if err := sharedmoney.ValidateSupportedCurrency(tx.Currency); err != nil {
-		return err
-	}
-
-	// Verify the received payment amount matches the expected record amount to prevent fraud/underpayment.
-	if !webhookAmount.Equal(tx.Amount) {
-		return subscriptionerrors.ErrPaymentAmountMismatch
-	}
-
-	// Optimistic check - if the transaction is already marked success, skip reprocessing (idempotency).
 	if tx.Status == depositstatus.Success {
 		return nil
 	}
 
-	// Serialize gateway data payload for audit logs.
-	rawBytes, err := json.Marshal(payload.Data)
+	detailsStr, err := uc.serializeWebhookDetails(payload)
 	if err != nil {
-		return subscriptionerrors.ErrProcessPaymentGatewayFailed
-	}
-	detailsStr := string(rawBytes)
-	reference := payload.Data.Reference
-
-	// Execute transaction processing workflow within a database transaction.
-	processPaymentWebhook := func(txCtx context.Context) error {
-		// Re-fetch the transaction record using row-level locking (FOR UPDATE)
-		// to guarantee thread safety and prevent double-processing (idempotency guard).
-		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
-		if err != nil {
-			return subscriptionerrors.ErrLockTransactionFailed
-		}
-		if lockedTx == nil {
-			return subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
-		}
-
-		// Double-check the status inside the locked transaction context.
-		if lockedTx.Status == depositstatus.Success {
-			return nil
-		}
-
-		// Update the transaction status to SUCCESS and record references.
-		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-		lockedTx.Status = depositstatus.Success
-		lockedTx.GatewayReference = &reference
-		lockedTx.GatewayDetails = &detailsStr
-
-		if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
-			return subscriptionerrors.ErrCompletePaymentRecordFailed
-		}
-
-		// Route processing based on the TransactionType.
-		switch lockedTx.TransactionType {
-		case deposittransactiontype.WalletTopup:
-			// Top-up flow: Credit the user's wallet.
-			if err := uc.executeWalletTopUpWorkflow(txCtx, lockedTx, now); err != nil {
-				return err
-			}
-		case deposittransactiontype.DirectPurchase:
-			// Direct purchase flow: Apply/extend the subscription plan directly.
-			if err := uc.executeDirectPurchaseWorkflow(txCtx, lockedTx, now); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return err
 	}
 
-	if err := uc.uow.Execute(ctx, processPaymentWebhook); err != nil {
+	if err := uc.processLockedWebhookTransaction(ctx, payload, tx, webhookAmount, detailsStr); err != nil {
 		uc.log.Error("Failed to process payment webhook",
 			zap.Int64("order_code", payload.Data.OrderCode),
 			zap.String("gateway_reference", payload.Data.Reference),
@@ -216,12 +139,138 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	return nil
 }
 
-func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
-	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
-	if err := wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now); err != nil {
-		return err
+// parseVerifiedWebhookPayload verifies the signature and decodes the callback body.
+func (uc *PaymentWebhookUseCase) parseVerifiedWebhookPayload(ctx context.Context, rawBody []byte, signature string) (*WebhookPayload, error) {
+	if _, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
+		return nil, subscriptionerrors.ErrVerifySignatureFailed
+	}
+
+	var payload WebhookPayload
+	decoder := json.NewDecoder(bytes.NewReader(rawBody))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payload); err != nil {
+		return nil, subscriptionerrors.ErrWebhookPayloadMalformed
+	}
+
+	return &payload, nil
+}
+
+// isSuccessfulWebhook reports whether the gateway marked the callback as successful.
+func (uc *PaymentWebhookUseCase) isSuccessfulWebhook(payload *WebhookPayload) bool {
+	return payload.Code == "00" && payload.Data.Code == "00"
+}
+
+// logIgnoredWebhook records a non-success callback without applying any business side effects.
+func (uc *PaymentWebhookUseCase) logIgnoredWebhook(payload *WebhookPayload) {
+	uc.log.Warn("Ignored unsuccessful payment webhook",
+		zap.Int64("order_code", payload.Data.OrderCode),
+		zap.String("gateway_code", payload.Code),
+		zap.String("gateway_data_code", payload.Data.Code),
+		zap.String("result", "ignored_non_success"),
+	)
+}
+
+// loadAndValidateDepositTransaction loads the pending deposit transaction and validates the callback amount.
+func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
+	ctx context.Context,
+	payload *WebhookPayload,
+) (*entities.DepositTransaction, decimal.Decimal, error) {
+	webhookAmount, err := decimal.NewFromString(payload.Data.Amount.String())
+	if err != nil {
+		return nil, decimal.Zero, subscriptionerrors.ErrInvalidAmount
+	}
+	if err := sharedmoney.ValidateSupportedCurrencyText(payload.Data.Currency); err != nil {
+		return nil, decimal.Zero, err
+	}
+
+	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
+	if err != nil {
+		return nil, decimal.Zero, subscriptionerrors.ErrQueryTransactionFailed
+	}
+	if tx == nil {
+		return nil, decimal.Zero, subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
+	}
+	if err := sharedmoney.ValidateSupportedCurrency(tx.Currency); err != nil {
+		return nil, decimal.Zero, err
+	}
+	if !webhookAmount.Equal(tx.Amount) {
+		return nil, decimal.Zero, subscriptionerrors.ErrPaymentAmountMismatch
+	}
+
+	return tx, webhookAmount, nil
+}
+
+// serializeWebhookDetails stores the gateway payload for audit and replay analysis.
+func (uc *PaymentWebhookUseCase) serializeWebhookDetails(payload *WebhookPayload) (string, error) {
+	rawBytes, err := json.Marshal(payload.Data)
+	if err != nil {
+		return "", subscriptionerrors.ErrProcessPaymentGatewayFailed
+	}
+	return string(rawBytes), nil
+}
+
+// processLockedWebhookTransaction rechecks idempotency under lock and dispatches the right payment workflow.
+func (uc *PaymentWebhookUseCase) processLockedWebhookTransaction(
+	ctx context.Context,
+	payload *WebhookPayload,
+	tx *entities.DepositTransaction,
+	webhookAmount decimal.Decimal,
+	detailsStr string,
+) error {
+	_ = webhookAmount
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
+		if err != nil {
+			return subscriptionerrors.ErrLockTransactionFailed
+		}
+		if lockedTx == nil {
+			return subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
+		}
+		if lockedTx.Status == depositstatus.Success {
+			return nil
+		}
+
+		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+		if err := uc.markWebhookTransactionSuccess(txCtx, lockedTx, payload.Data.Reference, detailsStr); err != nil {
+			return err
+		}
+
+		return uc.dispatchWebhookWorkflow(txCtx, lockedTx, now)
+	})
+}
+
+// markWebhookTransactionSuccess updates the deposit transaction status after a successful callback.
+func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(
+	txCtx context.Context,
+	lockedTx *entities.DepositTransaction,
+	reference string,
+	detailsStr string,
+) error {
+	lockedTx.Status = depositstatus.Success
+	lockedTx.GatewayReference = &reference
+	lockedTx.GatewayDetails = &detailsStr
+	if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
+		return subscriptionerrors.ErrCompletePaymentRecordFailed
 	}
 	return nil
+}
+
+// dispatchWebhookWorkflow routes the locked transaction to the proper wallet or subscription workflow.
+func (uc *PaymentWebhookUseCase) dispatchWebhookWorkflow(txCtx context.Context, lockedTx *entities.DepositTransaction, now time.Time) error {
+	switch lockedTx.TransactionType {
+	case deposittransactiontype.WalletTopup:
+		return uc.executeWalletTopUpWorkflow(txCtx, lockedTx, now)
+	case deposittransactiontype.DirectPurchase:
+		return uc.executeDirectPurchaseWorkflow(txCtx, lockedTx, now)
+	default:
+		return nil
+	}
+}
+
+// executeWalletTopUpWorkflow credits the user's wallet after a successful top-up payment.
+func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
+	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
+	return wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now)
 }
 
 // executeDirectPurchaseWorkflow fetches the targeted subscription plan and applies it.
@@ -238,10 +287,5 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 		return subscriptionerrors.ErrRequestedPlanNotFound
 	}
 
-	// Apply the subscription plan configuration to the user's subscription entity.
-	if err := subscription.ApplySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now); err != nil {
-		return err
-	}
-
-	return nil
+	return subscription.ApplySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now)
 }

@@ -108,6 +108,7 @@ func (uc *UserPostUseCase) syncPostTotalPrice(ctx context.Context, postID uuid.U
 	return SyncPostTotalPrice(ctx, uc.publishing.postRepo, uc.publishing.postItemRepo, postID)
 }
 
+// SyncPostTotalPrice recalculates the total visible price of a post from its current items.
 func SyncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {
 	total, err := postItemRepo.SumVisiblePriceByPostID(ctx, postID)
 	if err != nil {
@@ -171,6 +172,7 @@ func mapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
 	}
 }
 
+// NormalizePostPublicID validates and normalizes the public identifier used by post routes.
 func NormalizePostPublicID(raw string) (string, error) {
 	publicID := strings.TrimSpace(raw)
 	if !strings.HasPrefix(publicID, postPublicIDPrefix) || len(publicID) != len(postPublicIDPrefix)+16 {
@@ -219,6 +221,7 @@ func getVisiblePostItems(post *entities.Post) []*entities.PostItem {
 	return visibleItems
 }
 
+// SyncWardrobeStatusByItem derives the wardrobe item status from all active marketplace listings.
 func SyncWardrobeStatusByItem(
 	ctx context.Context,
 	postItemRepo repositories.IPostItemRepository,
@@ -244,6 +247,7 @@ func SyncWardrobeStatusByItem(
 	return wardrobeCtr.UpdateItemStatus(ctx, itemID, nextStatus)
 }
 
+// UniqueItemIDs extracts distinct wardrobe item IDs from post item records.
 func UniqueItemIDs(items []*entities.PostItem) []uuid.UUID {
 	seen := make(map[uuid.UUID]struct{}, len(items))
 	result := make([]uuid.UUID, 0, len(items))

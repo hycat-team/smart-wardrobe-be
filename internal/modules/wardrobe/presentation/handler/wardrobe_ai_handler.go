@@ -29,11 +29,18 @@ const (
 )
 
 type WardrobeAIHandler struct {
-	aiUseCase usecase_interfaces.IWardrobeAIUseCase
+	recommendationUseCase usecase_interfaces.IOutfitRecommendationUseCase
+	chatUseCase           usecase_interfaces.IWardrobeChatUseCase
 }
 
-func NewWardrobeAIHandler(aiUseCase usecase_interfaces.IWardrobeAIUseCase) *WardrobeAIHandler {
-	return &WardrobeAIHandler{aiUseCase: aiUseCase}
+func NewWardrobeAIHandler(
+	recommendationUseCase usecase_interfaces.IOutfitRecommendationUseCase,
+	chatUseCase usecase_interfaces.IWardrobeChatUseCase,
+) *WardrobeAIHandler {
+	return &WardrobeAIHandler{
+		recommendationUseCase: recommendationUseCase,
+		chatUseCase:           chatUseCase,
+	}
 }
 
 // RecommendOutfit recommendations for outfits based on user wardrobe
@@ -64,7 +71,7 @@ func (h *WardrobeAIHandler) RecommendOutfit(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.aiUseCase.RecommendOutfit(c.Request.Context(), userID, input)
+	response, err := h.recommendationUseCase.RecommendOutfit(c.Request.Context(), userID, input)
 	if err != nil {
 		return err
 	}
@@ -93,7 +100,7 @@ func (h *WardrobeAIHandler) CreateChatSession(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.aiUseCase.CreateChatSession(c.Request.Context(), userID, input.Title)
+	response, err := h.chatUseCase.CreateChatSession(c.Request.Context(), userID, input.Title)
 	if err != nil {
 		return err
 	}
@@ -116,7 +123,7 @@ func (h *WardrobeAIHandler) GetChatSessions(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.aiUseCase.GetChatSessions(c.Request.Context(), userID)
+	response, err := h.chatUseCase.GetChatSessions(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -152,7 +159,7 @@ func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.aiUseCase.GetChatMessages(c.Request.Context(), userID, contextID, query)
+	response, err := h.chatUseCase.GetChatMessages(c.Request.Context(), userID, contextID, query)
 	if err != nil {
 		return err
 	}
@@ -181,7 +188,7 @@ func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 		return wardrobeerrors.ErrInvalidChatIDFormat
 	}
 
-	if err := h.aiUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
+	if err := h.chatUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
 		return err
 	}
 
@@ -218,7 +225,7 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 	streamCtx, cancelStream := context.WithCancel(c.Request.Context())
 	defer cancelStream()
 
-	textChan, commitFn, err := h.aiUseCase.ProcessChatMessageStream(streamCtx, userID, contextID, input.Content)
+	textChan, commitFn, err := h.chatUseCase.ProcessChatMessageStream(streamCtx, userID, contextID, input.Content)
 	if err != nil {
 		return err
 	}

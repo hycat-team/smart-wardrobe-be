@@ -44,7 +44,8 @@ import (
 	worker2 "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
-	ai2 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/chat"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
@@ -131,10 +132,11 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, l)
 	billingHandler := handler4.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription2.NewRouter(subscriptionHandler, billingHandler, authMiddleware)
+	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
 	iConversationalContextRepository := persistence4.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence4.NewMessageRepository(gormDB)
-	iWardrobeAIUseCase := ai2.NewWardrobeAIUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iCategoryRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
-	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iWardrobeAIUseCase)
+	iWardrobeChatUseCase := chat.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
+	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
 	wardrobeRouter := wardrobe.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
 	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)

@@ -34,6 +34,7 @@ type SubscriptionUseCase struct {
 	quotaContract contract.IUserQuotaContract
 }
 
+// NewSubscriptionUseCase builds the subscription application service and its state helpers.
 func NewSubscriptionUseCase(
 	uow shared_repos.IUnitOfWork,
 	userSubRepo repositories.IUserSubscriptionRepository,

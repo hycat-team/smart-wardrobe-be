@@ -41,6 +41,7 @@ type UserPostUseCase struct {
 	mediaService media.IMediaService
 }
 
+// NewUserPostUseCase builds the community post use case with grouped feed and publishing dependencies.
 func NewUserPostUseCase(
 	cfg *config.Config,
 	log logger.Interface,

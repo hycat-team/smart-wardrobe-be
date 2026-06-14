@@ -17,6 +17,7 @@ type ItemTransferUseCase struct {
 	uow                 shared_repos.IUnitOfWork
 }
 
+// NewItemTransferUseCase builds the transfer workflow facade for buyer and seller item exchanges.
 func NewItemTransferUseCase(
 	postRepo repositories.IPostRepository,
 	postItemRepo repositories.IPostItemRepository,
