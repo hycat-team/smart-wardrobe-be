@@ -1089,6 +1089,10 @@ definitions:
         type: string
       price:
         type: number
+      processingErrorReason:
+        type: string
+      reviewReason:
+        type: string
       seasonality:
         type: string
       status:
@@ -1296,10 +1300,12 @@ definitions:
     - 2
     - 3
     - 4
+    - 5
     format: int32
     type: integer
     x-enum-comments:
       Failed: AI processing failed
+      NeedsReview: AI requires user review before the item becomes usable
       Processing: AI processing in background
     x-enum-descriptions:
     - ""
@@ -1307,12 +1313,14 @@ definitions:
     - ""
     - AI processing in background
     - AI processing failed
+    - AI requires user review before the item becomes usable
     x-enum-varnames:
     - InWardrobe
     - Selling
     - Sold
     - Processing
     - Failed
+    - NeedsReview
   smart-wardrobe-be_internal_shared_presentation.APIResponse:
     properties:
       data: {}
@@ -2339,7 +2347,7 @@ paths:
       - Outfits
   /api/v1/me/wardrobe-items:
     get:
-      description: Lấy toàn bộ danh sách trang phục của người dùng, phân tích và áp
+      description: Lấy danh sách trang phục usable trong tủ đồ của người dùng và áp
         dụng trạng thái khóa động nếu hạ cấp gói
       parameters:
       - description: 'Số trang (mặc định: 1)'
@@ -2358,7 +2366,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Danh sách trang phục
+          description: Danh sách trang phục usable
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -2366,7 +2374,39 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes'
               type: object
-      summary: Lấy danh sách trang phục
+      summary: Lấy danh sách trang phục usable
+      tags:
+      - Wardrobe
+  /api/v1/me/wardrobe-items/pending:
+    get:
+      description: Lấy các trang phục chưa usable trong tủ đồ, gồm Đang xử lý, Lỗi
+        phân tích, hoặc Cần người dùng rà soát
+      parameters:
+      - description: 'Số trang (mặc định: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Số lượng phần tử trên trang (mặc định: 20)'
+        in: query
+        name: limit
+        type: integer
+      - description: Lọc theo status cụ thể
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách trang phục non-usable
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes'
+              type: object
+      summary: Lấy danh sách trang phục đang xử lý hoặc cần rà soát
       tags:
       - Wardrobe
   /api/v1/outfits:
@@ -3101,7 +3141,7 @@ paths:
         in: query
         name: limit
         type: integer
-      - description: 'Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)'
+      - description: Từ khóa tìm kiếm
         in: query
         name: q
         type: string
@@ -3320,8 +3360,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Sao chép nhanh một trang phục có sẵn trong tủ đồ (tái sử dụng nguyên
-        bản AI metadata & ảnh), tối đa 5 bản sao
+      description: Sao chép nhanh một trang phục có sẵn trong tủ đồ, tối đa 5 bản
+        sao
       parameters:
       - description: ID trang phục gốc
         in: path
@@ -3356,7 +3396,8 @@ paths:
       consumes:
       - application/json
       description: Cho phép người dùng tự điền tay thông tin cho trang phục phân tích
-        lỗi, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ
+        lỗi hoặc cần rà soát, hệ thống dùng Text Embedding cập nhật vector và duyệt
+        vào tủ đồ
       parameters:
       - description: ID trang phục
         in: path
@@ -3384,15 +3425,39 @@ paths:
       summary: Tự phân loại trang phục thủ công
       tags:
       - Wardrobe
+  /api/v1/wardrobe-items/{id}/retry-analysis:
+    post:
+      description: Cho phép người dùng gửi lại yêu cầu phân tích AI cho trang phục
+        đang lỗi hoặc cần rà soát
+      parameters:
+      - description: ID trang phục
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chi tiết trang phục sau khi đưa lại vào hàng đợi xử lý
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+              type: object
+      summary: Thử phân tích lại trang phục
+      tags:
+      - Wardrobe
   /api/v1/wardrobe-items/batch-upload:
     post:
       consumes:
       - application/json
-      description: Hỗ trợ upload hàng loạt trang phục đã cắt (phụ kiện, áo quần),
-        hệ thống sẽ tạo các ô đồ ở trạng thái Đang xử lý (Processing) và tự động gọi
-        AI phân tích ngầm
+      description: Hỗ trợ upload hàng loạt ảnh trang phục, hệ thống sẽ tạo các item
+        ở trạng thái Đang xử lý và tự động gọi AI phân tích ngầm
       parameters:
-      - description: Danh sách ảnh trang phục cắt
+      - description: Danh sách ảnh trang phục
         in: body
         name: body
         required: true
@@ -3420,7 +3485,7 @@ paths:
       consumes:
       - application/json
       description: Cho phép người dùng chọn và xóa mềm hàng loạt trang phục khỏi tủ
-        đồ để giải phóng quota dung lượng.
+        đồ để giải phóng quota dung lượng
       parameters:
       - description: Danh sách ID trang phục cần xóa
         in: body
@@ -3442,8 +3507,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Sao chép hàng loạt các trang phục mẫu (Global Catalog) từ hệ thống
-        sang tủ đồ cá nhân của user, không tốn quota AI
+      description: Sao chép hàng loạt các trang phục mẫu từ hệ thống sang tủ đồ cá
+        nhân của user, không tốn quota AI
       parameters:
       - description: Danh sách ID trang phục mẫu
         in: body
@@ -3471,7 +3536,7 @@ paths:
   /api/v1/wardrobe-items/locked:
     delete:
       description: Tự động quét và xóa mềm toàn bộ trang phục vượt quá hạn mức sử
-        dụng (bị khóa) của người dùng để giải phóng quota.
+        dụng bị khóa của người dùng để giải phóng quota
       produces:
       - application/json
       responses:

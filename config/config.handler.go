@@ -155,6 +155,14 @@ func LoadConfig() *Config {
 			LongUnwornBonusDays:     getEnvInt("RAG_LONG_UNWORN_BONUS_DAYS", 14),
 			RrfKParameter:           getEnvInt("RAG_RRF_K_PARAMETER", 30),
 		},
+		Wardrobe: WardrobeProcessing{
+			RetryDelay1Seconds: getEnvInt("WARDROBE_RETRY_DELAY_1_SECONDS", 60),
+			RetryDelay2Seconds: getEnvInt("WARDROBE_RETRY_DELAY_2_SECONDS", 300),
+			RetryDelay3Seconds: getEnvInt("WARDROBE_RETRY_DELAY_3_SECONDS", 900),
+			StaleMinutes:       getEnvInt("WARDROBE_PROCESSING_STALE_MINUTES", 20),
+			MaxRetryCount:      getEnvInt("WARDROBE_PROCESSING_MAX_RETRIES", 3),
+			RecoveryScanCron:   getEnv("WARDROBE_RECOVERY_SCAN_CRON", "0 */5 * * * *"),
+		},
 	}
 
 	if err := validateConfig(cfg); err != nil {
@@ -189,6 +197,12 @@ func validateConfig(cfg *Config) error {
 
 	if cfg.Startup.RetryAttempt1Seconds <= 0 || cfg.Startup.RetryAttempt2Seconds <= 0 || cfg.Startup.RetryAttempt3Seconds <= 0 {
 		return fmt.Errorf("startup retry durations must be greater than 0")
+	}
+	if cfg.Wardrobe.RetryDelay1Seconds <= 0 || cfg.Wardrobe.RetryDelay2Seconds <= 0 || cfg.Wardrobe.RetryDelay3Seconds <= 0 {
+		return fmt.Errorf("wardrobe retry delays must be greater than 0")
+	}
+	if cfg.Wardrobe.StaleMinutes <= 0 || cfg.Wardrobe.MaxRetryCount <= 0 || strings.TrimSpace(cfg.Wardrobe.RecoveryScanCron) == "" {
+		return fmt.Errorf("wardrobe processing recovery configuration is invalid")
 	}
 
 	return nil

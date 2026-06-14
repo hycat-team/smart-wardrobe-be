@@ -3,6 +3,7 @@ package item
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -18,6 +19,9 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+const manualRetryCooldown = 15 * time.Second
+const processingFailureMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
 
 func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
 	if quantity < 1 || quantity > 5 {
@@ -164,6 +168,11 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	item.Price = input.Price
 	item.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
+	item.ReviewReason = nil
+	item.ProcessingErrorReason = nil
+	item.ProcessingRetryCount = 0
+	item.ProcessingStartedAt = nil
+	item.LastProcessingAttemptAt = nil
 
 	if h, s, l, hex, ok := colorutils.ResolveFashionColor(input.Color, ""); ok {
 		item.ColorHex = &hex
@@ -185,6 +194,52 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 
 	return mapper.MapToWardrobeItemRes(item), nil
+}
+
+func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.WardrobeItemRes, error) {
+	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, wardrobeerrors.ErrItemNotFound
+	}
+	if item.UserID != userID {
+		return nil, wardrobeerrors.ErrUpdateItemForbidden
+	}
+	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden
+	}
+	if item.LastProcessingAttemptAt != nil && time.Since(item.LastProcessingAttemptAt.UTC()) < manualRetryCooldown {
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisCooldown
+	}
+
+	now := time.Now().UTC()
+	item, claimed, err := uc.wardrobeRepo.ClaimManualAnalysisRetry(ctx, userID, itemID, now)
+	if err != nil {
+		return nil, err
+	}
+	if !claimed || item == nil {
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress
+	}
+
+	job := dto.WardrobeBatchUploadJobDTO{
+		ItemID:        item.ID,
+		UserID:        item.UserID,
+		CategoryID:    item.CategoryID,
+		ImageUrl:      item.ImageUrl,
+		ImagePublicID: item.ImagePublicID,
+		ProcessingVersion: item.ProcessingVersion,
+	}
+	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job); err != nil {
+		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
+		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.ProcessingVersion, processingFailureMessage, nil)
+		return nil, err
+	}
+
+	res := mapper.MapToWardrobeItemRes(item)
+	res.IsLocked = false
+	return res, nil
 }
 
 func (uc *WardrobeItemUseCase) DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
@@ -289,6 +344,7 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
 	for i, itemReq := range input.Items {
+		now := time.Now().UTC()
 		newItems[i] = &entities.WardrobeItem{
 			UserID:        userID,
 			CategoryID:    itemReq.CategoryID,
@@ -296,6 +352,8 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			ImagePublicID: itemReq.ImagePublicID,
 			Status:        wardrobestatus.Processing,
 			ItemType:      itemType,
+			ProcessingStartedAt:   &now,
+			LastProcessingAttemptAt: &now,
 		}
 	}
 
@@ -311,12 +369,15 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			CategoryID:    item.CategoryID,
 			ImageUrl:      item.ImageUrl,
 			ImagePublicID: item.ImagePublicID,
+			ProcessingVersion: item.ProcessingVersion,
 		}
 
 		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
 		if err != nil {
 			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
 			item.Status = wardrobestatus.Failed
+			reason := processingFailureMessage
+			item.ProcessingErrorReason = &reason
 			_ = uc.wardrobeRepo.Update(ctx, item)
 		}
 

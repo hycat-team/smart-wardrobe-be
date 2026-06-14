@@ -40,6 +40,7 @@ func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *war
 		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.itemHandler.CloneWardrobeItem))
 		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.itemHandler.InitClosetFromCatalog))
 		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.itemHandler.BatchUploadWardrobeItems))
+		wardrobeApi.POST("/:id/retry-analysis", shared_pres.WrapHandler(r.itemHandler.RetryWardrobeAnalysis))
 		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.itemHandler.ManualClassify))
 	}
 
@@ -56,5 +57,6 @@ func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *war
 	meApi := privateApi.Group("/me/wardrobe-items")
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItems))
+		meApi.GET("/pending", shared_pres.WrapHandler(r.itemHandler.GetPendingWardrobeItems))
 	}
 }

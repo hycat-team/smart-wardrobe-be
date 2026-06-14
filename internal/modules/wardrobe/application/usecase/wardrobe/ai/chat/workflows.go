@@ -71,10 +71,6 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 	if limit <= 0 {
 		limit = 20
 	}
-	totalItems, err := uc.messageRepo.CountByContextID(ctx, contextID)
-	if err != nil {
-		return nil, err
-	}
 	items, err := uc.messageRepo.GetByContextIDPaginated(ctx, contextID, shared_dto.PaginationQuery{Page: page, Limit: limit})
 	if err != nil {
 		return nil, err
@@ -83,7 +79,7 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 	for i, item := range items {
 		res[i] = mapChatMessage(item)
 	}
-	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{Items: res, Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems)}, nil
+	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{Items: res, Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(res))}, nil
 }
 
 // ArchiveChatSession archives a user-owned chat session without deleting its history.

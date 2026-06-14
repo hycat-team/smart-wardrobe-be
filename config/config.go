@@ -18,6 +18,16 @@ type Config struct {
 	Elasticsearch Elasticsearch
 	Community     Community
 	RAG           RAG
+	Wardrobe      WardrobeProcessing
+}
+
+type WardrobeProcessing struct {
+	RetryDelay1Seconds int
+	RetryDelay2Seconds int
+	RetryDelay3Seconds int
+	StaleMinutes       int
+	MaxRetryCount      int
+	RecoveryScanCron   string
 }
 
 type Startup struct {

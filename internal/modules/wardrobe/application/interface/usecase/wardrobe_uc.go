@@ -11,10 +11,12 @@ import (
 type IWardrobeItemUseCase interface {
 	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
 	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
+	GetPendingWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetPendingWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error)
 	GetSystemCatalogWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error)
 	ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error)
+	RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.WardrobeItemRes, error)
 	DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 	DeleteLockedWardrobeItems(ctx context.Context, userID uuid.UUID) error
 	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
@@ -43,4 +45,5 @@ type IWardrobeCatalogUseCase interface {
 type IWardrobeWorkerUseCase interface {
 	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error
 	CleanupFailedItems(ctx context.Context) error
+	RecoverStaleProcessingItems(ctx context.Context) error
 }

@@ -109,7 +109,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient)
-	iWardrobeWorkerUseCase := worker.NewWardrobeWorkerUseCase(l, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
+	iWardrobeWorkerUseCase := worker.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeItemHandler := handler3.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase, iWardrobeWorkerUseCase)
 	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository, iUnitOfWork)
 	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
@@ -173,12 +173,14 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
+	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:             iSubscriptionRenewalWorker,
 		PostHotnessWorker:         iPostHotnessWorker,
 		WardrobeBatchUploadWorker: wardrobeBatchUploadWorker,
 		ESAsyncWorker:             searchSyncWorker,
 		FailedItemsCleanupWorker:  iFailedItemsCleanupWorker,
+		ProcessingRecoveryWorker:  iProcessingRecoveryWorker,
 	}
 	app := bootstrap.NewApp(cfg, engine, appWorkers)
 	return app, func() {

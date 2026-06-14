@@ -45,15 +45,6 @@ func (r *OutfitRepository) GetByUserIDPaginated(ctx context.Context, userID uuid
 	return outfits, nil
 }
 
-func (r *OutfitRepository) CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	var count int64
-	err := r.GetDB(ctx).Model(&entities.Outfit{}).Where("user_id = ?", userID).Count(&count).Error
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
 func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*entities.Outfit, []*entities.OutfitItem, error) {
 	var outfit entities.Outfit
 	err := r.GetQueryWithPreload(ctx).Where("id = ?", id).First(&outfit).Error

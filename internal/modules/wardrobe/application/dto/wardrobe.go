@@ -3,8 +3,8 @@ package dto
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 
 	"github.com/google/uuid"
 )
@@ -16,25 +16,27 @@ type CreateWardrobeItemReq struct {
 }
 
 type WardrobeItemRes struct {
-	ID            uuid.UUID                         `json:"id"`
-	UserID        uuid.UUID                         `json:"userId"`
-	Category      *CategoryRes                      `json:"category,omitempty"`
-	ImageUrl      string                            `json:"imageUrl"`
-	ImagePublicID string                            `json:"imagePublicId"`
-	Color           string                            `json:"color"`
-	ColorHex        string                            `json:"colorHex"`
-	ColorHue        *float64                          `json:"colorHue,omitempty"`
-	ColorSaturation *float64                          `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64                          `json:"colorLightness,omitempty"`
-	Style           string                            `json:"style"`
-	Material      string                            `json:"material"`
-	Pattern       string                            `json:"pattern"`
-	Fit           string                            `json:"fit"`
-	Seasonality   string                            `json:"seasonality"`
-	Price         *float64                          `json:"price,omitempty"`
-	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
-	IsLocked      bool                              `json:"isLocked"`
-	CreatedAt     time.Time                         `json:"createdAt"`
+	ID                    uuid.UUID                         `json:"id"`
+	UserID                uuid.UUID                         `json:"userId"`
+	Category              *CategoryRes                      `json:"category,omitempty"`
+	ImageUrl              string                            `json:"imageUrl"`
+	ImagePublicID         string                            `json:"imagePublicId"`
+	Color                 string                            `json:"color"`
+	ColorHex              string                            `json:"colorHex"`
+	ColorHue              *float64                          `json:"colorHue,omitempty"`
+	ColorSaturation       *float64                          `json:"colorSaturation,omitempty"`
+	ColorLightness        *float64                          `json:"colorLightness,omitempty"`
+	Style                 string                            `json:"style"`
+	Material              string                            `json:"material"`
+	Pattern               string                            `json:"pattern"`
+	Fit                   string                            `json:"fit"`
+	Seasonality           string                            `json:"seasonality"`
+	Price                 *float64                          `json:"price,omitempty"`
+	Status                wardrobestatus.WardrobeItemStatus `json:"status"`
+	ReviewReason          *string                           `json:"reviewReason,omitempty"`
+	ProcessingErrorReason *string                           `json:"processingErrorReason,omitempty"`
+	IsLocked              bool                              `json:"isLocked"`
+	CreatedAt             time.Time                         `json:"createdAt"`
 }
 
 type CloneWardrobeItemReq struct {
@@ -62,6 +64,26 @@ type WardrobeBatchUploadJobDTO struct {
 	ImageUrl      string     `json:"imageUrl"`
 	ImagePublicID string     `json:"imagePublicId"`
 	RetryCount    int        `json:"retryCount,omitempty"`
+	ProcessingVersion int    `json:"processingVersion"`
+}
+
+type FashionMetadataResult struct {
+	CategorySlug string `json:"category_slug"`
+	Color        string `json:"color"`
+	ColorHex     string `json:"color_hex"`
+	Style        string `json:"style"`
+	Material     string `json:"material"`
+	Pattern      string `json:"pattern"`
+	Fit          string `json:"fit"`
+	Seasonality  string `json:"seasonality"`
+	Description  string `json:"description"`
+	IsSingleItem bool   `json:"is_single_item"`
+	ReviewReason string `json:"review_reason"`
+}
+
+type AICategoryRef struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type WardrobeEventPayload struct {
@@ -94,6 +116,11 @@ type GetWardrobeItemsQueryReq struct {
 	CategorySlug string `form:"category_slug"`
 }
 
+type GetPendingWardrobeItemsQueryReq struct {
+	shared_dto.PaginationQuery
+	Status *wardrobestatus.WardrobeItemStatus `form:"status"`
+}
+
 type SearchWardrobeItemsQueryReq struct {
 	shared_dto.PaginationQuery
 	Query        string `form:"q"`
@@ -110,6 +137,8 @@ type ManualClassifyReq struct {
 	Seasonality string    `json:"seasonality" binding:"required" label:"mùa phù hợp"`
 	Price       *float64  `json:"price,omitempty"`
 }
+
+type RetryWardrobeAnalysisReq struct{}
 
 type GetSystemCatalogItemsQueryReq struct {
 	shared_dto.PaginationQuery
@@ -135,5 +164,3 @@ type UpdateSystemCatalogItemReq struct {
 type BulkDeleteItemsReq struct {
 	IDs []uuid.UUID `json:"ids" binding:"required,min=1"`
 }
-
-

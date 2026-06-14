@@ -45,4 +45,5 @@ var ProviderSet = wire.NewSet(
 	presentation_worker.NewWardrobeBatchUploadWorker,
 	presentation_worker.NewSearchSyncWorker,
 	presentation_worker.NewFailedItemsCleanupWorker,
+	presentation_worker.NewProcessingRecoveryWorker,
 )

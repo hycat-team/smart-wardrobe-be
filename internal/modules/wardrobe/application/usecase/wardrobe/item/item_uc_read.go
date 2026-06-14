@@ -92,11 +92,6 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 	}
 	offset := (page - 1) * limit
 
-	totalItems, err := uc.wardrobeRepo.CountByUserIDAndCategory(ctx, userID, categorySlug)
-	if err != nil {
-		return nil, err
-	}
-
 	paginationQuery := shared_dto.PaginationQuery{
 		Page:  page,
 		Limit: limit,
@@ -121,7 +116,38 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
+		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
+	}, nil
+}
+
+func (uc *WardrobeItemUseCase) GetPendingWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetPendingWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	items, err := uc.wardrobeRepo.GetPendingByUserIDPaginated(ctx, userID, query.Status, shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resList := make([]*dto.WardrobeItemRes, len(items))
+	for idx, item := range items {
+		res := mapper.MapToWardrobeItemRes(item)
+		res.IsLocked = false
+		resList[idx] = res
+	}
+
+	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
+		Items:    resList,
+		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(resList)),
 	}, nil
 }
 
@@ -163,13 +189,12 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 	}
 
 	var results []*dto.SearchWardrobeItemRes
-	var totalItems int64
 	var err error
 
 	searchCtx, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
 
-	results, totalItems, err = uc.searchEngine.SearchItems(searchCtx, query)
+	results, _, err = uc.searchEngine.SearchItems(searchCtx, query)
 	if err != nil {
 		uc.logger.Warn("[GetSystemCatalogWardrobeItems] Search failed or timed out, falling back to database", zap.Error(err))
 		var searchQ *string
@@ -179,11 +204,6 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 		var categorySlug *string
 		if query.CategorySlug != "" {
 			categorySlug = &query.CategorySlug
-		}
-
-		totalItems, err = uc.wardrobeRepo.CountItems(ctx, searchQ, categorySlug, itemtype.SystemCatalogItem)
-		if err != nil {
-			return nil, err
 		}
 
 		paginationQuery := shared_dto.PaginationQuery{
@@ -204,6 +224,6 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 
 	return &shared_dto.PaginationResult[*dto.SearchWardrobeItemRes]{
 		Items:    results,
-		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
+		Metadata: shared.BuildPageBoundedMetadata(query.PaginationQuery, len(results)),
 	}, nil
 }

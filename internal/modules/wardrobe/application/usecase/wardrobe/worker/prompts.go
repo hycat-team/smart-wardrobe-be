@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 func getVisionSystemPrompt(categories []dto.AICategoryRef) string {
@@ -28,6 +28,8 @@ If the image does not contain any fashion, apparel, clothing, footwear, or acces
 
 JSON Schema format:
 {
+  "is_single_item": "true if the image contains exactly one clear fashion item for analysis; false if it is a full-body shot, an outfit shot, or contains multiple items in the same image",
+  "review_reason": "If is_single_item = false, you must return exactly one of: 'multiple_items_detected', 'full_body_outfit_detected', 'uncertain_category'. If is_single_item = true, return an empty string",
   "category_slug": "The selected category slug from the list (e.g. 'ao', 'quan', etc.)",
   "color": "Color name in natural Vietnamese fashion context, including shades (e.g. 'Đen mun', 'Trắng sữa', 'Xanh olive', etc.)",
   "color_hex": "The 6-character hexadecimal color code representing the dominant background or base color of the item (e.g. '#000000', '#FFFFFF', '#556B2F', etc.). If the item is multicolored or patterned, choose the dominant background/base color.",

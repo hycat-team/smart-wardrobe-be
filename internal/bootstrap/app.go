@@ -22,6 +22,7 @@ type AppWorkers struct {
 	WardrobeBatchUploadWorker *wardrobeWorker.WardrobeBatchUploadWorker
 	ESAsyncWorker             *wardrobeWorker.SearchSyncWorker
 	FailedItemsCleanupWorker  wardrobeWorker.IFailedItemsCleanupWorker
+	ProcessingRecoveryWorker  wardrobeWorker.IProcessingRecoveryWorker
 }
 
 type App struct {
@@ -58,6 +59,7 @@ func (a *App) Run() error {
 	a.Workers.RenewalWorker.Start()
 	a.Workers.PostHotnessWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
+	a.Workers.ProcessingRecoveryWorker.Start()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -74,6 +76,7 @@ func (a *App) Run() error {
 	a.Workers.RenewalWorker.Stop()
 	a.Workers.PostHotnessWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
+	a.Workers.ProcessingRecoveryWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
