@@ -21,7 +21,7 @@ const (
 	msgWardrobeCloneItemSuccess             = "Nhân bản trang phục thành công"
 	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
 	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
-	msgWardrobeSearchItemsSuccess           = "Tìm kiếm trang phục thành công"
+	msgWardrobeGetSystemCatalogItemsSuccess = "Lấy danh sách trang phục hệ thống thành công"
 	msgWardrobeManualClassifySuccess        = "Tự phân loại trang phục thủ công thành công"
 	msgWardrobeGetCatalogItemsSuccess       = "Lấy danh sách trang phục mẫu thành công"
 	msgWardrobeUpdateCatalogItemSuccess     = "Cập nhật trang phục mẫu thành công"
@@ -220,9 +220,9 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	return nil
 }
 
-// SearchWardrobeItems searches wardrobe items using Elasticsearch CQRS
-// @Summary Tìm kiếm trang phục có sẵn của hệ thống (Elasticsearch CQRS)
-// @Description Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.
+// GetSystemCatalogWardrobeItems get all system catalog wardrobe items
+// @Summary Lấy danh sách trang phục hệ thống
+// @Description Lấy danh sách trang phục mẫu của hệ thống, hỗ trợ tìm kiếm thông minh bằng Elasticsearch và fallback sang database khi cần
 // @Tags Wardrobe
 // @Produce json
 // @Param page query int false "Số trang (mặc định: 1)"
@@ -230,19 +230,19 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Param q query string false "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)"
 // @Param category_slug query string false "Slug danh mục cần lọc"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.SearchWardrobeItemRes]} "Danh sách trang phục tìm thấy"
-// @Router /api/v1/wardrobe-items/search [get]
-func (h *WardrobeItemHandler) SearchWardrobeItems(c *gin.Context) error {
+// @Router /api/v1/system-catalog/wardrobe-items [get]
+func (h *WardrobeItemHandler) GetSystemCatalogWardrobeItems(c *gin.Context) error {
 	var query dto.SearchWardrobeItemsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
 
-	response, err := h.itemUseCase.SearchWardrobeItems(c.Request.Context(), query)
+	response, err := h.itemUseCase.GetSystemCatalogWardrobeItems(c.Request.Context(), query)
 	if err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, msgWardrobeSearchItemsSuccess, response)
+	shared_pres.Success(c, msgWardrobeGetSystemCatalogItemsSuccess, response)
 	return nil
 }
 

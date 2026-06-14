@@ -15,6 +15,7 @@ type AdminRouter struct {
 	identityAdminHandler  *identity_handler.AdminHandler
 	communityAdminHandler *community_handler.AdminHandler
 	wardrobeItemHandler   *wardrobe_handler.WardrobeItemHandler
+	categoryHandler       *wardrobe_handler.CategoryHandler
 	authMiddleware        *middleware.AuthMiddleware
 }
 
@@ -22,12 +23,14 @@ func NewRouter(
 	identityAdminHandler *identity_handler.AdminHandler,
 	communityAdminHandler *community_handler.AdminHandler,
 	wardrobeItemHandler *wardrobe_handler.WardrobeItemHandler,
+	categoryHandler *wardrobe_handler.CategoryHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) *AdminRouter {
 	return &AdminRouter{
 		identityAdminHandler:  identityAdminHandler,
 		communityAdminHandler: communityAdminHandler,
 		wardrobeItemHandler:   wardrobeItemHandler,
+		categoryHandler:       categoryHandler,
 		authMiddleware:        authMiddleware,
 	}
 }
@@ -69,5 +72,14 @@ func (r *AdminRouter) Init(group *gin.RouterGroup) {
 		adminWardrobe.DELETE("/:id", shared_pres.WrapHandler(r.wardrobeItemHandler.DeleteCatalogItemAdmin))
 		adminWardrobe.GET("/upload-signature", shared_pres.WrapHandler(r.wardrobeItemHandler.GetUploadSignature))
 		adminWardrobe.POST("/batch-upload", shared_pres.WrapHandler(r.wardrobeItemHandler.BatchUploadWardrobeItems))
+	}
+
+	adminCategories := admin.Group("/categories")
+	{
+		adminCategories.GET("", shared_pres.WrapHandler(r.categoryHandler.GetCategoriesAdmin))
+		adminCategories.GET("/:id", shared_pres.WrapHandler(r.categoryHandler.GetCategoryByIDAdmin))
+		adminCategories.POST("", shared_pres.WrapHandler(r.categoryHandler.CreateCategoryAdmin))
+		adminCategories.PUT("/:id", shared_pres.WrapHandler(r.categoryHandler.UpdateCategoryAdmin))
+		adminCategories.DELETE("/:id", shared_pres.WrapHandler(r.categoryHandler.DeleteCategoryAdmin))
 	}
 }

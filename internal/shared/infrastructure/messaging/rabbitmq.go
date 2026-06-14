@@ -3,9 +3,11 @@ package messaging
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/application/event"
+	"smart-wardrobe-be/internal/shared/infrastructure/resilience"
 	"smart-wardrobe-be/pkg/logger"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -32,7 +34,10 @@ func NewRabbitMQClient(cfg *config.Config, l logger.Interface) (*RabbitMQClient,
 		cfg:    cfg,
 		logger: l,
 	}
-	err := client.connect()
+
+	err := resilience.RunStartupRetry(cfg, l, "rabbitmq", func(timeout time.Duration) error {
+		return client.connect(timeout)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize RabbitMQ client: %w", err)
 	}

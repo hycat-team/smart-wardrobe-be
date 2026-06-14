@@ -152,7 +152,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID u
 	return res, nil
 }
 
-func (uc *WardrobeItemUseCase) SearchWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error) {
+func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error) {
 	page := query.Page
 	if page <= 0 {
 		page = 1
@@ -171,7 +171,7 @@ func (uc *WardrobeItemUseCase) SearchWardrobeItems(ctx context.Context, query dt
 
 	results, totalItems, err = uc.searchEngine.SearchItems(searchCtx, query)
 	if err != nil {
-		uc.logger.Warn("[SearchWardrobeItems] Search failed or timed out, falling back to database", zap.Error(err))
+		uc.logger.Warn("[GetSystemCatalogWardrobeItems] Search failed or timed out, falling back to database", zap.Error(err))
 		var searchQ *string
 		if query.Query != "" {
 			searchQ = &query.Query

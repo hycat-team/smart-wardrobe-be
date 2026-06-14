@@ -32,6 +32,10 @@ type IWardrobeItemRepository interface {
 
 type ICategoryRepository interface {
 	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
+	GetBySlug(ctx context.Context, slug string) (*entities.Category, error)
+	GetByName(ctx context.Context, name string) (*entities.Category, error)
+	CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
+	ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 }
 
 type IOutfitRepository interface {

@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *RabbitMQClient) connect() error {
+func (r *RabbitMQClient) connect(timeout time.Duration) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -19,23 +19,14 @@ func (r *RabbitMQClient) connect() error {
 		r.cfg.RabbitMQ.Port,
 	)
 
-	var err error
-	for i := 0; i < 5; i++ {
-		r.conn, err = amqp.Dial(url)
-		if err == nil {
-			break
-		}
-		r.logger.Warn("RabbitMQ connection attempt failed, retrying...",
-			zap.Int("attempt", i+1),
-			zap.Int("max_attempts", 5),
-			zap.Error(err),
-		)
-		time.Sleep(3 * time.Second)
-	}
-
+	conn, err := amqp.DialConfig(url, amqp.Config{
+		Locale: "en_US",
+		Dial:   amqp.DefaultDial(timeout),
+	})
 	if err != nil {
 		return fmt.Errorf("could not connect to RabbitMQ broker: %w", err)
 	}
+	r.conn = conn
 
 	r.ch, err = r.conn.Channel()
 	if err != nil {
@@ -108,7 +99,7 @@ func (r *RabbitMQClient) reconnect() {
 
 	for {
 		r.logger.Info("Attempting to reconnect to RabbitMQ...")
-		err := r.connect()
+		err := r.connect(30 * time.Second)
 		if err == nil {
 			r.logger.Info("Successfully reconnected to RabbitMQ and restored topology!")
 			break

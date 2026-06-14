@@ -60,6 +60,11 @@ var (
 	ErrUpdateItemForbidden      = apperror.NewForbidden("Bạn không được phép cập nhật thông tin trang phục này.")
 	ErrManualClassifySoldItem   = apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã bán.")
 	ErrCategoryNotFound         = apperror.NewBadRequest("Danh mục trang phục không tồn tại.")
+	ErrCategoryNameAlreadyExists = apperror.NewConflict("Tên danh mục đã tồn tại trong hệ thống.")
+	ErrCategorySlugAlreadyExists = apperror.NewConflict("Slug danh mục đã tồn tại trong hệ thống.")
+	ErrCategoryOtherImmutable    = apperror.NewBadRequest("Không thể xóa danh mục hệ thống 'other'.")
+	ErrCategoryHasUserItems      = apperror.NewBadRequest("Không thể xóa danh mục này vì vẫn còn trang phục của người dùng đang liên kết.")
+	ErrFallbackCategoryNotFound  = apperror.NewInternalError("Không tìm thấy danh mục hệ thống 'other' để chuyển dữ liệu.")
 	ErrProcessFashionTextFailed = apperror.NewInternalError("Hệ thống không thể xử lý nội dung văn bản thời trang lúc này.")
 
 	// Clone & Catalog & Upload

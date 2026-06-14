@@ -1,193 +1,218 @@
-# 🛠️ SmartWardrobe Backend - Development & Technical Guidelines
+# SmartWardrobe Backend - Development & Technical Guidelines
 
-This document serves as the mandatory **Development & Technical Guidelines (Development Handbook)** that all developers and AI agents must follow when building new modules, features, or components for the SmartWardrobe Backend.
+This document describes the current development conventions that match the repository as it exists today.
 
-The **Identity Module** is defined as the baseline / gold standard for module directory structure, data flow, error handling, Swagger API documentation annotations, and Dependency Injection patterns.
+The `identity` module remains the cleanest baseline for handler style, use case interfaces, repository separation, and DI layering. However, not every module mirrors its exact folder and provider layout.
 
 ---
 
-## 📁 1. Standard Module Directory Structure (Identity as Baseline)
+## 1. Current module structure standard
 
-Each module must be encapsulated inside `internal/modules/<module_name>` and partitioned into isolated layers adhering strictly to Clean Architecture principles:
+Each business area lives under `internal/modules/<module_name>` and should keep clear separation between domain, application, infrastructure, and presentation concerns.
+
+Typical folders present in the current codebase:
 
 ```text
-📁 internal/modules/identity
-│
-├── 📁 domain                      # 1. Core Domain Layer
-│    └── 📁 repositories           # Repository interfaces defining data persistence contracts (e.g., user_repo.go)
-│
-├── 📁 application                 # 2. Application Layer
-│    ├── 📁 contract               # Cross-module communication interfaces & implementations (Loose Coupling)
-│    ├── 📁 dto                    # Data Transfer Objects (Request/Response structs)
-│    ├── 📁 interface              # Abstract layer defining system contracts and interfaces
-│    │    └── 📁 usecase           # Decoupled UseCase interfaces (e.g., IUserUseCase, IAuthUseCase)
-│    ├── 📁 mapper                 # Data transformers (e.g., Entity <-> DTO mapper mappings)
-│    ├── 📁 usecase                # Concrete application usecase implementations (AuthUseCase, UserUseCase)
-│    └── 📄 provider.go            # Application layer specific Wire Provider Set
-│
-├── 📁 infrastructure              # 3. Infrastructure Layer
-│    ├── 📁 persistence            # Concrete GORM repository implementations for Postgres DB
-│    ├── 📁 caching                # Redis caching services (e.g., OTP storage, token blacklisting)
-│    ├── 📁 security               # Security services (e.g., Bcrypt password hashing, token verification)
-│    ├── 📁 communication          # External communication integrations (Gmail SMTP, SMS)
-│    └── 📄 provider.go            # Infrastructure layer specific Wire Provider Set
-│
-├── 📁 presentation                # 4. Presentation Layer
-│    ├── 📁 handler                # Request handlers and routes payload bindings (AuthHandler, MeHandler)
-│    └── 📄 provider.go            # Presentation layer specific Wire Provider Set
-│
-└── 📄 provider.go                 # 5. Outermost Module Provider
+internal/modules/<module_name>
+|
+|-- application
+|   |-- dto
+|   |-- errors
+|   |-- interface
+|   |   `-- usecase
+|   |-- mapper
+|   `-- usecase
+|
+|-- contract                # Current cross-module contract location
+|-- domain
+|   `-- repositories
+|-- infrastructure
+|   |-- persistence
+|   |-- caching             # Present where needed
+|   |-- communication       # Present where needed
+|   |-- messaging           # Present where needed
+|   |-- payment             # Present where needed
+|   |-- search              # Present where needed
+|   `-- security            # Present where needed
+|-- presentation
+|   |-- handler
+|   `-- worker              # Present where needed
+`-- provider.go
 ```
 
----
+Important notes:
 
-## 🏗️ 2. Dependency Injection Guidelines (Google Wire)
-
-Do not manually instantiate dependencies or create cyclic provider setups. Each module must implement a structured, hierarchical provider pattern:
-
-1. **Sub-Layers (`application`, `infrastructure`, `presentation`)**: Package their internal services into a layer-specific `ProviderSet` variable within their respective `provider.go` files.
-2. **Outermost Module `provider.go`**: Group the sub-layer `ProviderSet`s into a single module-level set:
-
-    ```go
-    package identity
-
-    import (
-        "smart-wardrobe-be/internal/modules/identity/application"
-        "smart-wardrobe-be/internal/modules/identity/infrastructure"
-        "smart-wardrobe-be/internal/modules/identity/presentation"
-        "github.com/google/wire"
-    )
-
-    var ProviderSet = wire.NewSet(
-        presentation.ProviderSet,
-        application.ProviderSet,
-        infrastructure.ProviderSet,
-    )
-    ```
-
-3. **Global DI registration**: Register the module-level `identity.ProviderSet` inside `internal/di/wire.go`.
+- `contract/` currently sits at module root, not under `application/contract/`.
+- `presentation/provider.go` only exists in some modules. Other modules wire handlers/workers directly from module `provider.go`.
+- `worker/` is a normal presentation adapter in this codebase and should be documented that way.
 
 ---
 
-## 📡 3. Handler Standards (Presentation Layer)
+## 2. Dependency injection guidelines
 
-This is a **mandatory** standard when implementing API Handlers. It guarantees API response consistency, centralized error handling, and robust Swagger auto-generation.
+Google Wire is the project-wide DI mechanism.
 
-### 🚫 Rule 1: Never Call `c.JSON()` Directly
+### Layered pattern still preferred
 
-To ensure all API endpoints return a unified response envelope, Handlers **are strictly prohibited** from calling Gin's `c.JSON(http.StatusOK, ...)` directly. Instead, call the standard presentation functions defined in the `shared_pres` package (`smart-wardrobe-be/internal/shared/presentation`):
+When a module already has sub-layer provider sets, preserve them:
 
-- **Standard Success Response (`200 OK`)**:
-    ```go
-    shared_pres.Success(c, "Success message", data)
-    ```
-- **Created Success Response (`201 Created`)**:
-    ```go
-    shared_pres.Created(c, "Resource created successfully", data)
-    ```
+- `application.ProviderSet`
+- `infrastructure.ProviderSet`
+- `presentation.ProviderSet`
 
-### 🚫 Rule 2: Handlers Must Return `error` & Use `WrapHandler`
+This is the clearest pattern and `identity` is the best reference.
 
-Every Handler method must comply with the standard signature: `func (h *MyHandler) MyMethod(c *gin.Context) error`.
+### Flattened pattern is currently valid
 
-- **On Success**: Return `nil` at the end of the method after calling `shared_pres.Success`.
-- **On Failure**: Return the error object directly (`return err`). Centralized middleware will capture and serialize the error response. Never write an error response or capture errors manually inside a Handler.
-- **Route Registration**: Handlers must be wrapped using `shared_pres.WrapHandler`:
-    ```go
-    group.POST("/login", shared_pres.WrapHandler(h.authHandler.Login))
-    ```
+Some modules currently expose a single `provider.go` that aggregates:
+
+- repositories
+- external adapters
+- use cases
+- handlers
+- workers
+
+`wardrobe`, `community`, and part of `subscription` follow this shape today. Docs and code generation should not assume every module already has per-layer provider files.
+
+### Global DI registration
+
+`internal/di/wire.go` is the composition root and currently wires:
+
+- shared services
+- all four modules: `identity`, `subscription`, `wardrobe`, `community`
+- middleware
+- route groups
+- runtime workers bundled in `bootstrap.AppWorkers`
 
 ---
 
-## 📝 4. Swagger Annotations Standards (swag)
+## 3. Handler standards
 
-Every Handler method must include declarative Swagger comments in Vietnamese to populate Swagger UI accurately. Follow this template strictly:
+These rules are already reflected in the codebase and should remain mandatory for HTTP handlers.
+
+### Do not write raw success envelopes manually
+
+Prefer shared presentation helpers:
 
 ```go
-// Register register a new user account
-// @Summary Đăng ký tài khoản               <- Short functional summary
-// @Description Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email <- Detailed description
-// @Tags Auth                               <- API Grouping tag (Auth, Me, etc.)
-// @Accept json                              <- Request Content-Type
-// @Produce json                             <- Response Content-Type
-// @Param body body dto.RegisterReq true "Thông tin đăng ký"  <- Input payload schema and desc
-// @Success 200 {object} shared_pres.APIResponse <- Success response envelope schema
-// @Router /api/v1/auth/register [post]     <- HTTP method and path mapping
-func (h *AuthHandler) Register(c *gin.Context) error { ... }
+shared_pres.Success(c, "Thong bao thanh cong", data)
+shared_pres.Created(c, "Tao moi thanh cong", data)
 ```
 
-> [!IMPORTANT]
-> For endpoints that return specific payload models, the `@Success` annotation must clearly specify the DTO mapping to let Swagger render precise response documentation:
-> `// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "User profile information"`
+### Handlers return `error`
+
+Standard handler signature:
+
+```go
+func (h *MyHandler) MyMethod(c *gin.Context) error
+```
+
+- Return `nil` after writing success output.
+- Return the error directly on failure.
+- Register handlers via `shared_pres.WrapHandler(...)`.
+
+### Exception in current engine
+
+There is still a direct `c.JSON(...)` call in the `/api/v1/health` route inside `internal/api/routes/router.go`. Treat this as an infrastructure exception for the health endpoint, not a new pattern for feature handlers.
 
 ---
 
-## ⚠️ 5. Error Handling & Validation Standards
+## 4. Swagger annotation standards
 
-### A. Input Payload Validation
+Swagger comments in handlers should stay in Vietnamese and describe the real route paths currently exposed by routers.
 
-All incoming client JSON payloads must be validated at the Handler layer using Gin's binding tags (`c.ShouldBindJSON`). When validation fails, translate the native errors to user-friendly messages using the custom utility `validation.TranslateValidationError`:
+Use this shape:
+
+```go
+// @Summary Dang ky tai khoan
+// @Description Dang ky tai khoan moi cho nguoi dung va gui OTP xac thuc qua email
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.RegisterReq true "Thong tin dang ky"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/auth/register [post]
+```
+
+When response payloads are structured, continue using:
+
+```go
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes}
+```
+
+---
+
+## 5. Validation and error handling
+
+### Input validation
+
+Request binding and validation should happen in handlers with translated messages:
 
 ```go
 var input dto.RegisterReq
 if err := c.ShouldBindJSON(&input); err != nil {
-    // Translate validation rules into readable validation errors and return to WrapHandler
-    return validation.TranslateValidationError(err)
+	return validation.TranslateValidationError(err)
 }
 ```
 
-### B. Business / Domain Exception Propagation
+### Error propagation
 
-Deeper layers (`Usecase`, `Service`, `Repository`) must bubble up exceptions using the structured types provided by the `apperror` package (`smart-wardrobe-be/internal/shared/application/constants/apperror`):
+Use `apperror` types from `internal/shared/application/constants/apperror` in deeper layers and let centralized middleware map them to HTTP responses.
 
-- **Not Found Errors**:
-    ```go
-    return apperror.NewNotFound("User not found with the provided ID.")
-    ```
-- **Conflict / Already Exists Errors**:
-    ```go
-    return apperror.NewConflict("This email address is already registered.")
-    ```
-- **Unauthorized / Session Errors**:
-    ```go
-    return apperror.NewUnauthorized("Session expired. Please log in again.")
-    ```
-- **Bad Request / Validation Errors**:
-    ```go
-    return apperror.NewBadRequest("Incorrect OTP verification code.")
-    ```
-- _And other types available in the `apperror` package..._
-
-The underlying `WrapHandler` mechanism working together with the `GlobalErrorHandler` middleware will automatically catch these exceptions, map them to their corresponding HTTP status codes, and serialize them into a unified JSON format for the client. Handlers must never perform manual HTTP status parsing!
+Handlers should not manually craft error JSON responses.
 
 ---
 
-## 🧱 6. Core Architectural Guardrails & Coding Conventions
+## 6. Routing conventions
 
-All developments and future refactoring phases must strictly satisfy the following core guardrails:
+The current route layout includes both public and authenticated resource groups. When adding new endpoints, match existing patterns:
 
-### A. Usecase Interface Separation
-- The Presentation layer (Handlers/Controllers) must **only** depend on and call Application UseCase interfaces (e.g., `usecase_interfaces.IUserUseCase`). Tight-coupling to concrete implementation structs (e.g., `*UserUseCase`) is strictly prohibited.
-- UseCase interfaces must reside in a separate package/folder under `application/interface/usecase/`, completely isolated from their concrete structs under `application/usecase/`.
+- Use `/me/...` for resources owned by the authenticated user, such as `/api/v1/me`, `/api/v1/me/outfits`, `/api/v1/me/wardrobe-items`, `/api/v1/subscriptions/me/...`
+- Keep admin-only endpoints under `/api/v1/admin/...`
+- Keep AI endpoints under `/api/v1/ai/...`
+- Keep transfer flows under `/api/v1/transfers/...`
 
-### B. Module Boundary Isolation
-- Cross-Module Contracts (e.g., `ISubscriptionModuleContract`) are strictly meant for inter-module integration at the Application/Domain layer.
-- The Presentation layer must **never** reference, import, or call cross-module contracts. Any necessary integration must be wrapped cleanly inside local UseCases.
+Do not document only `auth` and `subscription`; the live API surface also includes wardrobe, outfits, community, category, and admin routes.
 
-### C. Authenticated User RESTful Standard
-- Any API endpoint retrieving or mutating data belonging strictly to the currently authenticated user session must explicitly include `/me/` in its URI route path (e.g., `/api/v1/subscriptions/me/daily-quota` instead of `/api/v1/subscriptions/daily-quota`).
+---
 
-### D. Method Naming Conventions
-- Standardize all repository and query lookups by replacing the word `Find` with `Get` (e.g., `GetByID`, `GetByEmail`).
-- Drop redundant entity prefixes in method names when the receiver context is already implicit (e.g., use `userRepo.GetByID` instead of `userRepo.GetUserByID`).
+## 7. Search, messaging, and async workflow conventions
 
-### E. Code Commenting Standards
-- All comments, documentation block headers, or Swagger annotations in source code must use plain text formats only.
-- Absolutely **NO** sequential numbering prefixes (e.g., `1.`, `2.`, `01.`, `02.`) and **NO** visual emojis are allowed inside any source code comments.
+The repository now includes asynchronous and search-oriented components that must be treated as standard architecture:
 
-### F. Language Standards
-- **Vietnamese (with accents / Tiếng Việt có dấu)**: Must be used for all Swagger annotations (such as `@Summary`, `@Description`, `@Param` descriptions, etc.) and all client-facing responses returned to the Front-End (e.g., response messages, detail fields, validation errors, etc.).
-- **English**: Must be used for all internal code comments describing code logic and structure, as well as all system log messages (logger).
+- RabbitMQ for event-driven background processing
+- Elasticsearch for wardrobe search indexing and querying
+- scheduled workers for subscription renewal, failed-item cleanup, and feed hotness recomputation
 
+Feature docs should mention these adapters whenever a flow depends on them.
 
+---
 
+## 8. Architectural guardrails
+
+### Use case interface separation
+
+Presentation code should depend on interfaces from `application/interface/usecase` where those interfaces exist.
+
+### Module isolation
+
+Use module contracts for cross-module collaboration. Current examples include identity, subscription, and wardrobe contracts.
+
+### Shared entities are allowed by design
+
+This codebase intentionally centralizes GORM entities in `internal/shared/domain/entities`. Module isolation here is enforced by repository and use case boundaries, not by duplicating entity definitions per module.
+
+### Naming conventions
+
+Prefer `Get...` over `Find...` for repository lookups when creating or refactoring code.
+
+### Comment conventions
+
+- Source-code comments should be plain text.
+- Avoid numbered comment blocks.
+- Avoid emojis in code comments.
+
+### Language conventions
+
+- Vietnamese: Swagger text and client-facing messages
+- English: internal comments and logger messages

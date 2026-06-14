@@ -1,7 +1,9 @@
 package persistence
 
 import (
+	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -20,4 +22,44 @@ func NewCategoryRepository(db *gorm.DB) repositories.ICategoryRepository {
 			db, relations,
 		),
 	}
+}
+
+func (r *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*entities.Category, error) {
+	var category entities.Category
+	err := r.GetDB(ctx).Where("slug = ?", slug).First(&category).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &category, nil
+}
+
+func (r *CategoryRepository) GetByName(ctx context.Context, name string) (*entities.Category, error) {
+	var category entities.Category
+	err := r.GetDB(ctx).Where("name = ?", name).First(&category).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &category, nil
+}
+
+func (r *CategoryRepository) CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, kind itemtype.ItemType) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("category_id = ? AND item_type = ? AND is_deleted = ?", categoryID, kind, false).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *CategoryRepository) ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("category_id = ? AND item_type = ? AND is_deleted = ?", fromCategoryID, itemtype.SystemCatalogItem, false).
+		Update("category_id", toCategoryID).Error
 }

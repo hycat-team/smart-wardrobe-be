@@ -107,7 +107,7 @@ Mục tiêu của rule này là ngăn người dùng lách quota gợi ý phối
 
 #### Quy tắc nghiệp vụ mục tiêu
 
-- Khi chatbot phát hiện ý định tạo outfit hoàn chỉnh, hệ thống không trừ quota outfit và cũng không trừ quota chat cho phần tạo outfit đó.
+- Khi chatbot phát hiện ý định tạo outfit hoàn chỉnh, hệ thống không trừ quota outfit và cũng không trừ quota chat cho phản hồi điều hướng tĩnh đó.
 - Chatbot chuyển hướng người dùng sang tính năng gợi ý phối đồ chuyên dụng.
 
 #### Phiên bản hiện tại
@@ -123,7 +123,7 @@ Backend hiện đã có AI chat theo phiên và AI outfit recommendation tách r
 
 Đây là nền phù hợp để các rule nghiệp vụ như local swap, partial re-roll hoặc chọn item thay thế theo từng vai trò phát triển tiếp mà không cần đổi hoàn toàn contract đầu ra.
 
-Tuy nhiên, rule redirect ở mức system prompt hoặc orchestration nâng cao vẫn nên được xem là phần thiết kế mục tiêu hoặc guardrail nghiệp vụ cần duy trì, chứ không nên hiểu là toàn bộ logic đó đã được đóng gói trọn vẹn như mô tả cũ.
+Hiện tại backend đã hiện thực rule redirect bằng nhánh phát hiện intent cục bộ và phản hồi điều hướng tĩnh, đồng thời không tiêu tốn chat quota ở nhánh này. Tuy nhiên, các lớp orchestration nâng cao hơn vẫn nên được xem là hướng mở rộng trong tương lai thay vì coi là đã triển khai trọn vẹn.
 
 ### 3. Automated Wardrobe Digitization Engine
 

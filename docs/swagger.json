@@ -7,6 +7,204 @@
         "version": "1.0"
     },
     "paths": {
+        "/api/v1/admin/categories": {
+            "get": {
+                "description": "Cho phép Admin lấy danh sách toàn bộ danh mục trang phục trong hệ thống để quản trị",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Lấy danh sách danh mục trang phục (Admin)",
+                "responses": {
+                    "200": {
+                        "description": "Danh sách danh mục",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Cho phép Admin tạo mới một danh mục trang phục trong hệ thống",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Tạo danh mục trang phục (Admin)",
+                "parameters": [
+                    {
+                        "description": "Thông tin danh mục cần tạo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateCategoryReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Thông tin danh mục sau khi tạo",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/categories/{id}": {
+            "get": {
+                "description": "Cho phép Admin lấy thông tin chi tiết của một danh mục trang phục theo ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Lấy chi tiết danh mục trang phục (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID danh mục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thông tin danh mục",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Cho phép Admin cập nhật thông tin của một danh mục trang phục theo ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Cập nhật danh mục trang phục (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID danh mục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin danh mục cần cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateCategoryReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thông tin danh mục sau khi cập nhật",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Cho phép Admin xóa một danh mục trang phục nếu không còn trang phục người dùng liên kết",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Xóa danh mục trang phục (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID danh mục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa danh mục thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/comments/{commentID}": {
             "delete": {
                 "description": "Cho phép admin xóa bình luận community vi phạm",
@@ -2594,6 +2792,64 @@
                 }
             }
         },
+        "/api/v1/system-catalog/wardrobe-items": {
+            "get": {
+                "description": "Lấy danh sách trang phục mẫu của hệ thống, hỗ trợ tìm kiếm thông minh bằng Elasticsearch và fallback sang database khi cần",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Lấy danh sách trang phục hệ thống",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Số trang (mặc định: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Slug danh mục cần lọc",
+                        "name": "category_slug",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Danh sách trang phục tìm thấy",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/transfers/accept": {
             "post": {
                 "description": "Đồng ý nhận danh sách trang phục đã mua về tủ đồ cá nhân",
@@ -3006,64 +3262,6 @@
                         "description": "Xóa toàn bộ trang phục bị khóa thành công",
                         "schema": {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/wardrobe-items/search": {
-            "get": {
-                "description": "Hỗ trợ tìm kiếm thông minh đa thuộc tính, fuzzy gõ sai chính tả bằng bộ lọc Elasticsearch tốc độ mili-giây.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Wardrobe"
-                ],
-                "summary": "Tìm kiếm trang phục có sẵn của hệ thống (Elasticsearch CQRS)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Từ khóa tìm kiếm (Ví dụ: áo sơ mi cotton mát mẻ)",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Slug danh mục cần lọc",
-                        "name": "category_slug",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Danh sách trang phục tìm thấy",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes"
-                                        }
-                                    }
-                                }
-                            ]
                         }
                     }
                 }
@@ -4436,6 +4634,23 @@
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateCategoryReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateChatSessionReq": {
             "type": "object",
             "properties": {
@@ -4754,6 +4969,23 @@
             "properties": {
                 "content": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateCategoryReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },

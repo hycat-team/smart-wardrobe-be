@@ -41,6 +41,11 @@ func LoadConfig() *Config {
 			TimeoutSeconds: getEnvInt("REQUEST_TIMEOUT_SECONDS", 30),
 			Env:            getEnv("ENV", "development"),
 		},
+		Startup: Startup{
+			RetryAttempt1Seconds: getEnvInt("STARTUP_RETRY_ATTEMPT_1_SECONDS", 5),
+			RetryAttempt2Seconds: getEnvInt("STARTUP_RETRY_ATTEMPT_2_SECONDS", 15),
+			RetryAttempt3Seconds: getEnvInt("STARTUP_RETRY_ATTEMPT_3_SECONDS", 30),
+		},
 		Jwt: Jwt{
 			Secret:                          getEnv("JWT_SECRET", ""),
 			Issuer:                          getEnv("JWT_ISSUER", "SmartWardrobe"),
@@ -55,9 +60,9 @@ func LoadConfig() *Config {
 			LogToFile: getEnvBool("LOG_TO_FILE", false),
 		},
 		Quota: Quota{
-			DefaultWardrobeLimit: getEnvInt("QUOTA_DEFAULT_WARDROBE_LIMIT", 50),
-			DefaultAiOutfitLimit: getEnvInt("QUOTA_DEFAULT_AI_OUTFIT_LIMIT", 10),
-			DefaultAiChatLimit:   getEnvInt("QUOTA_DEFAULT_AI_CHAT_LIMIT", 10),
+			DefaultWardrobeLimit: getEnvInt("QUOTA_DEFAULT_WARDROBE_LIMIT", 100),
+			DefaultAiOutfitLimit: getEnvInt("QUOTA_DEFAULT_AI_OUTFIT_LIMIT", 3),
+			DefaultAiChatLimit:   getEnvInt("QUOTA_DEFAULT_AI_CHAT_LIMIT", 3),
 		},
 		Otp: Otp{
 			MaxAttempts:           getEnvInt("OTP_MAX_ATTEMPTS", 5),
@@ -180,6 +185,10 @@ func validateConfig(cfg *Config) error {
 		if strings.Contains(cfg.Server.FrontEndOrigin, "*") {
 			return fmt.Errorf("wildcard FRONTEND_ORIGIN is not allowed in production")
 		}
+	}
+
+	if cfg.Startup.RetryAttempt1Seconds <= 0 || cfg.Startup.RetryAttempt2Seconds <= 0 || cfg.Startup.RetryAttempt3Seconds <= 0 {
+		return fmt.Errorf("startup retry durations must be greater than 0")
 	}
 
 	return nil

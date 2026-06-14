@@ -1,100 +1,113 @@
-# 📑 Gemini Embedding Implementation Guidelines & Rate Limit Protection
+# AI Embedding & Provider Fallback Guidelines
 
-This document outlines the strict technical constraints and architectural requirements for implementing text embedding generation using the Google Gemini API (specifically the `text-embedding-004` model) within the SmartWardrobe Backend system.
+This document reflects the current AI integration architecture implemented in the backend.
 
-All AI Agents must read and strictly adhere to these implementation rules to prevent hitting Google's severe Rate Limits (RPD, RPM, TPM) and causing application downtime.
+The codebase no longer follows a Gemini-only embedding design. Instead, it uses a provider-agnostic AI service with configurable primary and fallback providers for:
 
----
+- vision analysis
+- embeddings
+- text generation
+- streaming text generation
 
-## 🛑 The Rate Limit Challenge
+Current provider identifiers supported by the shared AI service:
 
-When processing a large volume of text blocks or splitting long documents into numerous segments (e.g., over 50 or 100 chunks), executing a single HTTP request per chunk within a sequential or concurrent loop will instantly deplete the Gemini API quotas:
-
-- **RPM (Requests Per Minute):** Flooding the API with dozens of individual requests triggers an immediate `429 Too Many Requests` status code.
-- **RPD (Requests Per Day):** Processing chunks individually causes the daily request allowance to be consumed entirely within minutes.
-- **TPM (Tokens Per Minute):** Unregulated concurrent spikes exceed the allowed token throughput before the system has time to replenish the window.
-
----
-
-## 🛠️ Strict Implementation Rules
-
-### Rule 1: Mandatory Batch Embedding
-
-- Never invoke individual embedding generation methods inside a raw loop for bulk data processing.
-- You must utilize the official Gemini batching endpoint (`BatchEmbedContents`) provided by the `github.com/google/generative-ai-go/genai` package.
-- Group chunk arrays into a single batch request, packing up to a maximum of 100 chunks per single HTTP request. This architectural choice compresses 100 logical requests into 1 physical request against the Gemini server.
-
-### Rule 2: Controlled Concurrency via Worker Pool
-
-- If the total number of chunks exceeds the single batch capacity (e.g., hundreds of chunks), you must implement a structured Worker Pool or use a rate-limited channel mechanism.
-- Control the maximum number of concurrent batch requests flying out at the same time.
-- Introduce an intentional pacing or micro-cooldown delay between consecutive batch dispatches if the system detects an exceptionally heavy payload workload.
-
-### Rule 3: Graceful Error Recovery and Exponential Backoff
-
-- All code interacting with the Gemini API must handle `429 Too Many Requests` errors gracefully.
-- Implement a robust retry mechanism utilizing an Exponential Backoff strategy to allow the server-side API rate-limiting windows to recover before attempting a redelivery.
-
-### Rule 4: Clean Code Commenting Constraints
-
-- When writing or updating Golang source code, scripts, or comments for the embedding infrastructure, you must absolutely NOT include any sequential numbering (such as 1., 2., 3., 01., 02.) within the comment blocks. Use plain text descriptive headings to explain logic, ensuring future flexibility when reordering blocks.
-- You must absolutely NOT use any emojis, icons, or visual symbols inside any source code comments.
+- `google`
+- `openai`
 
 ---
 
-## 📝 Reference Code Blueprint (Golang)
+## 1. Current architecture
 
-The following implementation serves as the architectural standard for the Identity/Outfit module when communicating with the Gemini embedding service:
+The shared AI entry point is:
 
-```go
-package ai
+- `internal/shared/application/ai/interfaces.go`
+- `internal/shared/infrastructure/ai/core.go`
 
-import (
-	"context"
-	"fmt"
+The service is configured from `config.AI` with separate primary/fallback settings for:
 
-	"[github.com/google/generative-ai-go/genai](https://github.com/google/generative-ai-go/genai)"
-)
+- `VisionPrimary` and `VisionFallback`
+- `EmbeddingPrimary` and `EmbeddingFallback`
+- `TextPrimary` and `TextFallback`
 
-type GeminiEmbeddingService struct {
-	client *genai.Client
-}
+This means technical docs must not claim that embeddings are permanently tied to Gemini or to a single SDK.
 
-func NewGeminiEmbeddingService(client *genai.Client) *GeminiEmbeddingService {
-	return &GeminiEmbeddingService{client: client}
-}
+---
 
-func (s *GeminiEmbeddingService) GenerateEmbeddingsInBatches(ctx context.Context, chunks []string) ([][]float32, error) {
-	model := s.client.EmbeddingModel("text-embedding-004")
-	var finalEmbeddings [][]float32
+## 2. Rate-limit protection strategy actually used
 
-	maxBatchSize := 100
-	chunksLength := len(chunks)
+The current implementation protects external AI APIs through these mechanisms:
 
-	// Process chunks in safe slices to respect the batch capacity limits
-	for i := 0; i < chunksLength; i += maxBatchSize {
-		end := i + maxBatchSize
-		if end > chunksLength {
-			end = chunksLength
-		}
+- a shared request-per-minute limiter using `golang.org/x/time/rate`
+- batched embedding requests up to 100 inputs per outbound call
+- provider fallback from primary to fallback on eligible failures
+- worker-level retry with exponential backoff for background wardrobe digitization jobs
 
-		batch := model.NewBatch()
-		for _, chunk := range chunks[i:end] {
-			batch.AddContent(genai.Text(chunk))
-		}
+The limiter is global at AI service level and is applied before outbound calls for image analysis, embeddings, text generation, and streaming text.
 
-		// Execute a single batched HTTP request to protect API quotas
-		res, err := model.BatchEmbedContents(ctx, batch)
-		if err != nil {
-			return nil, fmt.Errorf("gemini batch embedding failed at slice offset: %w", err)
-		}
+---
 
-		// Extract the resulting vector coordinates sequentially
-		for _, emb := range res.Embeddings {
-			finalEmbeddings = append(finalEmbeddings, emb.Values)
-		}
-	}
+## 3. Embedding batching rules
 
-	return finalEmbeddings, nil
-}
-```
+`GenerateEmbeddings(ctx, chunks)` already accepts multiple chunks and batches them internally.
+
+Current implementation details:
+
+- empty input returns early
+- chunks are split into batches of at most 100
+- Google uses `:batchEmbedContents`
+- OpenAI uses a single embeddings request with `input: []string`
+- vectors are normalized to length 768 before returning to callers
+
+Feature code should pass chunk arrays to the shared AI service rather than firing one request per chunk manually.
+
+---
+
+## 4. Provider fallback rules
+
+The shared helper `executeWithFallback(...)` is the current fallback mechanism.
+
+Behavior:
+
+- primary provider is attempted first
+- fallback provider is used when configured and when the primary failure is not treated as a hard bad-request failure
+- if both fail, the operation returns the fallback error
+
+Streaming text follows a similar principle:
+
+- primary stream starts first
+- if the primary stream fails before yielding content and a fallback exists, the service retries with fallback streaming
+
+---
+
+## 5. Wardrobe digitization workflow implications
+
+For wardrobe batch upload processing, the implemented flow is:
+
+- worker consumes RabbitMQ job
+- categories are loaded from DB
+- image is analyzed by the shared AI service
+- metadata is parsed
+- rich text context is built
+- embeddings are generated through the shared AI service
+- HSL metadata is derived locally
+- wardrobe item is updated and a follow-up event is published
+
+Retry behavior for transient failures is implemented at worker level with delayed re-publish, not inside a Gemini-only client wrapper.
+
+---
+
+## 6. Documentation guardrails
+
+When updating technical docs or code comments, keep these statements accurate:
+
+- embeddings are provider-agnostic at architecture level
+- batching is mandatory for bulk embedding calls
+- fallback configuration is part of the official runtime design
+- rate limiting exists at shared AI service level
+- worker retries are part of the async processing design
+
+Do not reintroduce documentation that says:
+
+- Gemini is the only supported embedding provider
+- the system uses only the official Gemini Go SDK
+- embedding generation is implemented as one request per chunk

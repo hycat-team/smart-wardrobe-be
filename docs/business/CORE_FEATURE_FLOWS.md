@@ -63,31 +63,23 @@ Gợi ý phối đồ cá nhân hóa dựa trên dữ liệu tủ đồ thực t
 
 #### Giai đoạn 1: Khởi tạo & Kiểm tra Quota (Không trừ quota ở bước này)
 1. **API Request:** User gửi HTTP POST tới `/api/v1/ai/outfit-recommendations` chứa thông tin từ FE:
-   - Tham số tùy chọn cố định chọn từ Menu (nếu có): `ColorTone`, `Occasion`, `Style`.
-   - Câu lệnh tự do (nếu có): `FreeTextQuery`.
+   - Tham số tùy chọn rõ ràng từ giao diện (nếu có): `ColorTone`, `Occasion`.
+   - Ghi chú mô tả thêm dạng tự do (nếu có): `Details`.
 2. **Kiểm tra Quota:**
    - Hệ thống thực hiện kiểm tra số quota phối đồ còn lại trong ngày (`CheckOutfitQuota`). **Nếu số quota còn lại <= 0, chặn và báo lỗi ngay lập tức** `ErrOutfitQuotaExceeded`. Không trừ quota tại đây.
 
 ---
 
-#### Giai đoạn 2: Lọc thô ứng viên (Backend xử lý)
-Tùy thuộc vào đầu vào của người dùng gửi lên từ Frontend, Backend sẽ áp dụng một trong hai kịch bản sau để lọc ra một tập ứng viên thu gọn (khoảng 15-20 món đồ):
+#### Giai đoạn 2: Lọc ứng viên bằng Hybrid Search & Re-ranking
+Backend hiện không còn tách cứng thành hai nhánh menu-vs-vector như mô tả cũ. Thay vào đó hệ thống dùng một pipeline lai để lấy ra tập ứng viên khoảng 15-20 món đồ:
 
-##### Kịch bản A: Người dùng chọn các tham số cố định từ Menu (Structured Input)
-*   **Bước 1: Lọc trạng thái:** Truy vấn tủ đồ của user, chỉ lấy các món đồ có trạng thái khả dụng (`Status = "in_wardrobe"`).
-*   **Bước 2: Lọc thuộc tính cố định:**
-    *   **Theo Tông màu (ColorTone):** Nếu user chọn tông màu cụ thể (ví dụ: "Tông màu trầm"), Backend sử dụng **giá trị tính sẵn `color_lightness`** trong DB để lọc lấy các món đồ có độ sáng thấp (Lightness < 40%).
-    *   **Theo Dịp mặc & Phong cách:** Lọc các trang phục có nhãn `Occasion` hoặc `Style` trùng khớp với menu được chọn.
-*   **Kết quả:** Chọn ra 15-20 món đồ đáp ứng đúng các tiêu chí lọc cấu trúc trên.
-
-##### Kịch bản B: Người dùng nhập câu lệnh tự do hoặc Để trống (Unstructured / Vague Input)
-*   **Bước 1: Tạo Vector Truy vấn:**
-    *   Nếu có `FreeTextQuery` (Ví dụ: *"Phối đồ đi hẹn hò đơn giản"*), hệ thống gọi AI Service để chuyển câu chữ này thành 1 vector truy vấn.
-    *   Nếu để trống hoàn toàn, hệ thống sẽ sử dụng vector mặc định đại diện cho phong cách hàng ngày (`casual`).
-*   **Bước 2: Tìm kiếm tương đồng ngữ nghĩa (Vector Search cục bộ):**
-    *   Backend thực hiện truy vấn vector (Cosine Similarity) ngay trên database cục bộ của mình sử dụng **pgvector (PostgreSQL extension)** để so sánh vector truy vấn với vector embedding của toàn bộ các trang phục khả dụng (`Status = "in_wardrobe"`) của User.
-    *   Sắp xếp theo độ tương đồng giảm dần.
-*   **Kết quả:** Lấy top 15-20 món đồ có điểm tương đồng cao nhất làm tập ứng viên.
+1. **Lấy tập đồ khả dụng ban đầu:** Truy vấn tủ đồ của user và chỉ giữ các món có trạng thái khả dụng `in_wardrobe`.
+2. **Phân tích ý định cục bộ:** Dùng `LocalNLPParser` để tách các tín hiệu từ `Details` như dịp mặc, tông màu, mùa, phong cách và semantic query.
+3. **Hợp nhất bộ lọc có cấu trúc:** Nếu FE truyền `Occasion` hoặc `ColorTone`, backend ghi đè hoặc bổ sung các tín hiệu này vào parsed intent.
+4. **Sinh vector truy vấn khi cần:** Nếu parsed intent tạo ra semantic query có ý nghĩa, hệ thống gọi embedding service để sinh vector truy vấn.
+5. **Lấy ứng viên bằng hybrid retrieval:** Gọi `GetHybridCandidates(...)` để phối hợp keyword matching, semantic vector matching và các tiêu chí lọc từ DB nhằm lấy tối đa khoảng 40 ứng viên.
+6. **Bù ứng viên nếu thiếu:** Nếu số ứng viên trả về còn ít, backend bổ sung thêm từ tập active items để đảm bảo đủ độ phủ.
+7. **Re-ranking theo luật thời trang:** Chấm điểm lại ứng viên dựa trên occasion, color tone, seasonality, recently worn penalty và long-unworn bonus, rồi lấy top khoảng 15-20 món tốt nhất.
 
 ---
 
@@ -113,9 +105,10 @@ Tùy thuộc vào đầu vào của người dùng gửi lên từ Frontend, Bac
 1. **Trừ Quota sử dụng:**
    - Sau khi kết quả phối đồ được sinh thành công và xác thực hợp lệ ở Giai đoạn 3, hệ thống mở một transaction ngắn thực hiện trừ 1 lượt quota phối đồ trong ngày của user (`DeductOutfitQuota`).
    - *Lưu ý:* Nếu ở Giai đoạn 2 hoặc Giai đoạn 3 xảy ra lỗi (LLM sập, lỗi DB, hoặc không tìm thấy ứng viên), hệ thống trả về HTTP Error và **không thực hiện trừ quota** của người dùng.
-2. **API Response:** Trả về đối tượng gợi ý phối đồ gồm: 
+2. **API Response:** Trả về đối tượng gợi ý phối đồ gồm:
    - `Title`, `Explanation`, và danh sách các nhóm vai trò thời trang (mỗi vai trò chứa 1 item `Primary` và mảng `Alternatives`).
-   - **`IsFallback` (Boolean Flag):** Trả về `true` nếu kết quả được sinh bằng thuật toán ghép màu HSL dự phòng của Backend, và `false` nếu được sinh bằng AI thành công. Frontend dựa vào cờ này để hiển thị thông báo trạng thái phù hợp cho người dùng.
+   - **`IsFallback` (Boolean Flag):** Trả về `true` nếu kết quả được sinh bằng thuật toán ghép màu HSL dự phòng của Backend, và `false` nếu được sinh bằng AI thành công.
+   - **`RemainingQuota`:** Trả về số lượt gợi ý phối đồ còn lại sau khi hệ thống đã trừ quota thành công.
 3. **Đổi món cục bộ (Local Swap):**
    - Khi người dùng nhấn nút đổi món trên giao diện, Frontend tự hoán đổi item `Primary` hiện tại với một item trong mảng `Alternatives` ngay lập tức **mà không cần gọi lại API Backend**.
 
@@ -145,7 +138,7 @@ Luồng tư vấn thời trang trực tuyến với Stylist AI qua kết nối S
    - **Nhánh A (Bị điều hướng):** Nếu phát hiện ý định tạo outfit:
      - Hệ thống **bỏ qua việc gọi LLM** tư vấn thời trang.
      - Trả về ngay một tin nhắn điều hướng chuẩn chỉnh: *"Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."*
-     - Do không sử dụng dịch vụ tư vấn sâu, **không thực hiện trừ quota** chat của user.
+     - Do đây là phản hồi điều hướng tĩnh, **không thực hiện trừ quota** chat của user.
      - Kết thúc luồng phản hồi SSE.
    - **Nhánh B (Tiếp tục tư vấn phong cách):** Nếu tin nhắn chỉ là hỏi đáp thời trang thông thường:
      - Tiếp tục thực hiện bước 4 dưới đây.

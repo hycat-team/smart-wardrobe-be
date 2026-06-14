@@ -153,9 +153,6 @@ func (uc *WardrobeAIUseCase) ProcessChatMessageStream(
 			}
 
 			return uc.uow.Execute(ctx, func(txCtx context.Context) error {
-				if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
-					return err
-				}
 				if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
 					return err
 				}
@@ -263,10 +260,6 @@ func (uc *WardrobeAIUseCase) ProcessChatMessageStream(
 }
 
 func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error) {
-	if err := uc.userQuotaCtr.UpdateAiChatQuota(ctx, userID, 1); err != nil {
-		return nil, nil, err
-	}
-
 	session, err := uc.contextRepo.GetByID(ctx, contextID)
 	if err != nil {
 		return nil, nil, err
@@ -290,6 +283,14 @@ func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid
 	if isOutfitIntent(content) {
 		responseText = "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."
 	} else {
+		quota, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if quota.AiUsageCount >= quota.AiChatDailyQuota {
+			return nil, nil, subscriptionerrors.ErrAiChatQuotaExceeded
+		}
+
 		subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 		if err != nil {
 			return nil, nil, err
@@ -316,6 +317,12 @@ func (uc *WardrobeAIUseCase) ProcessChatMessage(ctx context.Context, userID uuid
 	}
 
 	createMessages := func(txCtx context.Context) error {
+		if !isOutfitIntent(content) {
+			if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
+				return err
+			}
+		}
+
 		if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
 			return err
 		}

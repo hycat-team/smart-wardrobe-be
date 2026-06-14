@@ -23,10 +23,10 @@ func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *war
 	}
 }
 
-func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
-	publicApi := group.Group("/wardrobe-items")
+	func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
+	publicApi := group.Group("/system-catalog/wardrobe-items")
 	{
-		publicApi.GET("/search", shared_pres.WrapHandler(r.itemHandler.SearchWardrobeItems))
+		publicApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetSystemCatalogWardrobeItems))
 	}
 
 	privateApi := group.Group("")

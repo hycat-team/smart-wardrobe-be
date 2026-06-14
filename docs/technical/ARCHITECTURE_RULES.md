@@ -2,198 +2,192 @@
 
 ## I. SYSTEM ARCHITECTURE PARADIGM
 
-The system is built strictly upon a **Pragmatic Modular Monolith** framework aligned with **Clean Architecture** boundaries where each module is isolated into self-contained layer packages within a unified Go application.
+The backend is implemented as a **pragmatic modular monolith** in Go with **clean layer boundaries where practical**, but not every module is shaped identically.
 
-* **Database-First Approach:** All data schemas and relational boundaries are managed directly at the database tier. The application layer consumes entities generated from the database state.
-* **No Domain-Driven Design (DDD):** The codebase strictly avoids DDD abstractions. Do not implement Aggregate Roots, Value Objects, or Domain Events at the entity level.
-* **Centralized Data Context:** The entire system utilizes exactly **one unified Postgres database connection and GORM model pool** located in the Shared infrastructure package (`internal/shared/infrastructure/db`) to retain absolute foreign key relational integrity across modules.
+- **Single deployable application:** all modules run inside one Gin-based HTTP service started from `cmd/server/main.go`.
+- **Shared infrastructure:** Postgres, Redis, RabbitMQ, Cloudinary, external AI providers, and Elasticsearch are initialized once and reused across modules through DI.
+- **Database-first relational model:** shared GORM entities live under `internal/shared/domain/entities` and represent the canonical relational model used across the system.
+- **No DDD aggregate/event model:** the codebase does not model aggregate roots, value objects, or domain events in a DDD sense. Cross-module integration is handled through contracts plus shared infrastructure.
+- **Module boundaries are real, but uneven:** `identity` still follows the most explicit multi-layer provider structure; `subscription`, `wardrobe`, and `community` are still modularized, but some provider wiring is flattened at module root.
 
 ---
 
-## II. COMPLIANT PROJECT DIRECTORY TREE
+## II. CURRENT PROJECT DIRECTORY TREE
 
-The code workspace separates layer responsibilities into physical Go package boundaries. Implement and position all packages, code components, and dependency mappings precisely according to the following structural schema:
+The following tree reflects the current repository shape and should be treated as the source of truth for architecture discussions:
 
 ```text
-📁 root/smart-wardrobe-be
-│
-├── 📁 cmd
-│    └── 📁 server
-│         └── 📄 main.go            # Entry point of the web server
-│
-├── 📁 config
-│    ├── 📄 config.go              # Structured application config definition
-│    └── 📄 config.handler.go      # Dynamic config loader (Environment mapping)
-│
-├── 📁 docs
-│    ├── 📁 technical              # Technical specifications & guidelines
-│    ├── 📁 business               # Business features & algorithms overview
-│    └── 📄 index.html             # High-end Swagger UI static bundle
-│
-├── 📁 internal
-│    ├── 📁 api
-│    │    ├── 📁 middleware         # Dynamic global middlewares (Timeout, RateLimit, Auth)
-│    │    └── 📁 routes             # Endpoint routing setups grouped by resource folders
-│    │
-│    ├── 📁 bootstrap
-│    │    └── 📄 app.go             # Application bootstrapper
-│    │
-│    ├── 📁 di
-│    │    ├── 📄 wire.go            # Wire build configurations (DI target signatures)
-│    │    └── 📄 wire_gen.go        # Auto-generated Dependency Injection graph
-│    │
-│    ├── 📁 modules
-│    │    ├── 📁 identity           # Identity & Authentication modular boundary
-│    │    │    ├── 📁 domain        # Core repositories contract interfaces
-│    │    │    ├── 📁 application   # Handlers data flows, Usecase execution
-│    │    │    ├── 📁 infrastructure # GORM Postgres DB implementations, caching, etc.
-│    │    │    ├── 📁 presentation  # Request handlers (controllers / API endpoints)
-│    │    │    └── 📄 provider.go   # Module-level Google Wire provider aggregator
-│    │    │
-│    │    └── 📁 subscription       # Subscription modular boundary (loose coupling via contract)
-│    │
-│    └── 📁 shared
-│         ├── 📁 application        # Shared app structures, global apperror definitions
-│         ├── 📁 domain
-│         │    ├── 📁 constants     # General enums and status identifiers
-│         │    └── 📁 entities      # Unified GORM models (all 16 relational database tables mapped here)
-│         │
-│         ├── 📁 infrastructure
-│         │    ├── 📁 db            # Centralized database connections (GORM DB instance pool)
-│         │    └── 📁 repositories  # Generic Repository implementations (base CRUD using Go generics)
-│         │
-│         └── 📁 presentation       # Shared API Response envelope (`Success`, `Created`, `WrapHandler`)
-│
-└── 📁 pkg
-     └── 📁 logger                  # Log Interface & implementations
+root/smart-wardrobe-be
+|
+|-- cmd
+|   `-- server
+|       `-- main.go
+|
+|-- config
+|   |-- config.go
+|   |-- config.handler.go
+|   `-- config.helper.go
+|
+|-- docs
+|   |-- business
+|   |-- technical
+|   |-- temp
+|   |-- docs.go
+|   |-- index.html
+|   |-- swagger.json
+|   `-- swagger.yaml
+|
+|-- internal
+|   |-- api
+|   |   |-- middleware
+|   |   `-- routes
+|   |-- bootstrap
+|   |   `-- app.go
+|   |-- di
+|   |   |-- wire.go
+|   |   `-- wire_gen.go
+|   |-- modules
+|   |   |-- identity
+|   |   |   |-- application
+|   |   |   |-- contract
+|   |   |   |-- domain
+|   |   |   |-- infrastructure
+|   |   |   |-- presentation
+|   |   |   `-- provider.go
+|   |   |-- subscription
+|   |   |   |-- application
+|   |   |   |-- contract
+|   |   |   |-- domain
+|   |   |   |-- infrastructure
+|   |   |   |-- presentation
+|   |   |   `-- provider.go
+|   |   |-- wardrobe
+|   |   |   |-- application
+|   |   |   |-- contract
+|   |   |   |-- domain
+|   |   |   |-- infrastructure
+|   |   |   |-- presentation
+|   |   |   `-- provider.go
+|   |   `-- community
+|   |       |-- application
+|   |       |-- domain
+|   |       |-- infrastructure
+|   |       |-- presentation
+|   |       `-- provider.go
+|   `-- shared
+|       |-- application
+|       |   |-- ai
+|       |   |-- constants
+|       |   |-- dto
+|       |   |-- event
+|       |   `-- media
+|       |-- domain
+|       |   |-- constants
+|       |   |-- entities
+|       |   |-- money
+|       |   `-- repositories
+|       |-- infrastructure
+|       |   |-- ai
+|       |   |-- caching
+|       |   |-- db
+|       |   |-- media
+|       |   |-- messaging
+|       |   |-- repositories
+|       |   `-- search
+|       |-- presentation
+|       `-- provider.go
+|
+`-- pkg
+    |-- logger
+    `-- utils
 ```
 
 ---
 
-## III. CORE IMPLEMENTATION DESIGN PATTERNS
+## III. SHARED DATA MODEL & INFRASTRUCTURE
 
-### 1. Centralized Database Context & Unified GORM Models
+### Shared entities
 
-The core engine enforces exactly one persistent access gateway. Individual module domain entities must never establish localized database context structures. All database structures are centralized inside `internal/shared/domain/entities`.
+All persistent models are centralized under `internal/shared/domain/entities`. The current entity set spans identity, subscription, wardrobe, outfit, chat, and community features, including:
 
-- **Entity Model Composition (Located in Shared Domain):**
+- Identity: `User`, `UserStyleProfile`, `RefreshToken`
+- Subscription/Billing: `SubscriptionPlan`, `UserSubscription`, `UserDailyQuota`, `UserWallet`, `DepositTransaction`, `WalletStatement`
+- Wardrobe/AI: `Category`, `WardrobeItem`, `ConversationalContext`, `Message`, `Outfit`, `OutfitItem`
+- Community: `Post`, `PostScoreSnapshot`, `PostItem`, `PostMedia`, `Comment`, `Like`, `TransferRequest`
 
-```go
-package entities
+This is more than the older 16-table assumption and must be documented as a shared model pool rather than a small fixed schema.
 
-import (
-	"time"
-	"github.com/google/uuid"
-)
+### Shared infrastructure
 
-// BaseEntity acts as the primary key and audit log blueprint
-type BaseEntity struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	CreatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
-}
+The `internal/shared` package is not limited to DB primitives. It currently owns reusable integrations for:
 
-// AuditableEntity extends base with update tracking
-type AuditableEntity struct {
-	BaseEntity
-	UpdatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:now()"`
-}
-
-// User represents the centralized model for user records
-type User struct {
-	AuditableEntity
-	Username           string            `gorm:"type:varchar(255);not null"`
-	Email              string            `gorm:"type:varchar(255);uniqueIndex;not null"`
-	PasswordHash       string            `gorm:"type:varchar(255);not null"`
-	SubscriptionPlanID uuid.UUID         `gorm:"type:uuid;not null"`
-	SubscriptionPlan   *SubscriptionPlan `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:RESTRICT"`
-	IsDeleted          bool              `gorm:"type:boolean;not null;default:false"`
-}
-```
+- `infrastructure/db`: Postgres connection and unit of work
+- `infrastructure/caching`: Redis connection
+- `infrastructure/media`: Cloudinary media service
+- `infrastructure/ai`: provider-agnostic AI service with primary/fallback config
+- `infrastructure/messaging`: RabbitMQ client and event publishing
+- `infrastructure/search`: Elasticsearch client
+- `presentation`: shared HTTP response and SSE helpers
 
 ---
 
-### 2. Extensible Generic Repository Pattern (Go Generics)
+## IV. MODULE ORGANIZATION RULES
 
-Standard infrastructure repositories inherit CRUD operations from the shared generic repository layer while extending custom query specifications for complex database query routines within their specific contract interfaces.
+### Current layering reality
 
-- **Shared Generic Repository Contract & Implementation:**
+Modules are expected to preserve application boundaries, but the exact provider layout differs by module:
 
-```go
-package repositories
+- `identity` is the closest reference module for explicit sub-layer provider sets.
+- `subscription` keeps layered folders, but presentation providers are wired directly from handlers/workers at module root instead of a dedicated `presentation/provider.go`.
+- `wardrobe` and `community` are fully modularized by folder, but their `provider.go` files aggregate repositories, use cases, handlers, and workers directly.
 
-import (
-	"context"
-	"gorm.io/gorm"
-)
+Because of this, architecture docs must describe **layer intent plus current wiring shape**, not an idealized tree that only partially exists.
 
-type GenericRepository[T any, K any] struct {
-	DB *gorm.DB
-}
+### Cross-module contracts
 
-func NewGenericRepository[T any, K any](db *gorm.DB) *GenericRepository[T, K] {
-	return &GenericRepository[T, K]{DB: db}
-}
-```
+Cross-module communication currently uses module-level `contract` packages such as:
 
-- **Domain Repository Interface (Located in Module Domain):**
+- `internal/modules/identity/contract`
+- `internal/modules/subscription/contract`
+- `internal/modules/wardrobe/contract`
 
-```go
-package repositories
+These contracts do not currently live under `application/contract/`. Any new documentation must match that repo convention unless the codebase is explicitly refactored.
 
-import (
-	"context"
-	"smart-wardrobe-be/internal/shared/domain/entities"
-)
+### Workers are first-class presentation adapters
 
-type IUserRepository interface {
-	FindByEmail(ctx context.Context, email string) (*entities.User, error)
-	IsEmailExists(ctx context.Context, email string) (bool, error)
-}
-```
+Background workers are part of the real runtime architecture and should be documented alongside HTTP handlers:
 
-- **Infrastructure Implementation using Composition (Located in Module Infrastructure):**
+- `subscription`: scheduled renewal worker
+- `community`: post hotness worker
+- `wardrobe`: batch upload worker, search sync worker, failed-items cleanup worker
 
-```go
-package persistence
-
-import (
-	"context"
-	"errors"
-	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/entities"
-	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
-type UserRepository struct {
-	shared_persist.GenericRepository[entities.User, uuid.UUID]
-}
-
-func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
-	return &UserRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.User, uuid.UUID](db),
-	}
-}
-
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entities.User, error) {
-	var user entities.User
-	err := r.GenericRepository.DB.WithContext(ctx).Where("email = ? AND is_deleted = ?", email, false).First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &user, nil
-}
-```
+Workers are resolved through DI and attached to `bootstrap.AppWorkers`.
 
 ---
 
-## IV. STRICT AGENT CODE-GENERATION LAWS
+## V. ROUTING & SURFACE AREAS
 
-* **Comment Decoration Prohibition:** Absolutely DO NOT inject ordered list sequence numbering arrays (e.g., `1.`, `2.`, `01.`, `Step 1:`) inside codebase comment expressions. Use pure textual characters, functional headers, or horizontal line layouts (e.g., `// ===`, `// ---`) to detail method blocks.
-* **Anemic Handlers & Presentation Boundaries:** Presentational Handlers must remain highly anemic, delegating execution immediately by calling the Usecases inside the `Application` layer. All Feature domain logic, repository operations, validation structures, and transactional loops must live strictly inside the module's `application/usecase` folder.
-* **Module Communication Guardrails:** Direct reference links across internal functional spaces of separate business modules are entirely blocked. All communication routines must path through exposed interface pipelines declared within target module `contract` packages. Direct domain entity sharing is strictly prohibited.
+The API surface is broader than the older architecture note implied. Current route groups include:
 
+- `auth`
+- `me`
+- `subscriptions`
+- `wardrobe-items`
+- `ai`
+- `outfits`
+- `categories`
+- `posts`
+- `transfers`
+- `admin`
+
+Swagger is served from `/swagger` and static docs assets are served from `/api-docs`.
+
+---
+
+## VI. IMPLEMENTATION GUARDRAILS
+
+- Keep handlers thin and delegate execution to use cases.
+- Keep repositories inside module infrastructure or shared infrastructure packages.
+- Prefer contracts for cross-module interaction instead of importing another module's internal use case implementation directly.
+- Reuse shared services for AI, media, messaging, caching, DB, and search instead of re-instantiating them inside modules.
+- Update architecture docs whenever a module, integration, or runtime worker is added. Do not leave the repo tree frozen to an older snapshot.

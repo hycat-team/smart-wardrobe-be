@@ -4,6 +4,7 @@ type Config struct {
 	Database      Database
 	Redis         Redis
 	Server        Server
+	Startup       Startup
 	Jwt           Jwt
 	Logger        Logger
 	Quota         Quota
@@ -17,6 +18,12 @@ type Config struct {
 	Elasticsearch Elasticsearch
 	Community     Community
 	RAG           RAG
+}
+
+type Startup struct {
+	RetryAttempt1Seconds int
+	RetryAttempt2Seconds int
+	RetryAttempt3Seconds int
 }
 
 type Elasticsearch struct {
@@ -141,4 +148,3 @@ type RAG struct {
 	LongUnwornBonusDays     int
 	RrfKParameter           int
 }
-

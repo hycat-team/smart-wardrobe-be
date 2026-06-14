@@ -66,14 +66,14 @@ import (
 // Injectors from wire.go:
 
 func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func(), error) {
-	gormDB, err := db.NewPostgresConnection(cfg)
+	gormDB, err := db.NewPostgresConnection(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
 	iUserRepository := persistence.NewUserRepository(gormDB)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
-	client, err := caching.NewRedisConnection(cfg)
+	client, err := caching.NewRedisConnection(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -110,8 +110,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient)
 	iWardrobeWorkerUseCase := worker.NewWardrobeWorkerUseCase(l, iWardrobeItemRepository, iCategoryRepository, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeItemHandler := handler3.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase, iWardrobeWorkerUseCase)
+	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository, iUnitOfWork)
+	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
-	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeItemHandler, authMiddleware)
+	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeItemHandler, categoryHandler, authMiddleware)
 	iOtpService := caching2.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
@@ -138,8 +140,6 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
 	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
-	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository)
-	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
 	categoryRouter := category2.NewRouter(categoryHandler)
 	iPostScoreRepository := persistence3.NewPostScoreRepository(gormDB)
 	iLikeRepository := persistence3.NewLikeRepository(gormDB)
