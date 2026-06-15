@@ -56,8 +56,6 @@ func (w *SearchSyncWorker) startConsume() {
 
 	if err != nil {
 		w.logger.Error("Failed to initiate search sync event consumption process", zap.Error(err))
-	} else {
-		w.logger.Info("Search sync coordinator successfully registered event handling callback")
 	}
 }
 
@@ -74,9 +72,6 @@ func (w *SearchSyncWorker) processSyncEvent(ctx context.Context, eventPayload dt
 
 		// Only sync system wardrobe items (SystemCatalogItem = 1) to the Search Index
 		if item.ItemType != 1 {
-			w.logger.Info("[SearchSyncWorker] Skipping user item indexing, only system catalog items are synced to search index",
-				zap.String("itemId", item.ID.String()),
-			)
 			return nil
 		}
 
@@ -123,7 +118,6 @@ func (w *SearchSyncWorker) manageInitialSyncAndRecovery() {
 
 func (w *SearchSyncWorker) tryInitialSync() {
 	if !w.searchIndex.IsHealthy() {
-		w.logger.Info("[SearchSyncWorker] Elasticsearch is unhealthy, postponing initial sync")
 		return
 	}
 
@@ -135,12 +129,10 @@ func (w *SearchSyncWorker) tryInitialSync() {
 	}
 
 	if len(items) == 0 {
-		w.logger.Info("[SearchSyncWorker] No system catalog items found in PostgreSQL, initial sync marked as complete")
+		w.logger.Info("[SearchSyncWorker] Initial sync succeeded", zap.Int("indexed", 0))
 		atomic.StoreInt32(&w.initialSyncDone, 1)
 		return
 	}
-
-	w.logger.Info("[SearchSyncWorker] Starting initial sync of system catalog items to search index...", zap.Int("total", len(items)))
 
 	successCount := 0
 	for _, item := range items {
@@ -153,8 +145,7 @@ func (w *SearchSyncWorker) tryInitialSync() {
 		successCount++
 	}
 
-	w.logger.Info("[SearchSyncWorker] Initial sync process completed successfully",
-		zap.Int("total", len(items)),
+	w.logger.Info("[SearchSyncWorker] Initial sync succeeded",
 		zap.Int("indexed", successCount),
 	)
 	atomic.StoreInt32(&w.initialSyncDone, 1)

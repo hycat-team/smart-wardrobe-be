@@ -20,30 +20,43 @@ const (
 )
 
 type AIService struct {
-	cfg     *config.Config
-	cli     *http.Client
-	limiter *rate.Limiter
-	logger  logger.Interface
+	cfg              *config.Config
+	chatTextClient   *http.Client
+	recommendationTextClient *http.Client
+	visionClient     *http.Client
+	embeddingClient  *http.Client
+	chatTextLimiter  *rate.Limiter
+	recommendationTextLimiter *rate.Limiter
+	visionLimiter    *rate.Limiter
+	embeddingLimiter *rate.Limiter
+	logger           logger.Interface
 }
 
 func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService {
-	rpm := cfg.AI.RpmLimit
-	if rpm <= 0 {
-		rpm = 5
-	}
-
 	return &AIService{
 		cfg: cfg,
-		cli: &http.Client{
-			Timeout: 15 * time.Second,
+		chatTextClient: &http.Client{
+			Timeout: time.Duration(cfg.AI.ChatTextTimeoutSeconds) * time.Second,
 		},
-		limiter: rate.NewLimiter(rate.Limit(float64(rpm)/60.0), 1),
-		logger:  logger,
+		recommendationTextClient: &http.Client{
+			Timeout: time.Duration(cfg.AI.RecommendationTextTimeoutSeconds) * time.Second,
+		},
+		visionClient: &http.Client{
+			Timeout: time.Duration(cfg.AI.VisionTimeoutSeconds) * time.Second,
+		},
+		embeddingClient: &http.Client{
+			Timeout: time.Duration(cfg.AI.EmbeddingTimeoutSeconds) * time.Second,
+		},
+		chatTextLimiter:  newRPMLimiter(cfg.AI.ChatTextRPMLimit, 5),
+		recommendationTextLimiter: newRPMLimiter(cfg.AI.RecommendationTextRPMLimit, 5),
+		visionLimiter:    newRPMLimiter(cfg.AI.VisionRPMLimit, 5),
+		embeddingLimiter: newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
+		logger:           logger,
 	}
 }
 
 func (s *AIService) AnalyzeImage(ctx context.Context, imageUrl string, prompt string) (string, error) {
-	if err := s.limiter.Wait(ctx); err != nil {
+	if err := s.visionLimiter.Wait(ctx); err != nil {
 		return "", err
 	}
 
@@ -65,7 +78,7 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 		return nil, nil
 	}
 
-	if err := s.limiter.Wait(ctx); err != nil {
+	if err := s.embeddingLimiter.Wait(ctx); err != nil {
 		return nil, err
 	}
 
@@ -82,25 +95,43 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 	)
 }
 
-func (s *AIService) GenerateText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
-	if err := s.limiter.Wait(ctx); err != nil {
+func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+	if err := s.chatTextLimiter.Wait(ctx); err != nil {
 		return "", err
 	}
 
 	return executeWithFallback(
 		s.logger,
-		"GenerateText",
-		s.cfg.AI.TextFallback,
+		"GenerateChatText",
+		s.cfg.AI.ChatTextFallback,
 		func() (string, error) {
-			return s.tryTextProvider(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
+			return s.tryTextProvider(ctx, s.chatTextClient, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt)
 		},
 		func() (string, error) {
-			return s.tryTextProvider(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
+			return s.tryTextProvider(ctx, s.chatTextClient, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt)
 		},
 	)
 }
 
-func (s *AIService) GenerateTextStream(
+func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+	if err := s.recommendationTextLimiter.Wait(ctx); err != nil {
+		return "", err
+	}
+
+	return executeWithFallback(
+		s.logger,
+		"GenerateRecommendationText",
+		s.cfg.AI.RecommendationTextFallback,
+		func() (string, error) {
+			return s.tryTextProvider(ctx, s.recommendationTextClient, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt)
+		},
+		func() (string, error) {
+			return s.tryTextProvider(ctx, s.recommendationTextClient, s.cfg.AI.RecommendationTextFallback, systemPrompt, userPrompt)
+		},
+	)
+}
+
+func (s *AIService) GenerateChatTextStream(
 	ctx context.Context,
 	systemPrompt string,
 	userPrompt string,
@@ -108,7 +139,7 @@ func (s *AIService) GenerateTextStream(
 	outTextChan := make(chan string, 100)
 	outErrChan := make(chan error, 1)
 
-	if err := s.limiter.Wait(ctx); err != nil {
+	if err := s.chatTextLimiter.Wait(ctx); err != nil {
 		outErrChan <- err
 		close(outTextChan)
 		close(outErrChan)
@@ -119,12 +150,21 @@ func (s *AIService) GenerateTextStream(
 		defer close(outTextChan)
 		defer close(outErrChan)
 
-		if err := s.streamTextWithFallback(ctx, systemPrompt, userPrompt, outTextChan); err != nil {
+		if err := s.streamChatTextWithFallback(ctx, systemPrompt, userPrompt, outTextChan); err != nil {
 			outErrChanSend(outErrChan, err)
 		}
 	}()
 
 	return outTextChan, outErrChan
+}
+
+// newRPMLimiter creates a per-minute limiter with a single-request burst.
+func newRPMLimiter(rpm int, fallback int) *rate.Limiter {
+	if rpm <= 0 {
+		rpm = fallback
+	}
+
+	return rate.NewLimiter(rate.Limit(float64(rpm)/60.0), 1)
 }
 
 func outErrChanSend(outErr chan<- error, err error) {
@@ -135,13 +175,13 @@ func outErrChanSend(outErr chan<- error, err error) {
 }
 
 // GenerateTextStream streams text from the primary provider and falls back only when the stream fails before producing content.
-func (s *AIService) streamTextWithFallback(ctx context.Context, systemPrompt string, userPrompt string, outText chan<- string) error {
-	primaryText, primaryErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextPrimary, systemPrompt, userPrompt)
+func (s *AIService) streamChatTextWithFallback(ctx context.Context, systemPrompt string, userPrompt string, outText chan<- string) error {
+	primaryText, primaryErr := s.tryTextProviderStream(ctx, s.chatTextClient, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt)
 	produced, err := s.forwardProviderStream(ctx, primaryText, primaryErr, outText)
 	if err == nil || ctx.Err() != nil {
 		return err
 	}
-	if produced || s.cfg.AI.TextFallback.Provider == "" {
+	if produced || s.cfg.AI.ChatTextFallback.Provider == "" {
 		if !produced {
 			s.logger.Error("Primary stream provider failed permanently without fallback",
 				zap.String("operation", "GenerateTextStream"),
@@ -152,11 +192,11 @@ func (s *AIService) streamTextWithFallback(ctx context.Context, systemPrompt str
 	}
 
 	s.logger.Warn("Primary stream provider failed before first chunk, switching to fallback",
-		zap.String("operation", "GenerateTextStream"),
+		zap.String("operation", "GenerateChatTextStream"),
 		zap.Error(err),
 	)
 
-	fallbackText, fallbackErr := s.tryTextProviderStream(ctx, s.cfg.AI.TextFallback, systemPrompt, userPrompt)
+	fallbackText, fallbackErr := s.tryTextProviderStream(ctx, s.chatTextClient, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt)
 	_, fallbackStreamErr := s.forwardProviderStream(ctx, fallbackText, fallbackErr, outText)
 	return fallbackStreamErr
 }
@@ -210,15 +250,16 @@ func (s *AIService) forwardProviderStream(
 
 func (s *AIService) tryTextProviderStream(
 	ctx context.Context,
+	client *http.Client,
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
 ) (<-chan string, <-chan error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAITextStream(ctx, provider, systemPrompt, userPrompt)
+		return s.callOpenAITextStream(ctx, client, provider, systemPrompt, userPrompt)
 	case ProviderGemini:
-		return s.callGoogleTextStream(ctx, provider, systemPrompt, userPrompt)
+		return s.callGoogleTextStream(ctx, client, provider, systemPrompt, userPrompt)
 	}
 
 	errChan := make(chan error, 1)
@@ -251,12 +292,12 @@ func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider conf
 	return nil, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phân tích dữ liệu này.")
 }
 
-func (s *AIService) tryTextProvider(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+func (s *AIService) tryTextProvider(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIText(ctx, provider, systemPrompt, userPrompt)
+		return s.callOpenAIText(ctx, client, provider, systemPrompt, userPrompt)
 	case ProviderGemini:
-		return s.callGoogleText(ctx, provider, systemPrompt, userPrompt)
+		return s.callGoogleText(ctx, client, provider, systemPrompt, userPrompt)
 	}
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")

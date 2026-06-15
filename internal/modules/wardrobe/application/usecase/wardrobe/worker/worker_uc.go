@@ -90,6 +90,10 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	}
 
 	if !aiMeta.IsSingleItem {
+		uc.logger.Info("[WardrobeBatchUploadJob] Succeeded with review required",
+			zap.String("item_id", job.ItemID.String()),
+			zap.String("review_reason", aiMeta.ReviewReason),
+		)
 		uc.markNeedsReview(ctx, job, aiMeta.ReviewReason)
 		return nil
 	}
@@ -102,7 +106,13 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 
 	if err := uc.completeProcessedItem(ctx, job, updateMap); err != nil {
 		uc.handleJobFailure(ctx, job, err)
+		return nil
 	}
+
+	uc.logger.Info("[WardrobeBatchUploadJob] Succeeded",
+		zap.String("item_id", job.ItemID.String()),
+		zap.Int("processing_version", job.ProcessingVersion),
+	)
 
 	return nil
 }
@@ -155,7 +165,7 @@ func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context) error {
 		}
 	}
 
-	uc.logger.Info("[CleanupFailedItems] Successfully cleaned up failed items", zap.Int("count", totalDeleted))
+	uc.logger.Info("[CleanupFailedItems] Job succeeded", zap.Int("count", totalDeleted))
 	return nil
 }
 
@@ -194,6 +204,9 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 		}
 	}
 
+	uc.logger.Info("[ProcessingRecoveryJob] Job succeeded",
+		zap.Int("stale_items", len(items)),
+	)
 	return nil
 }
 
@@ -212,22 +225,29 @@ func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.W
 		jitter := time.Duration(1+rand.Intn(10)) * time.Second
 		delay := baseDelay + jitter
 
-		uc.logger.Warn(fmt.Sprintf("[WardrobeBatchUploadWorker] Transient error encountered. Scheduling retry %d/3 in %v", job.RetryCount, delay),
+		uc.logger.Warn("[WardrobeBatchUploadJob] Failed and scheduled retry",
 			zap.String("item_id", job.ItemID.String()),
+			zap.Int("retry_count", job.RetryCount),
+			zap.Duration("retry_delay", delay),
 			zap.Error(err),
 		)
 
 		time.AfterFunc(delay, func() {
 			publishCtx := context.Background()
 			if republishErr := uc.eventPublisher.Publish(publishCtx, eventconstants.TopicWardrobeBatchUpload, job); republishErr != nil {
-				uc.logger.Error("[WardrobeBatchUploadWorker] Failed to republish retry job", zap.Error(republishErr))
+				uc.logger.Error("[WardrobeBatchUploadJob] Failed to republish retry job",
+					zap.String("item_id", job.ItemID.String()),
+					zap.Int("retry_count", job.RetryCount),
+					zap.Error(republishErr),
+				)
 			}
 		})
 		return
 	}
 
-	uc.logger.Error(fmt.Sprintf("[WardrobeBatchUploadWorker] Fatal error or max retries exceeded. Marking item as Failed. RetryCount: %d", job.RetryCount),
+	uc.logger.Error("[WardrobeBatchUploadJob] Failed",
 		zap.String("item_id", job.ItemID.String()),
+		zap.Int("retry_count", job.RetryCount),
 		zap.Error(err),
 	)
 	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)

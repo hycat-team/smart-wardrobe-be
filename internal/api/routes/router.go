@@ -10,19 +10,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NewEngine configures the Gin engine and suppresses verbose route registration logs at startup.
 func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *middleware.RateLimitMiddleware) *gin.Engine {
+	if cfg.Server.Env == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+	gin.DebugPrintRouteFunc = func(string, string, string, int) {}
+
 	engine := gin.Default()
 
 	engine.Use(middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
 	engine.Use(middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
-
-	if cfg.Server.Env == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	} else {
-		gin.SetMode(gin.DebugMode)
-	}
 
 	engine.Static("/api-docs", "./docs")
 	engine.StaticFile("/swagger", "./docs/index.html")

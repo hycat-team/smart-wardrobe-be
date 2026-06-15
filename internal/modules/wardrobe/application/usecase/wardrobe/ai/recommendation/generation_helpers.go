@@ -2,13 +2,12 @@ package recommendation
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )
@@ -18,30 +17,48 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	candidates []CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 ) (*dto.RecommendedOutfitRes, error) {
-	responseText, err := uc.aiService.GenerateText(
+	userPrompt := buildRecommendationPrompt(candidates, input)
+	responseText, err := uc.aiService.GenerateRecommendationText(
 		ctx,
-		"You are a professional AI fashion stylist. Return ONLY a valid JSON payload for the outfit recommendation. Do not include markdown code block formatting.",
-		buildRecommendationPrompt(candidates, input),
+		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
+		userPrompt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, newFallbackTraceError(
+			"provider_error",
+			err,
+			userPrompt,
+			"",
+		)
 	}
 
 	if responseText == "" {
-		return nil, fmt.Errorf("empty response from LLM")
+		return nil, newFallbackTraceError(
+			"empty_response",
+			fmt.Errorf("empty response from LLM"),
+			userPrompt,
+			"",
+		)
 	}
 
-	var llmRes llmOutfitResponse
-	if err := json.Unmarshal(
-		[]byte(stringutils.CleanJSONMarkdown(responseText)),
-		&llmRes,
-	); err != nil {
-		return nil, err
+	llmRes, cleanedResponse, err := parseOutfitRecommendationJSON(responseText)
+	if err != nil {
+		return nil, newFallbackTraceError(
+			"invalid_json",
+			err,
+			userPrompt,
+			responseText,
+		)
 	}
 
 	validGroups := uc.mapLLMResponseToGroups(candidates, llmRes)
 	if len(validGroups) == 0 {
-		return nil, wardrobeerrors.ErrInvalidOutfitStructure
+		return nil, newFallbackTraceError(
+			"invalid_outfit_structure",
+			fmt.Errorf("AI returned an invalid outfit structure"),
+			userPrompt,
+			cleanedResponse,
+		)
 	}
 
 	return &dto.RecommendedOutfitRes{
@@ -73,4 +90,70 @@ func (uc *OutfitRecommendationUseCase) updateQuotaAndConstructResponse(
 	}
 
 	return nil
+}
+
+type fallbackTraceError struct {
+	kind            string
+	cause           error
+	prompt          string
+	responsePreview string
+}
+
+func (e *fallbackTraceError) Error() string {
+	if e == nil || e.cause == nil {
+		return ""
+	}
+	return e.cause.Error()
+}
+
+func (e *fallbackTraceError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+func newFallbackTraceError(kind string, cause error, prompt, response string) error {
+	return &fallbackTraceError{
+		kind:            kind,
+		cause:           cause,
+		prompt:          prompt,
+		responsePreview: truncateLogText(response, 600),
+	}
+}
+
+func classifyFallbackTrace(err error) (kind string, providerHint string, promptLen int, responsePreview string) {
+	kind = "unknown"
+	providerHint = "unknown"
+
+	var traceErr *fallbackTraceError
+	if errors.As(err, &traceErr) {
+		if traceErr.kind != "" {
+			kind = traceErr.kind
+		}
+		promptLen = len(traceErr.prompt)
+		responsePreview = traceErr.responsePreview
+	}
+
+	errText := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(errText, "openai"):
+		providerHint = "openai"
+	case strings.Contains(errText, "google"):
+		providerHint = "gemini"
+	case errors.Is(err, context.Canceled):
+		providerHint = "request_context"
+	case errors.Is(err, context.DeadlineExceeded):
+		providerHint = "timeout"
+	}
+
+	return kind, providerHint, promptLen, responsePreview
+}
+
+func truncateLogText(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	return value[:limit] + "...(truncated)"
 }

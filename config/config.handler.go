@@ -122,19 +122,38 @@ func LoadConfig() *Config {
 				Endpoint: getEnv("EMBEDDING_FALLBACK_ENDPOINT", ""),
 				Model:    getEnv("EMBEDDING_FALLBACK_MODEL", ""),
 			},
-			TextPrimary: APIProviderConfig{
-				Provider: getEnv("TEXT_PRIMARY_PROVIDER", getEnv("VISION_PRIMARY_PROVIDER", "")),
-				ApiKey:   getEnv("TEXT_PRIMARY_API_KEY", getEnv("VISION_PRIMARY_API_KEY", "")),
-				Endpoint: getEnv("TEXT_PRIMARY_ENDPOINT", getEnv("VISION_PRIMARY_ENDPOINT", "")),
-				Model:    getEnv("TEXT_PRIMARY_MODEL", getEnv("VISION_PRIMARY_MODEL", "")),
+			ChatTextPrimary: APIProviderConfig{
+				Provider: getEnv("CHAT_TEXT_PRIMARY_PROVIDER", getEnv("TEXT_PRIMARY_PROVIDER", getEnv("VISION_PRIMARY_PROVIDER", ""))),
+				ApiKey:   getEnv("CHAT_TEXT_PRIMARY_API_KEY", getEnv("TEXT_PRIMARY_API_KEY", getEnv("VISION_PRIMARY_API_KEY", ""))),
+				Endpoint: getEnv("CHAT_TEXT_PRIMARY_ENDPOINT", getEnv("TEXT_PRIMARY_ENDPOINT", getEnv("VISION_PRIMARY_ENDPOINT", ""))),
+				Model:    getEnv("CHAT_TEXT_PRIMARY_MODEL", getEnv("TEXT_PRIMARY_MODEL", getEnv("VISION_PRIMARY_MODEL", ""))),
 			},
-			TextFallback: APIProviderConfig{
-				Provider: getEnv("TEXT_FALLBACK_PROVIDER", getEnv("VISION_FALLBACK_PROVIDER", "")),
-				ApiKey:   getEnv("TEXT_FALLBACK_API_KEY", getEnv("VISION_FALLBACK_API_KEY", "")),
-				Endpoint: getEnv("TEXT_FALLBACK_ENDPOINT", getEnv("VISION_FALLBACK_ENDPOINT", "")),
-				Model:    getEnv("TEXT_FALLBACK_MODEL", getEnv("VISION_FALLBACK_MODEL", "")),
+			ChatTextFallback: APIProviderConfig{
+				Provider: getEnv("CHAT_TEXT_FALLBACK_PROVIDER", getEnv("TEXT_FALLBACK_PROVIDER", getEnv("VISION_FALLBACK_PROVIDER", ""))),
+				ApiKey:   getEnv("CHAT_TEXT_FALLBACK_API_KEY", getEnv("TEXT_FALLBACK_API_KEY", getEnv("VISION_FALLBACK_API_KEY", ""))),
+				Endpoint: getEnv("CHAT_TEXT_FALLBACK_ENDPOINT", getEnv("TEXT_FALLBACK_ENDPOINT", getEnv("VISION_FALLBACK_ENDPOINT", ""))),
+				Model:    getEnv("CHAT_TEXT_FALLBACK_MODEL", getEnv("TEXT_FALLBACK_MODEL", getEnv("VISION_FALLBACK_MODEL", ""))),
 			},
-			RpmLimit: getEnvInt("AI_RPM_LIMIT", 5),
+			RecommendationTextPrimary: APIProviderConfig{
+				Provider: getEnv("RECOMMENDATION_TEXT_PRIMARY_PROVIDER", getEnv("TEXT_PRIMARY_PROVIDER", getEnv("VISION_PRIMARY_PROVIDER", ""))),
+				ApiKey:   getEnv("RECOMMENDATION_TEXT_PRIMARY_API_KEY", getEnv("TEXT_PRIMARY_API_KEY", getEnv("VISION_PRIMARY_API_KEY", ""))),
+				Endpoint: getEnv("RECOMMENDATION_TEXT_PRIMARY_ENDPOINT", getEnv("TEXT_PRIMARY_ENDPOINT", getEnv("VISION_PRIMARY_ENDPOINT", ""))),
+				Model:    getEnv("RECOMMENDATION_TEXT_PRIMARY_MODEL", getEnv("TEXT_PRIMARY_MODEL", getEnv("VISION_PRIMARY_MODEL", ""))),
+			},
+			RecommendationTextFallback: APIProviderConfig{
+				Provider: getEnv("RECOMMENDATION_TEXT_FALLBACK_PROVIDER", getEnv("TEXT_FALLBACK_PROVIDER", getEnv("VISION_FALLBACK_PROVIDER", ""))),
+				ApiKey:   getEnv("RECOMMENDATION_TEXT_FALLBACK_API_KEY", getEnv("TEXT_FALLBACK_API_KEY", getEnv("VISION_FALLBACK_API_KEY", ""))),
+				Endpoint: getEnv("RECOMMENDATION_TEXT_FALLBACK_ENDPOINT", getEnv("TEXT_FALLBACK_ENDPOINT", getEnv("VISION_FALLBACK_ENDPOINT", ""))),
+				Model:    getEnv("RECOMMENDATION_TEXT_FALLBACK_MODEL", getEnv("TEXT_FALLBACK_MODEL", getEnv("VISION_FALLBACK_MODEL", ""))),
+			},
+			ChatTextTimeoutSeconds:           getEnvInt("AI_CHAT_TEXT_TIMEOUT_SECONDS", getEnvInt("AI_TEXT_TIMEOUT_SECONDS", 30)),
+			RecommendationTextTimeoutSeconds: getEnvInt("AI_RECOMMENDATION_TEXT_TIMEOUT_SECONDS", getEnvInt("AI_TEXT_TIMEOUT_SECONDS", 30)),
+			VisionTimeoutSeconds:             getEnvInt("AI_VISION_TIMEOUT_SECONDS", 20),
+			EmbeddingTimeoutSeconds:          getEnvInt("AI_EMBEDDING_TIMEOUT_SECONDS", 20),
+			ChatTextRPMLimit:                 getEnvInt("AI_CHAT_TEXT_RPM_LIMIT", getEnvInt("AI_TEXT_RPM_LIMIT", 5)),
+			RecommendationTextRPMLimit:       getEnvInt("AI_RECOMMENDATION_TEXT_RPM_LIMIT", getEnvInt("AI_TEXT_RPM_LIMIT", 5)),
+			VisionRPMLimit:                   getEnvInt("AI_VISION_RPM_LIMIT", 5),
+			EmbeddingRPMLimit:                getEnvInt("AI_EMBEDDING_RPM_LIMIT", 5),
 		},
 		RabbitMQ: RabbitMQ{
 			Host:     getEnv("RABBITMQ_HOST", "localhost"),
@@ -207,6 +226,12 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.Wardrobe.CategoryCacheTTLSeconds <= 0 {
 		return fmt.Errorf("wardrobe category cache ttl must be greater than 0")
+	}
+	if cfg.AI.ChatTextTimeoutSeconds <= 0 || cfg.AI.RecommendationTextTimeoutSeconds <= 0 || cfg.AI.VisionTimeoutSeconds <= 0 || cfg.AI.EmbeddingTimeoutSeconds <= 0 {
+		return fmt.Errorf("ai timeouts must be greater than 0")
+	}
+	if cfg.AI.ChatTextRPMLimit <= 0 || cfg.AI.RecommendationTextRPMLimit <= 0 || cfg.AI.VisionRPMLimit <= 0 || cfg.AI.EmbeddingRPMLimit <= 0 {
+		return fmt.Errorf("ai rpm limits must be greater than 0")
 	}
 
 	return nil

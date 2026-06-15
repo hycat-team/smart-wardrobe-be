@@ -44,24 +44,19 @@ func NewProcessingRecoveryWorker(
 func (w *ProcessingRecoveryWorker) Start() {
 	go w.executeRecoveryJob()
 
-	_, err := w.cronEngine.AddFunc(w.cfg.Wardrobe.RecoveryScanCron, func() {
-		w.log.Info("Wardrobe processing recovery tick triggered")
-		w.executeRecoveryJob()
-	})
+	_, err := w.cronEngine.AddFunc(w.cfg.Wardrobe.RecoveryScanCron, w.executeRecoveryJob)
 	if err != nil {
 		w.log.Error("Failed to register wardrobe processing recovery cron task", zap.Error(err))
 		return
 	}
 
 	w.cronEngine.Start()
-	w.log.Info("Wardrobe processing recovery background scheduler started successfully")
 }
 
 // Stop stops the recovery scheduler safely.
 func (w *ProcessingRecoveryWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
-		w.log.Info("Wardrobe processing recovery background scheduler stopped safely")
 	}
 }
 
@@ -70,8 +65,8 @@ func (w *ProcessingRecoveryWorker) executeRecoveryJob() {
 	defer cancel()
 
 	if err := w.useCase.RecoverStaleProcessingItems(ctx); err != nil {
-		w.log.Error("Wardrobe processing recovery execution failure", zap.Error(err))
+		w.log.Error("[ProcessingRecoveryWorker] Job failed", zap.Error(err))
 	} else {
-		w.log.Info("Wardrobe processing recovery execution completed successfully")
+		w.log.Info("[ProcessingRecoveryWorker] Job succeeded")
 	}
 }

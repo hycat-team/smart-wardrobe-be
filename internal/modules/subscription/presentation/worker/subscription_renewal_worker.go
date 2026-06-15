@@ -33,40 +33,30 @@ func NewSubscriptionRenewalWorker(
 }
 
 func (w *SubscriptionRenewalWorker) Start() {
-	// Execute the renewal validation check immediately on application startup in a separate goroutine
 	go w.executeRenewalJob()
 
-	// Register the scheduled daily renewal check to run periodically every midnight
-	_, err := w.cronEngine.AddFunc("0 0 0 * * *", func() {
-		w.log.Info("Daily subscription renewal process tick triggered at midnight")
-		w.executeRenewalJob()
-	})
-
+	_, err := w.cronEngine.AddFunc("0 0 0 * * *", w.executeRenewalJob)
 	if err != nil {
 		w.log.Error("Failed to register scheduled auto-renewal cron task", zap.Error(err))
 		return
 	}
 
 	w.cronEngine.Start()
-	w.log.Info("Subscription auto-renewal background scheduler started successfully")
 }
 
 func (w *SubscriptionRenewalWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
-		w.log.Info("Subscription auto-renewal background scheduler stopped safely")
 	}
 }
 
 func (w *SubscriptionRenewalWorker) executeRenewalJob() {
-	w.log.Info("Initiating background subscription renewal execution cycle")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
 	if err := w.subUseCase.ProcessScheduledRenewals(ctx); err != nil {
-		w.log.Error("Subscription renewal scheduled process execution failure", zap.Error(err))
+		w.log.Error("[SubscriptionRenewalWorker] Job failed", zap.Error(err))
 	} else {
-		w.log.Info("Subscription renewal scheduled process execution completed successfully")
+		w.log.Info("[SubscriptionRenewalWorker] Job succeeded")
 	}
 }

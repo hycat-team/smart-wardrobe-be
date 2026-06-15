@@ -18,6 +18,7 @@ import (
 
 func (s *AIService) callGoogleTextStream(
 	ctx context.Context,
+	client *http.Client,
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
@@ -55,7 +56,7 @@ func (s *AIService) callGoogleTextStream(
 		}
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := s.cli.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			errChan <- err
 			return
@@ -103,7 +104,7 @@ func (s *AIService) callGoogleTextStream(
 	return textChan, errChan
 }
 
-func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
 	payload := map[string]any{
 		"contents": []map[string]any{
 			{
@@ -128,7 +129,7 @@ func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProvi
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := s.cli.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -161,7 +162,7 @@ func (s *AIService) callGoogleText(ctx context.Context, provider config.APIProvi
 }
 
 func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
-	imgBytes, mimeType, err := httputils.DownloadImage(s.cli, ctx, imageUrl)
+	imgBytes, mimeType, err := httputils.DownloadImage(s.visionClient, ctx, imageUrl)
 	if err != nil {
 		return "", fmt.Errorf("failed to download image for Google Vision: %w", err)
 	}
@@ -201,7 +202,7 @@ func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIPro
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := s.cli.Do(req)
+	resp, err := s.visionClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -279,7 +280,7 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 		}
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := s.cli.Do(req)
+		resp, err := s.embeddingClient.Do(req)
 		if err != nil {
 			return nil, err
 		}

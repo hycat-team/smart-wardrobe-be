@@ -1,6 +1,7 @@
 package recommendation
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,51 +10,58 @@ import (
 
 func buildRecommendationPrompt(candidates []CandidateForPrompt, input dto.RecommendOutfitReq) string {
 	var builder strings.Builder
-	builder.WriteString(`You are a professional AI fashion stylist. Your task is to recommend exactly 1 styled outfit from the user's available wardrobe candidates based on their weather and occasion requirements.
-OUTPUT REQUIREMENT:
-Return ONLY a valid JSON string. Do NOT wrap the response in markdown formatting (like json code blocks). The JSON object MUST follow this exact structure:
-{"title":"","explanation":"","items":[{"role":"","primary_id":"","alternative_ids":["",""]}]}
-STYLING RULES:
-1. You MUST ONLY choose wardrobe item IDs from the CANDIDATE LIST provided below. Never make up or hallucinate IDs.
-2. Based on the weather and occasion, determine the roles to include.
-3. For each role, select exactly 1 primary item and up to 2 alternative items of the same role from the candidate list.
-4. Try to coordinate colors harmoniously.
-CONTEXT AND REQUIREMENTS:
-`)
+	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
+	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
+	builder.WriteString("Decision priorities: occasion fit, weather fit, season fit, silhouette balance, color harmony, style consistency, and practical wearability.\n")
+	builder.WriteString("Editorial rule: stay honest to the actual items. Do not describe a graphic or visually loud item as fully minimalist, formal, or understated unless the item data clearly supports that claim.\n")
+	builder.WriteString("Constraint rule: if the candidate pool is imperfect, choose the most suitable combination available and explain it truthfully rather than overselling it.\n")
+	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
+	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
+	builder.WriteString("Rules: use only candidate IDs from CANDIDATES; each item entry must contain role, primary_id, alternative_ids; do not output markdown, bullets, labels, or prose outside JSON; do not copy placeholder words such as string or uuid.\n")
 
+	contextPayload := map[string]string{}
 	if input.Occasion != nil {
-		fmt.Fprintf(&builder, "- Occasion: %s\n", *input.Occasion)
+		contextPayload["occasion"] = *input.Occasion
 	}
 	if input.StyleTarget != nil {
-		fmt.Fprintf(&builder, "- Style Target: %s\n", *input.StyleTarget)
+		contextPayload["style_target"] = *input.StyleTarget
 	}
 	if input.Season != nil {
-		fmt.Fprintf(&builder, "- Season: %s\n", *input.Season)
+		contextPayload["season"] = string(*input.Season)
 	}
 	if input.Weather != nil {
-		fmt.Fprintf(&builder, "- Weather: %s\n", *input.Weather)
+		contextPayload["weather"] = *input.Weather
 	}
 	if input.Details != nil {
-		fmt.Fprintf(&builder, "- User Details: %s\n", *input.Details)
+		contextPayload["details"] = *input.Details
 	}
 	if input.ColorTone != nil {
-		fmt.Fprintf(&builder, "- Color Tone: %s\n", *input.ColorTone)
+		contextPayload["color_tone"] = *input.ColorTone
 	}
 
-	builder.WriteString("\nCANDIDATE WARDROBE ITEMS (ONLY CHOOSE FROM HERE):\n")
+	contextBytes, _ := json.Marshal(contextPayload)
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố gọn gàng cho ngày xuân\",\"explanation\":\"Bộ phối này ưu tiên sự dễ mặc, cân bằng màu sắc và phù hợp với thời tiết ấm. Nếu một món đồ có họa tiết nổi bật, phần mô tả phải phản ánh trung thực thay vì gọi đó là tối giản tuyệt đối.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"11111111-1111-1111-1111-111111111111\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"22222222-2222-2222-2222-222222222222\",\"alternative_ids\":[\"33333333-3333-3333-3333-333333333333\"]}]}\n")
+	builder.WriteString("CONTEXT=")
+	builder.Write(contextBytes)
+	builder.WriteString("\n")
+	builder.WriteString("CANDIDATES=\n")
+
 	for _, candidate := range candidates {
 		item := candidate.Item
-		catSlug, colorStr, styleStr, descStr := "", "", "", ""
+		candidatePayload := map[string]any{
+			"id": item.ID.String(),
+		}
 
 		if item.Category != nil {
-			catSlug = item.Category.Slug
+			candidatePayload["category"] = item.Category.Slug
 		}
 		if item.Color != nil {
-			colorStr = *item.Color
+			candidatePayload["color"] = *item.Color
 		}
 		if item.Style != nil {
-			styleStr = *item.Style
+			candidatePayload["style"] = *item.Style
 		}
+		descStr := ""
 		if item.Description != nil {
 			descStr = *item.Description
 		}
@@ -63,30 +71,22 @@ CONTEXT AND REQUIREMENTS:
 			}
 			descStr += "[Fashion Tags: " + strings.Join(candidate.Tags, ", ") + "]"
 		}
+		if descStr != "" {
+			candidatePayload["description"] = descStr
+		}
 
-		hueStr, satStr, lightStr := "nil", "nil", "nil"
 		if item.ColorHue != nil {
-			hueStr = fmt.Sprintf("%.1f", *item.ColorHue)
+			candidatePayload["color_h"] = fmt.Sprintf("%.1f", *item.ColorHue)
 		}
 		if item.ColorSaturation != nil {
-			satStr = fmt.Sprintf("%.1f", *item.ColorSaturation)
+			candidatePayload["color_s"] = fmt.Sprintf("%.1f", *item.ColorSaturation)
 		}
 		if item.ColorLightness != nil {
-			lightStr = fmt.Sprintf("%.1f", *item.ColorLightness)
+			candidatePayload["color_l"] = fmt.Sprintf("%.1f", *item.ColorLightness)
 		}
-
-		fmt.Fprintf(
-			&builder,
-			"- ID: %s | Category: %s | Color: %s (H:%s, S:%s, L:%s) | Style: %s | Description: %s\n",
-			item.ID,
-			catSlug,
-			colorStr,
-			hueStr,
-			satStr,
-			lightStr,
-			styleStr,
-			descStr,
-		)
+		payloadBytes, _ := json.Marshal(candidatePayload)
+		builder.Write(payloadBytes)
+		builder.WriteString("\n")
 	}
 
 	return builder.String()

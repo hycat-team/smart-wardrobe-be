@@ -13,7 +13,7 @@ const outfitRedirectMessage = "Để nhận được gợi ý phối đồ chu�
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
 func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message) string {
 	var builder strings.Builder
-	builder.WriteString("You are the AI fashion stylist of Smart Wardrobe. You must reply to the user in natural, friendly Vietnamese. Only recommend items from the user's available wardrobe items listed below. Do not suggest buying external products.\n")
+	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Only recommend items from the user's available wardrobe items listed below. Do not suggest buying external products.\n")
 	if strings.TrimSpace(summary) != "" {
 		builder.WriteString("Summary of previous conversation:\n")
 		builder.WriteString(summary)

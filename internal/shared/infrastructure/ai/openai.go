@@ -15,6 +15,7 @@ import (
 
 func (s *AIService) callOpenAITextStream(
 	ctx context.Context,
+	client *http.Client,
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
@@ -55,7 +56,7 @@ func (s *AIService) callOpenAITextStream(
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-		resp, err := s.cli.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			errChan <- err
 			return
@@ -105,7 +106,7 @@ func (s *AIService) callOpenAITextStream(
 	return textChan, errChan
 }
 
-func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]string{
@@ -132,7 +133,7 @@ func (s *AIService) callOpenAIText(ctx context.Context, provider config.APIProvi
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-	resp, err := s.cli.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -199,7 +200,7 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-	resp, err := s.cli.Do(req)
+	resp, err := s.visionClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +259,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-		resp, err := s.cli.Do(req)
+		resp, err := s.embeddingClient.Do(req)
 		if err != nil {
 			return nil, err
 		}

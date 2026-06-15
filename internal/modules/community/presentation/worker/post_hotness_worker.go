@@ -49,23 +49,18 @@ func NewPostHotnessWorker(
 func (w *PostHotnessWorker) Start() {
 	go w.executeRefresh()
 
-	_, err := w.cronEngine.AddFunc("0 */10 * * * *", func() {
-		w.log.Info("Community hotness worker tick triggered")
-		w.executeRefresh()
-	})
+	_, err := w.cronEngine.AddFunc("0 */10 * * * *", w.executeRefresh)
 	if err != nil {
 		w.log.Error("Failed to register community hotness worker", zap.Error(err))
 		return
 	}
 
 	w.cronEngine.Start()
-	w.log.Info("Community hotness worker started successfully")
 }
 
 func (w *PostHotnessWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
-		w.log.Info("Community hotness worker stopped safely")
 	}
 }
 
@@ -97,17 +92,11 @@ func (w *PostHotnessWorker) executeRefresh() {
 
 	dedupedIDs := dedupePostIDs(dirtyIDs, recentDecayIDs, highScoreStaleIDs)
 	if len(dedupedIDs) == 0 {
-		w.log.Info(
-			"Community hotness worker finished refresh cycle",
+		w.log.Info("[PostHotnessWorker] Job succeeded",
 			zap.Int("dirty_selected_count", len(dirtyIDs)),
 			zap.Int("recent_decay_selected_count", len(recentDecayIDs)),
 			zap.Int("high_score_stale_selected_count", len(highScoreStaleIDs)),
-			zap.Int("deduped_count", 0),
 			zap.Int("processed_count", 0),
-			zap.Int("upserted_count", 0),
-			zap.Int("dirty_cleared_count", 0),
-			zap.Float64("decay_window_hours", decayWindow.Hours()),
-			zap.Float64("high_score_stale_threshold", highScoreStaleThreshold),
 			zap.Duration("duration", time.Since(startedAt)),
 		)
 		return
@@ -143,16 +132,13 @@ func (w *PostHotnessWorker) executeRefresh() {
 	}
 
 	w.log.Info(
-		"Community hotness worker finished refresh cycle",
+		"[PostHotnessWorker] Job succeeded",
 		zap.Int("dirty_selected_count", len(dirtyIDs)),
 		zap.Int("recent_decay_selected_count", len(recentDecayIDs)),
 		zap.Int("high_score_stale_selected_count", len(highScoreStaleIDs)),
-		zap.Int("deduped_count", len(dedupedIDs)),
 		zap.Int("processed_count", len(metrics)),
 		zap.Int("upserted_count", len(snapshots)),
 		zap.Int("dirty_cleared_count", len(dirtyIDs)),
-		zap.Float64("decay_window_hours", decayWindow.Hours()),
-		zap.Float64("high_score_stale_threshold", highScoreStaleThreshold),
 		zap.Duration("duration", time.Since(startedAt)),
 	)
 }

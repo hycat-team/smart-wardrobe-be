@@ -55,9 +55,18 @@ type AIServiceConfig struct {
 	VisionFallback    APIProviderConfig
 	EmbeddingPrimary  APIProviderConfig
 	EmbeddingFallback APIProviderConfig
-	TextPrimary       APIProviderConfig
-	TextFallback      APIProviderConfig
-	RpmLimit          int
+	ChatTextPrimary   APIProviderConfig
+	ChatTextFallback  APIProviderConfig
+	RecommendationTextPrimary  APIProviderConfig
+	RecommendationTextFallback APIProviderConfig
+	ChatTextTimeoutSeconds           int
+	RecommendationTextTimeoutSeconds int
+	VisionTimeoutSeconds             int
+	EmbeddingTimeoutSeconds          int
+	ChatTextRPMLimit                 int
+	RecommendationTextRPMLimit       int
+	VisionRPMLimit                   int
+	EmbeddingRPMLimit                int
 }
 
 type RabbitMQ struct {

@@ -147,10 +147,16 @@ CREATE TABLE wardrobe_items (
     seasonality VARCHAR(100),
     description TEXT,
     price DECIMAL(12, 2),
-    status SMALLINT NOT NULL DEFAULT 0, -- 'in_wardrobe', 'selling', 'sold'
+    status SMALLINT NOT NULL DEFAULT 0, -- 0: in_wardrobe, 1: processing, 2: failed, 3: selling, 4: sold, 5: needs_review
     item_type SMALLINT NOT NULL DEFAULT 0, -- 0: UserItem, 1: SystemCatalogItem
     embedding VECTOR(768),
     last_used_at TIMESTAMP WITH TIME ZONE,
+    processing_retry_count INT NOT NULL DEFAULT 0,
+    processing_version INT NOT NULL DEFAULT 0,
+    processing_started_at TIMESTAMP WITH TIME ZONE,
+    last_processing_attempt_at TIMESTAMP WITH TIME ZONE,
+    processing_error_reason TEXT,
+    review_reason VARCHAR(100),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

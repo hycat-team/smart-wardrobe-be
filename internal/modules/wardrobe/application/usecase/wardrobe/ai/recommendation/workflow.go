@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // RecommendOutfit generates an outfit recommendation from the user's active wardrobe items.
@@ -26,6 +27,16 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 
 	finalRes, err := uc.generateOutfitRecommendation(ctx, candidates, input)
 	if err != nil {
+		failureKind, providerHint, promptLen, responsePreview := classifyFallbackTrace(err)
+		uc.logger.Warn("Outfit recommendation AI fallback triggered",
+			zap.String("failure_kind", failureKind),
+			zap.String("provider_hint", providerHint),
+			zap.Error(err),
+			zap.String("user_id", userID.String()),
+			zap.Int("candidate_count", len(candidates)),
+			zap.Int("prompt_len", promptLen),
+			zap.String("response_preview", responsePreview),
+		)
 		finalRes = runLocalHSLMatching(candidates, input)
 	}
 

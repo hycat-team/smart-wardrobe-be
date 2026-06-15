@@ -117,7 +117,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 		return nil, nil, err
 	}
 	generationInput.userContent = content
-	aiTextChan, aiErrChan := uc.aiService.GenerateTextStream(ctx, generationInput.systemPrompt, generationInput.userContent)
+	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent)
 	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, content, aiTextChan, aiErrChan)
 }
 
@@ -162,7 +162,7 @@ func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session 
 		builder.WriteString(item.Content)
 		builder.WriteString("\n")
 	}
-	summary, err := uc.aiService.GenerateText(ctx, "You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.", builder.String())
+	summary, err := uc.aiService.GenerateChatText(ctx, "You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.", builder.String())
 	if err != nil || strings.TrimSpace(summary) == "" {
 		summary = builder.String()
 	}
@@ -283,7 +283,7 @@ func (uc *WardrobeChatUseCase) generateChatResponse(ctx context.Context, userID 
 	if err != nil {
 		return "", false, err
 	}
-	responseText, err := uc.aiService.GenerateText(ctx, generationInput.systemPrompt, content)
+	responseText, err := uc.aiService.GenerateChatText(ctx, generationInput.systemPrompt, content)
 	return responseText, true, err
 }
 

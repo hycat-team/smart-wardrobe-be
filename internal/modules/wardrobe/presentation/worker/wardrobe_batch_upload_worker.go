@@ -41,7 +41,5 @@ func (w *WardrobeBatchUploadWorker) startConsume() {
 
 	if err != nil {
 		w.logger.Error("Failed to initiate wardrobe batch upload job consumption process", zap.Error(err))
-	} else {
-		w.logger.Info("Wardrobe batch upload coordinator successfully registered job handling callback")
 	}
 }
