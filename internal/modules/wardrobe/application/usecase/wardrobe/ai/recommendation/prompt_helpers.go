@@ -15,6 +15,7 @@ func buildRecommendationPrompt(candidates []CandidateForPrompt, input dto.Recomm
 	builder.WriteString("Decision priorities: occasion fit, weather fit, season fit, silhouette balance, color harmony, style consistency, and practical wearability.\n")
 	builder.WriteString("Editorial rule: stay honest to the actual items. Do not describe a graphic or visually loud item as fully minimalist, formal, or understated unless the item data clearly supports that claim.\n")
 	builder.WriteString("Constraint rule: if the candidate pool is imperfect, choose the most suitable combination available and explain it truthfully rather than overselling it.\n")
+	builder.WriteString("Alternative rule: items in alternative_ids must be viable, high-quality fashion substitutes for the primary_id that maintain the overall color harmony, style target, weather compatibility, and aesthetic of the recommended outfit.\n")
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
 	builder.WriteString("Rules: use only candidate IDs from CANDIDATES; each item entry must contain role (must match the candidate's category slug exactly, e.g. ao, quan, giay, ao-khoac, vay), primary_id, alternative_ids; do not output markdown, bullets, labels, or prose outside JSON; do not copy placeholder words such as string or uuid.\n")
