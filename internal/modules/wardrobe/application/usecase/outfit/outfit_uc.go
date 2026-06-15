@@ -244,6 +244,11 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 		Limit: limit,
 	}
 
+	totalItems, err := uc.outfitRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	outfits, err := uc.outfitRepo.GetByUserIDPaginated(ctx, userID, paginationQuery)
 	if err != nil {
 		return nil, err
@@ -256,7 +261,7 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
 		Items:    resList,
-		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
 }
 

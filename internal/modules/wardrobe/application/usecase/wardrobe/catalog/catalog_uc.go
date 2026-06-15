@@ -8,7 +8,6 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -56,6 +55,11 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		Limit: limit,
 	}
 
+	totalItems, err := uc.wardrobeRepo.CountItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
+	if err != nil {
+		return nil, err
+	}
+
 	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem, paginationQuery)
 	if err != nil {
 		return nil, err
@@ -69,7 +73,7 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
 }
 

@@ -23,7 +23,7 @@ func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *war
 	}
 }
 
-	func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
+func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	publicApi := group.Group("/system-catalog/wardrobe-items")
 	{
 		publicApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetSystemCatalogWardrobeItems))
@@ -57,6 +57,5 @@ func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *war
 	meApi := privateApi.Group("/me/wardrobe-items")
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItems))
-		meApi.GET("/pending", shared_pres.WrapHandler(r.itemHandler.GetPendingWardrobeItems))
 	}
 }

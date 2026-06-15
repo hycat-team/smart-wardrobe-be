@@ -16,11 +16,16 @@ import (
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountByUserIDAndCategory(ctx context.Context, userID uuid.UUID, categorySlug *string) (int64, error)
+	CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus) (int64, error)
+	CountPendingByUserID(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus) (int64, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error)
+	GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	GetByUserIDPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	GetPendingByUserIDPaginated(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	BulkCreate(ctx context.Context, items []*entities.WardrobeItem) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
+	CountItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) (int64, error)
 	GetItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error)
 	GetItemsPaginated(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.WardrobeItem, error)
@@ -44,6 +49,7 @@ type ICategoryRepository interface {
 
 type IOutfitRepository interface {
 	shared_repos.IGenericRepository[entities.Outfit, uuid.UUID]
+	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Outfit, error)
 	GetByUserIDPaginated(ctx context.Context, userID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Outfit, error)
 	GetDetailByID(ctx context.Context, id uuid.UUID) (*entities.Outfit, []*entities.OutfitItem, error)
@@ -59,10 +65,10 @@ type IConversationalContextRepository interface {
 
 type IMessageRepository interface {
 	shared_repos.IGenericRepository[entities.Message, uuid.UUID]
+	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
 	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*entities.Message, error)
 	GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Message, error)
 	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
-	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
 }

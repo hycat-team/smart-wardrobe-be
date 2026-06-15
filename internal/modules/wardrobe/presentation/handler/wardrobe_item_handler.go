@@ -17,7 +17,6 @@ var _ shared_dto.PaginationQuery
 const (
 	msgWardrobeGetUploadSignatureSuccess    = "Lấy chữ ký tải ảnh trang phục thành công"
 	msgWardrobeGetItemsSuccess              = "Lấy danh sách trang phục thành công"
-	msgWardrobeGetPendingItemsSuccess       = "Lấy danh sách trang phục đang xử lý thành công"
 	msgWardrobeGetItemByIDSuccess           = "Lấy thông tin chi tiết trang phục thành công"
 	msgWardrobeCloneItemSuccess             = "Nhân bản trang phục thành công"
 	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
@@ -69,15 +68,13 @@ func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
 	return nil
 }
 
-// GetWardrobeItems get all usable wardrobe items with lock status
-// @Summary Lấy danh sách trang phục usable
-// @Description Lấy danh sách trang phục usable trong tủ đồ của người dùng và áp dụng trạng thái khóa động nếu hạ cấp gói
+// GetWardrobeItems get wardrobe items with optional status filtering.
+// @Summary Lấy danh sách trang phục
+// @Description Lấy danh sách trang phục trong tủ đồ của người dùng, hỗ trợ lọc theo trạng thái và áp dụng trạng thái khóa động cho các món usable vượt hạn mức gói
 // @Tags Wardrobe
 // @Produce json
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
-// @Param category_slug query string false "Slug danh mục cần lọc"
-// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục usable"
+// @Param query query dto.GetWardrobeItemsQueryReq false "Bộ lọc danh sách trang phục. Có thể truyền status như all, usable, inWardrobe, pending, processing, failed, needsReview, selling, sold."
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục"
 // @Router /api/v1/me/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -96,36 +93,6 @@ func (h *WardrobeItemHandler) GetWardrobeItems(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, msgWardrobeGetItemsSuccess, response)
-	return nil
-}
-
-// GetPendingWardrobeItems get non-usable wardrobe items for processing and review UX
-// @Summary Lấy danh sách trang phục đang xử lý hoặc cần rà soát
-// @Description Lấy các trang phục chưa usable trong tủ đồ, gồm Đang xử lý, Lỗi phân tích, hoặc Cần người dùng rà soát
-// @Tags Wardrobe
-// @Produce json
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
-// @Param status query int false "Lọc theo status cụ thể"
-// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục non-usable"
-// @Router /api/v1/me/wardrobe-items/pending [get]
-func (h *WardrobeItemHandler) GetPendingWardrobeItems(c *gin.Context) error {
-	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
-
-	var query dto.GetPendingWardrobeItemsQueryReq
-	if err := validation.BindQuery(c, &query); err != nil {
-		return err
-	}
-
-	response, err := h.itemUseCase.GetPendingWardrobeItems(c.Request.Context(), userID, query)
-	if err != nil {
-		return err
-	}
-
-	shared_pres.Success(c, msgWardrobeGetPendingItemsSuccess, response)
 	return nil
 }
 
@@ -259,10 +226,7 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Description Lấy danh sách trang phục mẫu của hệ thống, hỗ trợ tìm kiếm thông minh bằng Elasticsearch và fallback sang database khi cần
 // @Tags Wardrobe
 // @Produce json
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
-// @Param q query string false "Từ khóa tìm kiếm"
-// @Param category_slug query string false "Slug danh mục cần lọc"
+// @Param query query dto.SearchWardrobeItemsQueryReq false "Bộ lọc tìm kiếm trang phục hệ thống"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.SearchWardrobeItemRes]} "Danh sách trang phục tìm thấy"
 // @Router /api/v1/system-catalog/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetSystemCatalogWardrobeItems(c *gin.Context) error {
@@ -348,10 +312,7 @@ func (h *WardrobeItemHandler) RetryWardrobeAnalysis(c *gin.Context) error {
 // @Description Cho phép Admin lấy danh sách trang phục mẫu hệ thống để quản lý
 // @Tags Admin
 // @Produce json
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
-// @Param q query string false "Từ khóa tìm kiếm"
-// @Param category_slug query string false "Slug danh mục"
+// @Param query query dto.GetSystemCatalogItemsQueryReq false "Bộ lọc danh sách trang phục mẫu"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục mẫu"
 // @Router /api/v1/admin/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetCatalogItemsAdmin(c *gin.Context) error {

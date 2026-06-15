@@ -60,7 +60,8 @@ var (
 	ErrInvalidChatIDFormat   = apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
 	ErrInvalidOutfitIDFormat = apperror.NewBadRequest("Định dạng mã bộ phối đồ không hợp lệ.")
 
-	ErrSearchItemsFailed = apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
+	ErrSearchItemsFailed           = apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
+	ErrInvalidWardrobeStatusFilter = apperror.NewBadRequest("Giá trị bộ lọc trạng thái trang phục không hợp lệ.")
 
 	ErrItemNotFound                    = apperror.NewNotFound("Không tìm thấy trang phục này.")
 	ErrUpdateItemForbidden             = apperror.NewForbidden("Bạn không được phép cập nhật thông tin trang phục này.")

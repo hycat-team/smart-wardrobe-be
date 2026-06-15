@@ -58,13 +58,13 @@ type BatchUploadWardrobeItemsReq struct {
 }
 
 type WardrobeBatchUploadJobDTO struct {
-	ItemID        uuid.UUID  `json:"itemId"`
-	UserID        uuid.UUID  `json:"userId"`
-	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
-	ImageUrl      string     `json:"imageUrl"`
-	ImagePublicID string     `json:"imagePublicId"`
-	RetryCount    int        `json:"retryCount,omitempty"`
-	ProcessingVersion int    `json:"processingVersion"`
+	ItemID            uuid.UUID  `json:"itemId"`
+	UserID            uuid.UUID  `json:"userId"`
+	CategoryID        *uuid.UUID `json:"categoryId,omitempty"`
+	ImageUrl          string     `json:"imageUrl"`
+	ImagePublicID     string     `json:"imagePublicId"`
+	RetryCount        int        `json:"retryCount,omitempty"`
+	ProcessingVersion int        `json:"processingVersion"`
 }
 
 type FashionMetadataResult struct {
@@ -113,18 +113,14 @@ type SearchWardrobeItemRes struct {
 
 type GetWardrobeItemsQueryReq struct {
 	shared_dto.PaginationQuery
-	CategorySlug string `form:"category_slug"`
-}
-
-type GetPendingWardrobeItemsQueryReq struct {
-	shared_dto.PaginationQuery
-	Status *wardrobestatus.WardrobeItemStatus `form:"status"`
+	CategorySlug string `form:"categorySlug"`
+	Status       string `form:"status"`
 }
 
 type SearchWardrobeItemsQueryReq struct {
 	shared_dto.PaginationQuery
 	Query        string `form:"q"`
-	CategorySlug string `form:"category_slug"`
+	CategorySlug string `form:"categorySlug"`
 }
 
 type ManualClassifyReq struct {
@@ -143,7 +139,7 @@ type RetryWardrobeAnalysisReq struct{}
 type GetSystemCatalogItemsQueryReq struct {
 	shared_dto.PaginationQuery
 	Query        *string `form:"q"`
-	CategorySlug *string `form:"category_slug"`
+	CategorySlug *string `form:"categorySlug"`
 }
 
 type GetOutfitsQueryReq struct {

@@ -139,8 +139,7 @@ func (h *WardrobeAIHandler) GetChatSessions(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param contextID path string true "ID cuộc trò chuyện"
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
+// @Param query query dto.GetChatMessagesQueryReq false "Bộ lọc phân trang lịch sử tin nhắn"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.ChatMessageRes]} "Lấy lịch sử tin nhắn thành công"
 // @Router /api/v1/ai/chat/sessions/{contextID}/messages [get]
 func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {

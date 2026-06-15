@@ -101,11 +101,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) error {
 // @Description Lấy feed danh sách bài đăng của cộng đồng sắp xếp theo thứ tự mới nhất hoặc hot nhất
 // @Tags Community
 // @Produce json
-// @Param sort query string false "Tiêu chí sắp xếp: hot hoặc newest"
-// @Param page query int false "Số trang, mặc định là 1"
-// @Param limit query int false "Số lượng phần tử mỗi trang, mặc định là 20"
-// @Param username query string false "Lọc theo username người dùng đăng bài"
-// @Param postType query string false "Lọc theo loại bài đăng: OUTFIT hoặc SALE"
+// @Param query query community_dto.GetFeedQueryReq false "Bộ lọc feed bài đăng cộng đồng"
 // @Success 200 {object} shared_pres.APIResponse{data=community_dto.GetFeedRes} "Lấy feed thành công"
 // @Router /api/v1/posts [get]
 func (h *PostHandler) GetFeed(c *gin.Context) error {

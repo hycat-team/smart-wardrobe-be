@@ -2,6 +2,7 @@ package item
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -18,6 +19,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
@@ -90,64 +92,43 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 	if limit <= 0 {
 		limit = 20
 	}
-	offset := (page - 1) * limit
 
 	paginationQuery := shared_dto.PaginationQuery{
 		Page:  page,
 		Limit: limit,
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserIDPaginated(ctx, userID, categorySlug, paginationQuery)
+	statuses, err := resolveWardrobeStatusFilter(query.Status)
 	if err != nil {
 		return nil, err
 	}
 
+	totalItems, err := uc.wardrobeRepo.CountByUserIDAndFilters(ctx, userID, categorySlug, statuses)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := uc.wardrobeRepo.GetByUserIDAndFiltersPaginated(ctx, userID, categorySlug, statuses, paginationQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	activeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	lockedMap := shared.BuildLockedMap(activeItems, subOverview.MaxWardrobeItems)
+
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for idx, item := range items {
 		res := mapper.MapToWardrobeItemRes(item)
-		globalIdx := offset + idx
-		if globalIdx >= subOverview.MaxWardrobeItems {
-			res.IsLocked = true
-		} else {
-			res.IsLocked = false
-		}
+		res.IsLocked = lockedMap[item.ID]
 		resList[idx] = res
 	}
 
 	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
 		Items:    resList,
-		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
-	}, nil
-}
-
-func (uc *WardrobeItemUseCase) GetPendingWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetPendingWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
-	page := query.Page
-	if page <= 0 {
-		page = 1
-	}
-	limit := query.Limit
-	if limit <= 0 {
-		limit = 20
-	}
-
-	items, err := uc.wardrobeRepo.GetPendingByUserIDPaginated(ctx, userID, query.Status, shared_dto.PaginationQuery{
-		Page:  page,
-		Limit: limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	resList := make([]*dto.WardrobeItemRes, len(items))
-	for idx, item := range items {
-		res := mapper.MapToWardrobeItemRes(item)
-		res.IsLocked = false
-		resList[idx] = res
-	}
-
-	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
-		Items:    resList,
-		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(resList)),
+		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
 }
 
@@ -188,13 +169,19 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 		limit = 20
 	}
 
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  page,
+		Limit: limit,
+	}
+
 	var results []*dto.SearchWardrobeItemRes
+	var totalItems int64
 	var err error
 
 	searchCtx, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
 
-	results, _, err = uc.searchEngine.SearchItems(searchCtx, query)
+	results, totalItems, err = uc.searchEngine.SearchItems(searchCtx, query)
 	if err != nil {
 		uc.logger.Warn("[GetSystemCatalogWardrobeItems] Search failed or timed out, falling back to database", zap.Error(err))
 		var searchQ *string
@@ -206,9 +193,9 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			categorySlug = &query.CategorySlug
 		}
 
-		paginationQuery := shared_dto.PaginationQuery{
-			Page:  page,
-			Limit: limit,
+		totalItems, err = uc.wardrobeRepo.CountItems(ctx, searchQ, categorySlug, itemtype.SystemCatalogItem)
+		if err != nil {
+			return nil, err
 		}
 
 		dbItems, err := uc.wardrobeRepo.GetItemsPaginated(ctx, searchQ, categorySlug, itemtype.SystemCatalogItem, paginationQuery)
@@ -224,6 +211,38 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 
 	return &shared_dto.PaginationResult[*dto.SearchWardrobeItemRes]{
 		Items:    results,
-		Metadata: shared.BuildCurrentPageMetadata(query.PaginationQuery, len(results)),
+		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
+}
+
+func resolveWardrobeStatusFilter(status string) ([]wardrobestatus.WardrobeItemStatus, error) {
+	normalized := strings.TrimSpace(status)
+	if normalized == "" {
+		return nil, nil
+	}
+
+	switch normalized {
+	case "all":
+		return nil, nil
+	case "usable", "inWardrobe":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.InWardrobe}, nil
+	case "pending":
+		return []wardrobestatus.WardrobeItemStatus{
+			wardrobestatus.Processing,
+			wardrobestatus.Failed,
+			wardrobestatus.NeedsReview,
+		}, nil
+	case "selling":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.Selling}, nil
+	case "sold":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.Sold}, nil
+	case "processing":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.Processing}, nil
+	case "failed":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.Failed}, nil
+	case "needsReview":
+		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.NeedsReview}, nil
+	default:
+		return nil, wardrobeerrors.ErrInvalidWardrobeStatusFilter
+	}
 }

@@ -121,8 +121,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 // @Description Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.
 // @Tags Outfits
 // @Produce json
-// @Param page query int false "Số trang (mặc định: 1)"
-// @Param limit query int false "Số lượng phần tử trên trang (mặc định: 20)"
+// @Param query query dto.GetOutfitsQueryReq false "Bộ lọc phân trang danh sách bộ phối đồ"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.OutfitRes]} "Danh sách bộ phối đồ"
 // @Router /api/v1/me/outfits [get]
 func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
@@ -202,4 +201,3 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 	shared_pres.Success(c, msgOutfitDeleteSuccess, nil)
 	return nil
 }
-

@@ -287,26 +287,22 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Trạng thái listing",
-                        "name": "status",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Trạng thái giao dịch",
-                        "name": "transferState",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Số trang",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử mỗi trang",
-                        "name": "limit",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "transferState",
                         "in": "query"
                     }
                 ],
@@ -405,33 +401,28 @@ const docTemplate = `{
                 "summary": "Lấy danh sách bài đăng (Admin)",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Loại bài đăng (OUTFIT, SALE)",
-                        "name": "postType",
-                        "in": "query"
-                    },
-                    {
                         "type": "boolean",
-                        "description": "Trạng thái bị xóa",
                         "name": "isDeleted",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Từ khóa tìm kiếm (content, title)",
-                        "name": "q",
+                        "type": "integer",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số trang",
                         "name": "page",
                         "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Số lượng phần tử mỗi trang",
-                        "name": "limit",
+                        "type": "string",
+                        "name": "postType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "q",
                         "in": "query"
                     }
                 ],
@@ -530,33 +521,28 @@ const docTemplate = `{
                 "summary": "Lấy danh sách người dùng",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Phân quyền (e.g. user, admin)",
-                        "name": "roleSlug",
-                        "in": "query"
-                    },
-                    {
                         "type": "boolean",
-                        "description": "Trạng thái hoạt động",
                         "name": "isActive",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Từ khóa tìm kiếm (username, email, họ tên)",
-                        "name": "q",
+                        "type": "integer",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số trang",
                         "name": "page",
                         "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Số lượng phần tử mỗi trang",
-                        "name": "limit",
+                        "type": "string",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "roleSlug",
                         "in": "query"
                     }
                 ],
@@ -647,27 +633,23 @@ const docTemplate = `{
                 "summary": "Lấy danh sách trang phục mẫu (Admin)",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "type": "string",
+                        "name": "categorySlug",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Từ khóa tìm kiếm",
-                        "name": "q",
+                        "type": "integer",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Slug danh mục",
-                        "name": "category_slug",
+                        "name": "q",
                         "in": "query"
                     }
                 ],
@@ -910,14 +892,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
-                        "name": "limit",
+                        "name": "page",
                         "in": "query"
                     }
                 ],
@@ -1580,14 +1560,12 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
-                        "name": "limit",
+                        "name": "page",
                         "in": "query"
                     }
                 ],
@@ -1615,89 +1593,39 @@ const docTemplate = `{
         },
         "/api/v1/me/wardrobe-items": {
             "get": {
-                "description": "Lấy danh sách trang phục usable trong tủ đồ của người dùng và áp dụng trạng thái khóa động nếu hạ cấp gói",
+                "description": "Lấy danh sách trang phục trong tủ đồ của người dùng, hỗ trợ lọc theo trạng thái và áp dụng trạng thái khóa động cho các món usable vượt hạn mức gói",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Wardrobe"
                 ],
-                "summary": "Lấy danh sách trang phục usable",
+                "summary": "Lấy danh sách trang phục",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "type": "string",
+                        "name": "categorySlug",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
                         "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Slug danh mục cần lọc",
-                        "name": "category_slug",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Danh sách trang phục usable",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/wardrobe-items/pending": {
-            "get": {
-                "description": "Lấy các trang phục chưa usable trong tủ đồ, gồm Đang xử lý, Lỗi phân tích, hoặc Cần người dùng rà soát",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Wardrobe"
-                ],
-                "summary": "Lấy danh sách trang phục đang xử lý hoặc cần rà soát",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Lọc theo status cụ thể",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Danh sách trang phục non-usable",
+                        "description": "Danh sách trang phục",
                         "schema": {
                             "allOf": [
                                 {
@@ -1926,33 +1854,36 @@ const docTemplate = `{
                 "summary": "Lấy danh sách bài đăng cộng đồng",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tiêu chí sắp xếp: hot hoặc newest",
-                        "name": "sort",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
-                        "description": "Số trang, mặc định là 1",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Số lượng phần tử mỗi trang, mặc định là 20",
                         "name": "limit",
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "SALE",
+                            "OUTFIT"
+                        ],
                         "type": "string",
-                        "description": "Lọc theo username người dùng đăng bài",
-                        "name": "username",
+                        "x-enum-varnames": [
+                            "Sale",
+                            "Outfit"
+                        ],
+                        "name": "postType",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Lọc theo loại bài đăng: OUTFIT hoặc SALE",
-                        "name": "postType",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "username",
                         "in": "query"
                     }
                 ],
@@ -2728,14 +2659,12 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
-                        "name": "limit",
+                        "name": "page",
                         "in": "query"
                     }
                 ],
@@ -2864,27 +2793,23 @@ const docTemplate = `{
                 "summary": "Lấy danh sách trang phục hệ thống",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Số trang (mặc định: 1)",
-                        "name": "page",
+                        "type": "string",
+                        "name": "categorySlug",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Số lượng phần tử trên trang (mặc định: 20)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Từ khóa tìm kiếm",
-                        "name": "q",
+                        "type": "integer",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Slug danh mục cần lọc",
-                        "name": "category_slug",
+                        "name": "q",
                         "in": "query"
                     }
                 ],

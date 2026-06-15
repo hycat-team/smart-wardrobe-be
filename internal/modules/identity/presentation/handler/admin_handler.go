@@ -67,11 +67,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param roleSlug query string false "Phân quyền (e.g. user, admin)"
-// @Param isActive query boolean false "Trạng thái hoạt động"
-// @Param q query string false "Từ khóa tìm kiếm (username, email, họ tên)"
-// @Param page query int false "Số trang"
-// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Param query query dto.GetUsersQueryReq false "Bộ lọc danh sách người dùng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AdminUserListRes} "Lấy danh sách tài khoản thành công"
 // @Router /api/v1/admin/users [get]
 func (h *AdminHandler) GetUsers(c *gin.Context) error {
@@ -88,4 +84,3 @@ func (h *AdminHandler) GetUsers(c *gin.Context) error {
 	shared_pres.Success(c, successGetUsers, response)
 	return nil
 }
-

@@ -17,8 +17,8 @@ const (
 	msgAdminDeleteCommentSuccess  = "Xóa bình luận thành công"
 	msgAdminHidePostItemSuccess   = "Ẩn listing thành công"
 	msgAdminDeletePostItemSuccess = "Xóa listing vi phạm thành công"
-	msgAdminRestorePostSuccess     = "Khôi phục bài đăng thành công"
-	msgAdminRestoreCommentSuccess  = "Khôi phục bình luận thành công"
+	msgAdminRestorePostSuccess    = "Khôi phục bài đăng thành công"
+	msgAdminRestoreCommentSuccess = "Khôi phục bình luận thành công"
 	msgAdminGetPostsSuccess       = "Lấy danh sách bài đăng thành công"
 	msgAdminGetPostItemsSuccess   = "Lấy danh sách sản phẩm bài đăng thành công"
 )
@@ -144,11 +144,7 @@ func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param postType query string false "Loại bài đăng (OUTFIT, SALE)"
-// @Param isDeleted query boolean false "Trạng thái bị xóa"
-// @Param q query string false "Từ khóa tìm kiếm (content, title)"
-// @Param page query int false "Số trang"
-// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Param query query dto.AdminGetPostsQueryReq false "Bộ lọc danh sách bài đăng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostListRes} "Lấy danh sách bài đăng thành công"
 // @Router /api/v1/admin/posts [get]
 func (h *AdminHandler) GetPosts(c *gin.Context) error {
@@ -172,10 +168,7 @@ func (h *AdminHandler) GetPosts(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param status query int false "Trạng thái listing"
-// @Param transferState query int false "Trạng thái giao dịch"
-// @Param page query int false "Số trang"
-// @Param limit query int false "Số lượng phần tử mỗi trang"
+// @Param query query dto.AdminGetPostItemsQueryReq false "Bộ lọc danh sách listing"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostItemListRes} "Lấy danh sách sản phẩm bài đăng thành công"
 // @Router /api/v1/admin/post-items [get]
 func (h *AdminHandler) GetPostItems(c *gin.Context) error {
@@ -241,4 +234,3 @@ func (h *AdminHandler) RestoreComment(c *gin.Context) error {
 	shared_pres.Success(c, msgAdminRestoreCommentSuccess, nil)
 	return nil
 }
-

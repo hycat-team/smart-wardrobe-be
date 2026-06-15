@@ -71,7 +71,15 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 	if limit <= 0 {
 		limit = 20
 	}
-	items, err := uc.messageRepo.GetByContextIDPaginated(ctx, contextID, shared_dto.PaginationQuery{Page: page, Limit: limit})
+
+	paginationQuery := shared_dto.PaginationQuery{Page: page, Limit: limit}
+
+	totalItems, err := uc.messageRepo.CountByContextID(ctx, contextID)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := uc.messageRepo.GetByContextIDPaginated(ctx, contextID, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -80,10 +88,8 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 		res[i] = mapChatMessage(item)
 	}
 	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{
-		Items: res,
-		Metadata: shared.BuildCurrentPageMetadata(
-			query.PaginationQuery, len(res),
-		),
+		Items:    res,
+		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
 }
 
