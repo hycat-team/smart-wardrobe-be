@@ -17,7 +17,7 @@ func buildRecommendationPrompt(candidates []CandidateForPrompt, input dto.Recomm
 	builder.WriteString("Constraint rule: if the candidate pool is imperfect, choose the most suitable combination available and explain it truthfully rather than overselling it.\n")
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
-	builder.WriteString("Rules: use only candidate IDs from CANDIDATES; each item entry must contain role, primary_id, alternative_ids; do not output markdown, bullets, labels, or prose outside JSON; do not copy placeholder words such as string or uuid.\n")
+	builder.WriteString("Rules: use only candidate IDs from CANDIDATES; each item entry must contain role (must match the candidate's category slug exactly, e.g. ao, quan, giay, ao-khoac, vay), primary_id, alternative_ids; do not output markdown, bullets, labels, or prose outside JSON; do not copy placeholder words such as string or uuid.\n")
 
 	contextPayload := map[string]string{}
 	if input.Occasion != nil {
@@ -40,7 +40,7 @@ func buildRecommendationPrompt(candidates []CandidateForPrompt, input dto.Recomm
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố gọn gàng cho ngày xuân\",\"explanation\":\"Bộ phối này ưu tiên sự dễ mặc, cân bằng màu sắc và phù hợp với thời tiết ấm. Nếu một món đồ có họa tiết nổi bật, phần mô tả phải phản ánh trung thực thay vì gọi đó là tối giản tuyệt đối.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"11111111-1111-1111-1111-111111111111\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"22222222-2222-2222-2222-222222222222\",\"alternative_ids\":[\"33333333-3333-3333-3333-333333333333\"]}]}\n")
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố gọn gàng cho ngày xuân\",\"explanation\":\"Bộ phối này ưu tiên sự dễ mặc, cân bằng màu sắc và phù hợp với thời tiết ấm. Nếu một món đồ có họa tiết nổi bật, phần mô tả phải phản ánh trung thực thay vì gọi đó là tối giản tuyệt đối.\",\"items\":[{\"role\":\"ao\",\"primary_id\":\"11111111-1111-1111-1111-111111111111\",\"alternative_ids\":[]},{\"role\":\"quan\",\"primary_id\":\"22222222-2222-2222-2222-222222222222\",\"alternative_ids\":[\"33333333-3333-3333-3333-333333333333\"]}]}\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")
