@@ -71,7 +71,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		return false, err
 	}
 	if isCooldown {
-		return false, identityerrors.ErrOtpCooldown
+		return false, identityerrors.ErrOtpCooldown()
 	}
 
 	tempData := vo.TempOtpData{
@@ -80,7 +80,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 
 	tempUserDataJSON, err := json.Marshal(tempData)
 	if err != nil {
-		return false, identityerrors.ErrTempConvertFailed
+		return false, identityerrors.ErrTempConvertFailed()
 	}
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJSON), otpconstants.PurposeForgotPassword)
@@ -89,7 +89,7 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 	}
 
 	if err := uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes); err != nil {
-		return false, identityerrors.ErrRecoveryEmailFailed
+		return false, identityerrors.ErrRecoveryEmailFailed()
 	}
 
 	return true, nil
@@ -102,17 +102,17 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 	}
 
 	if len(tempUserDataJSON) == 0 {
-		return "", identityerrors.ErrOtpValidationInvalid
+		return "", identityerrors.ErrOtpValidationInvalid()
 	}
 
 	var tempData vo.TempOtpData
 	if err := json.Unmarshal([]byte(tempUserDataJSON), &tempData); err != nil {
-		return "", identityerrors.ErrOtpValidationInvalid
+		return "", identityerrors.ErrOtpValidationInvalid()
 	}
 
 	userID, err := uuid.Parse(tempData.UserId)
 	if err != nil {
-		return "", identityerrors.ErrOtpValidationInvalid
+		return "", identityerrors.ErrOtpValidationInvalid()
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -130,7 +130,7 @@ func (uc *PasswordRecoveryUseCase) ConfirmForgotPasswordOtp(ctx context.Context,
 		time.Duration(uc.cfg.Jwt.ForgotPasswordExpirationMinutes)*time.Minute,
 	)
 	if err != nil {
-		return "", identityerrors.ErrResetTokenGenFailed
+		return "", identityerrors.ErrResetTokenGenFailed()
 	}
 
 	return resetToken, nil
@@ -142,17 +142,17 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 		return false, err
 	}
 	if isBlacklisted {
-		return false, identityerrors.ErrInvalidToken
+		return false, identityerrors.ErrInvalidToken()
 	}
 
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), resetToken, jwttype.ResetPasswordToken)
 	if err != nil {
-		return false, identityerrors.ErrInvalidToken
+		return false, identityerrors.ErrInvalidToken()
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return false, identityerrors.ErrInvalidToken
+		return false, identityerrors.ErrInvalidToken()
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -160,7 +160,7 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, identityerrors.ErrUserNotFound
+		return false, identityerrors.ErrUserNotFound()
 	}
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)

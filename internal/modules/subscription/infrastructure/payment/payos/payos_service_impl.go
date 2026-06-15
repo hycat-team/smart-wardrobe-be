@@ -55,7 +55,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 	}
 	amountVND, err := sharedmoney.ToMinorUnits(req.Amount, currency.VND)
 	if err != nil {
-		return "", subscriptionerrors.ErrPayosMustBeInteger
+		return "", subscriptionerrors.ErrPayosMustBeInteger()
 	}
 
 	bodyMap := map[string]any{

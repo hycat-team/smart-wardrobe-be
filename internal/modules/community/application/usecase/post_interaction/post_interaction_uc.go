@@ -47,7 +47,7 @@ func (uc *PostInteractionUseCase) TogglePostLike(ctx context.Context, userID uui
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		like, err := uc.likeRepo.GetPostLike(txCtx, userID, post.ID)
@@ -110,7 +110,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		if input.ParentCommentID != nil {
@@ -119,7 +119,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 				return err
 			}
 			if parentComment == nil || parentComment.ParentCommentID != nil {
-				return communityerrors.ErrCommentReplyTargetInvalid
+				return communityerrors.ErrCommentReplyTargetInvalid()
 			}
 		}
 
@@ -166,7 +166,7 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		comment, err = uc.commentRepo.GetByIDAndPostID(txCtx, commentID, post.ID)
@@ -174,10 +174,10 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 			return err
 		}
 		if comment == nil {
-			return communityerrors.ErrCommentNotFound
+			return communityerrors.ErrCommentNotFound()
 		}
 		if comment.UserID != userID {
-			return communityerrors.ErrEditCommentForbidden
+			return communityerrors.ErrEditCommentForbidden()
 		}
 
 		comment.Content = content
@@ -207,7 +207,7 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		comment, err := uc.commentRepo.GetByIDAndPostID(txCtx, commentID, post.ID)
@@ -215,10 +215,10 @@ func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid
 			return err
 		}
 		if comment == nil {
-			return communityerrors.ErrCommentNotFound
+			return communityerrors.ErrCommentNotFound()
 		}
 		if comment.UserID != userID {
-			return communityerrors.ErrDeleteCommentForbidden
+			return communityerrors.ErrDeleteCommentForbidden()
 		}
 
 		if err := uc.commentRepo.SoftDelete(txCtx, commentID); err != nil {

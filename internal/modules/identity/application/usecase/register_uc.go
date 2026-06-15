@@ -70,7 +70,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 	if isCooldown {
-		return false, identityerrors.ErrOtpCooldown
+		return false, identityerrors.ErrOtpCooldown()
 	}
 
 	hashedPass, err := uc.passwordHasher.HashPassword(input.Password)
@@ -81,7 +81,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 	if input.DateOfBirth != "" {
 		_, err := time.Parse(time.DateOnly, input.DateOfBirth)
 		if err != nil {
-			return false, identityerrors.ErrInvalidDob
+			return false, identityerrors.ErrInvalidDob()
 		}
 	}
 
@@ -103,7 +103,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	tempUserDataJson, err := json.Marshal(cacheModel)
 	if err != nil {
-		return false, identityerrors.ErrJsonConvertFailed
+		return false, identityerrors.ErrJsonConvertFailed()
 	}
 
 	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, string(tempUserDataJson), otpconstants.PurposeRegistration)
@@ -113,7 +113,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 
 	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
 	if err != nil {
-		return false, identityerrors.ErrOtpEmailSendFailed
+		return false, identityerrors.ErrOtpEmailSendFailed()
 	}
 
 	return true, nil
@@ -126,18 +126,18 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	}
 
 	if len(tempUserDataJson) == 0 {
-		return false, identityerrors.ErrOtpVerificationFail
+		return false, identityerrors.ErrOtpVerificationFail()
 	}
 
 	var registerData vo.TempUserCacheModel
 	err = json.Unmarshal([]byte(tempUserDataJson), &registerData)
 	if err != nil {
-		return false, identityerrors.ErrOtpDataInvalid
+		return false, identityerrors.ErrOtpDataInvalid()
 	}
 
 	dob, err := time.Parse(time.DateOnly, registerData.DateOfBirth)
 	if err != nil {
-		return false, identityerrors.ErrInvalidDob
+		return false, identityerrors.ErrInvalidDob()
 	}
 
 	gen := gender.Gender(registerData.Gender)
@@ -159,7 +159,7 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 
 	err = uc.userRepo.Create(ctx, newUser)
 	if err != nil {
-		return false, identityerrors.ErrAccountCreationFailed
+		return false, identityerrors.ErrAccountCreationFailed()
 	}
 
 	return true, nil

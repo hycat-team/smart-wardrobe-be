@@ -142,14 +142,14 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 // parseVerifiedWebhookPayload verifies the signature and decodes the callback body.
 func (uc *PaymentWebhookUseCase) parseVerifiedWebhookPayload(ctx context.Context, rawBody []byte, signature string) (*WebhookPayload, error) {
 	if _, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
-		return nil, subscriptionerrors.ErrVerifySignatureFailed
+		return nil, subscriptionerrors.ErrVerifySignatureFailed()
 	}
 
 	var payload WebhookPayload
 	decoder := json.NewDecoder(bytes.NewReader(rawBody))
 	decoder.UseNumber()
 	if err := decoder.Decode(&payload); err != nil {
-		return nil, subscriptionerrors.ErrWebhookPayloadMalformed
+		return nil, subscriptionerrors.ErrWebhookPayloadMalformed()
 	}
 
 	return &payload, nil
@@ -177,7 +177,7 @@ func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
 ) (*entities.DepositTransaction, decimal.Decimal, error) {
 	webhookAmount, err := decimal.NewFromString(payload.Data.Amount.String())
 	if err != nil {
-		return nil, decimal.Zero, subscriptionerrors.ErrInvalidAmount
+		return nil, decimal.Zero, subscriptionerrors.ErrInvalidAmount()
 	}
 	if err := sharedmoney.ValidateSupportedCurrencyText(payload.Data.Currency); err != nil {
 		return nil, decimal.Zero, err
@@ -185,7 +185,7 @@ func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
 
 	tx, err := uc.depositTxRepo.GetByOrderCode(ctx, payload.Data.OrderCode)
 	if err != nil {
-		return nil, decimal.Zero, subscriptionerrors.ErrQueryTransactionFailed
+		return nil, decimal.Zero, subscriptionerrors.ErrQueryTransactionFailed()
 	}
 	if tx == nil {
 		return nil, decimal.Zero, subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
@@ -194,7 +194,7 @@ func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
 		return nil, decimal.Zero, err
 	}
 	if !webhookAmount.Equal(tx.Amount) {
-		return nil, decimal.Zero, subscriptionerrors.ErrPaymentAmountMismatch
+		return nil, decimal.Zero, subscriptionerrors.ErrPaymentAmountMismatch()
 	}
 
 	return tx, webhookAmount, nil
@@ -204,7 +204,7 @@ func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
 func (uc *PaymentWebhookUseCase) serializeWebhookDetails(payload *WebhookPayload) (string, error) {
 	rawBytes, err := json.Marshal(payload.Data)
 	if err != nil {
-		return "", subscriptionerrors.ErrProcessPaymentGatewayFailed
+		return "", subscriptionerrors.ErrProcessPaymentGatewayFailed()
 	}
 	return string(rawBytes), nil
 }
@@ -221,7 +221,7 @@ func (uc *PaymentWebhookUseCase) processLockedWebhookTransaction(
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
 		if err != nil {
-			return subscriptionerrors.ErrLockTransactionFailed
+			return subscriptionerrors.ErrLockTransactionFailed()
 		}
 		if lockedTx == nil {
 			return subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
@@ -250,7 +250,7 @@ func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(
 	lockedTx.GatewayReference = &reference
 	lockedTx.GatewayDetails = &detailsStr
 	if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
-		return subscriptionerrors.ErrCompletePaymentRecordFailed
+		return subscriptionerrors.ErrCompletePaymentRecordFailed()
 	}
 	return nil
 }
@@ -276,15 +276,15 @@ func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Contex
 // executeDirectPurchaseWorkflow fetches the targeted subscription plan and applies it.
 func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	if tx.SubscriptionPlanID == nil {
-		return subscriptionerrors.ErrLinkedPlanNotFound
+		return subscriptionerrors.ErrLinkedPlanNotFound()
 	}
 
 	plan, err := uc.planRepo.GetByID(txCtx, *tx.SubscriptionPlanID)
 	if err != nil {
-		return subscriptionerrors.ErrLoadPlanFailed
+		return subscriptionerrors.ErrLoadPlanFailed()
 	}
 	if plan == nil {
-		return subscriptionerrors.ErrRequestedPlanNotFound
+		return subscriptionerrors.ErrRequestedPlanNotFound()
 	}
 
 	return subscription.ApplySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now)

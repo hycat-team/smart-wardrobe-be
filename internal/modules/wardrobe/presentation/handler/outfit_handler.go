@@ -99,7 +99,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat
+		return wardrobeerrors.ErrInvalidOutfitIDFormat()
 	}
 
 	var input dto.SaveOutfitReq
@@ -161,7 +161,7 @@ func (h *OutfitHandler) GetOutfitByID(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat
+		return wardrobeerrors.ErrInvalidOutfitIDFormat()
 	}
 
 	response, err := h.outfitUseCase.GetOutfitByID(c.Request.Context(), userID, id)
@@ -190,7 +190,7 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat
+		return wardrobeerrors.ErrInvalidOutfitIDFormat()
 	}
 
 	err = h.outfitUseCase.DeleteOutfit(c.Request.Context(), userID, id)

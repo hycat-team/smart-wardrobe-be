@@ -164,7 +164,7 @@ func (uc *ItemTransferUseCase) GetTransferRequestsForSeller(ctx context.Context,
 		return nil, err
 	}
 	if postItem == nil {
-		return nil, communityerrors.ErrRequestedProductNotFound
+		return nil, communityerrors.ErrRequestedProductNotFound()
 	}
 
 	postEntity, err := uc.postRepo.GetByID(ctx, postItem.PostID)
@@ -172,7 +172,7 @@ func (uc *ItemTransferUseCase) GetTransferRequestsForSeller(ctx context.Context,
 		return nil, err
 	}
 	if postEntity == nil || postEntity.UserID != sellerUserID {
-		return nil, communityerrors.ErrTransferForbidden
+		return nil, communityerrors.ErrTransferForbidden()
 	}
 
 	reqs, err := uc.transferRequestRepo.GetByPostItemID(ctx, postItemID)
@@ -213,7 +213,7 @@ func (uc *ItemTransferUseCase) loadTransferSaleContext(txCtx context.Context, po
 		return nil, err
 	}
 	if len(postItems) != len(postItemIDs) {
-		return nil, communityerrors.ErrRequestedProductNotFound
+		return nil, communityerrors.ErrRequestedProductNotFound()
 	}
 
 	postIDs := make([]uuid.UUID, 0, len(postItems))
@@ -297,20 +297,20 @@ func (uc *ItemTransferUseCase) loadTransferSaleContext(txCtx context.Context, po
 func (uc *ItemTransferUseCase) validateTransferSale(postItem *entities.PostItem, saleCtx *TransferSaleContext, sellerUserID uuid.UUID) error {
 	postEntity := saleCtx.PostsByID[postItem.PostID]
 	if postEntity == nil || postEntity.UserID != sellerUserID {
-		return communityerrors.ErrTransferForbidden
+		return communityerrors.ErrTransferForbidden()
 	}
 
 	if trans, ok := saleCtx.ActiveTransferMap[postItem.ItemID]; ok {
 		for activeTransferID := range trans {
 			if activeTransferID != postItem.ID {
-				return communityerrors.ErrItemInAnotherTransfer
+				return communityerrors.ErrItemInAnotherTransfer()
 			}
 		}
 	}
 
 	buyerReq := saleCtx.BuyerRequestsByID[postItem.ID]
 	if buyerReq == nil || buyerReq.Status != requeststatus.Pending {
-		return communityerrors.ErrNoPendingRequest
+		return communityerrors.ErrNoPendingRequest()
 	}
 
 	return nil

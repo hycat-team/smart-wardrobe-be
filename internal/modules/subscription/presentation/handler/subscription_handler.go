@@ -99,7 +99,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	}
 
 	shared_pres.Success(c, successSetAutoRenewStatus, gin.H{
-		"is_auto_renew_enabled": isEnabled,
+		"isAutoRenewEnabled": isEnabled,
 	})
 	return nil
 }

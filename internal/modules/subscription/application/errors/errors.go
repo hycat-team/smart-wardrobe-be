@@ -16,54 +16,170 @@ func ErrTransactionNotFound(orderCode int64) *apperror.Error {
 }
 
 // Lỗi tĩnh
-var (
-	// PayOS & Gateway Errors
-	ErrPayosMustBeInteger         = apperror.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số tiền nguyên theo đơn vị VND.")
-	ErrInvalidAmount              = apperror.NewBadRequest(sharedmoney.ErrInvalidAmount)
-	ErrVerifySignatureFailed      = apperror.NewBadRequest("Không thể xác thực chữ ký giao dịch.")
-	ErrWebhookPayloadMalformed    = apperror.NewBadRequest("Dữ liệu thông báo giao dịch không đúng định dạng.")
-	ErrPaymentAmountMismatch      = apperror.NewBadRequest("Số tiền thanh toán không khớp với số tiền của giao dịch.")
-	ErrProcessPaymentGatewayFailed = apperror.NewInternalError("Không thể xử lý thông tin cổng thanh toán.")
-	ErrLockTransactionFailed      = apperror.NewInternalError("Không thể khóa dữ liệu giao dịch.")
-	ErrCompletePaymentRecordFailed = apperror.NewInternalError("Không thể hoàn tất hồ sơ giao dịch thanh toán.")
-	ErrQueryTransactionFailed      = apperror.NewInternalError("Không thể truy vấn thông tin giao dịch thanh toán.")
+func ErrPayosMustBeInteger() *apperror.Error {
+	return apperror.NewBadRequest("Số tiền thanh toán qua cổng PayOS phải là số tiền nguyên theo đơn vị VND.")
+}
 
-	// Wallet Errors
-	ErrWalletNotFound             = apperror.NewNotFound("Không tìm thấy thông tin ví của tài khoản.")
-	ErrInvalidDepositAmount       = apperror.NewBadRequest("Số tiền nạp không hợp lệ.")
-	ErrDepositInitFailed          = apperror.NewInternalError("Không thể khởi tạo giao dịch nạp tiền.")
-	ErrDepositMustBeInteger       = apperror.NewBadRequest("Số tiền nạp vào ví phải là số tiền nguyên theo đơn vị VND.")
-	ErrPaymentLinkUpdateFailed    = apperror.NewInternalError("Không thể cập nhật thông tin liên kết thanh toán.")
-	ErrQueryWalletBalanceFailed   = apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
-	ErrWalletInsufficientBalance  = apperror.NewBadRequest("Số dư ví không đủ để thực hiện giao dịch.")
-	ErrWalletCreateFailed         = apperror.NewInternalError("Không thể khởi tạo ví mới.")
-	ErrWalletBalanceUpdateFailed  = apperror.NewInternalError("Không thể cập nhật số dư ví.")
-	ErrWalletStatementSaveFailed  = apperror.NewInternalError("Không thể lưu lịch sử giao dịch ví.")
+func ErrInvalidAmount() *apperror.Error {
+	return apperror.NewBadRequest(sharedmoney.ErrInvalidAmount)
+}
 
-	// Subscription & Plan Errors
-	ErrUserSubscriptionNotFound       = apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
-	ErrSubscriptionExpiredAutoRenew   = apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
-	ErrSubscriptionPlanNotFound       = apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
-	ErrDefaultPlanConfigNotFound      = apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
-	ErrDefaultPlanLoadFailed          = apperror.NewInternalError("Không thể tải thông tin cấu hình gói hội viên mặc định.")
-	ErrQueryExpiredSubscriptionsFailed = apperror.NewInternalError("Không thể truy vấn danh sách gói hội viên hết hạn.")
-	ErrRequestedPlanNotFound          = apperror.NewNotFound("Không tìm thấy gói hội viên được yêu cầu.")
-	ErrFreePlanDirectPurchase         = apperror.NewBadRequest("Không thể đăng ký trực tiếp gói hội viên miễn phí")
-	ErrDirectPurchaseCreateFailed     = apperror.NewInternalError("Không thể tạo giao dịch thanh toán trực tiếp.")
-	ErrPaymentLinkCreateFailed        = apperror.NewInternalError("Không thể liên kết địa chỉ thanh toán.")
-	ErrSearchPlanFailed               = apperror.NewInternalError("Không thể tìm kiếm thông tin gói cước.")
-	ErrCurrentSubscriptionLoadFailed  = apperror.NewInternalError("Không thể tải thông tin gói hội viên hiện tại.")
-	ErrCurrentSubscriptionNotFound    = apperror.NewNotFound("Không tìm thấy gói hội viên hiện tại.")
-	ErrActivateNewSubscriptionFailed  = apperror.NewInternalError("Không thể kích hoạt gói hội viên mới.")
-	ErrUpdateSubscriptionExpiryFailed = apperror.NewInternalError("Không thể cập nhật thời hạn gói hội viên.")
-	ErrPlanInactive                   = apperror.NewBadRequest("Gói hội viên này hiện đang tạm dừng hoạt động.")
-	ErrPendingPaymentExists           = apperror.NewConflict("Bạn đang có giao dịch thanh toán chờ xử lý. Vui lòng hoàn tất giao dịch cũ hoặc đợi cho đến khi hết hạn.")
-	ErrAlreadyRegisteredUnlimitedPlan = apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này.")
-	ErrSubscriptionStillActive        = apperror.NewBadRequest("Gói hội viên hiện tại của bạn vẫn còn hiệu lực. Vui lòng tắt chế độ tự động gia hạn nếu không có nhu cầu gia hạn tiếp.")
-	ErrLinkedPlanNotFound             = apperror.NewBadRequest("Không tìm thấy thông tin gói hội viên liên kết với giao dịch.")
-	ErrLoadPlanFailed                 = apperror.NewInternalError("Không thể tải thông tin gói hội viên.")
+func ErrVerifySignatureFailed() *apperror.Error {
+	return apperror.NewBadRequest("Không thể xác thực chữ ký giao dịch.")
+}
 
-	// AI Quota Errors
-	ErrAiOutfitQuotaExceeded = apperror.NewBadRequest("Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay.")
-	ErrAiChatQuotaExceeded   = apperror.NewBadRequest("Bạn đã dùng hết lượt trò chuyện với AI Chatbot trong hôm nay.")
-)
+func ErrWebhookPayloadMalformed() *apperror.Error {
+	return apperror.NewBadRequest("Dữ liệu thông báo giao dịch không đúng định dạng.")
+}
+
+func ErrPaymentAmountMismatch() *apperror.Error {
+	return apperror.NewBadRequest("Số tiền thanh toán không khớp với số tiền của giao dịch.")
+}
+
+func ErrProcessPaymentGatewayFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể xử lý thông tin cổng thanh toán.")
+}
+
+func ErrLockTransactionFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể khóa dữ liệu giao dịch.")
+}
+
+func ErrCompletePaymentRecordFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể hoàn tất hồ sơ giao dịch thanh toán.")
+}
+
+func ErrQueryTransactionFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể truy vấn thông tin giao dịch thanh toán.")
+}
+
+func ErrWalletNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy thông tin ví của tài khoản.")
+}
+
+func ErrInvalidDepositAmount() *apperror.Error {
+	return apperror.NewBadRequest("Số tiền nạp không hợp lệ.")
+}
+
+func ErrDepositInitFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể khởi tạo giao dịch nạp tiền.")
+}
+
+func ErrDepositMustBeInteger() *apperror.Error {
+	return apperror.NewBadRequest("Số tiền nạp vào ví phải là số tiền nguyên theo đơn vị VND.")
+}
+
+func ErrPaymentLinkUpdateFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể cập nhật thông tin liên kết thanh toán.")
+}
+
+func ErrQueryWalletBalanceFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
+}
+
+func ErrWalletInsufficientBalance() *apperror.Error {
+	return apperror.NewBadRequest("Số dư ví không đủ để thực hiện giao dịch.")
+}
+
+func ErrWalletCreateFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể khởi tạo ví mới.")
+}
+
+func ErrWalletBalanceUpdateFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể cập nhật số dư ví.")
+}
+
+func ErrWalletStatementSaveFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể lưu lịch sử giao dịch ví.")
+}
+
+func ErrUserSubscriptionNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
+}
+
+func ErrSubscriptionExpiredAutoRenew() *apperror.Error {
+	return apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
+}
+
+func ErrSubscriptionPlanNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
+}
+
+func ErrDefaultPlanConfigNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy cấu hình cho gói hội viên mặc định.")
+}
+
+func ErrDefaultPlanLoadFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tải thông tin cấu hình gói hội viên mặc định.")
+}
+
+func ErrQueryExpiredSubscriptionsFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể truy vấn danh sách gói hội viên hết hạn.")
+}
+
+func ErrRequestedPlanNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy gói hội viên được yêu cầu.")
+}
+
+func ErrFreePlanDirectPurchase() *apperror.Error {
+	return apperror.NewBadRequest("Không thể đăng ký trực tiếp gói hội viên miễn phí")
+}
+
+func ErrDirectPurchaseCreateFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tạo giao dịch thanh toán trực tiếp.")
+}
+
+func ErrPaymentLinkCreateFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể liên kết địa chỉ thanh toán.")
+}
+
+func ErrSearchPlanFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tìm kiếm thông tin gói cước.")
+}
+
+func ErrCurrentSubscriptionLoadFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tải thông tin gói hội viên hiện tại.")
+}
+
+func ErrCurrentSubscriptionNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy gói hội viên hiện tại.")
+}
+
+func ErrActivateNewSubscriptionFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể kích hoạt gói hội viên mới.")
+}
+
+func ErrUpdateSubscriptionExpiryFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể cập nhật thời hạn gói hội viên.")
+}
+
+func ErrPlanInactive() *apperror.Error {
+	return apperror.NewBadRequest("Gói hội viên này hiện đang tạm dừng hoạt động.")
+}
+
+func ErrPendingPaymentExists() *apperror.Error {
+	return apperror.NewConflict("Bạn đang có giao dịch thanh toán chờ xử lý. Vui lòng hoàn tất giao dịch cũ hoặc đợi cho đến khi hết hạn.")
+}
+
+func ErrAlreadyRegisteredUnlimitedPlan() *apperror.Error {
+	return apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này.")
+}
+
+func ErrSubscriptionStillActive() *apperror.Error {
+	return apperror.NewBadRequest("Gói hội viên hiện tại của bạn vẫn còn hiệu lực. Vui lòng tắt chế độ tự động gia hạn nếu không có nhu cầu gia hạn tiếp.")
+}
+
+func ErrLinkedPlanNotFound() *apperror.Error {
+	return apperror.NewBadRequest("Không tìm thấy thông tin gói hội viên liên kết với giao dịch.")
+}
+
+func ErrLoadPlanFailed() *apperror.Error {
+	return apperror.NewInternalError("Không thể tải thông tin gói hội viên.")
+}
+
+func ErrAiOutfitQuotaExceeded() *apperror.Error {
+	return apperror.NewBadRequest("Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay.")
+}
+
+func ErrAiChatQuotaExceeded() *apperror.Error {
+	return apperror.NewBadRequest("Bạn đã dùng hết lượt trò chuyện với AI Chatbot trong hôm nay.")
+}

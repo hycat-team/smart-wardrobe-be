@@ -19,7 +19,8 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	}
 	gin.DebugPrintRouteFunc = func(string, string, string, int) {}
 
-	engine := gin.Default()
+	engine := gin.New()
+	engine.Use(gin.Logger())
 
 	engine.Use(middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))

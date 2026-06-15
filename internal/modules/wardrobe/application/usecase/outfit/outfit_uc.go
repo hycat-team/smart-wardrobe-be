@@ -159,7 +159,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, wardrobeerrors.ErrOutfitNotFound
+		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
 	// 2. Check the provided wardrobe items
@@ -271,7 +271,7 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return nil, wardrobeerrors.ErrOutfitNotFound
+		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
 	return mapper.MapToOutfitRes(outfit, items), nil
@@ -283,7 +283,7 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 		return err
 	}
 	if outfit == nil || outfit.UserID != userID {
-		return wardrobeerrors.ErrOutfitNotFound
+		return wardrobeerrors.ErrOutfitNotFound()
 	}
 
 	return uc.outfitRepo.DeleteOutfit(ctx, id)

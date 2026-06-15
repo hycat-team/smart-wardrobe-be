@@ -46,7 +46,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	}
 
 	if err := json.Unmarshal(respBytes, &esResult); err != nil {
-		return nil, 0, wardrobeerrors.ErrSearchItemsFailed
+		return nil, 0, wardrobeerrors.ErrSearchItemsFailed()
 	}
 
 	results := make([]*dto.SearchWardrobeItemRes, len(esResult.Hits.Hits))

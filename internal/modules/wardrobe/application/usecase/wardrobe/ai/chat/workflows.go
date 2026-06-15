@@ -61,7 +61,7 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, wardrobeerrors.ErrChatNotFound
+		return nil, wardrobeerrors.ErrChatNotFound()
 	}
 	page := query.Page
 	if page <= 0 {
@@ -100,7 +100,7 @@ func (uc *WardrobeChatUseCase) ArchiveChatSession(ctx context.Context, userID uu
 		return err
 	}
 	if session == nil || session.UserID != userID {
-		return wardrobeerrors.ErrChatNotFound
+		return wardrobeerrors.ErrChatNotFound()
 	}
 	session.IsArchived = true
 	return uc.contextRepo.Update(ctx, session)
@@ -191,7 +191,7 @@ func (uc *WardrobeChatUseCase) loadChatSessionContext(ctx context.Context, userI
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, wardrobeerrors.ErrChatNotFound
+		return nil, wardrobeerrors.ErrChatNotFound()
 	}
 	recent, err := uc.messageRepo.GetRecentByContextID(ctx, contextID, 5)
 	if err != nil {
@@ -206,7 +206,7 @@ func (uc *WardrobeChatUseCase) ensureChatQuotaAvailable(ctx context.Context, use
 		return err
 	}
 	if quota.AiUsageCount >= quota.AiChatDailyQuota {
-		return subscriptionerrors.ErrAiChatQuotaExceeded
+		return subscriptionerrors.ErrAiChatQuotaExceeded()
 	}
 	return nil
 }

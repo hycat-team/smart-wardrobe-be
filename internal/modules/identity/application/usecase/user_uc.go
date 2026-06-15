@@ -58,12 +58,12 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, identityerrors.ErrUserNotFound
+		return false, identityerrors.ErrUserNotFound()
 	}
 
 	isValid := uc.passwordHasher.VerifyPassword(input.OldPassword, user.PasswordHash)
 	if !isValid {
-		return false, identityerrors.ErrInvalidOldPassword
+		return false, identityerrors.ErrInvalidOldPassword()
 	}
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)
@@ -94,12 +94,12 @@ func (uc *UserUseCase) UpdateProfile(ctx context.Context, userID uuid.UUID, inpu
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 
 	dob, err := time.Parse(time.DateOnly, input.DateOfBirth)
 	if err != nil {
-		return nil, identityerrors.ErrInvalidDob
+		return nil, identityerrors.ErrInvalidDob()
 	}
 
 	genVal := gender.Unknown
@@ -131,7 +131,7 @@ func (uc *UserUseCase) UpdateBodyProfile(ctx context.Context, userID uuid.UUID, 
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 
 	now := time.Now().UTC()
@@ -177,7 +177,7 @@ func (uc *UserUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.User
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
@@ -229,7 +229,7 @@ func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 
 	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, user.ID)
@@ -258,7 +258,7 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 	if user == nil || user.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 
 	user.UpdateAvatar(input.AvatarUrl, input.AvatarPublicID)
@@ -277,7 +277,7 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 
 func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error) {
 	if adminUserID == targetUserID {
-		return nil, identityerrors.ErrSelfStatusUpdate
+		return nil, identityerrors.ErrSelfStatusUpdate()
 	}
 
 	adminUser, err := uc.userRepo.GetByID(ctx, adminUserID)
@@ -285,7 +285,7 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 		return nil, err
 	}
 	if adminUser == nil || adminUser.IsDeleted {
-		return nil, identityerrors.ErrAdminAccountNotFound
+		return nil, identityerrors.ErrAdminAccountNotFound()
 	}
 
 	targetUser, err := uc.userRepo.GetByID(ctx, targetUserID)
@@ -293,10 +293,10 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 		return nil, err
 	}
 	if targetUser == nil || targetUser.IsDeleted {
-		return nil, identityerrors.ErrUserProfileNotFound
+		return nil, identityerrors.ErrUserProfileNotFound()
 	}
 	if targetUser.RoleSlug != roleslug.User {
-		return nil, identityerrors.ErrUserStatusOnly
+		return nil, identityerrors.ErrUserStatusOnly()
 	}
 
 	targetUser.Status = input.Status

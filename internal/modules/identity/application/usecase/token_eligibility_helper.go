@@ -8,11 +8,11 @@ import (
 
 func ensureUserEligibleForLogin(user *entities.User) error {
 	if user == nil {
-		return identityerrors.ErrInvalidCredentials
+		return identityerrors.ErrInvalidCredentials()
 	}
 
 	if user.IsDeleted || user.Status != userstatus.Active {
-		return identityerrors.ErrAccountDisabled
+		return identityerrors.ErrAccountDisabled()
 	}
 
 	return nil
@@ -20,11 +20,11 @@ func ensureUserEligibleForLogin(user *entities.User) error {
 
 func ensureUserEligibleForSession(user *entities.User) error {
 	if user == nil || user.IsDeleted {
-		return identityerrors.ErrUserNotFoundDetailed
+		return identityerrors.ErrUserNotFoundDetailed()
 	}
 
 	if user.Status != userstatus.Active {
-		return identityerrors.ErrAccountDisabledAuth
+		return identityerrors.ErrAccountDisabledAuth()
 	}
 
 	return nil
@@ -32,11 +32,11 @@ func ensureUserEligibleForSession(user *entities.User) error {
 
 func ensureUserEligibleForRecovery(user *entities.User) error {
 	if user == nil || user.IsDeleted {
-		return identityerrors.ErrEmailNotRegistered
+		return identityerrors.ErrEmailNotRegistered()
 	}
 
 	if user.Status != userstatus.Active {
-		return identityerrors.ErrAccountDisabled
+		return identityerrors.ErrAccountDisabled()
 	}
 
 	return nil

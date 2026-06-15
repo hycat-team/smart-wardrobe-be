@@ -75,3 +75,22 @@ func TestWrapPlainErrorFallsBackToInternalError(t *testing.T) {
 		t.Fatalf("unexpected message: %q", appErr.Message)
 	}
 }
+
+func TestErrorIs(t *testing.T) {
+	err1 := New(400, "Bad Request", "Invalid input data")
+	err2 := New(400, "Bad Request", "Invalid input data")
+	err3 := New(400, "Bad Request", "Different message")
+	err4 := New(500, "Internal Server Error", "Invalid input data")
+
+	if !errors.Is(err1, err2) {
+		t.Error("expected err1 to match err2 (same status and message)")
+	}
+
+	if errors.Is(err1, err3) {
+		t.Error("expected err1 to not match err3 (different message)")
+	}
+
+	if errors.Is(err1, err4) {
+		t.Error("expected err1 to not match err4 (different status)")
+	}
+}

@@ -104,7 +104,7 @@ func (h *PostInteractionHandler) UpdateComment(c *gin.Context) error {
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return communityerrors.ErrInvalidCommentIDFormat
+		return communityerrors.ErrInvalidCommentIDFormat()
 	}
 
 	var input community_dto.UpdateCommentReq
@@ -138,7 +138,7 @@ func (h *PostInteractionHandler) DeleteComment(c *gin.Context) error {
 	}
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return communityerrors.ErrInvalidCommentIDFormat
+		return communityerrors.ErrInvalidCommentIDFormat()
 	}
 
 	if err := h.interactionUC.DeleteComment(c.Request.Context(), userID, c.Param("postPublicID"), commentID); err != nil {

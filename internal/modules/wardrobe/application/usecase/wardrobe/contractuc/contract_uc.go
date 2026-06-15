@@ -38,7 +38,7 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 		return nil, err
 	}
 	if sourceItem == nil {
-		return nil, wardrobeerrors.ErrItemToCloneNotFound
+		return nil, wardrobeerrors.ErrItemToCloneNotFound()
 	}
 
 	cloned := &entities.WardrobeItem{
@@ -73,7 +73,7 @@ func (uc *WardrobeContractUseCase) UpdateItemStatus(ctx context.Context, itemID 
 		return err
 	}
 	if item == nil {
-		return wardrobeerrors.ErrItemNotFound
+		return wardrobeerrors.ErrItemNotFound()
 	}
 
 	item.Status = status

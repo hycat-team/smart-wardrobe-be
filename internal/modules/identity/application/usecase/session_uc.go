@@ -52,12 +52,12 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, err
 	}
 	if user == nil {
-		return nil, identityerrors.ErrInvalidCredentials
+		return nil, identityerrors.ErrInvalidCredentials()
 	}
 
 	isValid := uc.passwordHasher.VerifyPassword(input.Password, user.PasswordHash)
 	if !isValid {
-		return nil, identityerrors.ErrInvalidCredentials
+		return nil, identityerrors.ErrInvalidCredentials()
 	}
 
 	if err := ensureUserEligibleForLogin(user); err != nil {
@@ -66,7 +66,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 
 	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, user.ID)
 	if err == nil && isBlacklisted {
-		return nil, identityerrors.ErrAccountDisabled
+		return nil, identityerrors.ErrAccountDisabled()
 	}
 
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
@@ -79,7 +79,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, identityerrors.ErrSessionIssueFailed
+		return nil, identityerrors.ErrSessionIssueFailed()
 	}
 
 	refreshToken, err := jwtutils.GenerateToken(
@@ -89,7 +89,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		refreshExpiry,
 	)
 	if err != nil {
-		return nil, identityerrors.ErrSessionIssueFailed
+		return nil, identityerrors.ErrSessionIssueFailed()
 	}
 
 	rt := &entities.RefreshToken{
@@ -113,18 +113,18 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenReq) (*dto.TokenRes, error) {
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.OldRefreshToken, jwttype.RefreshToken)
 	if err != nil {
-		return nil, identityerrors.ErrInvalidSession
+		return nil, identityerrors.ErrInvalidSession()
 	}
 
 	oldExpiresAtUTC := claims.ExpiresAt.Time
 	remainingTime := time.Until(oldExpiresAtUTC)
 	if remainingTime <= 0 {
-		return nil, identityerrors.ErrTokenExpired
+		return nil, identityerrors.ErrTokenExpired()
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return nil, identityerrors.ErrInvalidSession
+		return nil, identityerrors.ErrInvalidSession()
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -137,7 +137,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 
 	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, userID)
 	if err == nil && isBlacklisted {
-		return nil, identityerrors.ErrAccountDisabledAuth
+		return nil, identityerrors.ErrAccountDisabledAuth()
 	}
 
 	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
@@ -145,7 +145,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		return nil, err
 	}
 	if existingToken == nil || existingToken.IsRevoked {
-		return nil, identityerrors.ErrInvalidSession
+		return nil, identityerrors.ErrInvalidSession()
 	}
 
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
@@ -157,7 +157,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		accessExpiry,
 	)
 	if err != nil {
-		return nil, identityerrors.ErrSessionCreateFailed
+		return nil, identityerrors.ErrSessionCreateFailed()
 	}
 
 	newRefreshToken, err := jwtutils.GenerateToken(
@@ -167,7 +167,7 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		remainingTime,
 	)
 	if err != nil {
-		return nil, identityerrors.ErrSessionCreateFailed
+		return nil, identityerrors.ErrSessionCreateFailed()
 	}
 
 	rt := &entities.RefreshToken{
@@ -202,12 +202,12 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, error) {
 	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.RefreshToken, jwttype.RefreshToken)
 	if err != nil {
-		return false, identityerrors.ErrInvalidSessionGeneric
+		return false, identityerrors.ErrInvalidSessionGeneric()
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return false, identityerrors.ErrInvalidSessionGeneric
+		return false, identityerrors.ErrInvalidSessionGeneric()
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
@@ -215,7 +215,7 @@ func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
-		return false, identityerrors.ErrUserNotFoundGeneric
+		return false, identityerrors.ErrUserNotFoundGeneric()
 	}
 
 	if err := uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken); err != nil {

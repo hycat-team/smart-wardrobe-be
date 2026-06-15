@@ -55,6 +55,17 @@ func (e *Error) WithStackTrace(stackTrace any) Error {
 	return res
 }
 
+func (e *Error) Is(target error) bool {
+	if e == nil || target == nil {
+		return false
+	}
+	t, ok := target.(*Error)
+	if !ok {
+		return false
+	}
+	return e.Status == t.Status && e.Message == t.Message
+}
+
 func New(status int, title, message string) *Error {
 	return &Error{
 		Status:   status,

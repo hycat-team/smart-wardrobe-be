@@ -138,7 +138,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID u
 		return nil, err
 	}
 	if item == nil || item.UserID != userID {
-		return nil, wardrobeerrors.ErrItemNotFound
+		return nil, wardrobeerrors.ErrItemNotFound()
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -243,6 +243,6 @@ func resolveWardrobeStatusFilter(status string) ([]wardrobestatus.WardrobeItemSt
 	case "needsReview":
 		return []wardrobestatus.WardrobeItemStatus{wardrobestatus.NeedsReview}, nil
 	default:
-		return nil, wardrobeerrors.ErrInvalidWardrobeStatusFilter
+		return nil, wardrobeerrors.ErrInvalidWardrobeStatusFilter()
 	}
 }

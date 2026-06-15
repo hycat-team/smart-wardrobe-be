@@ -91,7 +91,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	}
 
 	if err = uc.uow.Execute(ctx, createNewWallet); err != nil || wallet == nil {
-		return nil, subscriptionerrors.ErrWalletNotFound
+		return nil, subscriptionerrors.ErrWalletNotFound()
 	}
 
 	return &dto.WalletDTO{
@@ -150,7 +150,7 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID, req *dto.WalletTopUpReq) (*dto.PaymentLinkDTO, error) {
 	amount, err := sharedmoney.FromFloatAmount(req.Amount)
 	if err != nil {
-		return nil, subscriptionerrors.ErrInvalidDepositAmount
+		return nil, subscriptionerrors.ErrInvalidDepositAmount()
 	}
 
 	var checkoutURL string
@@ -168,7 +168,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		}
 
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
-			return subscriptionerrors.ErrDepositInitFailed
+			return subscriptionerrors.ErrDepositInitFailed()
 		}
 
 		returnURL := req.ReturnUrl
@@ -182,7 +182,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
 		if err != nil {
-			return subscriptionerrors.ErrDepositMustBeInteger
+			return subscriptionerrors.ErrDepositMustBeInteger()
 		}
 		description := fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND)
 		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
@@ -198,7 +198,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 
 		tx.PaymentUrl = &checkoutURL
 		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return subscriptionerrors.ErrPaymentLinkUpdateFailed
+			return subscriptionerrors.ErrPaymentLinkUpdateFailed()
 		}
 
 		orderCode = tx.OrderCode

@@ -176,7 +176,7 @@ func (uc *UserPostUseCase) GetPostDetail(ctx context.Context, postPublicID strin
 		return nil, err
 	}
 	if post == nil {
-		return nil, communityerrors.ErrPostNotFound
+		return nil, communityerrors.ErrPostNotFound()
 	}
 
 	scoreMap, err := uc.feed.postScoreRepo.GetScoresByPostIDs(ctx, []uuid.UUID{post.ID})
@@ -208,7 +208,7 @@ func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID str
 		return nil, err
 	}
 	if post == nil {
-		return nil, communityerrors.ErrPostNotFound
+		return nil, communityerrors.ErrPostNotFound()
 	}
 
 	items, err := uc.feed.commentRepo.GetTopLevelByPostID(ctx, post.ID)
@@ -234,7 +234,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 		return nil, err
 	}
 	if post == nil {
-		return nil, communityerrors.ErrPostNotFound
+		return nil, communityerrors.ErrPostNotFound()
 	}
 
 	parentComment, err := uc.feed.commentRepo.GetByIDAndPostID(ctx, commentID, post.ID)
@@ -242,7 +242,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 		return nil, err
 	}
 	if parentComment == nil || parentComment.ParentCommentID != nil {
-		return nil, communityerrors.ErrCommentReplyTargetInvalid
+		return nil, communityerrors.ErrCommentReplyTargetInvalid()
 	}
 
 	items, err := uc.feed.commentRepo.GetRepliesByParentID(ctx, post.ID, commentID)
@@ -268,7 +268,7 @@ func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string
 		return nil, err
 	}
 	if post == nil {
-		return nil, communityerrors.ErrPostNotFound
+		return nil, communityerrors.ErrPostNotFound()
 	}
 
 	users, err := uc.feed.likeRepo.GetUsersByPostID(ctx, post.ID)
@@ -329,7 +329,7 @@ func (uc *UserPostUseCase) normalizeFeedQuery(query community_dto.GetFeedQueryRe
 		result.Sort = "hot"
 	}
 	if result.Sort != "hot" && result.Sort != "newest" {
-		return shared_repo_dto.FeedQuery{}, communityerrors.ErrInvalidSortCriterion
+		return shared_repo_dto.FeedQuery{}, communityerrors.ErrInvalidSortCriterion()
 	}
 	if result.Page <= 0 {
 		result.Page = 1

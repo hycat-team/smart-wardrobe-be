@@ -96,7 +96,7 @@ func (m *AuthMiddleware) authenticate(c *gin.Context, required bool) error {
 
 	if userBlacklisted {
 		if required {
-			return identityerrors.ErrAccountDisabledAuth
+			return identityerrors.ErrAccountDisabledAuth()
 		}
 		return nil
 	}

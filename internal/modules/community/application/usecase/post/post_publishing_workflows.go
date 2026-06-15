@@ -90,7 +90,7 @@ func (uc *UserPostUseCase) preparePostCreate(ctx context.Context, userID uuid.UU
 			return "", nil, err
 		}
 		if len(activeTransfers) > 0 {
-			return "", nil, communityerrors.ErrActiveTransferExists
+			return "", nil, communityerrors.ErrActiveTransferExists()
 		}
 	}
 
@@ -114,7 +114,7 @@ func (uc *UserPostUseCase) preparePostUpdate(
 		return nil, nil, nil, err
 	}
 	if postEntity == nil || postEntity.UserID != userID {
-		return nil, nil, nil, communityerrors.ErrPostNotFound
+		return nil, nil, nil, communityerrors.ErrPostNotFound()
 	}
 
 	if err := uc.validateCreatePostInput(postEntity.PostType, input.Content, input.ContactInfo, input.Items); err != nil {
@@ -334,7 +334,7 @@ func (uc *UserPostUseCase) DeletePost(ctx context.Context, userID uuid.UUID, pos
 		return err
 	}
 	if postEntity == nil || postEntity.UserID != userID {
-		return communityerrors.ErrPostNotFound
+		return communityerrors.ErrPostNotFound()
 	}
 
 	postItems, err := uc.publishing.postItemRepo.GetByPostID(ctx, postEntity.ID)
@@ -368,7 +368,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		return err
 	}
 	if postEntity == nil || postEntity.UserID != userID {
-		return communityerrors.ErrPostNotFound
+		return communityerrors.ErrPostNotFound()
 	}
 
 	currentItems, err := uc.publishing.postItemRepo.GetByPostID(ctx, postEntity.ID)
@@ -417,14 +417,14 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 // validateCreatePostInput validates the required content and sale-specific fields for a post request.
 func (uc *UserPostUseCase) validateCreatePostInput(postType posttype.PostType, content string, contactInfo *string, items []community_dto.PostItemInputReq) error {
 	if strings.TrimSpace(content) == "" {
-		return communityerrors.ErrInvalidPostType
+		return communityerrors.ErrInvalidPostType()
 	}
 	if postType == posttype.Sale {
 		if len(items) == 0 {
-			return communityerrors.ErrPostSaleItemsRequired
+			return communityerrors.ErrPostSaleItemsRequired()
 		}
 		if contactInfo == nil || strings.TrimSpace(*contactInfo) == "" {
-			return communityerrors.ErrPostContactInfoRequired
+			return communityerrors.ErrPostContactInfoRequired()
 		}
 	}
 	return nil
@@ -438,6 +438,6 @@ func (uc *UserPostUseCase) normalizePostType(raw posttype.PostType) (posttype.Po
 	case posttype.Sale:
 		return posttype.Sale, nil
 	default:
-		return "", communityerrors.ErrInvalidPostType
+		return "", communityerrors.ErrInvalidPostType()
 	}
 }

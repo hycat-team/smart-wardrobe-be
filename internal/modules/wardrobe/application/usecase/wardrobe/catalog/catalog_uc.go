@@ -79,7 +79,7 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 
 func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	if len(catalogItemIDs) == 0 {
-		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty
+		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty()
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -101,7 +101,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, err
 	}
 	if len(templates) == 0 {
-		return nil, wardrobeerrors.ErrCatalogItemNotFound
+		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
 
 	newItems := make([]*entities.WardrobeItem, len(templates))
@@ -145,7 +145,7 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		return nil, err
 	}
 	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
-		return nil, wardrobeerrors.ErrCatalogItemNotFound
+		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
 
 	if input.CategoryID != nil {
@@ -154,7 +154,7 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 			return nil, err
 		}
 		if category == nil {
-			return nil, wardrobeerrors.ErrCategoryNotFound
+			return nil, wardrobeerrors.ErrCategoryNotFound()
 		}
 		item.CategoryID = input.CategoryID
 		item.Category = category
@@ -204,7 +204,7 @@ func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, i
 		return err
 	}
 	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
-		return wardrobeerrors.ErrCatalogItemNotFound
+		return wardrobeerrors.ErrCatalogItemNotFound()
 	}
 
 	if err := uc.wardrobeRepo.Delete(ctx, id); err != nil {

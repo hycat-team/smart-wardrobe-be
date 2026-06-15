@@ -150,7 +150,7 @@ func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat
+		return wardrobeerrors.ErrInvalidChatIDFormat()
 	}
 
 	var query dto.GetChatMessagesQueryReq
@@ -184,7 +184,7 @@ func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat
+		return wardrobeerrors.ErrInvalidChatIDFormat()
 	}
 
 	if err := h.chatUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -213,7 +213,7 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat
+		return wardrobeerrors.ErrInvalidChatIDFormat()
 	}
 
 	var input dto.SendChatMessageReq

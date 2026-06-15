@@ -12,6 +12,7 @@ var ignoredStackPaths = []string{
 	"/internal/shared/application/constants/apperror/",
 	"smart-wardrobe-be/pkg/utils/errorutils/",
 	"/pkg/utils/errorutils/",
+	"/application/errors/",
 }
 
 var ignoredStackFunctions = []string{

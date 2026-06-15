@@ -51,7 +51,7 @@ func (uc *CategoryUseCase) GetCategoryByID(ctx context.Context, id uuid.UUID) (*
 		return nil, err
 	}
 	if category == nil {
-		return nil, wardrobeerrors.ErrCategoryNotFound
+		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
 	return mapper.MapToCategoryRes(category), nil
@@ -76,7 +76,7 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 		return nil, err
 	}
 	if current == nil {
-		return nil, wardrobeerrors.ErrCategoryNotFound
+		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
 	category, err := uc.prepareCategoryEntity(ctx, current, input.Name, input.Slug)
@@ -98,10 +98,10 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return err
 		}
 		if category == nil {
-			return wardrobeerrors.ErrCategoryNotFound
+			return wardrobeerrors.ErrCategoryNotFound()
 		}
 		if category.Slug == "other" {
-			return wardrobeerrors.ErrCategoryOtherImmutable
+			return wardrobeerrors.ErrCategoryOtherImmutable()
 		}
 
 		userItemCount, err := uc.categoryRepo.CountWardrobeItemsByCategoryAndItemType(txCtx, category.ID, itemtype.UserItem)
@@ -109,7 +109,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return err
 		}
 		if userItemCount > 0 {
-			return wardrobeerrors.ErrCategoryHasUserItems
+			return wardrobeerrors.ErrCategoryHasUserItems()
 		}
 
 		systemItemCount, err := uc.categoryRepo.CountWardrobeItemsByCategoryAndItemType(txCtx, category.ID, itemtype.SystemCatalogItem)
@@ -122,7 +122,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 				return err
 			}
 			if fallbackCategory == nil {
-				return wardrobeerrors.ErrFallbackCategoryNotFound
+				return wardrobeerrors.ErrFallbackCategoryNotFound()
 			}
 			if err := uc.categoryRepo.ReassignSystemCatalogItemsToCategory(txCtx, category.ID, fallbackCategory.ID); err != nil {
 				return err
@@ -142,7 +142,7 @@ func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *e
 		return nil, err
 	}
 	if existingByName != nil && (current == nil || existingByName.ID != current.ID) {
-		return nil, wardrobeerrors.ErrCategoryNameAlreadyExists
+		return nil, wardrobeerrors.ErrCategoryNameAlreadyExists()
 	}
 
 	existingBySlug, err := uc.categoryRepo.GetBySlug(ctx, normalizedSlug)
@@ -150,7 +150,7 @@ func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *e
 		return nil, err
 	}
 	if existingBySlug != nil && (current == nil || existingBySlug.ID != current.ID) {
-		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists
+		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists()
 	}
 
 	if current == nil {

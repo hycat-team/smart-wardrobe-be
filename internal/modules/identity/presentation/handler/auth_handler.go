@@ -160,7 +160,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 	refreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(refreshToken) == 0 {
-		return identityerrors.ErrCookieTokenMissing
+		return identityerrors.ErrCookieTokenMissing()
 	}
 
 	input := dto.LogoutReq{
@@ -209,7 +209,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(oldRefreshToken) == 0 {
-		return identityerrors.ErrCookieTokenMissing
+		return identityerrors.ErrCookieTokenMissing()
 	}
 
 	input := dto.RefreshTokenReq{
@@ -327,7 +327,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 
 	resetToken, err := c.Cookie(contextutils.CookieForgotPasswordToken)
 	if err != nil || len(resetToken) == 0 {
-		return identityerrors.ErrTokenExpiredRecovery
+		return identityerrors.ErrTokenExpiredRecovery()
 	}
 
 	_, err = h.recoveryUC.ResetPassword(c.Request.Context(), input, resetToken)

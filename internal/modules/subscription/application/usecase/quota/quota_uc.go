@@ -99,7 +99,7 @@ func (uc *UserQuotaUseCase) UpdateOutfitQuota(ctx context.Context, userID uuid.U
 
 	newCount := quota.OutfitRecommendCount + count
 	if newCount > plan.AiOutfitDailyQuota {
-		return subscriptionerrors.ErrAiOutfitQuotaExceeded
+		return subscriptionerrors.ErrAiOutfitQuotaExceeded()
 	}
 
 	quota.OutfitRecommendCount = newCount
@@ -125,7 +125,7 @@ func (uc *UserQuotaUseCase) UpdateAiChatQuota(ctx context.Context, userID uuid.U
 
 	newCount := quota.AiUsageCount + count
 	if newCount > plan.AiChatDailyQuota {
-		return subscriptionerrors.ErrAiChatQuotaExceeded
+		return subscriptionerrors.ErrAiChatQuotaExceeded()
 	}
 
 	quota.AiUsageCount = newCount

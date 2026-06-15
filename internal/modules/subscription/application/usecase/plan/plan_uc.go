@@ -55,7 +55,7 @@ func (uc *SubscriptionPlanUseCase) GetDefaultSubscriptionPlanID(ctx context.Cont
 		return uuid.Nil, err
 	}
 	if plan == nil {
-		return uuid.Nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
+		return uuid.Nil, subscriptionerrors.ErrDefaultPlanConfigNotFound()
 	}
 	return plan.ID, nil
 }

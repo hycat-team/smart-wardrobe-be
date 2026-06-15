@@ -41,7 +41,7 @@ func (s *SubscriptionStateSupport) GetOrCreateUserSubscription(ctx context.Conte
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound
+			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound()
 		}
 
 		sub = &entities.UserSubscription{
@@ -86,7 +86,7 @@ func (s *SubscriptionStateSupport) LoadPlanForSubscription(ctx context.Context, 
 		return nil, err
 	}
 	if plan == nil {
-		return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
+		return nil, subscriptionerrors.ErrSubscriptionPlanNotFound()
 	}
 	return plan, nil
 }

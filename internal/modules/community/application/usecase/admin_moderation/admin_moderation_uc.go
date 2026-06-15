@@ -56,7 +56,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePost(ctx context.Context, 
 		return err
 	}
 	if post == nil {
-		return communityerrors.ErrPostNotFound
+		return communityerrors.ErrPostNotFound()
 	}
 
 	postItems, err := uc.postItemRepo.GetByPostID(ctx, post.ID)
@@ -93,7 +93,7 @@ func (uc *AdminCommunityModerationUseCase) AdminHidePostItem(ctx context.Context
 		return err
 	}
 	if postItem == nil {
-		return communityerrors.ErrPostItemNotFound
+		return communityerrors.ErrPostItemNotFound()
 	}
 
 	hidePostItem := func(txCtx context.Context) error {
@@ -126,7 +126,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePostItem(ctx context.Conte
 		return err
 	}
 	if postItem == nil {
-		return communityerrors.ErrPostItemNotFound
+		return communityerrors.ErrPostItemNotFound()
 	}
 
 	post, err := uc.postRepo.GetByID(ctx, postItem.PostID)
@@ -134,7 +134,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeletePostItem(ctx context.Conte
 		return err
 	}
 	if post == nil {
-		return communityerrors.ErrPostNotFound
+		return communityerrors.ErrPostNotFound()
 	}
 
 	deletePost := func(txCtx context.Context) error {
@@ -173,7 +173,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeleteComment(ctx context.Contex
 			return err
 		}
 		if comment == nil {
-			return communityerrors.ErrCommentNotFound
+			return communityerrors.ErrCommentNotFound()
 		}
 
 		post, err := uc.postRepo.GetByID(txCtx, comment.PostID)
@@ -181,7 +181,7 @@ func (uc *AdminCommunityModerationUseCase) AdminDeleteComment(ctx context.Contex
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		if err := uc.commentRepo.SoftDelete(txCtx, commentID); err != nil {
@@ -325,7 +325,7 @@ func (uc *AdminCommunityModerationUseCase) AdminRestorePost(ctx context.Context,
 		return err
 	}
 	if post == nil {
-		return communityerrors.ErrPostNotFound
+		return communityerrors.ErrPostNotFound()
 	}
 
 	postItems, err := uc.postItemRepo.GetByPostID(ctx, post.ID)
@@ -363,7 +363,7 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 			return err
 		}
 		if comment == nil {
-			return communityerrors.ErrCommentNotFound
+			return communityerrors.ErrCommentNotFound()
 		}
 		if !comment.IsDeleted {
 			return nil
@@ -374,7 +374,7 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 			return err
 		}
 		if post == nil {
-			return communityerrors.ErrPostNotFound
+			return communityerrors.ErrPostNotFound()
 		}
 
 		if comment.ParentCommentID != nil {
@@ -383,7 +383,7 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 				return err
 			}
 			if parentComment == nil || parentComment.IsDeleted {
-				return communityerrors.ErrCommentReplyTargetInvalid
+				return communityerrors.ErrCommentReplyTargetInvalid()
 			}
 		}
 

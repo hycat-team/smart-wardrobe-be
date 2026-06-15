@@ -59,7 +59,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
-		return subscriptionerrors.ErrDefaultPlanLoadFailed
+		return subscriptionerrors.ErrDefaultPlanLoadFailed()
 	}
 
 	var lastUserID uuid.UUID
@@ -70,7 +70,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 	for {
 		expiredSubs, err := uc.userSubRepo.GetActiveExpiredSubscriptionsBatch(ctx, now, lastUserID, lastExpiresAt, limit)
 		if err != nil {
-			return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed
+			return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
 		}
 		if len(expiredSubs) == 0 {
 			break

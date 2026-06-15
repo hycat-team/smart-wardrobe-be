@@ -67,20 +67,20 @@ func (uc *ItemTransferUseCase) CreateTransferRequests(ctx context.Context, buyer
 		for _, postItemID := range postItemIDs {
 			postItem := postItemsByID[postItemID]
 			if postItem == nil {
-				return communityerrors.ErrRequestedProductNotFound
+				return communityerrors.ErrRequestedProductNotFound()
 			}
 
 			if postItem.Status != postitemstatus.Available || postItem.TransferState != transferstate.None {
-				return communityerrors.ErrTransferRequestInvalid
+				return communityerrors.ErrTransferRequestInvalid()
 			}
 
 			post := postsByID[postItem.PostID]
 			if post == nil {
-				return communityerrors.ErrPostNotFound
+				return communityerrors.ErrPostNotFound()
 			}
 
 			if post.UserID == buyerUserID {
-				return communityerrors.ErrBuyerSelfRequest
+				return communityerrors.ErrBuyerSelfRequest()
 			}
 
 			existing := existingRequestsByPostItemID[postItemID]
@@ -171,7 +171,7 @@ func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID 
 			return err
 		}
 		if len(postItems) != len(postItemIDs) {
-			return communityerrors.ErrRequestedProductNotFound
+			return communityerrors.ErrRequestedProductNotFound()
 		}
 
 		postsToSync := make(map[uuid.UUID]bool)
@@ -194,10 +194,10 @@ func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID 
 
 		for _, item := range postItems {
 			if item.BuyerUserID == nil || *item.BuyerUserID != buyerUserID {
-				return communityerrors.ErrRequestedProductNotFound
+				return communityerrors.ErrRequestedProductNotFound()
 			}
 			if item.TransferState != transferstate.Pending {
-				return communityerrors.ErrTransferRequestInvalid
+				return communityerrors.ErrTransferRequestInvalid()
 			}
 
 			cloned, err := uc.wardrobeCtr.CopyItemToUser(txCtx, item.ItemID, buyerUserID)
@@ -257,7 +257,7 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 			return err
 		}
 		if len(postItems) != len(postItemIDs) {
-			return communityerrors.ErrRequestedProductNotFound
+			return communityerrors.ErrRequestedProductNotFound()
 		}
 
 		postsToSync := make(map[uuid.UUID]bool)
@@ -307,10 +307,10 @@ func (uc *ItemTransferUseCase) DeclineTransfers(ctx context.Context, buyerUserID
 
 		for _, postItem := range postItems {
 			if postItem.BuyerUserID == nil || *postItem.BuyerUserID != buyerUserID {
-				return communityerrors.ErrRequestedProductNotFound
+				return communityerrors.ErrRequestedProductNotFound()
 			}
 			if postItem.TransferState != transferstate.Pending {
-				return communityerrors.ErrTransferRequestInvalid
+				return communityerrors.ErrTransferRequestInvalid()
 			}
 
 			postItem.TransferState = transferstate.Declined

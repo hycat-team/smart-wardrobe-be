@@ -26,7 +26,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	}
 
 	if quotaDTO.OutfitRecommendCount >= quotaDTO.AiOutfitDailyQuota {
-		return nil, nil, subscriptionerrors.ErrAiOutfitQuotaExceeded
+		return nil, nil, subscriptionerrors.ErrAiOutfitQuotaExceeded()
 	}
 
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
@@ -48,7 +48,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	}
 
 	if len(activeItems) < 5 {
-		return nil, nil, wardrobeerrors.ErrMinimumWardrobeItemsRequired
+		return nil, nil, wardrobeerrors.ErrMinimumWardrobeItemsRequired()
 	}
 
 	return activeItems, quotaDTO, nil

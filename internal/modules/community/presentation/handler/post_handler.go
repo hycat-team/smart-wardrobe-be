@@ -197,7 +197,7 @@ func (h *PostHandler) GetPostComments(c *gin.Context) error {
 func (h *PostHandler) GetCommentReplies(c *gin.Context) error {
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return communityerrors.ErrInvalidCommentIDFormat
+		return communityerrors.ErrInvalidCommentIDFormat()
 	}
 
 	response, err := h.postUC.GetCommentReplies(c.Request.Context(), c.Param("postPublicID"), commentID)

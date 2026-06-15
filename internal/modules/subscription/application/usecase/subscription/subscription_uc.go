@@ -95,7 +95,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 		return false, err
 	}
 	if sub == nil {
-		return false, subscriptionerrors.ErrUserSubscriptionNotFound
+		return false, subscriptionerrors.ErrUserSubscriptionNotFound()
 	}
 
 	if sub.IsAutoRenewEnabled == enable {
@@ -103,7 +103,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	}
 
 	if enable && sub.ExpiresAt != nil && sub.ExpiresAt.Before(time.Now()) {
-		return false, subscriptionerrors.ErrSubscriptionExpiredAutoRenew
+		return false, subscriptionerrors.ErrSubscriptionExpiredAutoRenew()
 	}
 
 	sub.IsAutoRenewEnabled = enable
@@ -179,7 +179,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 
 		plan := planByID[sub.SubscriptionPlanID]
 		if plan == nil {
-			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
+			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound()
 		}
 
 		result[sub.UserID] = BuildUserSubscriptionOverviewDTO(sub, plan)
@@ -199,7 +199,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 			return nil, err
 		}
 		if defaultPlan == nil {
-			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound
+			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound()
 		}
 
 		newSubs := make([]*entities.UserSubscription, 0, len(missingUserIDs))

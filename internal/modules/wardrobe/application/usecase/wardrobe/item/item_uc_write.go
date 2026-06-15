@@ -25,7 +25,7 @@ const processingFailureMessage = "Hệ thống chưa thể phân tích trang ph�
 
 func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
 	if quantity < 1 || quantity > 5 {
-		return nil, wardrobeerrors.ErrInvalidCloneQuantity
+		return nil, wardrobeerrors.ErrInvalidCloneQuantity()
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -46,11 +46,11 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		return nil, err
 	}
 	if original == nil {
-		return nil, wardrobeerrors.ErrOriginalItemToCloneNotFound
+		return nil, wardrobeerrors.ErrOriginalItemToCloneNotFound()
 	}
 
 	if original.UserID != userID {
-		return nil, wardrobeerrors.ErrCloneOtherUserItemForbidden
+		return nil, wardrobeerrors.ErrCloneOtherUserItemForbidden()
 	}
 
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
@@ -62,7 +62,7 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 	}
 
 	if original.Status == wardrobestatus.Sold {
-		return nil, wardrobeerrors.ErrCloneSoldItem
+		return nil, wardrobeerrors.ErrCloneSoldItem()
 	}
 
 	clonedItems := make([]*entities.WardrobeItem, quantity)
@@ -115,15 +115,15 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, err
 	}
 	if item == nil {
-		return nil, wardrobeerrors.ErrItemNotFound
+		return nil, wardrobeerrors.ErrItemNotFound()
 	}
 
 	if item.UserID != userID {
-		return nil, wardrobeerrors.ErrUpdateItemForbidden
+		return nil, wardrobeerrors.ErrUpdateItemForbidden()
 	}
 
 	if item.Status == wardrobestatus.Sold {
-		return nil, wardrobeerrors.ErrManualClassifySoldItem
+		return nil, wardrobeerrors.ErrManualClassifySoldItem()
 	}
 
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
@@ -144,7 +144,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, err
 	}
 	if category == nil {
-		return nil, wardrobeerrors.ErrCategoryNotFound
+		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
 	freeForm := fmt.Sprintf("Món đồ thời trang %s màu %s phong cách %s được làm từ %s với họa tiết %s, dáng %s thích hợp mặc vào %s.",
@@ -154,7 +154,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 
 	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
 	if err != nil {
-		return nil, wardrobeerrors.ErrProcessFashionTextFailed
+		return nil, wardrobeerrors.ErrProcessFashionTextFailed()
 	}
 
 	item.CategoryID = &category.ID
@@ -202,16 +202,16 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, err
 	}
 	if item == nil {
-		return nil, wardrobeerrors.ErrItemNotFound
+		return nil, wardrobeerrors.ErrItemNotFound()
 	}
 	if item.UserID != userID {
-		return nil, wardrobeerrors.ErrUpdateItemForbidden
+		return nil, wardrobeerrors.ErrUpdateItemForbidden()
 	}
 	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
-		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden()
 	}
 	if item.LastProcessingAttemptAt != nil && time.Since(item.LastProcessingAttemptAt.UTC()) < manualRetryCooldown {
-		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisCooldown
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisCooldown()
 	}
 
 	now := time.Now().UTC()
@@ -220,7 +220,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, err
 	}
 	if !claimed || item == nil {
-		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress
+		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress()
 	}
 
 	job := dto.WardrobeBatchUploadJobDTO{
@@ -260,10 +260,10 @@ func (uc *WardrobeItemUseCase) DeleteWardrobeItemsBulk(ctx context.Context, user
 	for _, id := range ids {
 		item, exists := itemMap[id]
 		if !exists || item.IsDeleted {
-			return wardrobeerrors.ErrItemNotFound
+			return wardrobeerrors.ErrItemNotFound()
 		}
 		if item.UserID != userID {
-			return wardrobeerrors.ErrUpdateItemForbidden
+			return wardrobeerrors.ErrUpdateItemForbidden()
 		}
 	}
 
@@ -322,7 +322,7 @@ func (uc *WardrobeItemUseCase) DeleteLockedWardrobeItems(ctx context.Context, us
 
 func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
 	if len(input.Items) == 0 {
-		return nil, wardrobeerrors.ErrUploadImagesEmpty
+		return nil, wardrobeerrors.ErrUploadImagesEmpty()
 	}
 
 	itemType := itemtype.SystemCatalogItem

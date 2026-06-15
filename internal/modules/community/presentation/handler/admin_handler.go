@@ -73,7 +73,7 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) error {
 
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return communityerrors.ErrInvalidCommentIDFormat
+		return communityerrors.ErrInvalidCommentIDFormat()
 	}
 
 	if err := h.moderationUC.AdminDeleteComment(c.Request.Context(), adminUserID, commentID); err != nil {
@@ -100,7 +100,7 @@ func (h *AdminHandler) HidePostItem(c *gin.Context) error {
 
 	postItemID, err := uuid.Parse(c.Param("postItemID"))
 	if err != nil {
-		return communityerrors.ErrInvalidPostItemIDFormat
+		return communityerrors.ErrInvalidPostItemIDFormat()
 	}
 
 	if err := h.moderationUC.AdminHidePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
@@ -127,7 +127,7 @@ func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
 
 	postItemID, err := uuid.Parse(c.Param("postItemID"))
 	if err != nil {
-		return communityerrors.ErrInvalidPostItemIDFormat
+		return communityerrors.ErrInvalidPostItemIDFormat()
 	}
 
 	if err := h.moderationUC.AdminDeletePostItem(c.Request.Context(), adminUserID, postItemID); err != nil {
@@ -224,7 +224,7 @@ func (h *AdminHandler) RestoreComment(c *gin.Context) error {
 
 	commentID, err := uuid.Parse(c.Param("commentID"))
 	if err != nil {
-		return communityerrors.ErrInvalidCommentIDFormat
+		return communityerrors.ErrInvalidCommentIDFormat()
 	}
 
 	if err := h.moderationUC.AdminRestoreComment(c.Request.Context(), adminUserID, commentID); err != nil {

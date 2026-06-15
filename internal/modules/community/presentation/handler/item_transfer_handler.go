@@ -204,7 +204,7 @@ func (h *ItemTransferHandler) GetTransferRequestsForSeller(c *gin.Context) error
 
 	postItemID, err := uuid.Parse(c.Param("postItemID"))
 	if err != nil {
-		return communityerrors.ErrInvalidPostItemIDFormat
+		return communityerrors.ErrInvalidPostItemIDFormat()
 	}
 
 	res, err := h.transferUC.GetTransferRequestsForSeller(c.Request.Context(), userID, postItemID)

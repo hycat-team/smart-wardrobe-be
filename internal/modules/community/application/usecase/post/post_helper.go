@@ -58,7 +58,7 @@ func (uc *UserPostUseCase) generateUniquePostPublicID(ctx context.Context) (stri
 			return publicID, nil
 		}
 	}
-	return "", communityerrors.ErrInvalidPostPublicIDFormat
+	return "", communityerrors.ErrInvalidPostPublicIDFormat()
 }
 
 func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType posttype.PostType, items []community_dto.PostItemInputReq) ([]resolvedPostItemInput, error) {
@@ -95,7 +95,7 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 		} else if wardrobeItem := wardrobeByID[item.ItemID]; wardrobeItem != nil && wardrobeItem.Price != nil {
 			resolved.Price = *wardrobeItem.Price
 		} else if postType == posttype.Sale {
-			return nil, communityerrors.ErrPostItemPriceRequired
+			return nil, communityerrors.ErrPostItemPriceRequired()
 		}
 
 		result = append(result, resolved)
@@ -176,7 +176,7 @@ func mapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
 func NormalizePostPublicID(raw string) (string, error) {
 	publicID := strings.TrimSpace(raw)
 	if !strings.HasPrefix(publicID, postPublicIDPrefix) || len(publicID) != len(postPublicIDPrefix)+16 {
-		return "", communityerrors.ErrInvalidPostPublicIDFormat
+		return "", communityerrors.ErrInvalidPostPublicIDFormat()
 	}
 	return publicID, nil
 }
