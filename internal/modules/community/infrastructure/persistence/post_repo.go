@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -46,6 +47,7 @@ func (r *PostRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.P
 		}
 		return nil, err
 	}
+	filterPostItems(&post)
 	return &post, nil
 }
 
@@ -72,6 +74,7 @@ func (r *PostRepository) getByPublicID(ctx context.Context, publicID string, inc
 		}
 		return nil, err
 	}
+	filterPostItems(&post)
 	return &post, nil
 }
 
@@ -152,6 +155,7 @@ func (r *PostRepository) listFeed(ctx context.Context, query dto.FeedQuery, forc
 	result := make([]*dto.FeedPostRecord, 0, len(rows))
 	for _, row := range rows {
 		post := row.Post
+		filterPostItems(&post)
 		result = append(result, &dto.FeedPostRecord{
 			Post:               &post,
 			GlobalHotnessScore: row.GlobalHotnessScore,
@@ -166,6 +170,9 @@ func (r *PostRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*
 		Where("user_id = ? AND is_deleted = ?", userID, false).
 		Order("created_at DESC").
 		Find(&items).Error
+	if err == nil {
+		filterPostsList(items)
+	}
 	return items, err
 }
 
@@ -182,6 +189,7 @@ func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*enti
 	if err != nil {
 		return nil, err
 	}
+	filterPostsList(posts)
 	return posts, nil
 }
 
@@ -200,6 +208,19 @@ func (r *PostRepository) GetDetail(ctx context.Context, postPublicID string) (*e
 		Find(&items).Error; err != nil {
 		return nil, nil, nil, err
 	}
+
+	var validItems []*entities.PostItem
+	for _, item := range items {
+		if item.WardrobeItem != nil &&
+			!item.WardrobeItem.IsDeleted &&
+			item.WardrobeItem.Status != wardrobestatus.Processing &&
+			item.WardrobeItem.Status != wardrobestatus.Failed &&
+			item.WardrobeItem.Status != wardrobestatus.NeedsReview &&
+			item.WardrobeItem.UserID == post.UserID {
+			validItems = append(validItems, item)
+		}
+	}
+	items = validItems
 
 	if post.PostType == "SALE" && len(items) == 0 {
 		return nil, nil, nil, nil
@@ -338,4 +359,28 @@ func (r *PostRepository) GetPostsForAdmin(ctx context.Context, filter repositori
 		Posts:      posts,
 		TotalCount: totalCount,
 	}, nil
+}
+
+func filterPostItems(post *entities.Post) {
+	if post == nil {
+		return
+	}
+	var validItems []*entities.PostItem
+	for _, item := range post.Items {
+		if item.WardrobeItem != nil &&
+			!item.WardrobeItem.IsDeleted &&
+			item.WardrobeItem.Status != wardrobestatus.Processing &&
+			item.WardrobeItem.Status != wardrobestatus.Failed &&
+			item.WardrobeItem.Status != wardrobestatus.NeedsReview &&
+			item.WardrobeItem.UserID == post.UserID {
+			validItems = append(validItems, item)
+		}
+	}
+	post.Items = validItems
+}
+
+func filterPostsList(posts []*entities.Post) {
+	for _, post := range posts {
+		filterPostItems(post)
+	}
 }

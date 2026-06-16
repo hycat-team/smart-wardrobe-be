@@ -7,6 +7,7 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -27,7 +28,10 @@ func NewPostItemRepository(db *gorm.DB) repositories.IPostItemRepository {
 func (r *PostItemRepository) GetByPostID(ctx context.Context, postID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Where("post_id = ?", postID).Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetByPostIDs(ctx context.Context, postIDs []uuid.UUID) ([]*entities.PostItem, error) {
@@ -40,13 +44,19 @@ func (r *PostItemRepository) GetByPostIDs(ctx context.Context, postIDs []uuid.UU
 		Where("post_id IN ? AND status <> ?", postIDs, postitemstatus.Hidden).
 		Order("created_at ASC").
 		Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetPendingByBuyerID(ctx context.Context, buyerUserID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("buyer_user_id = ? AND transfer_state = ?", buyerUserID, transferstate.Pending).Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetTransferItemsBySellerID(ctx context.Context, sellerUserID uuid.UUID) ([]*entities.PostItem, error) {
@@ -66,13 +76,19 @@ func (r *PostItemRepository) GetTransferItemsBySellerID(ctx context.Context, sel
 		}, postitemstatus.Sold).
 		Order("post_id ASC, created_at ASC").
 		Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error) {
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Preload("Post").Where("item_id = ?", itemID).Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetActiveByItemID(ctx context.Context, itemID uuid.UUID) ([]*entities.PostItem, error) {
@@ -82,7 +98,10 @@ func (r *PostItemRepository) GetActiveByItemID(ctx context.Context, itemID uuid.
 		Joins("JOIN posts ON posts.id = post_items.post_id").
 		Where("post_items.item_id = ? AND posts.is_deleted = ?", itemID, false).
 		Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetSiblingItems(ctx context.Context, itemID uuid.UUID, excludePostItemID uuid.UUID) ([]*entities.PostItem, error) {
@@ -91,7 +110,10 @@ func (r *PostItemRepository) GetSiblingItems(ctx context.Context, itemID uuid.UU
 		Preload("Post").
 		Where("item_id = ? AND id <> ?", itemID, excludePostItemID).
 		Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) GetSiblingItemsByItemIDs(ctx context.Context, itemIDs []uuid.UUID, excludePostItemIDs []uuid.UUID) ([]*entities.PostItem, error) {
@@ -106,7 +128,10 @@ func (r *PostItemRepository) GetSiblingItemsByItemIDs(ctx context.Context, itemI
 		query = query.Where("id NOT IN ?", excludePostItemIDs)
 	}
 	err := query.Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
 }
 
 func (r *PostItemRepository) HasActiveTransfer(ctx context.Context, itemID uuid.UUID, excludePostItemID *uuid.UUID) (bool, error) {
@@ -202,5 +227,24 @@ func (r *PostItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*
 	}
 	var items []*entities.PostItem
 	err := r.GetQueryWithPreload(ctx).Where("id IN ?", ids).Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return filterPostItemsList(items), nil
+}
+
+func filterPostItemsList(items []*entities.PostItem) []*entities.PostItem {
+	var valid []*entities.PostItem
+	for _, item := range items {
+		if item.WardrobeItem != nil &&
+			!item.WardrobeItem.IsDeleted &&
+			item.WardrobeItem.Status != wardrobestatus.Processing &&
+			item.WardrobeItem.Status != wardrobestatus.Failed &&
+			item.WardrobeItem.Status != wardrobestatus.NeedsReview {
+			if item.Post == nil || item.WardrobeItem.UserID == item.Post.UserID {
+				valid = append(valid, item)
+			}
+		}
+	}
+	return valid
 }

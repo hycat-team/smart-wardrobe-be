@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -63,6 +64,17 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 		}
 		return nil, nil, err
 	}
+
+	var validItems []*entities.OutfitItem
+	for _, item := range outfit.Items {
+		if item.WardrobeItem != nil &&
+			!item.WardrobeItem.IsDeleted &&
+			item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
+			item.WardrobeItem.UserID == outfit.UserID {
+			validItems = append(validItems, item)
+		}
+	}
+	outfit.Items = validItems
 
 	sort.Slice(outfit.Items, func(i, j int) bool {
 		return outfit.Items[i].LayerOrder < outfit.Items[j].LayerOrder
