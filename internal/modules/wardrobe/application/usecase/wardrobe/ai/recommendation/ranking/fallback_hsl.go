@@ -1,4 +1,5 @@
-package recommendation
+// Package ranking implements rule-based candidate scoring, fallback candidate expansion, and list diversification.
+package ranking
 
 import (
 	"math"
@@ -6,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
@@ -48,8 +50,9 @@ func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
 	return deltaH >= 165.0 && deltaH <= 195.0
 }
 
-func runLocalHSLMatching(
-	candidates []CandidateForPrompt,
+// RunLocalHSLMatching executes the HSL color matching algorithm to construct a fallback recommended outfit.
+func RunLocalHSLMatching(
+	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 ) *dto.RecommendedOutfitRes {
 	var tops, bottoms, shoes, outerwears, dresses, accessories []*entities.WardrobeItem

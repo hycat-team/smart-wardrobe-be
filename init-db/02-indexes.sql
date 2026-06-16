@@ -75,12 +75,13 @@ CREATE INDEX IF NOT EXISTS idx_user_subscriptions_active_expires ON user_subscri
 CREATE INDEX IF NOT EXISTS idx_wardrobe_items_lexical_search 
 ON wardrobe_items 
 USING gin (
-  to_tsvector('simple', 
-    coalesce(color, '') || ' ' || 
-    coalesce(style, '') || ' ' || 
-    coalesce(material, '') || ' ' || 
-    coalesce(pattern, '') || ' ' || 
-    coalesce(fit, '') || ' ' || 
+  to_tsvector('simple', immutable_unaccent(lower(
+    coalesce(color, '') || ' ' ||
+    coalesce(style, '') || ' ' ||
+    coalesce(material, '') || ' ' ||
+    coalesce(pattern, '') || ' ' ||
+    coalesce(fit, '') || ' ' ||
+    coalesce(seasonality, '') || ' ' ||
     coalesce(description, '')
-  )
+  )))
 );

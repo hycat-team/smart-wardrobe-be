@@ -1,4 +1,5 @@
-package recommendation
+// Package synthesis implements response synthesis, LLM prompt assembly, response parsing, and validation.
+package synthesis
 
 import (
 	"encoding/json"
@@ -6,9 +7,11 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 )
 
-func buildRecommendationPrompt(candidates []CandidateForPrompt, input dto.RecommendOutfitReq) string {
+// BuildRecommendationPrompt formats the stylist role, prompt constraints, context, and candidates into an LLM user prompt.
+func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")

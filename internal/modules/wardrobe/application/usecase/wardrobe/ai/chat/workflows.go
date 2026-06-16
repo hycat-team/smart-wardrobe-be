@@ -118,7 +118,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 	if err := uc.ensureChatQuotaAvailable(ctx, userID); err != nil {
 		return nil, nil, err
 	}
-	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx)
+	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx, content)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -211,16 +211,21 @@ func (uc *WardrobeChatUseCase) ensureChatQuotaAvailable(ctx context.Context, use
 	return nil
 }
 
-func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, userID uuid.UUID, sessionCtx *chatSessionContext) (*chatGenerationInput, error) {
+func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, userID uuid.UUID, sessionCtx *chatSessionContext, content string) (*chatGenerationInput, error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
-	if err != nil {
-		return nil, err
+
+	var activeWardrobeItems []*entities.WardrobeItem
+	if isWardrobeRelatedQuery(content, sessionCtx.recent) {
+		wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+		if err != nil {
+			return nil, err
+		}
+		activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
 	}
-	activeWardrobeItems := shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+
 	return &chatGenerationInput{systemPrompt: buildChatSystemPrompt(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent)}, nil
 }
 
@@ -285,7 +290,7 @@ func (uc *WardrobeChatUseCase) generateChatResponse(ctx context.Context, userID 
 	if err := uc.ensureChatQuotaAvailable(ctx, userID); err != nil {
 		return "", false, err
 	}
-	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx)
+	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx, content)
 	if err != nil {
 		return "", false, err
 	}

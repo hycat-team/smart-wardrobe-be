@@ -1,18 +1,20 @@
-package recommendation
+// Package synthesis implements response synthesis, LLM prompt assembly, response parsing, and validation.
+package synthesis
 
 import (
 	"strings"
 
+	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-
-	"github.com/google/uuid"
 )
 
-func (uc *OutfitRecommendationUseCase) mapLLMResponseToGroups(
-	candidates []CandidateForPrompt,
-	llmRes llmOutfitResponse,
+// MapLLMResponseToGroups matches LLM response ID/role suggestions back to actual candidate wardrobe items.
+func MapLLMResponseToGroups(
+	candidates []types.CandidateForPrompt,
+	llmRes types.LlmOutfitResponse,
 ) []*dto.RecommendedItemGroup {
 	candidateMap := map[uuid.UUID]*entities.WardrobeItem{}
 	for _, candidate := range candidates {
@@ -22,7 +24,7 @@ func (uc *OutfitRecommendationUseCase) mapLLMResponseToGroups(
 	valid := make([]*dto.RecommendedItemGroup, 0)
 	for _, group := range llmRes.Items {
 		role := strings.ToLower(group.Role)
-		primary := uc.resolvePrimaryCandidate(candidateMap, candidates, role, group.PrimaryID)
+		primary := resolvePrimaryCandidate(candidateMap, candidates, role, group.PrimaryID)
 		if primary == nil {
 			continue
 		}
@@ -30,16 +32,16 @@ func (uc *OutfitRecommendationUseCase) mapLLMResponseToGroups(
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         role,
 			Primary:      mapper.MapToWardrobeItemRes(primary),
-			Alternatives: uc.resolveAlternativeCandidates(candidateMap, candidates, role, primary.ID, group.AlternativeIDs),
+			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, role, primary.ID, group.AlternativeIDs),
 		})
 	}
 
 	return valid
 }
 
-func (uc *OutfitRecommendationUseCase) resolvePrimaryCandidate(
+func resolvePrimaryCandidate(
 	candidateMap map[uuid.UUID]*entities.WardrobeItem,
-	candidates []CandidateForPrompt,
+	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
 ) *entities.WardrobeItem {
@@ -58,9 +60,9 @@ func (uc *OutfitRecommendationUseCase) resolvePrimaryCandidate(
 	return nil
 }
 
-func (uc *OutfitRecommendationUseCase) resolveAlternativeCandidates(
+func resolveAlternativeCandidates(
 	candidateMap map[uuid.UUID]*entities.WardrobeItem,
-	candidates []CandidateForPrompt,
+	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,

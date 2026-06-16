@@ -2,42 +2,48 @@ package chat
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
-const outfitRedirectMessage = "Để nhận được gợi ý phối đồ chuẩn xác nhất từ thuật toán của Smart Wardrobe, bạn vui lòng sử dụng chức năng Phối đồ trên màn hình chính."
+const outfitRedirectMessage = "Bạn có thể tham khảo phong cách này nhé. Để nhận được gợi ý phối đồ chuẩn xác nhất từ tủ đồ cá nhân của bạn, vui lòng sử dụng chức năng Phối đồ."
+
+var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|dam|giay|ao-khoac|ao khoac|do cua|mac|phoi|style|gu|mac gi)\b`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
 func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message) string {
 	var builder strings.Builder
-	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Only recommend items from the user's available wardrobe items listed below. Do not suggest buying external products.\n")
+	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	if strings.TrimSpace(summary) != "" {
 		builder.WriteString("Summary of previous conversation:\n")
 		builder.WriteString(summary)
 		builder.WriteString("\n")
 	}
 
-	builder.WriteString("Available wardrobe items:\n")
-	limit := min(len(wardrobeItems), 20)
-	for i := range limit {
-		item := wardrobeItems[i]
-		builder.WriteString("- ")
-		if item.Category != nil {
-			builder.WriteString(item.Category.Name)
-			builder.WriteString(" ")
+	if len(wardrobeItems) > 0 {
+		builder.WriteString("Available wardrobe items:\n")
+		limit := min(len(wardrobeItems), 20)
+		for i := range limit {
+			item := wardrobeItems[i]
+			builder.WriteString("- ")
+			if item.Category != nil {
+				builder.WriteString(item.Category.Name)
+				builder.WriteString(" ")
+			}
+			if item.Color != nil {
+				builder.WriteString(*item.Color)
+				builder.WriteString(" ")
+			}
+			if item.Style != nil {
+				builder.WriteString(*item.Style)
+				builder.WriteString(" ")
+			}
+			builder.WriteString("\n")
 		}
-		if item.Color != nil {
-			builder.WriteString(*item.Color)
-			builder.WriteString(" ")
-		}
-		if item.Style != nil {
-			builder.WriteString(*item.Style)
-			builder.WriteString(" ")
-		}
-		builder.WriteString("\n")
 	}
 
 	builder.WriteString("5 most recent messages:\n")
@@ -50,10 +56,28 @@ func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeIte
 
 // isOutfitIntent detects whether the user is asking for an outfit recommendation.
 func isOutfitIntent(content string) bool {
-	lowered := strings.ToLower(content)
+	normalized := strings.ToLower(shared.RemoveVietnameseSigns(content))
 	keywords := []string{"phoi do", "outfit", "mac gi", "goi y do", "chon quan ao", "phoi cho toi"}
 	for _, keyword := range keywords {
-		if strings.Contains(lowered, keyword) {
+		if strings.Contains(normalized, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// isWardrobeRelatedQuery detects whether the query contains keywords asking about wardrobe or styles.
+func isWardrobeRelatedQuery(content string, recent []*entities.Message) bool {
+	normalized := strings.ToLower(shared.RemoveVietnameseSigns(content))
+	if reWardrobeKeywords.MatchString(normalized) {
+		return true
+	}
+	// Also check last 2 messages for ongoing fashion context
+	limit := min(len(recent), 2)
+	for i := range limit {
+		msg := recent[len(recent)-1-i]
+		normalizedRecent := strings.ToLower(shared.RemoveVietnameseSigns(msg.Content))
+		if reWardrobeKeywords.MatchString(normalizedRecent) {
 			return true
 		}
 	}

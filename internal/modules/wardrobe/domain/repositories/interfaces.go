@@ -13,16 +13,33 @@ import (
 	"github.com/google/uuid"
 )
 
+type RecommendationHardFilters struct {
+	Seasonality   []string
+	CategorySlugs []string
+}
+
+const (
+	HybridCandidateSourceHybrid   = "hybrid"
+	HybridCandidateSourceVector   = "vector"
+	HybridCandidateSourceLexical  = "lexical"
+	HybridCandidateSourceFallback = "fallback"
+)
+
+type HybridCandidate struct {
+	Item            *entities.WardrobeItem
+	VectorScore     float64
+	LexicalScore    float64
+	RetrievalScore  float64
+	RetrievalRank   int
+	RetrievalSource string
+}
+
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
-	CountByUserIDAndCategory(ctx context.Context, userID uuid.UUID, categorySlug *string) (int64, error)
 	CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus) (int64, error)
-	CountPendingByUserID(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus) (int64, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error)
 	GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
-	GetByUserIDPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
-	GetPendingByUserIDPaginated(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	BulkCreate(ctx context.Context, items []*entities.WardrobeItem) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
 	CountItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) (int64, error)
@@ -36,7 +53,7 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
-	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, keywords []string, limit int) ([]*entities.WardrobeItem, error)
+	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
 type ICategoryRepository interface {

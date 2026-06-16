@@ -38,15 +38,6 @@ func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.
 	return count, nil
 }
 
-func (r *WardrobeItemRepository) CountByUserIDAndCategory(ctx context.Context, userID uuid.UUID, categorySlug *string) (int64, error) {
-	var count int64
-	query := r.buildUserWardrobeFilterQuery(ctx, userID, categorySlug, []wardrobestatus.WardrobeItemStatus{wardrobestatus.InWardrobe}, false)
-	if err := query.Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
 func (r *WardrobeItemRepository) CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus) (int64, error) {
 	var count int64
 	query := r.buildUserWardrobeFilterQuery(ctx, userID, categorySlug, statuses, false)
@@ -70,59 +61,9 @@ func (r *WardrobeItemRepository) GetByUserID(ctx context.Context, userID uuid.UU
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetByUserIDPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
-	var items []*entities.WardrobeItem
-	query := r.buildUserWardrobeFilterQuery(ctx, userID, categorySlug, []wardrobestatus.WardrobeItemStatus{wardrobestatus.InWardrobe}, true)
-	db := shared_persist.ApplyPagination(query, pagination)
-	err := db.Order("wardrobe_items.created_at DESC").Find(&items).Error
-	if err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 func (r *WardrobeItemRepository) GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
 	query := r.buildUserWardrobeFilterQuery(ctx, userID, categorySlug, statuses, true)
-	db := shared_persist.ApplyPagination(query, pagination)
-	err := db.Order("wardrobe_items.created_at DESC").Find(&items).Error
-	if err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-func (r *WardrobeItemRepository) CountPendingByUserID(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus) (int64, error) {
-	var count int64
-	query := r.GetDB(ctx).Model(&entities.WardrobeItem{}).Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ?", userID, false)
-	if status != nil {
-		query = query.Where("wardrobe_items.status = ?", *status)
-	} else {
-		query = query.Where("wardrobe_items.status IN ?", []wardrobestatus.WardrobeItemStatus{
-			wardrobestatus.Processing,
-			wardrobestatus.Failed,
-			wardrobestatus.NeedsReview,
-		})
-	}
-
-	if err := query.Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-func (r *WardrobeItemRepository) GetPendingByUserIDPaginated(ctx context.Context, userID uuid.UUID, status *wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
-	var items []*entities.WardrobeItem
-	query := r.GetQueryWithPreload(ctx).Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ?", userID, false)
-	if status != nil {
-		query = query.Where("wardrobe_items.status = ?", *status)
-	} else {
-		query = query.Where("wardrobe_items.status IN ?", []wardrobestatus.WardrobeItemStatus{
-			wardrobestatus.Processing,
-			wardrobestatus.Failed,
-			wardrobestatus.NeedsReview,
-		})
-	}
 	db := shared_persist.ApplyPagination(query, pagination)
 	err := db.Order("wardrobe_items.created_at DESC").Find(&items).Error
 	if err != nil {
@@ -404,64 +345,4 @@ func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Contex
 	}
 
 	return query
-}
-
-// GetHybridCandidates performs a multi-stage hybrid search combining:
-// - Vector search (cosine similarity on pgvector embeddings)
-// - Lexical search (full-text search GIN index on text attributes)
-// - Fallback options (if one of them is empty or fails)
-// The results are fused using a weighted combination:
-// Score = 0.7 * (1.0 - Cosine Distance) + 0.3 * (Text Search Rank)
-func (r *WardrobeItemRepository) GetHybridCandidates(
-	ctx context.Context,
-	userID uuid.UUID,
-	semanticVector entities.Vector,
-	keywords []string,
-	limit int,
-) ([]*entities.WardrobeItem, error) {
-	var items []*entities.WardrobeItem
-	// Base query filtering active, non-deleted wardrobe items owned by the specified user
-	db := r.GetQueryWithPreload(ctx).
-		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
-			userID, wardrobestatus.InWardrobe, false)
-
-	hasVector := len(semanticVector) > 0
-	hasKeywords := len(keywords) > 0
-
-	// Case 1: Both vector and keyword search parameters are available (Hybrid Search)
-	if hasVector && hasKeywords {
-		kwStr := strings.Join(keywords, " ")
-		// Weighted score: 70% weight for semantic vector similarity, 30% for full-text search rank (ts_rank_cd)
-		// <=> operator calculates cosine distance, so (1.0 - distance) yields cosine similarity
-		// simple config is utilized for fast matching without language-specific stemming
-		err := db.Order(gorm.Expr(
-			"0.7 * (1.0 - (wardrobe_items.embedding <=> ?)) + 0.3 * ts_rank_cd(to_tsvector('simple', coalesce(wardrobe_items.color, '') || ' ' || coalesce(wardrobe_items.style, '') || ' ' || coalesce(wardrobe_items.material, '') || ' ' || coalesce(wardrobe_items.pattern, '') || ' ' || coalesce(wardrobe_items.fit, '') || ' ' || coalesce(wardrobe_items.description, '')), plainto_tsquery('simple', ?)) DESC",
-			semanticVector, kwStr,
-		)).
-			Limit(limit).
-			Find(&items).Error
-		return items, err
-	} else if hasVector {
-		// Case 2: Only vector search is available (pure semantic retrieval ordered by closest cosine distance)
-		err := db.Order(gorm.Expr("wardrobe_items.embedding <=> ?", semanticVector)).
-			Limit(limit).
-			Find(&items).Error
-		return items, err
-	} else if hasKeywords {
-		// Case 3: Only keywords are available (pure lexical retrieval utilizing GIN index matching with @@)
-		kwStr := strings.Join(keywords, " ")
-		err := db.Where(gorm.Expr(
-			"to_tsvector('simple', coalesce(wardrobe_items.color, '') || ' ' || coalesce(wardrobe_items.style, '') || ' ' || coalesce(wardrobe_items.material, '') || ' ' || coalesce(wardrobe_items.pattern, '') || ' ' || coalesce(wardrobe_items.fit, '') || ' ' || coalesce(wardrobe_items.description, '')) @@ plainto_tsquery('simple', ?)",
-			kwStr,
-		)).
-			Limit(limit).
-			Find(&items).Error
-		return items, err
-	}
-
-	// Case 4: Fallback retrieval (default to most recently created items)
-	err := db.Order("wardrobe_items.created_at DESC").
-		Limit(limit).
-		Find(&items).Error
-	return items, err
 }

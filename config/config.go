@@ -22,12 +22,12 @@ type Config struct {
 }
 
 type WardrobeProcessing struct {
-	RetryDelay1Seconds int
-	RetryDelay2Seconds int
-	RetryDelay3Seconds int
-	StaleMinutes       int
-	MaxRetryCount      int
-	RecoveryScanCron   string
+	RetryDelay1Seconds      int
+	RetryDelay2Seconds      int
+	RetryDelay3Seconds      int
+	StaleMinutes            int
+	MaxRetryCount           int
+	RecoveryScanCron        string
 	CategoryCacheTTLSeconds int
 }
 
@@ -51,14 +51,14 @@ type APIProviderConfig struct {
 }
 
 type AIServiceConfig struct {
-	VisionPrimary     APIProviderConfig
-	VisionFallback    APIProviderConfig
-	EmbeddingPrimary  APIProviderConfig
-	EmbeddingFallback APIProviderConfig
-	ChatTextPrimary   APIProviderConfig
-	ChatTextFallback  APIProviderConfig
-	RecommendationTextPrimary  APIProviderConfig
-	RecommendationTextFallback APIProviderConfig
+	VisionPrimary                    APIProviderConfig
+	VisionFallback                   APIProviderConfig
+	EmbeddingPrimary                 APIProviderConfig
+	EmbeddingFallback                APIProviderConfig
+	ChatTextPrimary                  APIProviderConfig
+	ChatTextFallback                 APIProviderConfig
+	RecommendationTextPrimary        APIProviderConfig
+	RecommendationTextFallback       APIProviderConfig
 	ChatTextTimeoutSeconds           int
 	RecommendationTextTimeoutSeconds int
 	VisionTimeoutSeconds             int
@@ -164,7 +164,16 @@ type Community struct {
 }
 
 type RAG struct {
-	RecentlyWornPenaltyDays int
-	LongUnwornBonusDays     int
-	RrfKParameter           int
+	RecentlyWornPenaltyDays                 int
+	LongUnwornBonusDays                     int
+	RrfKParameter                           int
+	RecommendationCandidateLimit            int
+	RecommendationMinimumCandidatePool      int
+	RecommendationEmbeddingDimension        int
+	RecommendationEmbeddingTimeoutSeconds   int
+	RecommendationLLMRewriterEnabled        bool
+	RecommendationLLMRewriterTimeoutSeconds int
+	RecommendationRewriterMaxSemanticLength int
+	RecommendationRewriterMaxLexicalTerms   int
+	RecommendationRewriterMaxExcludedTerms  int
 }

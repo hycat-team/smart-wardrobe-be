@@ -170,17 +170,26 @@ func LoadConfig() *Config {
 			MaxPersonalizedWindow: getEnvInt("COMMUNITY_MAX_PERSONALIZED_WINDOW", 100),
 		},
 		RAG: RAG{
-			RecentlyWornPenaltyDays: getEnvInt("RAG_RECENTLY_WORN_PENALTY_DAYS", 3),
-			LongUnwornBonusDays:     getEnvInt("RAG_LONG_UNWORN_BONUS_DAYS", 14),
-			RrfKParameter:           getEnvInt("RAG_RRF_K_PARAMETER", 30),
+			RecentlyWornPenaltyDays:                 getEnvInt("RAG_RECENTLY_WORN_PENALTY_DAYS", 3),
+			LongUnwornBonusDays:                     getEnvInt("RAG_LONG_UNWORN_BONUS_DAYS", 14),
+			RrfKParameter:                           getEnvInt("RAG_RRF_K_PARAMETER", 30),
+			RecommendationCandidateLimit:            getEnvInt("RAG_RECOMMENDATION_CANDIDATE_LIMIT", 40),
+			RecommendationMinimumCandidatePool:      getEnvInt("RAG_RECOMMENDATION_MINIMUM_CANDIDATE_POOL", 20),
+			RecommendationEmbeddingDimension:        getEnvInt("RAG_RECOMMENDATION_EMBEDDING_DIMENSION", 768),
+			RecommendationEmbeddingTimeoutSeconds:   getEnvInt("RAG_RECOMMENDATION_EMBEDDING_TIMEOUT_SECONDS", 2),
+			RecommendationLLMRewriterEnabled:        getEnvBool("RAG_RECOMMENDATION_LLM_REWRITER_ENABLED", false),
+			RecommendationLLMRewriterTimeoutSeconds: getEnvInt("RAG_RECOMMENDATION_LLM_REWRITER_TIMEOUT_SECONDS", 2),
+			RecommendationRewriterMaxSemanticLength: getEnvInt("RAG_RECOMMENDATION_REWRITER_MAX_SEMANTIC_LENGTH", 512),
+			RecommendationRewriterMaxLexicalTerms:   getEnvInt("RAG_RECOMMENDATION_REWRITER_MAX_LEXICAL_TERMS", 24),
+			RecommendationRewriterMaxExcludedTerms:  getEnvInt("RAG_RECOMMENDATION_REWRITER_MAX_EXCLUDED_TERMS", 24),
 		},
 		Wardrobe: WardrobeProcessing{
-			RetryDelay1Seconds: getEnvInt("WARDROBE_RETRY_DELAY_1_SECONDS", 60),
-			RetryDelay2Seconds: getEnvInt("WARDROBE_RETRY_DELAY_2_SECONDS", 300),
-			RetryDelay3Seconds: getEnvInt("WARDROBE_RETRY_DELAY_3_SECONDS", 900),
-			StaleMinutes:       getEnvInt("WARDROBE_PROCESSING_STALE_MINUTES", 20),
-			MaxRetryCount:      getEnvInt("WARDROBE_PROCESSING_MAX_RETRIES", 3),
-			RecoveryScanCron:   getEnv("WARDROBE_RECOVERY_SCAN_CRON", "0 */5 * * * *"),
+			RetryDelay1Seconds:      getEnvInt("WARDROBE_RETRY_DELAY_1_SECONDS", 60),
+			RetryDelay2Seconds:      getEnvInt("WARDROBE_RETRY_DELAY_2_SECONDS", 300),
+			RetryDelay3Seconds:      getEnvInt("WARDROBE_RETRY_DELAY_3_SECONDS", 900),
+			StaleMinutes:            getEnvInt("WARDROBE_PROCESSING_STALE_MINUTES", 20),
+			MaxRetryCount:           getEnvInt("WARDROBE_PROCESSING_MAX_RETRIES", 3),
+			RecoveryScanCron:        getEnv("WARDROBE_RECOVERY_SCAN_CRON", "0 */5 * * * *"),
 			CategoryCacheTTLSeconds: getEnvInt("WARDROBE_CATEGORY_CACHE_TTL_SECONDS", 300),
 		},
 	}
@@ -232,6 +241,9 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.AI.ChatTextRPMLimit <= 0 || cfg.AI.RecommendationTextRPMLimit <= 0 || cfg.AI.VisionRPMLimit <= 0 || cfg.AI.EmbeddingRPMLimit <= 0 {
 		return fmt.Errorf("ai rpm limits must be greater than 0")
+	}
+	if cfg.RAG.RecommendationCandidateLimit <= 0 || cfg.RAG.RecommendationMinimumCandidatePool <= 0 || cfg.RAG.RecommendationEmbeddingDimension <= 0 || cfg.RAG.RecommendationEmbeddingTimeoutSeconds <= 0 {
+		return fmt.Errorf("rag recommendation retrieval configuration is invalid")
 	}
 
 	return nil

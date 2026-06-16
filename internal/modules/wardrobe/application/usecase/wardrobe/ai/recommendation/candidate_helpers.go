@@ -2,18 +2,25 @@ package recommendation
 
 import (
 	"context"
-	"sort"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
-	"github.com/google/uuid"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/ranking"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/retrieval"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
@@ -59,24 +66,59 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	userID uuid.UUID,
 	activeItems []*entities.WardrobeItem,
 	input dto.RecommendOutfitReq,
-) ([]CandidateForPrompt, error) {
+) ([]types.CandidateForPrompt, error) {
 	intent := uc.parseRecommendationIntent(input)
-	queryVector := uc.buildRecommendationQueryVector(ctx, intent)
+	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, intent)
+	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
 
 	candidates, err := uc.wardrobeRepo.GetHybridCandidates(
 		ctx,
 		userID,
 		queryVector,
-		intent.ExactKeywords,
-		40,
+		retrieval.ExtractTermStrings(retrievalQuery.LexicalTerms),
+		retrieval.ExtractTermStrings(retrievalQuery.ExcludedTerms),
+		retrievalQuery.HardFilters,
+		uc.cfg.RAG.RecommendationCandidateLimit,
+		uc.cfg.RAG.RrfKParameter,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	candidates = uc.ensureMinimumCandidatePool(candidates, activeItems)
+	// Transform repositories.HybridCandidate to types.CandidateForRanking
+	rankingCandidates := make([]types.CandidateForRanking, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.Item == nil {
+			continue
+		}
+		rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+			Item:            candidate.Item,
+			Source:          candidate.RetrievalSource,
+			VectorScore:     candidate.VectorScore,
+			LexicalScore:    candidate.LexicalScore,
+			RetrievalScore:  candidate.RetrievalScore,
+			RetrievalRank:   candidate.RetrievalRank,
+			RetrievalSource: candidate.RetrievalSource,
+		})
+	}
 
-	return uc.rankCandidates(candidates, intent), nil
+	rankingCandidates, _ = ranking.EnsureMinimumCandidatePool(
+		rankingCandidates,
+		activeItems,
+		retrievalQuery,
+		uc.cfg.RAG.RecommendationMinimumCandidatePool,
+	)
+
+	ranked, _ := ranking.RankCandidates(
+		rankingCandidates,
+		intent,
+		retrievalQuery,
+		uc.cfg.RAG.RecentlyWornPenaltyDays,
+		uc.cfg.RAG.LongUnwornBonusDays,
+		uc.cfg.RAG.RecommendationMinimumCandidatePool,
+	)
+
+	return ranked, nil
 }
 
 func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
@@ -88,97 +130,141 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 	}
 
 	intent := uc.nlpParser.Parse(freeText)
+	hasExplicitOptions := false
 	if input.Occasion != nil && *input.Occasion != "" {
-		intent.Occasion = []string{*input.Occasion}
+		intent.Occasion = []string{strings.TrimSpace(*input.Occasion)}
+		hasExplicitOptions = true
+	}
+	if input.StyleTarget != nil && *input.StyleTarget != "" {
+		intent.StyleTarget = []string{strings.TrimSpace(*input.StyleTarget)}
+		hasExplicitOptions = true
 	}
 	if input.ColorTone != nil && *input.ColorTone != "" {
-		intent.ColorTone = []string{*input.ColorTone}
+		intent.ColorTone = []string{strings.TrimSpace(*input.ColorTone)}
+		hasExplicitOptions = true
 	}
+	if input.Weather != nil && *input.Weather != "" {
+		weather := strings.TrimSpace(*input.Weather)
+		intent.PositiveConstraints = sliceutils.AppendUniqueStringCaseInsensitive(intent.PositiveConstraints, weather)
+		hasExplicitOptions = true
+	}
+	if input.Season != nil && *input.Season != "" && *input.Season != dto.SeasonAll {
+		intent.PositiveConstraints = sliceutils.AppendUniqueStringCaseInsensitive(intent.PositiveConstraints, string(*input.Season))
+		hasExplicitOptions = true
+	}
+	intent.LexicalTerms = uc.nlpParser.RemoveConflictingLexicalTerms(intent)
+
+	intent.SemanticQuery = retrieval.BuildRecommendationSemanticQuery(intent, freeText, hasExplicitOptions)
 
 	return intent
 }
 
 func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 	ctx context.Context,
-	intent dto.ParsedIntent,
+	semanticQuery string,
 ) entities.Vector {
-	if intent.SemanticQuery == "" {
+	if semanticQuery == "" {
+		uc.logger.Warn("Outfit recommendation embedding skipped",
+			zap.String("reason", "empty_semantic_query"),
+		)
 		return nil
 	}
 
-	embedCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	embedCtx, cancel := context.WithTimeout(ctx, time.Duration(uc.cfg.RAG.RecommendationEmbeddingTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	vecs, err := uc.aiService.GenerateEmbeddings(embedCtx, []string{intent.SemanticQuery})
-	if err != nil || len(vecs) == 0 || len(vecs[0]) != 768 {
+	vecs, err := uc.aiService.GenerateEmbeddings(embedCtx, []string{semanticQuery})
+	if err != nil {
+		uc.logger.Warn("Outfit recommendation embedding failed",
+			zap.String("reason", "provider_error"),
+			zap.Error(err),
+		)
+		return nil
+	}
+	if len(vecs) == 0 {
+		uc.logger.Warn("Outfit recommendation embedding failed",
+			zap.String("reason", "empty_vector_response"),
+		)
+		return nil
+	}
+	if len(vecs[0]) != uc.cfg.RAG.RecommendationEmbeddingDimension {
+		uc.logger.Warn("Outfit recommendation embedding failed",
+			zap.String("reason", "unexpected_dimension"),
+			zap.Int("dimension", len(vecs[0])),
+			zap.Int("expected_dimension", uc.cfg.RAG.RecommendationEmbeddingDimension),
+		)
 		return nil
 	}
 
 	return entities.Vector(vecs[0])
 }
 
-func (uc *OutfitRecommendationUseCase) ensureMinimumCandidatePool(
-	candidates, activeItems []*entities.WardrobeItem,
-) []*entities.WardrobeItem {
-	if len(candidates) >= 20 || len(candidates) >= len(activeItems) {
-		return candidates
+func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
+	ctx context.Context,
+	intent dto.ParsedIntent,
+) types.RecommendationRetrievalQuery {
+	local := retrieval.LocalRecommendationQueryRewriter{}
+	if uc.cfg == nil || !uc.cfg.RAG.RecommendationLLMRewriterEnabled {
+		query, _ := local.Rewrite(ctx, intent)
+		return query
 	}
 
-	taken := map[uuid.UUID]bool{}
-	for _, candidate := range candidates {
-		taken[candidate.ID] = true
-	}
+	rewriteCtx, cancel := context.WithTimeout(ctx, time.Duration(uc.cfg.RAG.RecommendationLLMRewriterTimeoutSeconds)*time.Second)
+	defer cancel()
 
-	for _, item := range activeItems {
-		if taken[item.ID] {
-			continue
+	query, err := retrieval.NewLLMRecommendationQueryRewriter(uc.aiService, uc.cfg).Rewrite(rewriteCtx, intent)
+	if err == nil {
+		if uc.logger != nil {
+			uc.logger.Info("Outfit recommendation query rewriter completed",
+				zap.String("rewriter_source", "llm"),
+				zap.Int("lexical_terms_count", len(query.LexicalTerms)),
+				zap.Int("excluded_terms_count", len(query.ExcludedTerms)),
+			)
 		}
-
-		candidates = append(candidates, item)
-		taken[item.ID] = true
-		if len(candidates) >= 20 {
-			break
-		}
+		return query
 	}
 
-	return candidates
+	if uc.logger != nil {
+		uc.logger.Warn("Outfit recommendation query rewriter fallback",
+			zap.String("rewriter_source", "local"),
+			zap.String("fallback_reason", err.Error()),
+		)
+	}
+	query, _ = local.Rewrite(ctx, intent)
+	return query
 }
 
-func (uc *OutfitRecommendationUseCase) rankCandidates(
-	candidates []*entities.WardrobeItem,
-	intent dto.ParsedIntent,
-) []CandidateForPrompt {
-	scored := make([]RankedCandidate, len(candidates))
-	for i, item := range candidates {
-		score, tags := scoreCandidateItem(
-			item,
-			intent,
-			uc.cfg.RAG.RecentlyWornPenaltyDays,
-			uc.cfg.RAG.LongUnwornBonusDays,
-		)
-		scored[i] = RankedCandidate{
-			Item:  item,
-			Score: score,
-			Tags:  tags,
+func retrievalSourceCount(candidates []repositories.HybridCandidate, source string) int {
+	count := 0
+	for _, candidate := range candidates {
+		if candidate.RetrievalSource == source {
+			count++
 		}
 	}
+	return count
+}
 
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].Score > scored[j].Score
-	})
-
-	limit := min(len(scored), 20)
-	if limit < 15 && len(scored) >= 15 {
-		limit = 15
+func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []string) string {
+	hasVector := len(vector) > 0
+	hasLexical := len(lexicalTerms) > 0
+	switch {
+	case hasVector && hasLexical:
+		return "hybrid"
+	case hasVector:
+		return "vector"
+	case hasLexical:
+		return "lexical"
+	default:
+		return "fallback"
 	}
+}
 
-	final := make([]CandidateForPrompt, 0, limit)
-	for i := 0; i < limit; i++ {
-		final = append(final, CandidateForPrompt{
-			Item: scored[i].Item,
-			Tags: scored[i].Tags,
-		})
+func missingEmbeddingCount(items []*entities.WardrobeItem) int {
+	count := 0
+	for _, item := range items {
+		if item == nil || len(item.Embedding) == 0 {
+			count++
+		}
 	}
-
-	return final
+	return count
 }

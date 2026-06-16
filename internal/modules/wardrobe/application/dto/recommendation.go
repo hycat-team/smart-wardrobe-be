@@ -15,18 +15,18 @@ const (
 
 type RecommendOutfitReq struct {
 	// Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)
-	Occasion    *string `json:"occasion" example:"casual"`
+	Occasion *string `json:"occasion" example:"casual"`
 	// Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant, hoặc nhập phong cách tùy ý)
 	StyleTarget *string `json:"styleTarget" example:"minimalist"`
 	// Mùa phối đồ
 	// @enums spring,summer,autumn,winter,all
-	Season      *Season `json:"season" swaggertype:"string" enums:"spring,summer,autumn,winter,all"`
+	Season *Season `json:"season" swaggertype:"string" enums:"spring,summer,autumn,winter,all"`
 	// Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)
-	Weather     *string `json:"weather" example:"warm"`
+	Weather *string `json:"weather" example:"warm"`
 	// Ghi chú thêm bằng tay (free text)
-	Details     *string `json:"details"`
+	Details *string `json:"details"`
 	// Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)
-	ColorTone   *string `json:"colorTone" example:"light"`
+	ColorTone *string `json:"colorTone" example:"light"`
 }
 
 type RecommendedOutfitRes struct {
@@ -50,12 +50,14 @@ type PendingTransferRes struct {
 }
 
 type ParsedIntent struct {
-	SemanticQuery       string   `json:"semantic_query"`
-	ExactKeywords       []string `json:"exact_keywords"`
+	SemanticQuery       string   `json:"semanticQuery"`
+	LexicalTerms        []string `json:"lexicalTerms"`
 	Occasion            []string `json:"occasion"`
-	StyleTarget         []string `json:"style_target"`
-	ColorTone           []string `json:"color_tone"`
-	PositiveConstraints []string `json:"positive_constraints"`
-	NegativeConstraints []string `json:"negative_constraints"`
+	StyleTarget         []string `json:"styleTarget"`
+	ColorTone           []string `json:"colorTone"`
+	PositiveConstraints []string `json:"positiveConstraints"`
+	NegativeConstraints []string `json:"negativeConstraints"`
+	ExcludedStyles      []string `json:"excludedStyles"`
+	ExcludedColorTones  []string `json:"excludedColorTones"`
+	ExcludedWeather     []string `json:"excludedWeather"`
 }
-

@@ -1,38 +1,39 @@
-package recommendation
+// Package synthesis implements response synthesis, LLM prompt assembly, response parsing, and validation.
+package synthesis
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-// parseOutfitRecommendationJSON parses the model response and tolerates non-JSON wrappers
-// by extracting the first complete JSON object when the provider returns extra prose.
-func parseOutfitRecommendationJSON(responseText string) (llmOutfitResponse, string, error) {
+// ParseOutfitRecommendationJSON parses the model response, strips markdown code blocks, and handles surrounding prose.
+func ParseOutfitRecommendationJSON(responseText string) (types.LlmOutfitResponse, string, error) {
 	cleaned := stringutils.CleanJSONMarkdown(responseText)
 
-	var result llmOutfitResponse
+	var result types.LlmOutfitResponse
 	if err := json.Unmarshal([]byte(cleaned), &result); err == nil {
-		return result, cleaned, validateOutfitRecommendationPayload(result)
-	} else {
-		extracted := extractFirstJSONObject(cleaned)
-		if extracted == "" {
-			return llmOutfitResponse{}, cleaned, err
-		}
-
-		err = json.Unmarshal([]byte(extracted), &result)
-		if err != nil {
-			return result, extracted, err
-		}
-
-		return result, extracted, validateOutfitRecommendationPayload(result)
+		return result, cleaned, ValidateOutfitRecommendationPayload(result)
 	}
+
+	extracted := ExtractFirstJSONObject(cleaned)
+	if extracted == "" {
+		return types.LlmOutfitResponse{}, cleaned, fmt.Errorf("could not extract JSON object from response")
+	}
+
+	err := json.Unmarshal([]byte(extracted), &result)
+	if err != nil {
+		return result, extracted, err
+	}
+
+	return result, extracted, ValidateOutfitRecommendationPayload(result)
 }
 
-// validateOutfitRecommendationPayload rejects placeholder-filled responses before mapping.
-func validateOutfitRecommendationPayload(payload llmOutfitResponse) error {
+// ValidateOutfitRecommendationPayload rejects placeholder-filled responses before mapping candidate items.
+func ValidateOutfitRecommendationPayload(payload types.LlmOutfitResponse) error {
 	if isPlaceholderValue(payload.Title) || isPlaceholderValue(payload.Explanation) {
 		return fmt.Errorf("placeholder values detected in recommendation payload")
 	}
@@ -61,8 +62,8 @@ func isPlaceholderValue(value string) bool {
 	return false
 }
 
-// extractFirstJSONObject returns the first balanced top-level JSON object in the text.
-func extractFirstJSONObject(value string) string {
+// ExtractFirstJSONObject returns the first balanced top-level JSON object in the text.
+func ExtractFirstJSONObject(value string) string {
 	start := strings.IndexByte(value, '{')
 	if start < 0 {
 		return ""

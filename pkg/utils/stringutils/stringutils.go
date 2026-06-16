@@ -112,3 +112,15 @@ func CleanJSONMarkdown(content string) string {
 	}
 	return strings.TrimSpace(content)
 }
+
+// ToNormalizedSet converts a slice of strings to a lookup map with lowercased and trimmed values.
+func ToNormalizedSet(values []string) map[string]bool {
+	set := make(map[string]bool, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value != "" {
+			set[value] = true
+		}
+	}
+	return set
+}
