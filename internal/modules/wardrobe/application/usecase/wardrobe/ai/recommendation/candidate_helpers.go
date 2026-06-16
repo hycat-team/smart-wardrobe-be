@@ -89,10 +89,10 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 
 	intent := uc.nlpParser.Parse(freeText)
 	if input.Occasion != nil && *input.Occasion != "" {
-		intent.Occasion = *input.Occasion
+		intent.Occasion = []string{*input.Occasion}
 	}
 	if input.ColorTone != nil && *input.ColorTone != "" {
-		intent.ColorTone = *input.ColorTone
+		intent.ColorTone = []string{*input.ColorTone}
 	}
 
 	return intent

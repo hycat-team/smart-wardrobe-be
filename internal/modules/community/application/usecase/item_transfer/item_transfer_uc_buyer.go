@@ -144,7 +144,7 @@ func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUse
 			continue
 		}
 
-		sellerName := "NgÆ°á»i dÃ¹ng áº©n danh"
+		sellerName := "Người dùng ẩn danh"
 		if name, exists := sellerNamesByID[item.Post.UserID]; exists && name != "" {
 			sellerName = name
 		}

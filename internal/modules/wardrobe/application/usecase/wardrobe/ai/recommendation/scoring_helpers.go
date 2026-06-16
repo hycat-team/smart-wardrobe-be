@@ -31,32 +31,40 @@ func scoreCandidateItem(
 		}
 	}
 
-	if intent.Occasion != "" {
-		occasion := strings.ToLower(intent.Occasion)
-		descMatch := item.Description != nil && strings.Contains(strings.ToLower(*item.Description), occasion) ||
-			item.Style != nil && strings.Contains(strings.ToLower(*item.Style), occasion)
-		if descMatch {
-			score += 0.2
-			reasonTags = append(reasonTags, "occasion-match:"+occasion)
+	if len(intent.Occasion) > 0 {
+		for _, occ := range intent.Occasion {
+			occasion := strings.ToLower(occ)
+			descMatch := item.Description != nil && strings.Contains(strings.ToLower(*item.Description), occasion) ||
+				item.Style != nil && strings.Contains(strings.ToLower(*item.Style), occasion)
+			if descMatch {
+				score += 0.2
+				reasonTags = append(reasonTags, "occasion-match:"+occasion)
+				break
+			}
 		}
 	}
 
-	if intent.ColorTone != "" && item.ColorLightness != nil {
-		tone := strings.ToLower(intent.ColorTone)
-		lightness := *item.ColorLightness
-		if tone == "light" && lightness >= 60 {
-			score += 0.2
-			reasonTags = append(reasonTags, "color-tone:light")
-		} else if tone == "dark" && lightness <= 40 {
-			score += 0.2
-			reasonTags = append(reasonTags, "color-tone:dark")
-		} else if tone == "earthy" && item.ColorHue != nil && item.ColorSaturation != nil {
-			hue := *item.ColorHue
-			saturation := *item.ColorSaturation
-			if ((hue >= 20 && hue <= 50) || (hue >= 80 && hue <= 120)) &&
-				saturation <= 50 && lightness >= 20 && lightness <= 70 {
+	if len(intent.ColorTone) > 0 && item.ColorLightness != nil {
+		for _, t := range intent.ColorTone {
+			tone := strings.ToLower(t)
+			lightness := *item.ColorLightness
+			if tone == "light" && lightness >= 60 {
 				score += 0.2
-				reasonTags = append(reasonTags, "color-tone:earthy")
+				reasonTags = append(reasonTags, "color-tone:light")
+				break
+			} else if tone == "dark" && lightness <= 40 {
+				score += 0.2
+				reasonTags = append(reasonTags, "color-tone:dark")
+				break
+			} else if tone == "earthy" && item.ColorHue != nil && item.ColorSaturation != nil {
+				hue := *item.ColorHue
+				saturation := *item.ColorSaturation
+				if ((hue >= 20 && hue <= 50) || (hue >= 80 && hue <= 120)) &&
+					saturation <= 50 && lightness >= 20 && lightness <= 70 {
+					score += 0.2
+					reasonTags = append(reasonTags, "color-tone:earthy")
+					break
+				}
 			}
 		}
 	}
@@ -90,11 +98,11 @@ func scoreCandidateItem(
 			penalty := float64(recentlyWornDays-days) / float64(recentlyWornDays) * 0.4
 			score -= penalty
 			reasonTags = append(reasonTags, fmt.Sprintf("recently-worn-penalty:-%.2f", penalty))
-		} else if days > longUnwornDays && (styleMatched || intent.Occasion != "") {
+		} else if days > longUnwornDays && (styleMatched || len(intent.Occasion) > 0) {
 			score += 0.15
 			reasonTags = append(reasonTags, "long-unworn-bonus")
 		}
-	} else if styleMatched || intent.Occasion != "" {
+	} else if styleMatched || len(intent.Occasion) > 0 {
 		score += 0.15
 		reasonTags = append(reasonTags, "new-item-bonus")
 	}

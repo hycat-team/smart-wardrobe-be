@@ -52,9 +52,9 @@ type PendingTransferRes struct {
 type ParsedIntent struct {
 	SemanticQuery       string   `json:"semantic_query"`
 	ExactKeywords       []string `json:"exact_keywords"`
-	Occasion            string   `json:"occasion"`
+	Occasion            []string `json:"occasion"`
 	StyleTarget         []string `json:"style_target"`
-	ColorTone           string   `json:"color_tone"`
+	ColorTone           []string `json:"color_tone"`
 	PositiveConstraints []string `json:"positive_constraints"`
 	NegativeConstraints []string `json:"negative_constraints"`
 }
