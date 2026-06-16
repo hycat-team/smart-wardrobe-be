@@ -1,6 +1,9 @@
 package dto
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -79,6 +82,38 @@ type FashionMetadataResult struct {
 	Description  string `json:"description"`
 	IsSingleItem bool   `json:"is_single_item"`
 	ReviewReason string `json:"review_reason"`
+}
+
+func (f *FashionMetadataResult) UnmarshalJSON(data []byte) error {
+	type Alias FashionMetadataResult
+	aux := struct {
+		IsSingleItem any `json:"is_single_item"`
+		*Alias
+	}{
+		Alias: (*Alias)(f),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	switch v := aux.IsSingleItem.(type) {
+	case bool:
+		f.IsSingleItem = v
+	case string:
+		switch strings.ToLower(v) {
+		case "true", "1", "yes":
+			f.IsSingleItem = true
+		case "false", "0", "no", "":
+			f.IsSingleItem = false
+		default:
+			return fmt.Errorf("invalid boolean string for is_single_item: %s", v)
+		}
+	case nil:
+		f.IsSingleItem = false
+	default:
+		return fmt.Errorf("unexpected type for is_single_item: %T", v)
+	}
+	return nil
 }
 
 type AICategoryRef struct {

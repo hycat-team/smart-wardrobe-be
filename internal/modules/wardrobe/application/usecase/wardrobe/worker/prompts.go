@@ -16,6 +16,7 @@ func getVisionSystemPrompt(categories []dto.AICategoryRef) string {
 
 	return fmt.Sprintf(`Analyze the fashion item image and output a strict JSON payload mapping directly to the following database fields.
 All values for the JSON keys (color, style, material, pattern, fit, seasonality, and description) MUST be written entirely in natural, accurate Vietnamese fashion prose.
+The "is_single_item" key MUST be a boolean value (true or false, WITHOUT quotes). Set it to true if the image contains exactly one clear fashion item for analysis; false if it is a full-body shot, an outfit shot, or contains multiple items in the same image.
 Do not limit your analysis to the examples provided in the schema; use your broader fashion knowledge to identify the exact attributes.
 
 You MUST classify the item into one of the following categories based on the image. Choose the single most appropriate slug from this list:
@@ -28,8 +29,8 @@ If the image does not contain any fashion, apparel, clothing, footwear, or acces
 
 JSON Schema format:
 {
-  "is_single_item": "true if the image contains exactly one clear fashion item for analysis; false if it is a full-body shot, an outfit shot, or contains multiple items in the same image",
-  "review_reason": "If is_single_item = false, you must return exactly one of: 'multiple_items_detected', 'full_body_outfit_detected', 'uncertain_category'. If is_single_item = true, return an empty string",
+  "is_single_item": true,
+  "review_reason": "If is_single_item is false, you must return exactly one of: 'multiple_items_detected', 'full_body_outfit_detected', 'uncertain_category'. If is_single_item is true, return an empty string",
   "category_slug": "The selected category slug from the list (e.g. 'ao', 'quan', etc.)",
   "color": "Color name in natural Vietnamese fashion context, including shades (e.g. 'Đen mun', 'Trắng sữa', 'Xanh olive', etc.)",
   "color_hex": "The 6-character hexadecimal color code representing the dominant background or base color of the item (e.g. '#000000', '#FFFFFF', '#556B2F', etc.). If the item is multicolored or patterned, choose the dominant background/base color.",
