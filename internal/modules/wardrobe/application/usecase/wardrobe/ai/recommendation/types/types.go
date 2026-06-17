@@ -10,32 +10,32 @@ import (
 )
 
 const (
-	// CandidateSourceRetrieval indicates the candidate was fetched through hybrid search.
+	// CandidateSourceRetrieval chỉ ra ứng viên được lấy thông qua tìm kiếm hỗn hợp (hybrid search).
 	CandidateSourceRetrieval = repositories.HybridCandidateSourceHybrid
-	// CandidateSourceFallback indicates the candidate was fetched via fallback search.
+	// CandidateSourceFallback chỉ ra ứng viên được lấy thông qua tìm kiếm dự phòng (fallback search).
 	CandidateSourceFallback = repositories.HybridCandidateSourceFallback
-	// CandidateSourceStrictFallback indicates strict fallback matching.
+	// CandidateSourceStrictFallback đại diện cho mức độ lọc dự phòng nghiêm ngặt (strict fallback).
 	CandidateSourceStrictFallback = "strict-fallback"
-	// CandidateSourceRelaxedFallback indicates relaxed fallback matching.
+	// CandidateSourceRelaxedFallback đại diện cho mức độ lọc dự phòng nới lỏng vừa phải (relaxed fallback).
 	CandidateSourceRelaxedFallback = "relaxed-fallback"
-	// CandidateSourceGeneralFallback indicates general fallback matching.
+	// CandidateSourceGeneralFallback đại diện cho mức độ lọc dự phòng tổng quan/rộng nhất (general fallback).
 	CandidateSourceGeneralFallback = "general-fallback"
 
-	// RetrievalTermSourceDictionary indicates a query term extracted from localized dictionaries.
+	// RetrievalTermSourceDictionary chỉ ra từ khóa truy vấn được trích xuất từ các từ điển cục bộ.
 	RetrievalTermSourceDictionary = "dictionary"
-	// RetrievalTermSourceRaw indicates a query term extracted from raw text.
+	// RetrievalTermSourceRaw chỉ ra từ khóa truy vấn thô được trích xuất trực tiếp từ câu truy vấn của người dùng.
 	RetrievalTermSourceRaw = "raw"
-	// RetrievalTermSourceTaxonomy indicates a query term expanded using taxonomy.
+	// RetrievalTermSourceTaxonomy chỉ ra từ khóa truy vấn được mở rộng từ hệ thống phân loại thời trang (taxonomy).
 	RetrievalTermSourceTaxonomy = "taxonomy"
 )
 
-// CandidateForPrompt represents a candidate wardrobe item prepared for the LLM prompt payload.
+// CandidateForPrompt đại diện cho một món đồ ứng viên đã chuẩn bị đầy đủ thông tin (kèm tag thời trang) để đưa vào prompt gửi cho LLM.
 type CandidateForPrompt struct {
 	Item *entities.WardrobeItem
 	Tags []string
 }
 
-// RerankStats holds statistics about candidate scoring and diversification.
+// RerankStats lưu trữ các thông số thống kê phục vụ cho việc chấm điểm và đa dạng hóa danh sách ứng viên sau khi xếp hạng.
 type RerankStats struct {
 	MinScore         float64
 	MaxScore         float64
@@ -43,7 +43,7 @@ type RerankStats struct {
 	DiversifiedCount int
 }
 
-// CandidateForRanking represents a candidate wardrobe item processed in the scoring/ranking pipeline.
+// CandidateForRanking đại diện cho một món đồ ứng viên đang được xử lý trong pipeline chấm điểm và xếp hạng.
 type CandidateForRanking struct {
 	Item            *entities.WardrobeItem
 	Source          string
@@ -54,7 +54,7 @@ type CandidateForRanking struct {
 	RetrievalSource string
 }
 
-// RankedCandidate represents a scored and ranked wardrobe item.
+// RankedCandidate đại diện cho một món đồ ứng viên đã được tính điểm và sắp xếp thứ hạng hoàn chỉnh.
 type RankedCandidate struct {
 	Item          *entities.WardrobeItem
 	Score         float64
@@ -63,19 +63,19 @@ type RankedCandidate struct {
 	RetrievalRank int
 }
 
-// FallbackCandidateCounts counts fallback candidates processed across matching tiers.
+// FallbackCandidateCounts đếm số lượng ứng viên tìm được qua các tầng lọc dự phòng khác nhau (Strict, Relaxed, General).
 type FallbackCandidateCounts struct {
 	Strict  int
 	Relaxed int
 	General int
 }
 
-// Total returns the total number of fallback candidates.
+// Total trả về tổng số lượng ứng viên thu thập được từ tất cả các tầng dự phòng.
 func (c FallbackCandidateCounts) Total() int {
 	return c.Strict + c.Relaxed + c.General
 }
 
-// RecommendationRetrievalQuery encapsulates the parameters used for candidate retrieval.
+// RecommendationRetrievalQuery đóng gói các tham số tinh chỉnh dùng để truy vấn tìm kiếm các món đồ ứng viên từ cơ sở dữ liệu.
 type RecommendationRetrievalQuery struct {
 	SemanticQuery  string
 	LexicalTerms   []RetrievalTerm
@@ -84,7 +84,7 @@ type RecommendationRetrievalQuery struct {
 	RewriterSource string
 }
 
-// RetrievalTerm represents an individual term used for lexical search matching.
+// RetrievalTerm đại diện cho một từ khóa riêng lẻ dùng cho việc so khớp tìm kiếm văn bản (lexical search).
 type RetrievalTerm struct {
 	Value        string
 	Source       string
@@ -92,7 +92,7 @@ type RetrievalTerm struct {
 	SourceReason string
 }
 
-// KeywordMatch represents a localized dictionary match in the NLP parsing phase.
+// KeywordMatch đại diện cho một kết quả khớp từ khóa trong từ điển cục bộ trong pha phân tích ngôn ngữ tự nhiên (NLP parser).
 type KeywordMatch struct {
 	Category string
 	Value    string
@@ -102,12 +102,13 @@ type KeywordMatch struct {
 	Source   string
 }
 
-// RecommendationQueryRewriter defines the contract for query rewriting in hybrid RAG.
+// RecommendationQueryRewriter định nghĩa giao diện (contract) cho các bộ viết lại truy vấn (query rewriter) trong kiến trúc RAG.
 type RecommendationQueryRewriter interface {
+	// Rewrite viết lại hoặc làm phong phú thêm ý định của người dùng thành cấu trúc truy vấn nâng cao [RecommendationRetrievalQuery].
 	Rewrite(ctx context.Context, intent dto.ParsedIntent) (RecommendationRetrievalQuery, error)
 }
 
-// LlmOutfitResponse represents the structured JSON schema returned by the LLM.
+// LlmOutfitResponse đại diện cho cấu trúc JSON của bộ trang phục gợi ý do mô hình AI trả về.
 type LlmOutfitResponse struct {
 	Title       string `json:"title"`
 	Explanation string `json:"explanation"`

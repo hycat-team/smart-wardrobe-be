@@ -12,7 +12,7 @@ import (
 	"smart-wardrobe-be/pkg/logger"
 )
 
-// OutfitRecommendationUseCase coordinates outfit recommendation workflows.
+// OutfitRecommendationUseCase điều phối các luồng nghiệp vụ gợi ý trang phục bằng AI.
 type OutfitRecommendationUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
@@ -24,7 +24,7 @@ type OutfitRecommendationUseCase struct {
 	nlpParser       *parser.LocalNLPParser
 }
 
-// NewOutfitRecommendationUseCase builds the outfit recommendation use case.
+// NewOutfitRecommendationUseCase khởi tạo một thực thể mới của [OutfitRecommendationUseCase] với các cấu hình và repository phụ thuộc cần thiết.
 func NewOutfitRecommendationUseCase(
 	cfg *config.Config,
 	l logger.Interface,

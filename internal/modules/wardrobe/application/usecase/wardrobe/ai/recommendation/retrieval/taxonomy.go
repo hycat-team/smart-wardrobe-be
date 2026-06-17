@@ -2,7 +2,6 @@
 package retrieval
 
 import (
-	"sort"
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
@@ -80,6 +79,7 @@ var recommendationSeasonalityTerms = map[string]bool{
 	"winter": true,
 }
 
+// taxonomyEntries xây dựng các phần tử [recommendationTaxonomyEntry] từ danh sách từ khóa và lý do tương ứng.
 func taxonomyEntries(reason string, targetFields []string, terms ...string) []recommendationTaxonomyEntry {
 	entries := make([]recommendationTaxonomyEntry, 0, len(terms))
 	for _, term := range terms {
@@ -92,7 +92,23 @@ func taxonomyEntries(reason string, targetFields []string, terms ...string) []re
 	return entries
 }
 
-// ExpandTaxonomyTerms expands simplified filter parameters into detailed retrieval terms using the taxonomy.
+// ExpandTaxonomyTerms ánh xạ các tham số lọc đơn giản (ví dụ: "work", "sport") sang các từ khóa chi tiết hơn được lưu trữ trong từ điển phân loại (taxonomy dictionary) để cải thiện độ phủ tìm kiếm (recall).
+//
+// Hành vi:
+// 1. Lấy bảng cấu hình từ điển [recommendationTaxonomy] theo nhóm (group) được truyền vào (ví dụ: "occasion").
+// 2. Với mỗi giá trị trong danh sách đầu vào ([values]), chuẩn hóa và tìm kiếm các phần tử tương ứng trong cấu hình từ điển.
+// 3. Với mỗi phần tử tìm thấy, tạo và thêm một đối tượng [RetrievalTerm] mới với nguồn là `taxonomy`, kèm theo thông tin các trường mục tiêu và lý do mở rộng.
+// 4. Trả về danh sách [RetrievalTerm] đã mở rộng.
+//
+// Đầu vào mẫu:
+//   group: "style"
+//   values: []string{"minimalist"}
+//
+// Đầu ra mẫu:
+//   []types.RetrievalTerm{
+//     {Value: "toi gian", Source: "taxonomy", TargetFields: []string{"style", "description"}, SourceReason: "style:minimalist"},
+//     ...
+//   }
 func ExpandTaxonomyTerms(group string, values []string) []types.RetrievalTerm {
 	var expanded []types.RetrievalTerm
 	config := recommendationTaxonomy[group]
@@ -110,7 +126,7 @@ func ExpandTaxonomyTerms(group string, values []string) []types.RetrievalTerm {
 	return expanded
 }
 
-// ExpandTaxonomyTermValues expands filter parameters into a list of strings representing equivalent taxonomy terms.
+// ExpandTaxonomyTermValues mở rộng các tham số lọc thành một danh sách chuỗi thô các từ khóa phân loại tương đương (đã lọc trùng và sắp xếp).
 func ExpandTaxonomyTermValues(group string, values []string) []string {
 	entries := ExpandTaxonomyTerms(group, values)
 	terms := make([]string, 0, len(entries))
@@ -118,49 +134,4 @@ func ExpandTaxonomyTermValues(group string, values []string) []string {
 		terms = append(terms, entry.Value)
 	}
 	return NormalizeTermSet(terms)
-}
-
-// OuterwearCategoryTerms returns the list of outerwear category slugs in the taxonomy.
-func OuterwearCategoryTerms() []string {
-	return ExpandTaxonomyTermValues(taxonomyGroupCategory, []string{"ao-khoac"})
-}
-
-// RecommendationAllowedCategorySlugs returns all allowed category slugs defined in the taxonomy.
-func RecommendationAllowedCategorySlugs() []string {
-	slugs := make([]string, 0, len(recommendationTaxonomy[taxonomyGroupCategory]))
-	for slug := range recommendationTaxonomy[taxonomyGroupCategory] {
-		slugs = append(slugs, slug)
-	}
-	sort.Strings(slugs)
-	return slugs
-}
-
-// RainyWeatherTerms returns taxonomy terms corresponding to rainy weather.
-func RainyWeatherTerms() []string {
-	return ExpandTaxonomyTermValues(taxonomyGroupWeather, []string{"rainy"})
-}
-
-// ColdLikeWeatherTerms returns terms matching cold/winter seasons and materials like wool.
-func ColdLikeWeatherTerms() []string {
-	return NormalizeTermSet(append(
-		append(ExpandTaxonomyTermValues(taxonomyGroupWeather, []string{"cold", "cool"}), ExpandTaxonomyTermValues(taxonomyGroupSeason, []string{"winter", "autumn"})...),
-		"len",
-	))
-}
-
-// HotLikeWeatherTerms returns terms matching hot/summer conditions.
-func HotLikeWeatherTerms() []string {
-	return NormalizeTermSet(append(ExpandTaxonomyTermValues(taxonomyGroupWeather, []string{"hot"}), ExpandTaxonomyTermValues(taxonomyGroupSeason, []string{"summer"})...))
-}
-
-// BuildSeasonalityHardFilters compiles a slice of seasonality terms matching standard season parameters.
-func BuildSeasonalityHardFilters(values []string) []string {
-	var seasons []string
-	for _, value := range values {
-		season := strings.ToLower(strings.TrimSpace(value))
-		if recommendationSeasonalityTerms[season] {
-			seasons = append(seasons, season)
-		}
-	}
-	return NormalizeTermSet(seasons)
 }

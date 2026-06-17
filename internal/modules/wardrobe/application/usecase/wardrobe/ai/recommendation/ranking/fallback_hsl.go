@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
+// isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
 func isNeutral(item *entities.WardrobeItem) bool {
 	if item.ColorLightness == nil || item.ColorSaturation == nil {
 		return true
@@ -21,6 +22,21 @@ func isNeutral(item *entities.WardrobeItem) bool {
 	return lightness <= 10.0 || lightness >= 90.0 || saturation <= 10.0
 }
 
+// colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
+//
+// Quy tắc phối màu:
+// 1. Nếu một trong hai món đồ có màu trung tính (neutral), chúng luôn phối hợp được với nhau.
+// 2. Nếu hai màu có góc màu (Hue) lệch nhau dưới 30 độ (tương đồng), chúng chỉ được coi là phối hợp khi có độ sáng (Lightness) lệch nhau ít nhất 15% (tránh bị chìm màu).
+// 3. Nếu hai màu đối diện nhau trên bánh xe màu (góc màu lệch từ 165 đến 195 độ - tương phản), chúng phối hợp tốt với nhau.
+//
+// Đầu vào mẫu:
+//
+//	item1: WardrobeItem có Hue = 200 (xanh lam)
+//	item2: WardrobeItem có Hue = 20 (cam - góc lệch 180 độ)
+//
+// Đầu ra mẫu:
+//
+//	true
 func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
 	if isNeutral(item1) || isNeutral(item2) {
 		return true
@@ -50,7 +66,24 @@ func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
 	return deltaH >= 165.0 && deltaH <= 195.0
 }
 
-// RunLocalHSLMatching executes the HSL color matching algorithm to construct a fallback recommended outfit.
+// RunLocalHSLMatching thực hiện thuật toán so khớp màu sắc HSL cục bộ để tạo ra một gợi ý phối đồ dự phòng (fallback) khi AI bị lỗi.
+//
+// Hành vi:
+//  1. Phân loại các món đồ ứng viên thành các nhóm danh mục: Áo (tops), Quần (bottoms), Giày (shoes), Áo khoác (outerwears), Váy (dresses), Phụ kiện (accessories).
+//  2. Xác định thời tiết có lạnh hay mưa không dựa trên thông tin đầu vào.
+//  3. Nếu có váy và giày, chọn váy làm món đồ chính, sau đó duyệt danh sách giày để tìm đôi giày có màu phối hợp tốt nhất qua [colorsMatch].
+//  4. Nếu có áo và quần, duyệt tìm cặp áo và quần đầu tiên phối hợp màu sắc hài hòa nhất làm đồ chính. Sau đó tìm giày và áo khoác (nếu trời lạnh) có màu hợp với áo hoặc quần chính.
+//  5. Nếu không tìm được cặp phối hợp, chọn ngẫu nhiên món đồ đầu tiên của mỗi danh mục.
+//  6. Trả về cấu trúc [RecommendedOutfitRes] kèm tiêu đề và giải thích lý do phối màu.
+//
+// Đầu vào mẫu:
+//
+//	candidates: []types.CandidateForPrompt{...}
+//	input: dto.RecommendOutfitReq{Weather: pointer to "lạnh"}
+//
+// Đầu ra mẫu:
+//
+//	*dto.RecommendedOutfitRes{Title: "Bộ phối màu hài hòa", IsFallback: true, ...}
 func RunLocalHSLMatching(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
@@ -187,6 +220,7 @@ func RunLocalHSLMatching(
 	}
 }
 
+// buildItemGroup xây dựng cấu trúc [RecommendedItemGroup] cho một vai trò phối đồ cụ thể, bao gồm món đồ chính và tối đa 2 món đồ thay thế từ danh sách.
 func buildItemGroup(
 	role string,
 	primary *entities.WardrobeItem,

@@ -27,7 +27,30 @@ var fallbackSeasonAliases = map[string][]string{
 	"winter": {"winter", "dong", "mua dong", "lanh"},
 }
 
-// EnsureMinimumCandidatePool expands candidates using fallbacks if the hybrid search pool is smaller than required.
+// EnsureMinimumCandidatePool bổ sung thêm các ứng viên dự phòng (fallback) nếu bể ứng viên tìm kiếm lai (hybrid search) có kích thước nhỏ hơn mức yêu cầu tối thiểu.
+//
+// Hành vi:
+//
+//  1. Kiểm tra nếu số lượng ứng viên hiện tại đã đủ ([minimumPool]) hoặc bằng tổng số món đồ hoạt động trong tủ đồ, hàm sẽ trả về ngay.
+//
+//  2. Sử dụng map [taken] để theo dõi các món đồ đã có trong bể ứng viên để tránh trùng lặp.
+//
+//  3. Thực hiện thêm các ứng viên qua 3 mức độ nới lỏng tăng dần thông qua [appendFallbackCandidates]:
+//     - Strict: Phải thỏa mãn bộ lọc cứng và chứa từ khóa tìm kiếm (lexical terms).
+//     - Relaxed: Chỉ cần thỏa mãn bộ lọc cứng (không yêu cầu chứa từ khóa).
+//     - General: Nới lỏng hoàn toàn các điều kiện.
+//
+//  4. Trả về bể ứng viên mới đã được mở rộng và số lượng ứng viên được thêm ở mỗi cấp độ.
+//
+// Đầu vào mẫu:
+//
+//	candidates: []types.CandidateForRanking{...} (có 2 ứng viên)
+//	activeItems: []*entities.WardrobeItem{...} (tổng 10 món đồ)
+//	minimumPool: 5
+//
+// Đầu ra mẫu:
+//
+//	([]types.CandidateForRanking, types.FallbackCandidateCounts) chứa 5 ứng viên sau khi đã bổ sung 3 ứng viên dự phòng.
 func EnsureMinimumCandidatePool(
 	candidates []types.CandidateForRanking,
 	activeItems []*entities.WardrobeItem,
@@ -56,6 +79,7 @@ func EnsureMinimumCandidatePool(
 	return rankingCandidates, counts
 }
 
+// appendFallbackCandidates duyệt qua danh sách các món đồ hoạt động của người dùng để chọn lọc và đưa các món đồ đủ điều kiện vào bể ứng viên cho đến khi đạt đủ số lượng tối thiểu.
 func appendFallbackCandidates(
 	rankingCandidates *[]types.CandidateForRanking,
 	activeItems []*entities.WardrobeItem,
@@ -89,7 +113,7 @@ func appendFallbackCandidates(
 	return added
 }
 
-// FallbackCandidateEligible verifies eligibility of a fallback item against hard exclusions.
+// FallbackCandidateEligible kiểm tra tính hợp lệ của một món đồ ứng viên dự phòng bằng cách kiểm tra các bộ lọc loại trừ nghiêm ngặt (hard filters, excluded terms và lexical terms tùy theo cấp độ).
 func FallbackCandidateEligible(
 	item *entities.WardrobeItem,
 	retrievalQuery types.RecommendationRetrievalQuery,
@@ -107,7 +131,7 @@ func FallbackCandidateEligible(
 	return true
 }
 
-// MatchesFallbackHardFilters checks if the candidate matches the category/seasonality hard filters.
+// MatchesFallbackHardFilters xác định xem món đồ có vượt qua các bộ lọc cứng về mùa (seasonality) và danh mục (category slugs) hay không.
 func MatchesFallbackHardFilters(item *entities.WardrobeItem, filters repositories.RecommendationHardFilters) bool {
 	if item == nil {
 		return false
@@ -136,7 +160,7 @@ func MatchesFallbackHardFilters(item *entities.WardrobeItem, filters repositorie
 	return true
 }
 
-// MatchesFallbackSeasonalityFilter returns true if a candidate's seasonality overlaps with requested query seasonality.
+// MatchesFallbackSeasonalityFilter trả về true nếu mùa của món đồ có phần giao thoa/trùng khớp với mùa được yêu cầu trong truy vấn.
 func MatchesFallbackSeasonalityFilter(seasonality string, requestedSeasons []string) bool {
 	normalizedSeasonality := parser.NormalizeText(seasonality)
 	if normalizedSeasonality == "" {
@@ -162,7 +186,7 @@ func MatchesFallbackSeasonalityFilter(seasonality string, requestedSeasons []str
 	return false
 }
 
-// MatchesFallbackExcludedTerms returns true if the candidate's metadata matches forbidden exclusion terms.
+// MatchesFallbackExcludedTerms trả về true nếu mô tả hoặc thuộc tính của món đồ chứa các từ khóa nằm trong danh sách loại trừ nghiêm ngặt.
 func MatchesFallbackExcludedTerms(item *entities.WardrobeItem, excludedTerms []types.RetrievalTerm) bool {
 	if len(excludedTerms) == 0 {
 		return false
@@ -177,7 +201,7 @@ func MatchesFallbackExcludedTerms(item *entities.WardrobeItem, excludedTerms []t
 	return false
 }
 
-// MatchesFallbackLexicalTerms returns true if the candidate matches lexical keywords.
+// MatchesFallbackLexicalTerms trả về true nếu mô tả hoặc thuộc tính của món đồ có chứa ít nhất một trong các từ khóa tìm kiếm.
 func MatchesFallbackLexicalTerms(item *entities.WardrobeItem, lexicalTerms []types.RetrievalTerm) bool {
 	if len(lexicalTerms) == 0 {
 		return true
@@ -192,7 +216,7 @@ func MatchesFallbackLexicalTerms(item *entities.WardrobeItem, lexicalTerms []typ
 	return false
 }
 
-// FallbackSearchDocument concatenates a candidate's metadata fields for string matching.
+// FallbackSearchDocument nối tất cả các trường thông tin mô tả và thuộc tính của món đồ thành một chuỗi văn bản duy nhất để phục vụ cho việc quét từ khóa.
 func FallbackSearchDocument(item *entities.WardrobeItem) string {
 	if item == nil {
 		return ""

@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 )
 
+// splitSentences phân tách một chuỗi đã chuẩn hóa thành danh sách các câu/mệnh đề nhỏ hơn dựa trên dấu câu và các từ nối phản chỉ (như "nhưng", "mà", "chứ").
 func (p *LocalNLPParser) splitSentences(normalized string) []string {
 	processed := normalized
 	processed = strings.ReplaceAll(processed, " nhung ", " , nhung ")
@@ -25,6 +26,7 @@ func (p *LocalNLPParser) splitSentences(normalized string) []string {
 	return sentences
 }
 
+// containsPhrase kiểm tra xem một cụm từ có xuất hiện trong văn bản hay không bằng cách sử dụng biểu thức chính quy (Regex) đã được biên dịch trước.
 func (p *LocalNLPParser) containsPhrase(text, phrase string) bool {
 	if !strings.Contains(text, phrase) {
 		return false
@@ -35,6 +37,8 @@ func (p *LocalNLPParser) containsPhrase(text, phrase string) bool {
 	return false
 }
 
+// detectMatches tìm kiếm và phát hiện các từ khóa thuộc về một danh mục cụ thể (ví dụ: occasion, style) trong văn bản,
+// sau đó trả về danh sách các khớp từ khóa [KeywordMatch] được sắp xếp theo vị trí bắt đầu của chúng.
 func (p *LocalNLPParser) detectMatches(text, category string, values map[string][]string) []types.KeywordMatch {
 	valueNames := make([]string, 0, len(values))
 	for name := range values {
@@ -70,6 +74,7 @@ func (p *LocalNLPParser) detectMatches(text, category string, values map[string]
 	return matches
 }
 
+// overlapsAnyMatch kiểm tra xem một khớp từ khóa mới có bị trùng lặp/chồng chéo vị trí (vị trí ký tự bắt đầu và kết thúc) với bất kỳ khớp từ khóa nào đã tồn tại trước đó hay không.
 func overlapsAnyMatch(match types.KeywordMatch, existing []types.KeywordMatch) bool {
 	for _, other := range existing {
 		if match.Start < other.End && match.End > other.Start {
@@ -79,6 +84,7 @@ func overlapsAnyMatch(match types.KeywordMatch, existing []types.KeywordMatch) b
 	return false
 }
 
+// detectRawLexicalTerms tách văn bản thành các từ đơn và lọc ra các từ hợp lệ (không phải từ dừng hay phủ định) làm từ khóa lexical thô (raw lexical terms).
 func (p *LocalNLPParser) detectRawLexicalTerms(text string) []types.KeywordMatch {
 	words := strings.Fields(text)
 	matches := make([]types.KeywordMatch, 0, len(words))
@@ -108,6 +114,7 @@ func (p *LocalNLPParser) detectRawLexicalTerms(text string) []types.KeywordMatch
 	return matches
 }
 
+// isNegatedMatch kiểm tra xem một từ khóa khớp có bị phủ định bởi các từ phủ định đứng trước nó (ví dụ: "không", "tránh", "đừng") trong một khoảng từ (window) giới hạn hay không.
 func (p *LocalNLPParser) isNegatedMatch(text string, match types.KeywordMatch) bool {
 	const negationWindowWords = 4
 	prefix := strings.TrimSpace(text[:match.Start])
@@ -128,6 +135,7 @@ func (p *LocalNLPParser) isNegatedMatch(text string, match types.KeywordMatch) b
 	return false
 }
 
+// isLexicalTerm xác định xem một từ đơn có hợp lệ để làm từ khóa tìm kiếm lexical hay không (độ dài > 2 ký tự, không phải từ dừng, và không phải từ phủ định).
 func (p *LocalNLPParser) isLexicalTerm(word string) bool {
 	word = strings.TrimSpace(word)
 	if len(word) <= 2 {

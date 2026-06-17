@@ -20,6 +20,25 @@ type hybridCandidateRecord struct {
 	RetrievalSource string
 }
 
+// mergeHybridCandidateRecordsByRRF hợp nhất hai tập bản ghi ứng viên (từ tìm kiếm vector và từ tìm kiếm từ khóa) và xếp hạng lại bằng thuật toán Reciprocal Rank Fusion (RRF).
+//
+// Hành vi:
+//   - 1. Tính toán điểm RRF = 1 / (rrfK + rank) cho mỗi ứng viên từ tập kết quả tìm kiếm vector và lưu vào bảng ánh xạ.
+//   - 2. Tiếp tục duyệt qua tập kết quả tìm kiếm từ khóa, tính toán điểm RRF tương tự.
+//   - 3. Nếu ứng viên đã tồn tại trong bảng ánh xạ (tức khớp cả vector và lexical), cộng dồn điểm RRF và đánh dấu nguồn là `hybrid`.
+//   - 4. Sắp xếp lại danh sách theo điểm RRF giảm dần. Nếu điểm bằng nhau, sắp xếp theo ID của món đồ tăng dần.
+//   - 5. Cắt danh sách theo [limit] và trả về.
+//
+// Đầu vào mẫu:
+//
+//	vectorRecords: []hybridCandidateRecord{{WardrobeItem: entities.WardrobeItem{ID: uuid1}}}
+//	lexicalRecords: []hybridCandidateRecord{{WardrobeItem: entities.WardrobeItem{ID: uuid1}}}
+//	rrfK: 60
+//	limit: 10
+//
+// Đầu ra mẫu:
+//
+//	[]hybridCandidateRecord (chứa uuid1 với RetrievalSource: "hybrid", RetrievalScore: 1/61 + 1/61)
 func mergeHybridCandidateRecordsByRRF(
 	vectorRecords []hybridCandidateRecord,
 	lexicalRecords []hybridCandidateRecord,
@@ -70,6 +89,7 @@ func mergeHybridCandidateRecordsByRRF(
 	return merged
 }
 
+// buildHybridCandidates thực hiện truy vấn chi tiết các mối quan hệ (preload categories, v.v.) và chuyển đổi danh sách bản ghi thô [hybridCandidateRecord] thành thực thể hoàn chỉnh [HybridCandidate] phục vụ cho nghiệp vụ.
 func (r *WardrobeItemRepository) buildHybridCandidates(
 	ctx context.Context,
 	records []hybridCandidateRecord,
@@ -120,6 +140,7 @@ func (r *WardrobeItemRepository) buildHybridCandidates(
 	return candidates, nil
 }
 
+// buildRecommendationTSQueryOR sinh chuỗi truy vấn tsquery của PostgreSQL nối với nhau bằng toán tử "OR" (||) từ danh sách các từ khóa văn bản, đồng thời chuẩn hóa Lowercase và loại bỏ dấu tiếng Việt (unaccent).
 func buildRecommendationTSQueryOR(terms []string) (string, []any) {
 	var parts []string
 	args := make([]any, 0, len(terms))
@@ -139,6 +160,7 @@ func buildRecommendationTSQueryOR(terms []string) (string, []any) {
 	return strings.Join(parts, " || "), args
 }
 
+// buildRecommendationSeasonalityCondition xây dựng điều kiện SQL (SQL Where condition) để lọc các món đồ có mùa vụ (seasonality) phù hợp với mùa yêu cầu hoặc hỗ trợ tất cả các mùa (all-season).
 func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 	aliases := recommendationSeasonalityAliases(seasons)
 	if len(aliases) == 0 {
@@ -163,6 +185,7 @@ func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 	return "(" + strings.Join(conditions, " OR ") + ")", args
 }
 
+// recommendationSeasonalityAliases chuyển đổi danh sách các mùa thô thành tập hợp các từ khóa mùa tương đương/đồng nghĩa mở rộng (ví dụ: "he" -> "he", "summer", "mua he").
 func recommendationSeasonalityAliases(seasons []string) []string {
 	seen := map[string]bool{}
 	var aliases []string
@@ -188,6 +211,7 @@ func recommendationSeasonalityAliases(seasons []string) []string {
 	return aliases
 }
 
+// recommendationSearchDocumentSQL định nghĩa cấu trúc tsvector của PostgreSQL bằng cách ghép nối tất cả các thuộc tính văn bản của tủ đồ (color, style, description, v.v.) để tìm kiếm toàn văn (FTS).
 func recommendationSearchDocumentSQL(includeCategory bool) string {
 	fields := []string{
 		"wardrobe_items.color",

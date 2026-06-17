@@ -10,7 +10,19 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-// ParseOutfitRecommendationJSON parses the model response, strips markdown code blocks, and handles surrounding prose.
+// ParseOutfitRecommendationJSON phân tích cú pháp chuỗi JSON phản hồi của mô hình AI, tự động làm sạch các thẻ markdown block (ví dụ: ```json) và xử lý văn bản thừa xung quanh.
+//
+// Hành vi:
+// 1. Dùng [CleanJSONMarkdown] để xóa các định dạng markdown code block.
+// 2. Thử Unmarshal trực tiếp chuỗi đã làm sạch vào [LlmOutfitResponse]. Nếu thành công, xác thực payload qua [ValidateOutfitRecommendationPayload] và trả về.
+// 3. Nếu thất bại, sử dụng [ExtractFirstJSONObject] để tìm và cắt ra đối tượng JSON hợp lệ đầu tiên trong chuỗi.
+// 4. Unmarshal đối tượng JSON đã cắt được, xác thực tính hợp lệ của dữ liệu và trả về kết quả.
+//
+// Đầu vào mẫu:
+//   responseText: "Dưới đây là gợi ý phối đồ:\n```json\n{\"title\": \"Phong cách công sở\", ...}\n```"
+//
+// Đầu ra mẫu:
+//   (types.LlmOutfitResponse{Title: "Phong cách công sở", ...}, "{\"title\": \"Phong cách công sở\", ...}", nil)
 func ParseOutfitRecommendationJSON(responseText string) (types.LlmOutfitResponse, string, error) {
 	cleaned := stringutils.CleanJSONMarkdown(responseText)
 
@@ -32,7 +44,7 @@ func ParseOutfitRecommendationJSON(responseText string) (types.LlmOutfitResponse
 	return result, extracted, ValidateOutfitRecommendationPayload(result)
 }
 
-// ValidateOutfitRecommendationPayload rejects placeholder-filled responses before mapping candidate items.
+// ValidateOutfitRecommendationPayload kiểm tra và từ chối các phản hồi chứa dữ liệu mẫu hoặc placeholder do mô hình AI trả về (như "uuid", "string", v.v.) để đảm bảo tính toàn vẹn dữ liệu.
 func ValidateOutfitRecommendationPayload(payload types.LlmOutfitResponse) error {
 	if isPlaceholderValue(payload.Title) || isPlaceholderValue(payload.Explanation) {
 		return fmt.Errorf("placeholder values detected in recommendation payload")
@@ -52,6 +64,7 @@ func ValidateOutfitRecommendationPayload(payload types.LlmOutfitResponse) error 
 	return nil
 }
 
+// isPlaceholderValue kiểm tra xem một chuỗi có phải là giá trị placeholder phổ biến mà AI hay trả về khi không có dữ liệu thực tế hay không.
 func isPlaceholderValue(value string) bool {
 	normalized := strings.TrimSpace(strings.ToLower(value))
 	switch normalized {
@@ -62,7 +75,19 @@ func isPlaceholderValue(value string) bool {
 	return false
 }
 
-// ExtractFirstJSONObject returns the first balanced top-level JSON object in the text.
+// ExtractFirstJSONObject tìm kiếm và trích xuất chuỗi đối tượng JSON hợp lệ đầu tiên từ một chuỗi văn bản tự do bằng cách đếm số lượng đóng mở ngoặc nhọn lồng nhau.
+//
+// Hành vi:
+// 1. Tìm vị trí xuất hiện của ký tự '{' đầu tiên. Nếu không có, trả về chuỗi rỗng.
+// 2. Duyệt qua từng ký tự tiếp theo, bỏ qua các ký tự nằm trong chuỗi ký tự được bọc bởi dấu nháy kép (inString = true) và các ký tự escaped (ví dụ: \").
+// 3. Đếm độ sâu của dấu ngoặc nhọn: tăng [depth] khi gặp '{' và giảm [depth] khi gặp '}'.
+// 4. Khi [depth] trở về 0, cắt chuỗi từ vị trí '{' bắt đầu đến vị trí '}' hiện tại và trả về.
+//
+// Đầu vào mẫu:
+//   value: "Kết quả: {\"key\": \"value\"} Cảm ơn bạn!"
+//
+// Đầu ra mẫu:
+//   "{\"key\": \"value\"}"
 func ExtractFirstJSONObject(value string) string {
 	start := strings.IndexByte(value, '{')
 	if start < 0 {

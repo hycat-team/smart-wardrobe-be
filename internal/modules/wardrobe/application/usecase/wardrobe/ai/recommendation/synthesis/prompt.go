@@ -10,7 +10,21 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 )
 
-// BuildRecommendationPrompt formats the stylist role, prompt constraints, context, and candidates into an LLM user prompt.
+// BuildRecommendationPrompt định dạng vai trò của stylist, các ràng buộc của prompt, ngữ cảnh yêu cầu và danh sách các ứng viên món đồ thành một prompt người dùng hoàn chỉnh gửi cho LLM.
+//
+// Hành vi:
+// 1. Ghi thông tin vai trò stylist, nhiệm vụ, mức độ ưu tiên quyết định (phù hợp thời tiết, màu sắc, v.v.).
+// 2. Định nghĩa các quy tắc đầu ra: ngôn ngữ tiếng Việt tự nhiên, cấu trúc JSON trả về với các khóa title, explanation, items.
+// 3. Đóng gói ngữ cảnh yêu cầu của người dùng (dịp, phong cách, thời tiết, v.v.) dưới dạng JSON gắn sau nhãn "CONTEXT=".
+// 4. Duyệt qua từng ứng viên và tạo thông tin chi tiết (bao gồm cả các tag đặc trưng thời trang được tính toán từ các bước trước), đóng gói thành các dòng JSON thô dưới nhãn "CANDIDATES=".
+// 5. Trả về toàn bộ chuỗi prompt đã dựng.
+//
+// Đầu vào mẫu:
+//   candidates: []types.CandidateForPrompt{...}
+//   input: dto.RecommendOutfitReq{Occasion: pointer to "đi chơi"}
+//
+// Đầu ra mẫu:
+//   "Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")

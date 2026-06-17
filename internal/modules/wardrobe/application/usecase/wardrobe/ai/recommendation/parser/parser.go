@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
-// LocalNLPParser handles query processing and intent extraction using localized dictionaries.
+// LocalNLPParser xử lý phân tích cú pháp truy vấn ngôn ngữ tự nhiên và trích xuất ý định (intent) sử dụng các từ điển nội bộ.
 type LocalNLPParser struct {
 	occasions    map[string][]string
 	styles       map[string][]string
@@ -21,7 +21,7 @@ type LocalNLPParser struct {
 	keywordRegex map[string]*regexp.Regexp
 }
 
-// NewLocalNLPParser builds a new LocalNLPParser with pre-compiled regex for all fashion keywords.
+// NewLocalNLPParser khởi tạo một thực thể mới của [LocalNLPParser] với các cụm từ khóa thời trang được biên dịch Regex trước để tối ưu hiệu năng tìm kiếm.
 func NewLocalNLPParser() *LocalNLPParser {
 	parser := &LocalNLPParser{
 		occasions: map[string][]string{
@@ -87,7 +87,28 @@ func NewLocalNLPParser() *LocalNLPParser {
 	return parser
 }
 
-// Parse extracts structured intent fields and constraints from free-text user queries.
+// Parse trích xuất các trường ý định cấu trúc và ràng buộc từ truy vấn văn bản tự do của người dùng.
+//
+// Hành vi:
+// 1. Chuẩn hóa chuỗi văn bản bằng [NormalizeText] để xử lý dấu tiếng Việt và lỗi gõ Telex.
+// 2. Chia câu thành các mệnh đề nhỏ hơn thông qua [splitSentences].
+// 3. Với mỗi mệnh đề, quét tìm các từ khóa thuộc dịp ([occasions]), phong cách ([styles]), tông màu ([colorTones]), và thời tiết ([weathers]).
+// 4. Kiểm tra phủ định thông qua [isNegatedMatch] để phân loại xem từ khóa đó là thuộc tính tích cực (ví dụ: cần đồ ấm) hay tiêu cực (ví dụ: tránh đồ màu tối).
+// 5. Quét các từ đơn thô còn lại không trùng với từ điển bằng [detectRawLexicalTerms] để đưa vào tập từ khóa lexical thô.
+// 6. Trả về cấu trúc [ParsedIntent] chứa các lát chuỗi đã được lọc trùng và sắp xếp.
+//
+// Đầu vào mẫu:
+//   freeText: "mình muốn tìm đồ đi chơi phố năng động nhưng không lấy màu tối"
+//
+// Đầu ra mẫu:
+//   dto.ParsedIntent{
+//       Occasion: []string{"casual"},
+//       StyleTarget: []string{"streetwear"},
+//       ExcludedColorTones: []string{"dark"},
+//       NegativeConstraints: []string{"avoid-color-tone:dark"},
+//       LexicalTerms: []string{"casual", "streetwear"},
+//       ...
+//   }
 func (p *LocalNLPParser) Parse(freeText string) dto.ParsedIntent {
 	var intent dto.ParsedIntent
 	if strings.TrimSpace(freeText) == "" {
@@ -171,7 +192,20 @@ func (p *LocalNLPParser) Parse(freeText string) dto.ParsedIntent {
 	return intent
 }
 
-// RemoveConflictingLexicalTerms removes raw query words that conflict with explicit search filters.
+// RemoveConflictingLexicalTerms loại bỏ các từ khóa lexical thô bị xung đột với các bộ lọc tìm kiếm được người dùng chọn rõ ràng.
+//
+// Hành vi:
+// Khi người dùng chọn một bộ lọc rõ ràng trên giao diện (ví dụ: chọn dịp "Làm việc" - work), hàm này sẽ kiểm tra danh sách từ khóa thô.
+// Nếu trong danh sách từ khóa thô chứa các từ chỉ dịp khác (như "di choi" - casual) mà không khớp với dịp được chọn, từ đó sẽ bị lọc bỏ để tránh nhiễu kết quả.
+//
+// Đầu vào mẫu:
+//   intent: dto.ParsedIntent{
+//       Occasion: []string{"work"},
+//       LexicalTerms: []string{"casual", "office"}
+//   }
+//
+// Đầu ra mẫu:
+//   []string{"office"} (từ "casual" bị loại bỏ vì xung đột với dịp "work" đã chọn)
 func (p *LocalNLPParser) RemoveConflictingLexicalTerms(intent dto.ParsedIntent) []string {
 	explicitOccasions := stringutils.ToNormalizedSet(intent.Occasion)
 	explicitStyles := stringutils.ToNormalizedSet(intent.StyleTarget)

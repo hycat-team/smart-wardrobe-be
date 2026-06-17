@@ -11,10 +11,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetHybridCandidates performs a multi-stage hybrid search combining:
-// - Vector search (cosine similarity on pgvector embeddings)
-// - Lexical search (full-text search GIN index on text attributes)
-// - Fallback options (if one of them is empty or fails)
+// GetHybridCandidates thực hiện tìm kiếm hỗn hợp nhiều giai đoạn (hybrid search) kết hợp giữa:
+// - Tìm kiếm ngữ nghĩa bằng khoảng cách Cosine (Cosine Similarity) trên vector embedding (sử dụng pgvector).
+// - Tìm kiếm từ khóa (Lexical Search) bằng chỉ mục GIN của PostgreSQL tsquery trên các thuộc tính văn bản.
+// - Các tùy chọn tìm kiếm dự phòng (fallback) nếu một trong hai phương thức tìm kiếm trên bị trống hoặc lỗi.
+//
+// Hành vi:
+// 1. Khởi tạo câu lệnh SQL cơ sở lọc các wardrobe items đang hoạt động, thuộc sở hữu của userID và chưa bị xóa mềm.
+// 2. Joins bảng categories để lọc theo category slug nếu có trong hard filters.
+// 3. Áp dụng bộ lọc seasonality (mùa vụ) cứng nếu có.
+// 4. Áp dụng lọc loại trừ các từ khóa thô/mở rộng trong [excludedTerms].
+// 5. Nếu có cả vector ngữ nghĩa và từ khóa:
+//   - a. Truy vấn top ứng viên theo khoảng cách vector cosine.
+//   - b. Truy vấn top ứng viên theo độ tương đồng lexical (ts_rank_cd).
+//   - c. Hợp nhất và xếp hạng lại bằng thuật toán RRF qua [mergeHybridCandidateRecordsByRRF].
+//
+// 6. Nếu chỉ có vector ngữ nghĩa: truy vấn và sắp xếp hoàn toàn bằng khoảng cách vector cosine.
+// 7. Nếu chỉ có từ khóa: truy vấn và sắp xếp hoàn toàn bằng điểm FTS ts_rank_cd.
+// 8. Nếu không có cả hai: truy vấn dự phòng lấy các món đồ được tạo gần đây nhất.
+// 9. Xây dựng danh sách ứng viên hoàn chỉnh qua helper [buildHybridCandidates].
 func (r *WardrobeItemRepository) GetHybridCandidates(
 	ctx context.Context,
 	userID uuid.UUID,

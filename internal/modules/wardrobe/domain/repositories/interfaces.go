@@ -53,6 +53,28 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
+	// GetHybridCandidates truy vấn danh sách ứng viên gợi ý trang phục kết hợp (hybrid search) bằng cách thực hiện
+	// tìm kiếm ngữ nghĩa qua Vector Embedding (Cosine Similarity) và tìm kiếm từ khóa (Full-text Search tsquery).
+	// Danh sách kết quả được tổng hợp điểm và xếp hạng lại sử dụng thuật toán Reciprocal Rank Fusion (RRF).
+	//
+	// Hành vi:
+	// 	- 1. Nếu [semanticVector] không rỗng, thực hiện tìm kiếm Vector.
+	// 	- 2. Nếu [lexicalTerms] không rỗng, thực hiện tìm kiếm Lexical thô và mở rộng (FTS).
+	// 	- 3. Loại trừ các món đồ khớp với [excludedTerms] hoặc không thỏa mãn [hardFilters] (như mùa vụ, danh mục).
+	// 	- 4. Kết hợp hai nguồn kết quả và tính điểm RRF dựa trên tham số [rrfK].
+	// 	- 5. Giới hạn số lượng kết quả tối đa bằng [limit].
+	//
+	// Đầu vào mẫu:
+	//   userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
+	//   semanticVector: entities.Vector{0.1, -0.2, ...}
+	//   lexicalTerms: []string{"ao", "khoac"}
+	//   excludedTerms: []string{"len"}
+	//   hardFilters: RecommendationHardFilters{Seasonality: []string{"winter"}}
+	//   limit: 20
+	//   rrfK: 60
+	//
+	// Đầu ra mẫu:
+	//   ([]HybridCandidate, nil)
 	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
