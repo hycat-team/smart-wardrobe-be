@@ -5,6 +5,7 @@
 
 # 1. Phiên bản Git & Hướng dẫn sử dụng
 .git
+.github
 .gitignore
 README.md
 LICENSE
@@ -19,6 +20,7 @@ init-db/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # 4. Thư mục chứa File chạy nhị phân biên dịch ở Local
 bin/
@@ -31,6 +33,14 @@ logs/
 tmp/
 temp/
 *.log
+coverage
+coverage.out
+dist
+build
+bin
+node_modules
+docker-compose*.yml
+README*
 
 # 6. Thư mục cấu hình của IDEs / Text Editors
 .vscode/
