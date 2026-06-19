@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
+	"io"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -10,6 +12,7 @@ import (
 	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 var _ shared_dto.PaginationQuery
@@ -196,25 +199,24 @@ func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse "Kết quả xử lý"
 // @Router /api/v1/subscriptions/payos-webhook [post]
 func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {
+	rawBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return err
+	}
+
+	var req struct {
+		Signature string `json:"signature"`
+	}
+	if err := json.Unmarshal(rawBytes, &req); err != nil {
+		return err
+	}
+
+	err = h.paymentWebhookUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
+	if err != nil {
+		h.logger.Error("Error verifying webhook signature", zap.Error(err))
+		return err
+	}
+
+	shared_pres.Success(c, successProcessPayOSWebhook, nil)
 	return nil
-	// rawBytes, err := io.ReadAll(c.Request.Body)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// var req struct {
-	// 	Signature string `json:"signature"`
-	// }
-	// if err := json.Unmarshal(rawBytes, &req); err != nil {
-	// 	return err
-	// }
-
-	// err = h.paymentWebhookUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
-	// if err != nil {
-	// 	h.logger.Error("Error verifying webhook signature", zap.Error(err))
-	// 	return err
-	// }
-
-	// shared_pres.Success(c, successProcessPayOSWebhook, nil)
-	// return nil
 }
