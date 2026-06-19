@@ -1,42 +1,37 @@
-# ==========================================================
-# STAGE 1: Build stage (Sử dụng Alpine-Go để build tối ưu)
-# ==========================================================
-FROM golang:1.25-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
-# Cài đặt các công cụ hệ thống cần thiết cho quá trình build
-RUN apk update && apk add --no-cache git ca-certificates tzdata
+ARG GO_VERSION=1.25.11
 
-WORKDIR /app
+FROM golang:${GO_VERSION}-alpine3.24 AS builder
 
-# Copy dependency manifests và tải trước để tận dụng Docker Cache
+RUN apk add --no-cache ca-certificates git tzdata
+
+WORKDIR /src
+
 COPY go.mod go.sum ./
-RUN go mod download
 
-# Copy toàn bộ mã nguồn dự án
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
 COPY . .
 
-# Biên dịch ứng dụng sang binary tĩnh (statically linked binary)
-# Sử dụng flag -s -w để loại bỏ thông tin debug và symbol table giúp giảm ~40% dung lượng file binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/main cmd/server/main.go
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 
-# ==========================================================
-# STAGE 2: Final stage (Sử dụng Alpine siêu nhẹ chỉ ~7MB làm runtime)
-# ==========================================================
-FROM alpine:3.20
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/backend ./cmd/server/main.go
 
-# Cài đặt ca-certificates để gọi HTTPS/API bên ngoài và tzdata để xử lý múi giờ chính xác
-RUN apk add --no-cache ca-certificates tzdata
+FROM alpine:3.24.1 AS production
+
+RUN apk add --no-cache ca-certificates tzdata && addgroup -S appgroup && adduser -S -G appgroup appuser
 
 WORKDIR /app
 
-# Copy file thực thi tĩnh từ builder
-COPY --from=builder /app/main .
+COPY --from=builder --chown=appuser:appgroup /out/backend /app/backend
+COPY --from=builder --chown=appuser:appgroup /src/docs /app/docs
 
-# Copy thư mục docs tĩnh phục vụ tài liệu Swagger UI
-COPY --from=builder /app/docs ./docs
+ENV TZ=Asia/Ho_Chi_Minh
 
-# Expose port (sẽ trùng với SERVER_PORT cấu hình trong .env)
+USER appuser
+
 EXPOSE 8080
 
-# Chạy ứng dụng backend
-CMD ["./main"]
+ENTRYPOINT ["/app/backend"]

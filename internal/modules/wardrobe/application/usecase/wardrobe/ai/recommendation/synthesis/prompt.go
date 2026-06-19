@@ -20,11 +20,13 @@ import (
 // 5. Trả về toàn bộ chuỗi prompt đã dựng.
 //
 // Đầu vào mẫu:
-//   candidates: []types.CandidateForPrompt{...}
-//   input: dto.RecommendOutfitReq{Occasion: pointer to "đi chơi"}
+//
+//	candidates: []types.CandidateForPrompt{...}
+//	input: dto.RecommendOutfitReq{Occasion: pointer to "đi chơi"}
 //
 // Đầu ra mẫu:
-//   "Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
+//
+//	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")

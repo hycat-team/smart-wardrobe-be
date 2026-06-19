@@ -71,4 +71,3 @@ func (uc *SubscriptionPlanUseCase) IsPremiumPlan(ctx context.Context, planID uui
 	}
 	return plan.Price.GreaterThan(sharedmoney.Zero), nil
 }
-

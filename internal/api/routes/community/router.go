@@ -61,7 +61,7 @@ func (r *CommunityRouter) Init(group *gin.RouterGroup) {
 
 	transfers := group.Group("/transfers")
 	transfers.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
-	
+
 	// Transfer requests
 	transfers.POST("/requests", shared_pres.WrapHandler(r.transferHandler.CreateTransferRequests))
 	transfers.GET("/items/:postItemID/requests", shared_pres.WrapHandler(r.transferHandler.GetTransferRequestsForSeller))

@@ -20,16 +20,16 @@ const (
 )
 
 type AIService struct {
-	cfg              *config.Config
-	chatTextClient   *http.Client
-	recommendationTextClient *http.Client
-	visionClient     *http.Client
-	embeddingClient  *http.Client
-	chatTextLimiter  *rate.Limiter
+	cfg                       *config.Config
+	chatTextClient            *http.Client
+	recommendationTextClient  *http.Client
+	visionClient              *http.Client
+	embeddingClient           *http.Client
+	chatTextLimiter           *rate.Limiter
 	recommendationTextLimiter *rate.Limiter
-	visionLimiter    *rate.Limiter
-	embeddingLimiter *rate.Limiter
-	logger           logger.Interface
+	visionLimiter             *rate.Limiter
+	embeddingLimiter          *rate.Limiter
+	logger                    logger.Interface
 }
 
 func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService {
@@ -47,11 +47,11 @@ func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService
 		embeddingClient: &http.Client{
 			Timeout: time.Duration(cfg.AI.EmbeddingTimeoutSeconds) * time.Second,
 		},
-		chatTextLimiter:  newRPMLimiter(cfg.AI.ChatTextRPMLimit, 5),
+		chatTextLimiter:           newRPMLimiter(cfg.AI.ChatTextRPMLimit, 5),
 		recommendationTextLimiter: newRPMLimiter(cfg.AI.RecommendationTextRPMLimit, 5),
-		visionLimiter:    newRPMLimiter(cfg.AI.VisionRPMLimit, 5),
-		embeddingLimiter: newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
-		logger:           logger,
+		visionLimiter:             newRPMLimiter(cfg.AI.VisionRPMLimit, 5),
+		embeddingLimiter:          newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
+		logger:                    logger,
 	}
 }
 

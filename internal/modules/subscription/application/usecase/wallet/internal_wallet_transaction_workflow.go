@@ -96,4 +96,3 @@ func ProcessWalletTransaction(
 
 	return nil
 }
-

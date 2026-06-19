@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

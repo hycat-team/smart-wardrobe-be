@@ -2,8 +2,8 @@ package search
 
 import (
 	"encoding/json"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 
 	"github.com/google/uuid"
 )
@@ -85,4 +85,3 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 
 	return results, esResult.Hits.Total.Value, nil
 }
-

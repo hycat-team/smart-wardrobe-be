@@ -23,11 +23,13 @@ import (
 // 6. Trả về cấu trúc [RecommendedOutfitRes] hoàn chỉnh cho người dùng.
 //
 // Đầu vào mẫu:
-//   candidates: []types.CandidateForPrompt{...}
-//   input: dto.RecommendOutfitReq{...}
+//
+//	candidates: []types.CandidateForPrompt{...}
+//	input: dto.RecommendOutfitReq{...}
 //
 // Đầu ra mẫu:
-//   (*dto.RecommendedOutfitRes{Title: "Bộ đồ thanh lịch", Explanation: "...", Items: [...]}, nil)
+//
+//	(*dto.RecommendedOutfitRes{Title: "Bộ đồ thanh lịch", Explanation: "...", Items: [...]}, nil)
 func GenerateOutfitRecommendation(
 	ctx context.Context,
 	aiService ai.IAIService,
@@ -125,10 +127,12 @@ func NewFallbackTraceError(kind string, cause error, prompt, response string) er
 // 3. Trả về thông tin phân loại chi tiết.
 //
 // Đầu vào mẫu:
-//   err: lỗi sinh ra từ GenerateOutfitRecommendation
+//
+//	err: lỗi sinh ra từ GenerateOutfitRecommendation
 //
 // Đầu ra mẫu:
-//   (kind: "provider_error", providerHint: "gemini", promptLen: 1540, responsePreview: "...")
+//
+//	(kind: "provider_error", providerHint: "gemini", promptLen: 1540, responsePreview: "...")
 func ClassifyFallbackTrace(err error) (kind string, providerHint string, promptLen int, responsePreview string) {
 	kind = "unknown"
 	providerHint = "unknown"

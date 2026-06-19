@@ -297,4 +297,3 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 
 	return allEmbeddings, nil
 }
-

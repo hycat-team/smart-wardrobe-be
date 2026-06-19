@@ -224,11 +224,11 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	}
 
 	job := dto.WardrobeBatchUploadJobDTO{
-		ItemID:        item.ID,
-		UserID:        item.UserID,
-		CategoryID:    item.CategoryID,
-		ImageUrl:      item.ImageUrl,
-		ImagePublicID: item.ImagePublicID,
+		ItemID:            item.ID,
+		UserID:            item.UserID,
+		CategoryID:        item.CategoryID,
+		ImageUrl:          item.ImageUrl,
+		ImagePublicID:     item.ImagePublicID,
 		ProcessingVersion: item.ProcessingVersion,
 	}
 	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job); err != nil {
@@ -346,13 +346,13 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 	for i, itemReq := range input.Items {
 		now := time.Now().UTC()
 		newItems[i] = &entities.WardrobeItem{
-			UserID:        userID,
-			CategoryID:    itemReq.CategoryID,
-			ImageUrl:      itemReq.ImageUrl,
-			ImagePublicID: itemReq.ImagePublicID,
-			Status:        wardrobestatus.Processing,
-			ItemType:      itemType,
-			ProcessingStartedAt:   &now,
+			UserID:                  userID,
+			CategoryID:              itemReq.CategoryID,
+			ImageUrl:                itemReq.ImageUrl,
+			ImagePublicID:           itemReq.ImagePublicID,
+			Status:                  wardrobestatus.Processing,
+			ItemType:                itemType,
+			ProcessingStartedAt:     &now,
 			LastProcessingAttemptAt: &now,
 		}
 	}
@@ -364,11 +364,11 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i, item := range newItems {
 		job := dto.WardrobeBatchUploadJobDTO{
-			ItemID:        item.ID,
-			UserID:        userID,
-			CategoryID:    item.CategoryID,
-			ImageUrl:      item.ImageUrl,
-			ImagePublicID: item.ImagePublicID,
+			ItemID:            item.ID,
+			UserID:            userID,
+			CategoryID:        item.CategoryID,
+			ImageUrl:          item.ImageUrl,
+			ImagePublicID:     item.ImagePublicID,
 			ProcessingVersion: item.ProcessingVersion,
 		}
 

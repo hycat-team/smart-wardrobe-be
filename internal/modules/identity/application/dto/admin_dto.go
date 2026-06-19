@@ -12,4 +12,3 @@ type GetUsersQueryReq struct {
 }
 
 type AdminUserListRes = shared_dto.PaginationResult[*UserRes]
-

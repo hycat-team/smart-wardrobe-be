@@ -90,4 +90,3 @@ func (m *RateLimitMiddleware) startCleanupJob(expireAfter time.Duration, interva
 		})
 	}
 }
-

@@ -1,9 +1,9 @@
 package dto
 
 import (
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"time"
 
 	"github.com/google/uuid"

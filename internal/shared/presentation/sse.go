@@ -19,4 +19,3 @@ func InitSSE(c *gin.Context) (http.Flusher, error) {
 	}
 	return flusher, nil
 }
-

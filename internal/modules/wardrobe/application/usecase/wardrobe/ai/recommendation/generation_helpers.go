@@ -14,11 +14,13 @@ import (
 // generateOutfitRecommendation gọi dịch vụ AI/LLM để tổng hợp và sinh ra gợi ý trang phục từ danh sách ứng viên đã chọn lọc.
 //
 // Đầu vào mẫu:
-//   candidates: []types.CandidateForPrompt{...}
-//   input: dto.RecommendOutfitReq{Occasion: pointer to "party"}
+//
+//	candidates: []types.CandidateForPrompt{...}
+//	input: dto.RecommendOutfitReq{Occasion: pointer to "party"}
 //
 // Đầu ra mẫu:
-//   (*dto.RecommendedOutfitRes, nil) chứa thông tin phối đồ và lý do chi tiết từ AI.
+//
+//	(*dto.RecommendedOutfitRes, nil) chứa thông tin phối đồ và lý do chi tiết từ AI.
 func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	ctx context.Context,
 	candidates []types.CandidateForPrompt,
@@ -36,11 +38,13 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 // thất bại, hàm sẽ tự động dùng thông tin quota cũ và trừ đi 1 làm phương án dự phòng.
 //
 // Đầu vào mẫu:
-//   finalRes: &dto.RecommendedOutfitRes{}
-//   quotaDTO: &contract.UserSubscriptionDTO{AiOutfitDailyQuota: 10, OutfitRecommendCount: 2}
+//
+//	finalRes: &dto.RecommendedOutfitRes{}
+//	quotaDTO: &contract.UserSubscriptionDTO{AiOutfitDailyQuota: 10, OutfitRecommendCount: 2}
 //
 // Đầu ra mẫu:
-//   Cập nhật trường [RemainingQuota] của finalRes thành 7 (hoặc 8 nếu trừ trực tiếp từ quotaDTO cũ).
+//
+//	Cập nhật trường [RemainingQuota] của finalRes thành 7 (hoặc 8 nếu trừ trực tiếp từ quotaDTO cũ).
 func (uc *OutfitRecommendationUseCase) updateQuotaAndConstructResponse(
 	ctx context.Context,
 	userID uuid.UUID,

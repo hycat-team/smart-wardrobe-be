@@ -21,11 +21,13 @@ import (
 // 5. Trả về danh sách các nhóm món đồ gợi ý hợp lệ [RecommendedItemGroup].
 //
 // Đầu vào mẫu:
-//   candidates: []types.CandidateForPrompt{...}
-//   llmRes: types.LlmOutfitResponse{Items: []LlmOutfitItem{ {Role: "ao", PrimaryID: "uuid-ao-1", AlternativeIDs: []string{"uuid-ao-2"}} }}
+//
+//	candidates: []types.CandidateForPrompt{...}
+//	llmRes: types.LlmOutfitResponse{Items: []LlmOutfitItem{ {Role: "ao", PrimaryID: "uuid-ao-1", AlternativeIDs: []string{"uuid-ao-2"}} }}
 //
 // Đầu ra mẫu:
-//   []*dto.RecommendedItemGroup{ {Role: "ao", Primary: ... (ao-1), Alternatives: [... (ao-2)]} }
+//
+//	[]*dto.RecommendedItemGroup{ {Role: "ao", Primary: ... (ao-1), Alternatives: [... (ao-2)]} }
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
@@ -84,12 +86,14 @@ func resolvePrimaryCandidate(
 // 4. Trả về danh sách món đồ thay thế dạng DTO [WardrobeItemRes].
 //
 // Đầu vào mẫu:
-//   alternativeIDs: []string{"uuid-ao-2"}
-//   role: "ao"
-//   primaryID: "uuid-ao-1"
+//
+//	alternativeIDs: []string{"uuid-ao-2"}
+//	role: "ao"
+//	primaryID: "uuid-ao-1"
 //
 // Đầu ra mẫu:
-//   []*dto.WardrobeItemRes{...} (chứa tối đa 2 áo thay thế)
+//
+//	[]*dto.WardrobeItemRes{...} (chứa tối đa 2 áo thay thế)
 func resolveAlternativeCandidates(
 	candidateMap map[uuid.UUID]*entities.WardrobeItem,
 	candidates []types.CandidateForPrompt,

@@ -101,14 +101,16 @@ func taxonomyEntries(reason string, targetFields []string, terms ...string) []re
 // 4. Trả về danh sách [RetrievalTerm] đã mở rộng.
 //
 // Đầu vào mẫu:
-//   group: "style"
-//   values: []string{"minimalist"}
+//
+//	group: "style"
+//	values: []string{"minimalist"}
 //
 // Đầu ra mẫu:
-//   []types.RetrievalTerm{
-//     {Value: "toi gian", Source: "taxonomy", TargetFields: []string{"style", "description"}, SourceReason: "style:minimalist"},
-//     ...
-//   }
+//
+//	[]types.RetrievalTerm{
+//	  {Value: "toi gian", Source: "taxonomy", TargetFields: []string{"style", "description"}, SourceReason: "style:minimalist"},
+//	  ...
+//	}
 func ExpandTaxonomyTerms(group string, values []string) []types.RetrievalTerm {
 	var expanded []types.RetrievalTerm
 	config := recommendationTaxonomy[group]

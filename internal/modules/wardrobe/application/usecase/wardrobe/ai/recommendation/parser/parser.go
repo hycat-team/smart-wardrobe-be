@@ -98,17 +98,19 @@ func NewLocalNLPParser() *LocalNLPParser {
 // 6. Trả về cấu trúc [ParsedIntent] chứa các lát chuỗi đã được lọc trùng và sắp xếp.
 //
 // Đầu vào mẫu:
-//   freeText: "mình muốn tìm đồ đi chơi phố năng động nhưng không lấy màu tối"
+//
+//	freeText: "mình muốn tìm đồ đi chơi phố năng động nhưng không lấy màu tối"
 //
 // Đầu ra mẫu:
-//   dto.ParsedIntent{
-//       Occasion: []string{"casual"},
-//       StyleTarget: []string{"streetwear"},
-//       ExcludedColorTones: []string{"dark"},
-//       NegativeConstraints: []string{"avoid-color-tone:dark"},
-//       LexicalTerms: []string{"casual", "streetwear"},
-//       ...
-//   }
+//
+//	dto.ParsedIntent{
+//	    Occasion: []string{"casual"},
+//	    StyleTarget: []string{"streetwear"},
+//	    ExcludedColorTones: []string{"dark"},
+//	    NegativeConstraints: []string{"avoid-color-tone:dark"},
+//	    LexicalTerms: []string{"casual", "streetwear"},
+//	    ...
+//	}
 func (p *LocalNLPParser) Parse(freeText string) dto.ParsedIntent {
 	var intent dto.ParsedIntent
 	if strings.TrimSpace(freeText) == "" {
@@ -199,13 +201,15 @@ func (p *LocalNLPParser) Parse(freeText string) dto.ParsedIntent {
 // Nếu trong danh sách từ khóa thô chứa các từ chỉ dịp khác (như "di choi" - casual) mà không khớp với dịp được chọn, từ đó sẽ bị lọc bỏ để tránh nhiễu kết quả.
 //
 // Đầu vào mẫu:
-//   intent: dto.ParsedIntent{
-//       Occasion: []string{"work"},
-//       LexicalTerms: []string{"casual", "office"}
-//   }
+//
+//	intent: dto.ParsedIntent{
+//	    Occasion: []string{"work"},
+//	    LexicalTerms: []string{"casual", "office"}
+//	}
 //
 // Đầu ra mẫu:
-//   []string{"office"} (từ "casual" bị loại bỏ vì xung đột với dịp "work" đã chọn)
+//
+//	[]string{"office"} (từ "casual" bị loại bỏ vì xung đột với dịp "work" đã chọn)
 func (p *LocalNLPParser) RemoveConflictingLexicalTerms(intent dto.ParsedIntent) []string {
 	explicitOccasions := stringutils.ToNormalizedSet(intent.Occasion)
 	explicitStyles := stringutils.ToNormalizedSet(intent.StyleTarget)

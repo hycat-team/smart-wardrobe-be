@@ -52,10 +52,12 @@ type llmRecommendationRetrievalQuery struct {
 // 5. Trả về cấu trúc [RecommendationRetrievalQuery] an toàn đã lọc sạch mã độc và giới hạn chiều dài.
 //
 // Đầu vào mẫu:
-//   intent: dto.ParsedIntent{SemanticQuery: "Đi tiệc cưới ngoài trời mùa hè"}
+//
+//	intent: dto.ParsedIntent{SemanticQuery: "Đi tiệc cưới ngoài trời mùa hè"}
 //
 // Đầu ra mẫu:
-//   (types.RecommendationRetrievalQuery{RewriterSource: "llm", ...}, nil)
+//
+//	(types.RecommendationRetrievalQuery{RewriterSource: "llm", ...}, nil)
 func (r LLMRecommendationQueryRewriter) Rewrite(ctx context.Context, intent dto.ParsedIntent) (types.RecommendationRetrievalQuery, error) {
 	if r.aiService == nil {
 		return types.RecommendationRetrievalQuery{}, errors.New("llm rewriter ai service is nil")
@@ -118,10 +120,12 @@ func buildLLMRecommendationRewriterPrompts(intent dto.ParsedIntent, localQuery t
 // 6. Chuyển đổi và trả về cấu trúc [RecommendationRetrievalQuery] hoàn chỉnh.
 //
 // Đầu vào mẫu:
-//   raw: `{"semantic_query": "đầm dự tiệc mát mẻ", "lexical_terms": ["đầm", "tiệc"], "excluded_terms": ["ấm"], "hard_filters": {"seasonality": ["summer"], "category_slugs": ["ao"]}}`
+//
+//	raw: `{"semantic_query": "đầm dự tiệc mát mẻ", "lexical_terms": ["đầm", "tiệc"], "excluded_terms": ["ấm"], "hard_filters": {"seasonality": ["summer"], "category_slugs": ["ao"]}}`
 //
 // Đầu ra mẫu:
-//   (types.RecommendationRetrievalQuery{SemanticQuery: "đầm dự tiệc mát mẻ", ...}, nil)
+//
+//	(types.RecommendationRetrievalQuery{SemanticQuery: "đầm dự tiệc mát mẻ", ...}, nil)
 func validateLLMRecommendationRetrievalQuery(raw string, cfg *config.Config) (types.RecommendationRetrievalQuery, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

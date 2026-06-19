@@ -7,15 +7,15 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
+	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/gender"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -164,4 +164,3 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 
 	return true, nil
 }
-

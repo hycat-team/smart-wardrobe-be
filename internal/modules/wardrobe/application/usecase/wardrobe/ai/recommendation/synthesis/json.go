@@ -19,10 +19,12 @@ import (
 // 4. Unmarshal đối tượng JSON đã cắt được, xác thực tính hợp lệ của dữ liệu và trả về kết quả.
 //
 // Đầu vào mẫu:
-//   responseText: "Dưới đây là gợi ý phối đồ:\n```json\n{\"title\": \"Phong cách công sở\", ...}\n```"
+//
+//	responseText: "Dưới đây là gợi ý phối đồ:\n```json\n{\"title\": \"Phong cách công sở\", ...}\n```"
 //
 // Đầu ra mẫu:
-//   (types.LlmOutfitResponse{Title: "Phong cách công sở", ...}, "{\"title\": \"Phong cách công sở\", ...}", nil)
+//
+//	(types.LlmOutfitResponse{Title: "Phong cách công sở", ...}, "{\"title\": \"Phong cách công sở\", ...}", nil)
 func ParseOutfitRecommendationJSON(responseText string) (types.LlmOutfitResponse, string, error) {
 	cleaned := stringutils.CleanJSONMarkdown(responseText)
 
@@ -84,10 +86,12 @@ func isPlaceholderValue(value string) bool {
 // 4. Khi [depth] trở về 0, cắt chuỗi từ vị trí '{' bắt đầu đến vị trí '}' hiện tại và trả về.
 //
 // Đầu vào mẫu:
-//   value: "Kết quả: {\"key\": \"value\"} Cảm ơn bạn!"
+//
+//	value: "Kết quả: {\"key\": \"value\"} Cảm ơn bạn!"
 //
 // Đầu ra mẫu:
-//   "{\"key\": \"value\"}"
+//
+//	"{\"key\": \"value\"}"
 func ExtractFirstJSONObject(value string) string {
 	start := strings.IndexByte(value, '{')
 	if start < 0 {

@@ -34,20 +34,23 @@ const (
 // 4. **Tránh Phong cách/Tông màu**: Trừ điểm (tương ứng 0.35 và 0.25) nếu món đồ thuộc phong cách hoặc màu sắc mà người dùng muốn tránh.
 // 5. **Màu trung tính**: Cộng 0.1 điểm vì dễ phối đồ.
 // 6. **Thời tiết**:
-//    - Nếu trời lạnh, cộng 0.4 điểm cho áo khoác. Nếu trời nóng, trừ 0.3 điểm cho áo khoác dày.
-//    - Nếu trời mưa, cộng 0.15 điểm cho các đồ thích hợp đi mưa.
-//    - Trừ điểm phạt nếu món đồ rơi vào kiểu thời tiết người dùng muốn tránh (ví dụ: tránh đồ lạnh khi trời nóng).
+//   - Nếu trời lạnh, cộng 0.4 điểm cho áo khoác. Nếu trời nóng, trừ 0.3 điểm cho áo khoác dày.
+//   - Nếu trời mưa, cộng 0.15 điểm cho các đồ thích hợp đi mưa.
+//   - Trừ điểm phạt nếu món đồ rơi vào kiểu thời tiết người dùng muốn tránh (ví dụ: tránh đồ lạnh khi trời nóng).
+//
 // 7. **So khớp Lexical**: Cộng thêm điểm cho các từ khóa tìm kiếm thô khớp với metadata của món đồ (tối đa cộng 0.5 điểm).
 // 8. **Tần suất sử dụng**:
-//    - Trừ điểm phạt (tối đa 0.4) nếu món đồ vừa mới mặc gần đây (trong khoảng [recentlyWornDays]).
-//    - Cộng điểm thưởng 0.15 nếu món đồ đã lâu không mặc hoặc là đồ mới chưa từng mặc.
+//   - Trừ điểm phạt (tối đa 0.4) nếu món đồ vừa mới mặc gần đây (trong khoảng [recentlyWornDays]).
+//   - Cộng điểm thưởng 0.15 nếu món đồ đã lâu không mặc hoặc là đồ mới chưa từng mặc.
 //
 // Đầu vào mẫu:
-//   item: entities.WardrobeItem{Style: pointer to "Minimalist", LastUsedAt: nil}
-//   intent: dto.ParsedIntent{StyleTarget: []string{"minimalist"}, Occasion: []string{"work"}}
+//
+//	item: entities.WardrobeItem{Style: pointer to "Minimalist", LastUsedAt: nil}
+//	intent: dto.ParsedIntent{StyleTarget: []string{"minimalist"}, Occasion: []string{"work"}}
 //
 // Đầu ra mẫu:
-//   (1.65, []string{"style-match:minimalist", "new-item-bonus", ...})
+//
+//	(1.65, []string{"style-match:minimalist", "new-item-bonus", ...})
 func ScoreCandidateItem(
 	item *entities.WardrobeItem,
 	intent dto.ParsedIntent,

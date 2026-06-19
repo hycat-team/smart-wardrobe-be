@@ -19,12 +19,14 @@ import (
 // 4. Ghép toàn bộ các thành phần bằng ký tự " | " và trả về chuỗi kết quả.
 //
 // Đầu vào mẫu:
-//   intent: dto.ParsedIntent{Occasion: []string{"work"}, StyleTarget: []string{"minimalist"}}
-//   originalDetails: "Đi làm hàng ngày"
-//   hasExplicitOptions: false
+//
+//	intent: dto.ParsedIntent{Occasion: []string{"work"}, StyleTarget: []string{"minimalist"}}
+//	originalDetails: "Đi làm hàng ngày"
+//	hasExplicitOptions: false
 //
 // Đầu ra mẫu:
-//   "occasion: work | style: minimalist | details: Đi làm hàng ngày"
+//
+//	"occasion: work | style: minimalist | details: Đi làm hàng ngày"
 func BuildRecommendationSemanticQuery(
 	intent dto.ParsedIntent,
 	originalDetails string,

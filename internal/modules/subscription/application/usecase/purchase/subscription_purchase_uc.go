@@ -396,4 +396,3 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 
 	return nil
 }
-

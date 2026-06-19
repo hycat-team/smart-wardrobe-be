@@ -312,4 +312,3 @@ func (s *AIService) callGoogleEmbeddingBatch(ctx context.Context, provider confi
 
 	return allEmbeddings, nil
 }
-

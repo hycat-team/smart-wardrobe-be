@@ -214,4 +214,3 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		OrderCode:  orderCode,
 	}, nil
 }
-

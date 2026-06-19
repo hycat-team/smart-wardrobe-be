@@ -27,9 +27,9 @@ func HexToHSL(hex string) (h, s, l float64, err error) {
 		return 0, 0, 0, fmt.Errorf("failed to parse hex color values: %w", err)
 	}
 
-	r := float64((rgbHex >> 16) & 0xFF) / 255.0
-	g := float64((rgbHex >> 8) & 0xFF) / 255.0
-	b := float64(rgbHex & 0xFF) / 255.0
+	r := float64((rgbHex>>16)&0xFF) / 255.0
+	g := float64((rgbHex>>8)&0xFF) / 255.0
+	b := float64(rgbHex&0xFF) / 255.0
 
 	max := math.Max(r, math.Max(g, b))
 	min := math.Min(r, math.Min(g, b))
@@ -54,9 +54,9 @@ func HexToHSL(hex string) (h, s, l float64, err error) {
 				h += 6.0
 			}
 		case g:
-			h = (b - r)/d + 2.0
+			h = (b-r)/d + 2.0
 		case b:
-			h = (r - g)/d + 4.0
+			h = (r-g)/d + 4.0
 		}
 		h /= 6.0
 	}

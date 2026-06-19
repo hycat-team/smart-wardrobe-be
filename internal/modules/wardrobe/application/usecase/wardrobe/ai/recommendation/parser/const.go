@@ -4,7 +4,7 @@ import "regexp"
 
 var (
 	// reOrphanTelex dùng để tìm các ký tự Telex đứng một mình ở cuối từ tiếng Anh bị gõ nhầm (ví dụ: s, f, r, x, j, w).
-	reOrphanTelex   = regexp.MustCompile(`\b([a-z]+)([sfrxjw])\b`)
+	reOrphanTelex = regexp.MustCompile(`\b([a-z]+)([sfrxjw])\b`)
 	// reSplitSentence dùng để phân tách câu dựa trên các ký tự phân tách như dấu phẩy, chấm phẩy, gạch ngang, hoặc dấu chấm.
 	reSplitSentence = regexp.MustCompile(`[,;\-\.]`)
 

@@ -30,10 +30,12 @@ func NewLocalRecommendationQueryRewriter() *LocalRecommendationQueryRewriter {
 // 5. Trả về cấu trúc [RecommendationRetrievalQuery] hoàn chỉnh làm tham số đầu vào cho tìm kiếm Elasticsearch.
 //
 // Đầu vào mẫu:
-//   intent: dto.ParsedIntent{SemanticQuery: "style: casual", Occasion: []string{"casual"}}
+//
+//	intent: dto.ParsedIntent{SemanticQuery: "style: casual", Occasion: []string{"casual"}}
 //
 // Đầu ra mẫu:
-//   (types.RecommendationRetrievalQuery{RewriterSource: "local", ...}, nil)
+//
+//	(types.RecommendationRetrievalQuery{RewriterSource: "local", ...}, nil)
 func (LocalRecommendationQueryRewriter) Rewrite(_ context.Context, intent dto.ParsedIntent) (types.RecommendationRetrievalQuery, error) {
 	terms := BuildSourceAwareRetrievalTerms(intent)
 	excludedTerms := BuildSourceAwareExcludedTerms(intent)
