@@ -728,3 +728,12 @@ backend/global.json
 
 .gocache/
 docs/temp
+
+.env
+.env.*
+!.env.example
+.env.production.example
+bin/
+backups/
+*.dump
+*.sql.gz

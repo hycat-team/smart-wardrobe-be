@@ -1,0 +1,233 @@
+name: closy-prod
+
+services:
+    postgres:
+        image: pgvector/pgvector:pg17
+        restart: always
+        mem_limit: 768m
+        shm_size: 256m
+        environment:
+            POSTGRES_USER: ${DB_USER:?DB_USER is required}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+            POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        ports:
+            - "127.0.0.1:5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+            - ./init-db:/docker-entrypoint-initdb.d:ro
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 20s
+        networks:
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    redis:
+        image: redis:7-alpine
+        restart: always
+        mem_limit: 384m
+        environment:
+            REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        command:
+            [
+                "sh",
+                "-c",
+                'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"',
+            ]
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    'redis-cli -a "$${REDIS_PASSWORD}" ping | grep -q PONG',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 10s
+        networks:
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    rabbitmq:
+        image: rabbitmq:3-management-alpine
+        restart: always
+        mem_limit: 512m
+        environment:
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+            - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 10s
+            timeout: 10s
+            retries: 10
+            start_period: 30s
+        networks:
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+        restart: always
+        mem_limit: 1g
+        memswap_limit: 1g
+        mem_swappiness: 0
+        environment:
+            discovery.type: single-node
+            xpack.security.enabled: "false"
+            ES_JAVA_OPTS: -Xms512m -Xmx512m
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        ulimits:
+            nofile:
+                soft: 65535
+                hard: 65535
+        volumes:
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    'curl --fail --silent http://localhost:9200/_cluster/health | grep -Eq ''"status":"(green|yellow)"''',
+                ]
+            interval: 15s
+            timeout: 10s
+            retries: 20
+            start_period: 60s
+        networks:
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    backend:
+        image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - .env.production
+        environment:
+            DB_HOST: postgres
+            DB_PORT: "5432"
+            REDIS_HOST: redis
+            REDIS_PORT: "6379"
+            RABBITMQ_HOST: rabbitmq
+            RABBITMQ_PORT: "5672"
+            ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
+            SERVER_PORT: "8080"
+            LOG_TO_FILE: "false"
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+            elasticsearch:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget --quiet --spider http://127.0.0.1:8080${BACKEND_HEALTH_PATH:-/api/v1/health} || exit 1",
+                ]
+            interval: 15s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    nginx:
+        image: nginx:alpine
+        restart: always
+        mem_limit: 128m
+        environment:
+            API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+            NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-20m}
+            NGINX_ENVSUBST_FILTER: ^(API_DOMAIN|NGINX_CLIENT_MAX_BODY_SIZE)$
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./nginx/templates:/etc/nginx/templates:ro
+            - /etc/letsencrypt:/etc/letsencrypt:ro
+            - certbot_www:/var/www/certbot:ro
+        depends_on:
+            backend:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget --quiet --spider http://127.0.0.1/nginx-health || exit 1",
+                ]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - edge
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    certbot:
+        image: certbot/certbot:v5.3.1
+        profiles:
+            - maintenance
+        volumes:
+            - /etc/letsencrypt:/etc/letsencrypt
+            - certbot_www:/var/www/certbot
+
+volumes:
+    postgres_data:
+    redis_data:
+    rabbitmq_data:
+    elasticsearch_data:
+    certbot_www:
+
+networks:
+    edge:
+    app:
+    data:
+        internal: true
