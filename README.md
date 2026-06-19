@@ -1,73 +1,73 @@
 # 👕 SmartWardrobe Backend (Golang Modular Monolith)
 
-SmartWardrobe Backend là hệ thống API dịch vụ được phát triển bằng ngôn ngữ **Golang** theo kiến trúc **Modular Monolith** sạch sẽ (Clean Architecture), hiệu năng cao và dễ bảo trì. Hệ thống cung cấp các nghiệp vụ quản lý tủ đồ thông minh, gợi ý trang phục bằng AI, quản lý gói dịch vụ và các dịch vụ định danh bảo mật (Identity).
+SmartWardrobe Backend is an API service system developed using **Golang** based on a clean, high-performance, and maintainable **Modular Monolith** architecture (Clean Architecture). The system provides features for smart wardrobe management, AI-driven outfit recommendations, subscription plan management, and secure identity services (Identity).
 
 ---
 
-## 🛠️ Các công cụ cần có trên máy (Prerequisites)
+## 🛠️ Prerequisites
 
-Trước khi bắt đầu, hãy đảm bảo máy tính của bạn đã cài đặt các công cụ sau:
+Before getting started, make sure your computer has the following tools installed:
 
 1. **Go Compiler (v1.24.+)**
-    - Tải về và cài đặt tại: [golang.org/dl](https://golang.org/dl/)
-    - Xác nhận cài đặt: `go version`
-2. **Docker & Docker Desktop (hoặc Docker Compose)**
-    - Cần thiết để chạy PostgreSQL (có pgvector) và Redis ở môi trường local.
-    - Tải về và cài đặt tại: [docker.com](https://www.docker.com/)
+    - Download and install at: [golang.org/dl](https://golang.org/dl/)
+    - Verify installation: `go version`
+2. **Docker & Docker Desktop (or Docker Compose)**
+    - Required to run PostgreSQL (with pgvector) and Redis in the local environment.
+    - Download and install at: [docker.com](https://www.docker.com/)
 3. **GNU Make**
-    - _Windows:_ Nên cài đặt qua [Chocolatey](https://chocolatey.org/) (`choco install make`) hoặc sử dụng Git Bash / WSL.
-    - _macOS:_ Đã có sẵn hoặc cài qua Homebrew (`brew install make`).
+    - _Windows:_ Recommended to install via [Chocolatey](https://chocolatey.org/) (`choco install make`) or use Git Bash / WSL.
+    - _macOS:_ Pre-installed or install via Homebrew (`brew install make`).
     - _Linux:_ `sudo apt install make` (Ubuntu/Debian).
 
 ---
 
-## 🚀 Hướng dẫn khởi chạy dự án Local
+## 🚀 Local Run Guide
 
-Hãy làm theo các bước dưới đây để thiết lập và chạy dự án trên máy tính của bạn:
+Follow these steps to set up and run the project on your machine:
 
-### Bước 1: Sao chép dự án & Cấu hình môi trường
+### Step 1: Clone Project & Configure Environment
 
-1. Di chuyển vào thư mục dự án:
+1. Navigate to the project directory:
     ```bash
     cd smart-wardrobe-be
     ```
-2. Tạo file môi trường `.env` từ file ví dụ:
+2. Create the `.env` file from the example:
     ```bash
     cp .env.example .env
     ```
-    _Lưu ý:_ Mở file `.env` vừa tạo và chỉnh sửa cấu hình kết nối database, redis, JWT secret, hoặc Gmail SMTP phục vụ việc gửi mã OTP thực tế (nếu cần).
+    _Note:_ Open the newly created `.env` file and configure the database connection, Redis, JWT secret, or Gmail SMTP for sending real OTP codes (if needed).
 
-### Bước 2: Khởi chạy dự án bằng Docker Compose
+### Step 2: Run Project Using Docker Compose
 
-Bạn có hai lựa chọn để chạy ứng dụng local bằng Docker Compose:
+You have two options for running the application locally using Docker Compose:
 
-#### Lựa chọn A: Chỉ khởi chạy Database & Redis (Được khuyến nghị khi phát triển code Go trực tiếp)
+#### Option A: Run Only Database & Redis (Recommended for direct Go development)
 
 ```bash
 docker-compose up postgres redis -d
 ```
 
-_Lưu ý:_ Sau đó chạy ứng dụng Go ở local bằng lệnh `make dev` hoặc `go run`.
+_Note:_ After that, run the Go application locally using the `make dev` or `go run` command.
 
-#### Lựa chọn B: Khởi chạy toàn bộ stack bao gồm cả Backend App
+#### Option B: Run the Full Stack Including Backend App
 
 ```bash
 docker-compose up -d --build
 ```
 
-Lệnh này sẽ tự động build image Docker của Backend Go siêu nhẹ (sử dụng multi-stage build chỉ khoảng ~15MB) và chạy kết nối đồng bộ hoàn toàn với database và cache.
+This command will automatically build a lightweight Docker image for the Go Backend (using multi-stage builds, about ~15MB) and run it with full database and cache integration.
 
-_Kiểm tra trạng thái:_ Chạy lệnh `docker ps` để đảm bảo 3 container (`postgres-smartwardrobe`, `redis-smartwardrobe`, `backend-smartwardrobe`) đang hoạt động bình thường.
+_Check status:_ Run the `docker ps` command to ensure the 3 containers (`postgres-smartwardrobe`, `redis-smartwardrobe`, `backend-smartwardrobe`) are running properly.
 
-### Bước 3: Cài đặt các công cụ phát triển chuyên dụng của Go
+### Step 3: Install Specialized Go Development Tools
 
-Dự án sử dụng **Google Wire** (Dependency Injection) và **Swag** (Swagger Generator). Hãy cài đặt chúng bằng lệnh Make được chuẩn bị sẵn:
+The project uses **Google Wire** (Dependency Injection) and **Swag** (Swagger Generator). Install them using the pre-configured Make command:
 
 ```bash
 make install-tools
 ```
 
-_(Hoặc chạy thủ công các lệnh sau nếu không có Make)_:
+_(Or run the following commands manually if Make is not available)_:
 
 ```bash
 go install github.com/google/wire/cmd/wire@latest
@@ -76,45 +76,45 @@ go install github.com/swaggo/swag/cmd/swag@latest
 
 ---
 
-## 💻 Quy trình Phát triển & Chạy dự án
+## 💻 Development & Running Workflow
 
-Dự án tích hợp sẵn các lệnh tự động hóa trong `Makefile` để tối giản hóa thao tác của lập trình viên.
+The project includes automated commands in the `Makefile` to simplify development workflows.
 
-### Lệnh phát triển nhanh nhất (Full Flow)
+### Fastest Development Command (Full Flow)
 
-Khi bắt đầu code hoặc sau khi sửa bất kỳ phần nào liên quan đến Dependency Injection (khai báo các Provider/Usecase mới) hoặc cập nhật Swagger API:
+When starting development or after modifying anything related to Dependency Injection (declaring new Providers/Usecases) or updating Swagger APIs:
 
 ```bash
 make dev
 ```
 
-Lệnh này sẽ tự động:
+This command automatically executes:
 
-1. `go mod tidy` dọn dẹp và tải các dependencies.
-2. `wire` sinh mã Dependency Injection tự động.
-3. `swag` cập nhật lại tài liệu Swagger UI.
-4. Biên dịch và khởi chạy server ngay lập tức.
+1. `go mod tidy` to clean up and download dependencies.
+2. `wire` to generate Dependency Injection code automatically.
+3. `swag` to update Swagger API documentation.
+4. Compiles and starts the server immediately.
 
 ---
 
-### Chi tiết các lệnh Make khả dụng
+### Available Make Commands Detail
 
-| Lệnh                 | Ý nghĩa                                                  | Lệnh chạy tay tương ứng                                                           |
+| Command              | Meaning                                                  | Equivalent Manual Command                                                         |
 | :------------------- | :------------------------------------------------------- | :-------------------------------------------------------------------------------- |
-| `make install-tools` | Cài đặt `wire` và `swag` CLI lên máy                     | `go install ...`                                                                  |
-| `make tidy`          | Đồng bộ và tải các package Go bị thiếu                   | `go mod tidy`                                                                     |
-| `make wire`          | Sinh mã tự động cho Dependency Injection                 | `wire ./internal/di/...`                                                          |
-| `make swagger`       | Tạo lại tài liệu đặc tả API Swagger                      | `swag init -g cmd/server/main.go --output docs --parseDependency --parseInternal` |
-| `make build`         | Biên dịch dự án thành file thực thi trong thư mục `bin/` | `go build -o bin/main.exe cmd/server/main.go`                                     |
-| `make run`           | Chạy ứng dụng đã biên dịch                               | `./bin/main.exe`                                                                  |
-| `make dev`           | Chạy toàn bộ quy trình từ tidy, wire, swagger đến run    | _(Tổ hợp các lệnh trên)_                                                          |
-| `make clean`         | Dọn dẹp thư mục binary `bin/`                            | `rm -rf bin/`                                                                     |
+| `make install-tools` | Installs `wire` and `swag` CLIs locally                  | `go install ...`                                                                  |
+| `make tidy`          | Syncs and downloads missing Go packages                  | `go mod tidy`                                                                     |
+| `make wire`          | Automatically generates Dependency Injection code        | `wire ./internal/di/...`                                                          |
+| `make swagger`       | Regenerates Swagger API documentation                    | `swag init -g cmd/server/main.go --output docs --parseDependency --parseInternal` |
+| `make build`         | Compiles the project into an executable in `bin/`        | `go build -o bin/main.exe cmd/server/main.go`                                     |
+| `make run`           | Runs the compiled executable                             | `./bin/main.exe`                                                                  |
+| `make dev`           | Runs full flow: tidy, wire, swagger, and run             | _(Combination of the commands above)_                                             |
+| `make clean`         | Cleans up the `bin/` binary directory                    | `rm -rf bin/`                                                                     |
 
 ---
 
-## 🔍 Kiểm tra kết quả & Trải nghiệm API
+## 🔍 Verify & Test the APIs
 
-Khi server khởi động thành công, console sẽ in ra giao diện log bắt mắt chứa liên kết mở nhanh tài liệu API:
+Upon successful server startup, the console will print a clean log containing the API documentation links:
 
 ```text
 ==========================================================
@@ -123,4 +123,4 @@ Swagger UI is available at: http://localhost:8080/swagger
 ==========================================================
 ```
 
-- **Tài liệu API (Swagger UI):** Giữ phím `Ctrl` và nhấp vào liên kết [http://localhost:8080/swagger](http://localhost:8080/swagger) để mở trực tiếp tài liệu trên trình duyệt.
+- **API Documentation (Swagger UI):** Hold `Ctrl` and click the link [http://localhost:8080/swagger](http://localhost:8080/swagger) to open the interactive API docs directly in your browser.

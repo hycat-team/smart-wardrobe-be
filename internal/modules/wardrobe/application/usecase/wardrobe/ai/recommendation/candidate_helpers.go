@@ -22,20 +22,23 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
+
 // validateAndGetActiveItems kiểm tra hạn ngạch hàng ngày của người dùng và truy vấn các món đồ
 // đang hoạt động trong tủ đồ (không bị xóa mềm và có trạng thái là InWardrobe).
 //
 // Hành vi:
-// 1. Gọi [GetAndResetDailyQuota] để kiểm tra số lượt gợi ý đã sử dụng. Nếu vượt quá giới hạn [AiOutfitDailyQuota], trả về lỗi [ErrAiOutfitQuotaExceeded].
-// 2. Lấy danh sách tủ đồ qua [GetByUserID].
-// 3. Lọc danh sách các món đồ hoạt động dựa theo gói đăng ký (subscription overview) của người dùng để giới hạn số lượng tối đa ([MaxWardrobeItems]).
-// 4. Nếu số lượng đồ hoạt động ít hơn 5, trả về lỗi [ErrMinimumWardrobeItemsRequired].
+//   - 1. Gọi [GetAndResetDailyQuota] để kiểm tra số lượt gợi ý đã sử dụng. Nếu vượt quá giới hạn [AiOutfitDailyQuota], trả về lỗi [ErrAiOutfitQuotaExceeded].
+//   - 2. Lấy danh sách tủ đồ qua [GetByUserID].
+//   - 3. Lọc danh sách các món đồ hoạt động dựa theo gói đăng ký (subscription overview) của người dùng để giới hạn số lượng tối đa ([MaxWardrobeItems]).
+//   - 4. Nếu số lượng đồ hoạt động ít hơn 5, trả về lỗi [ErrMinimumWardrobeItemsRequired].
 //
 // Đầu vào mẫu:
-//   userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
+//
+//	userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
 //
 // Đầu ra mẫu:
-//   ([]*entities.WardrobeItem, *contract.UserSubscriptionDTO, nil)
+//
+//	([]*entities.WardrobeItem, *contract.UserSubscriptionDTO, nil)
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -73,23 +76,26 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 
 	return activeItems, quotaDTO, nil
 }
+
 // filterCandidates thực hiện quy trình tìm kiếm lai (hybrid search) và xếp hạng để lọc ra danh sách
 // các ứng viên tiềm năng tốt nhất cho prompt gợi ý trang phục.
 //
 // Hành vi:
-// 1. Phân tích ý định từ yêu cầu đầu vào thông qua [parseRecommendationIntent] để lấy [ParsedIntent] và xây dựng câu truy vấn ngữ nghĩa.
-// 2. Tạo vector nhúng (embedding vector) cho câu truy vấn ngữ nghĩa bằng [buildRecommendationQueryVector].
-// 3. Thực hiện truy vấn lai (kết hợp vector và lexical search) thông qua [GetHybridCandidates] của repository tủ đồ.
-// 4. Đảm bảo số lượng ứng viên tối thiểu trong bể ứng viên thông qua [EnsureMinimumCandidatePool].
-// 5. Tính toán điểm số và xếp hạng ứng viên dựa trên độ tương quan ngữ cảnh và tần suất mặc đồ qua [RankCandidates].
+//   - 1. Phân tích ý định từ yêu cầu đầu vào thông qua [parseRecommendationIntent] để lấy [ParsedIntent] và xây dựng câu truy vấn ngữ nghĩa.
+//   - 2. Tạo vector nhúng (embedding vector) cho câu truy vấn ngữ nghĩa bằng [buildRecommendationQueryVector].
+//   - 3. Thực hiện truy vấn lai (kết hợp vector và lexical search) thông qua [GetHybridCandidates] của repository tủ đồ.
+//   - 4. Đảm bảo số lượng ứng viên tối thiểu trong bể ứng viên thông qua [EnsureMinimumCandidatePool].
+//   - 5. Tính toán điểm số và xếp hạng ứng viên dựa trên độ tương quan ngữ cảnh và tần suất mặc đồ qua [RankCandidates].
 //
 // Đầu vào mẫu:
-//   userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
-//   activeItems: []*entities.WardrobeItem{...}
-//   input: dto.RecommendOutfitReq{Occasion: pointer to "casual"}
+//
+//	userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
+//	activeItems: []*entities.WardrobeItem{...}
+//	input: dto.RecommendOutfitReq{Occasion: pointer to "casual"}
 //
 // Đầu ra mẫu:
-//   ([]types.CandidateForPrompt, nil)
+//
+//	([]types.CandidateForPrompt, nil)
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -149,29 +155,32 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	return ranked, nil
 }
+
 // parseRecommendationIntent phân tích ý định từ văn bản tự do của người dùng và hợp nhất với các
 // tùy chọn rõ ràng (như dịp, phong cách, thời tiết, mùa) để tạo ra đối tượng [ParsedIntent].
 //
 // Hành vi:
-// 1. Sử dụng bộ phân tích [nlpParser.Parse] trên trường [Details] để trích xuất ý định ngầm định.
-// 2. Nếu người dùng chọn trực tiếp các tùy chọn trên UI (như [Occasion], [StyleTarget], [ColorTone], [Weather], [Season]),
-//    ghi đè hoặc bổ sung các thuộc tính này vào cấu trúc ý định thu được.
-// 3. Loại bỏ các từ khóa bị xung đột qua [RemoveConflictingLexicalTerms].
-// 4. Xây dựng chuỗi truy vấn ngữ nghĩa bằng [BuildRecommendationSemanticQuery] làm dữ liệu đầu vào cho mô hình embedding.
+//  1. Sử dụng bộ phân tích [nlpParser.Parse] trên trường [Details] để trích xuất ý định ngầm định.
+//  2. Nếu người dùng chọn trực tiếp các tùy chọn trên UI (như [Occasion], [StyleTarget], [ColorTone], [Weather], [Season]),
+//     ghi đè hoặc bổ sung các thuộc tính này vào cấu trúc ý định thu được.
+//  3. Loại bỏ các từ khóa bị xung đột qua [RemoveConflictingLexicalTerms].
+//  4. Xây dựng chuỗi truy vấn ngữ nghĩa bằng [BuildRecommendationSemanticQuery] làm dữ liệu đầu vào cho mô hình embedding.
 //
 // Đầu vào mẫu:
-//   input: dto.RecommendOutfitReq{
-//       Details: pointer to "mặc đi chơi phố năng động",
-//       Occasion: pointer to "casual"
-//   }
+//
+//	input: dto.RecommendOutfitReq{
+//	    Details: pointer to "mặc đi chơi phố năng động",
+//	    Occasion: pointer to "casual"
+//	}
 //
 // Đầu ra mẫu:
-//   dto.ParsedIntent{
-//       Occasion: []string{"casual"},
-//       StyleTarget: []string{"streetwear"},
-//       SemanticQuery: "occasion: casual | style: streetwear | details: mặc đi chơi phố năng động",
-//       ...
-//   }
+//
+//	dto.ParsedIntent{
+//	    Occasion: []string{"casual"},
+//	    StyleTarget: []string{"streetwear"},
+//	    SemanticQuery: "occasion: casual | style: streetwear | details: mặc đi chơi phố năng động",
+//	    ...
+//	}
 func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 	input dto.RecommendOutfitReq,
 ) dto.ParsedIntent {
@@ -209,6 +218,7 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 
 	return intent
 }
+
 // buildRecommendationQueryVector sinh vector nhúng (embedding vector) từ chuỗi truy vấn ngữ nghĩa bằng dịch vụ AI.
 //
 // Hành vi:
@@ -217,10 +227,12 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 // hàm sẽ ghi log cảnh báo và trả về [nil] để hệ thống tiếp tục chạy với tìm kiếm từ khóa (lexical search) thuần túy làm fallback.
 //
 // Đầu vào mẫu:
-//   semanticQuery: "occasion: work | color tone: light"
+//
+//	semanticQuery: "occasion: work | color tone: light"
 //
 // Đầu ra mẫu:
-//   entities.Vector{0.123, -0.456, ..., 0.009} (độ dài khớp với cấu hình, ví dụ 1536 chiều) hoặc nil nếu lỗi.
+//
+//	entities.Vector{0.123, -0.456, ..., 0.009} (độ dài khớp với cấu hình, ví dụ 768 chiều) hoặc nil nếu lỗi.
 func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 	ctx context.Context,
 	semanticQuery string,
@@ -260,6 +272,7 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 
 	return entities.Vector(vecs[0])
 }
+
 // buildRecommendationRetrievalQuery chuyển đổi ý định đã phân tích thành truy vấn tìm kiếm nâng cao (RecommendationRetrievalQuery).
 //
 // Hành vi:
@@ -269,14 +282,16 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 // để xây dựng truy vấn dựa trên tập luật tĩnh cục bộ.
 //
 // Đầu vào mẫu:
-//   intent: dto.ParsedIntent{Occasion: []string{"work"}}
+//
+//	intent: dto.ParsedIntent{Occasion: []string{"work"}}
 //
 // Đầu ra mẫu:
-//   types.RecommendationRetrievalQuery{
-//       SemanticQuery: "occasion: work",
-//       LexicalTerms: []types.RetrievalTerm{{Value: "office", Source: "taxonomy"}},
-//       ...
-//   }
+//
+//	types.RecommendationRetrievalQuery{
+//	    SemanticQuery: "occasion: work",
+//	    LexicalTerms: []types.RetrievalTerm{{Value: "office", Source: "taxonomy"}},
+//	    ...
+//	}
 func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 	ctx context.Context,
 	intent dto.ParsedIntent,
@@ -311,14 +326,17 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 	query, _ = local.Rewrite(ctx, intent)
 	return query
 }
+
 // retrievalSourceCount đếm số lượng ứng viên trong danh sách được trả về từ một nguồn tìm kiếm cụ thể (vector hoặc lexical).
 //
 // Đầu vào mẫu:
-//   candidates: []repositories.HybridCandidate{{RetrievalSource: "vector"}, {RetrievalSource: "lexical"}}
-//   source: "vector"
+//
+//	candidates: []repositories.HybridCandidate{{RetrievalSource: "vector"}, {RetrievalSource: "lexical"}}
+//	source: "vector"
 //
 // Đầu ra mẫu:
-//   1
+//
+//	1
 func retrievalSourceCount(candidates []repositories.HybridCandidate, source string) int {
 	count := 0
 	for _, candidate := range candidates {
@@ -328,14 +346,17 @@ func retrievalSourceCount(candidates []repositories.HybridCandidate, source stri
 	}
 	return count
 }
+
 // recommendationLexicalQueryMode xác định chế độ tìm kiếm được áp dụng dựa trên sự hiện diện của vector truy vấn và từ khóa lexical.
 //
 // Đầu vào mẫu:
-//   vector: entities.Vector{0.1, 0.2}
-//   lexicalTerms: []string{"ao", "quan"}
+//
+//	vector: entities.Vector{0.1, 0.2}
+//	lexicalTerms: []string{"ao", "quan"}
 //
 // Đầu ra mẫu:
-//   "hybrid" (nếu có cả hai), "vector" (chỉ có vector), "lexical" (chỉ có từ khóa), hoặc "fallback" (không có cả hai).
+//
+//	"hybrid" (nếu có cả hai), "vector" (chỉ có vector), "lexical" (chỉ có từ khóa), hoặc "fallback" (không có cả hai).
 func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []string) string {
 	hasVector := len(vector) > 0
 	hasLexical := len(lexicalTerms) > 0
@@ -350,13 +371,16 @@ func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []strin
 		return "fallback"
 	}
 }
+
 // missingEmbeddingCount thống kê số lượng món đồ trong danh sách chưa được tạo vector nhúng (embedding).
 //
 // Đầu vào mẫu:
-//   items: []*entities.WardrobeItem{{Embedding: []float32{...}}, {Embedding: nil}}
+//
+//	items: []*entities.WardrobeItem{{Embedding: []float32{...}}, {Embedding: nil}}
 //
 // Đầu ra mẫu:
-//   1
+//
+//	1
 func missingEmbeddingCount(items []*entities.WardrobeItem) int {
 	count := 0
 	for _, item := range items {
