@@ -118,10 +118,11 @@ type Redis struct {
 }
 
 type Server struct {
-	Port           string
-	FrontEndOrigin string
-	TimeoutSeconds int
-	Env            string
+	Port              string
+	FrontEndOrigin    string
+	TimeoutSeconds    int
+	Env               string
+	SwaggerAccessCode string
 }
 
 type Jwt struct {

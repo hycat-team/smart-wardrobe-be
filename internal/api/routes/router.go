@@ -41,11 +41,16 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		))
 	})
 
-	engine.Static("/api-docs", "./docs")
-	engine.StaticFile("/swagger", "./docs/index.html")
-	engine.GET("/swagger/*any", func(c *gin.Context) {
-		c.File("./docs/index.html")
-	})
+	swaggerLock := middleware.SwaggerLockMiddleware(cfg)
+	swaggerGroup := engine.Group("")
+	swaggerGroup.Use(swaggerLock)
+	{
+		swaggerGroup.Static("/api-docs", "./docs")
+		swaggerGroup.StaticFile("/swagger", "./docs/index.html")
+		swaggerGroup.GET("/swagger/*any", func(c *gin.Context) {
+			c.File("./docs/index.html")
+		})
+	}
 
 	api := engine.Group("/api/v1")
 	{

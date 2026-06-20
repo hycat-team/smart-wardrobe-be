@@ -36,10 +36,11 @@ func LoadConfig() *Config {
 			Db:       getEnvInt("REDIS_DB", 0),
 		},
 		Server: Server{
-			Port:           getEnv("SERVER_PORT", "8080"),
-			FrontEndOrigin: getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
-			TimeoutSeconds: getEnvInt("REQUEST_TIMEOUT_SECONDS", 30),
-			Env:            getEnv("ENV", "development"),
+			Port:              getEnv("SERVER_PORT", "8080"),
+			FrontEndOrigin:    getEnv("FRONTEND_ORIGIN", "http://localhost:3000"),
+			TimeoutSeconds:    getEnvInt("REQUEST_TIMEOUT_SECONDS", 30),
+			Env:               getEnv("ENV", "development"),
+			SwaggerAccessCode: getEnv("SWAGGER_ACCESS_CODE", ""),
 		},
 		Startup: Startup{
 			RetryAttempt1Seconds: getEnvInt("STARTUP_RETRY_ATTEMPT_1_SECONDS", 5),
