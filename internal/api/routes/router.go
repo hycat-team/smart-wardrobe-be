@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/api/middleware"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/logger"
 	"time"
 
@@ -26,6 +27,19 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
 	engine.Use(middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
+
+	engine.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, apperror.NewNotFound("Đường dẫn API không tồn tại hoặc phương thức không được hỗ trợ."))
+	})
+
+	engine.HandleMethodNotAllowed = true
+	engine.NoMethod(func(c *gin.Context) {
+		c.JSON(http.StatusMethodNotAllowed, apperror.NewError(
+			http.StatusMethodNotAllowed,
+			"Phương thức không được hỗ trợ",
+			"Phương thức HTTP yêu cầu không được hỗ trợ cho đường dẫn này.",
+		))
+	})
 
 	engine.Static("/api-docs", "./docs")
 	engine.StaticFile("/swagger", "./docs/index.html")

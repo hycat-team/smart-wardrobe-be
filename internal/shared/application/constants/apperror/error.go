@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"runtime/debug"
+	"strings"
 )
 
 type ValidationErrorItem struct {
@@ -109,6 +110,10 @@ func From(err error) *Error {
 	var appErr *Error
 	if errors.As(err, &appErr) {
 		return appErr
+	}
+
+	if strings.Contains(err.Error(), "invalid UUID") {
+		return NewBadRequest("Định dạng mã nhận diện (UUID) không hợp lệ.")
 	}
 
 	if err.Error() == "" {

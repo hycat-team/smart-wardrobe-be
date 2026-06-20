@@ -28,17 +28,19 @@ import (
 var minPayOSTransactionAmount = decimal.NewFromInt(2000)
 
 type PayOSService struct {
-	clientID    string
-	apiKey      string
-	checksumKey string
-	httpClient  *http.Client
+	clientID       string
+	apiKey         string
+	checksumKey    string
+	expiredMinutes int
+	httpClient     *http.Client
 }
 
 func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
 	return &PayOSService{
-		clientID:    cfg.PayOS.ClientID,
-		apiKey:      cfg.PayOS.ApiKey,
-		checksumKey: cfg.PayOS.ChecksumKey,
+		clientID:       cfg.PayOS.ClientID,
+		apiKey:         cfg.PayOS.ApiKey,
+		checksumKey:    cfg.PayOS.ChecksumKey,
+		expiredMinutes: cfg.PayOS.ExpiredMinutes,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
@@ -65,6 +67,9 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
 	}
+	if s.expiredMinutes > 0 {
+		bodyMap["expiredAt"] = time.Now().Add(time.Duration(s.expiredMinutes) * time.Minute).Unix()
+	}
 
 	var keys []string
 	for k := range bodyMap {
@@ -87,6 +92,9 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
 		"signature":   signature,
+	}
+	if s.expiredMinutes > 0 {
+		reqPayload["expiredAt"] = bodyMap["expiredAt"]
 	}
 
 	reqBytes, err := json.Marshal(reqPayload)
