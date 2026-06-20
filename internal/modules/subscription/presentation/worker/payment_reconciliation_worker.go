@@ -17,6 +17,19 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	errCodeProviderLookup   = "PROVIDER_LOOKUP_ERROR"
+	errCodeCompletion       = "COMPLETION_ERROR"
+	errCodeCancelUnknown    = "CANCEL_UNKNOWN"
+	errCodeCreateTimeout    = "CREATE_TIMEOUT"
+	errCodeCreateUnknown    = "CREATE_UNKNOWN"
+	errCodePendingRetry     = "PENDING_RETRY"
+	errCodeUnknownStatus    = "UNKNOWN_PROVIDER_STATUS"
+	reasonMaxPolicyExceeded = "MAX_RECONCILIATION_POLICY_EXCEEDED"
+
+	cancelReasonExpired = "Payment link expired"
+)
+
 type IPaymentReconciliationWorker interface {
 	Start()
 	Stop()
@@ -68,21 +81,21 @@ func (w *PaymentReconciliationWorker) reconcile(ctx context.Context, claimed *re
 
 	info, err := w.gateway.GetPaymentLinkInfo(ctx, orderCode)
 	if err != nil {
-		w.deferRetry(ctx, orderCode, token, "PROVIDER_LOOKUP_ERROR")
+		w.deferRetry(ctx, orderCode, token, errCodeProviderLookup)
 		return
 	}
 
 	switch info.Status {
 	case payment.ProviderPaid:
 		if err := w.completion.CompleteVerifiedPayment(ctx, info); err != nil {
-			w.deferRetry(ctx, orderCode, token, "COMPLETION_ERROR")
+			w.deferRetry(ctx, orderCode, token, errCodeCompletion)
 		}
 	case payment.ProviderPending:
 		now := time.Now().UTC()
 		// If expiresAt <= now: cancel the link and mark expired
 		if tx.ExpiresAt != nil && !tx.ExpiresAt.After(now) {
-			if err := w.gateway.CancelPaymentLink(ctx, orderCode, "Payment link expired"); err != nil {
-				w.deferRetry(ctx, orderCode, token, "CANCEL_UNKNOWN")
+			if err := w.gateway.CancelPaymentLink(ctx, orderCode, cancelReasonExpired); err != nil {
+				w.deferRetry(ctx, orderCode, token, errCodeCancelUnknown)
 				return
 			}
 			w.finish(ctx, orderCode, token, depositstatus.Expired)
@@ -94,7 +107,7 @@ func (w *PaymentReconciliationWorker) reconcile(ctx context.Context, claimed *re
 			isRecoverable := claimed.ClaimedFromStatus == depositstatus.Creating ||
 				(claimed.ClaimedFromStatus == depositstatus.ReconciliationRequired &&
 					tx.LastProviderErrorCode != nil &&
-					(*tx.LastProviderErrorCode == "PROVIDER_LOOKUP_ERROR" || *tx.LastProviderErrorCode == "CREATE_TIMEOUT" || *tx.LastProviderErrorCode == "CREATE_UNKNOWN"))
+					(*tx.LastProviderErrorCode == errCodeProviderLookup || *tx.LastProviderErrorCode == errCodeCreateTimeout || *tx.LastProviderErrorCode == errCodeCreateUnknown))
 
 			if isRecoverable {
 				updates := map[string]any{
@@ -121,9 +134,9 @@ func (w *PaymentReconciliationWorker) reconcile(ctx context.Context, claimed *re
 			// If it's cancel timeout error, try cancel again
 			if claimed.ClaimedFromStatus == depositstatus.ReconciliationRequired &&
 				tx.LastProviderErrorCode != nil &&
-				*tx.LastProviderErrorCode == "CANCEL_UNKNOWN" {
-				if err := w.gateway.CancelPaymentLink(ctx, orderCode, "Payment link expired"); err != nil {
-					w.deferRetry(ctx, orderCode, token, "CANCEL_UNKNOWN")
+				*tx.LastProviderErrorCode == errCodeCancelUnknown {
+				if err := w.gateway.CancelPaymentLink(ctx, orderCode, cancelReasonExpired); err != nil {
+					w.deferRetry(ctx, orderCode, token, errCodeCancelUnknown)
 					return
 				}
 				w.finish(ctx, orderCode, token, depositstatus.Expired)
@@ -131,12 +144,12 @@ func (w *PaymentReconciliationWorker) reconcile(ctx context.Context, claimed *re
 			}
 		}
 
-		w.deferRetry(ctx, orderCode, token, "PENDING_RETRY")
+		w.deferRetry(ctx, orderCode, token, errCodePendingRetry)
 
 	case payment.ProviderCancelled:
 		w.finish(ctx, orderCode, token, depositstatus.Cancelled)
 	default:
-		w.deferRetry(ctx, orderCode, token, "UNKNOWN_PROVIDER_STATUS")
+		w.deferRetry(ctx, orderCode, token, errCodeUnknownStatus)
 	}
 }
 
@@ -195,7 +208,7 @@ func (w *PaymentReconciliationWorker) deferRetry(ctx context.Context, orderCode 
 	}
 
 	if row.ReconciliationAttempts >= w.cfg.PayOS.ReconciliationMaxAttempts || now.Sub(row.CreatedAt) >= time.Duration(w.cfg.PayOS.ReconciliationMaxAgeHours)*time.Hour {
-		reason := "MAX_RECONCILIATION_POLICY_EXCEEDED"
+		reason := reasonMaxPolicyExceeded
 		updates["status"] = depositstatus.InvestigationRequired
 		updates["failure_reason"] = &reason
 		updates["next_reconciliation_at"] = nil
@@ -214,11 +227,4 @@ func (w *PaymentReconciliationWorker) deferRetry(ctx context.Context, orderCode 
 	} else if rowsAffected == 0 {
 		w.handleZeroRowsAffected(ctx, orderCode, token)
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
