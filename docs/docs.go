@@ -2480,7 +2480,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại",
+                "description": "Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại.\nĐịnh nghĩa enum PlanKind:\n- 0: DefaultFree (Gói miễn phí mặc định)\n- 1: Finite (Gói giới hạn số ngày sử dụng)\n- 2: Lifetime (Gói trọn đời không giới hạn thời gian)\nĐịnh nghĩa TierRank (Cấp độ gói):\n- 0: Cấp Free\n- 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2493,7 +2493,7 @@ const docTemplate = `{
                 "summary": "Lấy thông tin gói hội viên hiện tại",
                 "responses": {
                     "200": {
-                        "description": "Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
+                        "description": "Thông tin gói hội viên hiện tại",
                         "schema": {
                             "allOf": [
                                 {
@@ -2559,7 +2559,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
+                "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày.\nĐịnh nghĩa enum PlanKind:\n- 0: DefaultFree (Gói miễn phí mặc định)\n- 1: Finite (Gói giới hạn số ngày sử dụng)\n- 2: Lifetime (Gói trọn đời không giới hạn thời gian)\nĐịnh nghĩa TierRank (Cấp độ gói):\n- 0: Cấp Free\n- 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2572,7 +2572,7 @@ const docTemplate = `{
                 "summary": "Lấy hạn ngạch sử dụng hàng ngày",
                 "responses": {
                     "200": {
-                        "description": "Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
+                        "description": "Hạn ngạch sử dụng và thông tin gói hiện tại",
                         "schema": {
                             "allOf": [
                                 {
@@ -2594,7 +2594,7 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/purchase": {
             "post": {
-                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp",
+                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp.\nĐịnh nghĩa enum DepositStatus (Trạng thái thanh toán):\n- 0: Pending (Chờ thanh toán)\n- 1: Success (Thanh toán thành công)\n- 2: FailedLegacy (Thất bại cũ)\n- 3: Creating (Đang tạo link)\n- 4: ReconciliationRequired (Cần đối soát thủ công)\n- 5: Reconciling (Đang đối soát)\n- 6: CreationFailed (Tạo link thất bại)\n- 7: Cancelled (Đã hủy thanh toán)\n- 8: Expired (Giao dịch hết hạn)\n- 9: InvestigationRequired (Cần điều tra)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2618,7 +2618,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)",
+                        "description": "Link thanh toán",
                         "schema": {
                             "allOf": [
                                 {
@@ -2743,7 +2743,7 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/wallet/topup": {
             "post": {
-                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví",
+                "description": "Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví.\nĐịnh nghĩa enum DepositStatus (Trạng thái thanh toán):\n- 0: Pending (Chờ thanh toán)\n- 1: Success (Thanh toán thành công)\n- 2: FailedLegacy (Thất bại cũ)\n- 3: Creating (Đang tạo link)\n- 4: ReconciliationRequired (Cần đối soát thủ công)\n- 5: Reconciling (Đang đối soát)\n- 6: CreationFailed (Tạo link thất bại)\n- 7: Cancelled (Đã hủy thanh toán)\n- 8: Expired (Giao dịch hết hạn)\n- 9: InvestigationRequired (Cần điều tra)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2767,7 +2767,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)",
+                        "description": "Link thanh toán",
                         "schema": {
                             "allOf": [
                                 {
@@ -2823,7 +2823,7 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/plans": {
             "get": {
-                "description": "Lấy danh sách tất cả các gói đăng ký Premium hiện có",
+                "description": "Lấy danh sách tất cả các gói đăng ký Premium hiện có.\nĐịnh nghĩa enum PlanKind:\n- 0: DefaultFree (Gói miễn phí mặc định)\n- 1: Finite (Gói giới hạn số ngày sử dụng)\n- 2: Lifetime (Gói trọn đời không giới hạn thời gian)\nĐịnh nghĩa TierRank (Cấp độ gói):\n- 0: Cấp Free\n- 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2836,7 +2836,7 @@ const docTemplate = `{
                 "summary": "Lấy danh sách các gói Premium",
                 "responses": {
                     "200": {
-                        "description": "Danh sách gói cước (planKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
+                        "description": "Danh sách gói cước",
                         "schema": {
                             "allOf": [
                                 {

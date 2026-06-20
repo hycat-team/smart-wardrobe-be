@@ -31,11 +31,18 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 
 // GetUserSubscriptionOverview retrieves user current subscription details
 // @Summary Lấy thông tin gói hội viên hiện tại
-// @Description Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại
+// @Description Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại.
+// @Description Định nghĩa enum PlanKind:
+// @Description - 0: DefaultFree (Gói miễn phí mặc định)
+// @Description - 1: Finite (Gói giới hạn số ngày sử dụng)
+// @Description - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+// @Description Định nghĩa TierRank (Cấp độ gói):
+// @Description - 0: Cấp Free
+// @Description - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
+// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
 // @Security BearerAuth
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
@@ -55,11 +62,18 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 
 // GetDailyQuota retrieves user daily quota and performs lazy reset if outdated
 // @Summary Lấy hạn ngạch sử dụng hàng ngày
-// @Description Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày
+// @Description Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày.
+// @Description Định nghĩa enum PlanKind:
+// @Description - 0: DefaultFree (Gói miễn phí mặc định)
+// @Description - 1: Finite (Gói giới hạn số ngày sử dụng)
+// @Description - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+// @Description Định nghĩa TierRank (Cấp độ gói):
+// @Description - 0: Cấp Free
+// @Description - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
+// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
 // @Security BearerAuth
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
@@ -111,11 +125,18 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 
 // GetPlans retrieves all subscription plans
 // @Summary Lấy danh sách các gói Premium
-// @Description Lấy danh sách tất cả các gói đăng ký Premium hiện có
+// @Description Lấy danh sách tất cả các gói đăng ký Premium hiện có.
+// @Description Định nghĩa enum PlanKind:
+// @Description - 0: DefaultFree (Gói miễn phí mặc định)
+// @Description - 1: Finite (Gói giới hạn số ngày sử dụng)
+// @Description - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+// @Description Định nghĩa TierRank (Cấp độ gói):
+// @Description - 0: Cấp Free
+// @Description - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SubscriptionPlanDTO} "Danh sách gói cước (planKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SubscriptionPlanDTO} "Danh sách gói cước"
 // @Router /api/v1/subscriptions/plans [get]
 func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())

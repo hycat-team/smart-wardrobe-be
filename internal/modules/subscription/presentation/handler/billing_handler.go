@@ -100,14 +100,26 @@ func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 	return nil
 }
 
+
 // CreateWalletTopUp initiates a wallet topup link via PayOS
 // @Summary Tạo yêu cầu nạp tiền vào ví nội bộ
-// @Description Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví
+// @Description Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví.
+// @Description Định nghĩa enum DepositStatus (Trạng thái thanh toán):
+// @Description - 0: Pending (Chờ thanh toán)
+// @Description - 1: Success (Thanh toán thành công)
+// @Description - 2: FailedLegacy (Thất bại cũ)
+// @Description - 3: Creating (Đang tạo link)
+// @Description - 4: ReconciliationRequired (Cần đối soát thủ công)
+// @Description - 5: Reconciling (Đang đối soát)
+// @Description - 6: CreationFailed (Tạo link thất bại)
+// @Description - 7: Cancelled (Đã hủy thanh toán)
+// @Description - 8: Expired (Giao dịch hết hạn)
+// @Description - 9: InvestigationRequired (Cần điều tra)
 // @Tags Billing
 // @Accept json
 // @Produce json
 // @Param body body dto.WalletTopUpReq true "Thông tin nạp tiền"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán"
 // @Router /api/v1/subscriptions/me/wallet/topup [post]
 func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -131,12 +143,23 @@ func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 
 // CreateDirectPurchase initiates a subscription plan purchase link via PayOS
 // @Summary Đăng ký mua gói cước trực tiếp
-// @Description Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp
+// @Description Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp.
+// @Description Định nghĩa enum DepositStatus (Trạng thái thanh toán):
+// @Description - 0: Pending (Chờ thanh toán)
+// @Description - 1: Success (Thanh toán thành công)
+// @Description - 2: FailedLegacy (Thất bại cũ)
+// @Description - 3: Creating (Đang tạo link)
+// @Description - 4: ReconciliationRequired (Cần đối soát thủ công)
+// @Description - 5: Reconciling (Đang đối soát)
+// @Description - 6: CreationFailed (Tạo link thất bại)
+// @Description - 7: Cancelled (Đã hủy thanh toán)
+// @Description - 8: Expired (Giao dịch hết hạn)
+// @Description - 9: InvestigationRequired (Cần điều tra)
 // @Tags Billing
 // @Accept json
 // @Produce json
 // @Param body body dto.DirectPurchaseReq true "Thông tin gói cước"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán"
 // @Router /api/v1/subscriptions/me/purchase [post]
 func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

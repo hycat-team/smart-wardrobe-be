@@ -3021,15 +3021,20 @@ paths:
     get:
       consumes:
       - application/json
-      description: Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng
-        hiện tại
+      description: |-
+        Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại.
+        Định nghĩa enum PlanKind:
+        - 0: DefaultFree (Gói miễn phí mặc định)
+        - 1: Finite (Gói giới hạn số ngày sử dụng)
+        - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+        Định nghĩa TierRank (Cấp độ gói):
+        - 0: Cấp Free
+        - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
       produces:
       - application/json
       responses:
         "200":
-          description: 'Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind
-            đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn
-            ngày, 2: Lifetime - Gói trọn đời)'
+          description: Thông tin gói hội viên hiện tại
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -3071,15 +3076,20 @@ paths:
     get:
       consumes:
       - application/json
-      description: Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong
-        ngày
+      description: |-
+        Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày.
+        Định nghĩa enum PlanKind:
+        - 0: DefaultFree (Gói miễn phí mặc định)
+        - 1: Finite (Gói giới hạn số ngày sử dụng)
+        - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+        Định nghĩa TierRank (Cấp độ gói):
+        - 0: Cấp Free
+        - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
       produces:
       - application/json
       responses:
         "200":
-          description: 'Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind
-            đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn
-            ngày, 2: Lifetime - Gói trọn đời)'
+          description: Hạn ngạch sử dụng và thông tin gói hiện tại
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -3096,8 +3106,19 @@ paths:
     post:
       consumes:
       - application/json
-      description: Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước
-        trực tiếp
+      description: |-
+        Khởi tạo link thanh toán VietQR qua cổng PayOS để đăng ký gói cước trực tiếp.
+        Định nghĩa enum DepositStatus (Trạng thái thanh toán):
+        - 0: Pending (Chờ thanh toán)
+        - 1: Success (Thanh toán thành công)
+        - 2: FailedLegacy (Thất bại cũ)
+        - 3: Creating (Đang tạo link)
+        - 4: ReconciliationRequired (Cần đối soát thủ công)
+        - 5: Reconciling (Đang đối soát)
+        - 6: CreationFailed (Tạo link thất bại)
+        - 7: Cancelled (Đã hủy thanh toán)
+        - 8: Expired (Giao dịch hết hạn)
+        - 9: InvestigationRequired (Cần điều tra)
       parameters:
       - description: Thông tin gói cước
         in: body
@@ -3109,11 +3130,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 'Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending
-            - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại
-            cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát,
-            5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled
-            - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)'
+          description: Link thanh toán
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -3192,8 +3209,19 @@ paths:
     post:
       consumes:
       - application/json
-      description: Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào
-        ví
+      description: |-
+        Khởi tạo link thanh toán VietQR qua cổng PayOS để nạp tiền vào ví.
+        Định nghĩa enum DepositStatus (Trạng thái thanh toán):
+        - 0: Pending (Chờ thanh toán)
+        - 1: Success (Thanh toán thành công)
+        - 2: FailedLegacy (Thất bại cũ)
+        - 3: Creating (Đang tạo link)
+        - 4: ReconciliationRequired (Cần đối soát thủ công)
+        - 5: Reconciling (Đang đối soát)
+        - 6: CreationFailed (Tạo link thất bại)
+        - 7: Cancelled (Đã hủy thanh toán)
+        - 8: Expired (Giao dịch hết hạn)
+        - 9: InvestigationRequired (Cần điều tra)
       parameters:
       - description: Thông tin nạp tiền
         in: body
@@ -3205,11 +3233,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 'Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending
-            - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại
-            cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát,
-            5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled
-            - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)'
+          description: Link thanh toán
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -3247,14 +3271,20 @@ paths:
     get:
       consumes:
       - application/json
-      description: Lấy danh sách tất cả các gói đăng ký Premium hiện có
+      description: |-
+        Lấy danh sách tất cả các gói đăng ký Premium hiện có.
+        Định nghĩa enum PlanKind:
+        - 0: DefaultFree (Gói miễn phí mặc định)
+        - 1: Finite (Gói giới hạn số ngày sử dụng)
+        - 2: Lifetime (Gói trọn đời không giới hạn thời gian)
+        Định nghĩa TierRank (Cấp độ gói):
+        - 0: Cấp Free
+        - 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)
       produces:
       - application/json
       responses:
         "200":
-          description: 'Danh sách gói cước (planKind đại diện cho: 0: DefaultFree
-            - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn
-            đời)'
+          description: Danh sách gói cước
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
