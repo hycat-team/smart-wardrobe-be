@@ -32,7 +32,7 @@ func (r *UserSubscriptionRepository) GetByUserID(ctx context.Context, userID uui
 	var sub entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx)
 
-	err := query.Where("user_id = ? AND is_active = ?", userID, true).First(&sub).Error
+	err := query.Where("user_id = ?", userID).First(&sub).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -49,7 +49,7 @@ func (r *UserSubscriptionRepository) GetByUserIDs(ctx context.Context, userIDs [
 
 	var subs []*entities.UserSubscription
 	err := r.GetQueryWithPreload(ctx).
-		Where("user_id IN ? AND is_active = ?", userIDs, true).
+		Where("user_id IN ?", userIDs).
 		Find(&subs).Error
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptions(ctx context.C
 	var expiredSubs []*entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx)
 
-	err := query.Where("is_active = ? AND expires_at <= ?", true, now).Find(&expiredSubs).Error
+	err := query.Where("current_plan_kind = ? AND expires_at <= ?", 1, now).Find(&expiredSubs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionsBatch(ctx cont
 	var expiredSubs []*entities.UserSubscription
 	query := r.GetDB(ctx).Model(&entities.UserSubscription{}).
 		Select("user_id", "expires_at").
-		Where("is_active = ? AND expires_at IS NOT NULL AND expires_at <= ?", true, now)
+		Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", 1, now)
 
 	if !lastExpiresAt.IsZero() {
 		query = query.Where("expires_at > ? OR (expires_at = ? AND user_id > ?)", lastExpiresAt, lastExpiresAt, lastUserID)
@@ -106,7 +106,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 	var sub entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
-		Where("user_id = ? AND is_active = ? AND expires_at IS NOT NULL AND expires_at <= ?", userID, true, now)
+		Where("user_id = ? AND current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", userID, 1, now)
 
 	err := query.First(&sub).Error
 	if err != nil {
@@ -116,6 +116,10 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 		return nil, err
 	}
 	return &sub, nil
+}
+
+func (r *UserSubscriptionRepository) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
+	return r.GetDB(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(sub).Error
 }
 
 func (r *UserSubscriptionRepository) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {

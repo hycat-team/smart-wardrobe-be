@@ -38,6 +38,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
+	"smart-wardrobe-be/internal/modules/subscription/application/validator"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	handler4 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
@@ -85,9 +86,11 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserWalletRepository := persistence2.NewUserWalletRepository(gormDB)
 	iWalletStatementRepository := persistence2.NewWalletStatementRepository(gormDB)
 	iUserDailyQuotaRepository := persistence2.NewUserDailyQuotaRepository(gormDB)
+	iSubscriptionRenewalAttemptRepository := persistence2.NewSubscriptionRenewalAttemptRepository(gormDB)
+	iUserSubscriptionEventRepository := persistence2.NewUserSubscriptionEventRepository(gormDB)
 	iSubscriptionPlanUseCase := plan.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
 	iUserQuotaUseCase := quota.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
-	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
+	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, iSubscriptionRenewalAttemptRepository, iUserSubscriptionEventRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
 	iMediaService := media.NewCloudinaryService(cfg)
 	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
@@ -129,8 +132,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
 	iWalletUseCase := wallet.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, l)
+	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserSubscriptionEventRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iPaymentEventRepository := persistence2.NewPaymentEventRepository(gormDB)
+	iWebhookInboxRepository := persistence2.NewWebhookInboxRepository(gormDB)
+	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, l)
 	billingHandler := handler4.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription2.NewRouter(cfg, subscriptionHandler, billingHandler, authMiddleware)
 	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
@@ -167,6 +172,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker2.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
+	iPaymentReconciliationWorker := worker2.NewPaymentReconciliationWorker(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
+	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
 	iPostHotnessWorker := worker3.NewPostHotnessWorker(iPostRepository, iPostScoreRepository, l)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
 	wardrobeBatchUploadWorker := worker4.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeWorkerUseCase, l)
@@ -176,14 +183,17 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
 	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
-		RenewalWorker:             iSubscriptionRenewalWorker,
-		PostHotnessWorker:         iPostHotnessWorker,
-		WardrobeBatchUploadWorker: wardrobeBatchUploadWorker,
-		ESAsyncWorker:             searchSyncWorker,
-		FailedItemsCleanupWorker:  iFailedItemsCleanupWorker,
-		ProcessingRecoveryWorker:  iProcessingRecoveryWorker,
+		RenewalWorker:               iSubscriptionRenewalWorker,
+		PaymentReconciliationWorker: iPaymentReconciliationWorker,
+		WebhookInboxWorker:          iWebhookInboxWorker,
+		PostHotnessWorker:           iPostHotnessWorker,
+		WardrobeBatchUploadWorker:   wardrobeBatchUploadWorker,
+		ESAsyncWorker:               searchSyncWorker,
+		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
+		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
 	}
-	app := bootstrap.NewApp(cfg, engine, appWorkers)
+	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository)
+	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)
 	return app, func() {
 	}, nil
 }

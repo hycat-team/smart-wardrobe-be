@@ -65,7 +65,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_post ON likes (user_id, post_i
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_liked_comment ON likes (user_id, comment_id) WHERE comment_id IS NOT NULL;
 
 -- Tối ưu luồng quét các gói cước hết hạn cần gia hạn tự động theo lô (Batch Processing)
-CREATE INDEX IF NOT EXISTS idx_user_subscriptions_active_expires ON user_subscriptions (is_active, expires_at, user_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_expires ON user_subscriptions (expires_at, user_id) WHERE current_plan_kind = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_single_active_default_free_plan ON subscription_plans(plan_kind) WHERE plan_kind = 0 AND is_active = TRUE;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_active_direct_purchase_per_user ON deposit_transactions(user_id)
+WHERE transaction_type = 'DIRECT_PURCHASE' AND status IN (3, 0, 4, 5);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_webhook_provider_reference ON provider_webhook_inbox(provider, provider_reference, event_code) WHERE provider_reference IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_webhook_payload_hash ON provider_webhook_inbox(provider, canonical_payload_hash) WHERE provider_reference IS NULL;
+CREATE INDEX IF NOT EXISTS idx_deposit_reconciliation ON deposit_transactions(next_reconciliation_at, expires_at) WHERE status IN (0, 3, 4, 5);
+CREATE INDEX IF NOT EXISTS idx_webhook_inbox_processing ON provider_webhook_inbox(next_processing_at, processing_lease_until) WHERE processing_status IN ('RECEIVED', 'RETRY_REQUIRED', 'PROCESSING');
 
 -- ========================================================
 -- CHỈ MỤC TÌM KIẾM TỪ KHÓA (LEXICAL GIN INDEX)

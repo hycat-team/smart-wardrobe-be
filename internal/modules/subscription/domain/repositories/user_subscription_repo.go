@@ -20,4 +20,5 @@ type IUserSubscriptionRepository interface {
 	GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error)
 	GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error)
 	BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error
+	ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error
 }

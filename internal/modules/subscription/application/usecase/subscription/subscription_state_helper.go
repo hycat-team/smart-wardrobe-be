@@ -7,6 +7,7 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -45,12 +46,20 @@ func (s *SubscriptionStateSupport) GetOrCreateUserSubscription(ctx context.Conte
 		}
 
 		sub = &entities.UserSubscription{
-			UserID:             userID,
-			SubscriptionPlanID: defaultPlan.ID,
-			IsActive:           true,
-			SubscriptionPlan:   defaultPlan,
+			UserID:                 userID,
+			SubscriptionPlanID:     defaultPlan.ID,
+			CurrentPlanCode:        defaultPlan.Slug,
+			CurrentTierRank:        defaultPlan.TierRank,
+			CurrentPlanKind:        plankind.DefaultFree,
+			CurrentBenefitSnapshot: entities.JSONDocument(`{}`),
+			StartedAt:              time.Now(),
+			SubscriptionPlan:       defaultPlan,
 		}
-		if err := s.userSubRepo.Create(ctx, sub); err != nil {
+		if err := s.userSubRepo.ProvisionDefault(ctx, sub); err != nil {
+			return nil, err
+		}
+		sub, err = s.userSubRepo.GetByUserID(ctx, userID)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -77,6 +86,25 @@ func (s *SubscriptionStateSupport) GetOrCreateUserDailyQuota(ctx context.Context
 }
 
 func (s *SubscriptionStateSupport) LoadPlanForSubscription(ctx context.Context, sub *entities.UserSubscription) (*entities.SubscriptionPlan, error) {
+	if sub.CurrentPlanKind == plankind.Finite && sub.ExpiresAt != nil && !sub.ExpiresAt.After(time.Now()) {
+		if sub.FallbackPlanID != nil {
+			plan, err := s.planRepo.GetByID(ctx, *sub.FallbackPlanID)
+			if err != nil {
+				return nil, err
+			}
+			if plan != nil {
+				return plan, nil
+			}
+		}
+		plan, err := s.planRepo.GetDefaultPlan(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if plan == nil {
+			return nil, subscriptionerrors.ErrDefaultPlanConfigNotFound()
+		}
+		return plan, nil
+	}
 	if sub.SubscriptionPlan != nil {
 		return sub.SubscriptionPlan, nil
 	}
@@ -102,13 +130,16 @@ func (s *SubscriptionStateSupport) ResolveSubscriptionPlans(ctx context.Context,
 		}
 		if sub.SubscriptionPlan != nil {
 			planByID[sub.SubscriptionPlanID] = sub.SubscriptionPlan
-			continue
+		} else if _, exists := seenMissingPlanIDs[sub.SubscriptionPlanID]; !exists {
+			seenMissingPlanIDs[sub.SubscriptionPlanID] = struct{}{}
+			missingPlanIDs = append(missingPlanIDs, sub.SubscriptionPlanID)
 		}
-		if _, exists := seenMissingPlanIDs[sub.SubscriptionPlanID]; exists {
-			continue
+		if sub.FallbackPlanID != nil {
+			if _, exists := seenMissingPlanIDs[*sub.FallbackPlanID]; !exists {
+				seenMissingPlanIDs[*sub.FallbackPlanID] = struct{}{}
+				missingPlanIDs = append(missingPlanIDs, *sub.FallbackPlanID)
+			}
 		}
-		seenMissingPlanIDs[sub.SubscriptionPlanID] = struct{}{}
-		missingPlanIDs = append(missingPlanIDs, sub.SubscriptionPlanID)
 	}
 
 	if len(missingPlanIDs) == 0 {
@@ -130,12 +161,22 @@ func (s *SubscriptionStateSupport) ResolveSubscriptionPlans(ctx context.Context,
 }
 
 func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *contract.UserSubscriptionDTO {
+	expiresAt, autoRenew := sub.ExpiresAt, sub.IsAutoRenewEnabled
+	if plan.ID != sub.SubscriptionPlanID {
+		expiresAt = nil
+		autoRenew = false
+	}
 	return &contract.UserSubscriptionDTO{
 		PlanID:               plan.ID,
 		PlanName:             plan.Name,
 		PlanSlug:             plan.Slug,
-		ExpiresAt:            sub.ExpiresAt,
-		IsAutoRenewEnabled:   sub.IsAutoRenewEnabled,
+		PlanKind:             plan.PlanKind,
+		TierRank:             plan.TierRank,
+		ExpiresAt:            expiresAt,
+		IsAutoRenewEnabled:   autoRenew,
+		FallbackPlanCode:     sub.FallbackPlanCode,
+		FallbackTierRank:     sub.FallbackTierRank,
+		FallbackPlanKind:     sub.FallbackPlanKind,
 		MaxWardrobeItems:     plan.MaxWardrobeItems,
 		MaxOutfits:           plan.MaxOutfits,
 		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
@@ -147,12 +188,22 @@ func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 }
 
 func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *contract.UserSubscriptionOverviewDTO {
+	expiresAt, autoRenew := sub.ExpiresAt, sub.IsAutoRenewEnabled
+	if plan.ID != sub.SubscriptionPlanID {
+		expiresAt = nil
+		autoRenew = false
+	}
 	return &contract.UserSubscriptionOverviewDTO{
 		PlanID:             plan.ID,
 		PlanName:           plan.Name,
 		PlanSlug:           plan.Slug,
-		ExpiresAt:          sub.ExpiresAt,
-		IsAutoRenewEnabled: sub.IsAutoRenewEnabled,
+		PlanKind:           plan.PlanKind,
+		TierRank:           plan.TierRank,
+		ExpiresAt:          expiresAt,
+		IsAutoRenewEnabled: autoRenew,
+		FallbackPlanCode:   sub.FallbackPlanCode,
+		FallbackTierRank:   sub.FallbackTierRank,
+		FallbackPlanKind:   sub.FallbackPlanKind,
 		MaxWardrobeItems:   plan.MaxWardrobeItems,
 		MaxOutfits:         plan.MaxOutfits,
 		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,

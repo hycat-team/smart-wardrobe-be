@@ -107,7 +107,7 @@ func (h *BillingHandler) GetWalletStatements(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.WalletTopUpReq true "Thông tin nạp tiền"
-// @Success 200 {object} shared_pres.APIResponse "Link thanh toán"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)"
 // @Router /api/v1/subscriptions/me/wallet/topup [post]
 func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -136,7 +136,7 @@ func (h *BillingHandler) CreateWalletTopUp(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.DirectPurchaseReq true "Thông tin gói cước"
-// @Success 200 {object} shared_pres.APIResponse "Link thanh toán"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PaymentLinkDTO} "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)"
 // @Router /api/v1/subscriptions/me/purchase [post]
 func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

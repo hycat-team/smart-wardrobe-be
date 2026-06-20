@@ -34,8 +34,9 @@ func ApplySubscriptionPlan(
 	if sub == nil {
 		isNewSub = true
 		sub = &entities.UserSubscription{
-			UserID:    userID,
-			CreatedAt: now,
+			UserID: userID, SubscriptionPlanID: plan.ID, CurrentPlanCode: plan.Slug,
+			CurrentTierRank: plan.TierRank, CurrentPlanKind: plan.PlanKind,
+			CurrentBenefitSnapshot: entities.JSONDocument(`{}`), StartedAt: now, CreatedAt: now,
 		}
 	}
 
@@ -54,7 +55,7 @@ func ApplySubscriptionPlan(
 		//   we extend the existing expiration date by adding the new plan's duration (stacking/accumulating).
 		// - If the user is shifting to a DIFFERENT plan, or their previous subscription is inactive/expired,
 		//   we discard the previous expiration and start a fresh duration from the current timestamp (now).
-		if !isNewSub && sub.IsActive && sub.ExpiresAt != nil && sub.ExpiresAt.After(now) && sub.SubscriptionPlanID == plan.ID {
+		if !isNewSub && sub.ExpiresAt != nil && sub.ExpiresAt.After(now) && sub.SubscriptionPlanID == plan.ID {
 			t = sub.ExpiresAt.AddDate(0, 0, days)
 		} else {
 			t = now.AddDate(0, 0, days)
@@ -65,7 +66,11 @@ func ApplySubscriptionPlan(
 	// Update the subscription state with the plan details, calculated expiration, and activation flag.
 	sub.SubscriptionPlanID = plan.ID
 	sub.ExpiresAt = expiresAt
-	sub.IsActive = true
+	sub.CurrentPlanCode = plan.Slug
+	sub.CurrentTierRank = plan.TierRank
+	sub.CurrentPlanKind = plan.PlanKind
+	sub.StartedAt = now
+	sub.Version++
 	sub.UpdatedAt = now
 
 	// Persist the changes to the database (Create for new, Update for existing).

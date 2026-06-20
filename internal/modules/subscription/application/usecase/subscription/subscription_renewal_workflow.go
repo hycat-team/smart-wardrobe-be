@@ -2,10 +2,12 @@ package subscription
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
@@ -39,10 +41,11 @@ const (
 )
 
 type RenewalExecutionResult struct {
-	Status    string
-	Reason    string
-	UserID    uuid.UUID
-	ExpiresAt *time.Time
+	Status            string
+	Reason            string
+	UserID            uuid.UUID
+	ExpiresAt         *time.Time
+	RenewalAttemptKey string
 }
 
 type RenewalBatchSummary struct {
@@ -211,6 +214,29 @@ func (uc *SubscriptionUseCase) executeScheduledRenewal(
 	if wallet.Balance.LessThan(plan.Price) {
 		return uc.executeRenewalDowngrade(txCtx, lockedSub, freePlanID, now, result, renewalReasonDowngradedInsufficient)
 	}
+	key := fmt.Sprintf("SUB_RENEWAL:%s:%s:%s", lockedSub.UserID, plan.ID, lockedSub.ExpiresAt.UTC().Truncate(time.Second).Format(time.RFC3339))
+	existing, err := uc.renewalAttemptRepo.GetByKey(txCtx, key)
+	if err != nil {
+		return err
+	}
+	if existing != nil && existing.Status == "Succeeded" {
+		result.Status = renewalStatusRenewed
+		result.Reason = renewalReasonRenewed
+		return nil
+	}
+	if existing == nil {
+		existing = &entities.SubscriptionRenewalAttempt{RenewalAttemptKey: key, UserID: lockedSub.UserID, ExpectedPlanID: plan.ID, ExpectedExpiresAt: *lockedSub.ExpiresAt, ExpectedSubscriptionVersion: lockedSub.Version, Status: "Processing", AttemptCount: 1}
+		if err := uc.renewalAttemptRepo.Create(txCtx, existing); err != nil {
+			return err
+		}
+	} else {
+		existing.Status = "Processing"
+		existing.AttemptCount++
+		if err := uc.renewalAttemptRepo.Update(txCtx, existing); err != nil {
+			return err
+		}
+	}
+	result.RenewalAttemptKey = key
 
 	return uc.executePaidRenewal(txCtx, lockedSub, wallet, plan, days, now, result)
 }
@@ -243,7 +269,7 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 func (uc *SubscriptionUseCase) executePaidRenewal(
 	txCtx context.Context,
 	lockedSub *entities.UserSubscription,
-	wallet *entities.UserWallet,
+	userWallet *entities.UserWallet,
 	plan *entities.SubscriptionPlan,
 	days int,
 	now time.Time,
@@ -251,38 +277,72 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 ) error {
 	result.Reason = renewalReasonRenewed
 
-	prevBalance := wallet.Balance
-	wallet.Balance = wallet.Balance.Sub(plan.Price)
-	wallet.UpdatedAt = now
-	if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
+	snapshotBytes, err := json.Marshal(map[string]any{
+		"maxWardrobeItems":   plan.MaxWardrobeItems,
+		"maxOutfits":         plan.MaxOutfits,
+		"aiOutfitDailyQuota": plan.AiOutfitDailyQuota,
+		"aiChatDailyQuota":   plan.AiChatDailyQuota,
+	})
+	if err != nil {
+		return err
+	}
+	snapshot := entities.JSONDocument(snapshotBytes)
+
+	// Call ProcessWalletTransaction for debit
+	metadata := wallet.WalletStatementMetadata{
+		SourcePlanCode:             &plan.Slug,
+		SourceTierRank:             &plan.TierRank,
+		ActiveTierRankAtCompletion: &plan.TierRank,
+		RenewalAttemptKey:          &result.RenewalAttemptKey,
+	}
+	desc := fmt.Sprintf("Auto-renewed subscription plan %s", plan.Name)
+	if err := wallet.ProcessWalletTransaction(
+		txCtx,
+		uc.walletRepo,
+		uc.statementRepo,
+		lockedSub.UserID,
+		plan.Price.Neg(),
+		walletstatementtype.SubscriptionRenewal,
+		desc,
+		nil,
+		metadata,
+		now,
+	); err != nil {
 		return err
 	}
 
-	newExpiry := now.AddDate(0, 0, days)
-	lockedSub.ExpiresAt = &newExpiry
-	lockedSub.IsActive = true
-	lockedSub.UpdatedAt = now
+	// Mutate subscription via Extend domain method
+	subEvent, err := lockedSub.Extend(plan, snapshot, "", now)
+	if err != nil {
+		return err
+	}
+
 	if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
 		return err
 	}
 
-	statement := &entities.WalletStatement{
-		UserID:          lockedSub.UserID,
-		Amount:          plan.Price.Neg(),
-		TransactionType: walletstatementtype.SubscriptionRenewal,
-		PreviousBalance: prevBalance,
-		NewBalance:      wallet.Balance,
-		Description:     fmt.Sprintf("Auto-renewed subscription plan %s", plan.Name),
+	if subEvent != nil {
+		if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
+			return err
+		}
 	}
-	if err := uc.statementRepo.Create(txCtx, statement); err != nil {
+
+	key := result.RenewalAttemptKey
+	if attempt, err := uc.renewalAttemptRepo.GetByKey(txCtx, key); err != nil {
 		return err
+	} else if attempt != nil {
+		attempt.Status = "Succeeded"
+		attempt.CompletedAt = &now
+		if err := uc.renewalAttemptRepo.Update(txCtx, attempt); err != nil {
+			return err
+		}
 	}
 
 	uc.log.Info("Renewed subscription automatically successfully",
 		zap.String("user_id", lockedSub.UserID.String()),
 		zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
 		zap.Float64("amount", sharedmoney.ToFloat(plan.Price)),
-		zap.String("currency", string(wallet.Currency)),
+		zap.String("currency", string(userWallet.Currency)),
 		zap.String("transaction_type", string(walletstatementtype.SubscriptionRenewal)),
 		zap.String("result", renewalStatusRenewed),
 		zap.String("reason", result.Reason),
@@ -341,9 +401,40 @@ func (uc *SubscriptionUseCase) validateRenewalPlan(lockedSub *entities.UserSubsc
 
 // downgradeToFree updates the subscription record to the default free plan.
 func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub *entities.UserSubscription, freePlanID uuid.UUID, now time.Time) error {
-	lockedSub.SubscriptionPlanID = freePlanID
-	lockedSub.ExpiresAt = nil
-	lockedSub.IsActive = true
-	lockedSub.UpdatedAt = now
-	return uc.userSubRepo.Update(txCtx, lockedSub)
+	if lockedSub.FallbackPlanID != nil {
+		subEvent, err := lockedSub.RestoreFallback("", now)
+		if err != nil {
+			return err
+		}
+		if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
+			return err
+		}
+		if subEvent != nil {
+			if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	freePlan, err := uc.planRepo.GetByID(txCtx, freePlanID)
+	if err != nil || freePlan == nil {
+		return subscriptionerrors.ErrDefaultPlanLoadFailed()
+	}
+
+	subEvent, err := lockedSub.DowngradeToFree(freePlan, "", now)
+	if err != nil {
+		return err
+	}
+
+	if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
+		return err
+	}
+
+	if subEvent != nil {
+		if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
+			return err
+		}
+	}
+	return nil
 }

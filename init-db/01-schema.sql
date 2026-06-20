@@ -11,6 +11,9 @@ CREATE TABLE subscription_plans (
     ai_outfit_daily_quota INT NOT NULL,
     ai_chat_daily_quota INT NOT NULL,
     duration_days INT,
+    plan_kind SMALLINT NOT NULL DEFAULT 0,
+    tier_rank INT NOT NULL DEFAULT 0,
+    pricing_version BIGINT NOT NULL DEFAULT 1,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -48,9 +51,20 @@ CREATE TABLE users (
 CREATE TABLE user_subscriptions (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     subscription_plan_id UUID NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+    current_plan_code VARCHAR(100) NOT NULL,
+    current_tier_rank INT NOT NULL,
+    current_plan_kind SMALLINT NOT NULL,
+    current_benefit_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMP WITH TIME ZONE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    fallback_plan_id UUID REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+    fallback_plan_code VARCHAR(100),
+    fallback_tier_rank INT,
+    fallback_plan_kind SMALLINT,
+    fallback_benefit_snapshot JSONB,
+    last_deposit_transaction_id UUID,
     is_auto_renew_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -159,7 +173,16 @@ CREATE TABLE wardrobe_items (
     review_reason VARCHAR(100),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_user_subscription_kind_expiry CHECK (
+        (current_plan_kind = 1 AND expires_at IS NOT NULL) OR
+        (current_plan_kind IN (0, 2) AND expires_at IS NULL)
+    ),
+    CONSTRAINT chk_user_subscription_auto_renew CHECK (current_plan_kind = 1 OR is_auto_renew_enabled = FALSE),
+    CONSTRAINT chk_user_subscription_fallback CHECK (
+        (fallback_plan_id IS NULL AND fallback_plan_code IS NULL AND fallback_tier_rank IS NULL AND fallback_plan_kind IS NULL AND fallback_benefit_snapshot IS NULL) OR
+        (fallback_plan_id IS NOT NULL AND fallback_plan_code IS NOT NULL AND fallback_tier_rank IS NOT NULL AND fallback_plan_kind = 2 AND fallback_benefit_snapshot IS NOT NULL AND current_plan_kind = 1 AND current_tier_rank > fallback_tier_rank)
+    )
 );
 
 -- ========================================================
@@ -317,9 +340,36 @@ CREATE TABLE deposit_transactions (
     transaction_type VARCHAR(50) NOT NULL,
     subscription_plan_id UUID REFERENCES subscription_plans(id) ON DELETE SET NULL,
     order_code BIGSERIAL NOT NULL UNIQUE,
-    gateway_reference VARCHAR(255) UNIQUE,
+    provider VARCHAR(50) NOT NULL DEFAULT 'PAYOS',
+    payment_link_id VARCHAR(255),
+    provider_status VARCHAR(50),
+    successful_provider_reference VARCHAR(255),
     gateway_details TEXT,
     payment_url VARCHAR(500) NULL,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    next_reconciliation_at TIMESTAMP WITH TIME ZONE,
+    reconciliation_attempts INT NOT NULL DEFAULT 0,
+    processing_token UUID,
+    processing_lease_until TIMESTAMP WITH TIME ZONE,
+    last_provider_error_code VARCHAR(100),
+    last_provider_error_at TIMESTAMP WITH TIME ZONE,
+    failure_reason VARCHAR(100),
+    cancelled_at TIMESTAMP WITH TIME ZONE,
+    expired_at TIMESTAMP WITH TIME ZONE,
+    plan_code VARCHAR(100),
+    plan_name VARCHAR(100),
+    tier_rank INT,
+    plan_kind SMALLINT,
+    purchased_duration_days INT,
+    expected_amount NUMERIC(12,2) NOT NULL,
+    benefit_snapshot JSONB,
+    pricing_version BIGINT,
+    benefit_resolution VARCHAR(100),
+    benefit_applied_at TIMESTAMP WITH TIME ZONE,
+    benefit_result_snapshot JSONB,
+    wallet_credit_amount NUMERIC(12,2),
+    subscription_version_before BIGINT,
+    subscription_version_after BIGINT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -335,7 +385,48 @@ CREATE TABLE wallet_statements (
     previous_balance NUMERIC(12,2) NOT NULL,
     new_balance NUMERIC(12,2) NOT NULL,
     reference_id UUID REFERENCES deposit_transactions(id) ON DELETE SET NULL,
+    source_plan_code VARCHAR(100),
+    source_tier_rank INT,
+    active_tier_rank_at_completion INT,
+    renewal_attempt_key VARCHAR(255) UNIQUE,
     description VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE provider_payment_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), provider VARCHAR(50) NOT NULL,
+    provider_reference VARCHAR(255) NOT NULL, event_code VARCHAR(100) NOT NULL,
+    order_code BIGINT NOT NULL, payment_link_id VARCHAR(255), amount NUMERIC(12,2) NOT NULL,
+    currency VARCHAR(10) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(provider, provider_reference)
+);
+
+CREATE TABLE provider_webhook_inbox (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), provider VARCHAR(50) NOT NULL,
+    provider_reference VARCHAR(255), event_code VARCHAR(100) NOT NULL, order_code BIGINT NOT NULL,
+    payment_link_id VARCHAR(255), amount NUMERIC(12,2) NOT NULL, currency VARCHAR(10) NOT NULL,
+    canonical_payload_hash VARCHAR(64) NOT NULL, raw_payload JSONB NOT NULL,
+    processing_status VARCHAR(50) NOT NULL, processing_attempts INT NOT NULL DEFAULT 0,
+    next_processing_at TIMESTAMPTZ, processing_token UUID, processing_lease_until TIMESTAMPTZ,
+    processing_error TEXT, received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), processed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE user_subscription_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), event_key VARCHAR(255) NOT NULL UNIQUE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, event_type VARCHAR(100) NOT NULL,
+    from_plan_code VARCHAR(100), from_tier_rank INT, to_plan_code VARCHAR(100), to_tier_rank INT,
+    source_deposit_transaction_id UUID REFERENCES deposit_transactions(id), actor_admin_id UUID REFERENCES users(id),
+    occurred_at TIMESTAMPTZ NOT NULL, effective_at TIMESTAMPTZ NOT NULL, metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE subscription_renewal_attempts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), renewal_attempt_key VARCHAR(255) NOT NULL UNIQUE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expected_plan_id UUID NOT NULL REFERENCES subscription_plans(id),
+    expected_expires_at TIMESTAMPTZ NOT NULL, expected_subscription_version BIGINT NOT NULL,
+    status VARCHAR(50) NOT NULL, attempt_count INT NOT NULL DEFAULT 0, last_error_code VARCHAR(100),
+    last_error_message TEXT, processing_token UUID, processing_lease_until TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

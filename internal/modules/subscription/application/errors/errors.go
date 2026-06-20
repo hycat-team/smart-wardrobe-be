@@ -176,6 +176,10 @@ func ErrLoadPlanFailed() *apperror.Error {
 	return apperror.NewInternalError("Không thể tải thông tin gói hội viên.")
 }
 
+func ErrInvalidManualPaymentResolution() *apperror.Error {
+	return apperror.NewBadRequest("Không thể áp dụng quyết định xử lý thủ công vì trạng thái hoặc bằng chứng thanh toán không hợp lệ.")
+}
+
 func ErrAiOutfitQuotaExceeded() *apperror.Error {
 	return apperror.NewBadRequest("Bạn đã dùng hết lượt tạo trang phục bằng AI trong hôm nay.")
 }

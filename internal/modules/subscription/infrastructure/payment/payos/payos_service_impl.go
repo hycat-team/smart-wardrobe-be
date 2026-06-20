@@ -47,17 +47,17 @@ func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
 	}
 }
 
-func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.CheckoutSessionReq) (string, error) {
+func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.CheckoutSessionReq) (*payment.CheckoutSessionResult, error) {
 	if s.clientID == "" || s.apiKey == "" || s.checksumKey == "" {
-		return "", errors.New("payos credentials are not fully configured in the environment")
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "CONFIGURATION_ERROR"}, errors.New("payos credentials are not fully configured in the environment")
 	}
 
 	if req.Amount.LessThan(minPayOSTransactionAmount) {
-		return "", subscriptionerrors.ErrPayosMinAmount(minPayOSTransactionAmount.IntPart())
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "MINIMUM_AMOUNT"}, subscriptionerrors.ErrPayosMinAmount(minPayOSTransactionAmount.IntPart())
 	}
 	amountVND, err := sharedmoney.ToMinorUnits(req.Amount, currency.VND)
 	if err != nil {
-		return "", subscriptionerrors.ErrPayosMustBeInteger()
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "INVALID_AMOUNT"}, subscriptionerrors.ErrPayosMustBeInteger()
 	}
 
 	bodyMap := map[string]any{
@@ -67,8 +67,8 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
 	}
-	if s.expiredMinutes > 0 {
-		bodyMap["expiredAt"] = time.Now().Add(time.Duration(s.expiredMinutes) * time.Minute).Unix()
+	if !req.ExpiresAt.IsZero() {
+		bodyMap["expiredAt"] = req.ExpiresAt.Unix()
 	}
 
 	var keys []string
@@ -99,12 +99,12 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 
 	reqBytes, err := json.Marshal(reqPayload)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize checkout payload: %w", err)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "SERIALIZATION_ERROR"}, fmt.Errorf("failed to serialize checkout payload: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api-merchant.payos.vn/v2/payment-requests", bytes.NewBuffer(reqBytes))
 	if err != nil {
-		return "", fmt.Errorf("failed to create http request: %w", err)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "REQUEST_BUILD_ERROR"}, fmt.Errorf("failed to create http request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -113,17 +113,22 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 
 	resp, err := s.httpClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("http request failed: %w", err)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeUnknown, Retryable: true, ErrorCode: "NETWORK_ERROR"}, fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeUnknown, Retryable: true, ErrorCode: "RESPONSE_READ_ERROR"}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("payos returned non-ok status %d: %s", resp.StatusCode, string(respBytes))
+		outcome := payment.OutcomeUnknown
+		retryable := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+			outcome = payment.OutcomeKnownFailure
+		}
+		return &payment.CheckoutSessionResult{Outcome: outcome, Retryable: retryable, ErrorCode: fmt.Sprintf("HTTP_%d", resp.StatusCode)}, fmt.Errorf("payos returned non-ok status %d", resp.StatusCode)
 	}
 
 	var res struct {
@@ -134,14 +139,72 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(respBytes, &res); err != nil {
-		return "", fmt.Errorf("failed to parse payos response: %w", err)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeUnknown, Retryable: true, ErrorCode: "MALFORMED_RESPONSE"}, fmt.Errorf("failed to parse payos response: %w", err)
 	}
 
 	if res.Code != "00" {
-		return "", fmt.Errorf("payos returned business error code %s: %s", res.Code, res.Desc)
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: res.Code}, fmt.Errorf("payos returned business error code %s: %s", res.Code, res.Desc)
 	}
 
-	return res.Data.CheckoutURL, nil
+	return &payment.CheckoutSessionResult{CheckoutURL: res.Data.CheckoutURL, Outcome: payment.OutcomeSucceeded}, nil
+}
+
+func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
+	var response struct {
+		Code string `json:"code"`
+		Data struct {
+			ID          string          `json:"id"`
+			OrderCode   int64           `json:"orderCode"`
+			Amount      decimal.Decimal `json:"amount"`
+			AmountPaid  decimal.Decimal `json:"amountPaid"`
+			Status      string          `json:"status"`
+			CheckoutURL string          `json:"checkoutUrl"`
+		} `json:"data"`
+	}
+	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d", orderCode), nil, &response); err != nil {
+		return nil, err
+	}
+	status := payment.ProviderUnknown
+	switch strings.ToUpper(response.Data.Status) {
+	case "PENDING":
+		status = payment.ProviderPending
+	case "PAID":
+		status = payment.ProviderPaid
+	case "CANCELLED":
+		status = payment.ProviderCancelled
+	}
+	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "VND", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
+}
+
+func (s *PayOSService) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {
+	body, _ := json.Marshal(map[string]string{"cancellationReason": reason})
+	return s.doJSON(ctx, http.MethodPost, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d/cancel", orderCode), body, nil)
+}
+
+func (s *PayOSService) doJSON(ctx context.Context, method, url string, body []byte, out any) error {
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-client-id", s.clientID)
+	req.Header.Set("x-api-key", s.apiKey)
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("payos returned status %d", resp.StatusCode)
+	}
+	if out != nil {
+		return json.Unmarshal(data, out)
+	}
+	return nil
 }
 
 func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error) {

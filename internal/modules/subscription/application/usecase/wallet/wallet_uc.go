@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
@@ -153,64 +154,72 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		return nil, subscriptionerrors.ErrInvalidDepositAmount()
 	}
 
-	var checkoutURL string
-	var orderCode int64
-
-	createWalletTopUp := func(txCtx context.Context) error {
-		tx := &entities.DepositTransaction{
-			UserID:          userID,
-			Amount:          amount,
-			Currency:        currency.VND,
-			Status:          depositstatus.Pending,
-			TransactionType: deposittransactiontype.WalletTopup,
-			OrderCode:       timeutils.GenerateOrderCode(),
-			PaymentUrl:      nil,
+	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+	expiresAt := now.Add(time.Duration(uc.cfg.PayOS.ExpiredMinutes) * time.Minute)
+	nextReconcile := now.Add(30 * time.Second)
+	var tx *entities.DepositTransaction
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		tx = &entities.DepositTransaction{
+			UserID:               userID,
+			Amount:               amount,
+			ExpectedAmount:       amount,
+			Currency:             currency.VND,
+			Status:               depositstatus.Creating,
+			TransactionType:      deposittransactiontype.WalletTopup,
+			ExpiresAt:            &expiresAt,
+			NextReconciliationAt: &nextReconcile,
 		}
-
 		if err := uc.depositTxRepo.Create(txCtx, tx); err != nil {
 			return subscriptionerrors.ErrDepositInitFailed()
 		}
-
-		returnURL := req.ReturnUrl
-		if returnURL == "" {
-			returnURL = uc.cfg.PayOS.ReturnUrl
-		}
-		cancelURL := req.CancelUrl
-		if cancelURL == "" {
-			cancelURL = uc.cfg.PayOS.CancelUrl
-		}
-
-		amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
-		if err != nil {
-			return subscriptionerrors.ErrDepositMustBeInteger()
-		}
-		description := fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND)
-		checkoutURL, err = uc.paymentGateway.CreateCheckoutSession(txCtx, &payment.CheckoutSessionReq{
-			OrderCode:   tx.OrderCode,
-			Amount:      tx.Amount,
-			Description: description,
-			ReturnUrl:   returnURL,
-			CancelUrl:   cancelURL,
-		})
-		if err != nil {
-			return errorutils.WrapError(err, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
-		}
-
-		tx.PaymentUrl = &checkoutURL
-		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
-			return subscriptionerrors.ErrPaymentLinkUpdateFailed()
-		}
-
-		orderCode = tx.OrderCode
 		return nil
-	}
-
-	if err := uc.uow.Execute(ctx, createWalletTopUp); err != nil {
+	}); err != nil {
 		return nil, err
 	}
-
-	return &dto.PaymentLinkDTO{
-		PaymentUrl: checkoutURL,
-		OrderCode:  orderCode,
-	}, nil
+	returnURL := req.ReturnUrl
+	if returnURL == "" {
+		returnURL = uc.cfg.PayOS.ReturnUrl
+	}
+	cancelURL := req.CancelUrl
+	if cancelURL == "" {
+		cancelURL = uc.cfg.PayOS.CancelUrl
+	}
+	amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
+	if err != nil {
+		return nil, subscriptionerrors.ErrDepositMustBeInteger()
+	}
+	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, tx.OrderCode)
+		if err != nil || locked == nil {
+			return subscriptionerrors.ErrLockTransactionFailed()
+		}
+		if gatewayErr == nil && result != nil && result.Outcome == payment.OutcomeSucceeded {
+			locked.Status = depositstatus.Pending
+			locked.PaymentUrl = &result.CheckoutURL
+		} else if result != nil && result.Outcome == payment.OutcomeKnownFailure && !result.Retryable {
+			locked.Status = depositstatus.CreationFailed
+			locked.FailureReason = &result.ErrorCode
+		} else {
+			locked.Status = depositstatus.ReconciliationRequired
+			locked.ReconciliationAttempts++
+		}
+		return uc.depositTxRepo.Update(txCtx, locked)
+	}); err != nil {
+		return nil, err
+	}
+	if gatewayErr != nil && result != nil && result.Outcome == payment.OutcomeKnownFailure {
+		return nil, errorutils.WrapError(gatewayErr, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
+	}
+	url := ""
+	responseStatus := depositstatus.ReconciliationRequired
+	if result != nil {
+		url = result.CheckoutURL
+		if result.Outcome == payment.OutcomeSucceeded {
+			responseStatus = depositstatus.Pending
+		} else if result.Outcome == payment.OutcomeKnownFailure && !result.Retryable {
+			responseStatus = depositstatus.CreationFailed
+		}
+	}
+	return &dto.PaymentLinkDTO{PaymentUrl: url, OrderCode: tx.OrderCode, PaymentStatus: responseStatus, ExpiresAt: &expiresAt, NextReconciliationAt: &nextReconcile}, nil
 }

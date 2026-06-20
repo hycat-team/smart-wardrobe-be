@@ -10,40 +10,58 @@ import (
 	communityWorker "smart-wardrobe-be/internal/modules/community/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type AppWorkers struct {
-	RenewalWorker             subWorker.ISubscriptionRenewalWorker
-	PostHotnessWorker         communityWorker.IPostHotnessWorker
-	WardrobeBatchUploadWorker *wardrobeWorker.WardrobeBatchUploadWorker
-	ESAsyncWorker             *wardrobeWorker.SearchSyncWorker
-	FailedItemsCleanupWorker  wardrobeWorker.IFailedItemsCleanupWorker
-	ProcessingRecoveryWorker  wardrobeWorker.IProcessingRecoveryWorker
+	RenewalWorker               subWorker.ISubscriptionRenewalWorker
+	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
+	WebhookInboxWorker          subWorker.IWebhookInboxWorker
+	PostHotnessWorker           communityWorker.IPostHotnessWorker
+	WardrobeBatchUploadWorker   *wardrobeWorker.WardrobeBatchUploadWorker
+	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
+	FailedItemsCleanupWorker    wardrobeWorker.IFailedItemsCleanupWorker
+	ProcessingRecoveryWorker    wardrobeWorker.IProcessingRecoveryWorker
 }
-
 type App struct {
-	Config  *config.Config
-	Server  *gin.Engine
-	Workers *AppWorkers
+	Config    *config.Config
+	Server    *gin.Engine
+	Workers   *AppWorkers
+	Validator StartupValidator
+	DB        *gorm.DB
 }
 
 func NewApp(
 	cfg *config.Config,
 	server *gin.Engine,
 	workers *AppWorkers,
+	validator StartupValidator,
+	dbConn *gorm.DB,
 ) *App {
 	return &App{
-		Config:  cfg,
-		Server:  server,
-		Workers: workers,
+		Config:    cfg,
+		Server:    server,
+		Workers:   workers,
+		Validator: validator,
+		DB:        dbConn,
 	}
 }
 
 func (a *App) Run() error {
+	// 1. Run database migrations first
+	if err := db.RunMigrations(context.Background(), a.DB); err != nil {
+		return fmt.Errorf("database migration failed: %w", err)
+	}
+
+	// 2. Validate startup configurations
+	if err := a.Validator.Validate(context.Background()); err != nil {
+		return fmt.Errorf("startup validation failed: %w", err)
+	}
 	port := a.Config.Server.Port
 
 	srv := &http.Server{
@@ -57,6 +75,8 @@ func (a *App) Run() error {
 	fmt.Println("==========================================================")
 
 	a.Workers.RenewalWorker.Start()
+	a.Workers.PaymentReconciliationWorker.Start()
+	a.Workers.WebhookInboxWorker.Start()
 	a.Workers.PostHotnessWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
@@ -74,6 +94,8 @@ func (a *App) Run() error {
 	fmt.Println("\nReceived shutdown signal...")
 
 	a.Workers.RenewalWorker.Stop()
+	a.Workers.PaymentReconciliationWorker.Stop()
+	a.Workers.WebhookInboxWorker.Stop()
 	a.Workers.PostHotnessWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()

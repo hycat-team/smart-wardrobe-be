@@ -87,12 +87,17 @@ type Cloudinary struct {
 }
 
 type PayOS struct {
-	ClientID       string
-	ApiKey         string
-	ChecksumKey    string
-	ReturnUrl      string
-	CancelUrl      string
-	ExpiredMinutes int
+	ClientID                   string
+	ApiKey                     string
+	ChecksumKey                string
+	ReturnUrl                  string
+	CancelUrl                  string
+	ExpiredMinutes             int
+	ReconciliationCron         string
+	ReconciliationBatchSize    int
+	ReconciliationLeaseSeconds int
+	ReconciliationMaxAttempts  int
+	ReconciliationMaxAgeHours  int
 }
 
 type Database struct {

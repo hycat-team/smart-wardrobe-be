@@ -3,6 +3,8 @@ package dto
 import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"time"
 
@@ -44,8 +46,11 @@ type DirectPurchaseReq struct {
 }
 
 type PaymentLinkDTO struct {
-	PaymentUrl string `json:"paymentUrl"`
-	OrderCode  int64  `json:"orderCode"`
+	PaymentUrl           string                      `json:"paymentUrl"`
+	OrderCode            int64                       `json:"orderCode"`
+	PaymentStatus        depositstatus.DepositStatus `json:"paymentStatus"`
+	ExpiresAt            *time.Time                  `json:"expiresAt,omitempty"`
+	NextReconciliationAt *time.Time                  `json:"nextReconciliationAt,omitempty"`
 }
 
 type PayOSWebhookData struct {
@@ -68,13 +73,15 @@ type PayOSWebhookReq struct {
 }
 
 type SubscriptionPlanDTO struct {
-	ID                 uuid.UUID `json:"id"`
-	Slug               string    `json:"slug"`
-	Name               string    `json:"name"`
-	Price              float64   `json:"price"`
-	MaxWardrobeItems   int       `json:"maxWardrobeItems"`
-	MaxOutfits         int       `json:"maxOutfits"`
-	AiOutfitDailyQuota int       `json:"aiOutfitDailyQuota"`
-	AiChatDailyQuota   int       `json:"aiChatDailyQuota"`
-	DurationDays       *int      `json:"durationDays,omitempty"`
+	ID                 uuid.UUID         `json:"id"`
+	Slug               string            `json:"slug"`
+	Name               string            `json:"name"`
+	Price              float64           `json:"price"`
+	MaxWardrobeItems   int               `json:"maxWardrobeItems"`
+	MaxOutfits         int               `json:"maxOutfits"`
+	AiOutfitDailyQuota int               `json:"aiOutfitDailyQuota"`
+	AiChatDailyQuota   int               `json:"aiChatDailyQuota"`
+	DurationDays       *int              `json:"durationDays,omitempty"`
+	PlanKind           plankind.PlanKind `json:"planKind"`
+	TierRank           int               `json:"tierRank"`
 }

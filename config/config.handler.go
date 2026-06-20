@@ -82,12 +82,17 @@ func LoadConfig() *Config {
 			ReplenishmentSeconds: getEnvInt("RATE_LIMIT_REPLENISHMENT_SECONDS", 10),
 		},
 		PayOS: PayOS{
-			ClientID:       getEnv("PAYOS_CLIENT_ID", ""),
-			ApiKey:         getEnv("PAYOS_API_KEY", ""),
-			ChecksumKey:    getEnv("PAYOS_CHECKSUM_KEY", ""),
-			ReturnUrl:      getEnv("PAYOS_RETURN_URL", "http://localhost:3000"),
-			CancelUrl:      getEnv("PAYOS_CANCEL_URL", "http://localhost:3000"),
-			ExpiredMinutes: getEnvInt("PAYOS_EXPIRED_MINUTES", 15),
+			ClientID:                   getEnv("PAYOS_CLIENT_ID", ""),
+			ApiKey:                     getEnv("PAYOS_API_KEY", ""),
+			ChecksumKey:                getEnv("PAYOS_CHECKSUM_KEY", ""),
+			ReturnUrl:                  getEnv("PAYOS_RETURN_URL", "http://localhost:3000"),
+			CancelUrl:                  getEnv("PAYOS_CANCEL_URL", "http://localhost:3000"),
+			ExpiredMinutes:             getEnvInt("PAYOS_EXPIRED_MINUTES", 15),
+			ReconciliationCron:         getEnv("PAYOS_RECONCILIATION_CRON", "0 */10 * * * *"),
+			ReconciliationBatchSize:    getEnvInt("PAYOS_RECONCILIATION_BATCH_SIZE", 50),
+			ReconciliationLeaseSeconds: getEnvInt("PAYOS_RECONCILIATION_LEASE_SECONDS", 45),
+			ReconciliationMaxAttempts:  getEnvInt("PAYOS_RECONCILIATION_MAX_ATTEMPTS", 20),
+			ReconciliationMaxAgeHours:  getEnvInt("PAYOS_RECONCILIATION_MAX_AGE_HOURS", 168),
 		},
 		Cloudinary: Cloudinary{
 			CloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
@@ -245,6 +250,12 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.RAG.RecommendationCandidateLimit <= 0 || cfg.RAG.RecommendationMinimumCandidatePool <= 0 || cfg.RAG.RecommendationEmbeddingDimension <= 0 || cfg.RAG.RecommendationEmbeddingTimeoutSeconds <= 0 {
 		return fmt.Errorf("rag recommendation retrieval configuration is invalid")
+	}
+	if cfg.PayOS.ExpiredMinutes <= 0 {
+		return fmt.Errorf("payos expiration must be greater than 0")
+	}
+	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
+		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}
 
 	return nil

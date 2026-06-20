@@ -5,9 +5,11 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/resolution"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
+	"smart-wardrobe-be/internal/modules/subscription/application/validator"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 
 	"github.com/google/wire"
@@ -26,4 +28,6 @@ var ProviderSet = wire.NewSet(
 	wallet.NewWalletUseCase,
 	purchase.NewSubscriptionPurchaseUseCase,
 	webhook.NewPaymentWebhookUseCase,
+	resolution.NewPaymentResolutionUseCase,
+	validator.NewSubscriptionCatalogValidator,
 )

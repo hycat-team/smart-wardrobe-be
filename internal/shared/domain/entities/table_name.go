@@ -104,3 +104,16 @@ func (DepositTransaction) TableName() string {
 func (WalletStatement) TableName() string {
 	return "wallet_statements"
 }
+
+func (ProviderPaymentEvent) TableName() string {
+	return "provider_payment_events"
+}
+func (ProviderWebhookInbox) TableName() string {
+	return "provider_webhook_inbox"
+}
+func (UserSubscriptionEvent) TableName() string {
+	return "user_subscription_events"
+}
+func (SubscriptionRenewalAttempt) TableName() string {
+	return "subscription_renewal_attempts"
+}

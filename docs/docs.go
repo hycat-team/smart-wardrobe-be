@@ -2475,6 +2475,11 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại",
                 "consumes": [
                     "application/json"
@@ -2488,9 +2493,21 @@ const docTemplate = `{
                 "summary": "Lấy thông tin gói hội viên hiện tại",
                 "responses": {
                     "200": {
-                        "description": "Thông tin gói hội viên hiện tại",
+                        "description": "Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2498,6 +2515,11 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/auto-renew": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
                 "consumes": [
                     "application/json"
@@ -2532,6 +2554,11 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/daily-quota": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày",
                 "consumes": [
                     "application/json"
@@ -2545,9 +2572,21 @@ const docTemplate = `{
                 "summary": "Lấy hạn ngạch sử dụng hàng ngày",
                 "responses": {
                     "200": {
-                        "description": "Hạn ngạch sử dụng",
+                        "description": "Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2579,9 +2618,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link thanh toán",
+                        "description": "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2716,9 +2767,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Link thanh toán",
+                        "description": "Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát, 5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2773,9 +2836,24 @@ const docTemplate = `{
                 "summary": "Lấy danh sách các gói Premium",
                 "responses": {
                     "200": {
-                        "description": "Danh sách gói cước",
+                        "description": "Danh sách gói cước (planKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -4506,6 +4584,64 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "nextReconciliationAt": {
+                    "type": "string"
+                },
+                "orderCode": {
+                    "type": "integer"
+                },
+                "paymentStatus": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus"
+                },
+                "paymentUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO": {
+            "type": "object",
+            "properties": {
+                "aiChatDailyQuota": {
+                    "type": "integer"
+                },
+                "aiOutfitDailyQuota": {
+                    "type": "integer"
+                },
+                "durationDays": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "maxOutfits": {
+                    "type": "integer"
+                },
+                "maxWardrobeItems": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "planKind": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "tierRank": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO": {
             "type": "object",
             "properties": {
@@ -4549,6 +4685,109 @@ const docTemplate = `{
                 },
                 "returnUrl": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO": {
+            "type": "object",
+            "properties": {
+                "aiChatDailyQuota": {
+                    "type": "integer"
+                },
+                "aiOutfitDailyQuota": {
+                    "type": "integer"
+                },
+                "aiUsageCount": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fallbackPlanCode": {
+                    "type": "string"
+                },
+                "fallbackPlanKind": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind"
+                },
+                "fallbackTierRank": {
+                    "type": "integer"
+                },
+                "isAutoRenewEnabled": {
+                    "type": "boolean"
+                },
+                "lastResetDate": {
+                    "type": "string"
+                },
+                "maxOutfits": {
+                    "type": "integer"
+                },
+                "maxWardrobeItems": {
+                    "type": "integer"
+                },
+                "outfitRecommendCount": {
+                    "type": "integer"
+                },
+                "planID": {
+                    "type": "string"
+                },
+                "planKind": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind"
+                },
+                "planName": {
+                    "type": "string"
+                },
+                "planSlug": {
+                    "type": "string"
+                },
+                "tierRank": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO": {
+            "type": "object",
+            "properties": {
+                "aiChatDailyQuota": {
+                    "type": "integer"
+                },
+                "aiOutfitDailyQuota": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fallbackPlanCode": {
+                    "type": "string"
+                },
+                "fallbackPlanKind": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind"
+                },
+                "fallbackTierRank": {
+                    "type": "integer"
+                },
+                "isAutoRenewEnabled": {
+                    "type": "boolean"
+                },
+                "maxOutfits": {
+                    "type": "integer"
+                },
+                "maxWardrobeItems": {
+                    "type": "integer"
+                },
+                "planID": {
+                    "type": "string"
+                },
+                "planKind": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind"
+                },
+                "planName": {
+                    "type": "string"
+                },
+                "planSlug": {
+                    "type": "string"
+                },
+                "tierRank": {
+                    "type": "integer"
                 }
             }
         },
@@ -5237,6 +5476,34 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "x-enum-varnames": [
+                "Pending",
+                "Success",
+                "FailedLegacy",
+                "Creating",
+                "ReconciliationRequired",
+                "Reconciling",
+                "CreationFailed",
+                "Cancelled",
+                "Expired",
+                "InvestigationRequired"
+            ]
+        },
         "smart-wardrobe-be_internal_shared_domain_constants_gender.Gender": {
             "type": "integer",
             "enum": [
@@ -5289,6 +5556,20 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "Draft",
                 "Active"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "DefaultFree",
+                "Finite",
+                "Lifetime"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus": {
@@ -5388,12 +5669,16 @@ const docTemplate = `{
             "enum": [
                 "TOPUP",
                 "SUBSCRIPTION_PURCHASE",
-                "SUBSCRIPTION_RENEWAL"
+                "SUBSCRIPTION_RENEWAL",
+                "LOWER_TIER_PAYMENT_CREDIT",
+                "SAME_LIFETIME_PAYMENT_CREDIT"
             ],
             "x-enum-varnames": [
                 "Topup",
                 "SubscriptionPurchase",
-                "SubscriptionRenewal"
+                "SubscriptionRenewal",
+                "LowerTierPaymentCredit",
+                "SameLifetimePaymentCredit"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus": {

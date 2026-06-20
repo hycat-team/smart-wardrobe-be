@@ -15,6 +15,13 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type WalletStatementMetadata struct {
+	SourcePlanCode             *string
+	SourceTierRank             *int
+	ActiveTierRankAtCompletion *int
+	RenewalAttemptKey          *string
+}
+
 // ProcessWalletTransaction is an internal workflow to encapsulate the logic
 // for safely modifying a user's wallet balance and recording the transaction statement.
 // It must be executed within a UnitOfWork transaction context (txCtx) to guarantee ACID properties.
@@ -28,8 +35,31 @@ func ProcessWalletTransaction(
 	transactionType walletstatementtype.WalletStatementType,
 	description string,
 	referenceID *uuid.UUID,
+	metadata WalletStatementMetadata,
 	now time.Time,
 ) error {
+	// Validate metadata invariants based on transactionType
+	switch transactionType {
+	case walletstatementtype.Topup, walletstatementtype.LowerTierPaymentCredit, walletstatementtype.SameLifetimePaymentCredit:
+		if metadata.SourcePlanCode != nil || metadata.SourceTierRank != nil || metadata.ActiveTierRankAtCompletion != nil || metadata.RenewalAttemptKey != nil {
+			return apperror.NewBadRequest("Giao dịch Topup hoặc Credit không được chứa thông tin gói cước hoặc gia hạn.")
+		}
+	case walletstatementtype.SubscriptionPurchase:
+		if metadata.SourcePlanCode == nil || *metadata.SourcePlanCode == "" ||
+			metadata.SourceTierRank == nil ||
+			metadata.ActiveTierRankAtCompletion == nil ||
+			metadata.RenewalAttemptKey != nil {
+			return apperror.NewBadRequest("Giao dịch mua gói cước thiếu thông tin hoặc chứa thông tin không hợp lệ.")
+		}
+	case walletstatementtype.SubscriptionRenewal:
+		if metadata.SourcePlanCode == nil || *metadata.SourcePlanCode == "" ||
+			metadata.SourceTierRank == nil ||
+			metadata.ActiveTierRankAtCompletion == nil ||
+			metadata.RenewalAttemptKey == nil || *metadata.RenewalAttemptKey == "" {
+			return apperror.NewBadRequest("Giao dịch gia hạn gói cước thiếu thông tin hoặc chứa thông tin không hợp lệ.")
+		}
+	}
+
 	// If the transaction amount is zero, skip database writes entirely as a ledger optimization.
 	if amount.IsZero() {
 		return nil
@@ -80,13 +110,17 @@ func ProcessWalletTransaction(
 
 	// Create a wallet statement to audit the balance change (double-entry bookkeeping).
 	statement := &entities.WalletStatement{
-		UserID:          userID,
-		Amount:          amount,
-		TransactionType: transactionType,
-		PreviousBalance: prevBalance,
-		NewBalance:      wallet.Balance,
-		ReferenceID:     referenceID,
-		Description:     description,
+		UserID:                     userID,
+		Amount:                     amount,
+		TransactionType:            transactionType,
+		PreviousBalance:            prevBalance,
+		NewBalance:                 wallet.Balance,
+		ReferenceID:                referenceID,
+		SourcePlanCode:             metadata.SourcePlanCode,
+		SourceTierRank:             metadata.SourceTierRank,
+		ActiveTierRankAtCompletion: metadata.ActiveTierRankAtCompletion,
+		RenewalAttemptKey:          metadata.RenewalAttemptKey,
+		Description:                description,
 	}
 
 	// Persist the statement record.

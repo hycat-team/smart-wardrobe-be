@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -25,7 +26,7 @@ func NewSubscriptionPlanRepository(db *gorm.DB) repositories.ISubscriptionPlanRe
 func (r *SubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error) {
 	var plan entities.SubscriptionPlan
 	err := r.GetDB(ctx).
-		Where("price = ? AND is_active = ?", 0, true).
+		Where("plan_kind = ? AND is_active = ?", plankind.DefaultFree, true).
 		First(&plan).
 		Error
 

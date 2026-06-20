@@ -10,6 +10,17 @@ BIN_DIR := bin
 WIRE_VERSION := v0.7.0
 SWAG_VERSION := v1.16.6
 
+# Goose Migration variables
+DB_HOST ?= localhost
+DB_USER ?= admin
+DB_PASSWORD ?= 123456
+DB_NAME ?= smart_wardrobe_db
+DB_PORT ?= 5432
+DB_SSLMODE ?= disable
+DB_TIMEZONE ?= Asia/Ho_Chi_Minh
+MIGRATION_DIR := ./migrations
+MIGRATION_DSN := "host=$(DB_HOST) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) port=$(DB_PORT) sslmode=$(DB_SSLMODE) TimeZone=$(DB_TIMEZONE)"
+
 ifeq ($(OS),Windows_NT)
 GO_BIN_OUT := $(BIN_DIR)/main.exe
 RUN_BIN := .\$(subst /,\,$(GO_BIN_OUT))
@@ -26,32 +37,42 @@ FMT_CMD := find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w {}
 FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)"
 endif
 
-.PHONY: help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean check generate-check docker-build
+.PHONY: help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean check generate-check docker-build migration-status migration-up migration-down migration-create install-goose
 
 help:
 	@echo PROJECT COMMANDS:
-	@echo make wire          : Generate dependency injection code
-	@echo make swagger       : Generate Swagger specifications
-	@echo make generate      : Generate Wire and Swagger files
-	@echo make fmt           : Format Go source files
-	@echo make fmt-check     : Check Go source formatting
-	@echo make tidy          : Tidy Go modules
-	@echo make tidy-check    : Verify go.mod and go.sum
-	@echo make vet           : Run go vet
-	@echo make test          : Run Go tests
-	@echo make build         : Build the Go executable
-	@echo make run           : Build and run the executable
-	@echo make dev           : Generate and run the application
-	@echo make check         : Run all CI quality checks
-	@echo make clean         : Remove generated binaries
-	@echo make install-tools : Install pinned Wire and Swag versions
-	@echo make docker-build  : Build the production Docker image locally
+	@echo make wire             : Generate dependency injection code
+	@echo make swagger          : Generate Swagger specifications
+	@echo make generate         : Generate Wire and Swagger files
+	@echo make fmt              : Format Go source files
+	@echo make fmt-check        : Check Go source formatting
+	@echo make tidy             : Tidy Go modules
+	@echo make tidy-check       : Verify go.mod and go.sum
+	@echo make vet              : Run go vet
+	@echo make test             : Run Go tests
+	@echo make build            : Build the Go executable
+	@echo make run              : Build and run the executable
+	@echo make dev              : Generate and run the application
+	@echo make check            : Run all CI quality checks
+	@echo make clean            : Remove generated binaries
+	@echo make install-tools    : Install pinned Wire and Swag versions
+	@echo make install-goose    : Install Goose CLI tool locally
+	@echo make docker-build     : Build the production Docker image locally
+	@echo make migration-status : Check Goose migration status
+	@echo make migration-up     : Run Goose up migrations manually
+	@echo make migration-down   : Rollback Goose migrations manually
+	@echo make migration-create name=ten : Create a new SQL migration file
 
 install-tools:
 	@echo Installing pinned development tools...
 	@go install github.com/google/wire/cmd/wire@$(WIRE_VERSION)
 	@go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
 	@echo Development tools installed.
+
+install-goose:
+	@echo Installing Goose CLI tool...
+	@go install github.com/pressly/goose/v3/cmd/goose@latest
+	@echo Goose CLI installed.
 
 wire:
 	@echo Running Google Wire...
@@ -124,3 +145,15 @@ docker-build:
 	@echo Building production Docker image...
 	@docker build --pull --target production -t backend-smartwardrobe:local .
 	@echo Docker image build finished.
+
+migration-status:
+	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) status
+
+migration-up:
+	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) up
+
+migration-down:
+	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) down
+
+migration-create:
+	@goose -dir $(MIGRATION_DIR) create $(name) sql

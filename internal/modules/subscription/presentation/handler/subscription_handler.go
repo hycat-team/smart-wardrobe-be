@@ -1,8 +1,10 @@
 package handler
 
 import (
+	_ "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/subscription/presentation/dto"
+	_ "smart-wardrobe-be/internal/modules/subscription/contract"
+	req_dto "smart-wardrobe-be/internal/modules/subscription/presentation/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -33,8 +35,9 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Thông tin gói hội viên hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
 // @Router /api/v1/subscriptions/me [get]
+// @Security BearerAuth
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -56,8 +59,9 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Hạn ngạch sử dụng"
+// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
+// @Security BearerAuth
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -79,16 +83,17 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Param body body dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
+// @Param body body req_dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/auto-renew [put]
+// @Security BearerAuth
 func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
 
-	var req dto.SetAutoRenewReq
+	var req req_dto.SetAutoRenewReq
 	if err := validation.BindJSON(c, &req); err != nil {
 		return err
 	}
@@ -110,7 +115,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Danh sách gói cước"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SubscriptionPlanDTO} "Danh sách gói cước (planKind đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn đời)"
 // @Router /api/v1/subscriptions/plans [get]
 func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())

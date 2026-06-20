@@ -3,7 +3,10 @@ package webhook
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -13,8 +16,11 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/benefitresolution"
+	"smart-wardrobe-be/internal/shared/domain/constants/currency"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
@@ -57,15 +63,18 @@ type WebhookPayloadData struct {
 
 // PaymentWebhookUseCase handles verified payment gateway callbacks and applies their side effects.
 type PaymentWebhookUseCase struct {
-	cfg            *config.Config
-	walletRepo     repositories.IUserWalletRepository
-	depositTxRepo  repositories.IDepositTransactionRepository
-	statementRepo  repositories.IWalletStatementRepository
-	planRepo       repositories.ISubscriptionPlanRepository
-	userSubRepo    repositories.IUserSubscriptionRepository
-	paymentGateway payment.IPaymentGatewayService
-	uow            shared_repos.IUnitOfWork
-	log            logger.Interface
+	cfg                   *config.Config
+	walletRepo            repositories.IUserWalletRepository
+	depositTxRepo         repositories.IDepositTransactionRepository
+	statementRepo         repositories.IWalletStatementRepository
+	planRepo              repositories.ISubscriptionPlanRepository
+	userSubRepo           repositories.IUserSubscriptionRepository
+	paymentGateway        payment.IPaymentGatewayService
+	uow                   shared_repos.IUnitOfWork
+	paymentEventRepo      repositories.IPaymentEventRepository
+	inboxRepo             repositories.IWebhookInboxRepository
+	subscriptionEventRepo repositories.IUserSubscriptionEventRepository
+	log                   logger.Interface
 }
 
 // NewPaymentWebhookUseCase builds the payment webhook processor with all required collaborators.
@@ -78,18 +87,24 @@ func NewPaymentWebhookUseCase(
 	userSubRepo repositories.IUserSubscriptionRepository,
 	paymentGateway payment.IPaymentGatewayService,
 	uow shared_repos.IUnitOfWork,
+	paymentEventRepo repositories.IPaymentEventRepository,
+	inboxRepo repositories.IWebhookInboxRepository,
+	subscriptionEventRepo repositories.IUserSubscriptionEventRepository,
 	log logger.Interface,
 ) uc_interfaces.IPaymentWebhookUseCase {
 	return &PaymentWebhookUseCase{
-		cfg:            cfg,
-		walletRepo:     walletRepo,
-		depositTxRepo:  depositTxRepo,
-		statementRepo:  statementRepo,
-		planRepo:       planRepo,
-		userSubRepo:    userSubRepo,
-		paymentGateway: paymentGateway,
-		uow:            uow,
-		log:            log,
+		cfg:                   cfg,
+		walletRepo:            walletRepo,
+		depositTxRepo:         depositTxRepo,
+		statementRepo:         statementRepo,
+		planRepo:              planRepo,
+		userSubRepo:           userSubRepo,
+		paymentGateway:        paymentGateway,
+		uow:                   uow,
+		paymentEventRepo:      paymentEventRepo,
+		inboxRepo:             inboxRepo,
+		subscriptionEventRepo: subscriptionEventRepo,
+		log:                   log,
 	}
 }
 
@@ -99,14 +114,24 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	if err != nil {
 		return err
 	}
+	inbox, err := uc.persistWebhookInbox(ctx, payload)
+	if err != nil {
+		return err
+	}
 
 	if !uc.isSuccessfulWebhook(payload) {
 		uc.logIgnoredWebhook(payload)
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkProcessed(ctx, inbox.ID, time.Now().UTC())
+		}
 		return nil
 	}
 
 	tx, webhookAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)
 	if err != nil {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkInvestigation(ctx, inbox.ID, time.Now().UTC(), err.Error())
+		}
 		return err
 	}
 
@@ -120,6 +145,9 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	}
 
 	if err := uc.processLockedWebhookTransaction(ctx, payload, tx, webhookAmount, detailsStr); err != nil {
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, time.Now().UTC(), err.Error())
+		}
 		uc.log.Error("Failed to process payment webhook",
 			zap.Int64("order_code", payload.Data.OrderCode),
 			zap.String("gateway_reference", payload.Data.Reference),
@@ -129,6 +157,9 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		)
 		return err
 	}
+	if inbox != nil {
+		_ = uc.inboxRepo.MarkProcessed(ctx, inbox.ID, time.Now().UTC())
+	}
 
 	uc.log.Info("Processed payment webhook successfully",
 		zap.Int64("order_code", payload.Data.OrderCode),
@@ -137,6 +168,26 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		zap.String("result", "processed"),
 	)
 	return nil
+}
+
+func (uc *PaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, info *payment.PaymentLinkInfo) error {
+	if info == nil || info.Status != payment.ProviderPaid {
+		return subscriptionerrors.ErrProcessPaymentGatewayFailed()
+	}
+	amount := info.AmountPaid
+	if amount.IsZero() {
+		amount = info.Amount
+	}
+	payload := &WebhookPayload{Code: "00", Success: true, Data: WebhookPayloadData{OrderCode: info.OrderCode, Amount: json.Number(amount.String()), Reference: info.Reference, Currency: info.Currency, PaymentLinkId: info.PaymentLinkID, Code: "00"}}
+	tx, verifiedAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)
+	if err != nil {
+		return err
+	}
+	details, err := uc.serializeWebhookDetails(payload)
+	if err != nil {
+		return err
+	}
+	return uc.processLockedWebhookTransaction(ctx, payload, tx, verifiedAmount, details)
 }
 
 // parseVerifiedWebhookPayload verifies the signature and decodes the callback body.
@@ -226,18 +277,65 @@ func (uc *PaymentWebhookUseCase) processLockedWebhookTransaction(
 		if lockedTx == nil {
 			return subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
 		}
+		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 		if lockedTx.Status == depositstatus.Success {
+			if lockedTx.SuccessfulProviderReference == nil || *lockedTx.SuccessfulProviderReference != payload.Data.Reference {
+				return subscriptionerrors.ErrProcessPaymentGatewayFailed()
+			}
 			return nil
 		}
-
-		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-		if err := uc.markWebhookTransactionSuccess(txCtx, lockedTx, payload.Data.Reference, detailsStr); err != nil {
+		if payload.Data.Reference != "" {
+			existing, err := uc.paymentEventRepo.GetByReference(txCtx, "PAYOS", payload.Data.Reference)
+			if err != nil {
+				return err
+			}
+			if existing != nil {
+				if existing.OrderCode != payload.Data.OrderCode || !existing.Amount.Equal(webhookAmount) || existing.PaymentLinkID != payload.Data.PaymentLinkId {
+					return subscriptionerrors.ErrProcessPaymentGatewayFailed()
+				}
+			} else if err := uc.paymentEventRepo.Create(txCtx, &entities.ProviderPaymentEvent{Provider: "PAYOS", ProviderReference: payload.Data.Reference, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: payload.Data.PaymentLinkId, Amount: webhookAmount, Currency: lockedTx.Currency}); err != nil {
+				return err
+			}
+		}
+		if err := uc.dispatchWebhookWorkflow(txCtx, lockedTx, now); err != nil {
 			return err
 		}
-
-		return uc.dispatchWebhookWorkflow(txCtx, lockedTx, now)
+		return uc.markWebhookTransactionSuccess(txCtx, lockedTx, payload.Data.Reference, detailsStr, now)
 	})
 }
+
+func (uc *PaymentWebhookUseCase) persistWebhookInbox(ctx context.Context, payload *WebhookPayload) (*entities.ProviderWebhookInbox, error) {
+	canonical, err := json.Marshal(payload.Data)
+	if err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256(canonical)
+	hash := hex.EncodeToString(sum[:])
+	if existing, err := uc.inboxRepo.GetByHash(ctx, "PAYOS", hash); err != nil {
+		return nil, err
+	} else if existing != nil {
+		return existing, nil
+	}
+	if payload.Data.Reference != "" {
+		if existing, err := uc.inboxRepo.GetByReference(ctx, "PAYOS", payload.Data.Reference, payload.Data.Code); err != nil {
+			return nil, err
+		} else if existing != nil {
+			return existing, nil
+		}
+	}
+	amount, err := decimal.NewFromString(payload.Data.Amount.String())
+	if err != nil {
+		return nil, subscriptionerrors.ErrInvalidAmount()
+	}
+	ref, link := payload.Data.Reference, payload.Data.PaymentLinkId
+	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currencyFromText(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
+	if err := uc.inboxRepo.Create(ctx, inbox); err != nil {
+		return nil, err
+	}
+	return inbox, nil
+}
+
+func currencyFromText(value string) currency.Currency { return currency.Currency(value) }
 
 // markWebhookTransactionSuccess updates the deposit transaction status after a successful callback.
 func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(
@@ -245,10 +343,12 @@ func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(
 	lockedTx *entities.DepositTransaction,
 	reference string,
 	detailsStr string,
+	now time.Time,
 ) error {
 	lockedTx.Status = depositstatus.Success
-	lockedTx.GatewayReference = &reference
+	lockedTx.SuccessfulProviderReference = &reference
 	lockedTx.GatewayDetails = &detailsStr
+	lockedTx.BenefitAppliedAt = &now
 	if err := uc.depositTxRepo.Update(txCtx, lockedTx); err != nil {
 		return subscriptionerrors.ErrCompletePaymentRecordFailed()
 	}
@@ -270,7 +370,13 @@ func (uc *PaymentWebhookUseCase) dispatchWebhookWorkflow(txCtx context.Context, 
 // executeWalletTopUpWorkflow credits the user's wallet after a successful top-up payment.
 func (uc *PaymentWebhookUseCase) executeWalletTopUpWorkflow(txCtx context.Context, tx *entities.DepositTransaction, now time.Time) error {
 	desc := "Nạp tiền thành công vào ví tài khoản hệ thống"
-	return wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, now)
+	metadata := wallet.WalletStatementMetadata{}
+	if err := wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.Topup, desc, &tx.ID, metadata, now); err != nil {
+		return err
+	}
+	r := benefitresolution.WalletTopupCredited
+	tx.BenefitResolution = &r
+	return nil
 }
 
 // executeDirectPurchaseWorkflow fetches the targeted subscription plan and applies it.
@@ -287,5 +393,103 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 		return subscriptionerrors.ErrRequestedPlanNotFound()
 	}
 
-	return subscription.ApplySubscriptionPlan(txCtx, uc.userSubRepo, tx.UserID, plan, now)
+	if tx.PlanCode != nil {
+		plan.Slug = *tx.PlanCode
+	}
+	if tx.PlanName != nil {
+		plan.Name = *tx.PlanName
+	}
+	if tx.TierRank != nil {
+		plan.TierRank = *tx.TierRank
+	}
+	if tx.PlanKind != nil {
+		plan.PlanKind = *tx.PlanKind
+	}
+	plan.DurationDays = tx.PurchasedDurationDays
+	free, err := uc.planRepo.GetDefaultPlan(txCtx)
+	if err != nil || free == nil {
+		return subscriptionerrors.ErrDefaultPlanLoadFailed()
+	}
+	sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, tx.UserID)
+	if err != nil {
+		return err
+	}
+	if sub == nil {
+		sub = &entities.UserSubscription{UserID: tx.UserID, SubscriptionPlanID: free.ID, SubscriptionPlan: free, CurrentPlanCode: free.Slug, CurrentTierRank: free.TierRank, CurrentPlanKind: plankind.DefaultFree, CurrentBenefitSnapshot: entities.JSONDocument(`{}`), StartedAt: now}
+		if err := uc.userSubRepo.ProvisionDefault(txCtx, sub); err != nil {
+			return err
+		}
+		sub, err = uc.userSubRepo.GetByUserIDWithLock(txCtx, tx.UserID)
+		if err != nil {
+			return err
+		}
+	}
+	if sub.ExpiresAt != nil && !sub.ExpiresAt.After(now) && sub.FallbackPlanID != nil {
+		subEvent, err := sub.RestoreFallback("", now)
+		if err != nil {
+			return err
+		}
+		if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
+			return err
+		}
+		if subEvent != nil {
+			key := fmt.Sprintf("LIFETIME_FALLBACK_RESTORED:%s:%s", sub.UserID, sub.StartedAt.UTC().Format(time.RFC3339))
+			subEvent.EventKey = key
+			if existing, err := uc.subscriptionEventRepo.GetByKey(txCtx, key); err != nil {
+				return err
+			} else if existing == nil {
+				if err := uc.subscriptionEventRepo.Create(txCtx, subEvent); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	effective, err := subscription.ResolveEffectiveSubscription(sub, free, now)
+	if err != nil {
+		return err
+	}
+	transition := subscription.EvaluateSubscriptionTransition(subscription.PaymentCompletion, effective, subscription.PaymentSnapshot{PlanCode: plan.Slug, TierRank: plan.TierRank, PlanKind: plan.PlanKind, DurationDays: plan.DurationDays, BenefitSnapshot: tx.BenefitSnapshot})
+	if transition == subscription.CreditWalletLowerTier || transition == subscription.CreditWalletSameLifetime {
+		statementType, resolution := walletstatementtype.LowerTierPaymentCredit, benefitresolution.LowerTierPaymentCreditedToWallet
+		if transition == subscription.CreditWalletSameLifetime {
+			statementType, resolution = walletstatementtype.SameLifetimePaymentCredit, benefitresolution.SameLifetimePaymentCreditedToWallet
+		}
+		metadata := wallet.WalletStatementMetadata{}
+		if err := wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, statementType, "Khoản thanh toán được hoàn vào ví do gói hiện tại có quyền lợi cao hơn hoặc tương đương", &tx.ID, metadata, now); err != nil {
+			return err
+		}
+		tx.BenefitResolution = &resolution
+		credit := tx.Amount
+		tx.WalletCreditAmount = &credit
+		return nil
+	}
+	before := sub.Version
+	resolution, subEvent, err := subscription.ApplyTransition(sub, plan, tx.BenefitSnapshot, transition, now)
+	if err != nil {
+		return err
+	}
+	sub.LastDepositTransactionID = &tx.ID
+	if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
+		return err
+	}
+	eventKey := fmt.Sprintf("PAYMENT_BENEFIT:%s", tx.ID)
+	if subEvent != nil {
+		subEvent.EventKey = eventKey
+		subEvent.SourceDepositTransactionID = &tx.ID
+		if existing, err := uc.subscriptionEventRepo.GetByKey(txCtx, eventKey); err != nil {
+			return err
+		} else if existing == nil {
+			if err := uc.subscriptionEventRepo.Create(txCtx, subEvent); err != nil {
+				return err
+			}
+		}
+	}
+	after := sub.Version
+	tx.BenefitResolution = &resolution
+	if subEvent != nil {
+		tx.BenefitResultSnapshot = subEvent.Metadata
+	}
+	tx.SubscriptionVersionBefore = &before
+	tx.SubscriptionVersionAfter = &after
+	return nil
 }

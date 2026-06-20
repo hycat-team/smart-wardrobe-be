@@ -108,6 +108,31 @@ type BodyProfile = bodyProfile
 type BodyMeasurements = bodyMeasurements
 type InferredBodyProfile = inferredBodyProfile
 
+type JSONDocument json.RawMessage
+
+func (j JSONDocument) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return []byte(j), nil
+}
+
+func (j *JSONDocument) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		*j = append((*j)[:0], v...)
+	case string:
+		*j = append((*j)[:0], v...)
+	default:
+		return fmt.Errorf("unsupported JSON document value %T", value)
+	}
+	return nil
+}
+
 type preferredColors []string
 
 type PreferredColors = preferredColors

@@ -676,6 +676,44 @@ definitions:
       signature:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO:
+    properties:
+      expiresAt:
+        type: string
+      nextReconciliationAt:
+        type: string
+      orderCode:
+        type: integer
+      paymentStatus:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus'
+      paymentUrl:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO:
+    properties:
+      aiChatDailyQuota:
+        type: integer
+      aiOutfitDailyQuota:
+        type: integer
+      durationDays:
+        type: integer
+      id:
+        type: string
+      maxOutfits:
+        type: integer
+      maxWardrobeItems:
+        type: integer
+      name:
+        type: string
+      planKind:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+      price:
+        type: number
+      slug:
+        type: string
+      tierRank:
+        type: integer
+    type: object
   smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO:
     properties:
       amount:
@@ -705,6 +743,74 @@ definitions:
         type: string
     required:
     - amount
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO:
+    properties:
+      aiChatDailyQuota:
+        type: integer
+      aiOutfitDailyQuota:
+        type: integer
+      aiUsageCount:
+        type: integer
+      expiresAt:
+        type: string
+      fallbackPlanCode:
+        type: string
+      fallbackPlanKind:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+      fallbackTierRank:
+        type: integer
+      isAutoRenewEnabled:
+        type: boolean
+      lastResetDate:
+        type: string
+      maxOutfits:
+        type: integer
+      maxWardrobeItems:
+        type: integer
+      outfitRecommendCount:
+        type: integer
+      planID:
+        type: string
+      planKind:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+      planName:
+        type: string
+      planSlug:
+        type: string
+      tierRank:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO:
+    properties:
+      aiChatDailyQuota:
+        type: integer
+      aiOutfitDailyQuota:
+        type: integer
+      expiresAt:
+        type: string
+      fallbackPlanCode:
+        type: string
+      fallbackPlanKind:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+      fallbackTierRank:
+        type: integer
+      isAutoRenewEnabled:
+        type: boolean
+      maxOutfits:
+        type: integer
+      maxWardrobeItems:
+        type: integer
+      planID:
+        type: string
+      planKind:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+      planName:
+        type: string
+      planSlug:
+        type: string
+      tierRank:
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq:
     properties:
@@ -1171,6 +1277,31 @@ definitions:
       timestamp:
         type: integer
     type: object
+  smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Pending
+    - Success
+    - FailedLegacy
+    - Creating
+    - ReconciliationRequired
+    - Reconciling
+    - CreationFailed
+    - Cancelled
+    - Expired
+    - InvestigationRequired
   smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
     enum:
     - 0
@@ -1211,6 +1342,17 @@ definitions:
     x-enum-varnames:
     - Draft
     - Active
+  smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind:
+    enum:
+    - 0
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - DefaultFree
+    - Finite
+    - Lifetime
   smart-wardrobe-be_internal_shared_domain_constants_postitemstatus.PostItemStatus:
     enum:
     - 0
@@ -1288,11 +1430,15 @@ definitions:
     - TOPUP
     - SUBSCRIPTION_PURCHASE
     - SUBSCRIPTION_RENEWAL
+    - LOWER_TIER_PAYMENT_CREDIT
+    - SAME_LIFETIME_PAYMENT_CREDIT
     type: string
     x-enum-varnames:
     - Topup
     - SubscriptionPurchase
     - SubscriptionRenewal
+    - LowerTierPaymentCredit
+    - SameLifetimePaymentCredit
   smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus:
     enum:
     - 0
@@ -2881,9 +3027,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Thông tin gói hội viên hiện tại
+          description: 'Thông tin gói hội viên hiện tại (planKind và fallbackPlanKind
+            đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn
+            ngày, 2: Lifetime - Gói trọn đời)'
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO'
+              type: object
+      security:
+      - BearerAuth: []
       summary: Lấy thông tin gói hội viên hiện tại
       tags:
       - Subscription
@@ -2907,6 +3062,8 @@ paths:
           description: Trạng thái tự động gia hạn mới
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      security:
+      - BearerAuth: []
       summary: Thiết lập tự động gia hạn gói cước
       tags:
       - Subscription
@@ -2920,9 +3077,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Hạn ngạch sử dụng
+          description: 'Hạn ngạch sử dụng và thông tin gói hiện tại (planKind và fallbackPlanKind
+            đại diện cho: 0: DefaultFree - Gói miễn phí, 1: Finite - Gói giới hạn
+            ngày, 2: Lifetime - Gói trọn đời)'
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO'
+              type: object
+      security:
+      - BearerAuth: []
       summary: Lấy hạn ngạch sử dụng hàng ngày
       tags:
       - Subscription
@@ -2943,9 +3109,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Link thanh toán
+          description: 'Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending
+            - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại
+            cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát,
+            5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled
+            - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)'
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO'
+              type: object
       summary: Đăng ký mua gói cước trực tiếp
       tags:
       - Billing
@@ -3030,9 +3205,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Link thanh toán
+          description: 'Link thanh toán (paymentStatus đại diện trạng thái: 0: Pending
+            - Chờ thanh toán, 1: Success - Thành công, 2: FailedLegacy - Thất bại
+            cũ, 3: Creating - Đang tạo, 4: ReconciliationRequired - Cần đối soát,
+            5: Reconciling - Đang đối soát, 6: CreationFailed - Tạo thất bại, 7: Cancelled
+            - Đã hủy, 8: Expired - Hết hạn, 9: InvestigationRequired - Cần điều tra)'
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.PaymentLinkDTO'
+              type: object
       summary: Tạo yêu cầu nạp tiền vào ví nội bộ
       tags:
       - Billing
@@ -3068,9 +3252,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Danh sách gói cước
+          description: 'Danh sách gói cước (planKind đại diện cho: 0: DefaultFree
+            - Gói miễn phí, 1: Finite - Gói giới hạn ngày, 2: Lifetime - Gói trọn
+            đời)'
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO'
+                  type: array
+              type: object
       summary: Lấy danh sách các gói Premium
       tags:
       - Subscription
