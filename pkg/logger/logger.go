@@ -89,9 +89,7 @@ func New(env string, logFilePath string, logLevel string, logToFile bool) Interf
 		fileWriteSyncer := zapcore.AddSync(lumberjackLogger)
 
 		fileEncoderConfig := encoderConfig
-		fileEncoderConfig.EncodeLevel = func(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-			enc.AppendString(fmt.Sprintf("|%s|", l.CapitalString()))
-		}
+		fileEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 		fileEncoderConfig.ConsoleSeparator = " "
 		fileEncoder := zapcore.NewJSONEncoder(fileEncoderConfig)
 
