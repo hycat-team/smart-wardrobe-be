@@ -112,9 +112,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 	if err != nil {
 		return nil, nil, err
 	}
-	if isOutfitIntent(content) {
-		return uc.createRedirectStreamResponse(), uc.createRedirectCommitCallback(ctx, sessionCtx.session, content), nil
-	}
+
 	if err := uc.ensureChatQuotaAvailable(ctx, userID); err != nil {
 		return nil, nil, err
 	}
@@ -127,33 +125,12 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, content, aiTextChan, aiErrChan)
 }
 
-// ProcessChatMessage generates a synchronous AI reply and persists the conversation.
-func (uc *WardrobeChatUseCase) ProcessChatMessage(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (*dto.ChatMessageRes, *dto.ChatMessageRes, error) {
-	sessionCtx, err := uc.loadChatSessionContext(ctx, userID, contextID)
-	if err != nil {
-		return nil, nil, err
-	}
-	responseText, shouldConsumeQuota, err := uc.generateChatResponse(ctx, userID, sessionCtx, content)
-	if err != nil {
-		return nil, nil, err
-	}
-	userMessage := &entities.Message{ContextID: contextID, Sender: messagesender.User, Content: content}
-	aiMessage := &entities.Message{ContextID: contextID, Sender: messagesender.AI, Content: responseText}
-	if err = uc.persistChatExchange(ctx, userID, sessionCtx.session, userMessage, aiMessage, shouldConsumeQuota); err != nil {
-		return nil, nil, err
-	}
-	if err = uc.compressChatContext(ctx, sessionCtx.session); err != nil {
-		return nil, nil, err
-	}
-	return mapChatMessage(userMessage), mapChatMessage(aiMessage), nil
-}
-
 func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session *entities.ConversationalContext) error {
-	count, err := uc.messageRepo.CountByContextID(ctx, session.ID)
-	if err != nil || count < 10 {
+	count, err := uc.messageRepo.CountUnsummarizedByContextID(ctx, session.ID)
+	if err != nil || count < 15 {
 		return err
 	}
-	oldest, err := uc.messageRepo.GetOldestByContextID(ctx, session.ID, 10)
+	oldest, err := uc.messageRepo.GetOldestUnsummarizedByContextID(ctx, session.ID, 10)
 	if err != nil || len(oldest) < 10 {
 		return err
 	}
@@ -181,7 +158,7 @@ func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session 
 		for i, item := range oldest {
 			ids[i] = item.ID
 		}
-		return uc.messageRepo.DeleteByIDs(txCtx, ids)
+		return uc.messageRepo.MarkAsSummarized(txCtx, ids)
 	})
 }
 
@@ -229,34 +206,11 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	return &chatGenerationInput{systemPrompt: buildChatSystemPrompt(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent)}, nil
 }
 
-func (uc *WardrobeChatUseCase) createRedirectStreamResponse() <-chan string {
-	textChan := make(chan string, 1)
-	textChan <- outfitRedirectMessage
-	close(textChan)
-	return textChan
-}
-
-func (uc *WardrobeChatUseCase) createRedirectCommitCallback(ctx context.Context, session *entities.ConversationalContext, content string) func(success bool) error {
-	return func(success bool) error {
-		if !success {
-			return nil
-		}
-		userMessage := &entities.Message{ContextID: session.ID, Sender: messagesender.User, Content: content}
-		aiMessage := &entities.Message{ContextID: session.ID, Sender: messagesender.AI, Content: outfitRedirectMessage}
-		return uc.persistChatExchange(ctx, uuid.Nil, session, userMessage, aiMessage, false)
-	}
-}
-
 func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, content string, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {
-	outTextChan := make(chan string, 100)
 	var fullResponseBuilder strings.Builder
-	go func() {
-		defer close(outTextChan)
-		for t := range aiTextChan {
-			fullResponseBuilder.WriteString(t)
-			outTextChan <- t
-		}
-	}()
+	outTextChan := FilterThinkTags(aiTextChan, func(chunk string) {
+		fullResponseBuilder.WriteString(chunk)
+	})
 	commitCallback := func(success bool) error {
 		if !success {
 			return nil
@@ -277,29 +231,17 @@ func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userI
 		if err := uc.persistChatExchange(ctx, userID, session, userMessage, aiMessage, true); err != nil {
 			return err
 		}
-		_ = uc.compressChatContext(ctx, session)
+		go func() {
+			_ = uc.compressChatContext(context.Background(), session)
+		}()
 		return nil
 	}
 	return outTextChan, commitCallback, nil
 }
 
-func (uc *WardrobeChatUseCase) generateChatResponse(ctx context.Context, userID uuid.UUID, sessionCtx *chatSessionContext, content string) (string, bool, error) {
-	if isOutfitIntent(content) {
-		return outfitRedirectMessage, false, nil
-	}
-	if err := uc.ensureChatQuotaAvailable(ctx, userID); err != nil {
-		return "", false, err
-	}
-	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx, content)
-	if err != nil {
-		return "", false, err
-	}
-	responseText, err := uc.aiService.GenerateChatText(ctx, generationInput.systemPrompt, content)
-	return responseText, true, err
-}
-
 func (uc *WardrobeChatUseCase) persistChatExchange(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, userMessage *entities.Message, aiMessage *entities.Message, shouldConsumeQuota bool) error {
-	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+	nonCancelledCtx := context.WithoutCancel(ctx)
+	return uc.uow.Execute(nonCancelledCtx, func(txCtx context.Context) error {
 		if shouldConsumeQuota {
 			if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
 				return err

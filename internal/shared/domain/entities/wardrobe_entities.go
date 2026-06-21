@@ -22,10 +22,11 @@ type ConversationalContext struct {
 
 type Message struct {
 	BaseEntity
-	ContextID uuid.UUID                   `gorm:"type:uuid;not null"`
-	Context   *ConversationalContext      `gorm:"foreignKey:ContextID;constraint:OnDelete:CASCADE"`
-	Sender    messagesender.MessageSender `gorm:"type:varchar(50);not null"` // 'user' or 'ai'
-	Content   string                      `gorm:"type:text;not null"`
+	ContextID    uuid.UUID                   `gorm:"type:uuid;not null"`
+	Context      *ConversationalContext      `gorm:"foreignKey:ContextID;constraint:OnDelete:CASCADE"`
+	Sender       messagesender.MessageSender `gorm:"type:varchar(50);not null"` // 'user' or 'ai'
+	Content      string                      `gorm:"type:text;not null"`
+	IsSummarized bool                        `gorm:"column:is_summarized;type:boolean;not null;default:false"`
 }
 
 type Category struct {

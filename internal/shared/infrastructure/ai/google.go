@@ -33,13 +33,23 @@ func (s *AIService) callGoogleTextStream(
 		payload := map[string]any{
 			"contents": []map[string]any{
 				{
+					"role": "user",
 					"parts": []map[string]string{
 						{
-							"text": systemPrompt + "\n\n" + userPrompt,
+							"text": userPrompt,
 						},
 					},
 				},
 			},
+		}
+		if strings.TrimSpace(systemPrompt) != "" {
+			payload["systemInstruction"] = map[string]any{
+				"parts": []map[string]string{
+					{
+						"text": systemPrompt,
+					},
+				},
+			}
 		}
 
 		bodyBytes, err := json.Marshal(payload)
@@ -108,13 +118,23 @@ func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, pro
 	payload := map[string]any{
 		"contents": []map[string]any{
 			{
+				"role": "user",
 				"parts": []map[string]string{
 					{
-						"text": systemPrompt + "\n\n" + userPrompt,
+						"text": userPrompt,
 					},
 				},
 			},
 		},
+	}
+	if strings.TrimSpace(systemPrompt) != "" {
+		payload["systemInstruction"] = map[string]any{
+			"parts": []map[string]string{
+				{
+					"text": systemPrompt,
+				},
+			},
+		}
 	}
 
 	bodyBytes, err := json.Marshal(payload)

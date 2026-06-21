@@ -110,4 +110,7 @@ type IMessageRepository interface {
 	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
 	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
+	CountUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
+	GetOldestUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
+	MarkAsSummarized(ctx context.Context, ids []uuid.UUID) error
 }

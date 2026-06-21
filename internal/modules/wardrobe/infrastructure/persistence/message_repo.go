@@ -95,3 +95,35 @@ func (r *MessageRepository) CountByContextID(ctx context.Context, contextID uuid
 
 	return count, nil
 }
+
+func (r *MessageRepository) CountUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.Message{}).Where("context_id = ? AND is_summarized = ?", contextID, false).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (r *MessageRepository) GetOldestUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error) {
+	var items []*entities.Message
+	err := r.GetDB(ctx).
+		Where("context_id = ? AND is_summarized = ?", contextID, false).
+		Order("created_at ASC").
+		Limit(limit).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (r *MessageRepository) MarkAsSummarized(ctx context.Context, ids []uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	return r.GetDB(ctx).Model(&entities.Message{}).Where("id IN ?", ids).Update("is_summarized", true).Error
+}
