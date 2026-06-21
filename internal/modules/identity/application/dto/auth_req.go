@@ -5,7 +5,7 @@ import "smart-wardrobe-be/internal/shared/domain/constants/gender"
 type RegisterReq struct {
 	Username        string         `json:"username" binding:"required,username" label:"tên đăng nhập"`
 	Email           string         `json:"email" binding:"required,email" label:"email"`
-	Password        string         `json:"password" binding:"required,min=6" label:"mật khẩu"`
+	Password        string         `json:"password" binding:"required,password_complexity" label:"mật khẩu"`
 	ConfirmPassword string         `json:"confirmPassword" binding:"required,eqfield=Password" label:"xác nhận mật khẩu"`
 	FirstName       string         `json:"firstName" binding:"required" label:"tên"`
 	LastName        *string        `json:"lastName" binding:"omitempty" label:"họ"`

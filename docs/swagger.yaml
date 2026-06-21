@@ -369,7 +369,6 @@ definitions:
       logoutAllDevices:
         type: boolean
       newPassword:
-        minLength: 6
         type: string
       oldPassword:
         type: string
@@ -442,7 +441,6 @@ definitions:
       lastName:
         type: string
       password:
-        minLength: 6
         type: string
       username:
         type: string
@@ -462,7 +460,6 @@ definitions:
       logoutAllDevices:
         type: boolean
       newPassword:
-        minLength: 6
         type: string
     required:
     - confirmPassword

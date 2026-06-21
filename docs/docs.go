@@ -4126,8 +4126,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "newPassword": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 },
                 "oldPassword": {
                     "type": "string"
@@ -4239,8 +4238,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 },
                 "username": {
                     "type": "string"
@@ -4261,8 +4259,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "newPassword": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 }
             }
         },

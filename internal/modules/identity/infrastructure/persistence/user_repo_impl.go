@@ -31,7 +31,7 @@ func NewUserRepository(db *gorm.DB) repositories.IUserRepository {
 // GetByEmail searches for a user matching the provided email address
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	var user entities.User
-	err := r.GetDB(ctx).Where("email = ? AND is_deleted = ?", email, false).First(&user).Error
+	err := r.GetDB(ctx).Where("LOWER(email) = LOWER(?) AND is_deleted = ?", email, false).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -59,7 +59,7 @@ func (r *UserRepository) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*
 // IsEmailExists checks if email already exists in system
 func (r *UserRepository) IsEmailExists(ctx context.Context, email string) (bool, error) {
 	var count int64
-	err := r.GetDB(ctx).Model(&entities.User{}).Where("email = ? AND is_deleted = ?", email, false).Count(&count).Error
+	err := r.GetDB(ctx).Model(&entities.User{}).Where("LOWER(email) = LOWER(?) AND is_deleted = ?", email, false).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
@@ -69,7 +69,7 @@ func (r *UserRepository) IsEmailExists(ctx context.Context, email string) (bool,
 // IsUsernameExists checks if username already exists in system
 func (r *UserRepository) IsUsernameExists(ctx context.Context, username string) (bool, error) {
 	var count int64
-	err := r.GetDB(ctx).Model(&entities.User{}).Where("username = ? AND is_deleted = ?", username, false).Count(&count).Error
+	err := r.GetDB(ctx).Model(&entities.User{}).Where("LOWER(username) = LOWER(?) AND is_deleted = ?", username, false).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
@@ -79,7 +79,7 @@ func (r *UserRepository) IsUsernameExists(ctx context.Context, username string) 
 // GetByUsername searches for a user by username.
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*entities.User, error) {
 	var user entities.User
-	err := r.GetDB(ctx).Where("username = ? AND is_deleted = ?", username, false).First(&user).Error
+	err := r.GetDB(ctx).Where("LOWER(username) = LOWER(?) AND is_deleted = ?", username, false).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -92,7 +92,7 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*e
 // GetByUsernameOrEmail searches for a user by email or username
 func (r *UserRepository) GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error) {
 	var user entities.User
-	err := r.GetDB(ctx).Where("(username = ? OR email = ?) AND is_deleted = ?", loginName, loginName, false).First(&user).Error
+	err := r.GetDB(ctx).Where("(LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)) AND is_deleted = ?", loginName, loginName, false).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

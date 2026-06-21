@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -53,12 +54,20 @@ func NewUserUseCase(
 }
 
 func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, input dto.ChangePasswordReq) (bool, error) {
+	if input.NewPassword == input.OldPassword {
+		return false, identityerrors.ErrNewPasswordSameAsOld()
+	}
+
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
 	if user == nil || user.IsDeleted {
 		return false, identityerrors.ErrUserNotFound()
+	}
+
+	if strings.Contains(strings.ToLower(input.NewPassword), strings.ToLower(user.Username)) {
+		return false, identityerrors.ErrPasswordContainsUsername()
 	}
 
 	isValid := uc.passwordHasher.VerifyPassword(input.OldPassword, user.PasswordHash)

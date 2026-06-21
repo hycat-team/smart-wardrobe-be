@@ -42,3 +42,37 @@ func TestTranslateValidationErrorReturnsStructuredErrors(t *testing.T) {
 		t.Fatalf("expected second field to be password, got %+v", appErr.Errors[1])
 	}
 }
+
+type complexityFixture struct {
+	Password string `json:"password" binding:"required,password_complexity" label:"mật khẩu"`
+}
+
+func TestPasswordComplexityValidator(t *testing.T) {
+	validate, ok := binding.Validator.Engine().(*validator.Validate)
+	if !ok {
+		t.Fatal("expected gin validator engine")
+	}
+
+	tests := []struct {
+		password string
+		isValid  bool
+	}{
+		{"secret", false},
+		{"Secret1", false},
+		{"Secret123!", true},
+		{"SECRET123!", false},
+		{"secret123!", false},
+		{"Secret!!!", false}, // no number
+		{"Secret12", false},  // no special
+		{"Ab1!", false},      // under 8 chars
+	}
+
+	for _, tc := range tests {
+		err := validate.Struct(complexityFixture{Password: tc.password})
+		if tc.isValid && err != nil {
+			t.Errorf("expected password %q to be valid, but got error: %v", tc.password, err)
+		} else if !tc.isValid && err == nil {
+			t.Errorf("expected password %q to be invalid, but got no error", tc.password)
+		}
+	}
+}

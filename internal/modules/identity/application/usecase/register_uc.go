@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -49,6 +50,10 @@ func NewRegisterUseCase(
 }
 
 func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) (bool, error) {
+	if strings.Contains(strings.ToLower(input.Password), strings.ToLower(input.Username)) {
+		return false, identityerrors.ErrPasswordContainsUsername()
+	}
+
 	usernameExists, err := uc.userRepo.IsUsernameExists(ctx, input.Username)
 	if err != nil {
 		return false, err

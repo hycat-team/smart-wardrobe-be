@@ -16,6 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 
@@ -62,8 +63,8 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 	if err != nil {
 		return false, err
 	}
-	if err := ensureUserEligibleForRecovery(user); err != nil {
-		return false, err
+	if user == nil || user.IsDeleted || user.Status != userstatus.Active {
+		return true, nil
 	}
 
 	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeForgotPassword)

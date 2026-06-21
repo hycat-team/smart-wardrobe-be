@@ -153,3 +153,11 @@ func ErrUserStatusOnly() *apperror.Error {
 func ErrCookieTokenMissing() *apperror.Error {
 	return apperror.NewBadRequest("Thiếu token gia hạn phiên làm việc trong cookie.")
 }
+
+func ErrPasswordContainsUsername() *apperror.Error {
+	return apperror.NewBadRequest("Mật khẩu không được trùng hoặc chứa tên đăng nhập.")
+}
+
+func ErrNewPasswordSameAsOld() *apperror.Error {
+	return apperror.NewBadRequest("Mật khẩu mới không được trùng với mật khẩu cũ.")
+}

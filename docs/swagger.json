@@ -4118,8 +4118,7 @@
                     "type": "boolean"
                 },
                 "newPassword": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 },
                 "oldPassword": {
                     "type": "string"
@@ -4231,8 +4230,7 @@
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 },
                 "username": {
                     "type": "string"
@@ -4253,8 +4251,7 @@
                     "type": "boolean"
                 },
                 "newPassword": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 }
             }
         },

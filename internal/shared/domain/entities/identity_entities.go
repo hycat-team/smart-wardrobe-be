@@ -14,8 +14,8 @@ import (
 type User struct {
 	AuditableEntity
 	SoftDeleteEntity
-	Username       string                `gorm:"type:varchar(255);not null"`
-	Email          string                `gorm:"type:varchar(255);uniqueIndex;not null"`
+	Username       string                `gorm:"type:varchar(255);not null;index:idx_users_username_lower,unique,expression:lower(username)"`
+	Email          string                `gorm:"type:varchar(255);not null;index:idx_users_email_lower,unique,expression:lower(email)"`
 	PasswordHash   string                `gorm:"type:varchar(255);not null"`
 	FirstName      *string               `gorm:"type:varchar(255)"`
 	LastName       *string               `gorm:"type:varchar(255)"`

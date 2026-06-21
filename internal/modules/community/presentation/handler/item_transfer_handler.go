@@ -4,7 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
-	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	_ "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -13,14 +13,14 @@ import (
 	"github.com/google/uuid"
 )
 
-var _ = wardrobe_dto.WardrobeItemRes{}
-
 const (
 	msgTransferMarkSoldSuccess       = "Đánh dấu đã bán thành công"
 	msgTransferGetPendingSuccess     = "Lấy danh sách đang chờ nhận thành công"
 	msgTransferGetSellerPostsSuccess = "Lấy danh sách bài đăng bàn giao thành công"
 	msgTransferAcceptSuccess         = "Nhận món đồ vào tủ thành công"
 	msgTransferDeclineSuccess        = "Từ chối nhận món đồ thành công"
+	msgTransferRequestSuccess        = "Gửi yêu cầu xin mua thành công"
+	msgTransferGetRequestsSuccess    = "Lấy danh sách người xin mua thành công"
 )
 
 type ItemTransferHandler struct {
@@ -110,7 +110,7 @@ func (h *ItemTransferHandler) GetSellerTransferPosts(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.AcceptTransfersReq true "Danh sách sản phẩm bàn giao"
-// @Success 200 {object} shared_pres.APIResponse{data=[]wardrobe_dto.WardrobeItemRes} "Nhận món đồ vào tủ thành công"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Nhận món đồ vào tủ thành công"
 // @Router /api/v1/transfers/accept [post]
 func (h *ItemTransferHandler) AcceptTransfers(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -184,7 +184,7 @@ func (h *ItemTransferHandler) CreateTransferRequests(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Gửi yêu cầu xin mua thành công", nil)
+	shared_pres.Success(c, msgTransferRequestSuccess, nil)
 	return nil
 }
 
@@ -212,6 +212,6 @@ func (h *ItemTransferHandler) GetTransferRequestsForSeller(c *gin.Context) error
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy danh sách người xin mua thành công", res)
+	shared_pres.Success(c, msgTransferGetRequestsSuccess, res)
 	return nil
 }

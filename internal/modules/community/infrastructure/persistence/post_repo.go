@@ -93,7 +93,7 @@ func (r *PostRepository) GetFeed(ctx context.Context, query dto.FeedQuery) (*dto
 	baseQuery := r.baseFeedQuery(ctx)
 
 	if query.Username != nil {
-		baseQuery = baseQuery.Where("users.username = ?", *query.Username)
+		baseQuery = baseQuery.Where("LOWER(users.username) = LOWER(?)", *query.Username)
 	}
 	if query.PostType != nil {
 		baseQuery = baseQuery.Where("posts.post_type = ?", *query.PostType)
@@ -125,7 +125,7 @@ func (r *PostRepository) listFeed(ctx context.Context, query dto.FeedQuery, forc
 		Joins("LEFT JOIN post_score_snapshots ON post_score_snapshots.post_id = posts.id")
 
 	if query.Username != nil {
-		dbQuery = dbQuery.Where("users.username = ?", *query.Username)
+		dbQuery = dbQuery.Where("LOWER(users.username) = LOWER(?)", *query.Username)
 	}
 	if query.PostType != nil {
 		dbQuery = dbQuery.Where("posts.post_type = ?", *query.PostType)

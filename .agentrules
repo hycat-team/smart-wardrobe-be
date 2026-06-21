@@ -14,3 +14,9 @@
 - Vietnamese (with accents / Tiếng Việt có dấu) MUST be used for all client-facing responses returned to the Front-End, including success messages, error messages, and validation error messages.
 - English MUST be used for all internal code comments that describe code logic, architecture, and structure.
 - English MUST be used for all system log messages written through `logger`.
+
+# WORKFLOW_AND_COMMAND_RULES
+
+- Prioritize using commands defined in the `Makefile` to run project tasks (e.g., code formatting, DI code generation, Swagger documentation generation, running test suites, etc.).
+- NEVER modify database schema scripts in `/init-db` directly. All database updates and schema changes MUST be implemented by creating and executing new migrations using the Makefile targets (e.g., `make migration-create name=name_of_migration` and `make migration-up`).
+
