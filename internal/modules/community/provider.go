@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/usecase/admin_moderation"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/item_transfer"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post_hotness"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post_interaction"
 	"smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/community/presentation/handler"
@@ -24,6 +25,7 @@ var ProviderSet = wire.NewSet(
 	post_interaction.NewPostInteractionUseCase,
 	admin_moderation.NewAdminCommunityModerationUseCase,
 	item_transfer.NewItemTransferUseCase,
+	post_hotness.NewPostHotnessUseCase,
 	handler.NewAdminHandler,
 	handler.NewPostHandler,
 	handler.NewPostInteractionHandler,

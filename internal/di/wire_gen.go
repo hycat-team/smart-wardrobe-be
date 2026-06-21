@@ -22,6 +22,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/usecase/admin_moderation"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/item_transfer"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
+	"smart-wardrobe-be/internal/modules/community/application/usecase/post_hotness"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post_interaction"
 	persistence3 "smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/community/presentation/handler"
@@ -35,9 +36,11 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/reconciliation"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook_inbox"
 	"smart-wardrobe-be/internal/modules/subscription/application/validator"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
@@ -50,6 +53,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/worker"
 	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	persistence4 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
@@ -172,14 +176,18 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker2.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
-	iPaymentReconciliationWorker := worker2.NewPaymentReconciliationWorker(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
-	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
-	iPostHotnessWorker := worker3.NewPostHotnessWorker(iPostRepository, iPostScoreRepository, l)
+	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
+	iPaymentReconciliationWorker := worker2.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
+	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
+	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
+	iPostHotnessUseCase := post_hotness.NewPostHotnessUseCase(iPostRepository, iPostScoreRepository, l)
+	iPostHotnessWorker := worker3.NewPostHotnessWorker(iPostHotnessUseCase, l)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
 	wardrobeBatchUploadWorker := worker4.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeWorkerUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
-	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iWardrobeSearchIndexService, iWardrobeItemRepository, l)
+	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, l)
+	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
 	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
 	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{

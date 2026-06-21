@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
@@ -36,6 +37,7 @@ var ProviderSet = wire.NewSet(
 	worker.NewVisionCategoryCache,
 	worker.NewWardrobeWorkerUseCase,
 	contractuc.NewWardrobeContractUseCase,
+	search_sync.NewSearchSyncUseCase,
 
 	outfit_uc.NewOutfitUseCase,
 	category_uc.NewCategoryUseCase,

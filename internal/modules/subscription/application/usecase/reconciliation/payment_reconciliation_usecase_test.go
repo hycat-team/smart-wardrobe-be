@@ -1,4 +1,4 @@
-package worker
+package reconciliation
 
 import (
 	"context"
@@ -117,7 +117,7 @@ func (f *fakeLogger) Warn(message string, fields ...zap.Field)  {}
 func (f *fakeLogger) Debug(message string, fields ...zap.Field) {}
 func (f *fakeLogger) Fatal(message string, fields ...zap.Field) {}
 
-func TestPaymentReconciliationWorker(t *testing.T) {
+func TestPaymentReconciliationUseCase(t *testing.T) {
 	ctx := context.Background()
 	cfg := &config.Config{
 		PayOS: config.PayOS{
@@ -148,7 +148,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 
 		repo := &fakeDepositTransactionRepository{}
 
-		w := &PaymentReconciliationWorker{
+		uc := &PaymentReconciliationUseCase{
 			repo:       repo,
 			gateway:    gateway,
 			completion: webhook,
@@ -164,7 +164,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w.reconcile(ctx, claimed)
+		uc.reconcile(ctx, claimed)
 
 		if !completedCalled {
 			t.Fatal("expected CompleteVerifiedPayment to be called")
@@ -197,7 +197,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w := &PaymentReconciliationWorker{
+		uc := &PaymentReconciliationUseCase{
 			repo:       repo,
 			gateway:    gateway,
 			completion: &fakePaymentWebhookUseCase{},
@@ -215,7 +215,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w.reconcile(ctx, claimed)
+		uc.reconcile(ctx, claimed)
 
 		if !cancelCalled {
 			t.Fatal("expected CancelPaymentLink to be called for expired transaction")
@@ -247,7 +247,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w := &PaymentReconciliationWorker{
+		uc := &PaymentReconciliationUseCase{
 			repo:       repo,
 			gateway:    gateway,
 			completion: &fakePaymentWebhookUseCase{},
@@ -266,7 +266,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w.reconcile(ctx, claimed)
+		uc.reconcile(ctx, claimed)
 
 		if updatedStatus != depositstatus.Pending {
 			t.Fatalf("expected transaction to be recovered to Pending, got %v", updatedStatus)
@@ -293,7 +293,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w := &PaymentReconciliationWorker{
+		uc := &PaymentReconciliationUseCase{
 			repo:       repo,
 			gateway:    gateway,
 			completion: &fakePaymentWebhookUseCase{},
@@ -309,7 +309,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w.reconcile(ctx, claimed)
+		uc.reconcile(ctx, claimed)
 
 		if updatedStatus != depositstatus.Cancelled {
 			t.Fatalf("expected transaction to be set to Cancelled, got %v", updatedStatus)
@@ -348,7 +348,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w := &PaymentReconciliationWorker{
+		uc := &PaymentReconciliationUseCase{
 			repo:       repo,
 			gateway:    gateway,
 			completion: &fakePaymentWebhookUseCase{},
@@ -364,7 +364,7 @@ func TestPaymentReconciliationWorker(t *testing.T) {
 			},
 		}
 
-		w.reconcile(ctx, claimed)
+		uc.reconcile(ctx, claimed)
 
 		if lastErrorCode != "PROVIDER_LOOKUP_ERROR" {
 			t.Fatalf("expected error code to be PROVIDER_LOOKUP_ERROR, got %s", lastErrorCode)
