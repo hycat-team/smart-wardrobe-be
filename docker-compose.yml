@@ -42,11 +42,7 @@ services:
         ports:
             - "${SERVER_PORT}:8080"
         environment:
-            - DB_HOST=postgres
-            - REDIS_HOST=redis
-            - RABBITMQ_HOST=rabbitmq
-            - ELASTICSEARCH_ADDRESS=http://elasticsearch:9200
-            - LOG_TO_FILE=false
+            - CONFIG_FILE=/app/config/config.production.yaml
         env_file:
             - .env
         depends_on:

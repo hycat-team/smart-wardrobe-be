@@ -1,0 +1,95 @@
+database:
+    host: localhost
+    port: 5432
+    ssl_mode: disable
+    time_zone: Asia/Ho_Chi_Minh
+redis:
+    host: localhost
+    port: 6379
+    db: 0
+server:
+    port: "8080"
+    front_end_origin: http://localhost:3000
+    timeout_seconds: 30
+    env: development
+startup:
+    retry_attempt_1_seconds: 5
+    retry_attempt_2_seconds: 15
+    retry_attempt_3_seconds: 30
+jwt:
+    issuer: SmartWardrobe
+    audience: SmartWardrobeUsers
+    access_expiration_minutes: 60
+    refresh_expiration_days: 30
+    forgot_password_expiration_minutes: 15
+logger:
+    log_level: debug
+    file_path: ./logs/app.log
+    log_to_file: false
+quota:
+    default_wardrobe_limit: 100
+    default_ai_outfit_limit: 3
+    default_ai_chat_limit: 3
+otp:
+    max_attempts: 5
+    expiry_minutes: 5
+    resend_interval_seconds: 60
+email:
+    host: smtp.gmail.com
+    port: 587
+    sender_name: SmartWardrobe
+rate_limit:
+    token_limit: 100
+    tokens_per_period: 20
+    replenishment_seconds: 10
+payos:
+    return_url: http://localhost:3000
+    cancel_url: http://localhost:3000
+    expired_minutes: 15
+    reconciliation_cron: "0 */10 * * * *"
+    reconciliation_batch_size: 50
+    reconciliation_lease_seconds: 45
+    reconciliation_max_attempts: 20
+    reconciliation_max_age_hours: 168
+cloudinary:
+    avatar_folder: smart_wardrobe/avatars
+    item_folder: smart_wardrobe/items
+    outfit_folder: smart_wardrobe/outfits
+    post_folder: smart_wardrobe/posts
+ai:
+    chat_text_timeout_seconds: 30
+    recommendation_text_timeout_seconds: 30
+    vision_timeout_seconds: 20
+    embedding_timeout_seconds: 20
+    chat_text_rpm_limit: 5
+    recommendation_text_rpm_limit: 5
+    vision_rpm_limit: 5
+    embedding_rpm_limit: 5
+rabbitmq:
+    host: localhost
+    port: 5672
+elasticsearch:
+    addresses: [http://localhost:9200]
+community:
+    max_personalized_window: 100
+rag:
+    recently_worn_penalty_days: 3
+    long_unworn_bonus_days: 14
+    rrf_k_parameter: 30
+    recommendation_candidate_limit: 40
+    recommendation_minimum_candidate_pool: 20
+    recommendation_embedding_dimension: 768
+    recommendation_embedding_timeout_seconds: 2
+    recommendation_llm_rewriter_enabled: true
+    recommendation_llm_rewriter_timeout_seconds: 2
+    recommendation_rewriter_max_semantic_length: 512
+    recommendation_rewriter_max_lexical_terms: 24
+    recommendation_rewriter_max_excluded_terms: 24
+wardrobe:
+    retry_delay_1_seconds: 60
+    retry_delay_2_seconds: 300
+    retry_delay_3_seconds: 900
+    stale_minutes: 20
+    max_retry_count: 3
+    recovery_scan_cron: "0 */5 * * * *"
+    category_cache_ttl_seconds: 300

@@ -22,6 +22,7 @@ WORKDIR /app
 
 COPY --from=builder --chown=appuser:appgroup /out/main /app/main
 COPY --from=builder --chown=appuser:appgroup /src/docs /app/docs
+COPY --from=builder --chown=appuser:appgroup /src/config/*.yaml /app/config/
 
 ENV TZ=Asia/Ho_Chi_Minh
 

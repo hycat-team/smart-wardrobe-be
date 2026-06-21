@@ -1,186 +1,186 @@
 package config
 
 type Config struct {
-	Database      Database
-	Redis         Redis
-	Server        Server
-	Startup       Startup
-	Jwt           Jwt
-	Logger        Logger
-	Quota         Quota
-	Otp           Otp
-	Email         Email
-	RateLimit     RateLimit
-	PayOS         PayOS
-	Cloudinary    Cloudinary
-	AI            AIServiceConfig
-	RabbitMQ      RabbitMQ
-	Elasticsearch Elasticsearch
-	Community     Community
-	RAG           RAG
-	Wardrobe      WardrobeProcessing
+	Database      Database           `mapstructure:"database"`
+	Redis         Redis              `mapstructure:"redis"`
+	Server        Server             `mapstructure:"server"`
+	Startup       Startup            `mapstructure:"startup"`
+	Jwt           Jwt                `mapstructure:"jwt"`
+	Logger        Logger             `mapstructure:"logger"`
+	Quota         Quota              `mapstructure:"quota"`
+	Otp           Otp                `mapstructure:"otp"`
+	Email         Email              `mapstructure:"email"`
+	RateLimit     RateLimit          `mapstructure:"rate_limit"`
+	PayOS         PayOS              `mapstructure:"payos"`
+	Cloudinary    Cloudinary         `mapstructure:"cloudinary"`
+	AI            AIServiceConfig    `mapstructure:"ai"`
+	RabbitMQ      RabbitMQ           `mapstructure:"rabbitmq"`
+	Elasticsearch Elasticsearch      `mapstructure:"elasticsearch"`
+	Community     Community          `mapstructure:"community"`
+	RAG           RAG                `mapstructure:"rag"`
+	Wardrobe      WardrobeProcessing `mapstructure:"wardrobe"`
 }
 
 type WardrobeProcessing struct {
-	RetryDelay1Seconds      int
-	RetryDelay2Seconds      int
-	RetryDelay3Seconds      int
-	StaleMinutes            int
-	MaxRetryCount           int
-	RecoveryScanCron        string
-	CategoryCacheTTLSeconds int
+	RetryDelay1Seconds      int    `mapstructure:"retry_delay_1_seconds"`
+	RetryDelay2Seconds      int    `mapstructure:"retry_delay_2_seconds"`
+	RetryDelay3Seconds      int    `mapstructure:"retry_delay_3_seconds"`
+	StaleMinutes            int    `mapstructure:"stale_minutes"`
+	MaxRetryCount           int    `mapstructure:"max_retry_count"`
+	RecoveryScanCron        string `mapstructure:"recovery_scan_cron"`
+	CategoryCacheTTLSeconds int    `mapstructure:"category_cache_ttl_seconds"`
 }
 
 type Startup struct {
-	RetryAttempt1Seconds int
-	RetryAttempt2Seconds int
-	RetryAttempt3Seconds int
+	RetryAttempt1Seconds int `mapstructure:"retry_attempt_1_seconds"`
+	RetryAttempt2Seconds int `mapstructure:"retry_attempt_2_seconds"`
+	RetryAttempt3Seconds int `mapstructure:"retry_attempt_3_seconds"`
 }
 
 type Elasticsearch struct {
-	Addresses []string
-	User      string
-	Password  string
+	Addresses []string `mapstructure:"addresses"`
+	User      string   `mapstructure:"-"`
+	Password  string   `mapstructure:"-"`
 }
 
 type APIProviderConfig struct {
-	Provider string
-	ApiKey   string
-	Endpoint string
-	Model    string
+	Provider string `mapstructure:"-"`
+	ApiKey   string `mapstructure:"-"`
+	Endpoint string `mapstructure:"-"`
+	Model    string `mapstructure:"-"`
 }
 
 type AIServiceConfig struct {
-	VisionPrimary                    APIProviderConfig
-	VisionFallback                   APIProviderConfig
-	EmbeddingPrimary                 APIProviderConfig
-	EmbeddingFallback                APIProviderConfig
-	ChatTextPrimary                  APIProviderConfig
-	ChatTextFallback                 APIProviderConfig
-	RecommendationTextPrimary        APIProviderConfig
-	RecommendationTextFallback       APIProviderConfig
-	ChatTextTimeoutSeconds           int
-	RecommendationTextTimeoutSeconds int
-	VisionTimeoutSeconds             int
-	EmbeddingTimeoutSeconds          int
-	ChatTextRPMLimit                 int
-	RecommendationTextRPMLimit       int
-	VisionRPMLimit                   int
-	EmbeddingRPMLimit                int
+	VisionPrimary                    APIProviderConfig `mapstructure:"vision_primary"`
+	VisionFallback                   APIProviderConfig `mapstructure:"vision_fallback"`
+	EmbeddingPrimary                 APIProviderConfig `mapstructure:"embedding_primary"`
+	EmbeddingFallback                APIProviderConfig `mapstructure:"embedding_fallback"`
+	ChatTextPrimary                  APIProviderConfig `mapstructure:"chat_text_primary"`
+	ChatTextFallback                 APIProviderConfig `mapstructure:"chat_text_fallback"`
+	RecommendationTextPrimary        APIProviderConfig `mapstructure:"recommendation_text_primary"`
+	RecommendationTextFallback       APIProviderConfig `mapstructure:"recommendation_text_fallback"`
+	ChatTextTimeoutSeconds           int               `mapstructure:"chat_text_timeout_seconds"`
+	RecommendationTextTimeoutSeconds int               `mapstructure:"recommendation_text_timeout_seconds"`
+	VisionTimeoutSeconds             int               `mapstructure:"vision_timeout_seconds"`
+	EmbeddingTimeoutSeconds          int               `mapstructure:"embedding_timeout_seconds"`
+	ChatTextRPMLimit                 int               `mapstructure:"chat_text_rpm_limit"`
+	RecommendationTextRPMLimit       int               `mapstructure:"recommendation_text_rpm_limit"`
+	VisionRPMLimit                   int               `mapstructure:"vision_rpm_limit"`
+	EmbeddingRPMLimit                int               `mapstructure:"embedding_rpm_limit"`
 }
 
 type RabbitMQ struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"-"`
+	Password string `mapstructure:"-"`
 }
 
 type Cloudinary struct {
-	CloudName    string
-	ApiKey       string
-	ApiSecret    string
-	AvatarFolder string
-	ItemFolder   string
-	OutfitFolder string
-	PostFolder   string
+	CloudName    string `mapstructure:"-"`
+	ApiKey       string `mapstructure:"-"`
+	ApiSecret    string `mapstructure:"-"`
+	AvatarFolder string `mapstructure:"avatar_folder"`
+	ItemFolder   string `mapstructure:"item_folder"`
+	OutfitFolder string `mapstructure:"outfit_folder"`
+	PostFolder   string `mapstructure:"post_folder"`
 }
 
 type PayOS struct {
-	ClientID                   string
-	ApiKey                     string
-	ChecksumKey                string
-	ReturnUrl                  string
-	CancelUrl                  string
-	ExpiredMinutes             int
-	ReconciliationCron         string
-	ReconciliationBatchSize    int
-	ReconciliationLeaseSeconds int
-	ReconciliationMaxAttempts  int
-	ReconciliationMaxAgeHours  int
+	ClientID                   string `mapstructure:"-"`
+	ApiKey                     string `mapstructure:"-"`
+	ChecksumKey                string `mapstructure:"-"`
+	ReturnUrl                  string `mapstructure:"return_url"`
+	CancelUrl                  string `mapstructure:"cancel_url"`
+	ExpiredMinutes             int    `mapstructure:"expired_minutes"`
+	ReconciliationCron         string `mapstructure:"reconciliation_cron"`
+	ReconciliationBatchSize    int    `mapstructure:"reconciliation_batch_size"`
+	ReconciliationLeaseSeconds int    `mapstructure:"reconciliation_lease_seconds"`
+	ReconciliationMaxAttempts  int    `mapstructure:"reconciliation_max_attempts"`
+	ReconciliationMaxAgeHours  int    `mapstructure:"reconciliation_max_age_hours"`
 }
 
 type Database struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DbName   string
-	SslMode  string
-	TimeZone string
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"-"`
+	Password string `mapstructure:"-"`
+	DbName   string `mapstructure:"-"`
+	SslMode  string `mapstructure:"ssl_mode"`
+	TimeZone string `mapstructure:"time_zone"`
 }
 
 type Redis struct {
-	Host     string
-	Port     int
-	Password string
-	Db       int
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"-"`
+	Db       int    `mapstructure:"db"`
 }
 
 type Server struct {
-	Port              string
-	FrontEndOrigin    string
-	TimeoutSeconds    int
-	Env               string
-	SwaggerAccessCode string
+	Port              string `mapstructure:"port"`
+	FrontEndOrigin    string `mapstructure:"front_end_origin"`
+	TimeoutSeconds    int    `mapstructure:"timeout_seconds"`
+	Env               string `mapstructure:"env"`
+	SwaggerAccessCode string `mapstructure:"-"`
 }
 
 type Jwt struct {
-	Secret                          string
-	Issuer                          string
-	Audience                        string
-	AccessExpirationMinutes         int
-	RefreshExpirationDays           int
-	ForgotPasswordExpirationMinutes int
+	Secret                          string `mapstructure:"-"`
+	Issuer                          string `mapstructure:"issuer"`
+	Audience                        string `mapstructure:"audience"`
+	AccessExpirationMinutes         int    `mapstructure:"access_expiration_minutes"`
+	RefreshExpirationDays           int    `mapstructure:"refresh_expiration_days"`
+	ForgotPasswordExpirationMinutes int    `mapstructure:"forgot_password_expiration_minutes"`
 }
 
 type Logger struct {
-	LogLevel  string
-	FilePath  string
-	LogToFile bool
+	LogLevel  string `mapstructure:"log_level"`
+	FilePath  string `mapstructure:"file_path"`
+	LogToFile bool   `mapstructure:"log_to_file"`
 }
 
 type Quota struct {
-	DefaultWardrobeLimit int
-	DefaultAiOutfitLimit int
-	DefaultAiChatLimit   int
+	DefaultWardrobeLimit int `mapstructure:"default_wardrobe_limit"`
+	DefaultAiOutfitLimit int `mapstructure:"default_ai_outfit_limit"`
+	DefaultAiChatLimit   int `mapstructure:"default_ai_chat_limit"`
 }
 
 type Otp struct {
-	MaxAttempts           int
-	ExpiryMinutes         int
-	ResendIntervalSeconds int
+	MaxAttempts           int `mapstructure:"max_attempts"`
+	ExpiryMinutes         int `mapstructure:"expiry_minutes"`
+	ResendIntervalSeconds int `mapstructure:"resend_interval_seconds"`
 }
 
 type Email struct {
-	Host        string
-	Port        int
-	SenderName  string
-	SenderEmail string
-	AppPassword string
+	Host        string `mapstructure:"host"`
+	Port        int    `mapstructure:"port"`
+	SenderName  string `mapstructure:"sender_name"`
+	SenderEmail string `mapstructure:"-"`
+	AppPassword string `mapstructure:"-"`
 }
 
 type RateLimit struct {
-	TokenLimit           int
-	TokensPerPeriod      int
-	ReplenishmentSeconds int
+	TokenLimit           int `mapstructure:"token_limit"`
+	TokensPerPeriod      int `mapstructure:"tokens_per_period"`
+	ReplenishmentSeconds int `mapstructure:"replenishment_seconds"`
 }
 
 type Community struct {
-	MaxPersonalizedWindow int
+	MaxPersonalizedWindow int `mapstructure:"max_personalized_window"`
 }
 
 type RAG struct {
-	RecentlyWornPenaltyDays                 int
-	LongUnwornBonusDays                     int
-	RrfKParameter                           int
-	RecommendationCandidateLimit            int
-	RecommendationMinimumCandidatePool      int
-	RecommendationEmbeddingDimension        int
-	RecommendationEmbeddingTimeoutSeconds   int
-	RecommendationLLMRewriterEnabled        bool
-	RecommendationLLMRewriterTimeoutSeconds int
-	RecommendationRewriterMaxSemanticLength int
-	RecommendationRewriterMaxLexicalTerms   int
-	RecommendationRewriterMaxExcludedTerms  int
+	RecentlyWornPenaltyDays                 int  `mapstructure:"recently_worn_penalty_days"`
+	LongUnwornBonusDays                     int  `mapstructure:"long_unworn_bonus_days"`
+	RrfKParameter                           int  `mapstructure:"rrf_k_parameter"`
+	RecommendationCandidateLimit            int  `mapstructure:"recommendation_candidate_limit"`
+	RecommendationMinimumCandidatePool      int  `mapstructure:"recommendation_minimum_candidate_pool"`
+	RecommendationEmbeddingDimension        int  `mapstructure:"recommendation_embedding_dimension"`
+	RecommendationEmbeddingTimeoutSeconds   int  `mapstructure:"recommendation_embedding_timeout_seconds"`
+	RecommendationLLMRewriterEnabled        bool `mapstructure:"recommendation_llm_rewriter_enabled"`
+	RecommendationLLMRewriterTimeoutSeconds int  `mapstructure:"recommendation_llm_rewriter_timeout_seconds"`
+	RecommendationRewriterMaxSemanticLength int  `mapstructure:"recommendation_rewriter_max_semantic_length"`
+	RecommendationRewriterMaxLexicalTerms   int  `mapstructure:"recommendation_rewriter_max_lexical_terms"`
+	RecommendationRewriterMaxExcludedTerms  int  `mapstructure:"recommendation_rewriter_max_excluded_terms"`
 }
