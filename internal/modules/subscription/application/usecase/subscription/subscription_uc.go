@@ -8,10 +8,10 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -78,23 +78,7 @@ func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.Subscriptio
 		return nil, err
 	}
 
-	dtoPlans := make([]*dto.SubscriptionPlanDTO, 0, len(plans))
-	for _, plan := range plans {
-		dtoPlans = append(dtoPlans, &dto.SubscriptionPlanDTO{
-			ID:                 plan.ID,
-			Slug:               plan.Slug,
-			Name:               plan.Name,
-			Price:              sharedmoney.ToFloat(plan.Price),
-			MaxWardrobeItems:   plan.MaxWardrobeItems,
-			MaxOutfits:         plan.MaxOutfits,
-			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-			AiChatDailyQuota:   plan.AiChatDailyQuota,
-			DurationDays:       plan.DurationDays,
-			PlanKind:           plan.PlanKind,
-			TierRank:           plan.TierRank,
-		})
-	}
-	return dtoPlans, nil
+	return mapper.MapToSubscriptionPlanDTOList(plans), nil
 }
 
 func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error) {
@@ -155,7 +139,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 		return nil, err
 	}
 
-	return BuildUserSubscriptionDTO(sub, plan, quota), nil
+	return mapper.BuildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
@@ -170,7 +154,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 		return nil, err
 	}
 
-	return BuildUserSubscriptionOverviewDTO(sub, plan), nil
+	return mapper.BuildUserSubscriptionOverviewDTO(sub, plan), nil
 }
 
 func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
@@ -214,7 +198,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound()
 		}
 
-		result[sub.UserID] = BuildUserSubscriptionOverviewDTO(sub, plan)
+		result[sub.UserID] = mapper.BuildUserSubscriptionOverviewDTO(sub, plan)
 		foundUserIDs[sub.UserID] = struct{}{}
 	}
 
@@ -247,7 +231,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 		}
 
 		for _, sub := range newSubs {
-			result[sub.UserID] = BuildUserSubscriptionOverviewDTO(sub, defaultPlan)
+			result[sub.UserID] = mapper.BuildUserSubscriptionOverviewDTO(sub, defaultPlan)
 		}
 	}
 

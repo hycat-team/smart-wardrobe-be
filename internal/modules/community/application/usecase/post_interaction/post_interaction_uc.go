@@ -6,6 +6,7 @@ import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/community/application/mapper"
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -149,7 +150,7 @@ func (uc *PostInteractionUseCase) AddComment(ctx context.Context, userID uuid.UU
 	if err != nil {
 		return nil, err
 	}
-	return post.MapCommentRes(comment), nil
+	return mapper.MapCommentRes(comment), nil
 }
 
 func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID, content string) (*community_dto.CommentRes, error) {
@@ -192,7 +193,7 @@ func (uc *PostInteractionUseCase) UpdateComment(ctx context.Context, userID uuid
 	if err != nil {
 		return nil, err
 	}
-	return post.MapCommentRes(comment), nil
+	return mapper.MapCommentRes(comment), nil
 }
 
 func (uc *PostInteractionUseCase) DeleteComment(ctx context.Context, userID uuid.UUID, postPublicID string, commentID uuid.UUID) error {

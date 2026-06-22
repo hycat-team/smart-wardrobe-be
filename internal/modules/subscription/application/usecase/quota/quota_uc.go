@@ -6,6 +6,7 @@ import (
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
@@ -77,7 +78,7 @@ func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uu
 		return nil, err
 	}
 
-	return subscription.BuildUserSubscriptionDTO(sub, plan, quota), nil
+	return mapper.BuildUserSubscriptionDTO(sub, plan, quota), nil
 }
 
 // UpdateOutfitQuota alters daily recommended outfit generations count

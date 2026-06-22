@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
@@ -76,27 +75,6 @@ func isWardrobeRelatedQuery(content string, recent []*entities.Message) bool {
 	return false
 }
 
-// mapChatSession maps a conversation entity into its response model.
-func mapChatSession(item *entities.ConversationalContext) *dto.ChatSessionRes {
-	return &dto.ChatSessionRes{
-		ID:             item.ID,
-		Title:          item.Title,
-		ContextSummary: item.ContextSummary,
-		IsArchived:     item.IsArchived,
-		CreatedAt:      item.CreatedAt,
-		UpdatedAt:      item.UpdatedAt,
-	}
-}
-
-// mapChatMessage maps a chat message entity into its response model.
-func mapChatMessage(item *entities.Message) *dto.ChatMessageRes {
-	return &dto.ChatMessageRes{
-		ID:        item.ID,
-		Sender:    item.Sender,
-		Content:   item.Content,
-		CreatedAt: item.CreatedAt,
-	}
-}
 
 // FilterThinkTags takes a channel of text chunks and returns a new channel emitting only text after the '===RESPONSE===' marker.
 // If the marker is not found by the end of the stream, it falls back to a heuristic cleanup of bullet-point thoughts.

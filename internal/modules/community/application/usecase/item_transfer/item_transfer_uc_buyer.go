@@ -138,25 +138,9 @@ func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUse
 		sellerNamesByID[user.ID] = user.Username
 	}
 
-	result := make([]*dto.PendingTransferRes, 0, len(items))
-	for _, item := range items {
-		if item == nil || item.Post == nil {
-			continue
-		}
-
-		sellerName := "Người dùng ẩn danh"
-		if name, exists := sellerNamesByID[item.Post.UserID]; exists && name != "" {
-			sellerName = name
-		}
-
-		result = append(result, &dto.PendingTransferRes{
-			PostItemID: item.ID,
-			Item:       mapper.MapWardrobeItem(item.WardrobeItem),
-			SellerName: sellerName,
-		})
-	}
-	return result, nil
+	return mapper.MapToPendingTransferResList(items, sellerNamesByID), nil
 }
+
 
 func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID uuid.UUID, postItemIDs []uuid.UUID) ([]*wardrobe_dto.WardrobeItemRes, error) {
 	if len(postItemIDs) == 0 {

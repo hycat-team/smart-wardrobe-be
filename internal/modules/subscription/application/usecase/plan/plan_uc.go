@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
@@ -31,21 +32,7 @@ func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.Subscri
 		return nil, err
 	}
 
-	dtoPlans := make([]*dto.SubscriptionPlanDTO, 0, len(plans))
-	for _, plan := range plans {
-		dtoPlans = append(dtoPlans, &dto.SubscriptionPlanDTO{
-			ID:                 plan.ID,
-			Slug:               plan.Slug,
-			Name:               plan.Name,
-			Price:              sharedmoney.ToFloat(plan.Price),
-			MaxWardrobeItems:   plan.MaxWardrobeItems,
-			MaxOutfits:         plan.MaxOutfits,
-			AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-			AiChatDailyQuota:   plan.AiChatDailyQuota,
-			DurationDays:       plan.DurationDays,
-		})
-	}
-	return dtoPlans, nil
+	return mapper.MapToSubscriptionPlanDTOList(plans), nil
 }
 
 // GetDefaultSubscriptionPlanID retrieves default free tier ID

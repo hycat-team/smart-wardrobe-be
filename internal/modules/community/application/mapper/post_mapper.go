@@ -2,6 +2,7 @@ package mapper
 
 import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
@@ -143,3 +144,68 @@ func MapWardrobeItem(item *entities.WardrobeItem) *wardrobe_dto.WardrobeItemRes 
 		CreatedAt:     item.CreatedAt,
 	}
 }
+
+func MapUserDisplayFields(user *entities.User) (string, string, *string) {
+	if user == nil {
+		return "", "", nil
+	}
+
+	firstName := ""
+	lastName := ""
+	if user.FirstName != nil {
+		firstName = *user.FirstName
+	}
+	if user.LastName != nil {
+		lastName = *user.LastName
+	}
+
+	return firstName, lastName, user.AvatarUrl
+}
+
+func MapCommentUserRes(comment *entities.Comment) (string, string, string, *string) {
+	if comment == nil || comment.User == nil {
+		return "", "", "", nil
+	}
+
+	firstName, lastName, avatarURL := MapUserDisplayFields(comment.User)
+	return comment.User.Username, firstName, lastName, avatarURL
+}
+
+func MapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
+	if user == nil {
+		return nil
+	}
+
+	firstName, lastName, avatarURL := MapUserDisplayFields(user)
+	return &community_dto.PostLikeUserRes{
+		ID:        user.ID,
+		Username:  user.Username,
+		FirstName: firstName,
+		LastName:  lastName,
+		AvatarURL: avatarURL,
+	}
+}
+
+func MapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
+	if comment == nil {
+		return nil
+	}
+
+	username, firstName, lastName, avatarURL := MapCommentUserRes(comment)
+	return &community_dto.CommentRes{
+		ID:              comment.ID,
+		UserID:          comment.UserID,
+		Username:        username,
+		FirstName:       firstName,
+		LastName:        lastName,
+		AvatarURL:       avatarURL,
+		Content:         comment.Content,
+		ParentCommentID: comment.ParentCommentID,
+		CreatedAt:       comment.CreatedAt,
+	}
+}
+
+func MapTransferBuyerSummary(user *identity_dto.UserRes) *community_dto.TransferBuyerSummaryRes {
+	return community_dto.NewTransferBuyerSummary(user)
+}
+

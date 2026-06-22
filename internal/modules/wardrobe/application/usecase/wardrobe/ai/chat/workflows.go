@@ -8,6 +8,7 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -38,7 +39,7 @@ func (uc *WardrobeChatUseCase) CreateChatSession(ctx context.Context, userID uui
 	if err := uc.contextRepo.Create(ctx, entity); err != nil {
 		return nil, err
 	}
-	return mapChatSession(entity), nil
+	return mapper.MapChatSession(entity), nil
 }
 
 // GetChatSessions returns all chat sessions that belong to the user.
@@ -49,7 +50,7 @@ func (uc *WardrobeChatUseCase) GetChatSessions(ctx context.Context, userID uuid.
 	}
 	res := make([]*dto.ChatSessionRes, len(items))
 	for i, item := range items {
-		res[i] = mapChatSession(item)
+		res[i] = mapper.MapChatSession(item)
 	}
 	return res, nil
 }
@@ -85,7 +86,7 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 	}
 	res := make([]*dto.ChatMessageRes, len(items))
 	for i, item := range items {
-		res[i] = mapChatMessage(item)
+		res[i] = mapper.MapChatMessage(item)
 	}
 	return &shared_dto.PaginationResult[*dto.ChatMessageRes]{
 		Items:    res,

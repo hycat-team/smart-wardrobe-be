@@ -5,7 +5,6 @@ import (
 	"time"
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -160,53 +159,3 @@ func (s *SubscriptionStateSupport) ResolveSubscriptionPlans(ctx context.Context,
 	return planByID, nil
 }
 
-func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *contract.UserSubscriptionDTO {
-	expiresAt, autoRenew := sub.ExpiresAt, sub.IsAutoRenewEnabled
-	if plan.ID != sub.SubscriptionPlanID {
-		expiresAt = nil
-		autoRenew = false
-	}
-	return &contract.UserSubscriptionDTO{
-		PlanID:               plan.ID,
-		PlanName:             plan.Name,
-		PlanSlug:             plan.Slug,
-		PlanKind:             plan.PlanKind,
-		TierRank:             plan.TierRank,
-		ExpiresAt:            expiresAt,
-		IsAutoRenewEnabled:   autoRenew,
-		FallbackPlanCode:     sub.FallbackPlanCode,
-		FallbackTierRank:     sub.FallbackTierRank,
-		FallbackPlanKind:     sub.FallbackPlanKind,
-		MaxWardrobeItems:     plan.MaxWardrobeItems,
-		MaxOutfits:           plan.MaxOutfits,
-		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:     plan.AiChatDailyQuota,
-		OutfitRecommendCount: quota.OutfitRecommendCount,
-		AiUsageCount:         quota.AiUsageCount,
-		LastResetDate:        quota.LastResetDate,
-	}
-}
-
-func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *contract.UserSubscriptionOverviewDTO {
-	expiresAt, autoRenew := sub.ExpiresAt, sub.IsAutoRenewEnabled
-	if plan.ID != sub.SubscriptionPlanID {
-		expiresAt = nil
-		autoRenew = false
-	}
-	return &contract.UserSubscriptionOverviewDTO{
-		PlanID:             plan.ID,
-		PlanName:           plan.Name,
-		PlanSlug:           plan.Slug,
-		PlanKind:           plan.PlanKind,
-		TierRank:           plan.TierRank,
-		ExpiresAt:          expiresAt,
-		IsAutoRenewEnabled: autoRenew,
-		FallbackPlanCode:   sub.FallbackPlanCode,
-		FallbackTierRank:   sub.FallbackTierRank,
-		FallbackPlanKind:   sub.FallbackPlanKind,
-		MaxWardrobeItems:   plan.MaxWardrobeItems,
-		MaxOutfits:         plan.MaxOutfits,
-		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
-		AiChatDailyQuota:   plan.AiChatDailyQuota,
-	}
-}

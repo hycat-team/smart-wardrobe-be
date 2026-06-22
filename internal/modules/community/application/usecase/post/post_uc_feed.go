@@ -218,7 +218,7 @@ func (uc *UserPostUseCase) GetPostComments(ctx context.Context, postPublicID str
 
 	result := make([]*community_dto.CommentRes, 0, len(items))
 	for _, item := range items {
-		result = append(result, MapCommentRes(item))
+		result = append(result, community_mapper.MapCommentRes(item))
 	}
 	return result, nil
 }
@@ -252,7 +252,7 @@ func (uc *UserPostUseCase) GetCommentReplies(ctx context.Context, postPublicID s
 
 	result := make([]*community_dto.CommentRes, 0, len(items))
 	for _, item := range items {
-		result = append(result, MapCommentRes(item))
+		result = append(result, community_mapper.MapCommentRes(item))
 	}
 	return result, nil
 }
@@ -278,7 +278,7 @@ func (uc *UserPostUseCase) GetPostLikes(ctx context.Context, postPublicID string
 
 	result := make([]*community_dto.PostLikeUserRes, 0, len(users))
 	for _, user := range users {
-		result = append(result, mapLikeUserRes(user))
+		result = append(result, community_mapper.MapLikeUserRes(user))
 	}
 	return result, nil
 }

@@ -8,7 +8,6 @@ import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemcondition"
@@ -131,47 +130,6 @@ func toPostSharePath(publicID string) string {
 	return "/posts/" + publicID
 }
 
-func mapUserDisplayFields(user *entities.User) (string, string, *string) {
-	if user == nil {
-		return "", "", nil
-	}
-
-	firstName := ""
-	lastName := ""
-	if user.FirstName != nil {
-		firstName = *user.FirstName
-	}
-	if user.LastName != nil {
-		lastName = *user.LastName
-	}
-
-	return firstName, lastName, user.AvatarUrl
-}
-
-func mapCommentUserRes(comment *entities.Comment) (string, string, string, *string) {
-	if comment == nil || comment.User == nil {
-		return "", "", "", nil
-	}
-
-	firstName, lastName, avatarURL := mapUserDisplayFields(comment.User)
-	return comment.User.Username, firstName, lastName, avatarURL
-}
-
-func mapLikeUserRes(user *entities.User) *community_dto.PostLikeUserRes {
-	if user == nil {
-		return nil
-	}
-
-	firstName, lastName, avatarURL := mapUserDisplayFields(user)
-	return &community_dto.PostLikeUserRes{
-		ID:        user.ID,
-		Username:  user.Username,
-		FirstName: firstName,
-		LastName:  lastName,
-		AvatarURL: avatarURL,
-	}
-}
-
 // NormalizePostPublicID validates and normalizes the public identifier used by post routes.
 func NormalizePostPublicID(raw string) (string, error) {
 	publicID := strings.TrimSpace(raw)
@@ -181,28 +139,6 @@ func NormalizePostPublicID(raw string) (string, error) {
 	return publicID, nil
 }
 
-func MapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
-	if comment == nil {
-		return nil
-	}
-
-	username, firstName, lastName, avatarURL := mapCommentUserRes(comment)
-	return &community_dto.CommentRes{
-		ID:              comment.ID,
-		UserID:          comment.UserID,
-		Username:        username,
-		FirstName:       firstName,
-		LastName:        lastName,
-		AvatarURL:       avatarURL,
-		Content:         comment.Content,
-		ParentCommentID: comment.ParentCommentID,
-		CreatedAt:       comment.CreatedAt,
-	}
-}
-
-func mapTransferBuyerSummary(user *identity_dto.UserRes) *community_dto.TransferBuyerSummaryRes {
-	return community_dto.NewTransferBuyerSummary(user)
-}
 
 func isVisiblePostItem(item *entities.PostItem) bool {
 	return item != nil && item.Status != postitemstatus.Hidden

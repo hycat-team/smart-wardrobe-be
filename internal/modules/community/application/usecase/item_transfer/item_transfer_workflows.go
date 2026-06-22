@@ -2,7 +2,6 @@ package item_transfer
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/community/application/dto"
@@ -73,7 +72,6 @@ func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, selle
 		return nil, err
 	}
 
-	buyersByID := make(map[uuid.UUID]*dto.TransferBuyerSummaryRes)
 	buyerIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.BuyerUserID == nil {
@@ -86,75 +84,16 @@ func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, selle
 	if err != nil {
 		buyerUsers = nil
 	}
+
+	buyersByID := make(map[uuid.UUID]*dto.TransferBuyerSummaryRes)
 	for _, userRes := range buyerUsers {
 		if userRes == nil {
 			continue
 		}
-		buyersByID[userRes.ID] = &dto.TransferBuyerSummaryRes{
-			ID:        userRes.ID,
-			Username:  userRes.Username,
-			AvatarURL: userRes.AvatarUrl,
-		}
+		buyersByID[userRes.ID] = mapper.MapToTransferBuyerSummaryRes(userRes)
 	}
 
-	postsByID := make(map[uuid.UUID]*dto.SellerTransferPostRes)
-	postOrder := make([]uuid.UUID, 0)
-	for _, item := range items {
-		if item == nil || item.Post == nil {
-			continue
-		}
-
-		postRes, exists := postsByID[item.PostID]
-		if !exists {
-			postRes = &dto.SellerTransferPostRes{
-				PostID:    item.Post.ID,
-				Title:     item.Post.Title,
-				PostType:  item.Post.PostType,
-				CreatedAt: item.Post.CreatedAt,
-				UpdatedAt: item.Post.UpdatedAt,
-				Items:     make([]*dto.SellerTransferPostItemRes, 0),
-			}
-			postsByID[item.PostID] = postRes
-			postOrder = append(postOrder, item.PostID)
-		}
-
-		var buyer *dto.TransferBuyerSummaryRes
-		if item.BuyerUserID != nil {
-			buyer = buyersByID[*item.BuyerUserID]
-		}
-
-		postRes.Items = append(postRes.Items, &dto.SellerTransferPostItemRes{
-			PostItemID:    item.ID,
-			Item:          mapper.MapWardrobeItem(item.WardrobeItem),
-			Price:         item.Price,
-			ItemCondition: item.ItemCondition,
-			Status:        item.Status,
-			TransferState: item.TransferState,
-			SoldAt:        item.SoldAt,
-			DeclinedAt:    item.DeclinedAt,
-			Buyer:         buyer,
-		})
-	}
-
-	result := make([]*dto.SellerTransferPostRes, 0, len(postOrder))
-	for _, postID := range postOrder {
-		postRes := postsByID[postID]
-		sort.SliceStable(postRes.Items, func(i, j int) bool {
-			left := postRes.Items[i]
-			right := postRes.Items[j]
-			if left.SoldAt == nil || right.SoldAt == nil || left.SoldAt.Equal(*right.SoldAt) {
-				return left.PostItemID.String() < right.PostItemID.String()
-			}
-			return left.SoldAt.After(*right.SoldAt)
-		})
-		result = append(result, postRes)
-	}
-
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].UpdatedAt.After(result[j].UpdatedAt)
-	})
-
-	return result, nil
+	return mapper.MapToSellerTransferPostResList(items, buyersByID), nil
 }
 
 // GetTransferRequestsForSeller returns buyer requests for one seller-owned post item.
@@ -181,29 +120,7 @@ func (uc *ItemTransferUseCase) GetTransferRequestsForSeller(ctx context.Context,
 	}
 
 	buyerMap := uc.loadTransferRequestBuyers(ctx, reqs)
-	result := make([]*dto.TransferRequestRes, 0, len(reqs))
-	for _, r := range reqs {
-		username := "Người dùng ẩn danh"
-		var avatarURL *string
-		if r.Buyer != nil {
-			username = r.Buyer.Username
-			avatarURL = r.Buyer.AvatarUrl
-		} else if b, exists := buyerMap[r.BuyerID]; exists {
-			username = b.Username
-			avatarURL = b.AvatarUrl
-		}
-
-		result = append(result, &dto.TransferRequestRes{
-			ID:        r.ID,
-			BuyerID:   r.BuyerID,
-			Username:  username,
-			AvatarURL: avatarURL,
-			Status:    r.Status,
-			CreatedAt: r.CreatedAt,
-		})
-	}
-
-	return result, nil
+	return mapper.MapToTransferRequestResList(reqs, buyerMap), nil
 }
 
 // loadTransferSaleContext preloads all records needed to process a sold-item workflow in one transaction.

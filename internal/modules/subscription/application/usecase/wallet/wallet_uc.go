@@ -10,6 +10,7 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/currency"
@@ -58,12 +59,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 	}
 
 	if wallet != nil {
-		return &dto.WalletDTO{
-			UserID:    wallet.UserID,
-			Balance:   sharedmoney.ToFloat(wallet.Balance),
-			Currency:  wallet.Currency,
-			UpdatedAt: wallet.UpdatedAt,
-		}, nil
+		return mapper.MapToWalletDTO(wallet), nil
 	}
 
 	createNewWallet := func(txCtx context.Context) error {
@@ -95,12 +91,7 @@ func (uc *WalletUseCase) GetWallet(ctx context.Context, userID uuid.UUID) (*dto.
 		return nil, subscriptionerrors.ErrWalletNotFound()
 	}
 
-	return &dto.WalletDTO{
-		UserID:    wallet.UserID,
-		Balance:   sharedmoney.ToFloat(wallet.Balance),
-		Currency:  wallet.Currency,
-		UpdatedAt: wallet.UpdatedAt,
-	}, nil
+	return mapper.MapToWalletDTO(wallet), nil
 }
 
 func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UUID, query dto.GetWalletStatementsQueryReq) (*shared_dto.PaginationResult[*dto.WalletStatementDTO], error) {
@@ -128,22 +119,8 @@ func (uc *WalletUseCase) GetWalletStatements(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 
-	dtos := make([]*dto.WalletStatementDTO, len(statements))
-	for idx, s := range statements {
-		dtos[idx] = &dto.WalletStatementDTO{
-			ID:              s.ID,
-			UserID:          s.UserID,
-			Amount:          sharedmoney.ToFloat(s.Amount),
-			TransactionType: s.TransactionType,
-			PreviousBalance: sharedmoney.ToFloat(s.PreviousBalance),
-			NewBalance:      sharedmoney.ToFloat(s.NewBalance),
-			Description:     s.Description,
-			CreatedAt:       s.CreatedAt,
-		}
-	}
-
 	return &shared_dto.PaginationResult[*dto.WalletStatementDTO]{
-		Items:    dtos,
+		Items:    mapper.MapToWalletStatementDTOList(statements),
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, totalItems),
 	}, nil
 }
