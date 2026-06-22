@@ -71,7 +71,10 @@ func (r LLMRecommendationQueryRewriter) Rewrite(ctx context.Context, intent dto.
 	if err != nil {
 		return types.RecommendationRetrievalQuery{}, err
 	}
-	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt)
+	if r.cfg.AI.RewriterPromptMaxCharacters > 0 && len([]rune(userPrompt)) > r.cfg.AI.RewriterPromptMaxCharacters {
+		return types.RecommendationRetrievalQuery{}, fmt.Errorf("recommendation rewriter prompt exceeds configured character limit")
+	}
+	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, ai.TextGenerationOptions{MaxOutputTokens: r.cfg.AI.RewriterMaxOutputTokens})
 	if err != nil {
 		return types.RecommendationRetrievalQuery{}, err
 	}

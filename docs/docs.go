@@ -1008,7 +1008,7 @@ const docTemplate = `{
         },
         "/api/v1/ai/chat/sessions/{contextID}/messages/stream": {
             "post": {
-                "description": "Gửi tin nhắn cho stylist AI và nhận phản hồi dạng stream sự kiện (Server-Sent Events).\nNếu mô hình AI phát hiện người dùng yêu cầu phối đồ từ tủ đồ cá nhân, nó sẽ thêm token '[ACTION:REDIRECT_OUTFIT]' vào cuối phản hồi stream.\nCHÚ Ý: Token '[ACTION:REDIRECT_OUTFIT]' có thể bị phân mảnh (split) thành nhiều chunk nhỏ khi truyền tải stream (ví dụ: chunk 1 nhận '[ACTION:RE', chunk 2 nhận 'DIRECT_OUTFIT]').\nFrontend cần tích luỹ toàn bộ chuỗi (accumulated string) hoặc ghép các chunk lại trước khi kiểm tra sự tồn tại của token này để hiển thị nút/card điều hướng sang tính năng Phối đồ chuyên dụng, thay vì chỉ kiểm tra đơn lẻ trên từng chunk nhận được.",
+                "description": "Gửi tin nhắn cho stylist AI và nhận phản hồi dạng stream sự kiện (Server-Sent Events).\nNội dung tin nhắn được giới hạn tối đa 2.000 ký tự Unicode sau khi chuẩn hóa NFC. Frontend nên kiểm tra giới hạn trước khi gửi để đảm bảo trải nghiệm người dùng.\nNếu mô hình AI phát hiện người dùng yêu cầu phối đồ từ tủ đồ cá nhân, nó sẽ thêm token '[ACTION:REDIRECT_OUTFIT]' vào cuối phản hồi stream.\n- CHÚ Ý: Token '[ACTION:REDIRECT_OUTFIT]' có thể bị phân mảnh (split) thành nhiều chunk nhỏ khi truyền tải stream (ví dụ: chunk 1 nhận '[ACTION:RE', chunk 2 nhận 'DIRECT_OUTFIT]').\n- Frontend cần tích luỹ toàn bộ chuỗi (accumulated string) hoặc ghép các chunk lại trước khi kiểm tra sự tồn tại của token này để hiển thị nút/card điều hướng sang tính năng Phối đồ chuyên dụng, thay vì chỉ kiểm tra đơn lẻ trên từng chunk nhận được.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1049,7 +1049,7 @@ const docTemplate = `{
         },
         "/api/v1/ai/outfit-recommendations": {
             "post": {
-                "description": "Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách.\n\nCác trường trong Request Body:\n- occasion (Dịp phối đồ, gợi ý: casual, work, date, party, sport,...)\n- styleTarget (Phong cách hướng tới, gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant,...)\n- season (Mùa phối đồ, enum: spring, summer, autumn, winter, all)\n- weather (Thời tiết hiện tại, gợi ý: hot, cold, warm, cool, rainy,...)\n- colorTone (Tông màu phối đồ, gợi ý: light, dark, pastel, earthy, neon,...)\n- details (Ghi chú thêm bằng tay - tự do)",
+                "description": "Nhận gợi ý phối đồ từ các trang phục có sẵn trong tủ đồ của người dùng dựa trên dịp, thời tiết và phong cách.\n\nCác trường trong Request Body:\n- occasion (Dịp phối đồ, gợi ý: casual, work, date, party, sport,...)\n- styleTarget (Phong cách hướng tới, gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant,...)\n- season (Mùa phối đồ, enum: spring, summer, autumn, winter, all)\n- weather (Thời tiết hiện tại, gợi ý: hot, cold, warm, cool, rainy,...)\n- colorTone (Tông màu phối đồ, gợi ý: light, dark, pastel, earthy, neon,...)\n- details (Ghi chú thêm bằng tay, tối đa 1.000 ký tự Unicode sau khi chuẩn hóa NFC. Frontend nên kiểm tra giới hạn trước khi gửi để đảm bảo trải nghiệm người dùng.)",
                 "consumes": [
                     "application/json"
                 ],

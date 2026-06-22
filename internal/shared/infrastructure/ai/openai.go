@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"smart-wardrobe-be/config"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
@@ -19,6 +20,7 @@ func (s *AIService) callOpenAITextStream(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
+	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
 	errChan := make(chan error, 1)
@@ -40,6 +42,9 @@ func (s *AIService) callOpenAITextStream(
 				},
 			},
 			"stream": true,
+		}
+		if options.MaxOutputTokens > 0 {
+			payload["max_tokens"] = options.MaxOutputTokens
 		}
 
 		bodyBytes, err := json.Marshal(payload)
@@ -106,7 +111,7 @@ func (s *AIService) callOpenAITextStream(
 	return textChan, errChan
 }
 
-func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]string{
@@ -119,6 +124,9 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 				"content": userPrompt,
 			},
 		},
+	}
+	if options.MaxOutputTokens > 0 {
+		payload["max_tokens"] = options.MaxOutputTokens
 	}
 
 	bodyBytes, err := json.Marshal(payload)

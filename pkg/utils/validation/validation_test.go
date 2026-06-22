@@ -1,8 +1,11 @@
 package validation
 
 import (
+	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
@@ -10,6 +13,33 @@ import (
 type validationFixture struct {
 	Email    string `json:"email" binding:"required,email" label:"email"`
 	Password string `json:"password" binding:"required,min=8" label:"mật khẩu"`
+}
+
+type nfcFixture struct {
+	Content string `json:"content" binding:"required,nfcmax=2"`
+}
+
+func TestBindJSONNormalizesNFCBeforePersistingAndCountsNormalizedRunes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	req := httptest.NewRequest("POST", "/", strings.NewReader(`{"content":"a\u0301b"}`))
+	req.Header.Set("Content-Type", "application/json")
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+	var input nfcFixture
+	if err := BindJSON(c, &input); err != nil {
+		t.Fatalf("expected decomposed text to fit after NFC normalization: %v", err)
+	}
+	if input.Content != "áb" {
+		t.Fatalf("expected NFC-normalized content, got %q", input.Content)
+	}
+}
+
+func TestNFCMaxRejectsNormalizedTextOverLimit(t *testing.T) {
+	validate := binding.Validator.Engine().(*validator.Validate)
+	err := validate.Struct(nfcFixture{Content: "a\u0301bc"})
+	if err == nil {
+		t.Fatal("expected normalized three-rune content to exceed limit")
+	}
 }
 
 func TestTranslateValidationErrorReturnsStructuredErrors(t *testing.T) {

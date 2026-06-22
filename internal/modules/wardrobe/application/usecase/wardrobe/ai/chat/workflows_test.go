@@ -9,6 +9,7 @@ import (
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -111,15 +112,15 @@ func (f fakeAIService) GenerateEmbeddings(ctx context.Context, chunks []string) 
 	return nil, nil
 }
 
-func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string) (<-chan string, <-chan error) {
+func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (<-chan string, <-chan error) {
 	return f.textChan, f.errChan
 }
 

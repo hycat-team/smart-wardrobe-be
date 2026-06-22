@@ -14,6 +14,18 @@ var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zà�
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
 func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message) string {
+	return buildChatSystemPromptWithLimits(summary, wardrobeItems, recent, 4000, 1500)
+}
+
+func truncateRunes(value string, limit int) string {
+	runes := []rune(value)
+	if limit <= 0 || len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit])
+}
+
+func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Please respond directly without writing down your internal thinking process or planning steps to save output tokens. However, if your generation process forces you to output thoughts, you MUST write the marker '===RESPONSE===' on its own line to separate your thinking process from your final response. Everything before '===RESPONSE===' is your internal thoughts, and everything after is your actual response.\n")
@@ -23,7 +35,7 @@ func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeIte
 	builder.WriteString("- Do NOT append '[ACTION:REDIRECT_OUTFIT]' for normal greetings, casual conversation, or general fashion advice without a specific request to coordinate/recommend outfits from their wardrobe.\n")
 	if strings.TrimSpace(summary) != "" {
 		builder.WriteString("Summary of previous conversation:\n")
-		builder.WriteString(summary)
+		builder.WriteString(truncateRunes(summary, summaryLimit))
 		builder.WriteString("\n")
 	}
 
@@ -51,7 +63,7 @@ func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeIte
 
 	builder.WriteString("5 most recent messages:\n")
 	for _, item := range recent {
-		fmt.Fprintf(&builder, "%s: %s\n", item.Sender, item.Content)
+		fmt.Fprintf(&builder, "%s: %s\n", item.Sender, truncateRunes(item.Content, messageLimit))
 	}
 
 	return builder.String()

@@ -24,7 +24,7 @@ type RecommendOutfitReq struct {
 	// Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)
 	Weather *string `json:"weather" example:"warm"`
 	// Ghi chú thêm bằng tay (free text)
-	Details *string `json:"details"`
+	Details *string `json:"details" binding:"omitempty,nfcmax=1000"`
 	// Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)
 	ColorTone *string `json:"colorTone" example:"light"`
 }

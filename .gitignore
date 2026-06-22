@@ -725,7 +725,7 @@ backend/global.json
 
 # SonarQube
 .sonarqube/
-
+.cache/
 .gocache/
 docs/temp
 

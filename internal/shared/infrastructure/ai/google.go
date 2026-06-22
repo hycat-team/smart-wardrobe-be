@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/config"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/httputils"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -22,6 +23,7 @@ func (s *AIService) callGoogleTextStream(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
+	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
 	errChan := make(chan error, 1)
@@ -50,6 +52,9 @@ func (s *AIService) callGoogleTextStream(
 					},
 				},
 			}
+		}
+		if options.MaxOutputTokens > 0 {
+			payload["generationConfig"] = map[string]any{"maxOutputTokens": options.MaxOutputTokens}
 		}
 
 		bodyBytes, err := json.Marshal(payload)
@@ -114,7 +119,7 @@ func (s *AIService) callGoogleTextStream(
 	return textChan, errChan
 }
 
-func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string) (string, error) {
+func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	payload := map[string]any{
 		"contents": []map[string]any{
 			{
@@ -135,6 +140,9 @@ func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, pro
 				},
 			},
 		}
+	}
+	if options.MaxOutputTokens > 0 {
+		payload["generationConfig"] = map[string]any{"maxOutputTokens": options.MaxOutputTokens}
 	}
 
 	bodyBytes, err := json.Marshal(payload)

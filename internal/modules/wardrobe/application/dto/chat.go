@@ -26,7 +26,7 @@ type ChatSessionRes struct {
 }
 
 type SendChatMessageReq struct {
-	Content string `json:"content" binding:"required" label:"nội dung tin nhắn"`
+	Content string `json:"content" binding:"required,nfcmax=2000" label:"nội dung tin nhắn"`
 }
 
 type ChatMessageRes struct {

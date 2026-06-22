@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 )
 
 func TestLLMRecommendationQueryRewriterUsesValidatedOutput(t *testing.T) {
@@ -70,18 +71,18 @@ func (f fakeRecommendationAIService) GenerateEmbeddings(ctx context.Context, chu
 	return nil, nil
 }
 
-func (f fakeRecommendationAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+func (f fakeRecommendationAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}
 	return f.chatText, nil
 }
 
-func (f fakeRecommendationAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string) (string, error) {
+func (f fakeRecommendationAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeRecommendationAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string) (<-chan string, <-chan error) {
+func (f fakeRecommendationAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (<-chan string, <-chan error) {
 	text := make(chan string)
 	errs := make(chan error)
 	close(text)

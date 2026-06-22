@@ -10,6 +10,10 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 )
 
+type PromptLimits struct {
+	CandidateLimit, DescriptionMaxCharacters, TagsLimit, PromptMaxCharacters int
+}
+
 // BuildRecommendationPrompt định dạng vai trò của stylist, các ràng buộc của prompt, ngữ cảnh yêu cầu và danh sách các ứng viên món đồ thành một prompt người dùng hoàn chỉnh gửi cho LLM.
 //
 // Hành vi:
@@ -28,6 +32,25 @@ import (
 //
 //	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
 func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq) string {
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{})
+	return prompt
+}
+
+func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits) (string, error) {
+	if limits.CandidateLimit > 0 && len(candidates) > limits.CandidateLimit {
+		candidates = candidates[:limits.CandidateLimit]
+	}
+	for len(candidates) > 0 {
+		prompt := buildRecommendationPrompt(candidates, input, limits)
+		if limits.PromptMaxCharacters <= 0 || len([]rune(prompt)) <= limits.PromptMaxCharacters {
+			return prompt, nil
+		}
+		candidates = candidates[:len(candidates)-1]
+	}
+	return "", fmt.Errorf("recommendation prompt exceeds configured character limit")
+}
+
+func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
@@ -83,13 +106,17 @@ func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 		}
 		descStr := ""
 		if item.Description != nil {
-			descStr = *item.Description
+			descStr = truncateRunes(*item.Description, limits.DescriptionMaxCharacters)
 		}
-		if len(candidate.Tags) > 0 {
+		tags := candidate.Tags
+		if limits.TagsLimit > 0 && len(tags) > limits.TagsLimit {
+			tags = tags[:limits.TagsLimit]
+		}
+		if len(tags) > 0 {
 			if descStr != "" {
 				descStr += " "
 			}
-			descStr += "[Fashion Tags: " + strings.Join(candidate.Tags, ", ") + "]"
+			descStr += "[Fashion Tags: " + strings.Join(tags, ", ") + "]"
 		}
 		if descStr != "" {
 			candidatePayload["description"] = descStr
@@ -110,4 +137,15 @@ func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	return builder.String()
+}
+
+func truncateRunes(value string, limit int) string {
+	if limit <= 0 {
+		return value
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit])
 }

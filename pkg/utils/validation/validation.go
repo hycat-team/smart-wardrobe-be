@@ -8,12 +8,15 @@ import (
 	"reflect"
 	"regexp"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -89,11 +92,20 @@ func IsPasswordComplex(fl validator.FieldLevel) bool {
 	return hasUpper && hasLower && hasDigit && hasSpecial
 }
 
+func NFCMax(fl validator.FieldLevel) bool {
+	limit, err := strconv.Atoi(fl.Param())
+	if err != nil || limit < 0 {
+		return false
+	}
+	return utf8.RuneCountInString(norm.NFC.String(fl.Field().String())) <= limit
+}
+
 func init() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("username", IsUserName)
 		v.RegisterValidation("neqfield", NotEqualField)
 		v.RegisterValidation("password_complexity", IsPasswordComplex)
+		v.RegisterValidation("nfcmax", NFCMax)
 		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 			if name == "" {
@@ -240,6 +252,8 @@ func validationMessage(fe validator.FieldError, fieldName, paramName string) str
 			return fmt.Sprintf(errMsgMaxInt, fieldName, paramName)
 		}
 		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
+	case "nfcmax":
+		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
 	case "datetime":
 		return fmt.Sprintf(errMsgDateTime, fieldName, paramName)
 	case "oneof":
@@ -255,7 +269,35 @@ func BindJSON(c *gin.Context, obj any) error {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		return TranslateValidationError(err)
 	}
+	normalizeNFC(reflect.ValueOf(obj))
 	return nil
+}
+
+func normalizeNFC(value reflect.Value) {
+	if !value.IsValid() {
+		return
+	}
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return
+		}
+		normalizeNFC(value.Elem())
+		return
+	}
+	switch value.Kind() {
+	case reflect.Struct:
+		for i := 0; i < value.NumField(); i++ {
+			normalizeNFC(value.Field(i))
+		}
+	case reflect.String:
+		if value.CanSet() {
+			value.SetString(norm.NFC.String(value.String()))
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < value.Len(); i++ {
+			normalizeNFC(value.Index(i))
+		}
+	}
 }
 
 func BindQuery(c *gin.Context, obj any) error {

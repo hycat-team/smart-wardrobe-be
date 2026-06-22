@@ -10,6 +10,7 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
@@ -165,7 +166,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 		return nil, nil, err
 	}
 	generationInput.userContent = content
-	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent)
+	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.ChatMaxOutputTokens})
 	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, aiTextChan, aiErrChan)
 }
 
@@ -180,16 +181,17 @@ func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session 
 	}
 	var builder strings.Builder
 	if strings.TrimSpace(session.ContextSummary) != "" {
-		builder.WriteString(session.ContextSummary)
+		builder.WriteString(truncateRunes(session.ContextSummary, uc.cfg.AI.SummaryPreviousMaxCharacters))
 		builder.WriteString("\n")
 	}
 	for _, item := range oldest {
 		builder.WriteString(string(item.Sender))
 		builder.WriteString(": ")
-		builder.WriteString(item.Content)
+		builder.WriteString(truncateRunes(item.Content, uc.cfg.AI.ChatHistoryMessageMaxCharacters))
 		builder.WriteString("\n")
 	}
-	summary, err := uc.aiService.GenerateChatText(ctx, "You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.", builder.String())
+	summarySource := truncateRunes(builder.String(), uc.cfg.AI.SummarySourceMaxCharacters)
+	summary, err := uc.aiService.GenerateChatText(ctx, "You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.", summarySource, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.SummaryMaxOutputTokens})
 	if err != nil || strings.TrimSpace(summary) == "" {
 		summary = builder.String()
 	}
@@ -247,7 +249,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 		activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
 	}
 
-	return &chatGenerationInput{systemPrompt: buildChatSystemPrompt(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent)}, nil
+	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters)}, nil
 }
 
 func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/internal/shared/application/ai"
@@ -35,12 +36,17 @@ func GenerateOutfitRecommendation(
 	aiService ai.IAIService,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
+	cfg *config.Config,
 ) (*dto.RecommendedOutfitRes, error) {
-	userPrompt := BuildRecommendationPrompt(candidates, input)
+	userPrompt, err := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{CandidateLimit: cfg.AI.RecommendationPromptCandidateLimit, DescriptionMaxCharacters: cfg.AI.RecommendationDescriptionMaxCharacters, TagsLimit: cfg.AI.RecommendationTagsLimit, PromptMaxCharacters: cfg.AI.RecommendationPromptMaxCharacters})
+	if err != nil {
+		return nil, err
+	}
 	responseText, err := aiService.GenerateRecommendationText(
 		ctx,
 		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
 		userPrompt,
+		ai.TextGenerationOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens},
 	)
 	if err != nil {
 		return nil, NewFallbackTraceError(

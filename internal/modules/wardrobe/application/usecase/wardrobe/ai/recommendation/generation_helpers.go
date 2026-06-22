@@ -26,7 +26,7 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 ) (*dto.RecommendedOutfitRes, error) {
-	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, candidates, input)
+	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, candidates, input, uc.cfg)
 }
 
 // updateQuotaAndConstructResponse thực hiện trừ đi 1 lượt sử dụng trong quota hàng ngày của người dùng,
