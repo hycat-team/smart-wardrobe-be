@@ -9,7 +9,7 @@ redis:
     db: 0
 server:
     port: "8080"
-    front_end_origin: http://localhost:3000
+    front_end_origin: http://localhost:3000,http://localhost:8081
     timeout_seconds: 30
     env: development
 startup:
