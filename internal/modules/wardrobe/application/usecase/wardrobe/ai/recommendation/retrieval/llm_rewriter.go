@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
@@ -21,6 +22,12 @@ type LLMRecommendationQueryRewriter struct {
 	aiService ai.IAIService
 	cfg       *config.Config
 	local     LocalRecommendationQueryRewriter
+	userID    uuid.UUID
+}
+
+func (r *LLMRecommendationQueryRewriter) WithUserID(userID uuid.UUID) *LLMRecommendationQueryRewriter {
+	r.userID = userID
+	return r
 }
 
 // NewLLMRecommendationQueryRewriter khởi tạo thực thể [LLMRecommendationQueryRewriter].
@@ -74,11 +81,15 @@ func (r LLMRecommendationQueryRewriter) Rewrite(ctx context.Context, intent dto.
 	if r.cfg.AI.RewriterPromptMaxCharacters > 0 && len([]rune(userPrompt)) > r.cfg.AI.RewriterPromptMaxCharacters {
 		return types.RecommendationRetrievalQuery{}, fmt.Errorf("recommendation rewriter prompt exceeds configured character limit")
 	}
-	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, ai.TextGenerationOptions{MaxOutputTokens: r.cfg.AI.RewriterMaxOutputTokens})
+	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, ai.TextGenerationOptions{MaxOutputTokens: r.cfg.AI.RewriterMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: rewriterResponseSchema(), UserID: r.userID, Operation: "rewriter"})
 	if err != nil {
 		return types.RecommendationRetrievalQuery{}, err
 	}
 	return validateLLMRecommendationRetrievalQuery(response, r.cfg)
+}
+
+func rewriterResponseSchema() any {
+	return map[string]any{"type": "OBJECT", "required": []string{"semantic_query", "lexical_terms", "excluded_terms", "hard_filters"}, "properties": map[string]any{"semantic_query": map[string]any{"type": "STRING"}, "lexical_terms": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}, "excluded_terms": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}, "hard_filters": map[string]any{"type": "OBJECT", "required": []string{"seasonality", "category_slugs"}, "properties": map[string]any{"seasonality": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}, "category_slugs": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}}}}}
 }
 
 // buildLLMRecommendationRewriterPrompts tạo ra prompt hệ thống và dữ liệu JSON cho prompt người dùng gửi lên LLM để thực hiện viết lại truy vấn.

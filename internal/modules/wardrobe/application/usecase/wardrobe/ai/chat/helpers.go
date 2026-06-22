@@ -28,7 +28,7 @@ func truncateRunes(value string, limit int) string {
 func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
-	builder.WriteString("IMPORTANT: Please respond directly without writing down your internal thinking process or planning steps to save output tokens. However, if your generation process forces you to output thoughts, you MUST write the marker '===RESPONSE===' on its own line to separate your thinking process from your final response. Everything before '===RESPONSE===' is your internal thoughts, and everything after is your actual response.\n")
+	builder.WriteString("IMPORTANT: You MUST respond directly in Vietnamese. Do NOT write down any internal thinking process, reasoning, planning steps, or bullet-point analysis. Start your response immediately with the conversational Vietnamese answer. If you absolutely must write down thoughts, you MUST write the marker '===RESPONSE===' on its own line to separate your thoughts from your final response. Everything before '===RESPONSE===' is your internal thoughts, and everything after is your actual response.\n")
 	builder.WriteString("CONSTRAINTS & RULES:\n")
 	builder.WriteString("- Only mention or propose coordinating outfits from the user's personal wardrobe when the user explicitly asks or requests it. Do not proactively invite them to coordinate outfits in standard greetings or chitchat.\n")
 	builder.WriteString("- If and only if the user explicitly requests to coordinate outfits or choose clothes from their personal wardrobe, respond naturally and conversationally, and MUST append the token '[ACTION:REDIRECT_OUTFIT]' at the very end of your response to trigger the dedicated outfit coordination feature.\n")
@@ -108,6 +108,18 @@ func FilterThinkTags(aiTextChan <-chan string, onCleanChunk func(string)) <-chan
 			buffer.WriteString(t)
 			str := buffer.String()
 
+			// Try marker first
+			if _, after, ok := strings.Cut(str, marker); ok {
+				hasMarker = true
+				cleanStart := strings.TrimLeft(after, "\r\n ")
+				if cleanStart != "" {
+					outChan <- cleanStart
+					onCleanChunk(cleanStart)
+				}
+				buffer.Reset()
+				continue
+			}
+
 			if !checkedStart {
 				if buffer.Len() >= 15 {
 					trimmedStr := strings.TrimSpace(str)
@@ -120,18 +132,6 @@ func FilterThinkTags(aiTextChan <-chan string, onCleanChunk func(string)) <-chan
 					}
 					checkedStart = true
 				}
-			}
-
-			// Try marker
-			if _, after, ok := strings.Cut(str, marker); ok {
-				hasMarker = true
-				cleanStart := strings.TrimLeft(after, "\r\n ")
-				if cleanStart != "" {
-					outChan <- cleanStart
-					onCleanChunk(cleanStart)
-				}
-				buffer.Reset()
-				continue
 			}
 
 			// Try transition regex matching in the current buffer

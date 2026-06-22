@@ -47,7 +47,7 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 		return nil, err
 	}
 
-	finalRes, err := uc.generateOutfitRecommendation(ctx, candidates, input)
+	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input)
 	if err != nil {
 		failureKind, providerHint, promptLen, responsePreview := synthesis.ClassifyFallbackTrace(err)
 		uc.logger.Warn("Outfit recommendation AI fallback triggered",

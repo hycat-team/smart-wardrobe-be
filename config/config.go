@@ -81,6 +81,25 @@ type AIServiceConfig struct {
 	RecommendationTagsLimit                int               `mapstructure:"recommendation_tags_limit"`
 	RecommendationPromptMaxCharacters      int               `mapstructure:"recommendation_prompt_max_characters"`
 	RecommendationMaxOutputTokens          int               `mapstructure:"recommendation_max_output_tokens"`
+	FreeTextPrimary                        APIProviderConfig `mapstructure:"free_text_primary"`
+	FreeTextFallback                       APIProviderConfig `mapstructure:"free_text_fallback"`
+	FreeTextTimeoutSeconds                 int               `mapstructure:"free_text_timeout_seconds"`
+	FreeTextRPMLimit                       int               `mapstructure:"free_text_rpm_limit"`
+	Pricing                                AIPricingConfig   `mapstructure:"pricing"`
+	UsageReconcileCron                     string            `mapstructure:"usage_reconcile_cron"`
+	UsageReconcileBatchSize                int               `mapstructure:"usage_reconcile_batch_size"`
+}
+
+type AIPricingConfig struct {
+	Version  string               `mapstructure:"version"`
+	Currency string               `mapstructure:"currency"`
+	USDToVND string               `mapstructure:"usd_to_vnd"`
+	Paid     AIModelPricingConfig `mapstructure:"paid"`
+}
+
+type AIModelPricingConfig struct {
+	InputUSDPerMillionTokens  string `mapstructure:"input_usd_per_million_tokens"`
+	OutputUSDPerMillionTokens string `mapstructure:"output_usd_per_million_tokens"`
 }
 
 type RabbitMQ struct {

@@ -40,6 +40,8 @@ func loadSecrets(cfg *Config) {
 	loadAIProvider("CHAT_TEXT_FALLBACK", &cfg.AI.ChatTextFallback)
 	loadAIProvider("RECOMMENDATION_TEXT_PRIMARY", &cfg.AI.RecommendationTextPrimary)
 	loadAIProvider("RECOMMENDATION_TEXT_FALLBACK", &cfg.AI.RecommendationTextFallback)
+	loadAIProvider("FREE_TEXT_PRIMARY", &cfg.AI.FreeTextPrimary)
+	loadAIProvider("FREE_TEXT_FALLBACK", &cfg.AI.FreeTextFallback)
 
 	// AI API key fallbacks
 	cfg.AI.ChatTextPrimary.ApiKey = firstEnv("CHAT_TEXT_PRIMARY_API_KEY", "VISION_PRIMARY_API_KEY")

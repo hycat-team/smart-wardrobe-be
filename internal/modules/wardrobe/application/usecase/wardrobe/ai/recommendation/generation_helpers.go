@@ -23,10 +23,11 @@ import (
 //	(*dto.RecommendedOutfitRes, nil) chứa thông tin phối đồ và lý do chi tiết từ AI.
 func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	ctx context.Context,
+	userID uuid.UUID,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 ) (*dto.RecommendedOutfitRes, error) {
-	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, candidates, input, uc.cfg)
+	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg)
 }
 
 // updateQuotaAndConstructResponse thực hiện trừ đi 1 lượt sử dụng trong quota hàng ngày của người dùng,

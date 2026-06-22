@@ -2,9 +2,19 @@ package ai
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
-type TextGenerationOptions struct{ MaxOutputTokens int }
+type TextGenerationOptions struct {
+	MaxOutputTokens  int
+	Temperature      float64
+	ResponseMIMEType string
+	ResponseSchema   any
+	UserID           uuid.UUID
+	Operation        string
+	RequestID        uuid.UUID
+}
 
 type IAIService interface {
 	AnalyzeImage(ctx context.Context, imageUrl string, prompt string) (string, error)

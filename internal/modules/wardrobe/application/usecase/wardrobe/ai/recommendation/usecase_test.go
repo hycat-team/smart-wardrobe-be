@@ -3,6 +3,7 @@ package recommendation
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"testing"
 
 	"smart-wardrobe-be/config"
@@ -26,7 +27,7 @@ func TestBuildRecommendationRetrievalQueryFallsBackToLocalOnLLMError(t *testing.
 		SemanticQuery: "occasion: work",
 	}
 
-	query := uc.buildRecommendationRetrievalQuery(context.Background(), intent)
+	query := uc.buildRecommendationRetrievalQuery(context.Background(), uuid.Nil, intent)
 	if query.SemanticQuery != "occasion: work" || !containsString(retrieval.ExtractTermStrings(query.LexicalTerms), "office") {
 		t.Fatalf("expected local fallback query, got %+v", query)
 	}
@@ -43,7 +44,7 @@ func TestBuildRecommendationRetrievalQueryUsesLLMWhenEnabled(t *testing.T) {
 		},
 	}
 
-	query := uc.buildRecommendationRetrievalQuery(context.Background(), dto.ParsedIntent{SemanticQuery: "local semantic"})
+	query := uc.buildRecommendationRetrievalQuery(context.Background(), uuid.Nil, dto.ParsedIntent{SemanticQuery: "local semantic"})
 	if query.SemanticQuery != "llm semantic" {
 		t.Fatalf("expected LLM query, got %+v", query)
 	}

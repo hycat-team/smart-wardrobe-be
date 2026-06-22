@@ -103,7 +103,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	input dto.RecommendOutfitReq,
 ) ([]types.CandidateForPrompt, error) {
 	intent := uc.parseRecommendationIntent(input)
-	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, intent)
+	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
 
 	candidates, err := uc.wardrobeRepo.GetHybridCandidates(
@@ -294,6 +294,7 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationQueryVector(
 //	}
 func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 	ctx context.Context,
+	userID uuid.UUID,
 	intent dto.ParsedIntent,
 ) types.RecommendationRetrievalQuery {
 	local := retrieval.LocalRecommendationQueryRewriter{}
@@ -305,7 +306,7 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 	rewriteCtx, cancel := context.WithTimeout(ctx, time.Duration(uc.cfg.RAG.RecommendationLLMRewriterTimeoutSeconds)*time.Second)
 	defer cancel()
 
-	query, err := retrieval.NewLLMRecommendationQueryRewriter(uc.aiService, uc.cfg).Rewrite(rewriteCtx, intent)
+	query, err := retrieval.NewLLMRecommendationQueryRewriter(uc.aiService, uc.cfg).WithUserID(userID).Rewrite(rewriteCtx, intent)
 	if err == nil {
 		if uc.logger != nil {
 			uc.logger.Info("Outfit recommendation query rewriter completed",

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
@@ -34,6 +35,7 @@ import (
 func GenerateOutfitRecommendation(
 	ctx context.Context,
 	aiService ai.IAIService,
+	userID uuid.UUID,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 	cfg *config.Config,
@@ -46,7 +48,7 @@ func GenerateOutfitRecommendation(
 		ctx,
 		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
 		userPrompt,
-		ai.TextGenerationOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens},
+		ai.TextGenerationOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)
 	if err != nil {
 		return nil, NewFallbackTraceError(
@@ -75,6 +77,7 @@ func GenerateOutfitRecommendation(
 			responseText,
 		)
 	}
+	resolveOutfitAliases(&llmRes, candidates)
 
 	validGroups := MapLLMResponseToGroups(candidates, llmRes)
 	if len(validGroups) == 0 {
@@ -91,6 +94,30 @@ func GenerateOutfitRecommendation(
 		Explanation: llmRes.Explanation,
 		Items:       validGroups,
 	}, nil
+}
+
+func outfitResponseSchema() any {
+	return map[string]any{"type": "OBJECT", "required": []string{"title", "explanation", "items"}, "properties": map[string]any{"title": map[string]any{"type": "STRING"}, "explanation": map[string]any{"type": "STRING"}, "items": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "OBJECT", "required": []string{"role", "primary_id", "alternative_ids"}, "properties": map[string]any{"role": map[string]any{"type": "STRING"}, "primary_id": map[string]any{"type": "STRING"}, "alternative_ids": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}}}}}}
+}
+
+func resolveOutfitAliases(res *types.LlmOutfitResponse, candidates []types.CandidateForPrompt) {
+	if res == nil {
+		return
+	}
+	aliases := map[string]string{}
+	for i, c := range candidates {
+		aliases[fmt.Sprintf("A%d", i+1)] = c.Item.ID.String()
+	}
+	for i := range res.Items {
+		if id, ok := aliases[res.Items[i].PrimaryID]; ok {
+			res.Items[i].PrimaryID = id
+		}
+		for j, id := range res.Items[i].AlternativeIDs {
+			if actual, ok := aliases[id]; ok {
+				res.Items[i].AlternativeIDs[j] = actual
+			}
+		}
+	}
 }
 
 // fallbackTraceError là một kiểu lỗi tùy chỉnh chứa các thông tin vết (trace info) hỗ trợ việc gỡ lỗi hoặc ghi nhận telemetry khi luồng AI bị lỗi và phải dùng HSL fallback.

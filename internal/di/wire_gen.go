@@ -33,6 +33,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/aicost"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
@@ -109,7 +110,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
-	iaiService := ai.NewAIService(cfg, l)
+	iaiCostRepository := persistence2.NewAICostRepository(gormDB)
+	iaiCostPolicyContract := aicost.NewService(iaiCostRepository, cfg)
+	iaiService := ai.NewAIService(cfg, l, iaiCostPolicyContract)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
 		return nil, nil, err
@@ -180,6 +183,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iPaymentReconciliationWorker := worker2.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
 	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
 	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
+	iaiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostPolicyContract, l, cfg)
 	iPostHotnessUseCase := post_hotness.NewPostHotnessUseCase(iPostRepository, iPostScoreRepository, l)
 	iPostHotnessWorker := worker3.NewPostHotnessWorker(iPostHotnessUseCase, l)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
@@ -194,13 +198,14 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,
 		WebhookInboxWorker:          iWebhookInboxWorker,
+		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
 		PostHotnessWorker:           iPostHotnessWorker,
 		WardrobeBatchUploadWorker:   wardrobeBatchUploadWorker,
 		ESAsyncWorker:               searchSyncWorker,
 		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
 		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
 	}
-	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository)
+	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
 	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)
 	return app, func() {
 	}, nil

@@ -22,6 +22,7 @@ type AppWorkers struct {
 	RenewalWorker               subWorker.ISubscriptionRenewalWorker
 	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
 	WebhookInboxWorker          subWorker.IWebhookInboxWorker
+	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
 	PostHotnessWorker           communityWorker.IPostHotnessWorker
 	WardrobeBatchUploadWorker   *wardrobeWorker.WardrobeBatchUploadWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
@@ -77,6 +78,7 @@ func (a *App) Run() error {
 	a.Workers.RenewalWorker.Start()
 	a.Workers.PaymentReconciliationWorker.Start()
 	a.Workers.WebhookInboxWorker.Start()
+	a.Workers.AIUsageReconciliationWorker.Start()
 	a.Workers.PostHotnessWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
@@ -96,6 +98,7 @@ func (a *App) Run() error {
 	a.Workers.RenewalWorker.Stop()
 	a.Workers.PaymentReconciliationWorker.Stop()
 	a.Workers.WebhookInboxWorker.Stop()
+	a.Workers.AIUsageReconciliationWorker.Stop()
 	a.Workers.PostHotnessWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()

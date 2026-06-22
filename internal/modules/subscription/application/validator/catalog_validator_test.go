@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
@@ -66,7 +67,8 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 			},
 		}
 
-		validator := NewSubscriptionCatalogValidator(repo)
+		attachTestPolicies(repo.plans)
+		validator := NewSubscriptionCatalogValidator(repo, &config.Config{})
 		err := validator.Validate(ctx)
 		if err != nil {
 			t.Fatalf("expected validation to pass, got error: %v", err)
@@ -89,7 +91,8 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 			},
 		}
 
-		validator := NewSubscriptionCatalogValidator(repo)
+		attachTestPolicies(repo.plans)
+		validator := NewSubscriptionCatalogValidator(repo, &config.Config{})
 		err := validator.Validate(ctx)
 		if err == nil {
 			t.Fatal("expected validation to fail, got nil")
@@ -115,7 +118,8 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 			},
 		}
 
-		validator := NewSubscriptionCatalogValidator(repo)
+		attachTestPolicies(repo.plans)
+		validator := NewSubscriptionCatalogValidator(repo, &config.Config{})
 		err := validator.Validate(ctx)
 		if err == nil {
 			t.Fatal("expected validation to fail, got nil")
@@ -124,4 +128,15 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 			t.Fatalf("unexpected error message: %v", err)
 		}
 	})
+}
+
+func attachTestPolicies(plans []*entities.SubscriptionPlan) {
+	for _, p := range plans {
+		id := uuid.New()
+		p.AICostPolicyID = id
+		p.AICostPolicy = &entities.AICostPolicy{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: id}}}
+		for _, operation := range []string{"chat", "outfit", "summary", "rewriter"} {
+			p.AICostPolicy.Operations = append(p.AICostPolicy.Operations, &entities.AICostPolicyOperation{Operation: operation, IsEnabled: true, NormalMaxInputTokens: 1, NormalMaxOutputTokens: 1, ReducedMaxInputTokens: 1, ReducedMaxOutputTokens: 1, MaxPaidAttemptsPerDay: 1})
+		}
+	}
 }

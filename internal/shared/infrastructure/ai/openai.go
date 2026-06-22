@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -41,11 +42,13 @@ func (s *AIService) callOpenAITextStream(
 					"content": userPrompt,
 				},
 			},
-			"stream": true,
+			"stream":         true,
+			"stream_options": map[string]any{"include_usage": true},
 		}
 		if options.MaxOutputTokens > 0 {
 			payload["max_tokens"] = options.MaxOutputTokens
 		}
+		applyOpenAIStructuredOutput(payload, options)
 
 		bodyBytes, err := json.Marshal(payload)
 		if err != nil {
@@ -81,10 +84,16 @@ func (s *AIService) callOpenAITextStream(
 
 			var openAIResp struct {
 				Choices []struct {
-					Delta struct {
+					FinishReason string `json:"finish_reason"`
+					Delta        struct {
 						Content string `json:"content"`
 					} `json:"delta"`
 				} `json:"choices"`
+				Usage struct {
+					PromptTokens     int64 `json:"prompt_tokens"`
+					CompletionTokens int64 `json:"completion_tokens"`
+					TotalTokens      int64 `json:"total_tokens"`
+				} `json:"usage"`
 			}
 
 			if err := json.Unmarshal([]byte(data), &openAIResp); err != nil {
@@ -100,6 +109,12 @@ func (s *AIService) callOpenAITextStream(
 					case textChan <- text:
 					}
 				}
+			}
+			if openAIResp.Usage.TotalTokens > 0 {
+				_ = s.costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+			}
+			if len(openAIResp.Choices) > 0 && openAIResp.Choices[0].FinishReason == "length" {
+				return fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
 			}
 			return nil
 		})
@@ -128,6 +143,7 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 	if options.MaxOutputTokens > 0 {
 		payload["max_tokens"] = options.MaxOutputTokens
 	}
+	applyOpenAIStructuredOutput(payload, options)
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -154,10 +170,16 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 
 	var openAIResp struct {
 		Choices []struct {
-			Message struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int64 `json:"prompt_tokens"`
+			CompletionTokens int64 `json:"completion_tokens"`
+			TotalTokens      int64 `json:"total_tokens"`
+		} `json:"usage"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
@@ -167,8 +189,23 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 	if len(openAIResp.Choices) == 0 {
 		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
+	_ = s.costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+	if openAIResp.Choices[0].FinishReason == "length" {
+		return "", fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
+	}
 
 	return openAIResp.Choices[0].Message.Content, nil
+}
+
+func applyOpenAIStructuredOutput(payload map[string]any, options app_ai.TextGenerationOptions) {
+	if options.ResponseMIMEType != "application/json" {
+		return
+	}
+	if options.ResponseSchema != nil {
+		payload["response_format"] = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "structured_response", "strict": true, "schema": options.ResponseSchema}}
+		return
+	}
+	payload["response_format"] = map[string]any{"type": "json_object"}
 }
 
 func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {

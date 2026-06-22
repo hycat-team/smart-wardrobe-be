@@ -303,10 +303,10 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 		return err
 	}
 
-	success := false
+	commitCalled := false
 	defer func() {
-		if err := commitFn(success); err != nil {
-			_ = c.Error(err)
+		if !commitCalled {
+			_ = commitFn(false)
 		}
 	}()
 
@@ -317,7 +317,13 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 			return nil
 		case text, ok := <-textChan:
 			if !ok {
-				success = true
+				commitCalled = true
+				if err := commitFn(true); err != nil {
+					_ = c.Error(err)
+					_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", streamutils.SanitizeSSEData(err.Error()))
+					flusher.Flush()
+					return nil
+				}
 				if _, err := fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", streamutils.SanitizeSSEData(accumulated.String())); err != nil {
 					return err
 				}

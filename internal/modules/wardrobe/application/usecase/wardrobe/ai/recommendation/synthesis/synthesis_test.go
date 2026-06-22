@@ -37,8 +37,8 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 	if !strings.Contains(prompt, `"occasion":"party"`) {
 		t.Fatalf("expected occasion party in context, got: %s", prompt)
 	}
-	if !strings.Contains(prompt, itemID.String()) {
-		t.Fatalf("expected candidate item ID in prompt, got: %s", prompt)
+	if !strings.Contains(prompt, `"id":"A1"`) {
+		t.Fatalf("expected compact candidate alias in prompt, got: %s", prompt)
 	}
 	if !strings.Contains(prompt, "winter-appropriate:outerwear") {
 		t.Fatalf("expected fashion tags in candidate description, got: %s", prompt)

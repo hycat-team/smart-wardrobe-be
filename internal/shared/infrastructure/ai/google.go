@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/httputils"
@@ -54,7 +55,7 @@ func (s *AIService) callGoogleTextStream(
 			}
 		}
 		if options.MaxOutputTokens > 0 {
-			payload["generationConfig"] = map[string]any{"maxOutputTokens": options.MaxOutputTokens}
+			payload["generationConfig"] = googleGenerationConfig(options)
 		}
 
 		bodyBytes, err := json.Marshal(payload)
@@ -84,15 +85,22 @@ func (s *AIService) callGoogleTextStream(
 			return
 		}
 
+		var lastMetadata googleUsageMetadata
+		var lastFinishReason string
+		hasMetadata := false
+
 		err = parseSSEStream(resp.Body, func(data string) error {
 			var googleResp struct {
 				Candidates []struct {
-					Content struct {
+					FinishReason string `json:"finishReason"`
+					Content      struct {
 						Parts []struct {
-							Text string `json:"text"`
+							Text    string `json:"text"`
+							Thought bool   `json:"thought"`
 						} `json:"parts"`
 					} `json:"content"`
 				} `json:"candidates"`
+				UsageMetadata googleUsageMetadata `json:"usageMetadata"`
 			}
 
 			if err := json.Unmarshal([]byte(data), &googleResp); err != nil {
@@ -100,17 +108,31 @@ func (s *AIService) callGoogleTextStream(
 			}
 
 			if len(googleResp.Candidates) > 0 && len(googleResp.Candidates[0].Content.Parts) > 0 {
-				text := googleResp.Candidates[0].Content.Parts[0].Text
-				if text != "" {
+				part := googleResp.Candidates[0].Content.Parts[0]
+				// Discard thoughts if marked as thought
+				if !part.Thought && part.Text != "" {
 					select {
 					case <-ctx.Done():
 						return ctx.Err()
-					case textChan <- text:
+					case textChan <- part.Text:
 					}
 				}
 			}
+			if googleResp.UsageMetadata.TotalTokenCount > 0 {
+				lastMetadata = googleResp.UsageMetadata
+				hasMetadata = true
+				if len(googleResp.Candidates) > 0 {
+					lastFinishReason = googleResp.Candidates[0].FinishReason
+				}
+			}
+			if len(googleResp.Candidates) > 0 && googleResp.Candidates[0].FinishReason == "MAX_TOKENS" {
+				return fmt.Errorf("Google text generation reached MAX_TOKENS")
+			}
 			return nil
 		})
+		if hasMetadata {
+			_ = s.confirmGoogleUsage(context.WithoutCancel(ctx), options, provider, lastMetadata, lastFinishReason)
+		}
 		if err != nil && err != context.Canceled {
 			errChan <- err
 		}
@@ -142,7 +164,7 @@ func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, pro
 		}
 	}
 	if options.MaxOutputTokens > 0 {
-		payload["generationConfig"] = map[string]any{"maxOutputTokens": options.MaxOutputTokens}
+		payload["generationConfig"] = googleGenerationConfig(options)
 	}
 
 	bodyBytes, err := json.Marshal(payload)
@@ -170,12 +192,15 @@ func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, pro
 
 	var googleResp struct {
 		Candidates []struct {
-			Content struct {
+			FinishReason string `json:"finishReason"`
+			Content      struct {
 				Parts []struct {
-					Text string `json:"text"`
+					Text    string `json:"text"`
+					Thought bool   `json:"thought"`
 				} `json:"parts"`
 			} `json:"content"`
 		} `json:"candidates"`
+		UsageMetadata googleUsageMetadata `json:"usageMetadata"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&googleResp); err != nil {
@@ -186,7 +211,81 @@ func (s *AIService) callGoogleText(ctx context.Context, client *http.Client, pro
 		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
 
-	return googleResp.Candidates[0].Content.Parts[0].Text, nil
+	var nonThoughtParts []string
+	for _, part := range googleResp.Candidates[0].Content.Parts {
+		if !part.Thought && part.Text != "" {
+			nonThoughtParts = append(nonThoughtParts, part.Text)
+		}
+	}
+
+	finishReason := googleResp.Candidates[0].FinishReason
+	_ = s.confirmGoogleUsage(context.WithoutCancel(ctx), options, provider, googleResp.UsageMetadata, finishReason)
+	if finishReason == "MAX_TOKENS" {
+		return "", fmt.Errorf("Google text generation reached MAX_TOKENS")
+	}
+
+	if len(nonThoughtParts) == 0 {
+		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
+	}
+
+	return strings.Join(nonThoughtParts, ""), nil
+}
+
+type googleUsageMetadata struct {
+	PromptTokenCount     int64 `json:"promptTokenCount"`
+	CandidatesTokenCount int64 `json:"candidatesTokenCount"`
+	ThoughtsTokenCount   int64 `json:"thoughtsTokenCount"`
+	TotalTokenCount      int64 `json:"totalTokenCount"`
+}
+
+func googleGenerationConfig(options app_ai.TextGenerationOptions) map[string]any {
+	cfg := map[string]any{"maxOutputTokens": options.MaxOutputTokens}
+	if options.Temperature > 0 {
+		cfg["temperature"] = options.Temperature
+	}
+	if options.ResponseMIMEType != "" {
+		cfg["responseMimeType"] = options.ResponseMIMEType
+	}
+	if options.ResponseSchema != nil {
+		cfg["responseSchema"] = options.ResponseSchema
+	}
+	return cfg
+}
+
+func (s *AIService) confirmGoogleUsage(ctx context.Context, options app_ai.TextGenerationOptions, provider config.APIProviderConfig, u googleUsageMetadata, finish string) error {
+	return s.costPolicy.Confirm(ctx, options.RequestID, contract.AIUsage{PromptTokens: u.PromptTokenCount, OutputTokens: u.CandidatesTokenCount, ThinkingTokens: u.ThoughtsTokenCount, FinishReason: finish, Provider: provider.Provider, Model: provider.Model})
+}
+
+func (s *AIService) countGoogleTokens(ctx context.Context, provider config.APIProviderConfig, systemPrompt, userPrompt string) (int64, error) {
+	payload := map[string]any{"contents": []map[string]any{{"role": "user", "parts": []map[string]string{{"text": userPrompt}}}}}
+	if strings.TrimSpace(systemPrompt) != "" {
+		payload["systemInstruction"] = map[string]any{"parts": []map[string]string{{"text": systemPrompt}}}
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return 0, err
+	}
+	url := fmt.Sprintf("%s/%s:countTokens?key=%s", provider.Endpoint, provider.Model, provider.ApiKey)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.chatTextClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("Google CountTokens API error HTTP %d", resp.StatusCode)
+	}
+	var result struct {
+		TotalTokens int64 `json:"totalTokens"`
+	}
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, err
+	}
+	return result.TotalTokens, nil
 }
 
 func (s *AIService) callGoogleVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {

@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"strings"
+
+	"github.com/shopspring/decimal"
 )
 
 func validateConfig(cfg *Config) error {
@@ -29,6 +31,21 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.AI.ChatTextTimeoutSeconds <= 0 || cfg.AI.RecommendationTextTimeoutSeconds <= 0 || cfg.AI.VisionTimeoutSeconds <= 0 || cfg.AI.EmbeddingTimeoutSeconds <= 0 {
 		return fmt.Errorf("ai timeouts must be greater than 0")
+	}
+	if cfg.AI.FreeTextTimeoutSeconds <= 0 || cfg.AI.FreeTextRPMLimit <= 0 {
+		return fmt.Errorf("free ai text limits must be greater than 0")
+	}
+	if strings.TrimSpace(cfg.AI.UsageReconcileCron) == "" || cfg.AI.UsageReconcileBatchSize <= 0 {
+		return fmt.Errorf("ai usage reconciliation configuration is invalid")
+	}
+	if strings.TrimSpace(cfg.AI.Pricing.Version) == "" || strings.ToUpper(strings.TrimSpace(cfg.AI.Pricing.Currency)) != "VND" {
+		return fmt.Errorf("ai pricing version and VND currency are required")
+	}
+	for label, raw := range map[string]string{"usd_to_vnd": cfg.AI.Pricing.USDToVND, "input_price": cfg.AI.Pricing.Paid.InputUSDPerMillionTokens, "output_price": cfg.AI.Pricing.Paid.OutputUSDPerMillionTokens} {
+		value, err := decimal.NewFromString(raw)
+		if err != nil || !value.IsPositive() {
+			return fmt.Errorf("ai pricing %s must be a positive decimal", label)
+		}
 	}
 	if cfg.AI.ChatTextRPMLimit <= 0 || cfg.AI.RecommendationTextRPMLimit <= 0 || cfg.AI.VisionRPMLimit <= 0 || cfg.AI.EmbeddingRPMLimit <= 0 {
 		return fmt.Errorf("ai rpm limits must be greater than 0")

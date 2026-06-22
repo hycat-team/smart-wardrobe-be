@@ -17,7 +17,7 @@ type SubscriptionPlanRepository struct {
 }
 
 func NewSubscriptionPlanRepository(db *gorm.DB) repositories.ISubscriptionPlanRepository {
-	relations := []string{}
+	relations := []string{"AICostPolicy", "AICostPolicy.Operations"}
 	return &SubscriptionPlanRepository{
 		GenericRepository: shared_repos.NewGenericRepository[entities.SubscriptionPlan, uuid.UUID](db, relations),
 	}

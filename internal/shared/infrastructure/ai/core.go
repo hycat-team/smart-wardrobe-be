@@ -3,13 +3,16 @@ package ai
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/logger"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
@@ -25,14 +28,17 @@ type AIService struct {
 	recommendationTextClient  *http.Client
 	visionClient              *http.Client
 	embeddingClient           *http.Client
+	freeTextClient            *http.Client
 	chatTextLimiter           *rate.Limiter
 	recommendationTextLimiter *rate.Limiter
 	visionLimiter             *rate.Limiter
 	embeddingLimiter          *rate.Limiter
+	freeTextLimiter           *rate.Limiter
+	costPolicy                contract.IAICostPolicyContract
 	logger                    logger.Interface
 }
 
-func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService {
+func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contract.IAICostPolicyContract) app_ai.IAIService {
 	return &AIService{
 		cfg: cfg,
 		chatTextClient: &http.Client{
@@ -47,10 +53,13 @@ func NewAIService(cfg *config.Config, logger logger.Interface) app_ai.IAIService
 		embeddingClient: &http.Client{
 			Timeout: time.Duration(cfg.AI.EmbeddingTimeoutSeconds) * time.Second,
 		},
+		freeTextClient:            &http.Client{Timeout: time.Duration(cfg.AI.FreeTextTimeoutSeconds) * time.Second},
 		chatTextLimiter:           newRPMLimiter(cfg.AI.ChatTextRPMLimit, 5),
 		recommendationTextLimiter: newRPMLimiter(cfg.AI.RecommendationTextRPMLimit, 5),
 		visionLimiter:             newRPMLimiter(cfg.AI.VisionRPMLimit, 5),
 		embeddingLimiter:          newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
+		freeTextLimiter:           newRPMLimiter(cfg.AI.FreeTextRPMLimit, 5),
+		costPolicy:                costPolicy,
 		logger:                    logger,
 	}
 }
@@ -97,40 +106,58 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 
 func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	s.logTextGeneration("GenerateChatText", systemPrompt, userPrompt, options)
-	if err := s.chatTextLimiter.Wait(ctx); err != nil {
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationChat)
+	if err != nil {
 		return "", err
 	}
-
-	return executeWithFallback(
-		s.logger,
-		"GenerateChatText",
-		s.cfg.AI.ChatTextFallback,
-		func() (string, error) {
-			return s.tryTextProvider(ctx, s.chatTextClient, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options)
-		},
-		func() (string, error) {
-			return s.tryTextProvider(ctx, s.chatTextClient, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, options)
-		},
-	)
+	if err = limiter.Wait(ctx); err != nil {
+		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
+		return "", err
+	}
+	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
+	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
+	if err != nil {
+		if s.cfg.AI.ChatTextFallback.Provider != "" {
+			s.logger.Warn("Chat primary failed, attempting chat fallback", zap.Error(err))
+			text, err = s.tryTextProvider(ctx, client, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, prepared)
+		}
+		if err != nil {
+			s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
+			if !s.isFreeProvider(provider) {
+				return s.tryFreeText(ctx, systemPrompt, userPrompt, prepared)
+			}
+			return "", err
+		}
+	}
+	return text, nil
 }
 
 func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	s.logTextGeneration("GenerateRecommendationText", systemPrompt, userPrompt, options)
-	if err := s.recommendationTextLimiter.Wait(ctx); err != nil {
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationOutfit)
+	if err != nil {
 		return "", err
 	}
-
-	return executeWithFallback(
-		s.logger,
-		"GenerateRecommendationText",
-		s.cfg.AI.RecommendationTextFallback,
-		func() (string, error) {
-			return s.tryTextProvider(ctx, s.recommendationTextClient, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt, options)
-		},
-		func() (string, error) {
-			return s.tryTextProvider(ctx, s.recommendationTextClient, s.cfg.AI.RecommendationTextFallback, systemPrompt, userPrompt, options)
-		},
-	)
+	if err = limiter.Wait(ctx); err != nil {
+		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
+		return "", err
+	}
+	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
+	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
+	if err != nil {
+		if s.cfg.AI.RecommendationTextFallback.Provider != "" {
+			s.logger.Warn("Recommendation primary failed, attempting recommendation fallback", zap.Error(err))
+			text, err = s.tryTextProvider(ctx, client, s.cfg.AI.RecommendationTextFallback, systemPrompt, userPrompt, prepared)
+		}
+		if err != nil {
+			s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
+			if !s.isFreeProvider(provider) {
+				return s.tryFreeText(ctx, systemPrompt, userPrompt, prepared)
+			}
+			return "", err
+		}
+	}
+	return text, nil
 }
 
 func (s *AIService) GenerateChatTextStream(
@@ -139,11 +166,19 @@ func (s *AIService) GenerateChatTextStream(
 	userPrompt string,
 	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
-	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, options)
 	outTextChan := make(chan string, 100)
 	outErrChan := make(chan error, 1)
 
-	if err := s.chatTextLimiter.Wait(ctx); err != nil {
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationChat)
+	if err != nil {
+		outErrChan <- err
+		close(outTextChan)
+		close(outErrChan)
+		return outTextChan, outErrChan
+	}
+	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, prepared)
+	if err := limiter.Wait(ctx); err != nil {
+		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
 		outErrChan <- err
 		close(outTextChan)
 		close(outErrChan)
@@ -154,12 +189,87 @@ func (s *AIService) GenerateChatTextStream(
 		defer close(outTextChan)
 		defer close(outErrChan)
 
-		if err := s.streamChatTextWithFallback(ctx, systemPrompt, userPrompt, options, outTextChan); err != nil {
-			outErrChanSend(outErrChan, err)
+		_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
+		produced, err := s.streamTextSingle(ctx, client, provider, systemPrompt, userPrompt, prepared, outTextChan)
+		if err != nil {
+			if !produced && s.cfg.AI.ChatTextFallback.Provider != "" {
+				s.logger.Warn("Chat primary stream failed before producing content, attempting chat fallback", zap.Error(err))
+				produced, err = s.streamTextSingle(ctx, client, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, prepared, outTextChan)
+			}
+			if err != nil {
+				s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
+				if !produced && !s.isFreeProvider(provider) {
+					if fallback, prepErr := s.prepareFreeOptions(ctx, systemPrompt, userPrompt, prepared); prepErr == nil {
+						if waitErr := s.freeTextLimiter.Wait(ctx); waitErr == nil {
+							_ = s.costPolicy.MarkInFlight(ctx, fallback.RequestID)
+							_, fallbackErr := s.streamTextSingle(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, fallback, outTextChan)
+							if fallbackErr == nil {
+								return
+							}
+							s.finalizeProviderError(context.WithoutCancel(ctx), fallback.RequestID, fallbackErr)
+						}
+					}
+				}
+				if !produced && ctx.Err() == nil {
+					local := "Xin lỗi, stylist AI đang tạm thời bận. Bạn hãy thử lại sau ít phút nhé."
+					outTextChan <- local
+					return
+				}
+				outErrChanSend(outErrChan, err)
+			}
 		}
 	}()
 
 	return outTextChan, outErrChan
+}
+
+func (s *AIService) finalizeProviderError(ctx context.Context, id uuid.UUID, err error) {
+	s.logger.Error("AI provider stream error", zap.String("request_id", id.String()), zap.Error(err))
+	text := strings.ToLower(err.Error())
+	definite := strings.Contains(text, "http 400") || strings.Contains(text, "http 401") || strings.Contains(text, "http 403") || strings.Contains(text, "http 404") || strings.Contains(text, "http 429") || strings.Contains(text, "chưa hỗ trợ") || strings.Contains(text, "not configured")
+	if definite {
+		_ = s.costPolicy.Release(ctx, id, "provider_rejected")
+		return
+	}
+	_ = s.costPolicy.MarkUnknown(ctx, id, "provider_error")
+}
+
+func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, defaultOperation string) (config.APIProviderConfig, *http.Client, *rate.Limiter, app_ai.TextGenerationOptions, error) {
+	operation := options.Operation
+	if operation == "" {
+		operation = defaultOperation
+	}
+	if options.UserID == uuid.Nil {
+		return paid, s.chatTextClient, s.chatTextLimiter, options, nil
+	}
+	promptTokens := int64(len([]byte(systemPrompt)) + len([]byte(userPrompt)))
+	if paid.Provider == ProviderGemini {
+		if count, err := s.countGoogleTokens(ctx, paid, systemPrompt, userPrompt); err == nil && count > 0 {
+			promptTokens = count
+		}
+	}
+	decision, err := s.costPolicy.Prepare(ctx, options.UserID, operation, promptTokens)
+	if err != nil {
+		return paid, nil, nil, options, err
+	}
+	options.RequestID = decision.RequestID
+	if decision.MaxOutputTokens > 0 {
+		options.MaxOutputTokens = decision.MaxOutputTokens
+	}
+	if decision.MaxInputTokens > 0 && promptTokens > int64(decision.MaxInputTokens) {
+		_ = s.costPolicy.Release(ctx, decision.RequestID, "input_token_budget_exceeded")
+		return paid, nil, nil, options, apperror.NewInternalError("AI input exceeds policy token budget")
+	}
+	if decision.Route == contract.AIRouteFree {
+		return s.cfg.AI.FreeTextPrimary, s.freeTextClient, s.freeTextLimiter, options, nil
+	}
+	if decision.Route == contract.AIRouteLocal {
+		return paid, nil, nil, options, apperror.NewInternalError("AI local fallback requested")
+	}
+	if defaultOperation == contract.AIOperationOutfit {
+		return paid, s.recommendationTextClient, s.recommendationTextLimiter, options, nil
+	}
+	return paid, s.chatTextClient, s.chatTextLimiter, options, nil
 }
 
 func (s *AIService) logTextGeneration(operation, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) {
@@ -186,31 +296,58 @@ func outErrChanSend(outErr chan<- error, err error) {
 	}
 }
 
-// GenerateTextStream streams text from the primary provider and falls back only when the stream fails before producing content.
-func (s *AIService) streamChatTextWithFallback(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions, outText chan<- string) error {
-	primaryText, primaryErr := s.tryTextProviderStream(ctx, s.chatTextClient, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options)
-	produced, err := s.forwardProviderStream(ctx, primaryText, primaryErr, outText)
-	if err == nil || ctx.Err() != nil {
-		return err
+func (s *AIService) streamTextSingle(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, outText chan<- string) (bool, error) {
+	text, errs := s.tryTextProviderStream(ctx, client, provider, systemPrompt, userPrompt, options)
+	return s.forwardProviderStream(ctx, text, errs, outText)
+}
+
+func (s *AIService) isFreeProvider(provider config.APIProviderConfig) bool {
+	return provider.Provider == s.cfg.AI.FreeTextPrimary.Provider && provider.Model == s.cfg.AI.FreeTextPrimary.Model && provider.Endpoint == s.cfg.AI.FreeTextPrimary.Endpoint
+}
+func (s *AIService) tryFreeText(ctx context.Context, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
+	if s.cfg.AI.FreeTextPrimary.Provider == "" {
+		return "", apperror.NewInternalError("free AI provider is not configured")
 	}
-	if produced || s.cfg.AI.ChatTextFallback.Provider == "" {
-		if !produced {
-			s.logger.Error("Primary stream provider failed permanently without fallback",
-				zap.String("operation", "GenerateTextStream"),
-				zap.Error(err),
-			)
+	prepared, err := s.prepareFreeOptions(ctx, systemPrompt, userPrompt, options)
+	if err != nil {
+		return "", err
+	}
+	if err := s.freeTextLimiter.Wait(ctx); err != nil {
+		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
+		return "", err
+	}
+	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
+	text, err := s.tryTextProvider(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, prepared)
+	if err != nil {
+		s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
+	}
+	return text, err
+}
+
+func (s *AIService) prepareFreeOptions(ctx context.Context, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions) (app_ai.TextGenerationOptions, error) {
+	if options.UserID == uuid.Nil {
+		options.RequestID = uuid.Nil
+		return options, nil
+	}
+	operation := options.Operation
+	if operation == "" {
+		operation = contract.AIOperationChat
+	}
+	tokens := int64(len([]byte(systemPrompt)) + len([]byte(userPrompt)))
+	if s.cfg.AI.FreeTextPrimary.Provider == ProviderGemini {
+		if count, err := s.countGoogleTokens(ctx, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt); err == nil && count > 0 {
+			tokens = count
 		}
-		return err
 	}
-
-	s.logger.Warn("Primary stream provider failed before first chunk, switching to fallback",
-		zap.String("operation", "GenerateChatTextStream"),
-		zap.Error(err),
-	)
-
-	fallbackText, fallbackErr := s.tryTextProviderStream(ctx, s.chatTextClient, s.cfg.AI.ChatTextFallback, systemPrompt, userPrompt, options)
-	_, fallbackStreamErr := s.forwardProviderStream(ctx, fallbackText, fallbackErr, outText)
-	return fallbackStreamErr
+	decision, err := s.costPolicy.PrepareFree(ctx, options.UserID, operation, tokens, options.MaxOutputTokens)
+	if err != nil {
+		return options, err
+	}
+	if decision.Route == contract.AIRouteLocal {
+		return options, apperror.NewInternalError("AI local fallback requested")
+	}
+	options.RequestID = decision.RequestID
+	return options, nil
 }
 
 // forwardProviderStream forwards provider chunks to the caller and reports whether any content was produced.

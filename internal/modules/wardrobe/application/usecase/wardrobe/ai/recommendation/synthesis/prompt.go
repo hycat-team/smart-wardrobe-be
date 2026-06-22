@@ -60,7 +60,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Alternative rule: items in alternative_ids must be viable, high-quality fashion substitutes for the primary_id that maintain the overall color harmony, style target, weather compatibility, and aesthetic of the recommended outfit.\n")
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
-	builder.WriteString("Rules: use only candidate IDs from CANDIDATES; each item entry must contain role (must match the candidate's category slug exactly, e.g. ao, quan, giay, ao-khoac, vay), primary_id, alternative_ids; do not output markdown, bullets, labels, or prose outside JSON; do not copy placeholder words such as string or uuid.\n")
+	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the category slug, primary_id, alternative_ids; do not output markdown or prose outside JSON.\n")
 
 	contextPayload := map[string]string{}
 	if input.Occasion != nil {
@@ -83,16 +83,16 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố gọn gàng cho ngày xuân\",\"explanation\":\"Bộ phối này ưu tiên sự dễ mặc, cân bằng màu sắc và phù hợp với thời tiết ấm. Nếu một món đồ có họa tiết nổi bật, phần mô tả phải phản ánh trung thực thay vì gọi đó là tối giản tuyệt đối.\",\"items\":[{\"role\":\"ao\",\"primary_id\":\"11111111-1111-1111-1111-111111111111\",\"alternative_ids\":[]},{\"role\":\"quan\",\"primary_id\":\"22222222-2222-2222-2222-222222222222\",\"alternative_ids\":[\"33333333-3333-3333-3333-333333333333\"]}]}\n")
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ phù hợp\",\"explanation\":\"Giải thích ngắn gọn bằng tiếng Việt.\",\"items\":[{\"role\":\"ao\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"quan\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")
 	builder.WriteString("CANDIDATES=\n")
 
-	for _, candidate := range candidates {
+	for candidateIndex, candidate := range candidates {
 		item := candidate.Item
 		candidatePayload := map[string]any{
-			"id": item.ID.String(),
+			"id": fmt.Sprintf("A%d", candidateIndex+1),
 		}
 
 		if item.Category != nil {
@@ -122,15 +122,6 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 			candidatePayload["description"] = descStr
 		}
 
-		if item.ColorHue != nil {
-			candidatePayload["color_h"] = fmt.Sprintf("%.1f", *item.ColorHue)
-		}
-		if item.ColorSaturation != nil {
-			candidatePayload["color_s"] = fmt.Sprintf("%.1f", *item.ColorSaturation)
-		}
-		if item.ColorLightness != nil {
-			candidatePayload["color_l"] = fmt.Sprintf("%.1f", *item.ColorLightness)
-		}
 		payloadBytes, _ := json.Marshal(candidatePayload)
 		builder.Write(payloadBytes)
 		builder.WriteString("\n")

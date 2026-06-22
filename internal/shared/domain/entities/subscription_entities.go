@@ -28,6 +28,97 @@ type SubscriptionPlan struct {
 	PlanKind           plankind.PlanKind `gorm:"type:smallint;not null;default:0"`
 	TierRank           int               `gorm:"type:int;not null;default:0"`
 	PricingVersion     int64             `gorm:"type:bigint;not null;default:1"`
+	AICostPolicyID     uuid.UUID         `gorm:"type:uuid;not null"`
+	AICostPolicy       *AICostPolicy     `gorm:"foreignKey:AICostPolicyID;constraint:OnDelete:RESTRICT"`
+}
+
+type AICostPolicy struct {
+	AuditableEntity
+	Code                         string                   `gorm:"type:varchar(100);not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:1"`
+	Version                      int64                    `gorm:"type:bigint;not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:2"`
+	Name                         string                   `gorm:"type:varchar(150);not null"`
+	EnforcementMode              string                   `gorm:"type:varchar(30);not null"`
+	PeriodDays                   int                      `gorm:"type:int;not null"`
+	HardCostMicroVND             *int64                   `gorm:"type:bigint"`
+	CompactThresholdBPS          int                      `gorm:"type:int;not null"`
+	FreeRouteThresholdBPS        int                      `gorm:"type:int;not null"`
+	UnknownHoldMinutes           int                      `gorm:"type:int;not null"`
+	MaxUnknownPaidRequestsPerDay int                      `gorm:"type:int;not null"`
+	IsActive                     bool                     `gorm:"type:boolean;not null"`
+	Operations                   []*AICostPolicyOperation `gorm:"foreignKey:PolicyID"`
+}
+
+type AICostPolicyOperation struct {
+	AuditableEntity
+	PolicyID               uuid.UUID `gorm:"type:uuid;not null"`
+	Operation              string    `gorm:"type:varchar(30);not null"`
+	NormalRoute            string    `gorm:"type:varchar(50);not null"`
+	ReducedRoute           string    `gorm:"type:varchar(50);not null"`
+	FreeRoute              string    `gorm:"type:varchar(50);not null"`
+	NormalMaxInputTokens   int       `gorm:"type:int;not null"`
+	NormalMaxOutputTokens  int       `gorm:"type:int;not null"`
+	ReducedMaxInputTokens  int       `gorm:"type:int;not null"`
+	ReducedMaxOutputTokens int       `gorm:"type:int;not null"`
+	MaxPaidAttemptsPerDay  int       `gorm:"type:int;not null"`
+	PaidFallbackEnabled    bool      `gorm:"type:boolean;not null"`
+	IsEnabled              bool      `gorm:"type:boolean;not null"`
+}
+
+type UserAIPolicyGrant struct {
+	AuditableEntity
+	UserID                     uuid.UUID    `gorm:"type:uuid;not null"`
+	PolicyID                   uuid.UUID    `gorm:"type:uuid;not null"`
+	PlanID                     uuid.UUID    `gorm:"type:uuid;not null"`
+	PlanCode                   string       `gorm:"type:varchar(100);not null"`
+	TierRank                   int          `gorm:"type:int;not null"`
+	PolicySnapshot             JSONDocument `gorm:"type:jsonb;not null"`
+	EffectiveFrom              time.Time    `gorm:"type:timestamp with time zone;not null"`
+	EffectiveTo                *time.Time   `gorm:"type:timestamp with time zone"`
+	Status                     string       `gorm:"type:varchar(20);not null"`
+	SourceEventID              *uuid.UUID   `gorm:"type:uuid"`
+	SourceDepositTransactionID *uuid.UUID   `gorm:"type:uuid"`
+}
+
+type AIUsagePeriodLedger struct {
+	AuditableEntity
+	GrantID              uuid.UUID `gorm:"type:uuid;not null"`
+	UserID               uuid.UUID `gorm:"type:uuid;not null"`
+	PeriodIndex          int       `gorm:"type:int;not null"`
+	PeriodStart          time.Time `gorm:"type:timestamp with time zone;not null"`
+	PeriodEnd            time.Time `gorm:"type:timestamp with time zone;not null"`
+	PaidInputTokens      int64     `gorm:"type:bigint;not null"`
+	PaidOutputTokens     int64     `gorm:"type:bigint;not null"`
+	FreeInputTokens      int64     `gorm:"type:bigint;not null"`
+	FreeOutputTokens     int64     `gorm:"type:bigint;not null"`
+	ActualCostMicroVND   int64     `gorm:"type:bigint;not null"`
+	ReservedCostMicroVND int64     `gorm:"type:bigint;not null"`
+}
+
+type AIUsageEvent struct {
+	AuditableEntity
+	RequestID                uuid.UUID        `gorm:"type:uuid;not null;uniqueIndex"`
+	LedgerID                 uuid.UUID        `gorm:"type:uuid;not null"`
+	UserID                   uuid.UUID        `gorm:"type:uuid;not null"`
+	Operation                string           `gorm:"type:varchar(30);not null"`
+	LogicalRoute             string           `gorm:"type:varchar(50);not null"`
+	Provider                 *string          `gorm:"type:varchar(50)"`
+	Model                    *string          `gorm:"type:varchar(150)"`
+	PricingVersion           *string          `gorm:"type:varchar(100)"`
+	InputUSDPerMillion       *decimal.Decimal `gorm:"type:numeric(18,8)"`
+	OutputUSDPerMillion      *decimal.Decimal `gorm:"type:numeric(18,8)"`
+	USDToVND                 *decimal.Decimal `gorm:"type:numeric(18,4)"`
+	PromptTokens             int64            `gorm:"type:bigint;not null"`
+	OutputTokens             int64            `gorm:"type:bigint;not null"`
+	ThinkingTokens           int64            `gorm:"type:bigint;not null"`
+	ReservedCostMicroVND     int64            `gorm:"type:bigint;not null"`
+	ActualCostMicroVND       int64            `gorm:"type:bigint;not null"`
+	EstimatedMaxCostMicroVND int64            `gorm:"type:bigint;not null"`
+	Status                   string           `gorm:"type:varchar(30);not null"`
+	FinishReason             *string          `gorm:"type:varchar(100)"`
+	ErrorCode                *string          `gorm:"type:varchar(100)"`
+	SentAt                   *time.Time       `gorm:"type:timestamp with time zone"`
+	CompletedAt              *time.Time       `gorm:"type:timestamp with time zone"`
+	UnknownExpiresAt         *time.Time       `gorm:"type:timestamp with time zone"`
 }
 
 type UserSubscription struct {

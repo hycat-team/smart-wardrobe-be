@@ -7,6 +7,17 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
+func TestParseAndValidateSummaryDropsReasoningAndNormalizes(t *testing.T) {
+	raw := "thinking first\n```json\n{\"preferences\":[\"a\\u0301o pastel\",\"a\\u0301o pastel\"],\"dislikes\":[],\"constraints\":[],\"important_context\":[]}\n```"
+	got, err := parseAndValidateSummary(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "{\"preferences\":[\"áo pastel\"],\"dislikes\":[],\"constraints\":[],\"important_context\":[]}" {
+		t.Fatalf("unexpected summary %s", got)
+	}
+}
+
 func TestIsWardrobeRelatedQuery(t *testing.T) {
 	tests := []struct {
 		input    string

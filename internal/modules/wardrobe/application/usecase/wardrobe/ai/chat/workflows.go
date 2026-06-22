@@ -166,7 +166,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 		return nil, nil, err
 	}
 	generationInput.userContent = content
-	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.ChatMaxOutputTokens})
+	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.ChatMaxOutputTokens, UserID: userID, Operation: "chat"})
 	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, aiTextChan, aiErrChan)
 }
 
@@ -191,11 +191,15 @@ func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session 
 		builder.WriteString("\n")
 	}
 	summarySource := truncateRunes(builder.String(), uc.cfg.AI.SummarySourceMaxCharacters)
-	summary, err := uc.aiService.GenerateChatText(ctx, "You are an AI assistant summarizing fashion chat conversations in Vietnamese. Keep it concise and retain key style preferences.", summarySource, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.SummaryMaxOutputTokens})
+	summary, err := uc.aiService.GenerateChatText(ctx, summarySystemPrompt, summarySource, app_ai.TextGenerationOptions{MaxOutputTokens: uc.cfg.AI.SummaryMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: summaryResponseSchema(), UserID: session.UserID, Operation: "summary"})
 	if err != nil || strings.TrimSpace(summary) == "" {
-		summary = builder.String()
+		return err
 	}
-	session.ContextSummary = summary
+	cleanSummary, err := parseAndValidateSummary(summary)
+	if err != nil {
+		return err
+	}
+	session.ContextSummary = cleanSummary
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		if err := uc.contextRepo.Update(txCtx, session); err != nil {
 			return err
