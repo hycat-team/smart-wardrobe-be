@@ -21,7 +21,11 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	gin.DebugPrintRouteFunc = func(string, string, string, int) {}
 
 	engine := gin.New()
-	engine.Use(gin.Logger())
+	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Skip: func(c *gin.Context) bool {
+			return c.Request.URL.Path == "/api/v1/health" && c.Writer.Status() == http.StatusOK
+		},
+	}))
 
 	engine.Use(middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))

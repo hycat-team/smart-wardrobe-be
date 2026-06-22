@@ -837,6 +837,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/ai/chat/sessions/{contextID}": {
+            "delete": {
+                "description": "Xóa vĩnh viễn cuộc trò chuyện với stylist AI và toàn bộ lịch sử tin nhắn liên quan",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe AI"
+                ],
+                "summary": "Xóa cuộc trò chuyện AI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID cuộc trò chuyện",
+                        "name": "contextID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Xóa cuộc trò chuyện thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Cập nhật thông tin chi tiết của phiên trò chuyện với stylist AI (ví dụ: đổi tiêu đề)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe AI"
+                ],
+                "summary": "Cập nhật thông tin cuộc trò chuyện AI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID cuộc trò chuyện",
+                        "name": "contextID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cập nhật cuộc trò chuyện",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateChatSessionReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cập nhật cuộc trò chuyện thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ai/chat/sessions/{contextID}/archive": {
             "patch": {
                 "description": "Lưu trữ/ẩn cuộc trò chuyện với stylist AI",
@@ -1078,6 +1161,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/forgot-password/resend-otp": {
+            "post": {
+                "description": "Gửi lại mã OTP xác thực khôi phục mật khẩu qua email dựa vào địa chỉ email đã gửi yêu cầu trước đó",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Gửi lại OTP khôi phục mật khẩu",
+                "parameters": [
+                    {
+                        "description": "Email nhận lại OTP",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Đăng nhập hệ thống bằng username hoặc email và password",
@@ -1228,6 +1345,40 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/resend-otp": {
+            "post": {
+                "description": "Gửi lại mã OTP xác thực đăng ký qua email dựa vào địa chỉ email đã đăng ký trước đó",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Gửi lại OTP đăng ký",
+                "parameters": [
+                    {
+                        "description": "Email nhận lại OTP",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq"
                         }
                     }
                 ],
@@ -4245,6 +4396,17 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq": {
             "type": "object",
             "required": [
@@ -5248,6 +5410,15 @@ const docTemplate = `{
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateChatSessionReq": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },

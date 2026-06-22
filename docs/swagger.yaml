@@ -453,6 +453,13 @@ definitions:
     - password
     - username
     type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.ResetPasswordReq:
     properties:
       confirmPassword:
@@ -1128,6 +1135,12 @@ definitions:
     required:
     - name
     - slug
+    type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateChatSessionReq:
+    properties:
+      title:
+        maxLength: 255
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateSystemCatalogItemReq:
     properties:
@@ -1988,6 +2001,60 @@ paths:
       summary: Tạo cuộc trò chuyện AI mới
       tags:
       - Wardrobe AI
+  /api/v1/ai/chat/sessions/{contextID}:
+    delete:
+      consumes:
+      - application/json
+      description: Xóa vĩnh viễn cuộc trò chuyện với stylist AI và toàn bộ lịch sử
+        tin nhắn liên quan
+      parameters:
+      - description: ID cuộc trò chuyện
+        in: path
+        name: contextID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Xóa cuộc trò chuyện thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Xóa cuộc trò chuyện AI
+      tags:
+      - Wardrobe AI
+    patch:
+      consumes:
+      - application/json
+      description: 'Cập nhật thông tin chi tiết của phiên trò chuyện với stylist AI
+        (ví dụ: đổi tiêu đề)'
+      parameters:
+      - description: ID cuộc trò chuyện
+        in: path
+        name: contextID
+        required: true
+        type: string
+      - description: Thông tin cập nhật cuộc trò chuyện
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateChatSessionReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cập nhật cuộc trò chuyện thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes'
+              type: object
+      summary: Cập nhật thông tin cuộc trò chuyện AI
+      tags:
+      - Wardrobe AI
   /api/v1/ai/chat/sessions/{contextID}/archive:
     patch:
       consumes:
@@ -2153,6 +2220,29 @@ paths:
       summary: Xác thực OTP khôi phục mật khẩu
       tags:
       - Auth
+  /api/v1/auth/forgot-password/resend-otp:
+    post:
+      consumes:
+      - application/json
+      description: Gửi lại mã OTP xác thực khôi phục mật khẩu qua email dựa vào địa
+        chỉ email đã gửi yêu cầu trước đó
+      parameters:
+      - description: Email nhận lại OTP
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Gửi lại OTP khôi phục mật khẩu
+      tags:
+      - Auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -2256,6 +2346,29 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Xác thực OTP đăng ký
+      tags:
+      - Auth
+  /api/v1/auth/register/resend-otp:
+    post:
+      consumes:
+      - application/json
+      description: Gửi lại mã OTP xác thực đăng ký qua email dựa vào địa chỉ email
+        đã đăng ký trước đó
+      parameters:
+      - description: Email nhận lại OTP
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ResendOtpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Gửi lại OTP đăng ký
       tags:
       - Auth
   /api/v1/auth/reset-password:
