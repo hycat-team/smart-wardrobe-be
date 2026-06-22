@@ -116,13 +116,23 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 	if err := uc.ensureChatQuotaAvailable(ctx, userID); err != nil {
 		return nil, nil, err
 	}
+
+	userMessage := &entities.Message{
+		ContextID: contextID,
+		Sender:    messagesender.User,
+		Content:   content,
+	}
+	if err := uc.persistUserMessage(ctx, sessionCtx.session, userMessage); err != nil {
+		return nil, nil, err
+	}
+
 	generationInput, err := uc.buildChatGenerationInput(ctx, userID, sessionCtx, content)
 	if err != nil {
 		return nil, nil, err
 	}
 	generationInput.userContent = content
 	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent)
-	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, content, aiTextChan, aiErrChan)
+	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, aiTextChan, aiErrChan)
 }
 
 func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session *entities.ConversationalContext) error {
@@ -206,7 +216,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	return &chatGenerationInput{systemPrompt: buildChatSystemPrompt(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent)}, nil
 }
 
-func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, content string, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {
+func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {
 	var fullResponseBuilder strings.Builder
 	outTextChan := FilterThinkTags(aiTextChan, func(chunk string) {
 		fullResponseBuilder.WriteString(chunk)
@@ -226,9 +236,8 @@ func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userI
 		if fullResponse == "" {
 			return apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 		}
-		userMessage := &entities.Message{ContextID: session.ID, Sender: messagesender.User, Content: content}
 		aiMessage := &entities.Message{ContextID: session.ID, Sender: messagesender.AI, Content: fullResponse}
-		if err := uc.persistChatExchange(ctx, userID, session, userMessage, aiMessage, true); err != nil {
+		if err := uc.persistAiResponse(ctx, userID, session, aiMessage, true); err != nil {
 			return err
 		}
 		go func() {
@@ -239,16 +248,24 @@ func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userI
 	return outTextChan, commitCallback, nil
 }
 
-func (uc *WardrobeChatUseCase) persistChatExchange(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, userMessage *entities.Message, aiMessage *entities.Message, shouldConsumeQuota bool) error {
+func (uc *WardrobeChatUseCase) persistUserMessage(ctx context.Context, session *entities.ConversationalContext, userMessage *entities.Message) error {
+	nonCancelledCtx := context.WithoutCancel(ctx)
+	return uc.uow.Execute(nonCancelledCtx, func(txCtx context.Context) error {
+		if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
+			return err
+		}
+		session.UpdatedAt = time.Now()
+		return uc.contextRepo.Update(txCtx, session)
+	})
+}
+
+func (uc *WardrobeChatUseCase) persistAiResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiMessage *entities.Message, shouldConsumeQuota bool) error {
 	nonCancelledCtx := context.WithoutCancel(ctx)
 	return uc.uow.Execute(nonCancelledCtx, func(txCtx context.Context) error {
 		if shouldConsumeQuota {
 			if err := uc.userQuotaCtr.UpdateAiChatQuota(txCtx, userID, 1); err != nil {
 				return err
 			}
-		}
-		if err := uc.messageRepo.Create(txCtx, userMessage); err != nil {
-			return err
 		}
 		if err := uc.messageRepo.Create(txCtx, aiMessage); err != nil {
 			return err

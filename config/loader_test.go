@@ -90,7 +90,14 @@ func TestLoadConfigValidatesRequiredSecret(t *testing.T) {
 func TestLoadConfigRejectsProductionWildcardOrigin(t *testing.T) {
 	prepareConfigTest(t, func(value string) string {
 		value = strings.Replace(value, "env: development", "env: production", 1)
-		return strings.Replace(value, "front_end_origin: http://localhost:3000", "front_end_origin: '*'", 1)
+		lines := strings.Split(value, "\n")
+		for i, line := range lines {
+			if strings.Contains(line, "front_end_origin:") {
+				lines[i] = "    front_end_origin: '*'"
+				break
+			}
+		}
+		return strings.Join(lines, "\n")
 	})
 	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "wildcard") {
 		t.Fatalf("expected production validation error, got %v", err)

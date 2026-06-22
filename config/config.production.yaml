@@ -51,10 +51,10 @@ ai:
     recommendation_text_timeout_seconds: 45
     vision_timeout_seconds: 20
     embedding_timeout_seconds: 20
-    chat_text_rpm_limit: 5
+    chat_text_rpm_limit: 15
     recommendation_text_rpm_limit: 5
     vision_rpm_limit: 5
-    embedding_rpm_limit: 5
+    embedding_rpm_limit: 50
 rabbitmq: { host: rabbitmq, port: 5672 }
 elasticsearch:
     addresses: [http://elasticsearch:9200]
