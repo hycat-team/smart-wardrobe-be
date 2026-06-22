@@ -41,3 +41,7 @@ type ConfirmForgotPasswordOtpReq struct {
 	Email   string `json:"email" binding:"required,email" label:"email"`
 	OtpCode string `json:"otpCode" binding:"required,len=6,numeric" label:"mã OTP"`
 }
+
+type ResendOtpReq struct {
+	Email string `json:"email" binding:"required,email" label:"email"`
+}

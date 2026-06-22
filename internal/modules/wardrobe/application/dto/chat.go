@@ -35,3 +35,7 @@ type ChatMessageRes struct {
 	Content   string                      `json:"content"`
 	CreatedAt time.Time                   `json:"createdAt"`
 }
+
+type UpdateChatSessionReq struct {
+	Title *string `json:"title" binding:"omitempty,max=255"`
+}

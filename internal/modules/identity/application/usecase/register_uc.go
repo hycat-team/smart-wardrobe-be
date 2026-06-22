@@ -169,3 +169,34 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 
 	return true, nil
 }
+
+func (uc *RegisterUseCase) ResendRegisterOtp(ctx context.Context, input dto.ResendOtpReq) (bool, error) {
+	tempUserDataJson, err := uc.otpService.GetData(ctx, input.Email, otpconstants.PurposeRegistration)
+	if err != nil {
+		return false, err
+	}
+	if tempUserDataJson == "" {
+		return false, identityerrors.ErrRegistrationSessionExpired()
+	}
+
+	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeRegistration)
+	if err != nil {
+		return false, err
+	}
+	if isCooldown {
+		return false, identityerrors.ErrOtpCooldown()
+	}
+
+	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, tempUserDataJson, otpconstants.PurposeRegistration)
+	if err != nil {
+		return false, err
+	}
+
+	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
+	if err != nil {
+		return false, identityerrors.ErrOtpEmailSendFailed()
+	}
+
+	return true, nil
+}
+

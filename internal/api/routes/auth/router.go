@@ -25,10 +25,12 @@ func (r *AuthRouter) Init(group *gin.RouterGroup) {
 	{
 		authApi.POST("/register", shared_pres.WrapHandler(r.authHandler.Register))
 		authApi.POST("/register/confirm-otp", shared_pres.WrapHandler(r.authHandler.ConfirmRegisterOtp))
+		authApi.POST("/register/resend-otp", shared_pres.WrapHandler(r.authHandler.ResendRegisterOtp))
 		authApi.POST("/login", shared_pres.WrapHandler(r.authHandler.Login))
 		authApi.POST("/refresh-token", shared_pres.WrapHandler(r.authHandler.RefreshToken))
 		authApi.POST("/forgot-password", shared_pres.WrapHandler(r.authHandler.ForgotPassword))
 		authApi.POST("/forgot-password/confirm-otp", shared_pres.WrapHandler(r.authHandler.ConfirmForgotPasswordOtp))
+		authApi.POST("/forgot-password/resend-otp", shared_pres.WrapHandler(r.authHandler.ResendForgotPasswordOtp))
 		authApi.POST("/reset-password", shared_pres.WrapHandler(r.authHandler.ResetPassword))
 	}
 

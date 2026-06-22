@@ -200,4 +200,35 @@ func (uc *PasswordRecoveryUseCase) ResetPassword(ctx context.Context, input dto.
 	return true, nil
 }
 
+func (uc *PasswordRecoveryUseCase) ResendForgotPasswordOtp(ctx context.Context, input dto.ResendOtpReq) (bool, error) {
+	tempUserDataJson, err := uc.otpService.GetData(ctx, input.Email, otpconstants.PurposeForgotPassword)
+	if err != nil {
+		return false, err
+	}
+	if tempUserDataJson == "" {
+		return false, identityerrors.ErrForgotPasswordSessionExpired()
+	}
+
+	isCooldown, err := uc.otpService.IsInResendCooldown(ctx, input.Email, otpconstants.PurposeForgotPassword)
+	if err != nil {
+		return false, err
+	}
+	if isCooldown {
+		return false, identityerrors.ErrOtpCooldown()
+	}
+
+	otpCode, err := uc.otpService.GenerateOtp(ctx, input.Email, tempUserDataJson, otpconstants.PurposeForgotPassword)
+	if err != nil {
+		return false, err
+	}
+
+	err = uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
+	if err != nil {
+		return false, identityerrors.ErrRecoveryEmailFailed()
+	}
+
+	return true, nil
+}
+
 var _ uc_interfaces.IPasswordRecoveryUseCase = (*PasswordRecoveryUseCase)(nil)
+

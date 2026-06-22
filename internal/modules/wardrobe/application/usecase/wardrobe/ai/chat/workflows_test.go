@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -19,6 +20,7 @@ type fakeContextRepo struct {
 	repositories.IConversationalContextRepository
 	session *entities.ConversationalContext
 	updated bool
+	deleted bool
 }
 
 func (f *fakeContextRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.ConversationalContext, error) {
@@ -30,6 +32,11 @@ func (f *fakeContextRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.
 
 func (f *fakeContextRepo) Update(ctx context.Context, entity *entities.ConversationalContext) error {
 	f.updated = true
+	return nil
+}
+
+func (f *fakeContextRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	f.deleted = true
 	return nil
 }
 
@@ -325,3 +332,99 @@ func TestProcessChatMessageStream_WardrobeKeyword(t *testing.T) {
 		t.Fatalf("expected 1 user message saved, got %d", len(messageRepo.savedMessages))
 	}
 }
+
+func TestDeleteChatSession_Success(t *testing.T) {
+	sessionID := uuid.New()
+	userID := uuid.New()
+	session := &entities.ConversationalContext{
+		AuditableEntity: entities.AuditableEntity{
+			BaseEntity: entities.BaseEntity{
+				ID: sessionID,
+			},
+		},
+		UserID: userID,
+		Title:  "Delete Me",
+	}
+
+	contextRepo := &fakeContextRepo{session: session}
+	uc := &WardrobeChatUseCase{
+		contextRepo: contextRepo,
+	}
+
+	err := uc.DeleteChatSession(context.Background(), userID, sessionID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !contextRepo.deleted {
+		t.Error("expected session to be deleted")
+	}
+}
+
+func TestDeleteChatSession_NotFound(t *testing.T) {
+	sessionID := uuid.New()
+	userID := uuid.New()
+
+	contextRepo := &fakeContextRepo{session: nil}
+	uc := &WardrobeChatUseCase{
+		contextRepo: contextRepo,
+	}
+
+	err := uc.DeleteChatSession(context.Background(), userID, sessionID)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestUpdateChatSession_Success(t *testing.T) {
+	sessionID := uuid.New()
+	userID := uuid.New()
+	session := &entities.ConversationalContext{
+		AuditableEntity: entities.AuditableEntity{
+			BaseEntity: entities.BaseEntity{
+				ID: sessionID,
+			},
+		},
+		UserID: userID,
+		Title:  "Old Title",
+	}
+
+	contextRepo := &fakeContextRepo{session: session}
+	uc := &WardrobeChatUseCase{
+		contextRepo: contextRepo,
+	}
+
+	newTitle := "New Title"
+	res, err := uc.UpdateChatSession(context.Background(), userID, sessionID, dto.UpdateChatSessionReq{
+		Title: &newTitle,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res.Title != "New Title" {
+		t.Errorf("expected title to be updated, got %s", res.Title)
+	}
+	if !contextRepo.updated {
+		t.Error("expected contextRepo.Update to be called")
+	}
+}
+
+func TestUpdateChatSession_NotFound(t *testing.T) {
+	sessionID := uuid.New()
+	userID := uuid.New()
+
+	contextRepo := &fakeContextRepo{session: nil}
+	uc := &WardrobeChatUseCase{
+		contextRepo: contextRepo,
+	}
+
+	newTitle := "New Title"
+	_, err := uc.UpdateChatSession(context.Background(), userID, sessionID, dto.UpdateChatSessionReq{
+		Title: &newTitle,
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+

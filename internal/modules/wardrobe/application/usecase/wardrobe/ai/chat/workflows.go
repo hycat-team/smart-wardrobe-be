@@ -107,6 +107,40 @@ func (uc *WardrobeChatUseCase) ArchiveChatSession(ctx context.Context, userID uu
 	return uc.contextRepo.Update(ctx, session)
 }
 
+// DeleteChatSession deletes a user-owned chat session and its history.
+func (uc *WardrobeChatUseCase) DeleteChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error {
+	session, err := uc.contextRepo.GetByID(ctx, contextID)
+	if err != nil {
+		return err
+	}
+	if session == nil || session.UserID != userID {
+		return wardrobeerrors.ErrChatNotFound()
+	}
+	return uc.contextRepo.Delete(ctx, contextID)
+}
+
+// UpdateChatSession updates a user-owned chat session properties.
+func (uc *WardrobeChatUseCase) UpdateChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, input dto.UpdateChatSessionReq) (*dto.ChatSessionRes, error) {
+	session, err := uc.contextRepo.GetByID(ctx, contextID)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil || session.UserID != userID {
+		return nil, wardrobeerrors.ErrChatNotFound()
+	}
+
+	if input.Title != nil {
+		session.Title = strings.TrimSpace(*input.Title)
+	}
+
+	if err := uc.contextRepo.Update(ctx, session); err != nil {
+		return nil, err
+	}
+
+	return mapper.MapChatSession(session), nil
+}
+
+
 // ProcessChatMessageStream streams an AI reply and persists the conversation on successful completion.
 func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (<-chan string, func(success bool) error, error) {
 	sessionCtx, err := uc.loadChatSessionContext(ctx, userID, contextID)

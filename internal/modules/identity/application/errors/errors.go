@@ -161,3 +161,11 @@ func ErrPasswordContainsUsername() *apperror.Error {
 func ErrNewPasswordSameAsOld() *apperror.Error {
 	return apperror.NewBadRequest("Mật khẩu mới không được trùng với mật khẩu cũ.")
 }
+
+func ErrRegistrationSessionExpired() *apperror.Error {
+	return apperror.NewBadRequest("Phiên đăng ký đã hết hạn hoặc không tồn tại. Vui lòng thực hiện đăng ký lại.")
+}
+
+func ErrForgotPasswordSessionExpired() *apperror.Error {
+	return apperror.NewBadRequest("Yêu cầu khôi phục mật khẩu đã hết hạn hoặc không tồn tại. Vui lòng gửi lại yêu cầu.")
+}

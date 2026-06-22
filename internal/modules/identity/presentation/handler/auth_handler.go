@@ -17,14 +17,16 @@ import (
 
 // Success messages for AuthHandler
 const (
-	successRegister              = "Đã nhận thông tin đăng kí. Vui lòng kiểm tra email để lấy OTP xác thực."
-	successConfirmRegisterOtp    = "Xác thực tài khoản thành công."
-	successLogin                 = "Đăng nhập thành công"
-	successLogout                = "Đăng xuất thành công"
-	successRefreshToken          = "Xoay vòng token thành công"
-	successForgotPassword        = "Yêu cầu khôi phục mật khẩu thành công. Vui lòng kiểm tra email để lấy OTP xác thực."
-	successConfirmForgotPassword = "Xác thực OTP thành công"
-	successResetPassword         = "Đặt lại mật khẩu thành công"
+	successRegister                = "Đã nhận thông tin đăng kí. Vui lòng kiểm tra email để lấy OTP xác thực."
+	successConfirmRegisterOtp      = "Xác thực tài khoản thành công."
+	successLogin                   = "Đăng nhập thành công"
+	successLogout                  = "Đăng xuất thành công"
+	successRefreshToken            = "Xoay vòng token thành công"
+	successForgotPassword          = "Yêu cầu khôi phục mật khẩu thành công. Vui lòng kiểm tra email để lấy OTP xác thực."
+	successConfirmForgotPassword   = "Xác thực OTP thành công"
+	successResetPassword           = "Đặt lại mật khẩu thành công"
+	successResendRegisterOtp        = "Đã gửi lại mã OTP đăng kí thành công. Vui lòng kiểm tra email."
+	successResendForgotPasswordOtp = "Đã gửi lại mã OTP khôi phục mật khẩu thành công. Vui lòng kiểm tra email."
 )
 
 type AuthHandler struct {
@@ -95,6 +97,31 @@ func (h *AuthHandler) ConfirmRegisterOtp(c *gin.Context) error {
 	shared_pres.Success(c, successConfirmRegisterOtp, nil)
 	return nil
 }
+
+// ResendRegisterOtp resend registration verification OTP
+// @Summary Gửi lại OTP đăng ký
+// @Description Gửi lại mã OTP xác thực đăng ký qua email dựa vào địa chỉ email đã đăng ký trước đó
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.ResendOtpReq true "Email nhận lại OTP"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/auth/register/resend-otp [post]
+func (h *AuthHandler) ResendRegisterOtp(c *gin.Context) error {
+	var input dto.ResendOtpReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	_, err := h.registerUC.ResendRegisterOtp(c.Request.Context(), input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, successResendRegisterOtp, nil)
+	return nil
+}
+
 
 // Login user login
 // @Summary Đăng nhập
@@ -272,6 +299,31 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) error {
 	shared_pres.Success(c, successForgotPassword, nil)
 	return nil
 }
+
+// ResendForgotPasswordOtp resend forgot password verification OTP
+// @Summary Gửi lại OTP khôi phục mật khẩu
+// @Description Gửi lại mã OTP xác thực khôi phục mật khẩu qua email dựa vào địa chỉ email đã gửi yêu cầu trước đó
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.ResendOtpReq true "Email nhận lại OTP"
+// @Success 200 {object} shared_pres.APIResponse
+// @Router /api/v1/auth/forgot-password/resend-otp [post]
+func (h *AuthHandler) ResendForgotPasswordOtp(c *gin.Context) error {
+	var input dto.ResendOtpReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	_, err := h.recoveryUC.ResendForgotPasswordOtp(c.Request.Context(), input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, successResendForgotPasswordOtp, nil)
+	return nil
+}
+
 
 // ConfirmForgotPasswordOtp confirm forgot password OTP
 // @Summary Xác thực OTP khôi phục mật khẩu

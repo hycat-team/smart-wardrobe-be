@@ -31,6 +31,8 @@ type IWardrobeChatUseCase interface {
 	GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error)
 	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, query dto.GetChatMessagesQueryReq) (*shared_dto.PaginationResult[*dto.ChatMessageRes], error)
 	ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
+	DeleteChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
+	UpdateChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, input dto.UpdateChatSessionReq) (*dto.ChatSessionRes, error)
 	ProcessChatMessageStream(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (<-chan string, func(success bool) error, error)
 }
 

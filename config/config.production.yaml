@@ -3,35 +3,45 @@ database:
     port: 5432
     ssl_mode: disable
     time_zone: Asia/Ho_Chi_Minh
-redis: { host: redis, port: 6379, db: 0 }
+redis:
+    host: redis
+    port: 6379
+    db: 0
 server:
     port: "8080"
     front_end_origin: https://closy.hycat.online
     timeout_seconds: 300
     env: production
 startup:
-    {
-        retry_attempt_1_seconds: 5,
-        retry_attempt_2_seconds: 15,
-        retry_attempt_3_seconds: 30,
-    }
+    retry_attempt_1_seconds: 5
+    retry_attempt_2_seconds: 15
+    retry_attempt_3_seconds: 30
 jwt:
     issuer: SmartWardrobeServer
     audience: SmartWardrobeClient
     access_expiration_minutes: 60
     refresh_expiration_days: 30
     forgot_password_expiration_minutes: 15
-logger: { log_level: info, file_path: ./logs/app.log, log_to_file: false }
+logger:
+    log_level: info
+    file_path: ./logs/app.log
+    log_to_file: false
 quota:
-    {
-        default_wardrobe_limit: 100,
-        default_ai_outfit_limit: 3,
-        default_ai_chat_limit: 3,
-    }
-otp: { max_attempts: 3, expiry_minutes: 5, resend_interval_seconds: 60 }
-email: { host: smtp.gmail.com, port: 587, sender_name: Closy Support }
+    default_wardrobe_limit: 100
+    default_ai_outfit_limit: 3
+    default_ai_chat_limit: 3
+otp:
+    max_attempts: 3
+    expiry_minutes: 5
+    resend_interval_seconds: 60
+email:
+    host: smtp.gmail.com
+    port: 587
+    sender_name: Closy Support
 rate_limit:
-    { token_limit: 100, tokens_per_period: 20, replenishment_seconds: 10 }
+    token_limit: 100
+    tokens_per_period: 20
+    replenishment_seconds: 10
 payos:
     return_url: https://closy.hycat.online
     cancel_url: https://closy.hycat.online
@@ -55,10 +65,13 @@ ai:
     recommendation_text_rpm_limit: 5
     vision_rpm_limit: 5
     embedding_rpm_limit: 50
-rabbitmq: { host: rabbitmq, port: 5672 }
+rabbitmq:
+    host: rabbitmq
+    port: 5672
 elasticsearch:
     addresses: [http://elasticsearch:9200]
-community: { max_personalized_window: 100 }
+community:
+    max_personalized_window: 100
 rag:
     recently_worn_penalty_days: 3
     long_unworn_bonus_days: 14

@@ -26,6 +26,8 @@ const (
 	msgAiGetChatSessionsSuccess    = "Lấy danh sách cuộc trò chuyện thành công"
 	msgAiGetChatMessagesSuccess    = "Lấy lịch sử tin nhắn thành công"
 	msgAiArchiveChatSessionSuccess = "Lưu trữ cuộc trò chuyện thành công"
+	msgAiDeleteChatSessionSuccess  = "Xoá cuộc trò chuyện thành công"
+	msgAiUpdateChatSessionSuccess  = "Cập nhật cuộc trò chuyện thành công"
 )
 
 type WardrobeAIHandler struct {
@@ -194,6 +196,70 @@ func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 	shared_pres.Success(c, msgAiArchiveChatSessionSuccess, nil)
 	return nil
 }
+
+// DeleteChatSession delete chat session
+// @Summary Xóa cuộc trò chuyện AI
+// @Description Xóa vĩnh viễn cuộc trò chuyện với stylist AI và toàn bộ lịch sử tin nhắn liên quan
+// @Tags Wardrobe AI
+// @Accept json
+// @Produce json
+// @Param contextID path string true "ID cuộc trò chuyện"
+// @Success 200 {object} shared_pres.APIResponse "Xóa cuộc trò chuyện thành công"
+// @Router /api/v1/ai/chat/sessions/{contextID} [delete]
+func (h *WardrobeAIHandler) DeleteChatSession(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	contextID, err := uuid.Parse(c.Param("contextID"))
+	if err != nil {
+		return wardrobeerrors.ErrInvalidChatIDFormat()
+	}
+
+	if err := h.chatUseCase.DeleteChatSession(c.Request.Context(), userID, contextID); err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAiDeleteChatSessionSuccess, nil)
+	return nil
+}
+
+// UpdateChatSession update chat session
+// @Summary Cập nhật thông tin cuộc trò chuyện AI
+// @Description Cập nhật thông tin chi tiết của phiên trò chuyện với stylist AI (ví dụ: đổi tiêu đề)
+// @Tags Wardrobe AI
+// @Accept json
+// @Produce json
+// @Param contextID path string true "ID cuộc trò chuyện"
+// @Param body body dto.UpdateChatSessionReq true "Thông tin cập nhật cuộc trò chuyện"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.ChatSessionRes} "Cập nhật cuộc trò chuyện thành công"
+// @Router /api/v1/ai/chat/sessions/{contextID} [patch]
+func (h *WardrobeAIHandler) UpdateChatSession(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	contextID, err := uuid.Parse(c.Param("contextID"))
+	if err != nil {
+		return wardrobeerrors.ErrInvalidChatIDFormat()
+	}
+
+	var input dto.UpdateChatSessionReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	response, err := h.chatUseCase.UpdateChatSession(c.Request.Context(), userID, contextID, input)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, msgAiUpdateChatSessionSuccess, response)
+	return nil
+}
+
 
 // StreamChatMessage stream chat response
 // @Summary Nhắn tin với stylist AI (Stream SSE)

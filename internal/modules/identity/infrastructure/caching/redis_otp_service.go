@@ -128,6 +128,18 @@ func (s *RedisOtpService) IsInResendCooldown(ctx context.Context, email string, 
 	return exists > 0, nil
 }
 
+func (s *RedisOtpService) GetData(ctx context.Context, email string, purpose string) (string, error) {
+	dataKey := otpconstants.BuildKey(purpose, otpconstants.KeyData, email)
+	tempUserData, err := s.redisClient.Get(ctx, dataKey).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", nil
+		}
+		return "", err
+	}
+	return tempUserData, nil
+}
+
 func (s *RedisOtpService) generateSecureOTP() string {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {
