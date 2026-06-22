@@ -25,7 +25,7 @@ const (
 	successForgotPassword          = "Yêu cầu khôi phục mật khẩu thành công. Vui lòng kiểm tra email để lấy OTP xác thực."
 	successConfirmForgotPassword   = "Xác thực OTP thành công"
 	successResetPassword           = "Đặt lại mật khẩu thành công"
-	successResendRegisterOtp        = "Đã gửi lại mã OTP đăng kí thành công. Vui lòng kiểm tra email."
+	successResendRegisterOtp       = "Đã gửi lại mã OTP đăng kí thành công. Vui lòng kiểm tra email."
 	successResendForgotPasswordOtp = "Đã gửi lại mã OTP khôi phục mật khẩu thành công. Vui lòng kiểm tra email."
 )
 
@@ -121,7 +121,6 @@ func (h *AuthHandler) ResendRegisterOtp(c *gin.Context) error {
 	shared_pres.Success(c, successResendRegisterOtp, nil)
 	return nil
 }
-
 
 // Login user login
 // @Summary Đăng nhập
@@ -323,7 +322,6 @@ func (h *AuthHandler) ResendForgotPasswordOtp(c *gin.Context) error {
 	shared_pres.Success(c, successResendForgotPasswordOtp, nil)
 	return nil
 }
-
 
 // ConfirmForgotPasswordOtp confirm forgot password OTP
 // @Summary Xác thực OTP khôi phục mật khẩu

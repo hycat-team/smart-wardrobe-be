@@ -141,7 +141,6 @@ func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUse
 	return mapper.MapToPendingTransferResList(items, sellerNamesByID), nil
 }
 
-
 func (uc *ItemTransferUseCase) AcceptTransfers(ctx context.Context, buyerUserID uuid.UUID, postItemIDs []uuid.UUID) ([]*wardrobe_dto.WardrobeItemRes, error) {
 	if len(postItemIDs) == 0 {
 		return nil, nil

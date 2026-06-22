@@ -139,7 +139,6 @@ func NormalizePostPublicID(raw string) (string, error) {
 	return publicID, nil
 }
 
-
 func isVisiblePostItem(item *entities.PostItem) bool {
 	return item != nil && item.Status != postitemstatus.Hidden
 }

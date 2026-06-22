@@ -260,7 +260,6 @@ func (h *WardrobeAIHandler) UpdateChatSession(c *gin.Context) error {
 	return nil
 }
 
-
 // StreamChatMessage stream chat response
 // @Summary Nhắn tin với stylist AI (Stream SSE)
 // @Description Gửi tin nhắn cho stylist AI và nhận phản hồi dạng stream sự kiện (Server-Sent Events).

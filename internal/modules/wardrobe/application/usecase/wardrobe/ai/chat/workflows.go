@@ -140,7 +140,6 @@ func (uc *WardrobeChatUseCase) UpdateChatSession(ctx context.Context, userID uui
 	return mapper.MapChatSession(session), nil
 }
 
-
 // ProcessChatMessageStream streams an AI reply and persists the conversation on successful completion.
 func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (<-chan string, func(success bool) error, error) {
 	sessionCtx, err := uc.loadChatSessionContext(ctx, userID, contextID)

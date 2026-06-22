@@ -208,4 +208,3 @@ func MapCommentRes(comment *entities.Comment) *community_dto.CommentRes {
 func MapTransferBuyerSummary(user *identity_dto.UserRes) *community_dto.TransferBuyerSummaryRes {
 	return community_dto.NewTransferBuyerSummary(user)
 }
-

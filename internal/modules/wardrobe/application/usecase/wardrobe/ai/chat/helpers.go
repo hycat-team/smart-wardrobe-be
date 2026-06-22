@@ -75,7 +75,6 @@ func isWardrobeRelatedQuery(content string, recent []*entities.Message) bool {
 	return false
 }
 
-
 // FilterThinkTags takes a channel of text chunks and returns a new channel emitting only text after the '===RESPONSE===' marker.
 // If the marker is not found by the end of the stream, it falls back to a heuristic cleanup of bullet-point thoughts.
 func FilterThinkTags(aiTextChan <-chan string, onCleanChunk func(string)) <-chan string {

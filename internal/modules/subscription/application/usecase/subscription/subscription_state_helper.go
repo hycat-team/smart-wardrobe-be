@@ -158,4 +158,3 @@ func (s *SubscriptionStateSupport) ResolveSubscriptionPlans(ctx context.Context,
 
 	return planByID, nil
 }
-

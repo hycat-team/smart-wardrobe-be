@@ -199,4 +199,3 @@ func (uc *RegisterUseCase) ResendRegisterOtp(ctx context.Context, input dto.Rese
 
 	return true, nil
 }
-

@@ -231,4 +231,3 @@ func (uc *PasswordRecoveryUseCase) ResendForgotPasswordOtp(ctx context.Context, 
 }
 
 var _ uc_interfaces.IPasswordRecoveryUseCase = (*PasswordRecoveryUseCase)(nil)
-

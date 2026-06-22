@@ -427,4 +427,3 @@ func TestUpdateChatSession_NotFound(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
-
