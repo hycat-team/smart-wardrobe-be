@@ -28,11 +28,18 @@ func truncateRunes(value string, limit int) string {
 func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
-	builder.WriteString("IMPORTANT: You MUST respond directly in Vietnamese. Do NOT write down any internal thinking process, reasoning, planning steps, or bullet-point analysis. Start your response immediately with the conversational Vietnamese answer. If you absolutely must write down thoughts, you MUST write the marker '===RESPONSE===' on its own line to separate your thoughts from your final response. Everything before '===RESPONSE===' is your internal thoughts, and everything after is your actual response.\n")
+	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
+
 	builder.WriteString("CONSTRAINTS & RULES:\n")
-	builder.WriteString("- Only mention or propose coordinating outfits from the user's personal wardrobe when the user explicitly asks or requests it. Do not proactively invite them to coordinate outfits in standard greetings or chitchat.\n")
-	builder.WriteString("- If and only if the user explicitly requests to coordinate outfits or choose clothes from their personal wardrobe, respond naturally and conversationally, and MUST append the token '[ACTION:REDIRECT_OUTFIT]' at the very end of your response to trigger the dedicated outfit coordination feature.\n")
-	builder.WriteString("- Do NOT append '[ACTION:REDIRECT_OUTFIT]' for normal greetings, casual conversation, or general fashion advice without a specific request to coordinate/recommend outfits from their wardrobe.\n")
+	if len(wardrobeItems) > 0 {
+		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, answer directly using the available wardrobe items.\n")
+		builder.WriteString("- Whenever mentioning a wardrobe item, write its category name followed by its color inside Markdown bold, for example: **Áo sơ mi Trắng**. Do not output brackets or placeholder text.\n")
+		builder.WriteString("- If an item's color is unavailable, bold only its category name.\n")
+		builder.WriteString("- Do not append '[ACTION:REDIRECT_OUTFIT]'.\n")
+	} else {
+		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, append '[ACTION:REDIRECT_OUTFIT]' at the very end.\n")
+	}
+
 	if strings.TrimSpace(summary) != "" {
 		builder.WriteString("Summary of previous conversation:\n")
 		builder.WriteString(truncateRunes(summary, summaryLimit))
@@ -41,29 +48,52 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 
 	if len(wardrobeItems) > 0 {
 		builder.WriteString("Available wardrobe items:\n")
+
 		limit := min(len(wardrobeItems), 20)
 		for i := range limit {
 			item := wardrobeItems[i]
+
+			hasCategory := item.Category != nil &&
+				strings.TrimSpace(item.Category.Name) != ""
+			hasColor := item.Color != nil &&
+				strings.TrimSpace(*item.Color) != ""
+			hasStyle := item.Style != nil &&
+				strings.TrimSpace(*item.Style) != ""
+
+			if !hasCategory && !hasColor && !hasStyle {
+				continue
+			}
+
 			builder.WriteString("- ")
-			if item.Category != nil {
-				builder.WriteString(item.Category.Name)
-				builder.WriteString(" ")
+
+			if hasCategory {
+				fmt.Fprintf(&builder, "Category: %s; ", item.Category.Name)
 			}
-			if item.Color != nil {
-				builder.WriteString(*item.Color)
-				builder.WriteString(" ")
+			if hasColor {
+				fmt.Fprintf(&builder, "Color: %s; ", *item.Color)
 			}
-			if item.Style != nil {
-				builder.WriteString(*item.Style)
-				builder.WriteString(" ")
+			if hasStyle {
+				fmt.Fprintf(&builder, "Style: %s", *item.Style)
 			}
+
 			builder.WriteString("\n")
 		}
 	}
 
-	builder.WriteString("5 most recent messages:\n")
-	for _, item := range recent {
-		fmt.Fprintf(&builder, "%s: %s\n", item.Sender, truncateRunes(item.Content, messageLimit))
+	if len(recent) > 0 {
+		builder.WriteString("Most recent messages:\n")
+
+		limit := min(len(recent), 5)
+		start := len(recent) - limit
+
+		for _, item := range recent[start:] {
+			fmt.Fprintf(
+				&builder,
+				"%s: %s\n",
+				item.Sender,
+				truncateRunes(item.Content, messageLimit),
+			)
+		}
 	}
 
 	return builder.String()
