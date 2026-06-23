@@ -737,3 +737,7 @@ bin/
 backups/
 *.dump
 *.sql.gz
+
+.agentrules
+.agents/
+skills-lock.json
