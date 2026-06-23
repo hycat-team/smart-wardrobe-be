@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+func int64Ptr(v int64) *int64 { return &v }
+
 type fakeSubscriptionPlanRepository struct {
 	plans []*entities.SubscriptionPlan
 }
@@ -125,6 +127,99 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 			t.Fatal("expected validation to fail, got nil")
 		}
 		if !strings.Contains(err.Error(), "multiple active default-free plans found") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("strict policy overflow within 1000 VND tolerance warns and passes", func(t *testing.T) {
+		repo := &fakeSubscriptionPlanRepository{
+			plans: []*entities.SubscriptionPlan{
+				{
+					Slug:     "free",
+					PlanKind: plankind.DefaultFree,
+					IsActive: true,
+				},
+				{
+					Slug:     "premium-monthly",
+					PlanKind: plankind.Finite,
+					IsActive: true,
+				},
+			},
+		}
+
+		attachTestPolicies(repo.plans)
+		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
+		repo.plans[1].AICostPolicy.PeriodDays = 1
+		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
+		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)
+		repo.plans[1].AICostPolicy.MaxUnknownPaidRequestsPerDay = 1
+		for _, op := range repo.plans[1].AICostPolicy.Operations {
+			op.NormalRoute = "paid"
+			op.NormalMaxInputTokens = 444_440
+			op.NormalMaxOutputTokens = 1
+		}
+
+		validator := NewSubscriptionCatalogValidator(repo, &config.Config{
+			AI: config.AIServiceConfig{
+				Pricing: config.AIPricingConfig{
+					USDToVND: "27000",
+					Paid: config.AIModelPricingConfig{
+						InputUSDPerMillionTokens:  "0.10",
+						OutputUSDPerMillionTokens: "0.40",
+					},
+				},
+			},
+		})
+		err := validator.Validate(ctx)
+		if err != nil {
+			t.Fatalf("expected validation to pass within tolerance, got error: %v", err)
+		}
+	})
+
+	t.Run("strict policy overflow above 1000 VND tolerance fails", func(t *testing.T) {
+		repo := &fakeSubscriptionPlanRepository{
+			plans: []*entities.SubscriptionPlan{
+				{
+					Slug:     "free",
+					PlanKind: plankind.DefaultFree,
+					IsActive: true,
+				},
+				{
+					Slug:     "premium-monthly",
+					PlanKind: plankind.Finite,
+					IsActive: true,
+				},
+			},
+		}
+
+		attachTestPolicies(repo.plans)
+		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
+		repo.plans[1].AICostPolicy.PeriodDays = 1
+		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
+		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)
+		repo.plans[1].AICostPolicy.MaxUnknownPaidRequestsPerDay = 1
+		for _, op := range repo.plans[1].AICostPolicy.Operations {
+			op.NormalRoute = "paid"
+			op.NormalMaxInputTokens = 814_820
+			op.NormalMaxOutputTokens = 1
+		}
+
+		validator := NewSubscriptionCatalogValidator(repo, &config.Config{
+			AI: config.AIServiceConfig{
+				Pricing: config.AIPricingConfig{
+					USDToVND: "27000",
+					Paid: config.AIModelPricingConfig{
+						InputUSDPerMillionTokens:  "0.10",
+						OutputUSDPerMillionTokens: "0.40",
+					},
+				},
+			},
+		})
+		err := validator.Validate(ctx)
+		if err == nil {
+			t.Fatal("expected validation to fail when overflow exceeds tolerance, got nil")
+		}
+		if !strings.Contains(err.Error(), "tolerance") {
 			t.Fatalf("unexpected error message: %v", err)
 		}
 	})

@@ -28,11 +28,11 @@ INSERT INTO ai_cost_policies (id,code,version,name,enforcement_mode,period_days,
  ('aa000000-0000-0000-0000-000000000002','premium-default',1,'Premium AI Policy','STRICT',30,25000000000,8000,9200,1440,2);
 INSERT INTO ai_cost_policy_operations (policy_id,operation,normal_route,reduced_route,free_route,normal_max_input_tokens,normal_max_output_tokens,reduced_max_input_tokens,reduced_max_output_tokens,max_paid_attempts_per_day) VALUES
  ('aa000000-0000-0000-0000-000000000001','chat','paid','paid','free',3000,1000,2500,800,5),
- ('aa000000-0000-0000-0000-000000000001','outfit','paid','paid','free',5000,400,4000,350,5),
+ ('aa000000-0000-0000-0000-000000000001','outfit','paid','paid','free',11000,400,6000,350,5),
  ('aa000000-0000-0000-0000-000000000001','summary','free','free','local',3000,250,3000,250,5),
  ('aa000000-0000-0000-0000-000000000001','rewriter','free','free','local',1000,250,1000,250,5),
  ('aa000000-0000-0000-0000-000000000002','chat','paid','paid','free',4000,1000,4000,1000,20),
- ('aa000000-0000-0000-0000-000000000002','outfit','paid','paid','free',7000,400,7000,400,15),
+ ('aa000000-0000-0000-0000-000000000002','outfit','paid','paid','free',12000,400,7000,400,15),
  ('aa000000-0000-0000-0000-000000000002','summary','free','free','local',3000,250,3000,250,20),
  ('aa000000-0000-0000-0000-000000000002','rewriter','free','free','local',1000,250,1000,250,15);
 UPDATE subscription_plans SET ai_cost_policy_id=CASE WHEN plan_kind=0 THEN 'aa000000-0000-0000-0000-000000000001'::uuid ELSE 'aa000000-0000-0000-0000-000000000002'::uuid END;

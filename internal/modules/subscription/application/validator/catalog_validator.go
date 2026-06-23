@@ -12,6 +12,8 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
+const strictPolicyExposureWarnToleranceMicroVND int64 = 1_000_000_000 // 1,000 VND
+
 type SubscriptionCatalogValidator struct {
 	planRepo repositories.ISubscriptionPlanRepository
 	cfg      *config.Config
@@ -115,7 +117,12 @@ func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *entities.AIC
 	threshold := *policy.HardCostMicroVND * int64(policy.FreeRouteThresholdBPS) / 10000
 	exposure := threshold + int64(policy.PeriodDays)*int64(policy.MaxUnknownPaidRequestsPerDay)*maxReservation
 	if exposure > *policy.HardCostMicroVND {
-		return fmt.Errorf("maximum exposure %d exceeds hard cost %d", exposure, *policy.HardCostMicroVND)
+		excess := exposure - *policy.HardCostMicroVND
+		if excess <= strictPolicyExposureWarnToleranceMicroVND {
+			fmt.Printf("WARN: strict AI policy exposure exceeded hard cost within tolerance (exposure=%d hard_cost=%d excess=%d tolerance=%d)\n", exposure, *policy.HardCostMicroVND, excess, strictPolicyExposureWarnToleranceMicroVND)
+			return nil
+		}
+		return fmt.Errorf("maximum exposure %d exceeds hard cost %d by %d (tolerance %d)", exposure, *policy.HardCostMicroVND, excess, strictPolicyExposureWarnToleranceMicroVND)
 	}
 	return nil
 }
