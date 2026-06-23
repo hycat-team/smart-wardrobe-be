@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
@@ -56,43 +57,62 @@ func NewPaymentReconciliationUseCase(
 	}
 }
 
-func (uc *PaymentReconciliationUseCase) Reconcile(ctx context.Context) error {
+func (uc *PaymentReconciliationUseCase) Reconcile(ctx context.Context, run *workerlog.Run) error {
 	rows, err := uc.repo.ClaimReconciliationCandidates(ctx, uc.cfg.PayOS.ReconciliationBatchSize, time.Duration(uc.cfg.PayOS.ReconciliationLeaseSeconds)*time.Second)
 	if err != nil {
-		uc.log.Error("Failed to claim payment reconciliation candidates", zap.Error(err))
+		run.ChildError(uc.log, "Failed to claim payment reconciliation candidates", zap.Error(err))
 		return err
 	}
+	run.AddSummaryFields(
+		zap.Int("pendingRetryCount", 0),
+		zap.Int("expiredCount", 0),
+		zap.Int("cancelledCount", 0),
+		zap.Int("investigationRequiredCount", 0),
+		zap.Int("recoveredToPendingCount", 0),
+		zap.Int("alreadyHandledCount", 0),
+		zap.Int("zombieSkippedCount", 0),
+	)
 	for _, row := range rows {
-		uc.reconcile(ctx, row)
+		run.AddTotal(1)
+		uc.reconcile(ctx, row, run)
 	}
 	return nil
 }
 
-func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *repositories.ClaimedDepositTransaction) {
+func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *repositories.ClaimedDepositTransaction, runs ...*workerlog.Run) {
+	var run *workerlog.Run
+	if len(runs) > 0 {
+		run = runs[0]
+	}
+	if run == nil {
+		run = workerlog.New("payment_reconciliation", "internal")
+	}
 	orderCode := claimed.Transaction.OrderCode
 	token := claimed.ProcessingToken
 	tx := claimed.Transaction
 
 	info, err := uc.gateway.GetPaymentLinkInfo(ctx, orderCode)
 	if err != nil {
-		uc.deferRetry(ctx, orderCode, token, errCodeProviderLookup)
+		uc.deferRetry(ctx, orderCode, token, errCodeProviderLookup, run)
 		return
 	}
 
 	switch info.Status {
 	case payment.ProviderPaid:
 		if err := uc.completion.CompleteVerifiedPayment(ctx, info); err != nil {
-			uc.deferRetry(ctx, orderCode, token, errCodeCompletion)
+			uc.deferRetry(ctx, orderCode, token, errCodeCompletion, run)
+			return
 		}
+		run.AddSuccess(1)
 	case payment.ProviderPending:
 		now := time.Now().UTC()
 		// If expiresAt <= now: cancel the link and mark expired
 		if tx.ExpiresAt != nil && !tx.ExpiresAt.After(now) {
 			if err := uc.gateway.CancelPaymentLink(ctx, orderCode, cancelReasonExpired); err != nil {
-				uc.deferRetry(ctx, orderCode, token, errCodeCancelUnknown)
+				uc.deferRetry(ctx, orderCode, token, errCodeCancelUnknown, run)
 				return
 			}
-			uc.finish(ctx, orderCode, token, depositstatus.Expired)
+			uc.finish(ctx, orderCode, token, depositstatus.Expired, run)
 			return
 		}
 
@@ -118,9 +138,12 @@ func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *
 
 				rowsAffected, err := uc.repo.UpdateWithToken(ctx, orderCode, token, updates)
 				if err != nil {
-					uc.log.Error("Failed to recover transaction to Pending", zap.Int64("orderCode", orderCode), zap.Error(err))
+					run.ChildError(uc.log, "Failed to recover transaction to Pending", zap.Int64("orderCode", orderCode), zap.Error(err))
 				} else if rowsAffected == 0 {
-					uc.handleZeroRowsAffected(ctx, orderCode, token)
+					uc.handleZeroRowsAffected(ctx, orderCode, token, run)
+				} else {
+					run.AddSuccess(1)
+					run.AddSummaryFields(zap.Int("recoveredToPendingCount", 1))
 				}
 				return
 			}
@@ -130,39 +153,41 @@ func (uc *PaymentReconciliationUseCase) reconcile(ctx context.Context, claimed *
 				tx.LastProviderErrorCode != nil &&
 				*tx.LastProviderErrorCode == errCodeCancelUnknown {
 				if err := uc.gateway.CancelPaymentLink(ctx, orderCode, cancelReasonExpired); err != nil {
-					uc.deferRetry(ctx, orderCode, token, errCodeCancelUnknown)
+					uc.deferRetry(ctx, orderCode, token, errCodeCancelUnknown, run)
 					return
 				}
-				uc.finish(ctx, orderCode, token, depositstatus.Expired)
+				uc.finish(ctx, orderCode, token, depositstatus.Expired, run)
 				return
 			}
 		}
 
-		uc.deferRetry(ctx, orderCode, token, errCodePendingRetry)
+		uc.deferRetry(ctx, orderCode, token, errCodePendingRetry, run)
 
 	case payment.ProviderCancelled:
-		uc.finish(ctx, orderCode, token, depositstatus.Cancelled)
+		uc.finish(ctx, orderCode, token, depositstatus.Cancelled, run)
 	default:
-		uc.deferRetry(ctx, orderCode, token, errCodeUnknownStatus)
+		uc.deferRetry(ctx, orderCode, token, errCodeUnknownStatus, run)
 	}
 }
 
-func (uc *PaymentReconciliationUseCase) handleZeroRowsAffected(ctx context.Context, orderCode int64, token uuid.UUID) {
+func (uc *PaymentReconciliationUseCase) handleZeroRowsAffected(ctx context.Context, orderCode int64, token uuid.UUID, run *workerlog.Run) {
 	row, err := uc.repo.GetByOrderCode(ctx, orderCode)
 	if err != nil || row == nil {
 		return
 	}
 	if row.Status == depositstatus.Success {
-		uc.log.Info("Transaction was already marked Success by Webhook. Worker gracefully exits.", zap.Int64("orderCode", orderCode))
+		run.ChildWarn(uc.log, "Transaction was already marked Success by Webhook. Worker gracefully exits.", zap.Int64("orderCode", orderCode))
+		run.AddSkipped(1)
 		return
 	}
 	if row.ProcessingToken == nil || *row.ProcessingToken != token {
-		uc.log.Warn("Worker became a zombie for transaction. Another worker claimed it.", zap.Int64("orderCode", orderCode))
+		run.ChildWarn(uc.log, "Worker became a zombie for transaction. Another worker claimed it.", zap.Int64("orderCode", orderCode))
+		run.AddSkipped(1)
 		return
 	}
 }
 
-func (uc *PaymentReconciliationUseCase) finish(ctx context.Context, orderCode int64, token uuid.UUID, status depositstatus.DepositStatus) {
+func (uc *PaymentReconciliationUseCase) finish(ctx context.Context, orderCode int64, token uuid.UUID, status depositstatus.DepositStatus, run *workerlog.Run) {
 	now := time.Now().UTC()
 	updates := map[string]any{
 		"status":                 status,
@@ -177,13 +202,15 @@ func (uc *PaymentReconciliationUseCase) finish(ctx context.Context, orderCode in
 
 	rowsAffected, err := uc.repo.UpdateWithToken(ctx, orderCode, token, updates)
 	if err != nil {
-		uc.log.Error("Failed to update finished transaction", zap.Int64("orderCode", orderCode), zap.Error(err))
+		run.ChildError(uc.log, "Failed to update finished transaction", zap.Int64("orderCode", orderCode), zap.Error(err))
 	} else if rowsAffected == 0 {
-		uc.handleZeroRowsAffected(ctx, orderCode, token)
+		uc.handleZeroRowsAffected(ctx, orderCode, token, run)
+	} else {
+		run.AddSuccess(1)
 	}
 }
 
-func (uc *PaymentReconciliationUseCase) deferRetry(ctx context.Context, orderCode int64, token uuid.UUID, code string) {
+func (uc *PaymentReconciliationUseCase) deferRetry(ctx context.Context, orderCode int64, token uuid.UUID, code string, run *workerlog.Run) {
 	row, err := uc.repo.GetByOrderCode(ctx, orderCode)
 	if err != nil || row == nil {
 		return
@@ -217,8 +244,11 @@ func (uc *PaymentReconciliationUseCase) deferRetry(ctx context.Context, orderCod
 
 	rowsAffected, err := uc.repo.UpdateWithToken(ctx, orderCode, token, updates)
 	if err != nil {
-		uc.log.Error("Failed to defer retry for transaction", zap.Int64("orderCode", orderCode), zap.Error(err))
+		run.ChildError(uc.log, "Failed to defer retry for transaction", zap.Int64("orderCode", orderCode), zap.String("errorCode", code), zap.Error(err))
 	} else if rowsAffected == 0 {
-		uc.handleZeroRowsAffected(ctx, orderCode, token)
+		uc.handleZeroRowsAffected(ctx, orderCode, token, run)
+	} else {
+		run.ChildWarn(uc.log, "Transaction deferred for retry", zap.Int64("orderCode", orderCode), zap.String("errorCode", code))
+		run.AddRetry(1)
 	}
 }

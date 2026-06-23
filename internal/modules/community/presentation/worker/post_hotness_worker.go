@@ -5,6 +5,7 @@ import (
 	"time"
 
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/robfig/cron/v3"
@@ -34,9 +35,11 @@ func NewPostHotnessWorker(
 }
 
 func (w *PostHotnessWorker) Start() {
-	go w.executeRefresh()
+	go w.executeRefresh(workerlog.TriggerStartup)
 
-	_, err := w.cronEngine.AddFunc("0 */10 * * * *", w.executeRefresh)
+	_, err := w.cronEngine.AddFunc("0 */10 * * * *", func() {
+		w.executeRefresh(workerlog.TriggerCron)
+	})
 	if err != nil {
 		w.log.Error("Failed to register community hotness worker", zap.Error(err))
 		return
@@ -51,11 +54,14 @@ func (w *PostHotnessWorker) Stop() {
 	}
 }
 
-func (w *PostHotnessWorker) executeRefresh() {
+func (w *PostHotnessWorker) executeRefresh(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	if err := w.useCase.RefreshHotness(ctx); err != nil {
-		w.log.Error("Community hotness calculation failed", zap.Error(err))
+	run := workerlog.New("post_hotness", triggerType)
+	if err := w.useCase.RefreshHotness(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }

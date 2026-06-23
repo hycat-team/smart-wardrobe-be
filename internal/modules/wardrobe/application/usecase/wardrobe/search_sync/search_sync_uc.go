@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
@@ -33,7 +34,8 @@ func NewSearchSyncUseCase(
 	}
 }
 
-func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload dto.WardrobeEventPayload) error {
+func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload dto.WardrobeEventPayload, run *workerlog.Run) error {
+	run.AddTotal(1)
 	switch eventPayload.Action {
 	case eventconstants.ActionCreated, eventconstants.ActionUpdated:
 		item, err := uc.wardrobeRepo.GetByID(ctx, eventPayload.ItemID)
@@ -46,65 +48,70 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 
 		// Only sync system wardrobe items (SystemCatalogItem = 1) to the Search Index
 		if item.ItemType != 1 {
+			run.AddSkipped(1)
 			return nil
 		}
 
 		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
-			uc.logger.Warn("[SearchSyncUseCase] Failed to index item in search index (Elasticsearch may be offline)",
+			run.ChildWarn(uc.logger, "Failed to index item in search index",
 				zap.String("itemId", item.ID.String()),
 				zap.Error(err),
 			)
 			if !uc.searchIndex.IsHealthy() {
+				run.AddRetry(1)
 				return fmt.Errorf("elasticsearch is offline: %w", err)
 			}
 			return nil
 		}
+		run.AddSuccess(1)
 
 	case eventconstants.ActionDeleted:
 		if err := uc.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String()); err != nil {
-			uc.logger.Warn("[SearchSyncUseCase] Failed to delete item from search index (Elasticsearch may be offline)",
+			run.ChildWarn(uc.logger, "Failed to delete item from search index",
 				zap.String("itemId", eventPayload.ItemID.String()),
 				zap.Error(err),
 			)
 			if !uc.searchIndex.IsHealthy() {
+				run.AddRetry(1)
 				return fmt.Errorf("elasticsearch is offline: %w", err)
 			}
 			return nil
 		}
+		run.AddSuccess(1)
 	}
 
 	return nil
 }
 
-func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context) (bool, error) {
+func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.Run) (bool, error) {
 	if !uc.searchIndex.IsHealthy() {
+		run.AddSkipped(1)
 		return false, nil
 	}
 
 	items, err := uc.wardrobeRepo.GetItems(ctx, nil, nil, itemtype.SystemCatalogItem)
 	if err != nil {
-		uc.logger.Error("[SearchSyncUseCase] Failed to fetch system catalog items for initial sync", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to fetch system catalog items for initial sync", zap.Error(err))
 		return false, err
 	}
+	run.AddTotal(len(items))
 
 	if len(items) == 0 {
-		uc.logger.Info("[SearchSyncUseCase] Initial sync succeeded", zap.Int("indexed", 0))
+		run.AddSummaryFields(zap.Int("indexedCount", 0))
 		return true, nil
 	}
 
 	successCount := 0
 	for _, item := range items {
 		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
-			uc.logger.Warn("[SearchSyncUseCase] Failed to index system catalog item during initial sync. Elasticsearch might have gone offline.",
+			run.ChildWarn(uc.logger, "Failed to index system catalog item during initial sync",
 				zap.Error(err),
 			)
 			return false, err
 		}
 		successCount++
 	}
-
-	uc.logger.Info("[SearchSyncUseCase] Initial sync succeeded",
-		zap.Int("indexed", successCount),
-	)
+	run.AddSuccess(successCount)
+	run.AddSummaryFields(zap.Int("indexedCount", successCount))
 	return true, nil
 }

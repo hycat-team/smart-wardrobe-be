@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
@@ -57,7 +58,7 @@ type RenewalBatchSummary struct {
 }
 
 // ProcessScheduledRenewals processes expired subscriptions in batches and applies renew-or-downgrade decisions.
-func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) error {
+func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run *workerlog.Run) error {
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 
 	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
@@ -80,12 +81,14 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 		}
 
 		for _, sub := range expiredSubs {
+			run.AddTotal(1)
 			if sub.ExpiresAt == nil {
 				summary.Record(RenewalExecutionResult{
 					Status: renewalStatusSkipped,
 					Reason: renewalReasonSkippedNilExpiresAt,
 					UserID: sub.UserID,
 				}, nil)
+				run.AddSkipped(1)
 				continue
 			}
 
@@ -95,13 +98,23 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 			result, err := uc.processSingleScheduledRenewal(ctx, sub, freePlanID, now)
 			summary.Record(result, err)
 			if err != nil {
-				uc.log.Error("Failed to process subscription renewal",
-					zap.String("user_id", sub.UserID.String()),
-					zap.Time("expires_at", *sub.ExpiresAt),
+				run.ChildError(uc.log, "Failed to process subscription renewal",
+					zap.String("userId", sub.UserID.String()),
+					zap.Time("expiresAt", *sub.ExpiresAt),
 					zap.String("reason", result.Reason),
 					zap.String("result", renewalStatusFailed),
 					zap.Error(err),
 				)
+				continue
+			}
+
+			switch result.Status {
+			case renewalStatusRenewed:
+				run.AddSuccess(1)
+			case renewalStatusDowngraded:
+				run.AddSuccess(1)
+			case renewalStatusSkipped:
+				run.AddSkipped(1)
 			}
 		}
 
@@ -110,7 +123,11 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context) err
 		}
 	}
 
-	uc.logRenewalSummary(summary)
+	run.AddSummaryFields(
+		zap.Int("renewedCount", summary.RenewedCount),
+		zap.Int("downgradedCount", summary.DowngradedCount),
+		zap.Int("failedCount", summary.FailedCount),
+	)
 	if summary.FailedCount > 0 {
 		return fmt.Errorf("scheduled renewal job completed with %d failed records", summary.FailedCount)
 	}
@@ -349,29 +366,6 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 	)
 	result.Status = renewalStatusRenewed
 	return nil
-}
-
-// logRenewalSummary emits the final renewal batch counters and reason breakdowns.
-func (uc *SubscriptionUseCase) logRenewalSummary(summary *RenewalBatchSummary) {
-	uc.log.Info("Processed scheduled renewals summary",
-		zap.Int("renewed", summary.RenewedCount),
-		zap.Int("downgraded", summary.DowngradedCount),
-		zap.Int("skipped", summary.SkippedCount),
-		zap.Int("failed", summary.FailedCount),
-		zap.Int("renewed_count", summary.OutcomeCounts[renewalReasonRenewed]),
-		zap.Int("downgraded_auto_renew_disabled", summary.OutcomeCounts[renewalReasonDowngradedAutoRenewOff]),
-		zap.Int("downgraded_insufficient_balance", summary.OutcomeCounts[renewalReasonDowngradedInsufficient]),
-		zap.Int("failed_missing_plan", summary.OutcomeCounts[renewalReasonFailedMissingPlan]),
-		zap.Int("failed_invalid_price", summary.OutcomeCounts[renewalReasonFailedInvalidPrice]),
-		zap.Int("failed_invalid_duration", summary.OutcomeCounts[renewalReasonFailedInvalidDuration]),
-		zap.Int("failed_inactive_plan", summary.OutcomeCounts[renewalReasonFailedInactivePlan]),
-		zap.Int("failed_wallet_missing", summary.OutcomeCounts[renewalReasonFailedWalletMissing]),
-		zap.Int("failed_lock_subscription", summary.OutcomeCounts[renewalReasonFailedLockSubscription]),
-		zap.Int("failed_lock_wallet", summary.OutcomeCounts[renewalReasonFailedLockWallet]),
-		zap.Int("failed_processing", summary.OutcomeCounts[renewalReasonFailedProcessing]),
-		zap.Int("skipped_nil_expires_at", summary.OutcomeCounts[renewalReasonSkippedNilExpiresAt]),
-		zap.Int("skipped_not_found_after_lock", summary.OutcomeCounts[renewalReasonSkippedNotFoundAfterLock]),
-	)
 }
 
 // validateRenewalPlan ensures that the target plan is valid for renewal.

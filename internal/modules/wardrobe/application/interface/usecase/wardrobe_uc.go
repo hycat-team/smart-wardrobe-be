@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
 )
@@ -44,7 +45,7 @@ type IWardrobeCatalogUseCase interface {
 }
 
 type IWardrobeWorkerUseCase interface {
-	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error
-	CleanupFailedItems(ctx context.Context) error
-	RecoverStaleProcessingItems(ctx context.Context) error
+	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) error
+	CleanupFailedItems(ctx context.Context, run *workerlog.Run) error
+	RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/robfig/cron/v3"
@@ -52,7 +53,10 @@ func (w *WebhookInboxWorker) run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	if err := w.useCase.ProcessInbox(ctx); err != nil {
-		w.log.Error("Webhook inbox processing failed", zap.Error(err))
+	run := workerlog.New("webhook_inbox", workerlog.TriggerCron)
+	if err := w.useCase.ProcessInbox(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }

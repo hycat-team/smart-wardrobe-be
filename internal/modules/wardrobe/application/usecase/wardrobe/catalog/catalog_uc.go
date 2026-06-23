@@ -135,7 +135,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 	}
 
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
-	for i := 0; i < len(newItems); i++ {
+	for i := range newItems {
 		newItems[i].Category = templates[i].Category
 		resList[i] = mapper.MapToWardrobeItemRes(newItems[i])
 		resList[i].IsLocked = false

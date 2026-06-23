@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
@@ -36,7 +37,34 @@ func NewWardrobeBatchUploadWorker(
 func (w *WardrobeBatchUploadWorker) startConsume() {
 	ctx := context.Background()
 	err := w.jobConsumer.ConsumeJobs(ctx, func(ctx context.Context, job dto.WardrobeBatchUploadJobDTO) error {
-		return w.useCase.ProcessBackgroundBatchUploadJob(ctx, job)
+		triggerType := workerlog.TriggerQueue
+		if job.RetryCount > 0 {
+			triggerType = workerlog.TriggerRequeue
+		}
+		run := workerlog.New("wardrobe_batch_upload", triggerType)
+		run.LogReceived(w.logger,
+			zap.String("itemId", job.ItemID.String()),
+			zap.String("userId", job.UserID.String()),
+			zap.Int("processingVersion", job.ProcessingVersion),
+			zap.Int("retryCount", job.RetryCount),
+		)
+		err := w.useCase.ProcessBackgroundBatchUploadJob(ctx, job, run)
+		if err != nil {
+			run.LogFailure(w.logger, err,
+				zap.String("itemId", job.ItemID.String()),
+				zap.String("userId", job.UserID.String()),
+				zap.Int("processingVersion", job.ProcessingVersion),
+				zap.Int("retryCount", job.RetryCount),
+			)
+			return err
+		}
+		run.LogSuccess(w.logger,
+			zap.String("itemId", job.ItemID.String()),
+			zap.String("userId", job.UserID.String()),
+			zap.Int("processingVersion", job.ProcessingVersion),
+			zap.Int("retryCount", job.RetryCount),
+		)
+		return nil
 	})
 
 	if err != nil {

@@ -8,7 +8,7 @@ SmartWardrobe Backend is an API service system developed using **Golang** based 
 
 Before getting started, make sure your computer has the following tools installed:
 
-1. **Go Compiler (v1.24.+)**
+1. **Go Compiler (v1.25.+)**
     - Download and install at: [golang.org/dl](https://golang.org/dl/)
     - Verify installation: `go version`
 2. **Docker & Docker Desktop (or Docker Compose)**
@@ -87,28 +87,6 @@ When starting development or after modifying anything related to Dependency Inje
 ```bash
 make dev
 ```
-
-This command automatically executes:
-
-1. `go mod tidy` to clean up and download dependencies.
-2. `wire` to generate Dependency Injection code automatically.
-3. `swag` to update Swagger API documentation.
-4. Compiles and starts the server immediately.
-
----
-
-### Available Make Commands Detail
-
-| Command              | Meaning                                                  | Equivalent Manual Command                                                         |
-| :------------------- | :------------------------------------------------------- | :-------------------------------------------------------------------------------- |
-| `make install-tools` | Installs `wire` and `swag` CLIs locally                  | `go install ...`                                                                  |
-| `make tidy`          | Syncs and downloads missing Go packages                  | `go mod tidy`                                                                     |
-| `make wire`          | Automatically generates Dependency Injection code        | `wire ./internal/di/...`                                                          |
-| `make swagger`       | Regenerates Swagger API documentation                    | `swag init -g cmd/server/main.go --output docs --parseDependency --parseInternal` |
-| `make build`         | Compiles the project into an executable in `bin/`        | `go build -o bin/main.exe cmd/server/main.go`                                     |
-| `make run`           | Runs the compiled executable                             | `./bin/main.exe`                                                                  |
-| `make dev`           | Runs full flow: tidy, wire, swagger, and run             | _(Combination of the commands above)_                                             |
-| `make clean`         | Cleans up the `bin/` binary directory                    | `rm -rf bin/`                                                                     |
 
 ---
 

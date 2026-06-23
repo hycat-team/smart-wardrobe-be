@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"time"
 
@@ -33,9 +34,11 @@ func NewFailedItemsCleanupWorker(
 }
 
 func (w *FailedItemsCleanupWorker) Start() {
-	go w.executeCleanupJob()
+	go w.executeCleanupJob(workerlog.TriggerStartup)
 
-	_, err := w.cronEngine.AddFunc("0 0 2 * * *", w.executeCleanupJob)
+	_, err := w.cronEngine.AddFunc("0 0 2 * * *", func() {
+		w.executeCleanupJob(workerlog.TriggerCron)
+	})
 	if err != nil {
 		w.log.Error("Failed to register scheduled failed items cleanup cron task", zap.Error(err))
 		return
@@ -50,13 +53,14 @@ func (w *FailedItemsCleanupWorker) Stop() {
 	}
 }
 
-func (w *FailedItemsCleanupWorker) executeCleanupJob() {
+func (w *FailedItemsCleanupWorker) executeCleanupJob(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	if err := w.useCase.CleanupFailedItems(ctx); err != nil {
-		w.log.Error("[FailedItemsCleanupWorker] Job failed", zap.Error(err))
-	} else {
-		w.log.Info("[FailedItemsCleanupWorker] Job succeeded")
+	run := workerlog.New("failed_items_cleanup", triggerType)
+	if err := w.useCase.CleanupFailedItems(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }

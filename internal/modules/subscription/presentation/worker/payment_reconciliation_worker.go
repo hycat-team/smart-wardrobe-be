@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/robfig/cron/v3"
@@ -56,7 +57,10 @@ func (w *PaymentReconciliationWorker) run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	if err := w.useCase.Reconcile(ctx); err != nil {
-		w.log.Error("Payment reconciliation failed", zap.Error(err))
+	run := workerlog.New("payment_reconciliation", workerlog.TriggerCron)
+	if err := w.useCase.Reconcile(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }

@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"time"
 
@@ -33,9 +34,11 @@ func NewSubscriptionRenewalWorker(
 }
 
 func (w *SubscriptionRenewalWorker) Start() {
-	go w.executeRenewalJob()
+	go w.executeRenewalJob(workerlog.TriggerStartup)
 
-	_, err := w.cronEngine.AddFunc("0 0 0 * * *", w.executeRenewalJob)
+	_, err := w.cronEngine.AddFunc("0 0 0 * * *", func() {
+		w.executeRenewalJob(workerlog.TriggerCron)
+	})
 	if err != nil {
 		w.log.Error("Failed to register scheduled auto-renewal cron task", zap.Error(err))
 		return
@@ -50,13 +53,14 @@ func (w *SubscriptionRenewalWorker) Stop() {
 	}
 }
 
-func (w *SubscriptionRenewalWorker) executeRenewalJob() {
+func (w *SubscriptionRenewalWorker) executeRenewalJob(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	if err := w.subUseCase.ProcessScheduledRenewals(ctx); err != nil {
-		w.log.Error("[SubscriptionRenewalWorker] Job failed", zap.Error(err))
-	} else {
-		w.log.Info("[SubscriptionRenewalWorker] Job succeeded")
+	run := workerlog.New("subscription_renewal", triggerType)
+	if err := w.subUseCase.ProcessScheduledRenewals(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }

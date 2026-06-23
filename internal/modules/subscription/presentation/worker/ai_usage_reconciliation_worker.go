@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"time"
 )
@@ -39,12 +40,13 @@ func (w *AIUsageReconciliationWorker) Stop() {
 func (w *AIUsageReconciliationWorker) run() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	run := workerlog.New("ai_usage_reconciliation", workerlog.TriggerCron)
 	count, err := w.policy.ExpireUnknown(ctx, time.Now(), w.cfg.AI.UsageReconcileBatchSize)
 	if err != nil {
-		w.log.Error("AI usage reconciliation failed", zap.Error(err))
+		run.LogFailure(w.log, err, zap.Int64("expiredReservationCount", 0))
 		return
 	}
-	if count > 0 {
-		w.log.Info("AI usage reservations reconciled", zap.Int64("count", count))
-	}
+	run.AddTotal(int(count))
+	run.AddSuccess(int(count))
+	run.LogSuccess(w.log, zap.Int64("expiredReservationCount", count))
 }

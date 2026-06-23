@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/robfig/cron/v3"
@@ -42,9 +43,11 @@ func NewProcessingRecoveryWorker(
 
 // Start begins the recovery scheduler and executes an initial scan.
 func (w *ProcessingRecoveryWorker) Start() {
-	go w.executeRecoveryJob()
+	go w.executeRecoveryJob(workerlog.TriggerStartup)
 
-	_, err := w.cronEngine.AddFunc(w.cfg.Wardrobe.RecoveryScanCron, w.executeRecoveryJob)
+	_, err := w.cronEngine.AddFunc(w.cfg.Wardrobe.RecoveryScanCron, func() {
+		w.executeRecoveryJob(workerlog.TriggerCron)
+	})
 	if err != nil {
 		w.log.Error("Failed to register wardrobe processing recovery cron task", zap.Error(err))
 		return
@@ -60,13 +63,14 @@ func (w *ProcessingRecoveryWorker) Stop() {
 	}
 }
 
-func (w *ProcessingRecoveryWorker) executeRecoveryJob() {
+func (w *ProcessingRecoveryWorker) executeRecoveryJob(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	if err := w.useCase.RecoverStaleProcessingItems(ctx); err != nil {
-		w.log.Error("[ProcessingRecoveryWorker] Job failed", zap.Error(err))
-	} else {
-		w.log.Info("[ProcessingRecoveryWorker] Job succeeded")
+	run := workerlog.New("processing_recovery", triggerType)
+	if err := w.useCase.RecoverStaleProcessingItems(ctx, run); err != nil {
+		run.LogFailure(w.log, err)
+		return
 	}
+	run.LogSuccess(w.log)
 }
