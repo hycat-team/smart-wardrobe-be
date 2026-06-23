@@ -244,14 +244,22 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 		return nil, err
 	}
 
+	_ = content
+
 	var activeWardrobeItems []*entities.WardrobeItem
-	if isWardrobeRelatedQuery(content, sessionCtx.recent) {
-		wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
-		if err != nil {
-			return nil, err
-		}
-		activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+	// if isWardrobeRelatedQuery(content, sessionCtx.recent) {
+	// 	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+	// }
+
+	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
 	}
+	activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
 
 	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, activeWardrobeItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters)}, nil
 }
