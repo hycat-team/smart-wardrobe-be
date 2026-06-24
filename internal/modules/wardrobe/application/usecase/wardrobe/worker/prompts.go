@@ -22,6 +22,12 @@ Do not limit your analysis to the examples provided in the schema; use your broa
 You MUST classify the item into one of the following categories based on the image. Choose the single most appropriate slug from this list:
 %s
 
+Important category distinction rules:
+- Use "dam" only for a one-piece garment that combines the upper and lower body into a single piece, such as a dress or váy liền thân.
+- Use "chan-vay" only for a separate lower-body garment that covers the waist-to-leg area and must be paired with a separate top.
+- If the garment is clearly only the lower half, prioritize "chan-vay".
+- If the garment is clearly a single one-piece dress from upper body down to lower body, prioritize "dam".
+
 If the image does not contain any fashion, apparel, clothing, footwear, or accessory item, you MUST return a JSON containing ONLY:
 {
   "error": "No fashion item detected"

@@ -48,6 +48,18 @@ func (r *CategoryRepository) GetByName(ctx context.Context, name string) (*entit
 	return &category, nil
 }
 
+func (r *CategoryRepository) GetAll(ctx context.Context) ([]*entities.Category, error) {
+	var categories []*entities.Category
+	err := r.GetDB(ctx).
+		Order("sort_order ASC").
+		Order("name ASC").
+		Find(&categories).Error
+	if err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
 func (r *CategoryRepository) CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, kind itemtype.ItemType) (int64, error) {
 	var count int64
 	err := r.GetDB(ctx).

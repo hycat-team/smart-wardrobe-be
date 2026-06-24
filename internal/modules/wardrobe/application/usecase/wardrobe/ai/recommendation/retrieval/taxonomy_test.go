@@ -29,3 +29,26 @@ func TestTaxonomyExpansionDoesNotGenerateTermsOutsideAllowlist(t *testing.T) {
 		}
 	}
 }
+
+func TestRecommendationCategoryTaxonomyIncludesDamAndChanVay(t *testing.T) {
+	slugs := RecommendationAllowedCategorySlugs()
+	if !containsString(slugs, "dam") {
+		t.Fatalf("expected dam in allowlist, got %v", slugs)
+	}
+	if !containsString(slugs, "chan-vay") {
+		t.Fatalf("expected chan-vay in allowlist, got %v", slugs)
+	}
+	if containsString(slugs, "vay") {
+		t.Fatalf("did not expect legacy vay in allowlist, got %v", slugs)
+	}
+
+	damTerms := ExpandTaxonomyTermValues(taxonomyGroupCategory, []string{"dam"})
+	if !containsString(damTerms, "dress") {
+		t.Fatalf("expected dress synonym for dam, got %v", damTerms)
+	}
+
+	skirtTerms := ExpandTaxonomyTermValues(taxonomyGroupCategory, []string{"chan-vay"})
+	if !containsString(skirtTerms, "skirt") {
+		t.Fatalf("expected skirt synonym for chan-vay, got %v", skirtTerms)
+	}
+}

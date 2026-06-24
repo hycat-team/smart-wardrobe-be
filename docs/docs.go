@@ -5002,6 +5002,9 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
                 }
             }
         },
@@ -5072,6 +5075,10 @@ const docTemplate = `{
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -5410,6 +5417,10 @@ const docTemplate = `{
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },

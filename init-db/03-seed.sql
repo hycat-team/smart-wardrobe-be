@@ -17,9 +17,10 @@ VALUES
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a03', 'Mũ', 'mu'),
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a04', 'Giày', 'giay'),
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a05', 'Phụ kiện', 'phu-kien'),
-    ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a06', 'Váy', 'vay'),
+    ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a06', 'Đầm', 'dam'),
     ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a07', 'Áo khoác', 'ao-khoac'),
-    ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a08', 'Khác', 'other')
+    ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a08', 'Khác', 'other'),
+    ('8b7eb3de-2661-46ab-ae7d-b57bfd2d2a09', 'Chân váy', 'chan-vay')
 ON CONFLICT (id) DO NOTHING;
 
 -- Chèn tài khoản Admin hệ thống mặc định (password: admin123)

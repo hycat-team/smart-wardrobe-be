@@ -11,9 +11,10 @@ func MapToCategoryRes(category *entities.Category) *dto.CategoryRes {
 	}
 
 	return &dto.CategoryRes{
-		ID:   category.ID,
-		Name: category.Name,
-		Slug: category.Slug,
+		ID:        category.ID,
+		Name:      category.Name,
+		Slug:      category.Slug,
+		SortOrder: category.SortOrder,
 	}
 }
 

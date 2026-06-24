@@ -96,6 +96,10 @@ func ErrCategorySlugAlreadyExists() *apperror.Error {
 	return apperror.NewConflict("Slug danh mục đã tồn tại trong hệ thống.")
 }
 
+func ErrCategoryLegacySlugForbidden() *apperror.Error {
+	return apperror.NewBadRequest("Slug danh mục 'vay' đã ngừng hỗ trợ. Vui lòng dùng 'dam' hoặc 'chan-vay'.")
+}
+
 func ErrCategoryOtherImmutable() *apperror.Error {
 	return apperror.NewBadRequest("Không thể xóa danh mục hệ thống 'other'.")
 }

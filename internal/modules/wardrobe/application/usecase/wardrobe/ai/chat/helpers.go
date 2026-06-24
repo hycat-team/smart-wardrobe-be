@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
-var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|dam|giay|ao-khoac|ao khoac|do cua|mac|phoi|style|gu|mac gi|goi y|bo do|do)\b`)
+var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|giay|ao-khoac|ao khoac|do cua|mac|phoi|style|gu|mac gi|goi y|bo do|do)\b`)
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.

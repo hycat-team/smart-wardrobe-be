@@ -69,7 +69,7 @@ func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
 // RunLocalHSLMatching thực hiện thuật toán so khớp màu sắc HSL cục bộ để tạo ra một gợi ý phối đồ dự phòng (fallback) khi AI bị lỗi.
 //
 // Hành vi:
-//  1. Phân loại các món đồ ứng viên thành các nhóm danh mục: Áo (tops), Quần (bottoms), Giày (shoes), Áo khoác (outerwears), Váy (dresses), Phụ kiện (accessories).
+//  1. Phân loại các món đồ ứng viên thành các nhóm danh mục: Áo (tops), Quần và chân váy (bottoms), Giày (shoes), Áo khoác (outerwears), Đầm (dresses), Phụ kiện (accessories).
 //  2. Xác định thời tiết có lạnh hay mưa không dựa trên thông tin đầu vào.
 //  3. Nếu có váy và giày, chọn váy làm món đồ chính, sau đó duyệt danh sách giày để tìm đôi giày có màu phối hợp tốt nhất qua [colorsMatch].
 //  4. Nếu có áo và quần, duyệt tìm cặp áo và quần đầu tiên phối hợp màu sắc hài hòa nhất làm đồ chính. Sau đó tìm giày và áo khoác (nếu trời lạnh) có màu hợp với áo hoặc quần chính.
@@ -100,13 +100,13 @@ func RunLocalHSLMatching(
 		switch item.Category.Slug {
 		case "ao":
 			tops = append(tops, item)
-		case "quan":
+		case "quan", "chan-vay":
 			bottoms = append(bottoms, item)
 		case "giay":
 			shoes = append(shoes, item)
 		case "ao-khoac":
 			outerwears = append(outerwears, item)
-		case "vay":
+		case "dam":
 			dresses = append(dresses, item)
 		default:
 			accessories = append(accessories, item)
@@ -137,7 +137,7 @@ func RunLocalHSLMatching(
 			}
 		}
 
-		items = append(items, buildItemGroup("vay", primaryDress, dresses))
+		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam"), primaryDress, dresses))
 		items = append(items, buildItemGroup("giay", primaryShoes, shoes))
 
 		if isCold && len(outerwears) > 0 {
@@ -148,7 +148,7 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup("ao-khoac", primaryOuter, outerwears))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears))
 		}
 	} else if len(tops) > 0 && len(bottoms) > 0 {
 		primaryTop, primaryBottom := tops[0], bottoms[0]
@@ -168,7 +168,7 @@ func RunLocalHSLMatching(
 		}
 
 		items = append(items, buildItemGroup("ao", primaryTop, tops))
-		items = append(items, buildItemGroup("quan", primaryBottom, bottoms))
+		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan"), primaryBottom, bottoms))
 
 		if len(shoes) > 0 {
 			primaryShoes := shoes[0]
@@ -178,7 +178,7 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup("giay", primaryShoes, shoes))
+			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay"), primaryShoes, shoes))
 		}
 
 		if isCold && len(outerwears) > 0 {
@@ -189,21 +189,21 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup("ao-khoac", primaryOuter, outerwears))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears))
 		}
 	} else {
 		if len(dresses) > 0 {
-			items = append(items, buildItemGroup("vay", dresses[0], dresses))
+			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam"), dresses[0], dresses))
 		} else {
 			if len(tops) > 0 {
-				items = append(items, buildItemGroup("ao", tops[0], tops))
+				items = append(items, buildItemGroup(roleForItem(tops[0], "ao"), tops[0], tops))
 			}
 			if len(bottoms) > 0 {
-				items = append(items, buildItemGroup("quan", bottoms[0], bottoms))
+				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan"), bottoms[0], bottoms))
 			}
 		}
 		if len(shoes) > 0 {
-			items = append(items, buildItemGroup("giay", shoes[0], shoes))
+			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay"), shoes[0], shoes))
 		}
 	}
 
@@ -242,4 +242,11 @@ func buildItemGroup(
 		Primary:      mapper.MapToWardrobeItemRes(primary),
 		Alternatives: alternatives,
 	}
+}
+
+func roleForItem(item *entities.WardrobeItem, fallback string) string {
+	if item != nil && item.Category != nil && item.Category.Slug != "" {
+		return item.Category.Slug
+	}
+	return fallback
 }

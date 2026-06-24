@@ -58,7 +58,7 @@ func (uc *CategoryUseCase) GetCategoryByID(ctx context.Context, id uuid.UUID) (*
 }
 
 func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateCategoryReq) (*dto.CategoryRes, error) {
-	category, err := uc.prepareCategoryEntity(ctx, nil, input.Name, input.Slug)
+	category, err := uc.prepareCategoryEntity(ctx, nil, input.Name, input.Slug, input.SortOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
-	category, err := uc.prepareCategoryEntity(ctx, current, input.Name, input.Slug)
+	category, err := uc.prepareCategoryEntity(ctx, current, input.Name, input.Slug, input.SortOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +133,12 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 	})
 }
 
-func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *entities.Category, name string, slug string) (*entities.Category, error) {
+func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *entities.Category, name string, slug string, sortOrder *int) (*entities.Category, error) {
 	normalizedName := strings.TrimSpace(name)
 	normalizedSlug := normalizeCategorySlug(slug)
+	if normalizedSlug == "vay" {
+		return nil, wardrobeerrors.ErrCategoryLegacySlugForbidden()
+	}
 
 	existingByName, err := uc.categoryRepo.GetByName(ctx, normalizedName)
 	if err != nil {
@@ -154,14 +157,22 @@ func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *e
 	}
 
 	if current == nil {
+		normalizedSortOrder := 0
+		if sortOrder != nil {
+			normalizedSortOrder = *sortOrder
+		}
 		return &entities.Category{
-			Name: normalizedName,
-			Slug: normalizedSlug,
+			Name:      normalizedName,
+			Slug:      normalizedSlug,
+			SortOrder: normalizedSortOrder,
 		}, nil
 	}
 
 	current.Name = normalizedName
 	current.Slug = normalizedSlug
+	if sortOrder != nil {
+		current.SortOrder = *sortOrder
+	}
 	return current, nil
 }
 

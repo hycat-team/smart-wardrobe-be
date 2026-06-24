@@ -4994,6 +4994,9 @@
                 },
                 "slug": {
                     "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
                 }
             }
         },
@@ -5064,6 +5067,10 @@
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -5402,6 +5409,10 @@
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
