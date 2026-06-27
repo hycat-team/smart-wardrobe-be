@@ -100,6 +100,10 @@ func ErrSubscriptionExpiredAutoRenew() *apperror.Error {
 	return apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
 }
 
+func ErrSubscriptionPlanNotFinite() *apperror.Error {
+	return apperror.NewBadRequest("Chỉ gói hội viên có thời hạn mới có thể thiết lập tự động gia hạn.")
+}
+
 func ErrSubscriptionPlanNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy thông tin gói hội viên.")
 }

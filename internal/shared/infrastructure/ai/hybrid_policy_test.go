@@ -99,7 +99,7 @@ func TestHybridPolicyIntegration(t *testing.T) {
 		},
 	}
 	estimator := NewLocalTokenEstimator(4.0, 1.25)
-	
+
 	t.Run("Fast path - Under threshold", func(t *testing.T) {
 		policy := &MockCostPolicy{
 			PrepareFunc: func(ctx context.Context, userID uuid.UUID, operation string, meta contract.AITokenEstimationMeta) (*contract.AICostDecision, error) {

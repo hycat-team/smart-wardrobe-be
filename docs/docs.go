@@ -1796,6 +1796,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/wardrobe-items/stats": {
+            "get": {
+                "description": "Trả về số lượng active items và outfits đã lưu của user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Lấy số liệu thống kê tủ đồ",
+                "responses": {
+                    "200": {
+                        "description": "Lấy số liệu thống kê tủ đồ thành công",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/outfits": {
             "post": {
                 "description": "Lưu bộ phối đồ tự thiết kế cùng danh sách trang phục kèm tọa độ kéo thả 2D và layer order.",
@@ -4348,7 +4368,6 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq": {
             "type": "object",
             "required": [
-                "address",
                 "confirmPassword",
                 "dateOfBirth",
                 "email",

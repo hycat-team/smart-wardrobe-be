@@ -445,7 +445,6 @@ definitions:
       username:
         type: string
     required:
-    - address
     - confirmPassword
     - dateOfBirth
     - email
@@ -2622,6 +2621,19 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_WardrobeItemRes'
               type: object
       summary: Lấy danh sách trang phục
+      tags:
+      - Wardrobe
+  /api/v1/me/wardrobe-items/stats:
+    get:
+      description: Trả về số lượng active items và outfits đã lưu của user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy số liệu thống kê tủ đồ thành công
+          schema:
+            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+      summary: Lấy số liệu thống kê tủ đồ
       tags:
       - Wardrobe
   /api/v1/outfits:

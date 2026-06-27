@@ -31,6 +31,7 @@ type WardrobeItemUseCase struct {
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	categoryRepo    repositories.ICategoryRepository
+	outfitRepo      repositories.IOutfitRepository
 	searchEngine    search.IWardrobeSearchService
 	mediaService    media.IMediaService
 	aiService       ai.IAIService
@@ -43,6 +44,7 @@ func NewWardrobeItemUseCase(
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	categoryRepo repositories.ICategoryRepository,
+	outfitRepo repositories.IOutfitRepository,
 	searchEngine search.IWardrobeSearchService,
 	mediaService media.IMediaService,
 	aiService ai.IAIService,
@@ -54,6 +56,7 @@ func NewWardrobeItemUseCase(
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
 		categoryRepo:    categoryRepo,
+		outfitRepo:      outfitRepo,
 		searchEngine:    searchEngine,
 		mediaService:    mediaService,
 		aiService:       aiService,
@@ -245,4 +248,21 @@ func resolveWardrobeStatusFilter(status string) ([]wardrobestatus.WardrobeItemSt
 	default:
 		return nil, wardrobeerrors.ErrInvalidWardrobeStatusFilter()
 	}
+}
+
+func (uc *WardrobeItemUseCase) GetWardrobeStats(ctx context.Context, userID uuid.UUID) (*dto.WardrobeStatsRes, error) {
+	itemsCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	outfitsCount, err := uc.outfitRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.WardrobeStatsRes{
+		ActiveItemsCount: int(itemsCount),
+		OutfitsCount:     int(outfitsCount),
+	}, nil
 }

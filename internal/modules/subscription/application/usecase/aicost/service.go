@@ -71,26 +71,26 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 	requestID := uuid.New()
 	pricingVersion := s.cfg.AI.Pricing.Version
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
-	
+
 	event := &entities.AIUsageEvent{
-		RequestID:                requestID, 
-		UserID:                   userID, 
-		Operation:                operation, 
-		LogicalRoute:             route, 
-		PricingVersion:           &pricingVersion, 
-		InputUSDPerMillion:       &inputRate, 
-		OutputUSDPerMillion:      &outputRate, 
-		USDToVND:                 &fx, 
+		RequestID:                requestID,
+		UserID:                   userID,
+		Operation:                operation,
+		LogicalRoute:             route,
+		PricingVersion:           &pricingVersion,
+		InputUSDPerMillion:       &inputRate,
+		OutputUSDPerMillion:      &outputRate,
+		USDToVND:                 &fx,
 		PromptTokens:             0, // updates to actual tokens on Confirm()
 		EstimatedPromptTokens:    &meta.EstimatedPromptTokens,
 		TokenEstimationMethod:    &meta.TokenEstimationMethod,
 		TokenCountLatencyMs:      meta.TokenCountLatencyMs,
-		ReservedCostMicroVND:     reserve, 
-		EstimatedMaxCostMicroVND: reserve, 
-		Status:                   "RESERVED", 
+		ReservedCostMicroVND:     reserve,
+		EstimatedMaxCostMicroVND: reserve,
+		Status:                   "RESERVED",
 		UnknownExpiresAt:         &unknownExpires,
 	}
-	
+
 	ledger, admitted, err := s.repo.Reserve(ctx, grant, policy, op, event, now)
 	if err != nil {
 		return nil, err

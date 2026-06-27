@@ -58,7 +58,7 @@ func (e *LocalTokenEstimator) EstimateFromText(texts ...string) int64 {
 
 	rawEstimate := (float64(totalRunes) / e.charsPerToken) * e.localSafetyMultiplier
 	ceilValue := math.Ceil(rawEstimate)
-	
+
 	if ceilValue >= float64(math.MaxInt64) {
 		return math.MaxInt64
 	}

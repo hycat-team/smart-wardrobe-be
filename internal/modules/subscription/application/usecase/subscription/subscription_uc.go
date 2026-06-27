@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
@@ -98,6 +99,10 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 			return nil
 		}
 
+		if sub.CurrentPlanKind != plankind.Finite {
+			return subscriptionerrors.ErrSubscriptionPlanNotFinite()
+		}
+
 		subEvent, err := sub.SetAutoRenew(enable, "", now)
 		if err != nil {
 			return err
@@ -133,7 +138,6 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 	if err != nil {
 		return nil, err
 	}
-
 	plan, err := uc.stateSupport.LoadPlanForSubscription(ctx, sub)
 	if err != nil {
 		return nil, err

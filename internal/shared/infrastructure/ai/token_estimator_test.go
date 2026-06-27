@@ -51,7 +51,7 @@ func TestLocalTokenEstimator(t *testing.T) {
 		{
 			name:     "Integer overflow protection",
 			input:    []string{string(make([]rune, 1000000))}, // Large array of runes to check scaling
-			expected: 312500, // 1000000/4 * 1.25 = 312500
+			expected: 312500,                                  // 1000000/4 * 1.25 = 312500
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestLocalTokenEstimator(t *testing.T) {
 
 func TestLocalTokenEstimator_Overflow(t *testing.T) {
 	estimator := NewLocalTokenEstimator(4.0, 1.25)
-	
+
 	// Create mock large string slices that trigger internal protection
 	actual := estimator.EstimateFromText("some text", string(make([]rune, math.MaxInt16)))
 	if actual <= 0 {

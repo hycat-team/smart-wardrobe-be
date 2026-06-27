@@ -21,10 +21,10 @@ import (
 )
 
 var (
-	ErrCountTokensUnavailable    = errors.New("provider count tokens service unavailable")
-	ErrCountTokensInvalidRequest = errors.New("provider count tokens invalid request")
-	ErrCountTokensAuthFailed     = errors.New("provider count tokens auth failed")
-	ErrCountTokensModelNotFound  = errors.New("provider count tokens model not found")
+	ErrCountTokensUnavailable     = errors.New("provider count tokens service unavailable")
+	ErrCountTokensInvalidRequest  = errors.New("provider count tokens invalid request")
+	ErrCountTokensAuthFailed      = errors.New("provider count tokens auth failed")
+	ErrCountTokensModelNotFound   = errors.New("provider count tokens model not found")
 	ErrCountTokensInvalidResponse = errors.New("provider count tokens invalid response")
 )
 
@@ -72,14 +72,14 @@ func CountGoogleTokensByRequest(
 	req PreparedGeminiRequest,
 ) (int64, time.Duration, error) {
 	parentCtx := ctx
-	
+
 	timeout := 1500 * time.Millisecond
 	if cfg != nil {
 		if cfg.AI.TokenEstimation.CountTokensTimeout > 0 {
 			timeout = cfg.AI.TokenEstimation.CountTokensTimeout
 		}
 	}
-	
+
 	countCtx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
@@ -99,11 +99,11 @@ func CountGoogleTokensByRequest(
 		var elapsed time.Duration
 		count, elapsed, err = doCountTokens(countCtx, client, provider, model, body)
 		totalElapsed += elapsed
-		
+
 		if err == nil {
 			return count, totalElapsed, nil
 		}
-		
+
 		if !isRetryableCountTokensError(err) {
 			break
 		}

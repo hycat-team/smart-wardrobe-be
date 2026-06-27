@@ -53,43 +53,43 @@ type APIProviderConfig struct {
 }
 
 type AIServiceConfig struct {
-	VisionPrimary                          APIProviderConfig `mapstructure:"vision_primary"`
-	VisionFallback                         APIProviderConfig `mapstructure:"vision_fallback"`
-	EmbeddingPrimary                       APIProviderConfig `mapstructure:"embedding_primary"`
-	EmbeddingFallback                      APIProviderConfig `mapstructure:"embedding_fallback"`
-	ChatTextPrimary                        APIProviderConfig `mapstructure:"chat_text_primary"`
-	ChatTextFallback                       APIProviderConfig `mapstructure:"chat_text_fallback"`
-	RecommendationTextPrimary              APIProviderConfig `mapstructure:"recommendation_text_primary"`
-	RecommendationTextFallback             APIProviderConfig `mapstructure:"recommendation_text_fallback"`
-	ChatTextTimeoutSeconds                 int               `mapstructure:"chat_text_timeout_seconds"`
-	RecommendationTextTimeoutSeconds       int               `mapstructure:"recommendation_text_timeout_seconds"`
-	VisionTimeoutSeconds                   int               `mapstructure:"vision_timeout_seconds"`
-	EmbeddingTimeoutSeconds                int               `mapstructure:"embedding_timeout_seconds"`
-	ChatTextRPMLimit                       int               `mapstructure:"chat_text_rpm_limit"`
-	RecommendationTextRPMLimit             int               `mapstructure:"recommendation_text_rpm_limit"`
-	VisionRPMLimit                         int               `mapstructure:"vision_rpm_limit"`
-	EmbeddingRPMLimit                      int               `mapstructure:"embedding_rpm_limit"`
-	ChatMaxInputCharacters                 int               `mapstructure:"chat_max_input_characters"`
-	ChatHistoryMessageMaxCharacters        int               `mapstructure:"chat_history_message_max_characters"`
-	ChatMaxOutputTokens                    int               `mapstructure:"chat_max_output_tokens"`
-	SummarySourceMaxCharacters             int               `mapstructure:"summary_source_max_characters"`
-	SummaryPreviousMaxCharacters           int               `mapstructure:"summary_previous_max_characters"`
-	SummaryMaxOutputTokens                 int               `mapstructure:"summary_max_output_tokens"`
-	RewriterPromptMaxCharacters            int               `mapstructure:"rewriter_prompt_max_characters"`
-	RewriterMaxOutputTokens                int               `mapstructure:"rewriter_max_output_tokens"`
-	RecommendationDetailsMaxCharacters     int               `mapstructure:"recommendation_details_max_characters"`
-	RecommendationPromptCandidateLimit     int               `mapstructure:"recommendation_prompt_candidate_limit"`
-	RecommendationDescriptionMaxCharacters int               `mapstructure:"recommendation_description_max_characters"`
-	RecommendationTagsLimit                int               `mapstructure:"recommendation_tags_limit"`
-	RecommendationPromptMaxCharacters      int               `mapstructure:"recommendation_prompt_max_characters"`
-	RecommendationMaxOutputTokens          int               `mapstructure:"recommendation_max_output_tokens"`
-	FreeTextPrimary                        APIProviderConfig `mapstructure:"free_text_primary"`
-	FreeTextFallback                       APIProviderConfig `mapstructure:"free_text_fallback"`
-	FreeTextTimeoutSeconds                 int               `mapstructure:"free_text_timeout_seconds"`
-	FreeTextRPMLimit                       int               `mapstructure:"free_text_rpm_limit"`
-	Pricing                                AIPricingConfig   `mapstructure:"pricing"`
-	UsageReconcileCron                     string            `mapstructure:"usage_reconcile_cron"`
-	UsageReconcileBatchSize                int               `mapstructure:"usage_reconcile_batch_size"`
+	VisionPrimary                          APIProviderConfig     `mapstructure:"vision_primary"`
+	VisionFallback                         APIProviderConfig     `mapstructure:"vision_fallback"`
+	EmbeddingPrimary                       APIProviderConfig     `mapstructure:"embedding_primary"`
+	EmbeddingFallback                      APIProviderConfig     `mapstructure:"embedding_fallback"`
+	ChatTextPrimary                        APIProviderConfig     `mapstructure:"chat_text_primary"`
+	ChatTextFallback                       APIProviderConfig     `mapstructure:"chat_text_fallback"`
+	RecommendationTextPrimary              APIProviderConfig     `mapstructure:"recommendation_text_primary"`
+	RecommendationTextFallback             APIProviderConfig     `mapstructure:"recommendation_text_fallback"`
+	ChatTextTimeoutSeconds                 int                   `mapstructure:"chat_text_timeout_seconds"`
+	RecommendationTextTimeoutSeconds       int                   `mapstructure:"recommendation_text_timeout_seconds"`
+	VisionTimeoutSeconds                   int                   `mapstructure:"vision_timeout_seconds"`
+	EmbeddingTimeoutSeconds                int                   `mapstructure:"embedding_timeout_seconds"`
+	ChatTextRPMLimit                       int                   `mapstructure:"chat_text_rpm_limit"`
+	RecommendationTextRPMLimit             int                   `mapstructure:"recommendation_text_rpm_limit"`
+	VisionRPMLimit                         int                   `mapstructure:"vision_rpm_limit"`
+	EmbeddingRPMLimit                      int                   `mapstructure:"embedding_rpm_limit"`
+	ChatMaxInputCharacters                 int                   `mapstructure:"chat_max_input_characters"`
+	ChatHistoryMessageMaxCharacters        int                   `mapstructure:"chat_history_message_max_characters"`
+	ChatMaxOutputTokens                    int                   `mapstructure:"chat_max_output_tokens"`
+	SummarySourceMaxCharacters             int                   `mapstructure:"summary_source_max_characters"`
+	SummaryPreviousMaxCharacters           int                   `mapstructure:"summary_previous_max_characters"`
+	SummaryMaxOutputTokens                 int                   `mapstructure:"summary_max_output_tokens"`
+	RewriterPromptMaxCharacters            int                   `mapstructure:"rewriter_prompt_max_characters"`
+	RewriterMaxOutputTokens                int                   `mapstructure:"rewriter_max_output_tokens"`
+	RecommendationDetailsMaxCharacters     int                   `mapstructure:"recommendation_details_max_characters"`
+	RecommendationPromptCandidateLimit     int                   `mapstructure:"recommendation_prompt_candidate_limit"`
+	RecommendationDescriptionMaxCharacters int                   `mapstructure:"recommendation_description_max_characters"`
+	RecommendationTagsLimit                int                   `mapstructure:"recommendation_tags_limit"`
+	RecommendationPromptMaxCharacters      int                   `mapstructure:"recommendation_prompt_max_characters"`
+	RecommendationMaxOutputTokens          int                   `mapstructure:"recommendation_max_output_tokens"`
+	FreeTextPrimary                        APIProviderConfig     `mapstructure:"free_text_primary"`
+	FreeTextFallback                       APIProviderConfig     `mapstructure:"free_text_fallback"`
+	FreeTextTimeoutSeconds                 int                   `mapstructure:"free_text_timeout_seconds"`
+	FreeTextRPMLimit                       int                   `mapstructure:"free_text_rpm_limit"`
+	Pricing                                AIPricingConfig       `mapstructure:"pricing"`
+	UsageReconcileCron                     string                `mapstructure:"usage_reconcile_cron"`
+	UsageReconcileBatchSize                int                   `mapstructure:"usage_reconcile_batch_size"`
 	TokenEstimation                        TokenEstimationConfig `mapstructure:"token_estimation"`
 }
 
@@ -227,4 +227,3 @@ type TokenEstimationConfig struct {
 	CountTokensThresholdRatio float64       `mapstructure:"count_tokens_threshold_ratio"`
 	CountTokensTimeout        time.Duration `mapstructure:"count_tokens_timeout"`
 }
-

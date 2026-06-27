@@ -430,3 +430,25 @@ func (h *WardrobeItemHandler) DeleteLockedWardrobeItems(c *gin.Context) error {
 	shared_pres.Success(c, msgWardrobeDeleteLockedItemsSuccess, nil)
 	return nil
 }
+
+// GetWardrobeStats retrieves total items and outfits count for the logged-in user
+// @Summary Lấy số liệu thống kê tủ đồ
+// @Description Trả về số lượng active items và outfits đã lưu của user
+// @Tags Wardrobe
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse "Lấy số liệu thống kê tủ đồ thành công"
+// @Router /api/v1/me/wardrobe-items/stats [get]
+func (h *WardrobeItemHandler) GetWardrobeStats(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	stats, err := h.itemUseCase.GetWardrobeStats(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	shared_pres.Success(c, "Lấy số liệu thống kê tủ đồ thành công", stats)
+	return nil
+}

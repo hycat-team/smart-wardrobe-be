@@ -21,6 +21,7 @@ type IWardrobeItemUseCase interface {
 	DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 	DeleteLockedWardrobeItems(ctx context.Context, userID uuid.UUID) error
 	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error)
+	GetWardrobeStats(ctx context.Context, userID uuid.UUID) (*dto.WardrobeStatsRes, error)
 }
 
 type IOutfitRecommendationUseCase interface {

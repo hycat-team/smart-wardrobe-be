@@ -108,6 +108,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iAdminCommunityModerationUseCase := admin_moderation.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeContract, iUnitOfWork)
 	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
 	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
+	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
 	iaiCostRepository := persistence2.NewAICostRepository(gormDB)
@@ -118,7 +119,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	if err != nil {
 		return nil, nil, err
 	}
-	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
+	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
 	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient)
 	visionCategoryCache := worker.NewVisionCategoryCache(cfg, iCategoryRepository, l)
 	iWardrobeWorkerUseCase := worker.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
@@ -152,7 +153,6 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeChatUseCase := chat.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
 	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
 	wardrobeRouter := wardrobe.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
-	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
 	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)

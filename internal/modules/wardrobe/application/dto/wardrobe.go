@@ -195,3 +195,8 @@ type UpdateSystemCatalogItemReq struct {
 type BulkDeleteItemsReq struct {
 	IDs []uuid.UUID `json:"ids" binding:"required,min=1"`
 }
+
+type WardrobeStatsRes struct {
+	ActiveItemsCount int `json:"activeItemsCount"`
+	OutfitsCount     int `json:"outfitsCount"`
+}

@@ -59,5 +59,6 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	meApi := privateApi.Group("/me/wardrobe-items")
 	{
 		meApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItems))
+		meApi.GET("/stats", shared_pres.WrapHandler(r.itemHandler.GetWardrobeStats))
 	}
 }
