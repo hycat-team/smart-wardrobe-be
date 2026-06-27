@@ -92,8 +92,8 @@ services:
     elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
         restart: always
-        mem_limit: 1g
-        memswap_limit: 1g
+        mem_limit: 1280m
+        memswap_limit: 1280m
         mem_swappiness: 0
         environment:
             discovery.type: single-node

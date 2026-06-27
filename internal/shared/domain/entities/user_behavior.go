@@ -13,8 +13,8 @@ func (u *User) UpdateProfile(firstName string, lastName *string, dateOfBirth tim
 	u.Gender = &gen
 }
 
-func (u *User) ChangeAddress(newAddress string) {
-	u.Address = &newAddress
+func (u *User) ChangeAddress(newAddress *string) {
+	u.Address = newAddress
 }
 
 func (u *User) ChangePasswordHash(newPasswordHash string) {

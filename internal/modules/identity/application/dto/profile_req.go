@@ -10,7 +10,7 @@ type UpdateProfileReq struct {
 	LastName    *string        `json:"lastName" binding:"omitempty" label:"họ"`
 	DateOfBirth string         `json:"dateOfBirth" binding:"omitempty,datetime=2006-01-02" label:"ngày sinh"`
 	Gender      *gender.Gender `json:"gender" binding:"omitempty,oneof=0 1 2 3" label:"giới tính"`
-	Address     string         `json:"address" binding:"omitempty" label:"địa chỉ"`
+	Address     *string        `json:"address" binding:"omitempty" label:"địa chỉ"`
 }
 
 type UpdateBodyProfileReq struct {

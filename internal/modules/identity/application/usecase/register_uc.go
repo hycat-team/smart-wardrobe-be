@@ -101,7 +101,7 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		PasswordHash: hashedPass,
 		FirstName:    input.FirstName,
 		LastName:     stringutils.GetString(input.LastName),
-		Address:      input.Address,
+		Address:      stringutils.GetString(input.Address),
 		DateOfBirth:  input.DateOfBirth,
 		Gender:       genVal,
 	}

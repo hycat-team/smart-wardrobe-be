@@ -9,7 +9,7 @@ type RegisterReq struct {
 	ConfirmPassword string         `json:"confirmPassword" binding:"required,eqfield=Password" label:"xác nhận mật khẩu"`
 	FirstName       string         `json:"firstName" binding:"required" label:"tên"`
 	LastName        *string        `json:"lastName" binding:"omitempty" label:"họ"`
-	Address         string         `json:"address" binding:"required" label:"địa chỉ"`
+	Address         *string        `json:"address" binding:"omitempty" label:"địa chỉ"`
 	DateOfBirth     string         `json:"dateOfBirth" binding:"required,datetime=2006-01-02" label:"ngày sinh"`
 	Gender          *gender.Gender `json:"gender" binding:"omitempty,oneof=0 1 2 3" label:"giới tính"`
 }
