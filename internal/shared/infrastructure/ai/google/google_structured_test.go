@@ -1,4 +1,4 @@
-package ai
+package google
 
 import (
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
@@ -7,7 +7,7 @@ import (
 
 func TestGoogleGenerationConfigIncludesStructuredOutput(t *testing.T) {
 	schema := map[string]any{"type": "OBJECT"}
-	cfg := googleGenerationConfig(app_ai.TextGenerationOptions{MaxOutputTokens: 400, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: schema})
+	cfg := GoogleGenerationConfig(app_ai.TextGenerationOptions{MaxOutputTokens: 400, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: schema})
 	if cfg["maxOutputTokens"] != 400 {
 		t.Fatal("missing output cap")
 	}

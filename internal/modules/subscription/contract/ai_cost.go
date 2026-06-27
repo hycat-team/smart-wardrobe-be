@@ -15,7 +15,16 @@ const (
 	AIRoutePaid         = "paid"
 	AIRouteFree         = "free"
 	AIRouteLocal        = "local"
+
+	TokenEstimationLocal         = "LOCAL"
+	TokenEstimationProviderCount = "PROVIDER_COUNT"
 )
+
+type AITokenEstimationMeta struct {
+	EstimatedPromptTokens int64  // Total input tokens estimated or provider-counted during preflight
+	TokenEstimationMethod string // Method used: 'LOCAL' or 'PROVIDER_COUNT'
+	TokenCountLatencyMs   *int64 // Latency of countTokens call in ms. nil for local path.
+}
 
 type AICostDecision struct {
 	RequestID       uuid.UUID
@@ -35,7 +44,7 @@ type AIUsage struct {
 }
 
 type IAICostPolicyContract interface {
-	Prepare(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64) (*AICostDecision, error)
+	Prepare(ctx context.Context, userID uuid.UUID, operation string, meta AITokenEstimationMeta) (*AICostDecision, error)
 	PrepareFree(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64, maxOutputTokens int) (*AICostDecision, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID) error
 	Confirm(ctx context.Context, requestID uuid.UUID, usage AIUsage) error

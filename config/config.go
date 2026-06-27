@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type Config struct {
 	Database      Database           `mapstructure:"database"`
 	Redis         Redis              `mapstructure:"redis"`
@@ -88,6 +90,7 @@ type AIServiceConfig struct {
 	Pricing                                AIPricingConfig   `mapstructure:"pricing"`
 	UsageReconcileCron                     string            `mapstructure:"usage_reconcile_cron"`
 	UsageReconcileBatchSize                int               `mapstructure:"usage_reconcile_batch_size"`
+	TokenEstimation                        TokenEstimationConfig `mapstructure:"token_estimation"`
 }
 
 type AIPricingConfig struct {
@@ -217,3 +220,11 @@ type RAG struct {
 	RecommendationRewriterMaxLexicalTerms   int  `mapstructure:"recommendation_rewriter_max_lexical_terms"`
 	RecommendationRewriterMaxExcludedTerms  int  `mapstructure:"recommendation_rewriter_max_excluded_terms"`
 }
+
+type TokenEstimationConfig struct {
+	CharsPerToken             float64       `mapstructure:"chars_per_token"`
+	LocalSafetyMultiplier     float64       `mapstructure:"local_safety_multiplier"`
+	CountTokensThresholdRatio float64       `mapstructure:"count_tokens_threshold_ratio"`
+	CountTokensTimeout        time.Duration `mapstructure:"count_tokens_timeout"`
+}
+

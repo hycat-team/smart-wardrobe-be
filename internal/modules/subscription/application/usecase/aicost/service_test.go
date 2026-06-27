@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"testing"
@@ -39,7 +40,12 @@ func TestPremiumOutfitReservationUsesConfiguredDecimalPricing(t *testing.T) {
 	repo := &fakeCostRepo{grant: &entities.UserAIPolicyGrant{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, UserID: uuid.New()}, policy: &entities.AICostPolicy{HardCostMicroVND: &hard, EnforcementMode: "STRICT", PeriodDays: 30, FreeRouteThresholdBPS: 9200, CompactThresholdBPS: 8000, MaxUnknownPaidRequestsPerDay: 2}, op: &entities.AICostPolicyOperation{Operation: "outfit", NormalRoute: "paid", FreeRoute: "free", NormalMaxInputTokens: 7000, NormalMaxOutputTokens: 400, ReducedMaxInputTokens: 5500, ReducedMaxOutputTokens: 350}}
 	cfg := &config.Config{AI: config.AIServiceConfig{Pricing: config.AIPricingConfig{Version: "v1", USDToVND: "27000", Paid: config.AIModelPricingConfig{InputUSDPerMillionTokens: "0.10", OutputUSDPerMillionTokens: "0.40"}}}}
 	service := NewService(repo, cfg)
-	decision, err := service.Prepare(context.Background(), repo.grant.UserID, "outfit", 7000)
+	meta := contract.AITokenEstimationMeta{
+		EstimatedPromptTokens: 7000,
+		TokenEstimationMethod: contract.TokenEstimationLocal,
+		TokenCountLatencyMs:   nil,
+	}
+	decision, err := service.Prepare(context.Background(), repo.grant.UserID, "outfit", meta)
 	if err != nil {
 		t.Fatal(err)
 	}

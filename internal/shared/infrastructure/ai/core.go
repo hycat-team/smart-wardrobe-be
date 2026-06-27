@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
+	"smart-wardrobe-be/internal/shared/infrastructure/ai/openai"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
@@ -35,10 +38,11 @@ type AIService struct {
 	embeddingLimiter          *rate.Limiter
 	freeTextLimiter           *rate.Limiter
 	costPolicy                contract.IAICostPolicyContract
+	estimator                 *LocalTokenEstimator
 	logger                    logger.Interface
 }
 
-func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contract.IAICostPolicyContract) app_ai.IAIService {
+func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contract.IAICostPolicyContract, estimator *LocalTokenEstimator) app_ai.IAIService {
 	return &AIService{
 		cfg: cfg,
 		chatTextClient: &http.Client{
@@ -60,6 +64,7 @@ func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contra
 		embeddingLimiter:          newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
 		freeTextLimiter:           newRPMLimiter(cfg.AI.FreeTextRPMLimit, 5),
 		costPolicy:                costPolicy,
+		estimator:                 estimator,
 		logger:                    logger,
 	}
 }
@@ -234,6 +239,16 @@ func (s *AIService) finalizeProviderError(ctx context.Context, id uuid.UUID, err
 	_ = s.costPolicy.MarkUnknown(ctx, id, "provider_error")
 }
 
+func mapCountTokensError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, google.ErrCountTokensUnavailable) {
+		return apperror.NewTooManyRequest("Dịch vụ phân tích dữ liệu AI đang tạm thời bận. Vui lòng thử lại sau.")
+	}
+	return apperror.NewInternalError("Không thể hoàn tất phân tích dữ liệu AI lúc này.")
+}
+
 func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, defaultOperation string) (config.APIProviderConfig, *http.Client, *rate.Limiter, app_ai.TextGenerationOptions, error) {
 	operation := options.Operation
 	if operation == "" {
@@ -242,13 +257,88 @@ func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConf
 	if options.UserID == uuid.Nil {
 		return paid, s.chatTextClient, s.chatTextLimiter, options, nil
 	}
-	promptTokens := int64(len([]byte(systemPrompt)) + len([]byte(userPrompt)))
-	if paid.Provider == ProviderGemini {
-		if count, err := s.countGoogleTokens(ctx, paid, systemPrompt, userPrompt); err == nil && count > 0 {
+
+	var promptTokens int64
+	var countDuration time.Duration
+	var meta contract.AITokenEstimationMeta
+
+	var geminiReq google.PreparedGeminiRequest
+	isGemini := paid.Provider == ProviderGemini
+	if isGemini {
+		geminiReq = google.PreparedGeminiRequest{
+			Model: paid.Model,
+			Body: google.GeminiGenerateContentBody{
+				Contents: []google.GeminiContent{
+					{
+						Role: "user",
+						Parts: []google.GeminiPart{
+							{Text: userPrompt},
+						},
+					},
+				},
+				GenerationConfig: google.GoogleGenerationConfig(options),
+			},
+		}
+		if strings.TrimSpace(systemPrompt) != "" {
+			geminiReq.Body.SystemInstruction = &google.GeminiContent{
+				Parts: []google.GeminiPart{
+					{Text: systemPrompt},
+				},
+			}
+		}
+		promptTokens = s.estimator.EstimateFromRequest(geminiReq)
+	} else {
+		promptTokens = s.estimator.EstimateFromText(systemPrompt, userPrompt)
+	}
+
+	shouldCallCountTokens := (operation == contract.AIOperationOutfit || operation == contract.AIOperationChat) && isGemini
+
+	if shouldCallCountTokens {
+		const defaultMaxInputTokens = 12000
+		ratio := s.cfg.AI.TokenEstimation.CountTokensThresholdRatio
+		if ratio <= 0 {
+			ratio = 0.70
+		}
+		threshold := int64(float64(defaultMaxInputTokens) * ratio)
+
+		if promptTokens >= threshold {
+			var count int64
+			var err error
+			count, countDuration, err = google.CountGoogleTokensByRequest(ctx, s.chatTextClient, s.cfg, paid, geminiReq)
+			if err != nil {
+				if errors.Is(err, ctx.Err()) {
+					return paid, nil, nil, options, err
+				}
+				return paid, nil, nil, options, mapCountTokensError(err)
+			}
+
+			if count > defaultMaxInputTokens {
+				return paid, nil, nil, options, apperror.NewBadRequest("Kích thước dữ liệu đầu vào vượt quá giới hạn cấu hình.")
+			}
+
 			promptTokens = count
+			latencyMs := countDuration.Milliseconds()
+			meta = contract.AITokenEstimationMeta{
+				EstimatedPromptTokens: count,
+				TokenEstimationMethod: contract.TokenEstimationProviderCount,
+				TokenCountLatencyMs:   &latencyMs,
+			}
+		} else {
+			meta = contract.AITokenEstimationMeta{
+				EstimatedPromptTokens: promptTokens,
+				TokenEstimationMethod: contract.TokenEstimationLocal,
+				TokenCountLatencyMs:   nil,
+			}
+		}
+	} else {
+		meta = contract.AITokenEstimationMeta{
+			EstimatedPromptTokens: promptTokens,
+			TokenEstimationMethod: contract.TokenEstimationLocal,
+			TokenCountLatencyMs:   nil,
 		}
 	}
-	decision, err := s.costPolicy.Prepare(ctx, options.UserID, operation, promptTokens)
+
+	decision, err := s.costPolicy.Prepare(ctx, options.UserID, operation, meta)
 	if err != nil {
 		return paid, nil, nil, options, err
 	}
@@ -258,7 +348,7 @@ func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConf
 	}
 	if decision.MaxInputTokens > 0 && promptTokens > int64(decision.MaxInputTokens) {
 		_ = s.costPolicy.Release(ctx, decision.RequestID, "input_token_budget_exceeded")
-		return paid, nil, nil, options, apperror.NewInternalError("AI input exceeds policy token budget")
+		return paid, nil, nil, options, apperror.NewBadRequest("Kích thước dữ liệu đầu vào vượt quá giới hạn cho phép của gói dịch vụ.")
 	}
 	if decision.Route == contract.AIRouteFree {
 		return s.cfg.AI.FreeTextPrimary, s.freeTextClient, s.freeTextLimiter, options, nil
@@ -333,12 +423,7 @@ func (s *AIService) prepareFreeOptions(ctx context.Context, systemPrompt, userPr
 	if operation == "" {
 		operation = contract.AIOperationChat
 	}
-	tokens := int64(len([]byte(systemPrompt)) + len([]byte(userPrompt)))
-	if s.cfg.AI.FreeTextPrimary.Provider == ProviderGemini {
-		if count, err := s.countGoogleTokens(ctx, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt); err == nil && count > 0 {
-			tokens = count
-		}
-	}
+	tokens := s.estimator.EstimateFromText(systemPrompt, userPrompt)
 	decision, err := s.costPolicy.PrepareFree(ctx, options.UserID, operation, tokens, options.MaxOutputTokens)
 	if err != nil {
 		return options, err
@@ -407,9 +492,9 @@ func (s *AIService) tryTextProviderStream(
 ) (<-chan string, <-chan error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAITextStream(ctx, client, provider, systemPrompt, userPrompt, options)
+		return openai.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
 	case ProviderGemini:
-		return s.callGoogleTextStream(ctx, client, provider, systemPrompt, userPrompt, options)
+		return google.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
 	}
 
 	errChan := make(chan error, 1)
@@ -423,9 +508,9 @@ func (s *AIService) tryTextProviderStream(
 func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIVision(ctx, provider, imageUrl, prompt)
+		return openai.CallVision(ctx, s.visionClient, provider, imageUrl, prompt)
 	case ProviderGemini:
-		return s.callGoogleVision(ctx, provider, imageUrl, prompt)
+		return google.CallVision(ctx, s.visionClient, provider, imageUrl, prompt)
 	}
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ trí tuệ nhân tạo này.")
@@ -434,9 +519,9 @@ func (s *AIService) tryVisionProvider(ctx context.Context, provider config.APIPr
 func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIEmbeddingBatch(ctx, provider, chunks)
+		return openai.CallEmbeddingBatch(ctx, s.embeddingClient, provider, chunks)
 	case ProviderGemini:
-		return s.callGoogleEmbeddingBatch(ctx, provider, chunks)
+		return google.CallEmbeddingBatch(ctx, s.embeddingClient, provider, chunks)
 	}
 
 	return nil, apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phân tích dữ liệu này.")
@@ -445,9 +530,9 @@ func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider conf
 func (s *AIService) tryTextProvider(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return s.callOpenAIText(ctx, client, provider, systemPrompt, userPrompt, options)
+		return openai.CallText(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
 	case ProviderGemini:
-		return s.callGoogleText(ctx, client, provider, systemPrompt, userPrompt, options)
+		return google.CallText(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
 	}
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")

@@ -116,6 +116,9 @@ type AIUsageEvent struct {
 	Status                   string           `gorm:"type:varchar(30);not null"`
 	FinishReason             *string          `gorm:"type:varchar(100)"`
 	ErrorCode                *string          `gorm:"type:varchar(100)"`
+	EstimatedPromptTokens    *int64           `gorm:"type:bigint"` // Token count used during preflight (estimated or provider-counted)
+	TokenEstimationMethod    *string          `gorm:"type:varchar(30)"` // Method used: 'LOCAL' or 'PROVIDER_COUNT'
+	TokenCountLatencyMs      *int64           `gorm:"type:bigint"` // HTTP latency of provider token count in ms
 	SentAt                   *time.Time       `gorm:"type:timestamp with time zone"`
 	CompletedAt              *time.Time       `gorm:"type:timestamp with time zone"`
 	UnknownExpiresAt         *time.Time       `gorm:"type:timestamp with time zone"`

@@ -1,4 +1,4 @@
-package ai
+package openai
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
@@ -15,12 +16,14 @@ import (
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
-func (s *AIService) callOpenAITextStream(
+// CallTextStream generates OpenAI text response streaming.
+func CallTextStream(
 	ctx context.Context,
 	client *http.Client,
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
+	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
@@ -110,8 +113,8 @@ func (s *AIService) callOpenAITextStream(
 					}
 				}
 			}
-			if openAIResp.Usage.TotalTokens > 0 {
-				_ = s.costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+			if openAIResp.Usage.TotalTokens > 0 && costPolicy != nil {
+				_ = costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
 			}
 			if len(openAIResp.Choices) > 0 && openAIResp.Choices[0].FinishReason == "length" {
 				return fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
@@ -126,7 +129,16 @@ func (s *AIService) callOpenAITextStream(
 	return textChan, errChan
 }
 
-func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
+// CallText generates OpenAI text response.
+func CallText(
+	ctx context.Context,
+	client *http.Client,
+	provider config.APIProviderConfig,
+	systemPrompt string,
+	userPrompt string,
+	costPolicy contract.IAICostPolicyContract,
+	options app_ai.TextGenerationOptions,
+) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]string{
@@ -189,7 +201,9 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 	if len(openAIResp.Choices) == 0 {
 		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
-	_ = s.costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+	if costPolicy != nil {
+		_ = costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+	}
 	if openAIResp.Choices[0].FinishReason == "length" {
 		return "", fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
 	}
@@ -197,18 +211,8 @@ func (s *AIService) callOpenAIText(ctx context.Context, client *http.Client, pro
 	return openAIResp.Choices[0].Message.Content, nil
 }
 
-func applyOpenAIStructuredOutput(payload map[string]any, options app_ai.TextGenerationOptions) {
-	if options.ResponseMIMEType != "application/json" {
-		return
-	}
-	if options.ResponseSchema != nil {
-		payload["response_format"] = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "structured_response", "strict": true, "schema": options.ResponseSchema}}
-		return
-	}
-	payload["response_format"] = map[string]any{"type": "json_object"}
-}
-
-func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
+// CallVision analyzes image content.
+func CallVision(ctx context.Context, client *http.Client, provider config.APIProviderConfig, imageUrl string, prompt string) (string, error) {
 	payload := map[string]any{
 		"model": provider.Model,
 		"messages": []map[string]any{
@@ -245,7 +249,7 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-	resp, err := s.visionClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -275,7 +279,8 @@ func (s *AIService) callOpenAIVision(ctx context.Context, provider config.APIPro
 	return openAIResp.Choices[0].Message.Content, nil
 }
 
-func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
+// CallEmbeddingBatch generates batch text embeddings.
+func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider config.APIProviderConfig, chunks []string) ([][]float32, error) {
 	var allEmbeddings [][]float32
 	maxBatchSize := 100
 
@@ -304,7 +309,7 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+provider.ApiKey)
 
-		resp, err := s.embeddingClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -341,4 +346,49 @@ func (s *AIService) callOpenAIEmbeddingBatch(ctx context.Context, provider confi
 	}
 
 	return allEmbeddings, nil
+}
+
+func applyOpenAIStructuredOutput(payload map[string]any, options app_ai.TextGenerationOptions) {
+	if options.ResponseMIMEType != "application/json" {
+		return
+	}
+	if options.ResponseSchema != nil {
+		payload["response_format"] = map[string]any{"type": "json_schema", "json_schema": map[string]any{"name": "structured_response", "strict": true, "schema": options.ResponseSchema}}
+		return
+	}
+	payload["response_format"] = map[string]any{"type": "json_object"}
+}
+
+func parseSSEStream(r io.Reader, callback func(data string) error) error {
+	var buffer []byte
+	temp := make([]byte, 4096)
+
+	for {
+		n, err := r.Read(temp)
+		if n > 0 {
+			buffer = append(buffer, temp[:n]...)
+			for {
+				lineEnd := bytes.IndexByte(buffer, '\n')
+				if lineEnd < 0 {
+					break
+				}
+				line := string(buffer[:lineEnd])
+				buffer = buffer[lineEnd+1:]
+
+				if strings.HasPrefix(line, "data: ") {
+					data := strings.TrimPrefix(line, "data: ")
+					if err := callback(data); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return nil
 }

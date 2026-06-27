@@ -62,5 +62,19 @@ func validateConfig(cfg *Config) error {
 	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
 		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}
+	// Validate Token Estimation Configurations
+	est := cfg.AI.TokenEstimation
+	if est.CharsPerToken <= 0 {
+		return fmt.Errorf("chars_per_token must be greater than 0")
+	}
+	if est.LocalSafetyMultiplier < 1.0 {
+		return fmt.Errorf("local_safety_multiplier must be at least 1.0")
+	}
+	if est.CountTokensThresholdRatio <= 0 || est.CountTokensThresholdRatio > 1.0 {
+		return fmt.Errorf("count_tokens_threshold_ratio must be between 0 and 1.0")
+	}
+	if est.CountTokensTimeout <= 0 {
+		return fmt.Errorf("count_tokens_timeout must be greater than 0")
+	}
 	return nil
 }

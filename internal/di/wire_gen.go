@@ -112,7 +112,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
 	iaiCostRepository := persistence2.NewAICostRepository(gormDB)
 	iaiCostPolicyContract := aicost.NewService(iaiCostRepository, cfg)
-	iaiService := ai.NewAIService(cfg, l, iaiCostPolicyContract)
+	localTokenEstimator := ai.NewLocalTokenEstimatorFromConfig(cfg)
+	iaiService := ai.NewAIService(cfg, l, iaiCostPolicyContract, localTokenEstimator)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
 		return nil, nil, err

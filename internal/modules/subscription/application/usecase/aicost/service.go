@@ -2,6 +2,7 @@ package aicost
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"smart-wardrobe-be/config"
@@ -37,7 +38,21 @@ func microCost(inputTokens, outputTokens int64, inputRate, outputRate, fx decima
 	return decimal.NewFromInt(inputTokens).Mul(inputRate).Mul(fx).Add(decimal.NewFromInt(outputTokens).Mul(outputRate).Mul(fx)).Ceil().IntPart()
 }
 
-func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64) (*contract.AICostDecision, error) {
+func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation string, meta contract.AITokenEstimationMeta) (*contract.AICostDecision, error) {
+	// Validate Caller invariants
+	if meta.EstimatedPromptTokens < 0 {
+		return nil, fmt.Errorf("estimated prompt tokens cannot be negative: %d", meta.EstimatedPromptTokens)
+	}
+	if meta.TokenEstimationMethod != contract.TokenEstimationLocal && meta.TokenEstimationMethod != contract.TokenEstimationProviderCount {
+		return nil, fmt.Errorf("invalid token estimation method: %s", meta.TokenEstimationMethod)
+	}
+	if meta.TokenEstimationMethod == contract.TokenEstimationProviderCount && meta.TokenCountLatencyMs == nil {
+		return nil, fmt.Errorf("token count latency must be provided when estimation method is PROVIDER_COUNT")
+	}
+	if meta.TokenEstimationMethod == contract.TokenEstimationLocal && meta.TokenCountLatencyMs != nil {
+		return nil, fmt.Errorf("token count latency must be nil when estimation method is LOCAL")
+	}
+
 	now := time.Now()
 	grant, policy, op, err := s.repo.ResolvePolicy(ctx, userID, operation, now)
 	if err != nil {
@@ -51,22 +66,45 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 	inputRate, outputRate, fx := s.rates()
 	reserve := int64(0)
 	if route == contract.AIRoutePaid {
-		reserve = microCost(promptTokens, int64(maxOut), inputRate, outputRate, fx)
+		reserve = microCost(meta.EstimatedPromptTokens, int64(maxOut), inputRate, outputRate, fx)
 	}
 	requestID := uuid.New()
 	pricingVersion := s.cfg.AI.Pricing.Version
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
-	event := &entities.AIUsageEvent{RequestID: requestID, UserID: userID, Operation: operation, LogicalRoute: route, PricingVersion: &pricingVersion, InputUSDPerMillion: &inputRate, OutputUSDPerMillion: &outputRate, USDToVND: &fx, PromptTokens: promptTokens, ReservedCostMicroVND: reserve, EstimatedMaxCostMicroVND: reserve, Status: "RESERVED", UnknownExpiresAt: &unknownExpires}
+	
+	event := &entities.AIUsageEvent{
+		RequestID:                requestID, 
+		UserID:                   userID, 
+		Operation:                operation, 
+		LogicalRoute:             route, 
+		PricingVersion:           &pricingVersion, 
+		InputUSDPerMillion:       &inputRate, 
+		OutputUSDPerMillion:      &outputRate, 
+		USDToVND:                 &fx, 
+		PromptTokens:             0, // updates to actual tokens on Confirm()
+		EstimatedPromptTokens:    &meta.EstimatedPromptTokens,
+		TokenEstimationMethod:    &meta.TokenEstimationMethod,
+		TokenCountLatencyMs:      meta.TokenCountLatencyMs,
+		ReservedCostMicroVND:     reserve, 
+		EstimatedMaxCostMicroVND: reserve, 
+		Status:                   "RESERVED", 
+		UnknownExpiresAt:         &unknownExpires,
+	}
+	
 	ledger, admitted, err := s.repo.Reserve(ctx, grant, policy, op, event, now)
 	if err != nil {
 		return nil, err
 	}
 	if !admitted {
-		return s.PrepareFree(ctx, userID, operation, promptTokens, op.NormalMaxOutputTokens)
+		return s.PrepareFree(ctx, userID, operation, meta.EstimatedPromptTokens, op.NormalMaxOutputTokens)
 	}
 	if admitted && policy.EnforcementMode == "STRICT" && policy.HardCostMicroVND != nil {
-		compact := *policy.HardCostMicroVND * int64(policy.CompactThresholdBPS) / 10000
-		if ledger.ActualCostMicroVND+ledger.ReservedCostMicroVND >= compact {
+		ratio := int64(policy.FreeRouteThresholdBPS)
+		if ratio <= 0 {
+			ratio = 10000
+		}
+		threshold := *policy.HardCostMicroVND * ratio / 10000
+		if ledger.ActualCostMicroVND+ledger.ReservedCostMicroVND >= threshold {
 			maxIn, maxOut = op.ReducedMaxInputTokens, op.ReducedMaxOutputTokens
 		}
 	}

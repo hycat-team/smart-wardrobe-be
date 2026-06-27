@@ -12,6 +12,7 @@ import (
 
 var ProviderSet = wire.NewSet(
 	infra_media.NewCloudinaryService,
+	infra_ai.NewLocalTokenEstimatorFromConfig,
 	infra_ai.NewAIService,
 	messaging.NewRabbitMQClient,
 	search.NewElasticsearchClient,

@@ -83,6 +83,11 @@ ai:
     free_text_rpm_limit: 15
     usage_reconcile_cron: "0 */10 * * * *"
     usage_reconcile_batch_size: 100
+    token_estimation:
+        chars_per_token: 4.0
+        local_safety_multiplier: 1.25
+        count_tokens_threshold_ratio: 0.70
+        count_tokens_timeout: 1500ms
     pricing:
         version: gemini-2.5-flash-lite-2026-06
         currency: VND
