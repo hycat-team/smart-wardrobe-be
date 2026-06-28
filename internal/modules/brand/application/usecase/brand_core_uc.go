@@ -1244,8 +1244,106 @@ func parseValidDurationDays(doc entities.JSONDocument) int {
 }
 
 func (uc *BrandCoreUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, filter interface{}) (interface{}, error) {
-	// Stub return empty list and nil error since brand items schema/logic is introduced in Phase 06
-	return []interface{}{}, nil
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.Status != userstatus.Active {
+		return []*entities.BrandItem{}, nil
+	}
+
+	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var eligibleBrandItems []*entities.BrandItem
+	for _, customer := range customers {
+		if customer.Status != brandcustomerstatus.Active {
+			continue
+		}
+
+		brand, err := uc.brandRepo.GetByID(ctx, customer.BrandID)
+		if err != nil {
+			return nil, err
+		}
+		if brand == nil || brand.Status != brandstatus.Active {
+			continue
+		}
+
+		// Check SAMPLE_MIX_ACCESS feature access for this brand
+		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "SAMPLE_MIX_ACCESS")
+		if err != nil {
+			return nil, err
+		}
+
+		brandItems, err := uc.brandItemRepo.GetByBrandID(ctx, customer.BrandID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range brandItems {
+			if item.Status != branditemstatus.Active {
+				continue
+			}
+
+			if item.ItemType == branditemtype.Product {
+				eligibleBrandItems = append(eligibleBrandItems, item)
+			} else if item.ItemType == branditemtype.Sample {
+				if hasSampleAccess {
+					eligibleBrandItems = append(eligibleBrandItems, item)
+				}
+			}
+		}
+	}
+
+	return eligibleBrandItems, nil
+}
+
+func (uc *BrandCoreUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *entities.BrandItem, error) {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return false, nil, err
+	}
+	if user == nil || user.Status != userstatus.Active {
+		return false, nil, nil
+	}
+
+	brandItem, err := uc.brandItemRepo.GetByFashionItemID(ctx, fashionItemID)
+	if err != nil {
+		return false, nil, err
+	}
+	if brandItem == nil || brandItem.Status != branditemstatus.Active {
+		return false, nil, nil
+	}
+
+	brand, err := uc.brandRepo.GetByID(ctx, brandItem.BrandID)
+	if err != nil {
+		return false, nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return false, nil, nil
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandItem.BrandID, userID)
+	if err != nil {
+		return false, nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return false, nil, nil
+	}
+
+	if brandItem.ItemType == branditemtype.Sample {
+		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, "SAMPLE_MIX_ACCESS")
+		if err != nil {
+			return false, nil, err
+		}
+		if !hasSampleAccess {
+			return false, nil, nil
+		}
+	}
+
+	return true, brandItem, nil
 }
 
 func (uc *BrandCoreUseCase) GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandConversationRes, error) {

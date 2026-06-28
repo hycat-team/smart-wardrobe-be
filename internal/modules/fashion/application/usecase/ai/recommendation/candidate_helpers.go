@@ -15,6 +15,7 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
@@ -106,6 +107,52 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
 
+	minimumPool := uc.cfg.RAG.RecommendationMinimumCandidatePool
+	maxBrandCandidates := (minimumPool * 30) / 100
+
+	brandCandidatesCount := 0
+	rankingCandidates := make([]types.CandidateForRanking, 0, minimumPool)
+
+	// Fetch Brand items if requested
+	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
+		brandItemsRaw, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, nil)
+		if err == nil {
+			if brandItems, ok := brandItemsRaw.([]*entities.BrandItem); ok {
+				for _, brandItem := range brandItems {
+					if brandCandidatesCount >= maxBrandCandidates {
+						break
+					}
+					if brandItem.FashionItem == nil {
+						continue
+					}
+					mockWardrobeItem := &entities.WardrobeItem{
+						AuditableEntity: entities.AuditableEntity{
+							BaseEntity: entities.BaseEntity{
+								ID: brandItem.FashionItemID,
+							},
+						},
+						FashionItemID: brandItem.FashionItemID,
+						FashionItem:   brandItem.FashionItem,
+					}
+					rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+						Item:            mockWardrobeItem,
+						Source:          types.CandidateSourceRetrieval,
+						VectorScore:     0.95,
+						LexicalScore:    0.95,
+						RetrievalScore:  0.95,
+						RetrievalRank:   brandCandidatesCount + 1,
+						RetrievalSource: types.CandidateSourceRetrieval,
+						ItemContext:     outfititemcontext.BrandItem,
+						BrandItem:       brandItem,
+					})
+					brandCandidatesCount++
+				}
+			}
+		}
+	}
+
+	// Fetch Wardrobe items
+	wardrobeLimit := minimumPool - brandCandidatesCount
 	candidates, err := uc.wardrobeRepo.GetHybridCandidates(
 		ctx,
 		userID,
@@ -113,36 +160,40 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		retrieval.ExtractTermStrings(retrievalQuery.LexicalTerms),
 		retrieval.ExtractTermStrings(retrievalQuery.ExcludedTerms),
 		retrievalQuery.HardFilters,
-		uc.cfg.RAG.RecommendationCandidateLimit,
+		wardrobeLimit,
 		uc.cfg.RAG.RrfKParameter,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Transform repositories.HybridCandidate to types.CandidateForRanking
-	rankingCandidates := make([]types.CandidateForRanking, 0, len(candidates))
-	for _, candidate := range candidates {
-		if candidate.Item == nil {
-			continue
+	if err == nil {
+		for _, candidate := range candidates {
+			if candidate.Item == nil {
+				continue
+			}
+			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+				Item:            candidate.Item,
+				Source:          candidate.RetrievalSource,
+				VectorScore:     candidate.VectorScore,
+				LexicalScore:    candidate.LexicalScore,
+				RetrievalScore:  candidate.RetrievalScore,
+				RetrievalRank:   candidate.RetrievalRank,
+				RetrievalSource: candidate.RetrievalSource,
+				ItemContext:     outfititemcontext.UserWardrobe,
+			})
 		}
-		rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
-			Item:            candidate.Item,
-			Source:          candidate.RetrievalSource,
-			VectorScore:     candidate.VectorScore,
-			LexicalScore:    candidate.LexicalScore,
-			RetrievalScore:  candidate.RetrievalScore,
-			RetrievalRank:   candidate.RetrievalRank,
-			RetrievalSource: candidate.RetrievalSource,
-		})
 	}
 
 	rankingCandidates, _ = ranking.EnsureMinimumCandidatePool(
 		rankingCandidates,
 		activeItems,
 		retrievalQuery,
-		uc.cfg.RAG.RecommendationMinimumCandidatePool,
+		minimumPool,
 	)
+
+	// Ensure all candidates have a context set (fallback candidates will be USER_WARDROBE)
+	for i := range rankingCandidates {
+		if rankingCandidates[i].ItemContext == "" {
+			rankingCandidates[i].ItemContext = outfititemcontext.UserWardrobe
+		}
+	}
 
 	ranked, _ := ranking.RankCandidates(
 		rankingCandidates,
@@ -150,7 +201,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		retrievalQuery,
 		uc.cfg.RAG.RecentlyWornPenaltyDays,
 		uc.cfg.RAG.LongUnwornBonusDays,
-		uc.cfg.RAG.RecommendationMinimumCandidatePool,
+		minimumPool,
 	)
 
 	return ranked, nil

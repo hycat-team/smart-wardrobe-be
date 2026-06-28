@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
@@ -31,8 +32,10 @@ const (
 
 // CandidateForPrompt đại diện cho một món đồ ứng viên đã chuẩn bị đầy đủ thông tin (kèm tag thời trang) để đưa vào prompt gửi cho LLM.
 type CandidateForPrompt struct {
-	Item *entities.WardrobeItem
-	Tags []string
+	Item        *entities.WardrobeItem
+	Tags        []string
+	ItemContext outfititemcontext.OutfitItemContext
+	BrandItem   *entities.BrandItem
 }
 
 // RerankStats lưu trữ các thông số thống kê phục vụ cho việc chấm điểm và đa dạng hóa danh sách ứng viên sau khi xếp hạng.
@@ -52,6 +55,8 @@ type CandidateForRanking struct {
 	RetrievalScore  float64
 	RetrievalRank   int
 	RetrievalSource string
+	ItemContext     outfititemcontext.OutfitItemContext
+	BrandItem       *entities.BrandItem
 }
 
 // RankedCandidate đại diện cho một món đồ ứng viên đã được tính điểm và sắp xếp thứ hạng hoàn chỉnh.
@@ -61,6 +66,8 @@ type RankedCandidate struct {
 	Tags          []string
 	Source        string
 	RetrievalRank int
+	ItemContext   outfititemcontext.OutfitItemContext
+	BrandItem     *entities.BrandItem
 }
 
 // FallbackCandidateCounts đếm số lượng ứng viên tìm được qua các tầng lọc dự phòng khác nhau (Strict, Relaxed, General).

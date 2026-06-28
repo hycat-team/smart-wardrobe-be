@@ -27,6 +27,8 @@ type RecommendOutfitReq struct {
 	Details *string `json:"details" binding:"omitempty,nfcmax=1000"`
 	// Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)
 	ColorTone *string `json:"colorTone" example:"light"`
+	// Cho phép phối đồ của brand (tỷ lệ tối đa 30%)
+	IncludeBrandItems *bool `json:"include_brand_items,omitempty" example:"true"`
 }
 
 type RecommendedOutfitRes struct {

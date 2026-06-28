@@ -895,6 +895,21 @@ definitions:
     required:
     - items
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes:
+    properties:
+      brandId:
+        type: string
+      brandName:
+        type: string
+      id:
+        type: string
+      itemType:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq:
     properties:
       ids:
@@ -1010,6 +1025,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes:
     properties:
+      brandItem:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes'
       fashionItemId:
         type: string
       id:
@@ -1062,6 +1079,10 @@ definitions:
       details:
         description: Ghi chú thêm bằng tay (free text)
         type: string
+      include_brand_items:
+        description: Cho phép phối đồ của brand (tỷ lệ tối đa 30%)
+        example: true
+        type: boolean
       occasion:
         description: 'Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập
           dịp tùy ý)'
@@ -1249,6 +1270,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes:
     properties:
+      brandItem:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes'
       category:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes'
       color:
@@ -1273,6 +1296,8 @@ definitions:
         type: string
       isLocked:
         type: boolean
+      itemContext:
+        type: string
       material:
         type: string
       pattern:

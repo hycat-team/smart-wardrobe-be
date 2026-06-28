@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -23,7 +24,7 @@ func NewBrandItemRepository(db *gorm.DB) repositories.IBrandItemRepository {
 
 func (r *BrandItemRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error) {
 	var items []*entities.BrandItem
-	err := r.GetDB(ctx).Preload("FashionItem").Where("brand_id = ?", brandID).Find(&items).Error
+	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ?", brandID).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +33,20 @@ func (r *BrandItemRepository) GetByBrandID(ctx context.Context, brandID uuid.UUI
 
 func (r *BrandItemRepository) GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error) {
 	var item entities.BrandItem
-	err := r.GetDB(ctx).Preload("FashionItem").Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error
+	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error
 	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *BrandItemRepository) GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error) {
+	var item entities.BrandItem
+	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Preload("Brand").Where("fashion_item_id = ?", fashionItemID).First(&item).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &item, nil

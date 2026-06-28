@@ -18,6 +18,15 @@ type CreateWardrobeItemReq struct {
 	ImagePublicID string    `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
+type BrandItemBriefRes struct {
+	ID        uuid.UUID `json:"id"`
+	BrandID   uuid.UUID `json:"brandId"`
+	BrandName string    `json:"brandName"`
+	ItemType  string    `json:"itemType"`
+	Name      string    `json:"name"`
+	Price     *float64  `json:"price,omitempty"`
+}
+
 type WardrobeItemRes struct {
 	ID                    uuid.UUID                         `json:"id"`
 	UserID                uuid.UUID                         `json:"userId"`
@@ -39,6 +48,8 @@ type WardrobeItemRes struct {
 	ReviewReason          *string                           `json:"reviewReason,omitempty"`
 	ProcessingErrorReason *string                           `json:"processingErrorReason,omitempty"`
 	IsLocked              bool                              `json:"isLocked"`
+	ItemContext           string                            `json:"itemContext,omitempty"`
+	BrandItem             *BrandItemBriefRes                `json:"brandItem,omitempty"`
 	CreatedAt             time.Time                         `json:"createdAt"`
 }
 

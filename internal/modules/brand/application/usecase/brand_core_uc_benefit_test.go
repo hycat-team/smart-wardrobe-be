@@ -85,6 +85,15 @@ func (m *mockCustomerRepo) GetByBrandAndExternalCode(ctx context.Context, brandI
 func (m *mockCustomerRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error) {
 	return nil, nil
 }
+func (m *mockCustomerRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error) {
+	var list []*entities.BrandCustomer
+	for _, cust := range m.customers {
+		if cust.UserID != nil && *cust.UserID == userID {
+			list = append(list, cust)
+		}
+	}
+	return list, nil
+}
 
 type mockBenefitRepo struct {
 	benefits map[uuid.UUID]*entities.BrandBenefit

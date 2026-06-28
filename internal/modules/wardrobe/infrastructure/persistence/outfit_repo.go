@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -69,15 +70,24 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 	if err := r.attachUserWardrobeItems(ctx, &outfit); err != nil {
 		return nil, nil, err
 	}
+	if err := r.attachBrandItems(ctx, &outfit); err != nil {
+		return nil, nil, err
+	}
 
 	var validItems []*entities.OutfitItem
 	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.UserWardrobe &&
-			item.WardrobeItem != nil &&
-			!item.WardrobeItem.IsDeleted &&
-			item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
-			item.WardrobeItem.UserID == outfit.UserID {
-			validItems = append(validItems, item)
+		if item.ItemContext == outfititemcontext.UserWardrobe {
+			if item.WardrobeItem != nil &&
+				!item.WardrobeItem.IsDeleted &&
+				item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
+				item.WardrobeItem.UserID == outfit.UserID {
+				validItems = append(validItems, item)
+			}
+		} else if item.ItemContext == outfititemcontext.BrandItem {
+			if item.BrandItem != nil &&
+				item.BrandItem.Status == branditemstatus.Active {
+				validItems = append(validItems, item)
+			}
 		}
 	}
 	outfit.Items = validItems
@@ -120,6 +130,43 @@ func (r *OutfitRepository) attachUserWardrobeItems(ctx context.Context, outfit *
 	for _, item := range outfit.Items {
 		if item.ItemContext == outfititemcontext.UserWardrobe {
 			item.WardrobeItem = wardrobeByFashionID[item.FashionItemID]
+		}
+	}
+	return nil
+}
+
+func (r *OutfitRepository) attachBrandItems(ctx context.Context, outfit *entities.Outfit) error {
+	if outfit == nil || len(outfit.Items) == 0 {
+		return nil
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(outfit.Items))
+	for _, item := range outfit.Items {
+		if item.ItemContext == outfititemcontext.BrandItem {
+			fashionIDs = append(fashionIDs, item.FashionItemID)
+		}
+	}
+	if len(fashionIDs) == 0 {
+		return nil
+	}
+
+	var brandItems []*entities.BrandItem
+	if err := r.GetDB(ctx).
+		Preload("Brand").
+		Preload("FashionItem").
+		Preload("FashionItem.Category").
+		Where("fashion_item_id IN ?", fashionIDs).
+		Find(&brandItems).Error; err != nil {
+		return err
+	}
+
+	brandByFashionID := make(map[uuid.UUID]*entities.BrandItem, len(brandItems))
+	for _, brandItem := range brandItems {
+		brandByFashionID[brandItem.FashionItemID] = brandItem
+	}
+	for _, item := range outfit.Items {
+		if item.ItemContext == outfititemcontext.BrandItem {
+			item.BrandItem = brandByFashionID[item.FashionItemID]
 		}
 	}
 	return nil

@@ -29,6 +29,7 @@ type IBrandCustomerRepository interface {
 	GetByBrandAndPhoneHash(ctx context.Context, brandID uuid.UUID, phoneHash string) (*entities.BrandCustomer, error)
 	GetByBrandAndExternalCode(ctx context.Context, brandID uuid.UUID, externalCustomerCode string) (*entities.BrandCustomer, error)
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error)
 }
 
 type ILoyaltyProgramRepository interface {
@@ -97,6 +98,7 @@ type IBrandItemRepository interface {
 	shared_repos.IGenericRepository[entities.BrandItem, uuid.UUID]
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error)
 	GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error)
+	GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error)
 }
 
 type IDigitalSampleResponseRepository interface {

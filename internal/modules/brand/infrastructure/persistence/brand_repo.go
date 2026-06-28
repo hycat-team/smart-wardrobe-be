@@ -137,3 +137,11 @@ func (r *BrandCustomerRepository) GetByBrandID(ctx context.Context, brandID uuid
 		Find(&customers).Error
 	return customers, err
 }
+
+func (r *BrandCustomerRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error) {
+	var customers []*entities.BrandCustomer
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id = ?", userID).
+		Find(&customers).Error
+	return customers, err
+}

@@ -13,8 +13,8 @@ var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|g
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message) string {
-	return buildChatSystemPromptWithLimits(summary, wardrobeItems, recent, 4000, 1500)
+func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*entities.BrandItem, recent []*entities.Message) string {
+	return buildChatSystemPromptWithLimits(summary, wardrobeItems, brandItems, recent, 4000, 1500)
 }
 
 func truncateRunes(value string, limit int) string {
@@ -25,16 +25,17 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
+func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*entities.BrandItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
 
 	builder.WriteString("CONSTRAINTS & RULES:\n")
-	if len(wardrobeItems) > 0 {
-		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, answer directly using the available wardrobe items.\n")
+	if len(wardrobeItems) > 0 || len(brandItems) > 0 {
+		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, answer directly using the available wardrobe items or brand items.\n")
 		builder.WriteString("- Whenever mentioning a wardrobe item, write its category name followed by its color inside Markdown bold, for example: **Áo sơ mi Trắng**. Do not output brackets or placeholder text.\n")
-		builder.WriteString("- If an item's color is unavailable, bold only its category name.\n")
+		builder.WriteString("- Whenever mentioning a brand item, write its category name followed by its color and brand name inside Markdown bold, for example: **Áo sơ mi Trắng của Brand X**. Do not output brackets or placeholder text.\n")
+		builder.WriteString("- If an item's color or brand name is unavailable, bold only the available parts.\n")
 		builder.WriteString("- Do not append '[ACTION:REDIRECT_OUTFIT]'.\n")
 	} else {
 		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, append '[ACTION:REDIRECT_OUTFIT]' at the very end.\n")
@@ -70,6 +71,51 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 
 			builder.WriteString("- ")
 
+			if hasCategory {
+				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
+			}
+			if hasColor {
+				fmt.Fprintf(&builder, "Color: %s; ", *fashion.Color)
+			}
+			if hasStyle {
+				fmt.Fprintf(&builder, "Style: %s", *fashion.Style)
+			}
+
+			builder.WriteString("\n")
+		}
+	}
+
+	if len(brandItems) > 0 {
+		builder.WriteString("Available brand items:\n")
+
+		limit := min(len(brandItems), 20)
+		for i := range limit {
+			item := brandItems[i]
+			fashion := item.FashionItem
+			if fashion == nil {
+				continue
+			}
+
+			hasCategory := fashion.Category != nil &&
+				strings.TrimSpace(fashion.Category.Name) != ""
+			hasColor := fashion.Color != nil &&
+				strings.TrimSpace(*fashion.Color) != ""
+			hasStyle := fashion.Style != nil &&
+				strings.TrimSpace(*fashion.Style) != ""
+			brandName := ""
+			if item.Brand != nil {
+				brandName = item.Brand.Name
+			}
+
+			if !hasCategory && !hasColor && !hasStyle && brandName == "" {
+				continue
+			}
+
+			builder.WriteString("- ")
+
+			if brandName != "" {
+				fmt.Fprintf(&builder, "Brand: %s; ", brandName)
+			}
 			if hasCategory {
 				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
 			}

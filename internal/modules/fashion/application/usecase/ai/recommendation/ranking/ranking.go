@@ -58,6 +58,8 @@ func RankCandidates(
 			Tags:          tags,
 			Source:        candidate.Source,
 			RetrievalRank: candidate.RetrievalRank,
+			ItemContext:   candidate.ItemContext,
+			BrandItem:     candidate.BrandItem,
 		}
 	}
 	stats := RankedCandidateScoreStats(scored)
@@ -76,8 +78,10 @@ func RankCandidates(
 	final := make([]types.CandidateForPrompt, 0, len(diversified))
 	for _, candidate := range diversified {
 		final = append(final, types.CandidateForPrompt{
-			Item: candidate.Item,
-			Tags: candidate.Tags,
+			Item:        candidate.Item,
+			Tags:        candidate.Tags,
+			ItemContext: candidate.ItemContext,
+			BrandItem:   candidate.BrandItem,
 		})
 	}
 

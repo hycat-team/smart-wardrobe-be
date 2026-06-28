@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
@@ -67,8 +68,10 @@ func MapLLMResponseToGroups(
 	llmRes types.LlmOutfitResponse,
 ) []*dto.RecommendedItemGroup {
 	candidateMap := map[uuid.UUID]*entities.WardrobeItem{}
+	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
 	for _, candidate := range candidates {
 		candidateMap[candidate.Item.ID] = candidate.Item
+		promptCandidateMap[candidate.Item.ID] = candidate
 	}
 
 	valid := make([]*dto.RecommendedItemGroup, 0)
@@ -90,10 +93,15 @@ func MapLLMResponseToGroups(
 			hasFullbody = true
 		}
 
+		primaryDTO := mapper.MapToWardrobeItemRes(primary)
+		if cand, found := promptCandidateMap[primary.ID]; found {
+			enrichWardrobeItemRes(primaryDTO, cand)
+		}
+
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         actualRole,
-			Primary:      mapper.MapToWardrobeItemRes(primary),
-			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, actualRole, primary.ID, group.AlternativeIDs),
+			Primary:      primaryDTO,
+			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, actualRole, primary.ID, group.AlternativeIDs),
 		})
 	}
 
@@ -139,25 +147,10 @@ func resolvePrimaryCandidate(
 }
 
 // resolveAlternativeCandidates tìm kiếm tối đa 2 món đồ thay thế cho vai trò được đề xuất.
-//
-// Hành vi:
-// 1. Duyệt qua danh sách ID thay thế do AI trả về.
-// 2. Parse UUID và lấy món đồ tương ứng từ [candidateMap]. Yêu cầu món đồ phải tồn tại, khác món đồ chính, và có danh mục trùng khớp với vai trò.
-// 3. Nếu danh sách thay thế chưa đủ 2 món đồ, duyệt qua toàn bộ ứng viên thực tế để tìm thêm các món đồ cùng danh mục (khác đồ chính và chưa có trong danh sách thay thế) để lấp đầy.
-// 4. Trả về danh sách món đồ thay thế dạng DTO [WardrobeItemRes].
-//
-// Đầu vào mẫu:
-//
-//	alternativeIDs: []string{"uuid-ao-2"}
-//	role: "ao"
-//	primaryID: "uuid-ao-1"
-//
-// Đầu ra mẫu:
-//
-//	[]*dto.WardrobeItemRes{...} (chứa tối đa 2 áo thay thế)
 func resolveAlternativeCandidates(
 	candidateMap map[uuid.UUID]*entities.WardrobeItem,
 	candidates []types.CandidateForPrompt,
+	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,
@@ -185,7 +178,11 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(altItem))
+		altDTO := mapper.MapToWardrobeItemRes(altItem)
+		if cand, found := promptCandidateMap[altItem.ID]; found {
+			enrichWardrobeItemRes(altDTO, cand)
+		}
+		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			return alternatives
 		}
@@ -209,11 +206,37 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(item))
+		altDTO := mapper.MapToWardrobeItemRes(item)
+		enrichWardrobeItemRes(altDTO, candidate)
+		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			break
 		}
 	}
 
 	return alternatives
+}
+
+func enrichWardrobeItemRes(res *dto.WardrobeItemRes, cand types.CandidateForPrompt) {
+	if res == nil {
+		return
+	}
+	res.ItemContext = string(cand.ItemContext)
+	if res.ItemContext == "" {
+		res.ItemContext = string(outfititemcontext.UserWardrobe)
+	}
+	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
+		brandName := ""
+		if cand.BrandItem.Brand != nil {
+			brandName = cand.BrandItem.Brand.Name
+		}
+		res.BrandItem = &dto.BrandItemBriefRes{
+			ID:        cand.BrandItem.ID,
+			BrandID:   cand.BrandItem.BrandID,
+			BrandName: brandName,
+			ItemType:  string(cand.BrandItem.ItemType),
+			Name:      cand.BrandItem.Name,
+			Price:     cand.BrandItem.Price,
+		}
+	}
 }

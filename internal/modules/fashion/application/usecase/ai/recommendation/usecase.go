@@ -2,6 +2,7 @@ package recommendation
 
 import (
 	"smart-wardrobe-be/config"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
@@ -20,6 +21,7 @@ type OutfitRecommendationUseCase struct {
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
+	brandContract   brand_contract.IBrandContract
 	uow             shared_repos.IUnitOfWork
 	nlpParser       *parser.LocalNLPParser
 }
@@ -32,6 +34,7 @@ func NewOutfitRecommendationUseCase(
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
+	brandContract brand_contract.IBrandContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IOutfitRecommendationUseCase {
 	_ = dto.ParsedIntent{} // import check
@@ -42,6 +45,7 @@ func NewOutfitRecommendationUseCase(
 		aiService:       aiService,
 		userSubContract: userSubContract,
 		userQuotaCtr:    userQuotaCtr,
+		brandContract:   brandContract,
 		uow:             uow,
 		nlpParser:       parser.NewLocalNLPParser(),
 	}

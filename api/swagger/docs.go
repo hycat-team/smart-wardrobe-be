@@ -5185,6 +5185,29 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "brandName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "itemType": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq": {
             "type": "object",
             "required": [
@@ -5355,6 +5378,9 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
             "type": "object",
             "properties": {
+                "brandItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+                },
                 "fashionItemId": {
                     "type": "string"
                 },
@@ -5430,6 +5456,11 @@ const docTemplate = `{
                 "details": {
                     "description": "Ghi chú thêm bằng tay (free text)",
                     "type": "string"
+                },
+                "include_brand_items": {
+                    "description": "Cho phép phối đồ của brand (tỷ lệ tối đa 30%)",
+                    "type": "boolean",
+                    "example": true
                 },
                 "occasion": {
                     "description": "Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)",
@@ -5698,6 +5729,9 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes": {
             "type": "object",
             "properties": {
+                "brandItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+                },
                 "category": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
@@ -5733,6 +5767,9 @@ const docTemplate = `{
                 },
                 "isLocked": {
                     "type": "boolean"
+                },
+                "itemContext": {
+                    "type": "string"
                 },
                 "material": {
                     "type": "string"

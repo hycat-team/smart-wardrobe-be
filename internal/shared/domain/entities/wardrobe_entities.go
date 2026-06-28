@@ -96,6 +96,7 @@ type OutfitItem struct {
 	FashionItem   *FashionItem                        `gorm:"foreignKey:FashionItemID;constraint:OnDelete:RESTRICT"`
 	ItemContext   outfititemcontext.OutfitItemContext `gorm:"type:varchar(50);primaryKey;not null"`
 	WardrobeItem  *WardrobeItem                       `gorm:"foreignKey:FashionItemID;references:FashionItemID"`
+	BrandItem     *BrandItem                          `gorm:"foreignKey:FashionItemID;references:FashionItemID"`
 	PositionX     float64                             `gorm:"type:double precision;not null;default:0.0"`
 	PositionY     float64                             `gorm:"type:double precision;not null;default:0.0"`
 	Scale         float64                             `gorm:"type:double precision;not null;default:1.0"`

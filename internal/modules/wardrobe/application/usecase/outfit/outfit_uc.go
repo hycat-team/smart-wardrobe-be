@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -29,6 +30,7 @@ type OutfitUseCase struct {
 	outfitRepo      repositories.IOutfitRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract contract.IUserSubscriptionContract
+	brandContract   brand_contract.IBrandContract
 	mediaService    media.IMediaService
 }
 
@@ -38,6 +40,7 @@ func NewOutfitUseCase(
 	outfitRepo repositories.IOutfitRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract contract.IUserSubscriptionContract,
+	brandContract brand_contract.IBrandContract,
 	mediaService media.IMediaService,
 ) uc_interfaces.IOutfitUseCase {
 	return &OutfitUseCase{
@@ -46,6 +49,7 @@ func NewOutfitUseCase(
 		outfitRepo:      outfitRepo,
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
+		brandContract:   brandContract,
 		mediaService:    mediaService,
 	}
 }
@@ -107,24 +111,43 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
-		if !ok || verifiedItem.FashionItemID == uuid.Nil {
-			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
-		}
+		if ok && verifiedItem.FashionItemID != uuid.Nil {
+			if lockedMap[verifiedItem.ID] {
+				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+			}
+			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
 
-		if lockedMap[verifiedItem.ID] {
-			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-		}
-		wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
+			outfitItems[idx] = &entities.OutfitItem{
+				FashionItemID: verifiedItem.FashionItemID,
+				FashionItem:   verifiedItem.FashionItem,
+				ItemContext:   outfititemcontext.UserWardrobe,
+				WardrobeItem:  verifiedItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
+		} else {
+			// Check brand item eligibility
+			isEligible, brandItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			if err != nil {
+				return nil, err
+			}
+			if !isEligible {
+				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
+			}
 
-		outfitItems[idx] = &entities.OutfitItem{
-			FashionItemID: verifiedItem.FashionItemID,
-			FashionItem:   verifiedItem.FashionItem,
-			ItemContext:   outfititemcontext.UserWardrobe,
-			WardrobeItem:  verifiedItem,
-			PositionX:     itemReq.PositionX,
-			PositionY:     itemReq.PositionY,
-			Scale:         itemReq.Scale,
-			LayerOrder:    itemReq.LayerOrder,
+			outfitItems[idx] = &entities.OutfitItem{
+				FashionItemID: itemReq.FashionItemID,
+				FashionItem:   brandItem.FashionItem,
+				ItemContext:   outfititemcontext.BrandItem,
+				WardrobeItem:  nil,
+				BrandItem:     brandItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
 		}
 	}
 
@@ -194,25 +217,45 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
 	for idx, itemReq := range input.Items {
 		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
-		if !ok || verifiedItem.FashionItemID == uuid.Nil {
-			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
-		}
+		if ok && verifiedItem.FashionItemID != uuid.Nil {
+			if lockedMap[verifiedItem.ID] {
+				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+			}
+			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
 
-		if lockedMap[verifiedItem.ID] {
-			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-		}
-		wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
+			outfitItems[idx] = &entities.OutfitItem{
+				OutfitID:      id,
+				FashionItemID: verifiedItem.FashionItemID,
+				FashionItem:   verifiedItem.FashionItem,
+				ItemContext:   outfititemcontext.UserWardrobe,
+				WardrobeItem:  verifiedItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
+		} else {
+			// Check brand item eligibility
+			isEligible, brandItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			if err != nil {
+				return nil, err
+			}
+			if !isEligible {
+				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
+			}
 
-		outfitItems[idx] = &entities.OutfitItem{
-			OutfitID:      id,
-			FashionItemID: verifiedItem.FashionItemID,
-			FashionItem:   verifiedItem.FashionItem,
-			ItemContext:   outfititemcontext.UserWardrobe,
-			WardrobeItem:  verifiedItem,
-			PositionX:     itemReq.PositionX,
-			PositionY:     itemReq.PositionY,
-			Scale:         itemReq.Scale,
-			LayerOrder:    itemReq.LayerOrder,
+			outfitItems[idx] = &entities.OutfitItem{
+				OutfitID:      id,
+				FashionItemID: itemReq.FashionItemID,
+				FashionItem:   brandItem.FashionItem,
+				ItemContext:   outfititemcontext.BrandItem,
+				WardrobeItem:  nil,
+				BrandItem:     brandItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
 		}
 	}
 
