@@ -176,3 +176,55 @@ type BrandConversationMessageRes struct {
 	Message        string     `json:"message"`
 	CreatedAt      time.Time  `json:"createdAt"`
 }
+
+type CreateBrandItemReq struct {
+	CategoryID    *uuid.UUID `json:"categoryId" binding:"omitempty"`
+	ImageUrl      string     `json:"imageUrl" binding:"required,url"`
+	ImagePublicID string     `json:"imagePublicId" binding:"required"`
+	ProductCode   *string    `json:"productCode" binding:"omitempty,max=100"`
+	Name          string     `json:"name" binding:"required,max=255"`
+	Description   *string    `json:"description" binding:"omitempty"`
+	Price         *float64   `json:"price" binding:"omitempty,gt=0"`
+	ItemType      string     `json:"itemType" binding:"required"` // E.g. "BRAND_RETAIL" or "DIGITAL_SAMPLE"
+	Status        string     `json:"status" binding:"omitempty"`  // DRAFT, ACTIVE, ARCHIVED
+}
+
+type UpdateBrandItemReq struct {
+	Name        string   `json:"name" binding:"required,max=255"`
+	Description *string  `json:"description" binding:"omitempty"`
+	Price       *float64 `json:"price" binding:"omitempty,gt=0"`
+	Status      string   `json:"status" binding:"required"` // DRAFT, ACTIVE, ARCHIVED
+}
+
+type BrandItemRes struct {
+	ID            uuid.UUID `json:"id"`
+	BrandID       uuid.UUID `json:"brandId"`
+	FashionItemID uuid.UUID `json:"fashionItemId"`
+	ProductCode   *string   `json:"productCode"`
+	Name          string    `json:"name"`
+	Description   *string   `json:"description"`
+	Price         *float64  `json:"price"`
+	ItemType      string    `json:"itemType"`
+	Status        string    `json:"status"`
+	FashionItem   any       `json:"fashionItem,omitempty"` // Detailed fashion metadata
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+}
+
+type SubmitSampleFeedbackReq struct {
+	OutfitID     *uuid.UUID `json:"outfitId" binding:"omitempty"`
+	VoteType     *string    `json:"voteType" binding:"omitempty"` // UP, DOWN
+	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5"`
+	FeedbackText *string    `json:"feedbackText" binding:"omitempty"`
+}
+
+type DigitalSampleResponseRes struct {
+	ID           uuid.UUID  `json:"id"`
+	BrandItemID  uuid.UUID  `json:"brandItemId"`
+	UserID       uuid.UUID  `json:"userId"`
+	OutfitID     *uuid.UUID `json:"outfitId"`
+	VoteType     *string    `json:"voteType"`
+	Rating       *int       `json:"rating"`
+	FeedbackText *string    `json:"feedbackText"`
+	CreatedAt    time.Time  `json:"createdAt"`
+}

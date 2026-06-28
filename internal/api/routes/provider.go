@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	"smart-wardrobe-be/internal/api/routes/brand"
 	"smart-wardrobe-be/internal/api/routes/category"
+	"smart-wardrobe-be/internal/api/routes/fashion"
 	"smart-wardrobe-be/internal/api/routes/me"
 	"smart-wardrobe-be/internal/api/routes/outfit"
 	"smart-wardrobe-be/internal/api/routes/subscription"
@@ -22,6 +23,7 @@ type AppRouter struct {
 	OutfitRouter       *outfit.OutfitRouter
 	CategoryRouter     *category.CategoryRouter
 	BrandRouter        *brand.BrandRouter
+	FashionRouter      *fashion.FashionRouter
 }
 
 var RouterSet = wire.NewSet(
@@ -33,4 +35,5 @@ var RouterSet = wire.NewSet(
 	outfit.NewRouter,
 	category.NewRouter,
 	brand.NewRouter,
+	fashion.NewRouter,
 )

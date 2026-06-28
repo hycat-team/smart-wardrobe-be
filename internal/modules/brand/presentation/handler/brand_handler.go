@@ -23,6 +23,11 @@ const (
 	msgBrandJoinLoyaltySuccess     = "Tham gia loyalty brand thành công"
 	msgBrandOfflineCustomerSuccess = "Tạo khách hàng offline thành công"
 	msgBrandGrantPointsSuccess     = "Ghi nhận giao dịch điểm loyalty thành công"
+	msgBrandItemCreateSuccess      = "Tạo sản phẩm brand thành công"
+	msgBrandItemListSuccess        = "Lấy danh sách sản phẩm brand thành công"
+	msgBrandItemUpdateSuccess      = "Cập nhật sản phẩm brand thành công"
+	msgBrandItemFeedbackSuccess    = "Lấy danh sách feedback sản phẩm thành công"
+	msgBrandFeedbackSubmitSuccess  = "Gửi feedback sản phẩm thành công"
 )
 
 type BrandHandler struct {
@@ -616,5 +621,187 @@ func (h *BrandHandler) SendStaffMessage(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Created(c, "Gửi phản hồi thành công", res)
+	return nil
+}
+
+// CreateBrandItem creates a new brand item/sample.
+// @Summary [Staff] Tạo sản phẩm hoặc mẫu thử của Brand
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Param body body dto.CreateBrandItemReq true "Thông tin sản phẩm"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/items [post]
+func (h *BrandHandler) CreateBrandItem(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var input dto.CreateBrandItemReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.CreateBrandItem(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, msgBrandItemCreateSuccess, res)
+	return nil
+}
+
+// GetBrandItemsForStaff retrieves brand items.
+// @Summary [Staff] Lấy danh sách sản phẩm hoặc mẫu thử của Brand
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/items [get]
+func (h *BrandHandler) GetBrandItemsForStaff(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetBrandItemsForStaff(c.Request.Context(), userID, brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemListSuccess, res)
+	return nil
+}
+
+// UpdateBrandItem updates an existing brand item.
+// @Summary [Staff] Cập nhật sản phẩm hoặc mẫu thử của Brand
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Param itemId path string true "ID sản phẩm"
+// @Param body body dto.UpdateBrandItemReq true "Thông tin cập nhật"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId} [put]
+func (h *BrandHandler) UpdateBrandItem(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	itemID, err := uuid.Parse(c.Param("itemId"))
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateBrandItemReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.UpdateBrandItem(c.Request.Context(), userID, brandID, itemID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemUpdateSuccess, res)
+	return nil
+}
+
+// GetBrandItemFeedbacks retrieves feedbacks for a specific brand sample.
+// @Summary [Staff] Lấy phản hồi/đóng góp ý kiến mẫu thử kỹ thuật số
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Param itemId path string true "ID sản phẩm mẫu thử"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.DigitalSampleResponseRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks [get]
+func (h *BrandHandler) GetBrandItemFeedbacks(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	itemID, err := uuid.Parse(c.Param("itemId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetBrandItemFeedbacks(c.Request.Context(), userID, brandID, itemID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemFeedbackSuccess, res)
+	return nil
+}
+
+// ListBrandItemsForUser lists active brand items for consumers.
+// @Summary [User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
+// @Router /api/v1/brands/{brandId}/items [get]
+func (h *BrandHandler) ListBrandItemsForUser(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.ListBrandItemsForUser(c.Request.Context(), userID, brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemListSuccess, res)
+	return nil
+}
+
+// SubmitSampleFeedback submits user feedback on a brand sample.
+// @Summary [User] Gửi phản hồi, đánh giá mẫu thử kỹ thuật số
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Param itemId path string true "ID sản phẩm mẫu thử"
+// @Param body body dto.SubmitSampleFeedbackReq true "Nội dung phản hồi"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.DigitalSampleResponseRes}
+// @Router /api/v1/brands/{brandId}/items/{itemId}/feedbacks [post]
+func (h *BrandHandler) SubmitSampleFeedback(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	itemID, err := uuid.Parse(c.Param("itemId"))
+	if err != nil {
+		return err
+	}
+	var input dto.SubmitSampleFeedbackReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.SubmitSampleFeedback(c.Request.Context(), userID, itemID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, msgBrandFeedbackSubmitSuccess, res)
 	return nil
 }

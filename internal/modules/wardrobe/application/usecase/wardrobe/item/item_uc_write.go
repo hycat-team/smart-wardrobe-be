@@ -342,18 +342,21 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
 	for i, itemReq := range input.Items {
-		now := time.Now().UTC()
+		itemID := uuid.New()
+		fashionItemID, err := uc.fashionContract.CreateFashionItem(ctx, userID, itemID, "wardrobe", itemReq.CategoryID, itemReq.ImageUrl, itemReq.ImagePublicID)
+		if err != nil {
+			return nil, err
+		}
 		newItems[i] = &entities.WardrobeItem{
-			UserID:   userID,
-			Status:   wardrobestatus.Processing,
-			ItemType: itemType,
-			FashionItem: &entities.FashionItem{
-				CategoryID:              itemReq.CategoryID,
-				ImageUrl:                itemReq.ImageUrl,
-				ImagePublicID:           itemReq.ImagePublicID,
-				ProcessingStartedAt:     &now,
-				LastProcessingAttemptAt: &now,
+			AuditableEntity: entities.AuditableEntity{
+				BaseEntity: entities.BaseEntity{
+					ID: itemID,
+				},
 			},
+			UserID:        userID,
+			Status:        wardrobestatus.Processing,
+			ItemType:      itemType,
+			FashionItemID: fashionItemID,
 		}
 	}
 

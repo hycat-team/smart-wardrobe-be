@@ -35,19 +35,16 @@ const (
 type WardrobeItemHandler struct {
 	itemUseCase    usecase_interfaces.IWardrobeItemUseCase
 	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase
-	workerUseCase  usecase_interfaces.IWardrobeWorkerUseCase
 }
 
 // NewWardrobeItemHandler builds the wardrobe item presentation handler.
 func NewWardrobeItemHandler(
 	itemUseCase usecase_interfaces.IWardrobeItemUseCase,
 	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase,
-	workerUseCase usecase_interfaces.IWardrobeWorkerUseCase,
 ) *WardrobeItemHandler {
 	return &WardrobeItemHandler{
 		itemUseCase:    itemUseCase,
 		catalogUseCase: catalogUseCase,
-		workerUseCase:  workerUseCase,
 	}
 }
 

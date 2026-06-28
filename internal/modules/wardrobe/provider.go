@@ -3,13 +3,10 @@ package wardrobe
 import (
 	category_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/chat"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
@@ -23,30 +20,20 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWardrobeItemRepository,
 	persistence.NewCategoryRepository,
 	persistence.NewOutfitRepository,
-	persistence.NewConversationalContextRepository,
-	persistence.NewMessageRepository,
 	search.NewWardrobeSearchService,
 	search.NewWardrobeSearchIndexService,
 	messaging.NewWardrobeBatchUploadJobConsumer,
 	messaging.NewSearchSyncEventConsumer,
 
 	item.NewWardrobeItemUseCase,
-	chat.NewWardrobeChatUseCase,
-	recommendation.NewOutfitRecommendationUseCase,
 	catalog.NewWardrobeCatalogUseCase,
-	worker.NewVisionCategoryCache,
-	worker.NewWardrobeWorkerUseCase,
 	contractuc.NewWardrobeContractUseCase,
 	search_sync.NewSearchSyncUseCase,
 
 	outfit_uc.NewOutfitUseCase,
 	category_uc.NewCategoryUseCase,
 	handler.NewWardrobeItemHandler,
-	handler.NewWardrobeAIHandler,
 	handler.NewOutfitHandler,
 	handler.NewCategoryHandler,
-	presentation_worker.NewWardrobeBatchUploadWorker,
 	presentation_worker.NewSearchSyncWorker,
-	presentation_worker.NewFailedItemsCleanupWorker,
-	presentation_worker.NewProcessingRecoveryWorker,
 )

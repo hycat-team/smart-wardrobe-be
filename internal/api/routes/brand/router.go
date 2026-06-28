@@ -32,6 +32,8 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		userBrands.POST("/:brandId/benefits/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
 		userBrands.GET("/:brandId/conversation", shared_pres.WrapHandler(r.brandHandler.GetUserConversation))
 		userBrands.POST("/:brandId/conversation/messages", shared_pres.WrapHandler(r.brandHandler.SendUserMessage))
+		userBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandItemsForUser))
+		userBrands.POST("/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.SubmitSampleFeedback))
 	}
 
 	portal := group.Group("/brand-portal")
@@ -50,6 +52,10 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/:brandId/conversations", shared_pres.WrapHandler(r.brandHandler.ListBrandConversations))
 		portal.GET("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.ListConversationMessages))
 		portal.POST("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.SendStaffMessage))
+		portal.POST("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.CreateBrandItem))
+		portal.GET("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.GetBrandItemsForStaff))
+		portal.PUT("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItem))
+		portal.GET("/brands/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.GetBrandItemFeedbacks))
 	}
 
 	admin := group.Group("/admin/brands")

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -37,6 +38,7 @@ type WardrobeItemUseCase struct {
 	aiService       ai.IAIService
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
+	fashionContract fashion_contract.IFashionContract
 }
 
 func NewWardrobeItemUseCase(
@@ -50,6 +52,7 @@ func NewWardrobeItemUseCase(
 	aiService ai.IAIService,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
+	fashionContract fashion_contract.IFashionContract,
 ) uc_interfaces.IWardrobeItemUseCase {
 	return &WardrobeItemUseCase{
 		cfg:             cfg,
@@ -62,6 +65,7 @@ func NewWardrobeItemUseCase(
 		aiService:       aiService,
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
+		fashionContract: fashionContract,
 	}
 }
 

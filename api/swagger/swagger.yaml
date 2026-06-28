@@ -129,6 +129,33 @@ definitions:
       userId:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes:
+    properties:
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      fashionItem:
+        description: Detailed fashion metadata
+      fashionItemId:
+        type: string
+      id:
+        type: string
+      itemType:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      productCode:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes:
     properties:
       brandId:
@@ -196,6 +223,36 @@ definitions:
     - name
     - unlockType
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandItemReq:
+    properties:
+      categoryId:
+        type: string
+      description:
+        type: string
+      imagePublicId:
+        type: string
+      imageUrl:
+        type: string
+      itemType:
+        description: E.g. "BRAND_RETAIL" or "DIGITAL_SAMPLE"
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      price:
+        type: number
+      productCode:
+        maxLength: 100
+        type: string
+      status:
+        description: DRAFT, ACTIVE, ARCHIVED
+        type: string
+    required:
+    - imagePublicId
+    - imageUrl
+    - itemType
+    - name
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandReq:
     properties:
       description:
@@ -225,6 +282,25 @@ definitions:
         type: string
     required:
     - phoneE164
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes:
+    properties:
+      brandItemId:
+        type: string
+      createdAt:
+        type: string
+      feedbackText:
+        type: string
+      id:
+        type: string
+      outfitId:
+        type: string
+      rating:
+        type: integer
+      userId:
+        type: string
+      voteType:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq:
     properties:
@@ -296,11 +372,41 @@ definitions:
     required:
     - message
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.SubmitSampleFeedbackReq:
+    properties:
+      feedbackText:
+        type: string
+      outfitId:
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      voteType:
+        description: UP, DOWN
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq:
     properties:
       status:
         type: string
     required:
+    - status
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandItemReq:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      price:
+        type: number
+      status:
+        description: DRAFT, ACTIVE, ARCHIVED
+        type: string
+    required:
+    - name
     - status
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq:
@@ -2536,6 +2642,139 @@ paths:
       summary: Tạo khách hàng offline cho brand
       tags:
       - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/items:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[Staff] Lấy danh sách sản phẩm hoặc mẫu thử của Brand'
+      tags:
+      - Brand Portal
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin sản phẩm
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandItemReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[Staff] Tạo sản phẩm hoặc mẫu thử của Brand'
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/items/{itemId}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID sản phẩm
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Thông tin cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandItemReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[Staff] Cập nhật sản phẩm hoặc mẫu thử của Brand'
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID sản phẩm mẫu thử
+        in: path
+        name: itemId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[Staff] Lấy phản hồi/đóng góp ý kiến mẫu thử kỹ thuật số'
+      tags:
+      - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/loyalty/points:
     post:
       consumes:
@@ -2761,6 +3000,73 @@ paths:
       security:
       - BearerAuth: []
       summary: Gửi tin nhắn đến brand (User)
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/items:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand'
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/items/{itemId}/feedbacks:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID sản phẩm mẫu thử
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Nội dung phản hồi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.SubmitSampleFeedbackReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: '[User] Gửi phản hồi, đánh giá mẫu thử kỹ thuật số'
       tags:
       - Brand
   /api/v1/brands/{brandId}/join-loyalty:

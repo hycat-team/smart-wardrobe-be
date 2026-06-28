@@ -92,3 +92,15 @@ type IBrandConversationMessageRepository interface {
 	shared_repos.IGenericRepository[entities.BrandConversationMessage, uuid.UUID]
 	GetByConversationID(ctx context.Context, conversationID uuid.UUID) ([]*entities.BrandConversationMessage, error)
 }
+
+type IBrandItemRepository interface {
+	shared_repos.IGenericRepository[entities.BrandItem, uuid.UUID]
+	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error)
+	GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error)
+}
+
+type IDigitalSampleResponseRepository interface {
+	shared_repos.IGenericRepository[entities.DigitalSampleResponse, uuid.UUID]
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.DigitalSampleResponse, error)
+	GetByBrandItemID(ctx context.Context, brandItemID uuid.UUID) ([]*entities.DigitalSampleResponse, error)
+}

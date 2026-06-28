@@ -62,12 +62,14 @@ type BatchUploadWardrobeItemsReq struct {
 
 type WardrobeBatchUploadJobDTO struct {
 	ItemID            uuid.UUID  `json:"itemId"`
+	FashionItemID     uuid.UUID  `json:"fashionItemId,omitempty"`
 	UserID            uuid.UUID  `json:"userId"`
 	CategoryID        *uuid.UUID `json:"categoryId,omitempty"`
 	ImageUrl          string     `json:"imageUrl"`
 	ImagePublicID     string     `json:"imagePublicId"`
 	RetryCount        int        `json:"retryCount,omitempty"`
 	ProcessingVersion int        `json:"processingVersion"`
+	ItemType          string     `json:"itemType,omitempty"`
 }
 
 type FashionMetadataResult struct {

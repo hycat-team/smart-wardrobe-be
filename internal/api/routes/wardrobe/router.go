@@ -11,14 +11,12 @@ import (
 
 type WardrobeRouter struct {
 	itemHandler    *wardrobe_handler.WardrobeItemHandler
-	aiHandler      *wardrobe_handler.WardrobeAIHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
-func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, aiHandler *wardrobe_handler.WardrobeAIHandler, m *middleware.AuthMiddleware) *WardrobeRouter {
+func NewRouter(itemHandler *wardrobe_handler.WardrobeItemHandler, m *middleware.AuthMiddleware) *WardrobeRouter {
 	return &WardrobeRouter{
 		itemHandler:    itemHandler,
-		aiHandler:      aiHandler,
 		authMiddleware: m,
 	}
 }
@@ -42,18 +40,6 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.itemHandler.BatchUploadWardrobeItems))
 		wardrobeApi.POST("/:id/retry-analysis", shared_pres.WrapHandler(r.itemHandler.RetryWardrobeAnalysis))
 		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.itemHandler.ManualClassify))
-	}
-
-	aiApi := privateApi.Group("/ai")
-	{
-		aiApi.POST("/outfit-recommendations", shared_pres.WrapHandler(r.aiHandler.RecommendOutfit))
-		aiApi.POST("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.CreateChatSession))
-		aiApi.GET("/chat/sessions", shared_pres.WrapHandler(r.aiHandler.GetChatSessions))
-		aiApi.GET("/chat/sessions/:contextID/messages", shared_pres.WrapHandler(r.aiHandler.GetChatMessages))
-		aiApi.PATCH("/chat/sessions/:contextID/archive", shared_pres.WrapHandler(r.aiHandler.ArchiveChatSession))
-		aiApi.DELETE("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.DeleteChatSession))
-		aiApi.PATCH("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.UpdateChatSession))
-		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.aiHandler.StreamChatMessage))
 	}
 
 	meApi := privateApi.Group("/me/wardrobe-items")

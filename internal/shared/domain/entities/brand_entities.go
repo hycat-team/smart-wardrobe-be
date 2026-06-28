@@ -12,6 +12,9 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/votetype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
@@ -115,4 +118,32 @@ type BrandConversationMessage struct {
 	SenderRole     senderrole.SenderRole `gorm:"type:varchar(50);not null"`
 	Message        string                `gorm:"type:text;not null"`
 	CreatedAt      time.Time             `gorm:"type:timestamp with time zone;not null;default:now()"`
+}
+
+type BrandItem struct {
+	AuditableEntity
+	BrandID       uuid.UUID                       `gorm:"type:uuid;not null;uniqueIndex:uq_brand_items_brand_product_code"`
+	Brand         *Brand                          `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	FashionItemID uuid.UUID                       `gorm:"type:uuid;not null;uniqueIndex:uq_brand_items_fashion_item"`
+	FashionItem   *FashionItem                    `gorm:"foreignKey:FashionItemID;constraint:OnDelete:CASCADE"`
+	ProductCode   *string                         `gorm:"type:varchar(100);uniqueIndex:uq_brand_items_brand_product_code"`
+	Name          string                          `gorm:"type:varchar(255);not null"`
+	Description   *string                         `gorm:"type:text"`
+	Price         *float64                        `gorm:"type:decimal(12,2)"`
+	ItemType      branditemtype.BrandItemType     `gorm:"type:varchar(50);not null"`
+	Status        branditemstatus.BrandItemStatus `gorm:"type:varchar(50);not null;default:DRAFT"`
+}
+
+type DigitalSampleResponse struct {
+	ID           uuid.UUID          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	BrandItemID  uuid.UUID          `gorm:"type:uuid;not null"`
+	BrandItem    *BrandItem         `gorm:"foreignKey:BrandItemID;constraint:OnDelete:CASCADE"`
+	UserID       uuid.UUID          `gorm:"type:uuid;not null"`
+	User         *User              `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	OutfitID     *uuid.UUID         `gorm:"type:uuid"`
+	Outfit       *Outfit            `gorm:"foreignKey:OutfitID;constraint:OnDelete:SET NULL"`
+	VoteType     *votetype.VoteType `gorm:"type:varchar(50)"`
+	Rating       *int               `gorm:"type:int"`
+	FeedbackText *string            `gorm:"type:text"`
+	CreatedAt    time.Time          `gorm:"type:timestamp with time zone;not null;default:now()"`
 }

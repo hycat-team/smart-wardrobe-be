@@ -24,20 +24,6 @@ type IWardrobeItemUseCase interface {
 	GetWardrobeStats(ctx context.Context, userID uuid.UUID) (*dto.WardrobeStatsRes, error)
 }
 
-type IOutfitRecommendationUseCase interface {
-	RecommendOutfit(ctx context.Context, userID uuid.UUID, input dto.RecommendOutfitReq) (*dto.RecommendedOutfitRes, error)
-}
-
-type IWardrobeChatUseCase interface {
-	CreateChatSession(ctx context.Context, userID uuid.UUID, title *string) (*dto.ChatSessionRes, error)
-	GetChatSessions(ctx context.Context, userID uuid.UUID) ([]*dto.ChatSessionRes, error)
-	GetChatMessages(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, query dto.GetChatMessagesQueryReq) (*shared_dto.PaginationResult[*dto.ChatMessageRes], error)
-	ArchiveChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
-	DeleteChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID) error
-	UpdateChatSession(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, input dto.UpdateChatSessionReq) (*dto.ChatSessionRes, error)
-	ProcessChatMessageStream(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (<-chan string, func(success bool) error, error)
-}
-
 type IWardrobeCatalogUseCase interface {
 	InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
 	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
@@ -47,6 +33,4 @@ type IWardrobeCatalogUseCase interface {
 
 type IWardrobeWorkerUseCase interface {
 	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) error
-	CleanupFailedItems(ctx context.Context, run *workerlog.Run) error
-	RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error
 }

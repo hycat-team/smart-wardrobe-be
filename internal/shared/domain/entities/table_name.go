@@ -167,3 +167,5 @@ func (BrandBenefit) TableName() string             { return "brand_benefits" }
 func (BenefitRedemption) TableName() string        { return "benefit_redemptions" }
 func (BrandConversation) TableName() string        { return "brand_conversations" }
 func (BrandConversationMessage) TableName() string { return "brand_conversation_messages" }
+func (BrandItem) TableName() string                { return "brand_items" }
+func (DigitalSampleResponse) TableName() string    { return "digital_sample_responses" }

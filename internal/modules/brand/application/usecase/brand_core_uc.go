@@ -14,6 +14,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitredemptionstatus"
@@ -24,6 +25,9 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/branditem/votetype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
@@ -39,20 +43,23 @@ import (
 )
 
 type BrandCoreUseCase struct {
-	brandRepo      repositories.IBrandRepository
-	memberRepo     repositories.IBrandMemberRepository
-	customerRepo   repositories.IBrandCustomerRepository
-	userRepo       identity_repos.IUserRepository
-	programRepo    repositories.ILoyaltyProgramRepository
-	tierRepo       repositories.ILoyaltyTierRepository
-	accountRepo    repositories.ILoyaltyAccountRepository
-	txRepo         repositories.ILoyaltyPointTransactionRepository
-	lotRepo        repositories.ILoyaltyPointLotRepository
-	benefitRepo    repositories.IBrandBenefitRepository
-	redemptionRepo repositories.IBenefitRedemptionRepository
-	convRepo       repositories.IBrandConversationRepository
-	msgRepo        repositories.IBrandConversationMessageRepository
-	uow            shared_repos.IUnitOfWork
+	brandRepo       repositories.IBrandRepository
+	memberRepo      repositories.IBrandMemberRepository
+	customerRepo    repositories.IBrandCustomerRepository
+	userRepo        identity_repos.IUserRepository
+	programRepo     repositories.ILoyaltyProgramRepository
+	tierRepo        repositories.ILoyaltyTierRepository
+	accountRepo     repositories.ILoyaltyAccountRepository
+	txRepo          repositories.ILoyaltyPointTransactionRepository
+	lotRepo         repositories.ILoyaltyPointLotRepository
+	benefitRepo     repositories.IBrandBenefitRepository
+	redemptionRepo  repositories.IBenefitRedemptionRepository
+	convRepo        repositories.IBrandConversationRepository
+	msgRepo         repositories.IBrandConversationMessageRepository
+	brandItemRepo   repositories.IBrandItemRepository
+	feedbackRepo    repositories.IDigitalSampleResponseRepository
+	fashionContract fashion_contract.IFashionContract
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewBrandCoreUseCase(
@@ -69,23 +76,29 @@ func NewBrandCoreUseCase(
 	redemptionRepo repositories.IBenefitRedemptionRepository,
 	convRepo repositories.IBrandConversationRepository,
 	msgRepo repositories.IBrandConversationMessageRepository,
+	brandItemRepo repositories.IBrandItemRepository,
+	feedbackRepo repositories.IDigitalSampleResponseRepository,
+	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandCoreUseCase {
 	return &BrandCoreUseCase{
-		brandRepo:      brandRepo,
-		memberRepo:     memberRepo,
-		customerRepo:   customerRepo,
-		userRepo:       userRepo,
-		programRepo:    programRepo,
-		tierRepo:       tierRepo,
-		accountRepo:    accountRepo,
-		txRepo:         txRepo,
-		lotRepo:        lotRepo,
-		benefitRepo:    benefitRepo,
-		redemptionRepo: redemptionRepo,
-		convRepo:       convRepo,
-		msgRepo:        msgRepo,
-		uow:            uow,
+		brandRepo:       brandRepo,
+		memberRepo:      memberRepo,
+		customerRepo:    customerRepo,
+		userRepo:        userRepo,
+		programRepo:     programRepo,
+		tierRepo:        tierRepo,
+		accountRepo:     accountRepo,
+		txRepo:          txRepo,
+		lotRepo:         lotRepo,
+		benefitRepo:     benefitRepo,
+		redemptionRepo:  redemptionRepo,
+		convRepo:        convRepo,
+		msgRepo:         msgRepo,
+		brandItemRepo:   brandItemRepo,
+		feedbackRepo:    feedbackRepo,
+		fashionContract: fashionContract,
+		uow:             uow,
 	}
 }
 
@@ -1449,4 +1462,201 @@ func getUserDisplayName(u *entities.User) string {
 		return u.Username
 	}
 	return name
+}
+
+func mapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
+	if item == nil {
+		return nil
+	}
+	return &dto.BrandItemRes{
+		ID:            item.ID,
+		BrandID:       item.BrandID,
+		FashionItemID: item.FashionItemID,
+		ProductCode:   item.ProductCode,
+		Name:          item.Name,
+		Description:   item.Description,
+		Price:         item.Price,
+		ItemType:      string(item.ItemType),
+		Status:        string(item.Status),
+		FashionItem:   item.FashionItem,
+		CreatedAt:     item.CreatedAt,
+		UpdatedAt:     item.UpdatedAt,
+	}
+}
+
+func mapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.DigitalSampleResponseRes {
+	if res == nil {
+		return nil
+	}
+	var voteStr *string
+	if res.VoteType != nil {
+		s := string(*res.VoteType)
+		voteStr = &s
+	}
+	return &dto.DigitalSampleResponseRes{
+		ID:           res.ID,
+		BrandItemID:  res.BrandItemID,
+		UserID:       res.UserID,
+		OutfitID:     res.OutfitID,
+		VoteType:     voteStr,
+		Rating:       res.Rating,
+		FeedbackText: res.FeedbackText,
+		CreatedAt:    res.CreatedAt,
+	}
+}
+
+func (uc *BrandCoreUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+		return nil, err
+	}
+
+	brandItemID := uuid.New()
+	fashionItemID, err := uc.fashionContract.CreateFashionItem(
+		ctx,
+		staffUserID,
+		brandItemID,
+		"brand",
+		input.CategoryID,
+		input.ImageUrl,
+		input.ImagePublicID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	item := &entities.BrandItem{
+		AuditableEntity: entities.AuditableEntity{
+			BaseEntity: entities.BaseEntity{
+				ID:        brandItemID,
+				CreatedAt: time.Now().UTC(),
+			},
+			UpdatedAt: time.Now().UTC(),
+		},
+		BrandID:       brandID,
+		FashionItemID: fashionItemID,
+		ProductCode:   input.ProductCode,
+		Name:          input.Name,
+		Description:   input.Description,
+		Price:         input.Price,
+		ItemType:      branditemtype.BrandItemType(input.ItemType),
+		Status:        branditemstatus.BrandItemStatus(input.Status),
+	}
+	if item.Status == "" {
+		item.Status = branditemstatus.Draft
+	}
+
+	if err := uc.brandItemRepo.Create(ctx, item); err != nil {
+		return nil, err
+	}
+
+	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, fashionItemID)
+	item.FashionItem = fashionItem
+
+	return mapToBrandItemRes(item), nil
+}
+
+func (uc *BrandCoreUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+		return nil, err
+	}
+	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*dto.BrandItemRes, len(items))
+	for i, item := range items {
+		res[i] = mapToBrandItemRes(item)
+	}
+	return res, nil
+}
+
+func (uc *BrandCoreUseCase) UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+		return nil, err
+	}
+	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	item.Name = input.Name
+	item.Description = input.Description
+	item.Price = input.Price
+	item.Status = branditemstatus.BrandItemStatus(input.Status)
+	item.UpdatedAt = time.Now().UTC()
+
+	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
+		return nil, err
+	}
+	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
+	item.FashionItem = fashionItem
+
+	return mapToBrandItemRes(item), nil
+}
+
+func (uc *BrandCoreUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+		return nil, err
+	}
+	feedbacks, err := uc.feedbackRepo.GetByBrandItemID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*dto.DigitalSampleResponseRes, len(feedbacks))
+	for i, f := range feedbacks {
+		res[i] = mapToDigitalSampleResponseRes(f)
+	}
+	return res, nil
+}
+
+func (uc *BrandCoreUseCase) ListBrandItemsForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
+	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	var activeItems []*entities.BrandItem
+	for _, item := range items {
+		if item.Status == branditemstatus.Active {
+			activeItems = append(activeItems, item)
+		}
+	}
+	res := make([]*dto.BrandItemRes, len(activeItems))
+	for i, item := range activeItems {
+		res[i] = mapToBrandItemRes(item)
+	}
+	return res, nil
+}
+
+func (uc *BrandCoreUseCase) SubmitSampleFeedback(ctx context.Context, userID uuid.UUID, brandItemID uuid.UUID, input dto.SubmitSampleFeedbackReq) (*dto.DigitalSampleResponseRes, error) {
+	brandItem, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
+	if err != nil {
+		return nil, err
+	}
+	if brandItem == nil || brandItem.Status != branditemstatus.Active {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	var vote *votetype.VoteType
+	if input.VoteType != nil {
+		v := votetype.VoteType(*input.VoteType)
+		vote = &v
+	}
+
+	feedback := &entities.DigitalSampleResponse{
+		BrandItemID:  brandItemID,
+		UserID:       userID,
+		OutfitID:     input.OutfitID,
+		VoteType:     vote,
+		Rating:       input.Rating,
+		FeedbackText: input.FeedbackText,
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	if err := uc.feedbackRepo.Create(ctx, feedback); err != nil {
+		return nil, err
+	}
+
+	return mapToDigitalSampleResponseRes(feedback), nil
 }
