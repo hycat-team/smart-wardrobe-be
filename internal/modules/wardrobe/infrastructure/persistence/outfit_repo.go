@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -20,7 +21,7 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
-	relations := []string{"Items.WardrobeItem.FashionItem", "Items.WardrobeItem.FashionItem.Category"}
+	relations := []string{"Items.FashionItem", "Items.FashionItem.Category"}
 	return &OutfitRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}
@@ -65,9 +66,14 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 		return nil, nil, err
 	}
 
+	if err := r.attachUserWardrobeItems(ctx, &outfit); err != nil {
+		return nil, nil, err
+	}
+
 	var validItems []*entities.OutfitItem
 	for _, item := range outfit.Items {
-		if item.WardrobeItem != nil &&
+		if item.ItemContext == outfititemcontext.UserWardrobe &&
+			item.WardrobeItem != nil &&
 			!item.WardrobeItem.IsDeleted &&
 			item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
 			item.WardrobeItem.UserID == outfit.UserID {
@@ -83,6 +89,42 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 	return &outfit, outfit.Items, nil
 }
 
+func (r *OutfitRepository) attachUserWardrobeItems(ctx context.Context, outfit *entities.Outfit) error {
+	if outfit == nil || len(outfit.Items) == 0 {
+		return nil
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(outfit.Items))
+	for _, item := range outfit.Items {
+		if item.ItemContext == outfititemcontext.UserWardrobe {
+			fashionIDs = append(fashionIDs, item.FashionItemID)
+		}
+	}
+	if len(fashionIDs) == 0 {
+		return nil
+	}
+
+	var wardrobeItems []*entities.WardrobeItem
+	if err := r.GetDB(ctx).
+		Preload("FashionItem").
+		Preload("FashionItem.Category").
+		Where("user_id = ? AND fashion_item_id IN ?", outfit.UserID, fashionIDs).
+		Find(&wardrobeItems).Error; err != nil {
+		return err
+	}
+
+	wardrobeByFashionID := make(map[uuid.UUID]*entities.WardrobeItem, len(wardrobeItems))
+	for _, wardrobeItem := range wardrobeItems {
+		wardrobeByFashionID[wardrobeItem.FashionItemID] = wardrobeItem
+	}
+	for _, item := range outfit.Items {
+		if item.ItemContext == outfititemcontext.UserWardrobe {
+			item.WardrobeItem = wardrobeByFashionID[item.FashionItemID]
+		}
+	}
+	return nil
+}
+
 func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error {
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(outfit).Error; err != nil {
@@ -94,7 +136,7 @@ func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}
@@ -119,7 +161,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}

@@ -112,6 +112,21 @@ func (r *WardrobeItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) 
 	return items, nil
 }
 
+func (r *WardrobeItemRepository) GetByUserIDAndFashionItemIDs(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
+	if len(fashionItemIDs) == 0 {
+		return nil, nil
+	}
+
+	var items []*entities.WardrobeItem
+	err := r.GetQueryWithPreload(ctx).
+		Where("user_id = ? AND fashion_item_id IN ? AND is_deleted = ?", userID, fashionItemIDs, false).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (r *WardrobeItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
 	return r.getByIDWithDB(r.GetDB(ctx), id)
 }

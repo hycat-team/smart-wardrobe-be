@@ -3434,7 +3434,13 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
             "type": "object",
             "properties": {
+                "fashionItemId": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "itemContext": {
                     "type": "string"
                 },
                 "layerOrder": {
@@ -3575,11 +3581,14 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SaveOutfitItemReq": {
             "type": "object",
             "required": [
+                "fashionItemId",
                 "layerOrder",
-                "scale",
-                "wardrobeItemId"
+                "scale"
             ],
             "properties": {
+                "fashionItemId": {
+                    "type": "string"
+                },
                 "layerOrder": {
                     "type": "integer"
                 },
@@ -3592,9 +3601,6 @@ const docTemplate = `{
                 "scale": {
                     "type": "number",
                     "minimum": 0.1
-                },
-                "wardrobeItemId": {
-                    "type": "string"
                 }
             }
         },

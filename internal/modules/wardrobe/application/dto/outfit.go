@@ -1,26 +1,27 @@
 package dto
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
 	"time"
+
+	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
 
 	"github.com/google/uuid"
 )
 
 type SaveOutfitReq struct {
-	Name          string              `json:"name" binding:"required,max=255" label:"tên bắt buộc"`
-	Description   *string             `json:"description" binding:"omitempty" label:"mô tả"`
-	CoverImageUrl *string             `json:"coverImageUrl" binding:"omitempty,url" label:"đường dẫn ảnh bìa"`
-	CoverPublicID *string             `json:"coverPublicId" binding:"omitempty,max=255" label:"mã ảnh bìa"`
-	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive" label:"danh sách món đồ"`
+	Name          string              `json:"name" binding:"required,max=255" label:"ten bat buoc"`
+	Description   *string             `json:"description" binding:"omitempty" label:"mo ta"`
+	CoverImageUrl *string             `json:"coverImageUrl" binding:"omitempty,url" label:"duong dan anh bia"`
+	CoverPublicID *string             `json:"coverPublicId" binding:"omitempty,max=255" label:"ma anh bia"`
+	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive" label:"danh sach mon do"`
 }
 
 type SaveOutfitItemReq struct {
-	WardrobeItemID uuid.UUID `json:"wardrobeItemId" binding:"required" label:"mã trang phục"`
-	PositionX      float64   `json:"positionX" label:"vị trí X"`
-	PositionY      float64   `json:"positionY" label:"vị trí Y"`
-	Scale          float64   `json:"scale" binding:"required,min=0.1" label:"tỉ lệ hiển thị"`
-	LayerOrder     int16     `json:"layerOrder" binding:"required" label:"thứ tự lớp"`
+	FashionItemID uuid.UUID `json:"fashionItemId" binding:"required" label:"ma fashion item"`
+	PositionX     float64   `json:"positionX" label:"vi tri X"`
+	PositionY     float64   `json:"positionY" label:"vi tri Y"`
+	Scale         float64   `json:"scale" binding:"required,min=0.1" label:"ti le hien thi"`
+	LayerOrder    int16     `json:"layerOrder" binding:"required" label:"thu tu lop"`
 }
 
 type OutfitRes struct {
@@ -37,10 +38,12 @@ type OutfitRes struct {
 }
 
 type OutfitItemRes struct {
-	ID           uuid.UUID        `json:"id"`
-	WardrobeItem *WardrobeItemRes `json:"wardrobeItem"`
-	PositionX    float64          `json:"positionX"`
-	PositionY    float64          `json:"positionY"`
-	Scale        float64          `json:"scale"`
-	LayerOrder   int16            `json:"layerOrder"`
+	ID            uuid.UUID        `json:"id"`
+	FashionItemID uuid.UUID        `json:"fashionItemId"`
+	ItemContext   string           `json:"itemContext"`
+	WardrobeItem  *WardrobeItemRes `json:"wardrobeItem,omitempty"`
+	PositionX     float64          `json:"positionX"`
+	PositionY     float64          `json:"positionY"`
+	Scale         float64          `json:"scale"`
+	LayerOrder    int16            `json:"layerOrder"`
 }

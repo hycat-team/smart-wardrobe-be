@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
+	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 
@@ -89,14 +90,16 @@ type Outfit struct {
 }
 
 type OutfitItem struct {
-	OutfitID     uuid.UUID     `gorm:"type:uuid;primaryKey"`
-	Outfit       *Outfit       `gorm:"foreignKey:OutfitID;constraint:OnDelete:CASCADE"`
-	ItemID       uuid.UUID     `gorm:"type:uuid;primaryKey"`
-	WardrobeItem *WardrobeItem `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE"`
-	PositionX    float64       `gorm:"type:double precision;not null;default:0.0"`
-	PositionY    float64       `gorm:"type:double precision;not null;default:0.0"`
-	Scale        float64       `gorm:"type:double precision;not null;default:1.0"`
-	LayerOrder   int16         `gorm:"type:smallint;not null;default:1"`
-	CreatedAt    time.Time     `gorm:"type:timestamp with time zone;not null;default:now()"`
-	UpdatedAt    time.Time     `gorm:"type:timestamp with time zone;not null;default:now()"`
+	OutfitID      uuid.UUID                           `gorm:"type:uuid;primaryKey"`
+	Outfit        *Outfit                             `gorm:"foreignKey:OutfitID;constraint:OnDelete:CASCADE"`
+	FashionItemID uuid.UUID                           `gorm:"type:uuid;primaryKey"`
+	FashionItem   *FashionItem                        `gorm:"foreignKey:FashionItemID;constraint:OnDelete:RESTRICT"`
+	ItemContext   outfititemcontext.OutfitItemContext `gorm:"type:varchar(50);primaryKey;not null"`
+	WardrobeItem  *WardrobeItem                       `gorm:"foreignKey:FashionItemID;references:FashionItemID"`
+	PositionX     float64                             `gorm:"type:double precision;not null;default:0.0"`
+	PositionY     float64                             `gorm:"type:double precision;not null;default:0.0"`
+	Scale         float64                             `gorm:"type:double precision;not null;default:1.0"`
+	LayerOrder    int16                               `gorm:"type:smallint;not null;default:1"`
+	CreatedAt     time.Time                           `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UpdatedAt     time.Time                           `gorm:"type:timestamp with time zone;not null;default:now()"`
 }
