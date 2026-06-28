@@ -12,22 +12,24 @@ import (
 )
 
 const (
-	msgBrandCreateRequestSuccess   = "Gửi yêu cầu tạo brand thành công"
-	msgBrandCreateAdminSuccess     = "Tạo brand thành công"
-	msgBrandUpdateStatusSuccess    = "Cập nhật trạng thái brand thành công"
-	msgBrandListSuccess            = "Lấy danh sách brand thành công"
-	msgBrandDetailSuccess          = "Lấy thông tin brand thành công"
-	msgBrandMemberCreateSuccess    = "Thêm thành viên brand thành công"
-	msgBrandMemberListSuccess      = "Lấy danh sách thành viên brand thành công"
-	msgBrandCustomerListSuccess    = "Lấy danh sách khách hàng brand thành công"
-	msgBrandJoinLoyaltySuccess     = "Tham gia loyalty brand thành công"
-	msgBrandOfflineCustomerSuccess = "Tạo khách hàng offline thành công"
-	msgBrandGrantPointsSuccess     = "Ghi nhận giao dịch điểm loyalty thành công"
-	msgBrandItemCreateSuccess      = "Tạo sản phẩm brand thành công"
-	msgBrandItemListSuccess        = "Lấy danh sách sản phẩm brand thành công"
-	msgBrandItemUpdateSuccess      = "Cập nhật sản phẩm brand thành công"
-	msgBrandItemFeedbackSuccess    = "Lấy danh sách feedback sản phẩm thành công"
-	msgBrandFeedbackSubmitSuccess  = "Gửi feedback sản phẩm thành công"
+	msgBrandCreateRequestSuccess    = "Gửi yêu cầu tạo brand thành công"
+	msgBrandCreateAdminSuccess      = "Tạo brand thành công"
+	msgBrandUpdateStatusSuccess     = "Cập nhật trạng thái brand thành công"
+	msgBrandListSuccess             = "Lấy danh sách brand thành công"
+	msgBrandDetailSuccess           = "Lấy thông tin brand thành công"
+	msgBrandMemberCreateSuccess     = "Thêm thành viên brand thành công"
+	msgBrandMemberListSuccess       = "Lấy danh sách thành viên brand thành công"
+	msgBrandCustomerListSuccess     = "Lấy danh sách khách hàng brand thành công"
+	msgBrandJoinLoyaltySuccess      = "Tham gia loyalty brand thành công"
+	msgBrandOfflineCustomerSuccess  = "Tạo khách hàng offline thành công"
+	msgBrandGrantPointsSuccess      = "Ghi nhận giao dịch điểm loyalty thành công"
+	msgBrandItemCreateSuccess       = "Tạo sản phẩm brand thành công"
+	msgBrandItemListSuccess         = "Lấy danh sách sản phẩm brand thành công"
+	msgBrandItemUpdateSuccess       = "Cập nhật sản phẩm brand thành công"
+	msgBrandItemFeedbackSuccess     = "Lấy danh sách feedback sản phẩm thành công"
+	msgBrandFeedbackSubmitSuccess   = "Gửi feedback sản phẩm thành công"
+	msgBrandCreateClaimTokenSuccess = "Tạo mã claim liên kết tài khoản thành công"
+	msgBrandClaimCustomerSuccess    = "Liên kết tài khoản loyalty thành công"
 )
 
 type BrandHandler struct {
@@ -792,5 +794,62 @@ func (h *BrandHandler) SubmitSampleFeedback(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Created(c, msgBrandFeedbackSubmitSuccess, res)
+	return nil
+}
+
+// CreateClaimToken generates a claim token for an offline customer.
+// @Summary Tạo mã claim cho khách hàng offline
+// @Description Tạo một mã claim ngẫu nhiên dùng để liên kết tài khoản offline của khách hàng với tài khoản online của người dùng. Hạn dùng 24 giờ.
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID của Brand"
+// @Param customerId path string true "ID của khách hàng cần tạo mã claim"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.CreateClaimTokenRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token [post]
+func (h *BrandHandler) CreateClaimToken(c *gin.Context) error {
+	staffUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	customerID, err := uuid.Parse(c.Param("customerId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.CreateBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandCreateClaimTokenSuccess, res)
+	return nil
+}
+
+// ClaimOfflineAccount links an offline customer and loyalty account to the current user.
+// @Summary Liên kết tài khoản khách hàng offline
+// @Description Người dùng nhập mã claim nhận được để liên kết hồ sơ mua hàng offline của họ với tài khoản online.
+// @Tags Brand Customer
+// @Accept json
+// @Produce json
+// @Param body body dto.ClaimOfflineAccountReq true "Mã claim"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
+// @Router /api/v1/brands/claim [post]
+func (h *BrandHandler) ClaimOfflineAccount(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	var input dto.ClaimOfflineAccountReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.ClaimBrandCustomer(c.Request.Context(), userID, input.ClaimToken)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandClaimCustomerSuccess, res)
 	return nil
 }

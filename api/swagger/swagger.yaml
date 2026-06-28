@@ -198,6 +198,13 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.ClaimOfflineAccountReq:
+    properties:
+      claimToken:
+        type: string
+    required:
+    - claimToken
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq:
     properties:
       benefitType:
@@ -268,6 +275,13 @@ definitions:
     required:
     - name
     - slug
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes:
+    properties:
+      claimToken:
+        type: string
+      expiresAt:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq:
     properties:
@@ -2628,6 +2642,38 @@ paths:
       summary: Lấy danh sách khách hàng của brand
       tags:
       - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token:
+    post:
+      consumes:
+      - application/json
+      description: Tạo một mã claim ngẫu nhiên dùng để liên kết tài khoản offline
+        của khách hàng với tài khoản online của người dùng. Hạn dùng 24 giờ.
+      parameters:
+      - description: ID của Brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID của khách hàng cần tạo mã claim
+        in: path
+        name: customerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes'
+              type: object
+      summary: Tạo mã claim cho khách hàng offline
+      tags:
+      - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/customers/offline-purchase:
     post:
       consumes:
@@ -3096,6 +3142,34 @@ paths:
       summary: Tham gia chương trình khách hàng thân thiết
       tags:
       - Brand
+  /api/v1/brands/claim:
+    post:
+      consumes:
+      - application/json
+      description: Người dùng nhập mã claim nhận được để liên kết hồ sơ mua hàng offline
+        của họ với tài khoản online.
+      parameters:
+      - description: Mã claim
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimOfflineAccountReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
+              type: object
+      summary: Liên kết tài khoản khách hàng offline
+      tags:
+      - Brand Customer
   /api/v1/categories:
     get:
       description: Lấy danh sách toàn bộ danh mục trang phục trong hệ thống

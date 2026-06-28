@@ -58,6 +58,7 @@ type BrandCoreUseCase struct {
 	msgRepo         repositories.IBrandConversationMessageRepository
 	brandItemRepo   repositories.IBrandItemRepository
 	feedbackRepo    repositories.IDigitalSampleResponseRepository
+	claimRepo       repositories.IBrandCustomerClaimRepository
 	fashionContract fashion_contract.IFashionContract
 	uow             shared_repos.IUnitOfWork
 }
@@ -78,6 +79,7 @@ func NewBrandCoreUseCase(
 	msgRepo repositories.IBrandConversationMessageRepository,
 	brandItemRepo repositories.IBrandItemRepository,
 	feedbackRepo repositories.IDigitalSampleResponseRepository,
+	claimRepo repositories.IBrandCustomerClaimRepository,
 	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandCoreUseCase {
@@ -97,6 +99,7 @@ func NewBrandCoreUseCase(
 		msgRepo:         msgRepo,
 		brandItemRepo:   brandItemRepo,
 		feedbackRepo:    feedbackRepo,
+		claimRepo:       claimRepo,
 		fashionContract: fashionContract,
 		uow:             uow,
 	}
@@ -1757,4 +1760,112 @@ func (uc *BrandCoreUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 	}
 
 	return mapToDigitalSampleResponseRes(feedback), nil
+}
+
+func (uc *BrandCoreUseCase) CreateBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.CreateClaimTokenRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+		return nil, err
+	}
+	customer, err := uc.customerRepo.GetByID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.BrandID != brandID {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	if customer.UserID != nil {
+		return nil, branderrors.ErrCustomerAlreadyLinked()
+	}
+
+	token := uuid.New().String()
+	hash := sha256.Sum256([]byte(token))
+	hashStr := hex.EncodeToString(hash[:])
+
+	expiresAt := time.Now().UTC().Add(24 * time.Hour)
+	claim := &entities.BrandCustomerClaim{
+		BrandCustomerID: customerID,
+		ClaimTokenHash:  hashStr,
+		ExpiresAt:       expiresAt,
+	}
+
+	if err := uc.claimRepo.Create(ctx, claim); err != nil {
+		return nil, err
+	}
+
+	return &dto.CreateClaimTokenRes{
+		ClaimToken: token,
+		ExpiresAt:  expiresAt,
+	}, nil
+}
+
+func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string) (*dto.BrandCustomerRes, error) {
+	token := strings.TrimSpace(claimToken)
+	if token == "" {
+		return nil, branderrors.ErrInvalidToken()
+	}
+	hash := sha256.Sum256([]byte(token))
+	hashStr := hex.EncodeToString(hash[:])
+
+	claim, err := uc.claimRepo.GetByTokenHash(ctx, hashStr)
+	if err != nil {
+		return nil, err
+	}
+	if claim == nil {
+		return nil, branderrors.ErrInvalidToken()
+	}
+	if claim.ConsumedAt != nil {
+		return nil, branderrors.ErrTokenAlreadyUsed()
+	}
+	if time.Now().UTC().After(claim.ExpiresAt) {
+		return nil, branderrors.ErrTokenExpired()
+	}
+
+	customer, err := uc.customerRepo.GetByID(ctx, claim.BrandCustomerID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	if customer.UserID != nil {
+		return nil, branderrors.ErrCustomerAlreadyLinked()
+	}
+
+	var updatedCustomer *entities.BrandCustomer
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		now := time.Now().UTC()
+
+		customer.UserID = &userID
+		customer.ClaimedAt = &now
+		customer.UpdatedAt = now
+		if err := uc.customerRepo.Update(txCtx, customer); err != nil {
+			return err
+		}
+
+		account, err := uc.accountRepo.GetByBrandCustomerID(txCtx, customer.ID)
+		if err != nil {
+			return err
+		}
+		if account != nil {
+			account.UserID = &userID
+			account.UpdatedAt = now
+			if err := uc.accountRepo.Update(txCtx, account); err != nil {
+				return err
+			}
+		}
+
+		claim.ConsumedAt = &now
+		if err := uc.claimRepo.Update(txCtx, claim); err != nil {
+			return err
+		}
+
+		updatedCustomer = customer
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapBrandCustomer(updatedCustomer), nil
 }

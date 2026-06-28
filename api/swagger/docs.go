@@ -1723,6 +1723,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-token": {
+            "post": {
+                "description": "Tạo một mã claim ngẫu nhiên dùng để liên kết tài khoản offline của khách hàng với tài khoản online của người dùng. Hạn dùng 24 giờ.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Tạo mã claim cho khách hàng offline",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID của Brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID của khách hàng cần tạo mã claim",
+                        "name": "customerId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/items": {
             "get": {
                 "consumes": [
@@ -2104,6 +2155,52 @@ const docTemplate = `{
                                             "items": {
                                                 "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/claim": {
+            "post": {
+                "description": "Người dùng nhập mã claim nhận được để liên kết hồ sơ mua hàng offline của họ với tài khoản online.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Customer"
+                ],
+                "summary": "Liên kết tài khoản khách hàng offline",
+                "parameters": [
+                    {
+                        "description": "Mã claim",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimOfflineAccountReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes"
                                         }
                                     }
                                 }
@@ -4141,6 +4238,17 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.ClaimOfflineAccountReq": {
+            "type": "object",
+            "required": [
+                "claimToken"
+            ],
+            "properties": {
+                "claimToken": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
             "type": "object",
             "required": [
@@ -4238,6 +4346,17 @@ const docTemplate = `{
                 "slug": {
                     "type": "string",
                     "maxLength": 100
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes": {
+            "type": "object",
+            "properties": {
+                "claimToken": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
                 }
             }
         },

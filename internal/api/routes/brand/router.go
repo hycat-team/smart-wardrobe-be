@@ -27,6 +27,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	userBrands := group.Group("/brands")
 	userBrands.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	{
+		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
 		userBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
 		userBrands.POST("/:brandId/benefits/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
@@ -44,6 +45,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.POST("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.AddBrandMember))
 		portal.GET("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.GetBrandMembers))
 		portal.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
+		portal.POST("/brands/:brandId/customers/:customerId/claim-token", shared_pres.WrapHandler(r.brandHandler.CreateClaimToken))
 		portal.POST("/brands/:brandId/customers/offline-purchase", shared_pres.WrapHandler(r.brandHandler.CreateOfflineCustomer))
 		portal.POST("/brands/:brandId/loyalty/points", shared_pres.WrapHandler(r.brandHandler.GrantLoyaltyPoints))
 		portal.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))

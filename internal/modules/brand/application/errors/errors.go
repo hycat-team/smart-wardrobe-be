@@ -89,3 +89,23 @@ func ErrBenefitRedemptionExists() *apperror.Error {
 func ErrBenefitInvalidStatus() *apperror.Error {
 	return apperror.NewBadRequest("Trang thai quyen loi khong hop le.")
 }
+
+func ErrCustomerNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy khách hàng của brand.")
+}
+
+func ErrCustomerAlreadyLinked() *apperror.Error {
+	return apperror.NewConflict("Khách hàng này đã được liên kết với một tài khoản người dùng.")
+}
+
+func ErrInvalidToken() *apperror.Error {
+	return apperror.NewBadRequest("Mã claim không hợp lệ.")
+}
+
+func ErrTokenAlreadyUsed() *apperror.Error {
+	return apperror.NewConflict("Mã claim đã được sử dụng.")
+}
+
+func ErrTokenExpired() *apperror.Error {
+	return apperror.NewBadRequest("Mã claim đã hết hạn sử dụng.")
+}

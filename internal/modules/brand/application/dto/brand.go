@@ -228,3 +228,12 @@ type DigitalSampleResponseRes struct {
 	FeedbackText *string    `json:"feedbackText"`
 	CreatedAt    time.Time  `json:"createdAt"`
 }
+
+type CreateClaimTokenRes struct {
+	ClaimToken string    `json:"claimToken"`
+	ExpiresAt  time.Time `json:"expiresAt"`
+}
+
+type ClaimOfflineAccountReq struct {
+	ClaimToken string `json:"claimToken" binding:"required"`
+}
