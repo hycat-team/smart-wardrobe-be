@@ -79,7 +79,7 @@ func (r *PostRepository) getByPublicID(ctx context.Context, publicID string, inc
 }
 
 func (r *PostRepository) baseFeedQuery(ctx context.Context) *gorm.DB {
-	return r.GetQueryWithPreload(ctx).
+	return r.GetQueryWithPreload(ctx).Model(&entities.Post{}).
 		Joins("JOIN users ON users.id = posts.user_id").
 		Where("posts.is_deleted = ? AND users.is_deleted = ?", false, false).
 		Where("posts.post_type <> ? OR EXISTS (SELECT 1 FROM post_items WHERE post_items.post_id = posts.id AND post_items.status <> ?)", "SALE", postitemstatus.Hidden)
