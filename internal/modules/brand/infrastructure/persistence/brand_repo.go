@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -72,6 +73,16 @@ func (r *BrandMemberRepository) GetByBrandID(ctx context.Context, brandID uuid.U
 	var members []*entities.BrandMember
 	err := r.GetQueryWithPreload(ctx).
 		Where("brand_id = ?", brandID).
+		Order("created_at ASC").
+		Find(&members).Error
+	return members, err
+}
+
+func (r *BrandMemberRepository) GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	err := r.GetQueryWithPreload(ctx).
+		Preload("Brand").
+		Where("user_id = ? AND status = ?", userID, brandmemberstatus.Active).
 		Order("created_at ASC").
 		Find(&members).Error
 	return members, err

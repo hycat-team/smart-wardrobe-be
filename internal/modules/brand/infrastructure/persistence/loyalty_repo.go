@@ -221,6 +221,21 @@ func (r *LoyaltyPointLotRepository) ListAccountsWithExpiredLots(ctx context.Cont
 	return accountIDs, err
 }
 
+func (r *LoyaltyPointLotRepository) GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error) {
+	var lot entities.LoyaltyPointLot
+	err := r.GetDB(ctx).
+		Where("loyalty_account_id = ? AND status = ? AND remaining_points > 0 AND expires_at IS NOT NULL AND expires_at > ?", loyaltyAccountID, loyaltypointlotstatus.Active, now).
+		Order("expires_at ASC, created_at ASC").
+		First(&lot).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &lot, nil
+}
+
 type BrandCustomerClaimRepository struct {
 	shared_persist.GenericRepository[entities.BrandCustomerClaim, uuid.UUID]
 }

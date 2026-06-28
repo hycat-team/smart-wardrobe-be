@@ -29,6 +29,9 @@ var ProviderSet = wire.NewSet(
 	persistence.NewDigitalSampleResponseRepository,
 	usecase.NewBrandCoreUseCase,
 	wire.Bind(new(contract.IBrandContract), new(uc_interfaces.IBrandCoreUseCase)),
+	handler.NewBrandPortalHandler,
+	handler.NewBrandLoyaltyHandler,
+	handler.NewBrandChatHandler,
 	handler.NewBrandHandler,
 	worker.NewLoyaltyPointExpiryWorker,
 )

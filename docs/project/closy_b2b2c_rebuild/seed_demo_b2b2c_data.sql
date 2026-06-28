@@ -1,10 +1,4 @@
--- +goose Up
-
 -- 1. Users
--- brandowner/brandmanager: Staff của Closy Brand
--- bronzeuser: B2C user hạng Bronze, đã là brand_customer của Closy Brand
--- golduser: B2C user hạng Gold, đã là brand_customer của Closy Brand, có quyền SAMPLE_MIX_ACCESS
--- claimuser: B2C user mới, CHƯA là brand_customer -> dùng để test kịch bản claim tài khoản offline
 INSERT INTO users (id, username, email, password_hash, first_name, last_name, role_slug, status, created_at, updated_at)
 VALUES
     ('11111111-1111-1111-1111-111111111111', 'brandowner', 'owner@brand.com', '$2a$11$kXWLREY8wu6wEQlONWcLveV2jeE/Tx9MS4vOlQqXmcQ9VASP0NMhu', 'Brand', 'Owner', 'user', 0, now(), now()),
@@ -15,9 +9,9 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Brands
-INSERT INTO brands (id, slug, name, description, logo_url, status, created_by_user_id, approved_by_user_id, approved_at, created_at, updated_at)
+INSERT INTO brands (id, slug, name, description, logo_url, logo_public_id, status, created_by_user_id, approved_by_user_id, approved_at, created_at, updated_at)
 VALUES
-    ('33333333-3333-3333-3333-333333333333', 'closy-brand', 'Closy Brand', 'Closy Fashion Brand Demo B2B2C', 'https://logo.com/closy', 'ACTIVE', '11111111-1111-1111-1111-111111111111', 'ad11ad11-ad11-ad11-ad11-ad11ad11ad11', now(), now(), now())
+    ('33333333-3333-3333-3333-333333333333', 'closy-brand', 'Closy Brand', 'Closy Fashion Brand Demo B2B2C', 'https://logo.com/closy', 'brands/logos/closy-brand-logo', 'ACTIVE', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Brand Members
@@ -56,13 +50,80 @@ VALUES
     ('88888888-8888-8888-8888-888888888883', '33333333-3333-3333-3333-333333333333', '55555555-5555-5555-5555-555555555553', NULL, 0, 0, 0.00, '77777777-7777-7777-7777-777777777771', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- 7. Benefits
+-- 7. Seed loyalty ledger/lots for Gold user's initial 500 points.
+INSERT INTO loyalty_point_transactions (
+    id,
+    loyalty_account_id,
+    brand_id,
+    brand_customer_id,
+    user_id,
+    points_delta,
+    balance_after,
+    transaction_type,
+    reason,
+    spend_amount,
+    reference_type,
+    idempotency_key,
+    created_by_user_id,
+    created_at
+)
+VALUES
+    (
+        '12121212-1212-1212-1212-121212121212',
+        '88888888-8888-8888-8888-888888888882',
+        '33333333-3333-3333-3333-333333333333',
+        '55555555-5555-5555-5555-555555555552',
+        '22222222-2222-2222-2222-222222222222',
+        500,
+        500,
+        'EARN',
+        'Seed demo spend for Gold tier',
+        5000000.00,
+        'SEED_DEMO',
+        'seed-demo-gold-500',
+        '11111111-1111-1111-1111-111111111112',
+        now()
+    )
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO loyalty_point_lots (
+    id,
+    loyalty_account_id,
+    brand_id,
+    brand_customer_id,
+    user_id,
+    earn_transaction_id,
+    earned_points,
+    remaining_points,
+    expires_at,
+    status,
+    created_at,
+    updated_at
+)
+VALUES
+    (
+        '13131313-1313-1313-1313-131313131313',
+        '88888888-8888-8888-8888-888888888882',
+        '33333333-3333-3333-3333-333333333333',
+        '55555555-5555-5555-5555-555555555552',
+        '22222222-2222-2222-2222-222222222222',
+        '12121212-1212-1212-1212-121212121212',
+        500,
+        500,
+        NULL,
+        'ACTIVE',
+        now(),
+        now()
+    )
+ON CONFLICT (id) DO NOTHING;
+
+-- 8. Benefits
 INSERT INTO brand_benefits (id, brand_id, name, description, benefit_type, unlock_type, required_points, required_tier_id, feature_code, feature_config, status, created_at, updated_at)
 VALUES
     ('99999999-9999-9999-9999-999999999991', '33333333-3333-3333-3333-333333333333', 'Phối mẫu thử Gold', 'Quyền lợi phối đồ mẫu thử của brand chỉ dành riêng cho hạng Gold', 'FEATURE_ACCESS', 'TIER_PRIVILEGE', NULL, '77777777-7777-7777-7777-777777777773', 'SAMPLE_MIX_ACCESS', '{}', 'ACTIVE', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- 8. Fashion Items & Brand Items
+-- 9. Fashion Items & Brand Items
 INSERT INTO fashion_items (id, category_id, image_url, image_public_id, color, style, material, pattern, fit, seasonality, description, created_at, updated_at)
 VALUES
     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '8b7eb3de-2661-46ab-ae7d-b57bfd2d2a01', 'https://res.cloudinary.com/demo/image/upload/v1/red-shirt.jpg', 'red-shirt', 'Đỏ', 'Casual', 'Cotton', 'Trơn', 'Regular', 'Bốn mùa', 'Áo thun đỏ Closy chính hãng mịn mát', now(), now()),
@@ -75,14 +136,20 @@ VALUES
     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab', 'CLSY-YELLOW-SAMPLE', 'Mẫu thử Áo thun vàng Closy', 'Thiết kế mẫu thử vàng nổi bật mùa hè', 0.00, 'SAMPLE', 'ACTIVE', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- 9. Wardrobe Items (Bao gồm quần jeans xanh trơn có sẵn để phối)
+-- 10. Demo wardrobe fashion item.
+INSERT INTO fashion_items (id, category_id, image_url, image_public_id, color, style, material, pattern, fit, seasonality, description, created_at, updated_at)
+VALUES
+    ('ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c02', '8b7eb3de-2661-46ab-ae7d-b57bfd2d2a02', 'https://res.cloudinary.com/demo/image/upload/v1/blue-jeans.jpg', 'blue-jeans', 'Xanh denim', 'Casual', 'Denim', 'Trơn', 'Regular', 'Bốn mùa', 'Quần jeans xanh trơn bền bỉ cổ điển', now(), now())
+ON CONFLICT (id) DO NOTHING;
+
+-- 11. Wardrobe Items (Bao gồm quần jeans xanh trơn có sẵn để phối)
 INSERT INTO wardrobe_items (id, user_id, fashion_item_id, purchase_price, status, item_type, created_at, updated_at)
 VALUES
     ('cccccccc-cccc-cccc-cccc-ccccccccccc1', '22222222-2222-2222-2222-222222222221', 'ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c02', 450000.00, 0, 0, now(), now()),
     ('cccccccc-cccc-cccc-cccc-ccccccccccc2', '22222222-2222-2222-2222-222222222222', 'ca7ca7ca-ca7c-ca7c-ca7c-ca7ca7ca7c02', 450000.00, 0, 0, now(), now())
 ON CONFLICT (id) DO NOTHING;
 
--- 10. Chat
+-- 12. Chat
 INSERT INTO brand_conversations (id, brand_id, user_id, status, last_message_at, created_at, updated_at)
 VALUES
     ('dddddddd-dddd-dddd-dddd-dddddddddddd', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'OPEN', now(), now(), now())
@@ -93,18 +160,3 @@ VALUES
     ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 'CUSTOMER', 'Tôi muốn tư vấn phối đồ với sản phẩm của brand', now() - interval '1 hour'),
     ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111112', 'BRAND_STAFF', 'Xin chào, chúng tôi có các mẫu thử mới rất phù hợp với bạn.', now() - interval '30 minutes')
 ON CONFLICT (id) DO NOTHING;
-
--- +goose Down
-DELETE FROM brand_conversation_messages WHERE id IN ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2');
-DELETE FROM brand_conversations WHERE id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
-DELETE FROM wardrobe_items WHERE id IN ('cccccccc-cccc-cccc-cccc-ccccccccccc1', 'cccccccc-cccc-cccc-cccc-ccccccccccc2');
-DELETE FROM brand_items WHERE id IN ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2');
-DELETE FROM fashion_items WHERE id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab');
-DELETE FROM brand_benefits WHERE id = '99999999-9999-9999-9999-999999999991';
-DELETE FROM loyalty_accounts WHERE id IN ('88888888-8888-8888-8888-888888888881', '88888888-8888-8888-8888-888888888882', '88888888-8888-8888-8888-888888888883');
-DELETE FROM loyalty_tiers WHERE id IN ('77777777-7777-7777-7777-777777777771', '77777777-7777-7777-7777-777777777772', '77777777-7777-7777-7777-777777777773');
-DELETE FROM loyalty_programs WHERE id = '66666666-6666-6666-6666-666666666666';
-DELETE FROM brand_customers WHERE id IN ('55555555-5555-5555-5555-555555555551', '55555555-5555-5555-5555-555555555552', '55555555-5555-5555-5555-555555555553');
-DELETE FROM brand_members WHERE id IN ('44444444-4444-4444-4444-444444444441', '44444444-4444-4444-4444-444444444442');
-DELETE FROM brands WHERE id = '33333333-3333-3333-3333-333333333333';
-DELETE FROM users WHERE id IN ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111112', '22222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222223');

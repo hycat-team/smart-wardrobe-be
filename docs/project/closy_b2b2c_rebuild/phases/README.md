@@ -26,9 +26,9 @@ Các quyết định cuối đã chốt:
 - Không chuyển sang phone-first identity trong MVP; giữ auth hiện tại của Closy.
 - Không tạo bảng OTP mới; OTP hiện tại vẫn dùng Redis/email theo flow hiện có.
 - Không dùng `user_brand_consents` trong MVP.
-- Không dùng `loyalty_point_lots`.
-- Không dùng `remaining_points` trong `loyalty_point_transactions`.
-- `loyalty_point_transactions` là append-only ledger.
+- Dùng `loyalty_point_lots` theo Phase 05c2 để quản lý điểm còn lại, expiry và redeem an toàn theo FEFO.
+- Không dùng `remaining_points` trong `loyalty_point_transactions`; `remaining_points` chỉ nằm ở `loyalty_point_lots`.
+- `loyalty_point_transactions` là append-only ledger, không update transaction cũ.
 - Campaign out of scope trong MVP hiện tại.
 - Brand subscription/B2B billing out of scope trong MVP hiện tại.
 - Brand không đăng nhập bằng account riêng; brand staff là `users` được map qua `brand_members`.
@@ -64,6 +64,7 @@ phases/
 │   ├── 05a_brand_core.md
 │   ├── 05b_loyalty_schema.md
 │   ├── 05c_loyalty_points_usecase.md
+│   ├── 05c2_loyalty_point_lots.md
 │   ├── 05d_benefits_feature_access.md
 │   ├── 05e_brand_chat.md
 │   └── 05f_brand_privacy_visibility.md

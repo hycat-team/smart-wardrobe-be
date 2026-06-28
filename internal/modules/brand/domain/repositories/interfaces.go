@@ -21,6 +21,7 @@ type IBrandMemberRepository interface {
 	shared_repos.IGenericRepository[entities.BrandMember, uuid.UUID]
 	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandMember, error)
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error)
+	GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error)
 }
 
 type IBrandCustomerRepository interface {
@@ -63,6 +64,7 @@ type ILoyaltyPointLotRepository interface {
 	ListExpiredLotsForUpdate(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) ([]*entities.LoyaltyPointLot, error)
 	UpdateLotRemainingAndStatus(ctx context.Context, lotID uuid.UUID, remainingPoints int, status loyaltypointlotstatus.LoyaltyPointLotStatus) error
 	ListAccountsWithExpiredLots(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
+	GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error)
 }
 
 type IBrandCustomerClaimRepository interface {

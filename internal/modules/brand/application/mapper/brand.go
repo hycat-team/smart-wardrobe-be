@@ -17,6 +17,7 @@ func MapBrand(brand *entities.Brand) *dto.BrandRes {
 		Name:             brand.Name,
 		Description:      brand.Description,
 		LogoURL:          brand.LogoURL,
+		LogoPublicID:     brand.LogoPublicID,
 		Status:           brand.Status,
 		CreatedByUserID:  brand.CreatedByUserID,
 		ApprovedByUserID: brand.ApprovedByUserID,

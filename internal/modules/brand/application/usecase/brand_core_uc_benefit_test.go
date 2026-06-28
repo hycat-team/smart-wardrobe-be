@@ -55,6 +55,15 @@ func (m *mockMemberRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUI
 func (m *mockMemberRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
 	return nil, nil
 }
+func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	for _, member := range m.members {
+		if member.UserID == userID && member.Status == brandmemberstatus.Active {
+			members = append(members, member)
+		}
+	}
+	return members, nil
+}
 
 type mockCustomerRepo struct {
 	customers map[string]*entities.BrandCustomer

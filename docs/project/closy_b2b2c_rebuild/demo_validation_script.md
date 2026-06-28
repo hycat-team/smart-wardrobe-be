@@ -135,7 +135,7 @@ Trước khi bắt đầu các case cần quyền Staff (Case 1, Case 2):
   "data": {
     "id": "55555555-5555-5555-5555-555555555553",
     "brandId": "33333333-3333-3333-3333-333333333333",
-    "userId": "22222222-2222-2222-2222-222222222222",
+    "userId": "22222222-2222-2222-2222-222222222223",
     "customerName": "Offline Client",
     "status": "ACTIVE"
   }
@@ -149,13 +149,13 @@ Trước khi bắt đầu các case cần quyền Staff (Case 1, Case 2):
 
 **Thực hiện trên Swagger**:
 1. Đảm bảo đang đăng nhập với quyền `golduser`.
-2. Tìm nhóm **Fashion** -> Endpoint `POST /api/v1/fashion/recommend`.
+2. Tìm nhóm **Wardrobe AI** -> Endpoint `POST /api/v1/ai/outfit-recommendations`.
 3. Click **Try it out** và nhập Body:
    ```json
    {
      "include_brand_items": false,
-     "style_preference": "Casual",
-     "event_context": "Dạo phố cuối tuần"
+     "styleTarget": "Casual",
+     "occasion": "Dạo phố cuối tuần"
    }
    ```
 4. Click **Execute**.
@@ -169,13 +169,13 @@ Trước khi bắt đầu các case cần quyền Staff (Case 1, Case 2):
 
 **Thực hiện trên Swagger**:
 1. Đảm bảo đang đăng nhập với quyền `golduser`.
-2. Tìm nhóm **Fashion** -> Endpoint `POST /api/v1/fashion/recommend`.
+2. Tìm nhóm **Wardrobe AI** -> Endpoint `POST /api/v1/ai/outfit-recommendations`.
 3. Click **Try it out** và nhập Body:
    ```json
    {
      "include_brand_items": true,
-     "style_preference": "Casual",
-     "event_context": "Dạo phố cuối tuần"
+     "styleTarget": "Casual",
+     "occasion": "Dạo phố cuối tuần"
    }
    ```
 4. Click **Execute**.
@@ -186,11 +186,11 @@ Trước khi bắt đầu các case cần quyền Staff (Case 1, Case 2):
 
 ---
 
-### Case 5: Đổi điểm nhận quà (Benefit Redemption)
-*   **Mục tiêu**: Thành viên dùng điểm loyalty tích lũy được để quy đổi quyền lợi ưu đãi tại brand.
+### Case 5: Nhận quyền lợi hạng thành viên (Benefit Redemption)
+*   **Mục tiêu**: Thành viên hạng Gold redeem quyền lợi `SAMPLE_MIX_ACCESS` theo tier privilege của brand. Quyền lợi này không trừ điểm, nên `pointsSpent = 0`.
 
 **Thực hiện trên Swagger**:
-1. Đảm bảo đang đăng nhập với quyền `golduser` (có sẵn 500 điểm seed).
+1. Đảm bảo đang đăng nhập với quyền `golduser` (đang ở hạng Gold và có sẵn 500 điểm seed để phục vụ các luồng loyalty khác).
 2. Tìm nhóm **Brand Customer** (hoặc **Brand**) -> Endpoint `POST /api/v1/brands/{brandId}/benefits/{benefitId}/redeem`.
 3. Click **Try it out** và điền tham số:
    *   `brandId`: `33333333-3333-3333-3333-333333333333`

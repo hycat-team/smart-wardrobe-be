@@ -122,6 +122,22 @@ func (r *loyaltyLotsLotRepo) ListAccountsWithExpiredLots(ctx context.Context, no
 	}
 	return ids, nil
 }
+func (r *loyaltyLotsLotRepo) GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error) {
+	var nearest *entities.LoyaltyPointLot
+	for _, lot := range r.lots {
+		if lot.LoyaltyAccountID != loyaltyAccountID ||
+			lot.Status != loyaltypointlotstatus.Active ||
+			lot.RemainingPoints <= 0 ||
+			lot.ExpiresAt == nil ||
+			!lot.ExpiresAt.After(now) {
+			continue
+		}
+		if nearest == nil || lot.ExpiresAt.Before(*nearest.ExpiresAt) {
+			nearest = lot
+		}
+	}
+	return nearest, nil
+}
 
 type loyaltyLotsTxRepo struct {
 	transactions []*entities.LoyaltyPointTransaction

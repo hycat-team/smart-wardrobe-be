@@ -28,6 +28,7 @@ type Brand struct {
 	Name             string                  `gorm:"type:varchar(255);not null"`
 	Description      *string                 `gorm:"type:text"`
 	LogoURL          *string                 `gorm:"column:logo_url;type:varchar(500)"`
+	LogoPublicID     *string                 `gorm:"column:logo_public_id;type:varchar(255)"`
 	Status           brandstatus.BrandStatus `gorm:"type:varchar(50);not null;default:PENDING_REVIEW"`
 	CreatedByUserID  uuid.UUID               `gorm:"type:uuid;not null"`
 	CreatedByUser    *User                   `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:RESTRICT"`

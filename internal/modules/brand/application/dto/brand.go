@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
@@ -13,11 +14,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type UploadSignatureResult = shared_dto.UploadSignatureResult
+
 type CreateBrandReq struct {
-	Slug        string  `json:"slug" binding:"required,max=100" label:"slug brand"`
-	Name        string  `json:"name" binding:"required,max=255" label:"ten brand"`
-	Description *string `json:"description" binding:"omitempty" label:"mo ta"`
-	LogoURL     *string `json:"logoUrl" binding:"omitempty,url" label:"logo brand"`
+	Slug         string  `json:"slug" binding:"required,max=100" label:"slug brand"`
+	Name         string  `json:"name" binding:"required,max=255" label:"ten brand"`
+	Description  *string `json:"description" binding:"omitempty" label:"mo ta"`
+	LogoURL      *string `json:"logoUrl" binding:"omitempty,url" label:"logo brand"`
+	LogoPublicID *string `json:"logoPublicId" binding:"omitempty,max=255" label:"cloudinary public id logo brand"`
+}
+
+type UpdateBrandLogoReq struct {
+	LogoURL      string `json:"logoUrl" binding:"required,url" label:"logo brand"`
+	LogoPublicID string `json:"logoPublicId" binding:"required,max=255" label:"cloudinary public id logo brand"`
 }
 
 type UpdateBrandStatusReq struct {
@@ -55,6 +64,7 @@ type BrandRes struct {
 	Name             string                  `json:"name"`
 	Description      *string                 `json:"description"`
 	LogoURL          *string                 `json:"logoUrl"`
+	LogoPublicID     *string                 `json:"logoPublicId"`
 	Status           brandstatus.BrandStatus `json:"status"`
 	CreatedByUserID  uuid.UUID               `json:"createdByUserId"`
 	ApprovedByUserID *uuid.UUID              `json:"approvedByUserId"`
@@ -104,6 +114,68 @@ type LoyaltyPointsTransactionRes struct {
 	BalanceAfter    int                                     `json:"balanceAfter"`
 	TotalSpend      float64                                 `json:"totalSpend"`
 	CurrentTier     *LoyaltyTierBriefRes                    `json:"currentTier"`
+}
+
+type LoyaltyProgramRes struct {
+	ID              uuid.UUID `json:"id"`
+	BrandID         uuid.UUID `json:"brandId"`
+	Name            string    `json:"name"`
+	AmountPerPoint  float64   `json:"amountPerPoint"`
+	PointExpiryDays *int      `json:"pointExpiryDays"`
+	RoundingMode    string    `json:"roundingMode"`
+	IsActive        bool      `json:"isActive"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type LoyaltyTierRes struct {
+	ID            uuid.UUID `json:"id"`
+	BrandID       uuid.UUID `json:"brandId"`
+	Name          string    `json:"name"`
+	Rank          int       `json:"rank"`
+	MinTotalSpend float64   `json:"minTotalSpend"`
+	Description   *string   `json:"description"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+}
+
+type LoyaltyPointLotRes struct {
+	ID              uuid.UUID  `json:"id"`
+	EarnedPoints    int        `json:"earnedPoints"`
+	RemainingPoints int        `json:"remainingPoints"`
+	ExpiresAt       *time.Time `json:"expiresAt"`
+	Status          string     `json:"status"`
+}
+
+type BrandLoyaltyRes struct {
+	BrandID                 uuid.UUID            `json:"brandId"`
+	Brand                   *BrandRes            `json:"brand,omitempty"`
+	BrandCustomerID         uuid.UUID            `json:"brandCustomerId"`
+	LoyaltyAccountID        uuid.UUID            `json:"loyaltyAccountId"`
+	CurrentPoints           int                  `json:"currentPoints"`
+	LifetimePoints          int                  `json:"lifetimePoints"`
+	TotalSpend              float64              `json:"totalSpend"`
+	CurrentTier             *LoyaltyTierBriefRes `json:"currentTier"`
+	NearestExpiringPointLot *LoyaltyPointLotRes  `json:"nearestExpiringPointLot"`
+}
+
+type LoyaltyPointTransactionDetailRes struct {
+	ID               uuid.UUID  `json:"id"`
+	LoyaltyAccountID uuid.UUID  `json:"loyaltyAccountId"`
+	BrandID          uuid.UUID  `json:"brandId"`
+	BrandCustomerID  uuid.UUID  `json:"brandCustomerId"`
+	UserID           *uuid.UUID `json:"userId"`
+	PointsDelta      int        `json:"pointsDelta"`
+	BalanceAfter     int        `json:"balanceAfter"`
+	TransactionType  string     `json:"transactionType"`
+	Reason           *string    `json:"reason"`
+	SpendAmount      *float64   `json:"spendAmount"`
+	ReferenceType    *string    `json:"referenceType"`
+	ReferenceID      *uuid.UUID `json:"referenceId"`
+	ExpiresAt        *time.Time `json:"expiresAt"`
+	IdempotencyKey   *string    `json:"idempotencyKey"`
+	CreatedByUserID  *uuid.UUID `json:"createdByUserId"`
+	CreatedAt        time.Time  `json:"createdAt"`
 }
 
 type CreateBrandBenefitReq struct {
@@ -194,6 +266,10 @@ type UpdateBrandItemReq struct {
 	Description *string  `json:"description" binding:"omitempty"`
 	Price       *float64 `json:"price" binding:"omitempty,gt=0"`
 	Status      string   `json:"status" binding:"required"` // DRAFT, ACTIVE, ARCHIVED
+}
+
+type UpdateBrandItemStatusReq struct {
+	Status string `json:"status" binding:"required" label:"trang thai item"`
 }
 
 type BrandItemRes struct {
