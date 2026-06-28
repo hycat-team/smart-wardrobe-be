@@ -60,7 +60,12 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Alternative rule: items in alternative_ids must be viable, high-quality fashion substitutes for the primary_id that maintain the overall color harmony, style target, weather compatibility, and aesthetic of the recommended outfit.\n")
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
-	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the category slug, primary_id, alternative_ids; do not output markdown or prose outside JSON.\n")
+	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
+	builder.WriteString("Outfit rules:\n")
+	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
+	builder.WriteString("- If the recommended outfit contains a top (\"top\"), it MUST be paired with at least one bottom (\"bottom\") to form a complete outfit.\n")
+	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
+	builder.WriteString("- Shoes, bags, and other accessories are independent and not restricted by the dress or top-and-bottom pairing rules.\n")
 
 	contextPayload := map[string]string{}
 	if input.Occasion != nil {
@@ -83,7 +88,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ phù hợp\",\"explanation\":\"Giải thích ngắn gọn bằng tiếng Việt.\",\"items\":[{\"role\":\"ao\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"quan\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ phù hợp\",\"explanation\":\"Giải thích ngắn gọn bằng tiếng Việt.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")
@@ -91,22 +96,23 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 
 	for candidateIndex, candidate := range candidates {
 		item := candidate.Item
+		fashion := item.FashionItem
 		candidatePayload := map[string]any{
 			"id": fmt.Sprintf("A%d", candidateIndex+1),
 		}
 
-		if item.Category != nil {
-			candidatePayload["category"] = item.Category.Slug
+		if fashion != nil && fashion.Category != nil {
+			candidatePayload["category"] = CategorySlugToWearingRole(fashion.Category.Slug)
 		}
-		if item.Color != nil {
-			candidatePayload["color"] = *item.Color
+		if fashion != nil && fashion.Color != nil {
+			candidatePayload["color"] = *fashion.Color
 		}
-		if item.Style != nil {
-			candidatePayload["style"] = *item.Style
+		if fashion != nil && fashion.Style != nil {
+			candidatePayload["style"] = *fashion.Style
 		}
 		descStr := ""
-		if item.Description != nil {
-			descStr = truncateRunes(*item.Description, limits.DescriptionMaxCharacters)
+		if fashion != nil && fashion.Description != nil {
+			descStr = truncateRunes(*fashion.Description, limits.DescriptionMaxCharacters)
 		}
 		tags := candidate.Tags
 		if limits.TagsLimit > 0 && len(tags) > limits.TagsLimit {

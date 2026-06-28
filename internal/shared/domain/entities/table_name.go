@@ -50,6 +50,11 @@ func (WardrobeItem) TableName() string {
 	return "wardrobe_items"
 }
 
+// TableName returns table name mapping for FashionItem
+func (FashionItem) TableName() string {
+	return "fashion_items"
+}
+
 // TableName returns table name mapping for Outfit
 func (Outfit) TableName() string {
 	return "outfits"

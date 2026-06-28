@@ -30,7 +30,7 @@ type PostRepository struct {
 func NewPostRepository(db *gorm.DB) repositories.IPostRepository {
 	return &PostRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Post, uuid.UUID](
-			db, []string{"User", "Items", "Media", "Items.WardrobeItem", "Items.WardrobeItem.Category"},
+			db, []string{"User", "Items", "Media", "Items.WardrobeItem", "Items.WardrobeItem.FashionItem", "Items.WardrobeItem.FashionItem.Category"},
 		),
 	}
 }
@@ -202,7 +202,7 @@ func (r *PostRepository) GetDetail(ctx context.Context, postPublicID string) (*e
 	var items []*entities.PostItem
 	if err := r.GetDB(ctx).
 		Preload("WardrobeItem").
-		Preload("WardrobeItem.Category").
+		Preload("WardrobeItem.FashionItem.Category").
 		Where("post_id = ? AND status <> ?", post.ID, postitemstatus.Hidden).
 		Order("created_at ASC").
 		Find(&items).Error; err != nil {

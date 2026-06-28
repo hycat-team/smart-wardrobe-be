@@ -385,7 +385,7 @@ func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []strin
 func missingEmbeddingCount(items []*entities.WardrobeItem) int {
 	count := 0
 	for _, item := range items {
-		if item == nil || len(item.Embedding) == 0 {
+		if item == nil || len(item.FashionEmbedding()) == 0 {
 			count++
 		}
 	}

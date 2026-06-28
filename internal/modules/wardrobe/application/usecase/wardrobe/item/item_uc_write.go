@@ -66,20 +66,14 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 	}
 
 	clonedItems := make([]*entities.WardrobeItem, quantity)
+	fashionItemID := original.FashionItemID
+	if fashionItemID == uuid.Nil {
+		fashionItemID = original.ID
+	}
 	for i := range quantity {
 		clonedItems[i] = &entities.WardrobeItem{
 			UserID:        userID,
-			CategoryID:    original.CategoryID,
-			ImageUrl:      original.ImageUrl,
-			ImagePublicID: original.ImagePublicID,
-			Color:         original.Color,
-			Style:         original.Style,
-			Material:      original.Material,
-			Pattern:       original.Pattern,
-			Fit:           original.Fit,
-			Seasonality:   original.Seasonality,
-			Description:   original.Description,
-			Embedding:     original.Embedding,
+			FashionItemID: fashionItemID,
 			Status:        wardrobestatus.InWardrobe,
 			ItemType:      itemtype.UserItem,
 		}
@@ -101,7 +95,7 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 
 	resList := make([]*dto.WardrobeItemRes, quantity)
 	for i := range quantity {
-		clonedItems[i].Category = original.Category
+		clonedItems[i].FashionItem = original.FashionItem
 		resList[i] = mapper.MapToWardrobeItemRes(clonedItems[i])
 		resList[i].IsLocked = false
 	}
@@ -157,28 +151,32 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, wardrobeerrors.ErrProcessFashionTextFailed()
 	}
 
-	item.CategoryID = &category.ID
-	item.Color = &input.Color
-	item.Style = &input.Style
-	item.Material = &input.Material
-	item.Pattern = &input.Pattern
-	item.Fit = &input.Fit
-	item.Seasonality = &input.Seasonality
-	item.Description = &freeForm
+	if item.FashionItem == nil {
+		item.FashionItem = &entities.FashionItem{}
+	}
+	item.FashionItem.CategoryID = &category.ID
+	item.FashionItem.Category = category
+	item.FashionItem.Color = &input.Color
+	item.FashionItem.Style = &input.Style
+	item.FashionItem.Material = &input.Material
+	item.FashionItem.Pattern = &input.Pattern
+	item.FashionItem.Fit = &input.Fit
+	item.FashionItem.Seasonality = &input.Seasonality
+	item.FashionItem.Description = &freeForm
 	item.Price = input.Price
-	item.Embedding = entities.Vector(embedding)
+	item.FashionItem.Embedding = entities.Vector(embedding)
 	item.Status = wardrobestatus.InWardrobe
-	item.ReviewReason = nil
-	item.ProcessingErrorReason = nil
-	item.ProcessingRetryCount = 0
-	item.ProcessingStartedAt = nil
-	item.LastProcessingAttemptAt = nil
+	item.FashionItem.ReviewReason = nil
+	item.FashionItem.ProcessingErrorReason = nil
+	item.FashionItem.ProcessingRetryCount = 0
+	item.FashionItem.ProcessingStartedAt = nil
+	item.FashionItem.LastProcessingAttemptAt = nil
 
 	if h, s, l, hex, ok := colorutils.ResolveFashionColor(input.Color, ""); ok {
-		item.ColorHex = &hex
-		item.ColorHue = &h
-		item.ColorSaturation = &s
-		item.ColorLightness = &l
+		item.FashionItem.ColorHex = &hex
+		item.FashionItem.ColorHue = &h
+		item.FashionItem.ColorSaturation = &s
+		item.FashionItem.ColorLightness = &l
 	}
 
 	err = uc.wardrobeRepo.Update(ctx, item)
@@ -210,7 +208,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden()
 	}
-	if item.LastProcessingAttemptAt != nil && time.Since(item.LastProcessingAttemptAt.UTC()) < manualRetryCooldown {
+	if item.FashionItem != nil && item.FashionItem.LastProcessingAttemptAt != nil && time.Since(item.FashionItem.LastProcessingAttemptAt.UTC()) < manualRetryCooldown {
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisCooldown()
 	}
 
@@ -226,14 +224,14 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	job := dto.WardrobeBatchUploadJobDTO{
 		ItemID:            item.ID,
 		UserID:            item.UserID,
-		CategoryID:        item.CategoryID,
-		ImageUrl:          item.ImageUrl,
-		ImagePublicID:     item.ImagePublicID,
-		ProcessingVersion: item.ProcessingVersion,
+		CategoryID:        item.FashionCategoryID(),
+		ImageUrl:          item.FashionImageUrl(),
+		ImagePublicID:     item.FashionImagePublicID(),
+		ProcessingVersion: item.FashionItem.ProcessingVersion,
 	}
 	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job); err != nil {
 		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
-		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.ProcessingVersion, processingFailureMessage, nil)
+		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.FashionItem.ProcessingVersion, processingFailureMessage, nil)
 		return nil, err
 	}
 
@@ -346,14 +344,16 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 	for i, itemReq := range input.Items {
 		now := time.Now().UTC()
 		newItems[i] = &entities.WardrobeItem{
-			UserID:                  userID,
-			CategoryID:              itemReq.CategoryID,
-			ImageUrl:                itemReq.ImageUrl,
-			ImagePublicID:           itemReq.ImagePublicID,
-			Status:                  wardrobestatus.Processing,
-			ItemType:                itemType,
-			ProcessingStartedAt:     &now,
-			LastProcessingAttemptAt: &now,
+			UserID:   userID,
+			Status:   wardrobestatus.Processing,
+			ItemType: itemType,
+			FashionItem: &entities.FashionItem{
+				CategoryID:              itemReq.CategoryID,
+				ImageUrl:                itemReq.ImageUrl,
+				ImagePublicID:           itemReq.ImagePublicID,
+				ProcessingStartedAt:     &now,
+				LastProcessingAttemptAt: &now,
+			},
 		}
 	}
 
@@ -366,10 +366,10 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 		job := dto.WardrobeBatchUploadJobDTO{
 			ItemID:            item.ID,
 			UserID:            userID,
-			CategoryID:        item.CategoryID,
-			ImageUrl:          item.ImageUrl,
-			ImagePublicID:     item.ImagePublicID,
-			ProcessingVersion: item.ProcessingVersion,
+			CategoryID:        item.FashionCategoryID(),
+			ImageUrl:          item.FashionImageUrl(),
+			ImagePublicID:     item.FashionImagePublicID(),
+			ProcessingVersion: item.FashionItem.ProcessingVersion,
 		}
 
 		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
@@ -377,7 +377,7 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
 			item.Status = wardrobestatus.Failed
 			reason := processingFailureMessage
-			item.ProcessingErrorReason = &reason
+			item.FashionItem.ProcessingErrorReason = &reason
 			_ = uc.wardrobeRepo.Update(ctx, item)
 		}
 

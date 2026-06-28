@@ -21,7 +21,7 @@ type PostItemRepository struct {
 
 func NewPostItemRepository(db *gorm.DB) repositories.IPostItemRepository {
 	return &PostItemRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.PostItem, uuid.UUID](db, []string{"WardrobeItem", "WardrobeItem.Category"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.PostItem, uuid.UUID](db, []string{"WardrobeItem", "WardrobeItem.FashionItem", "WardrobeItem.FashionItem.Category"}),
 	}
 }
 
@@ -188,7 +188,7 @@ func (r *PostItemRepository) GetPostItemsForAdmin(ctx context.Context, filter re
 	db := r.GetDB(ctx).Model(&entities.PostItem{}).
 		Preload("Post").
 		Preload("WardrobeItem").
-		Preload("WardrobeItem.Category")
+		Preload("WardrobeItem.FashionItem.Category")
 
 	if filter.Status != nil {
 		db = db.Where("post_items.status = ?", *filter.Status)

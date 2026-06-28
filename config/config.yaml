@@ -110,7 +110,7 @@ rag:
     recommendation_minimum_candidate_pool: 20
     recommendation_embedding_dimension: 768
     recommendation_embedding_timeout_seconds: 2
-    recommendation_llm_rewriter_enabled: true
+    recommendation_llm_rewriter_enabled: false
     recommendation_llm_rewriter_timeout_seconds: 2
     recommendation_rewriter_max_semantic_length: 512
     recommendation_rewriter_max_lexical_terms: 24

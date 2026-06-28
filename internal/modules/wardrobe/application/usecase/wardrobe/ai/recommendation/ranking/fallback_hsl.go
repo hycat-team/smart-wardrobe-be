@@ -13,12 +13,13 @@ import (
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
 func isNeutral(item *entities.WardrobeItem) bool {
-	if item.ColorLightness == nil || item.ColorSaturation == nil {
+	fashion := fashionForItem(item)
+	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
 	}
 
-	lightness := *item.ColorLightness
-	saturation := *item.ColorSaturation
+	lightness := *fashion.ColorLightness
+	saturation := *fashion.ColorSaturation
 	return lightness <= 10.0 || lightness >= 90.0 || saturation <= 10.0
 }
 
@@ -41,22 +42,24 @@ func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
 	if isNeutral(item1) || isNeutral(item2) {
 		return true
 	}
-	if item1.ColorHue == nil || item2.ColorHue == nil {
+	fashion1 := fashionForItem(item1)
+	fashion2 := fashionForItem(item2)
+	if fashion1 == nil || fashion2 == nil || fashion1.ColorHue == nil || fashion2.ColorHue == nil {
 		return true
 	}
 
-	h1 := *item1.ColorHue
-	h2 := *item2.ColorHue
+	h1 := *fashion1.ColorHue
+	h2 := *fashion2.ColorHue
 	diff := math.Abs(h1 - h2)
 	deltaH := math.Min(diff, 360.0-diff)
 
 	if deltaH < 30.0 {
 		lightness1, lightness2 := 0.0, 0.0
-		if item1.ColorLightness != nil {
-			lightness1 = *item1.ColorLightness
+		if fashion1.ColorLightness != nil {
+			lightness1 = *fashion1.ColorLightness
 		}
-		if item2.ColorLightness != nil {
-			lightness2 = *item2.ColorLightness
+		if fashion2.ColorLightness != nil {
+			lightness2 = *fashion2.ColorLightness
 		}
 		if math.Abs(lightness1-lightness2) >= 15.0 {
 			return true
@@ -92,12 +95,13 @@ func RunLocalHSLMatching(
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		if item.Category == nil {
+		category := item.FashionCategory()
+		if category == nil {
 			accessories = append(accessories, item)
 			continue
 		}
 
-		switch item.Category.Slug {
+		switch category.Slug {
 		case "ao":
 			tops = append(tops, item)
 		case "quan", "chan-vay":
@@ -245,8 +249,15 @@ func buildItemGroup(
 }
 
 func roleForItem(item *entities.WardrobeItem, fallback string) string {
-	if item != nil && item.Category != nil && item.Category.Slug != "" {
-		return item.Category.Slug
+	if category := item.FashionCategory(); category != nil && category.Slug != "" {
+		return category.Slug
 	}
 	return fallback
+}
+
+func fashionForItem(item *entities.WardrobeItem) *entities.FashionItem {
+	if item == nil {
+		return nil
+	}
+	return item.FashionItem
 }

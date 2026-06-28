@@ -136,15 +136,20 @@ func MatchesFallbackHardFilters(item *entities.WardrobeItem, filters repositorie
 	if item == nil {
 		return false
 	}
+	fashion := fashionForItem(item)
 	if len(filters.Seasonality) > 0 {
-		if !MatchesFallbackSeasonalityFilter(stringutils.GetString(item.Seasonality), filters.Seasonality) {
+		seasonality := ""
+		if fashion != nil {
+			seasonality = stringutils.GetString(fashion.Seasonality)
+		}
+		if !MatchesFallbackSeasonalityFilter(seasonality, filters.Seasonality) {
 			return false
 		}
 	}
 	if len(filters.CategorySlugs) > 0 {
 		categorySlug := ""
-		if item.Category != nil {
-			categorySlug = parser.NormalizeText(item.Category.Slug)
+		if category := item.FashionCategory(); category != nil {
+			categorySlug = parser.NormalizeText(category.Slug)
 		}
 		matched := false
 		for _, slug := range filters.CategorySlugs {
@@ -221,17 +226,21 @@ func FallbackSearchDocument(item *entities.WardrobeItem) string {
 	if item == nil {
 		return ""
 	}
-	parts := []string{
-		stringutils.GetString(item.Color),
-		stringutils.GetString(item.Style),
-		stringutils.GetString(item.Material),
-		stringutils.GetString(item.Pattern),
-		stringutils.GetString(item.Fit),
-		stringutils.GetString(item.Seasonality),
-		stringutils.GetString(item.Description),
+	fashion := fashionForItem(item)
+	if fashion == nil {
+		return ""
 	}
-	if item.Category != nil {
-		parts = append(parts, item.Category.Slug, item.Category.Name)
+	parts := []string{
+		stringutils.GetString(fashion.Color),
+		stringutils.GetString(fashion.Style),
+		stringutils.GetString(fashion.Material),
+		stringutils.GetString(fashion.Pattern),
+		stringutils.GetString(fashion.Fit),
+		stringutils.GetString(fashion.Seasonality),
+		stringutils.GetString(fashion.Description),
+	}
+	if fashion.Category != nil {
+		parts = append(parts, fashion.Category.Slug, fashion.Category.Name)
 	}
 	return parser.NormalizeText(strings.Join(parts, " "))
 }

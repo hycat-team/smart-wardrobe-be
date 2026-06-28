@@ -26,8 +26,10 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 		{
 			Item: &entities.WardrobeItem{
 				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: itemID}},
-				Description:     &desc,
-				Category:        &entities.Category{Slug: "ao", Name: "Ao"},
+				FashionItem: &entities.FashionItem{
+					Description: &desc,
+					Category:    &entities.Category{Slug: "ao", Name: "Ao"},
+				},
 			},
 			Tags: []string{"winter-appropriate:outerwear"},
 		},
@@ -52,8 +54,10 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 		candidates[i] = types.CandidateForPrompt{
 			Item: &entities.WardrobeItem{
 				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-				Description:     &longDescription,
-				Category:        &entities.Category{Slug: "ao"},
+				FashionItem: &entities.FashionItem{
+					Description: &longDescription,
+					Category:    &entities.Category{Slug: "ao"},
+				},
 			},
 			Tags: []string{"one", "two", "three"},
 		}
@@ -108,7 +112,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 		{
 			Item: &entities.WardrobeItem{
 				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: itemID}},
-				Category:        &entities.Category{Slug: "ao", Name: "Ao"},
+				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "ao", Name: "Ao"}},
 			},
 		},
 	}
@@ -122,8 +126,8 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 			AlternativeIDs []string `json:"alternative_ids"`
 		}{
 			{
-				Role:           "ao",
-				PrimaryID:      itemID.String(),
+				Role:           "top",
+				PrimaryID:      "A1",
 				AlternativeIDs: []string{},
 			},
 		},
@@ -133,7 +137,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 	if len(groups) != 1 {
 		t.Fatalf("expected 1 mapped group, got %d", len(groups))
 	}
-	if groups[0].Role != "ao" || groups[0].Primary.ID != itemID {
+	if groups[0].Role != "top" || groups[0].Primary.ID != itemID {
 		t.Fatalf("unexpected mapped group primary details: %+v", groups[0].Primary)
 	}
 }
@@ -171,3 +175,69 @@ func TestClassifyFallbackTraceClassifiesCorrectly(t *testing.T) {
 		t.Fatalf("expected providerHint 'timeout', got %q", providerHint)
 	}
 }
+
+func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *testing.T) {
+	topID := uuid.New()
+	fullbodyID := uuid.New()
+	accessoryID := uuid.New()
+
+	candidates := []types.CandidateForPrompt{
+		{
+			Item: &entities.WardrobeItem{
+				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: topID}},
+				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "ao", Name: "Ao"}},
+			},
+		},
+		{
+			Item: &entities.WardrobeItem{
+				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fullbodyID}},
+				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "dam", Name: "Đầm"}},
+			},
+		},
+		{
+			Item: &entities.WardrobeItem{
+				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: accessoryID}},
+				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "phu-kien", Name: "Phụ kiện"}},
+			},
+		},
+	}
+
+	llmRes := types.LlmOutfitResponse{
+		Title:       "Mixed Outfit",
+		Explanation: "Contains fullbody and top",
+		Items: []struct {
+			Role           string   `json:"role"`
+			PrimaryID      string   `json:"primary_id"`
+			AlternativeIDs []string `json:"alternative_ids"`
+		}{
+			{
+				Role:           "top",
+				PrimaryID:      "A1",
+				AlternativeIDs: []string{},
+			},
+			{
+				Role:           "fullbody",
+				PrimaryID:      "A2",
+				AlternativeIDs: []string{},
+			},
+			{
+				Role:           "accessory",
+				PrimaryID:      "A3",
+				AlternativeIDs: []string{},
+			},
+		},
+	}
+
+	groups := MapLLMResponseToGroups(candidates, llmRes)
+	
+	// Should have filtered out 'top', leaving only 'fullbody' and 'accessory'
+	if len(groups) != 2 {
+		t.Fatalf("expected 2 mapped groups after filtering, got %d", len(groups))
+	}
+	for _, g := range groups {
+		if g.Role == "top" || g.Role == "bottom" {
+			t.Fatalf("found illegal role %q in mapped groups after filtering", g.Role)
+		}
+	}
+}
+

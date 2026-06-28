@@ -98,31 +98,35 @@ func MapWardrobeItem(item *entities.WardrobeItem) *wardrobe_dto.WardrobeItemRes 
 	pattern := ""
 	fit := ""
 	seasonality := ""
-	if item.Color != nil {
-		color = *item.Color
+	fashion := item.FashionItem
+	if fashion == nil {
+		fashion = &entities.FashionItem{}
 	}
-	if item.Style != nil {
-		style = *item.Style
+	if fashion.Color != nil {
+		color = *fashion.Color
 	}
-	if item.Material != nil {
-		material = *item.Material
+	if fashion.Style != nil {
+		style = *fashion.Style
 	}
-	if item.Pattern != nil {
-		pattern = *item.Pattern
+	if fashion.Material != nil {
+		material = *fashion.Material
 	}
-	if item.Fit != nil {
-		fit = *item.Fit
+	if fashion.Pattern != nil {
+		pattern = *fashion.Pattern
 	}
-	if item.Seasonality != nil {
-		seasonality = *item.Seasonality
+	if fashion.Fit != nil {
+		fit = *fashion.Fit
+	}
+	if fashion.Seasonality != nil {
+		seasonality = *fashion.Seasonality
 	}
 
 	var category *wardrobe_dto.CategoryRes
-	if item.Category != nil {
+	if fashion.Category != nil {
 		category = &wardrobe_dto.CategoryRes{
-			ID:   item.Category.ID,
-			Name: item.Category.Name,
-			Slug: item.Category.Slug,
+			ID:   fashion.Category.ID,
+			Name: fashion.Category.Name,
+			Slug: fashion.Category.Slug,
 		}
 	}
 
@@ -130,8 +134,8 @@ func MapWardrobeItem(item *entities.WardrobeItem) *wardrobe_dto.WardrobeItemRes 
 		ID:            item.ID,
 		UserID:        item.UserID,
 		Category:      category,
-		ImageUrl:      item.ImageUrl,
-		ImagePublicID: item.ImagePublicID,
+		ImageUrl:      fashion.ImageUrl,
+		ImagePublicID: fashion.ImagePublicID,
 		Color:         color,
 		Style:         style,
 		Material:      material,

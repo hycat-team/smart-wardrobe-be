@@ -12,34 +12,38 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem) *dto.WardrobeItemRes {
 	}
 
 	var categoryRes *dto.CategoryRes
-	if item.Category != nil {
+	if item.FashionItem != nil && item.FashionItem.Category != nil {
 		categoryRes = &dto.CategoryRes{
-			ID:   item.Category.ID,
-			Name: item.Category.Name,
-			Slug: item.Category.Slug,
+			ID:   item.FashionItem.Category.ID,
+			Name: item.FashionItem.Category.Name,
+			Slug: item.FashionItem.Category.Slug,
 		}
+	}
+	fashion := item.FashionItem
+	if fashion == nil {
+		fashion = &entities.FashionItem{}
 	}
 
 	return &dto.WardrobeItemRes{
 		ID:                    item.ID,
 		UserID:                item.UserID,
 		Category:              categoryRes,
-		ImageUrl:              item.ImageUrl,
-		ImagePublicID:         item.ImagePublicID,
-		Color:                 stringutils.GetString(item.Color),
-		ColorHex:              stringutils.GetString(item.ColorHex),
-		ColorHue:              item.ColorHue,
-		ColorSaturation:       item.ColorSaturation,
-		ColorLightness:        item.ColorLightness,
-		Style:                 stringutils.GetString(item.Style),
-		Material:              stringutils.GetString(item.Material),
-		Pattern:               stringutils.GetString(item.Pattern),
-		Fit:                   stringutils.GetString(item.Fit),
-		Seasonality:           stringutils.GetString(item.Seasonality),
+		ImageUrl:              fashion.ImageUrl,
+		ImagePublicID:         fashion.ImagePublicID,
+		Color:                 stringutils.GetString(fashion.Color),
+		ColorHex:              stringutils.GetString(fashion.ColorHex),
+		ColorHue:              fashion.ColorHue,
+		ColorSaturation:       fashion.ColorSaturation,
+		ColorLightness:        fashion.ColorLightness,
+		Style:                 stringutils.GetString(fashion.Style),
+		Material:              stringutils.GetString(fashion.Material),
+		Pattern:               stringutils.GetString(fashion.Pattern),
+		Fit:                   stringutils.GetString(fashion.Fit),
+		Seasonality:           stringutils.GetString(fashion.Seasonality),
 		Price:                 item.Price,
 		Status:                item.Status,
-		ReviewReason:          item.ReviewReason,
-		ProcessingErrorReason: item.ProcessingErrorReason,
+		ReviewReason:          fashion.ReviewReason,
+		ProcessingErrorReason: fashion.ProcessingErrorReason,
 		CreatedAt:             item.CreatedAt,
 		// Description:   stringutils.GetString(item.Description),
 	}
@@ -51,29 +55,33 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem) *dto.SearchWardrobe
 	}
 
 	var categoryRes *dto.CategoryRes
-	if item.Category != nil {
+	if item.FashionItem != nil && item.FashionItem.Category != nil {
 		categoryRes = &dto.CategoryRes{
-			ID:   item.Category.ID,
-			Name: item.Category.Name,
-			Slug: item.Category.Slug,
+			ID:   item.FashionItem.Category.ID,
+			Name: item.FashionItem.Category.Name,
+			Slug: item.FashionItem.Category.Slug,
 		}
+	}
+	fashion := item.FashionItem
+	if fashion == nil {
+		fashion = &entities.FashionItem{}
 	}
 
 	return &dto.SearchWardrobeItemRes{
 		ID:              item.ID,
 		Category:        categoryRes,
-		ImageUrl:        item.ImageUrl,
-		ImagePublicID:   item.ImagePublicID,
-		Color:           stringutils.GetString(item.Color),
-		ColorHex:        stringutils.GetString(item.ColorHex),
-		ColorHue:        item.ColorHue,
-		ColorSaturation: item.ColorSaturation,
-		ColorLightness:  item.ColorLightness,
-		Style:           stringutils.GetString(item.Style),
-		Material:        stringutils.GetString(item.Material),
-		Pattern:         stringutils.GetString(item.Pattern),
-		Fit:             stringutils.GetString(item.Fit),
-		Seasonality:     stringutils.GetString(item.Seasonality),
+		ImageUrl:        fashion.ImageUrl,
+		ImagePublicID:   fashion.ImagePublicID,
+		Color:           stringutils.GetString(fashion.Color),
+		ColorHex:        stringutils.GetString(fashion.ColorHex),
+		ColorHue:        fashion.ColorHue,
+		ColorSaturation: fashion.ColorSaturation,
+		ColorLightness:  fashion.ColorLightness,
+		Style:           stringutils.GetString(fashion.Style),
+		Material:        stringutils.GetString(fashion.Material),
+		Pattern:         stringutils.GetString(fashion.Pattern),
+		Fit:             stringutils.GetString(fashion.Fit),
+		Seasonality:     stringutils.GetString(fashion.Seasonality),
 		Price:           item.Price,
 		IsSystem:        item.ItemType == 1,
 		// Description:   stringutils.GetString(item.Description),

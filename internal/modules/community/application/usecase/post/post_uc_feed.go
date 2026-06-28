@@ -359,11 +359,11 @@ func computeStyleScore(userVector entities.Vector, items []*entities.PostItem) f
 
 	best := 0.0
 	for _, item := range items {
-		if item == nil || item.WardrobeItem == nil || len(item.WardrobeItem.Embedding) == 0 {
+		if item == nil || item.WardrobeItem == nil || len(item.WardrobeItem.FashionEmbedding()) == 0 {
 			continue
 		}
 
-		distance := cosineDistance(userVector, item.WardrobeItem.Embedding)
+		distance := cosineDistance(userVector, item.WardrobeItem.FashionEmbedding())
 		if distance < 0 {
 			distance = 0
 		}

@@ -52,13 +52,17 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 		limit := min(len(wardrobeItems), 20)
 		for i := range limit {
 			item := wardrobeItems[i]
+			fashion := item.FashionItem
+			if fashion == nil {
+				continue
+			}
 
-			hasCategory := item.Category != nil &&
-				strings.TrimSpace(item.Category.Name) != ""
-			hasColor := item.Color != nil &&
-				strings.TrimSpace(*item.Color) != ""
-			hasStyle := item.Style != nil &&
-				strings.TrimSpace(*item.Style) != ""
+			hasCategory := fashion.Category != nil &&
+				strings.TrimSpace(fashion.Category.Name) != ""
+			hasColor := fashion.Color != nil &&
+				strings.TrimSpace(*fashion.Color) != ""
+			hasStyle := fashion.Style != nil &&
+				strings.TrimSpace(*fashion.Style) != ""
 
 			if !hasCategory && !hasColor && !hasStyle {
 				continue
@@ -67,13 +71,13 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 			builder.WriteString("- ")
 
 			if hasCategory {
-				fmt.Fprintf(&builder, "Category: %s; ", item.Category.Name)
+				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
 			}
 			if hasColor {
-				fmt.Fprintf(&builder, "Color: %s; ", *item.Color)
+				fmt.Fprintf(&builder, "Color: %s; ", *fashion.Color)
 			}
 			if hasStyle {
-				fmt.Fprintf(&builder, "Style: %s", *item.Style)
+				fmt.Fprintf(&builder, "Style: %s", *fashion.Style)
 			}
 
 			builder.WriteString("\n")

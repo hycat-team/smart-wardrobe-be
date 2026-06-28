@@ -67,14 +67,8 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackHardFilteredItems(t *testing.T
 	winter := "winter"
 	summer := "summer"
 	activeItems := []*entities.WardrobeItem{
-		{
-			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-			Seasonality:     &summer,
-		},
-		{
-			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-			Seasonality:     &winter,
-		},
+		wardrobeItemWithFashion(&entities.FashionItem{Seasonality: &summer}),
+		wardrobeItemWithFashion(&entities.FashionItem{Seasonality: &winter}),
 	}
 
 	rankingCandidates, fallbackCounts := EnsureMinimumCandidatePool(
@@ -112,14 +106,8 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackExcludedTerms(t *testing.T) {
 	black := "black"
 	white := "white"
 	activeItems := []*entities.WardrobeItem{
-		{
-			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-			Color:           &black,
-		},
-		{
-			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-			Color:           &white,
-		},
+		wardrobeItemWithFashion(&entities.FashionItem{Color: &black}),
+		wardrobeItemWithFashion(&entities.FashionItem{Color: &white}),
 	}
 
 	rankingCandidates, fallbackCounts := EnsureMinimumCandidatePool(
@@ -142,10 +130,7 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackExcludedTerms(t *testing.T) {
 func TestEnsureMinimumCandidatePoolUsesRelaxedFallbackWhenStrictLexicalDoesNotMatch(t *testing.T) {
 	white := "white"
 	activeItems := []*entities.WardrobeItem{
-		{
-			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-			Color:           &white,
-		},
+		wardrobeItemWithFashion(&entities.FashionItem{Color: &white}),
 	}
 
 	rankingCandidates, fallbackCounts := EnsureMinimumCandidatePool(
@@ -266,10 +251,7 @@ func TestScoreCandidateItemDoesNotTreatRainyAsCold(t *testing.T) {
 
 func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 	description := "waterproof rain jacket"
-	item := &entities.WardrobeItem{
-		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		Description:     &description,
-	}
+	item := wardrobeItemWithFashion(&entities.FashionItem{Description: &description})
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14)
 
@@ -293,10 +275,7 @@ func TestScoreCandidateItemAppliesExcludedWeatherPenalty(t *testing.T) {
 
 func TestScoreCandidateItemMatchesOccasionTaxonomy(t *testing.T) {
 	style := "office"
-	item := &entities.WardrobeItem{
-		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		Style:           &style,
-	}
+	item := wardrobeItemWithFashion(&entities.FashionItem{Style: &style})
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{Occasion: []string{"work"}}, types.RecommendationRetrievalQuery{}, 3, 14)
 
@@ -345,7 +324,7 @@ func TestDiversifyRankedCandidates(t *testing.T) {
 	// Verify that the fourth item in diversified is "quan 1" instead of "ao 4" because of the cap of 3
 	categoryCounts := map[string]int{}
 	for _, cand := range diversified {
-		categoryCounts[cand.Item.Category.Slug]++
+		categoryCounts[cand.Item.FashionCategory().Slug]++
 	}
 	if categoryCounts["ao"] != 3 || categoryCounts["quan"] != 1 {
 		t.Fatalf("expected 3 ao and 1 quan, got %+v", categoryCounts)
@@ -362,8 +341,12 @@ func containsString(values []string, target string) bool {
 }
 
 func wardrobeItemWithCategory(slug, name string) *entities.WardrobeItem {
+	return wardrobeItemWithFashion(&entities.FashionItem{Category: &entities.Category{Slug: slug, Name: name}})
+}
+
+func wardrobeItemWithFashion(fashion *entities.FashionItem) *entities.WardrobeItem {
 	return &entities.WardrobeItem{
 		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		Category:        &entities.Category{Slug: slug, Name: name},
+		FashionItem:     fashion,
 	}
 }

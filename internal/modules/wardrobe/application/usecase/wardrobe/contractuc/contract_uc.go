@@ -41,29 +41,23 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 		return nil, wardrobeerrors.ErrItemToCloneNotFound()
 	}
 
+	fashionItemID := sourceItem.FashionItemID
+	if fashionItemID == uuid.Nil {
+		fashionItemID = sourceItem.ID
+	}
 	cloned := &entities.WardrobeItem{
 		UserID:        targetUserID,
-		CategoryID:    sourceItem.CategoryID,
-		ImageUrl:      sourceItem.ImageUrl,
-		ImagePublicID: sourceItem.ImagePublicID,
-		Color:         sourceItem.Color,
-		Style:         sourceItem.Style,
-		Material:      sourceItem.Material,
-		Pattern:       sourceItem.Pattern,
-		Fit:           sourceItem.Fit,
-		Seasonality:   sourceItem.Seasonality,
-		Description:   sourceItem.Description,
+		FashionItemID: fashionItemID,
 		Price:         sourceItem.Price,
 		Status:        wardrobestatus.InWardrobe,
 		ItemType:      itemtype.UserItem,
-		Embedding:     sourceItem.Embedding,
 	}
 
 	if err := uc.wardrobeRepo.Create(ctx, cloned); err != nil {
 		return nil, err
 	}
 
-	cloned.Category = sourceItem.Category
+	cloned.FashionItem = sourceItem.FashionItem
 	return mapper.MapToWardrobeItemRes(cloned), nil
 }
 

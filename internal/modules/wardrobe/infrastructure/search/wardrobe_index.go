@@ -22,33 +22,38 @@ func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) e
 }
 
 func buildItemDocument(item *entities.WardrobeItem) map[string]any {
+	fashion := item.FashionItem
+	if fashion == nil {
+		fashion = &entities.FashionItem{}
+	}
 	doc := map[string]any{
 		"id":              item.ID.String(),
 		"user_id":         item.UserID.String(),
+		"fashion_item_id": item.FashionItemID.String(),
 		"item_type":       int(item.ItemType),
-		"image_url":       item.ImageUrl,
-		"image_public_id": item.ImagePublicID,
-		"color":           stringutils.GetString(item.Color),
-		"style":           stringutils.GetString(item.Style),
-		"material":        stringutils.GetString(item.Material),
-		"pattern":         stringutils.GetString(item.Pattern),
-		"fit":             stringutils.GetString(item.Fit),
-		"seasonality":     stringutils.GetString(item.Seasonality),
-		"description":     stringutils.GetString(item.Description),
+		"image_url":       fashion.ImageUrl,
+		"image_public_id": fashion.ImagePublicID,
+		"color":           stringutils.GetString(fashion.Color),
+		"style":           stringutils.GetString(fashion.Style),
+		"material":        stringutils.GetString(fashion.Material),
+		"pattern":         stringutils.GetString(fashion.Pattern),
+		"fit":             stringutils.GetString(fashion.Fit),
+		"seasonality":     stringutils.GetString(fashion.Seasonality),
+		"description":     stringutils.GetString(fashion.Description),
 		"status":          item.Status,
 		"created_at":      item.CreatedAt,
 	}
 
 	var categoryIDStr string
-	if item.CategoryID != nil {
-		categoryIDStr = item.CategoryID.String()
+	if fashion.CategoryID != nil {
+		categoryIDStr = fashion.CategoryID.String()
 	}
 
-	if item.Category != nil {
+	if fashion.Category != nil {
 		doc["category"] = map[string]any{
 			"id":   categoryIDStr,
-			"name": item.Category.Name,
-			"slug": item.Category.Slug,
+			"name": fashion.Category.Name,
+			"slug": fashion.Category.Slug,
 		}
 	} else {
 		doc["category"] = map[string]any{
@@ -61,17 +66,17 @@ func buildItemDocument(item *entities.WardrobeItem) map[string]any {
 	if item.Price != nil {
 		doc["price"] = *item.Price
 	}
-	if item.ColorHex != nil {
-		doc["color_hex"] = *item.ColorHex
+	if fashion.ColorHex != nil {
+		doc["color_hex"] = *fashion.ColorHex
 	}
-	if item.ColorHue != nil {
-		doc["color_hue"] = *item.ColorHue
+	if fashion.ColorHue != nil {
+		doc["color_hue"] = *fashion.ColorHue
 	}
-	if item.ColorSaturation != nil {
-		doc["color_saturation"] = *item.ColorSaturation
+	if fashion.ColorSaturation != nil {
+		doc["color_saturation"] = *fashion.ColorSaturation
 	}
-	if item.ColorLightness != nil {
-		doc["color_lightness"] = *item.ColorLightness
+	if fashion.ColorLightness != nil {
+		doc["color_lightness"] = *fashion.ColorLightness
 	}
 
 	return doc

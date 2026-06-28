@@ -138,11 +138,12 @@ func (uc *WardrobeWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wo
 
 		for _, item := range items {
 			run.AddTotal(1)
-			if item.ImagePublicID != "" {
-				if err := uc.mediaService.DeleteImage(ctx, item.ImagePublicID); err != nil {
+			imagePublicID := item.FashionImagePublicID()
+			if imagePublicID != "" {
+				if err := uc.mediaService.DeleteImage(ctx, imagePublicID); err != nil {
 					run.ChildWarn(uc.logger, "Failed to delete image from Cloudinary during failed item cleanup",
 						zap.String("itemId", item.ID.String()),
-						zap.String("publicId", item.ImagePublicID),
+						zap.String("publicId", imagePublicID),
 						zap.Error(err),
 					)
 				}
@@ -191,13 +192,18 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 	markedFailedCount := 0
 
 	for _, item := range items {
-		if item.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
-			failed, err := uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, item.ProcessingVersion, autoRetryExceededMessage, nil)
+		fashion := item.FashionItem
+		if fashion == nil {
+			run.AddSkipped(1)
+			continue
+		}
+		if fashion.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
+			failed, err := uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, fashion.ProcessingVersion, autoRetryExceededMessage, nil)
 			if err != nil {
 				run.ChildError(uc.logger, "Failed to mark stale processing item as failed",
 					zap.String("itemId", item.ID.String()),
-					zap.Int("processingVersion", item.ProcessingVersion),
-					zap.Int("processingRetryCount", item.ProcessingRetryCount),
+					zap.Int("processingVersion", fashion.ProcessingVersion),
+					zap.Int("processingRetryCount", fashion.ProcessingRetryCount),
 					zap.Error(err),
 				)
 				return err
@@ -209,20 +215,20 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 			markedFailedCount++
 			run.ChildWarn(uc.logger, "Stale processing item exceeded retry limit and was marked failed",
 				zap.String("itemId", item.ID.String()),
-				zap.Int("processingVersion", item.ProcessingVersion),
-				zap.Int("processingRetryCount", item.ProcessingRetryCount),
+				zap.Int("processingVersion", fashion.ProcessingVersion),
+				zap.Int("processingRetryCount", fashion.ProcessingRetryCount),
 			)
 			run.AddSuccess(1)
 			continue
 		}
 
 		now := time.Now().UTC()
-		claimedItem, claimed, err := uc.wardrobeRepo.ClaimStaleProcessingRetry(ctx, item.ID, item.ProcessingVersion, staleBefore, now)
+		claimedItem, claimed, err := uc.wardrobeRepo.ClaimStaleProcessingRetry(ctx, item.ID, fashion.ProcessingVersion, staleBefore, now)
 		if err != nil {
 			run.ChildError(uc.logger, "Failed to claim stale processing retry",
 				zap.String("itemId", item.ID.String()),
-				zap.Int("processingVersion", item.ProcessingVersion),
-				zap.Int("processingRetryCount", item.ProcessingRetryCount),
+				zap.Int("processingVersion", fashion.ProcessingVersion),
+				zap.Int("processingRetryCount", fashion.ProcessingRetryCount),
 				zap.Error(err),
 			)
 			return err
@@ -230,21 +236,22 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 		if !claimed || claimedItem == nil {
 			run.ChildWarn(uc.logger, "Skipped stale processing item because it was not claimable",
 				zap.String("itemId", item.ID.String()),
-				zap.Int("processingVersion", item.ProcessingVersion),
-				zap.Int("processingRetryCount", item.ProcessingRetryCount),
+				zap.Int("processingVersion", fashion.ProcessingVersion),
+				zap.Int("processingRetryCount", fashion.ProcessingRetryCount),
 			)
 			run.AddSkipped(1)
 			continue
 		}
 
 		if err := uc.publishProcessingRetry(ctx, claimedItem); err != nil {
+			claimedFashion := claimedItem.FashionItem
 			run.ChildError(uc.logger, "Failed to republish stale processing retry",
 				zap.String("itemId", claimedItem.ID.String()),
-				zap.Int("processingVersion", claimedItem.ProcessingVersion),
-				zap.Int("processingRetryCount", claimedItem.ProcessingRetryCount),
+				zap.Int("processingVersion", claimedFashion.ProcessingVersion),
+				zap.Int("processingRetryCount", claimedFashion.ProcessingRetryCount),
 				zap.Error(err),
 			)
-			_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, claimedItem.ID, claimedItem.ProcessingVersion, processingFailureReasonMessage, nil)
+			_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, claimedItem.ID, claimedFashion.ProcessingVersion, processingFailureReasonMessage, nil)
 			return err
 		}
 		republishedCount++
@@ -309,7 +316,7 @@ func (uc *WardrobeWorkerUseCase) loadProcessableItem(ctx context.Context, job dt
 	if err != nil {
 		return nil, err
 	}
-	if item == nil || item.Status != wardrobestatus.Processing || item.ProcessingVersion != job.ProcessingVersion {
+	if item == nil || item.FashionItem == nil || item.Status != wardrobestatus.Processing || item.FashionItem.ProcessingVersion != job.ProcessingVersion {
 		run.ChildWarn(uc.logger, "Skipped wardrobe batch upload job because item is not processable",
 			zap.String("itemId", job.ItemID.String()),
 			zap.Int("processingVersion", job.ProcessingVersion),
@@ -402,11 +409,11 @@ func (uc *WardrobeWorkerUseCase) publishProcessingRetry(ctx context.Context, ite
 	job := dto.WardrobeBatchUploadJobDTO{
 		ItemID:            item.ID,
 		UserID:            item.UserID,
-		CategoryID:        item.CategoryID,
-		ImageUrl:          item.ImageUrl,
-		ImagePublicID:     item.ImagePublicID,
-		RetryCount:        item.ProcessingRetryCount,
-		ProcessingVersion: item.ProcessingVersion,
+		CategoryID:        item.FashionCategoryID(),
+		ImageUrl:          item.FashionImageUrl(),
+		ImagePublicID:     item.FashionImagePublicID(),
+		RetryCount:        item.FashionItem.ProcessingRetryCount,
+		ProcessingVersion: item.FashionItem.ProcessingVersion,
 	}
 
 	return uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)

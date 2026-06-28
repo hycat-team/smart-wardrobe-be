@@ -48,13 +48,6 @@ type googleUsageMetadata struct {
 	TotalTokenCount      int64 `json:"totalTokenCount"`
 }
 
-// NormalizeGeminiModel ensures model name has "models/" prefix.
-func NormalizeGeminiModel(model string) string {
-	if strings.HasPrefix(model, "models/") {
-		return model
-	}
-	return "models/" + model
-}
 
 func isRetryableCountTokensError(err error) bool {
 	if err == nil {
@@ -83,7 +76,7 @@ func CountGoogleTokensByRequest(
 	countCtx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
-	model := NormalizeGeminiModel(req.Model)
+	model := req.Model
 	body := geminiCountTokensRequest{
 		GenerateContentRequest: geminiCountGenerateContentRequest{
 			Model:                     model,
@@ -239,7 +232,7 @@ func CallTextStream(
 			return
 		}
 
-		url := fmt.Sprintf("%s/%s:streamGenerateContent?alt=sse&key=%s", provider.Endpoint, NormalizeGeminiModel(req.Model), provider.ApiKey)
+		url := fmt.Sprintf("%s/%s:streamGenerateContent?alt=sse&key=%s", provider.Endpoint, req.Model, provider.ApiKey)
 		httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
 		if err != nil {
 			errChan <- err
@@ -352,7 +345,7 @@ func CallText(
 		return "", err
 	}
 
-	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, NormalizeGeminiModel(req.Model), provider.ApiKey)
+	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, req.Model, provider.ApiKey)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", err

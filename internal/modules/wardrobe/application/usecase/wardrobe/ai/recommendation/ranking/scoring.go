@@ -62,9 +62,10 @@ func ScoreCandidateItem(
 	var reasonTags []string
 	styleMatched := false
 	matchedTerms := map[string]bool{}
+	fashion := fashionForItem(item)
 
-	if item.Style != nil && len(intent.StyleTarget) > 0 {
-		itemStyle := strings.ToLower(*item.Style)
+	if fashion != nil && fashion.Style != nil && len(intent.StyleTarget) > 0 {
+		itemStyle := strings.ToLower(*fashion.Style)
 		for _, target := range intent.StyleTarget {
 			targetNorm := strings.ToLower(target)
 			if strings.Contains(itemStyle, targetNorm) {
@@ -105,10 +106,10 @@ func ScoreCandidateItem(
 		}
 	}
 
-	if len(intent.ColorTone) > 0 && item.ColorLightness != nil {
+	if fashion != nil && len(intent.ColorTone) > 0 && fashion.ColorLightness != nil {
 		for _, t := range intent.ColorTone {
 			tone := strings.ToLower(t)
-			lightness := *item.ColorLightness
+			lightness := *fashion.ColorLightness
 			if tone == "light" && lightness >= 60 {
 				score += 0.2
 				reasonTags = append(reasonTags, "color-tone:light")
@@ -117,9 +118,9 @@ func ScoreCandidateItem(
 				score += 0.2
 				reasonTags = append(reasonTags, "color-tone:dark")
 				break
-			} else if tone == "earthy" && item.ColorHue != nil && item.ColorSaturation != nil {
-				hue := *item.ColorHue
-				saturation := *item.ColorSaturation
+			} else if tone == "earthy" && fashion.ColorHue != nil && fashion.ColorSaturation != nil {
+				hue := *fashion.ColorHue
+				saturation := *fashion.ColorSaturation
 				if ((hue >= 20 && hue <= 50) || (hue >= 80 && hue <= 120)) &&
 					saturation <= 50 && lightness >= 20 && lightness <= 70 {
 					score += 0.2
@@ -130,8 +131,8 @@ func ScoreCandidateItem(
 		}
 	}
 
-	if item.Style != nil && len(intent.ExcludedStyles) > 0 {
-		itemStyle := strings.ToLower(*item.Style)
+	if fashion != nil && fashion.Style != nil && len(intent.ExcludedStyles) > 0 {
+		itemStyle := strings.ToLower(*fashion.Style)
 		for _, excluded := range intent.ExcludedStyles {
 			excluded = strings.ToLower(excluded)
 			if strings.Contains(itemStyle, excluded) {
@@ -142,10 +143,10 @@ func ScoreCandidateItem(
 		}
 	}
 
-	if len(intent.ExcludedColorTones) > 0 && item.ColorLightness != nil {
+	if fashion != nil && len(intent.ExcludedColorTones) > 0 && fashion.ColorLightness != nil {
 		for _, excluded := range intent.ExcludedColorTones {
 			tone := strings.ToLower(excluded)
-			lightness := *item.ColorLightness
+			lightness := *fashion.ColorLightness
 			if tone == "light" && lightness >= 60 {
 				score -= 0.25
 				reasonTags = append(reasonTags, "avoid-color-tone:light")
@@ -154,9 +155,9 @@ func ScoreCandidateItem(
 				score -= 0.25
 				reasonTags = append(reasonTags, "avoid-color-tone:dark")
 				break
-			} else if tone == "earthy" && item.ColorHue != nil && item.ColorSaturation != nil {
-				hue := *item.ColorHue
-				saturation := *item.ColorSaturation
+			} else if tone == "earthy" && fashion.ColorHue != nil && fashion.ColorSaturation != nil {
+				hue := *fashion.ColorHue
+				saturation := *fashion.ColorSaturation
 				if ((hue >= 20 && hue <= 50) || (hue >= 80 && hue <= 120)) &&
 					saturation <= 50 && lightness >= 20 && lightness <= 70 {
 					score -= 0.25
@@ -173,7 +174,7 @@ func ScoreCandidateItem(
 	}
 
 	weatherState := recommendationWeatherState(intent.PositiveConstraints)
-	if isOuterwearCategory(item.Category) {
+	if isOuterwearCategory(item.FashionCategory()) {
 		switch weatherState {
 		case recommendationWeatherColdLike:
 			score += 0.4
@@ -297,7 +298,7 @@ func excludedWeatherPenalty(item *entities.WardrobeItem, excludedWeather []strin
 		state := recommendationWeatherState([]string{excluded})
 		switch state {
 		case recommendationWeatherColdLike:
-			if isOuterwearCategory(item.Category) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms()) {
+			if isOuterwearCategory(item.FashionCategory()) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms()) {
 				return 0.3, "avoid-weather:cold-like"
 			}
 		case recommendationWeatherHotLike:

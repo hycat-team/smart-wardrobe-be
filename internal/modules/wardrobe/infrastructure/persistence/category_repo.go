@@ -64,14 +64,21 @@ func (r *CategoryRepository) CountWardrobeItemsByCategoryAndItemType(ctx context
 	var count int64
 	err := r.GetDB(ctx).
 		Model(&entities.WardrobeItem{}).
-		Where("category_id = ? AND item_type = ? AND is_deleted = ?", categoryID, kind, false).
+		Joins("JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
+		Where("fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", categoryID, kind, false).
 		Count(&count).Error
 	return count, err
 }
 
 func (r *CategoryRepository) ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
-	return r.GetDB(ctx).
+	systemFashionItems := r.GetDB(ctx).
 		Model(&entities.WardrobeItem{}).
-		Where("category_id = ? AND item_type = ? AND is_deleted = ?", fromCategoryID, itemtype.SystemCatalogItem, false).
+		Select("wardrobe_items.fashion_item_id").
+		Joins("JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
+		Where("fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", fromCategoryID, itemtype.SystemCatalogItem, false)
+
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id IN (?)", systemFashionItems).
 		Update("category_id", toCategoryID).Error
 }

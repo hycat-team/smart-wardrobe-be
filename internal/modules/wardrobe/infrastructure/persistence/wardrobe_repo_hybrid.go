@@ -45,7 +45,8 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 	db := r.GetDB(ctx).Model(&entities.WardrobeItem{}).
 		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
 			userID, wardrobestatus.InWardrobe, false)
-	db = db.Joins("LEFT JOIN categories recommendation_categories ON recommendation_categories.id = wardrobe_items.category_id")
+	db = db.Joins("JOIN fashion_items recommendation_fashion_items ON recommendation_fashion_items.id = wardrobe_items.fashion_item_id")
+	db = db.Joins("LEFT JOIN categories recommendation_categories ON recommendation_categories.id = recommendation_fashion_items.category_id")
 
 	searchVectorSQL := recommendationSearchDocumentSQL(false)
 	if len(hardFilters.Seasonality) > 0 {
@@ -69,13 +70,13 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 
 	// Case 1: Both vector and keyword search parameters are available (RRF hybrid search)
 	if hasVector && hasKeywords {
-		vectorScoreSQL := "(1.0 - (wardrobe_items.embedding <=> ?))"
+		vectorScoreSQL := "(1.0 - (recommendation_fashion_items.embedding <=> ?))"
 		lexicalScoreSQL := "ts_rank_cd(" + searchVectorSQL + ", (" + includeQuerySQL + "))"
 		var vectorRecords []hybridCandidateRecord
 		if err := db.Session(&gorm.Session{}).
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score", semanticVector).
-			Where("wardrobe_items.embedding IS NOT NULL").
-			Order(gorm.Expr("wardrobe_items.embedding <=> ?", semanticVector)).
+			Where("recommendation_fashion_items.embedding IS NOT NULL").
+			Order(gorm.Expr("recommendation_fashion_items.embedding <=> ?", semanticVector)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&vectorRecords).Error; err != nil {
@@ -99,11 +100,11 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 		return r.buildHybridCandidates(ctx, mergedRecords, "", nil)
 	} else if hasVector {
 		// Case 2: Only vector search is available (pure semantic retrieval ordered by closest cosine distance)
-		vectorScoreSQL := "(1.0 - (wardrobe_items.embedding <=> ?))"
+		vectorScoreSQL := "(1.0 - (recommendation_fashion_items.embedding <=> ?))"
 		err := db.
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score", semanticVector, semanticVector).
-			Where("wardrobe_items.embedding IS NOT NULL").
-			Order(gorm.Expr("wardrobe_items.embedding <=> ?", semanticVector)).
+			Where("recommendation_fashion_items.embedding IS NOT NULL").
+			Order(gorm.Expr("recommendation_fashion_items.embedding <=> ?", semanticVector)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&records).Error

@@ -190,8 +190,10 @@ func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int) []type
 
 	for _, candidate := range scored {
 		category := "uncategorized"
-		if candidate.Item != nil && candidate.Item.Category != nil && candidate.Item.Category.Slug != "" {
-			category = candidate.Item.Category.Slug
+		if candidate.Item != nil {
+			if fashionCategory := candidate.Item.FashionCategory(); fashionCategory != nil && fashionCategory.Slug != "" {
+				category = fashionCategory.Slug
+			}
 		}
 		if categoryCounts[category] < categorySoftCap && len(selected) < limit {
 			selected = append(selected, candidate)

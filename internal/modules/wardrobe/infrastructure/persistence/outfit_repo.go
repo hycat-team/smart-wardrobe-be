@@ -20,7 +20,7 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
-	relations := []string{"Items.WardrobeItem.Category"}
+	relations := []string{"Items.WardrobeItem.FashionItem", "Items.WardrobeItem.FashionItem.Category"}
 	return &OutfitRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}

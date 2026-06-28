@@ -39,34 +39,40 @@ type Category struct {
 type WardrobeItem struct {
 	AuditableEntity
 	SoftDeleteEntity
-	UserID                  uuid.UUID                         `gorm:"type:uuid;not null"`
-	User                    *User                             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	CategoryID              *uuid.UUID                        `gorm:"type:uuid"`
-	Category                *Category                         `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
-	ImageUrl                string                            `gorm:"type:varchar(500);not null"`
-	ImagePublicID           string                            `gorm:"type:varchar(255);not null"`
-	Color                   *string                           `gorm:"type:varchar(50)"`
-	ColorHex                *string                           `gorm:"column:color_hex;type:varchar(7)"`
-	ColorHue                *float64                          `gorm:"column:color_hue;type:double precision"`
-	ColorSaturation         *float64                          `gorm:"column:color_saturation;type:double precision"`
-	ColorLightness          *float64                          `gorm:"column:color_lightness;type:double precision"`
-	Style                   *string                           `gorm:"type:varchar(100)"`
-	Material                *string                           `gorm:"type:varchar(100)"`
-	Pattern                 *string                           `gorm:"type:varchar(100)"`
-	Fit                     *string                           `gorm:"type:varchar(50)"`
-	Seasonality             *string                           `gorm:"type:varchar(100)"`
-	Description             *string                           `gorm:"type:text"`
-	Price                   *float64                          `gorm:"type:decimal(12,2)"`
-	Status                  wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
-	ItemType                itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"` // 0: UserItem, 1: SystemCatalogItem
-	Embedding               Vector                            `gorm:"type:vector(768)"`
-	LastUsedAt              *time.Time                        `gorm:"type:timestamp with time zone"`
-	ProcessingRetryCount    int                               `gorm:"type:int;not null;default:0"`
-	ProcessingVersion       int                               `gorm:"type:int;not null;default:0"`
-	ProcessingStartedAt     *time.Time                        `gorm:"type:timestamp with time zone"`
-	LastProcessingAttemptAt *time.Time                        `gorm:"type:timestamp with time zone"`
-	ProcessingErrorReason   *string                           `gorm:"type:text"`
-	ReviewReason            *string                           `gorm:"type:varchar(100)"`
+	UserID        uuid.UUID                         `gorm:"type:uuid;not null"`
+	User          *User                             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	FashionItemID uuid.UUID                         `gorm:"column:fashion_item_id;type:uuid;not null"`
+	FashionItem   *FashionItem                      `gorm:"foreignKey:FashionItemID;constraint:OnDelete:RESTRICT"`
+	Price         *float64                          `gorm:"column:purchase_price;type:decimal(12,2)"`
+	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'
+	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"` // 0: UserItem, 1: SystemCatalogItem
+	LastUsedAt    *time.Time                        `gorm:"type:timestamp with time zone"`
+}
+
+type FashionItem struct {
+	AuditableEntity
+	CategoryID              *uuid.UUID `gorm:"type:uuid"`
+	Category                *Category  `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
+	ImageUrl                string     `gorm:"type:varchar(500);not null"`
+	ImagePublicID           string     `gorm:"type:varchar(255);not null"`
+	Color                   *string    `gorm:"type:varchar(50)"`
+	ColorHex                *string    `gorm:"column:color_hex;type:varchar(7)"`
+	ColorHue                *float64   `gorm:"column:color_hue;type:double precision"`
+	ColorSaturation         *float64   `gorm:"column:color_saturation;type:double precision"`
+	ColorLightness          *float64   `gorm:"column:color_lightness;type:double precision"`
+	Style                   *string    `gorm:"type:varchar(100)"`
+	Material                *string    `gorm:"type:varchar(100)"`
+	Pattern                 *string    `gorm:"type:varchar(100)"`
+	Fit                     *string    `gorm:"type:varchar(50)"`
+	Seasonality             *string    `gorm:"type:varchar(100)"`
+	Description             *string    `gorm:"type:text"`
+	Embedding               Vector     `gorm:"type:vector(768)"`
+	ProcessingRetryCount    int        `gorm:"type:int;not null;default:0"`
+	ProcessingVersion       int        `gorm:"type:int;not null;default:0"`
+	ProcessingStartedAt     *time.Time `gorm:"type:timestamp with time zone"`
+	LastProcessingAttemptAt *time.Time `gorm:"type:timestamp with time zone"`
+	ProcessingErrorReason   *string    `gorm:"type:text"`
+	ReviewReason            *string    `gorm:"type:varchar(100)"`
 }
 
 type Outfit struct {

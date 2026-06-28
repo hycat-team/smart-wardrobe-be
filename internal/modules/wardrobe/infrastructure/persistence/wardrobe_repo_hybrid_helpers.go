@@ -167,10 +167,10 @@ func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 		return "", nil
 	}
 
-	seasonalitySQL := "immutable_unaccent(lower(coalesce(wardrobe_items.seasonality, '')))"
+	seasonalitySQL := "immutable_unaccent(lower(coalesce(recommendation_fashion_items.seasonality, '')))"
 	conditions := []string{
-		"wardrobe_items.seasonality IS NULL",
-		"btrim(wardrobe_items.seasonality) = ''",
+		"recommendation_fashion_items.seasonality IS NULL",
+		"btrim(recommendation_fashion_items.seasonality) = ''",
 	}
 	args := make([]any, 0, len(aliases)+len(constants.RecommendationAllSeasonAliases))
 	for _, alias := range aliases {
@@ -214,13 +214,13 @@ func recommendationSeasonalityAliases(seasons []string) []string {
 // recommendationSearchDocumentSQL định nghĩa cấu trúc tsvector của PostgreSQL bằng cách ghép nối tất cả các thuộc tính văn bản của tủ đồ (color, style, description, v.v.) để tìm kiếm toàn văn (FTS).
 func recommendationSearchDocumentSQL(includeCategory bool) string {
 	fields := []string{
-		"wardrobe_items.color",
-		"wardrobe_items.style",
-		"wardrobe_items.material",
-		"wardrobe_items.pattern",
-		"wardrobe_items.fit",
-		"wardrobe_items.seasonality",
-		"wardrobe_items.description",
+		"recommendation_fashion_items.color",
+		"recommendation_fashion_items.style",
+		"recommendation_fashion_items.material",
+		"recommendation_fashion_items.pattern",
+		"recommendation_fashion_items.fit",
+		"recommendation_fashion_items.seasonality",
+		"recommendation_fashion_items.description",
 	}
 	if includeCategory {
 		fields = append([]string{

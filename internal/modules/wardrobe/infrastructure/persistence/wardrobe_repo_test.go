@@ -112,9 +112,9 @@ func TestBuildRecommendationSeasonalityConditionAllowsAllSeasonAndMissingMetadat
 		t.Fatal("expected seasonality condition SQL")
 	}
 	for _, fragment := range []string{
-		"wardrobe_items.seasonality IS NULL",
-		"btrim(wardrobe_items.seasonality) = ''",
-		"immutable_unaccent(lower(coalesce(wardrobe_items.seasonality, '')))",
+		"recommendation_fashion_items.seasonality IS NULL",
+		"btrim(recommendation_fashion_items.seasonality) = ''",
+		"immutable_unaccent(lower(coalesce(recommendation_fashion_items.seasonality, '')))",
 	} {
 		if !strings.Contains(sql, fragment) {
 			t.Fatalf("expected SQL fragment %q in %s", fragment, sql)

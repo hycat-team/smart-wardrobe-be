@@ -106,26 +106,16 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 
 	newItems := make([]*entities.WardrobeItem, len(templates))
 	for i, original := range templates {
+		fashionItemID := original.FashionItemID
+		if fashionItemID == uuid.Nil {
+			fashionItemID = original.ID
+		}
 		newItems[i] = &entities.WardrobeItem{
-			UserID:          userID,
-			CategoryID:      original.CategoryID,
-			ImageUrl:        original.ImageUrl,
-			ImagePublicID:   original.ImagePublicID,
-			Color:           original.Color,
-			ColorHex:        original.ColorHex,
-			ColorHue:        original.ColorHue,
-			ColorSaturation: original.ColorSaturation,
-			ColorLightness:  original.ColorLightness,
-			Style:           original.Style,
-			Material:        original.Material,
-			Pattern:         original.Pattern,
-			Fit:             original.Fit,
-			Seasonality:     original.Seasonality,
-			Price:           original.Price,
-			Description:     original.Description,
-			Embedding:       original.Embedding,
-			Status:          wardrobestatus.InWardrobe,
-			ItemType:        itemtype.UserItem,
+			UserID:        userID,
+			FashionItemID: fashionItemID,
+			Price:         original.Price,
+			Status:        wardrobestatus.InWardrobe,
+			ItemType:      itemtype.UserItem,
 		}
 	}
 
@@ -136,7 +126,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i := range newItems {
-		newItems[i].Category = templates[i].Category
+		newItems[i].FashionItem = templates[i].FashionItem
 		resList[i] = mapper.MapToWardrobeItemRes(newItems[i])
 		resList[i].IsLocked = false
 	}
@@ -152,6 +142,9 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
 		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
+	if item.FashionItem == nil {
+		item.FashionItem = &entities.FashionItem{}
+	}
 
 	if input.CategoryID != nil {
 		category, err := uc.categoryRepo.GetByID(ctx, *input.CategoryID)
@@ -161,27 +154,27 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		if category == nil {
 			return nil, wardrobeerrors.ErrCategoryNotFound()
 		}
-		item.CategoryID = input.CategoryID
-		item.Category = category
+		item.FashionItem.CategoryID = input.CategoryID
+		item.FashionItem.Category = category
 	}
 
 	if input.Color != nil {
-		item.Color = input.Color
+		item.FashionItem.Color = input.Color
 	}
 	if input.Style != nil {
-		item.Style = input.Style
+		item.FashionItem.Style = input.Style
 	}
 	if input.Material != nil {
-		item.Material = input.Material
+		item.FashionItem.Material = input.Material
 	}
 	if input.Pattern != nil {
-		item.Pattern = input.Pattern
+		item.FashionItem.Pattern = input.Pattern
 	}
 	if input.Fit != nil {
-		item.Fit = input.Fit
+		item.FashionItem.Fit = input.Fit
 	}
 	if input.Seasonality != nil {
-		item.Seasonality = input.Seasonality
+		item.FashionItem.Seasonality = input.Seasonality
 	}
 	if input.Price != nil {
 		item.Price = input.Price

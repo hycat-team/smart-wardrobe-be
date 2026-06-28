@@ -2,6 +2,7 @@
 package synthesis
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -10,6 +11,39 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/types"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
+
+// CategorySlugToWearingRole maps database category slugs to wearing position roles.
+func CategorySlugToWearingRole(slug string) string {
+	switch strings.ToLower(slug) {
+	case "ao":
+		return "top"
+	case "quan", "chan-vay":
+		return "bottom"
+	case "dam":
+		return "fullbody"
+	case "ao-khoac":
+		return "outerwear"
+	case "giay":
+		return "footwear"
+	case "mu":
+		return "headwear"
+	case "phu-kien":
+		return "accessory"
+	default:
+		return "other"
+	}
+}
+
+func parseAliasIndex(alias string) (int, bool) {
+	alias = strings.TrimSpace(strings.ToUpper(alias))
+	if len(alias) > 1 && alias[0] == 'A' {
+		var index int
+		if _, err := fmt.Sscanf(alias[1:], "%d", &index); err == nil {
+			return index - 1, true
+		}
+	}
+	return -1, false
+}
 
 // MapLLMResponseToGroups ánh xạ các gợi ý về ID và vai trò trang phục trong phản hồi của AI/LLM về lại các món đồ ứng viên thực tế trong tủ đồ của người dùng.
 //
@@ -38,6 +72,8 @@ func MapLLMResponseToGroups(
 	}
 
 	valid := make([]*dto.RecommendedItemGroup, 0)
+	var hasFullbody bool
+
 	for _, group := range llmRes.Items {
 		role := strings.ToLower(group.Role)
 		primary := resolvePrimaryCandidate(candidateMap, candidates, role, group.PrimaryID)
@@ -45,11 +81,30 @@ func MapLLMResponseToGroups(
 			continue
 		}
 
+		actualRole := role
+		if category := primary.FashionCategory(); category != nil {
+			actualRole = CategorySlugToWearingRole(category.Slug)
+		}
+
+		if actualRole == "fullbody" {
+			hasFullbody = true
+		}
+
 		valid = append(valid, &dto.RecommendedItemGroup{
-			Role:         role,
+			Role:         actualRole,
 			Primary:      mapper.MapToWardrobeItemRes(primary),
-			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, role, primary.ID, group.AlternativeIDs),
+			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, actualRole, primary.ID, group.AlternativeIDs),
 		})
+	}
+
+	if hasFullbody {
+		filtered := make([]*dto.RecommendedItemGroup, 0, len(valid))
+		for _, item := range valid {
+			if item.Role != "top" && item.Role != "bottom" {
+				filtered = append(filtered, item)
+			}
+		}
+		valid = filtered
 	}
 
 	return valid
@@ -62,6 +117,12 @@ func resolvePrimaryCandidate(
 	role string,
 	primaryID string,
 ) *entities.WardrobeItem {
+	if idx, ok := parseAliasIndex(primaryID); ok {
+		if idx >= 0 && idx < len(candidates) {
+			return candidates[idx].Item
+		}
+	}
+
 	if id, err := uuid.Parse(primaryID); err == nil {
 		if item := candidateMap[id]; item != nil {
 			return item
@@ -69,7 +130,7 @@ func resolvePrimaryCandidate(
 	}
 
 	for _, candidate := range candidates {
-		if candidate.Item.Category != nil && candidate.Item.Category.Slug == role {
+		if category := candidate.Item.FashionCategory(); category != nil && CategorySlugToWearingRole(category.Slug) == role {
 			return candidate.Item
 		}
 	}
@@ -103,13 +164,24 @@ func resolveAlternativeCandidates(
 ) []*dto.WardrobeItemRes {
 	alternatives := make([]*dto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
-		altUUID, err := uuid.Parse(altID)
-		if err != nil {
-			continue
+		var altItem *entities.WardrobeItem
+		if idx, ok := parseAliasIndex(altID); ok {
+			if idx >= 0 && idx < len(candidates) {
+				altItem = candidates[idx].Item
+			}
 		}
 
-		altItem := candidateMap[altUUID]
-		if altItem == nil || altItem.ID == primaryID || altItem.Category == nil || altItem.Category.Slug != role {
+		if altItem == nil {
+			if altUUID, err := uuid.Parse(altID); err == nil {
+				altItem = candidateMap[altUUID]
+			}
+		}
+
+		if altItem == nil {
+			continue
+		}
+		category := altItem.FashionCategory()
+		if altItem.ID == primaryID || category == nil || CategorySlugToWearingRole(category.Slug) != role {
 			continue
 		}
 
@@ -121,7 +193,8 @@ func resolveAlternativeCandidates(
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		if item.ID == primaryID || item.Category == nil || item.Category.Slug != role {
+		category := item.FashionCategory()
+		if item.ID == primaryID || category == nil || CategorySlugToWearingRole(category.Slug) != role {
 			continue
 		}
 

@@ -46,6 +46,6 @@ func wardrobeItem(slug string) *entities.WardrobeItem {
 	name := slug
 	return &entities.WardrobeItem{
 		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		Category:        &entities.Category{Slug: slug, Name: name},
+		FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: slug, Name: name}},
 	}
 }
