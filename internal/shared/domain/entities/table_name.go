@@ -165,4 +165,3 @@ func (AIUsagePeriodLedger) TableName() string   { return "ai_usage_period_ledger
 func (AIUsageEvent) TableName() string          { return "ai_usage_events" }
 func (BrandBenefit) TableName() string          { return "brand_benefits" }
 func (BenefitRedemption) TableName() string     { return "benefit_redemptions" }
-

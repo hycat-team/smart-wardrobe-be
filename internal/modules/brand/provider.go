@@ -1,8 +1,8 @@
 package brand
 
 import (
-	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/contract"
 	"smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/brand/presentation/handler"

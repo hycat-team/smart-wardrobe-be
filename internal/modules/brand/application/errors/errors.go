@@ -89,4 +89,3 @@ func ErrBenefitRedemptionExists() *apperror.Error {
 func ErrBenefitInvalidStatus() *apperror.Error {
 	return apperror.NewBadRequest("Trang thai quyen loi khong hop le.")
 }
-

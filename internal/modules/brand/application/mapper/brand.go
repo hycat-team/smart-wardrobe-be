@@ -143,4 +143,3 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 		UpdatedAt:       red.UpdatedAt,
 	}
 }
-

@@ -27,12 +27,14 @@ type mockBrandRepo struct {
 func (m *mockBrandRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.Brand, error) {
 	return m.brands[id], nil
 }
-func (m *mockBrandRepo) GetAll(ctx context.Context) ([]*entities.Brand, error)             { return nil, nil }
-func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error           { return nil }
-func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error           { return nil }
-func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error                    { return nil }
-func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) { return nil, nil }
-func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error)          { return nil, nil }
+func (m *mockBrandRepo) GetAll(ctx context.Context) ([]*entities.Brand, error)   { return nil, nil }
+func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error { return nil }
+func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error { return nil }
+func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error          { return nil }
+func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
+	return nil, nil
+}
+func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error) { return nil, nil }
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -41,7 +43,9 @@ type mockMemberRepo struct {
 func (m *mockMemberRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandMember, error) {
 	return nil, nil
 }
-func (m *mockMemberRepo) GetAll(ctx context.Context) ([]*entities.BrandMember, error)   { return nil, nil }
+func (m *mockMemberRepo) GetAll(ctx context.Context) ([]*entities.BrandMember, error) {
+	return nil, nil
+}
 func (m *mockMemberRepo) Create(ctx context.Context, member *entities.BrandMember) error { return nil }
 func (m *mockMemberRepo) Update(ctx context.Context, member *entities.BrandMember) error { return nil }
 func (m *mockMemberRepo) Delete(ctx context.Context, id uuid.UUID) error                 { return nil }
@@ -59,7 +63,9 @@ type mockCustomerRepo struct {
 func (m *mockCustomerRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandCustomer, error) {
 	return nil, nil
 }
-func (m *mockCustomerRepo) GetAll(ctx context.Context) ([]*entities.BrandCustomer, error)   { return nil, nil }
+func (m *mockCustomerRepo) GetAll(ctx context.Context) ([]*entities.BrandCustomer, error) {
+	return nil, nil
+}
 func (m *mockCustomerRepo) Create(ctx context.Context, customer *entities.BrandCustomer) error {
 	return nil
 }
@@ -87,7 +93,9 @@ type mockBenefitRepo struct {
 func (m *mockBenefitRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandBenefit, error) {
 	return m.benefits[id], nil
 }
-func (m *mockBenefitRepo) GetAll(ctx context.Context) ([]*entities.BrandBenefit, error) { return nil, nil }
+func (m *mockBenefitRepo) GetAll(ctx context.Context) ([]*entities.BrandBenefit, error) {
+	return nil, nil
+}
 func (m *mockBenefitRepo) Create(ctx context.Context, benefit *entities.BrandBenefit) error {
 	benefit.ID = uuid.New()
 	benefit.CreatedAt = time.Now().UTC()
@@ -168,7 +176,7 @@ func (m *mockTierRepo) Create(ctx context.Context, tier *entities.LoyaltyTier) e
 	return nil
 }
 func (m *mockTierRepo) Update(ctx context.Context, tier *entities.LoyaltyTier) error { return nil }
-func (m *mockTierRepo) Delete(ctx context.Context, id uuid.UUID) error              { return nil }
+func (m *mockTierRepo) Delete(ctx context.Context, id uuid.UUID) error               { return nil }
 func (m *mockTierRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.LoyaltyTier, error) {
 	return nil, nil
 }
@@ -208,10 +216,10 @@ func TestCreateBrandBenefit(t *testing.T) {
 
 	featCode := "SAMPLE_MIX_ACCESS"
 	input := dto.CreateBrandBenefitReq{
-		Name:        "Test Benefit",
-		Description: ptr("Test Desc"),
-		BenefitType: "FEATURE_ACCESS",
-		UnlockType:  "POINT_REDEMPTION",
+		Name:           "Test Benefit",
+		Description:    ptr("Test Desc"),
+		BenefitType:    "FEATURE_ACCESS",
+		UnlockType:     "POINT_REDEMPTION",
 		RequiredPoints: intPtr(100),
 		FeatureCode:    &featCode,
 		FeatureConfig:  map[string]interface{}{"valid_duration_days": 30},
@@ -307,8 +315,10 @@ func (m *mockTxRepo) Create(ctx context.Context, tx *entities.LoyaltyPointTransa
 	m.transactions[tx.ID] = tx
 	return nil
 }
-func (m *mockTxRepo) Update(ctx context.Context, tx *entities.LoyaltyPointTransaction) error { return nil }
-func (m *mockTxRepo) Delete(ctx context.Context, id uuid.UUID) error                       { return nil }
+func (m *mockTxRepo) Update(ctx context.Context, tx *entities.LoyaltyPointTransaction) error {
+	return nil
+}
+func (m *mockTxRepo) Delete(ctx context.Context, id uuid.UUID) error { return nil }
 func (m *mockTxRepo) GetByBrandAndIdempotencyKey(ctx context.Context, brandID uuid.UUID, idempotencyKey string) (*entities.LoyaltyPointTransaction, error) {
 	return nil, nil
 }

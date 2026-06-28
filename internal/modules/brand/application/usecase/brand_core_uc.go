@@ -14,12 +14,12 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitunlocktype"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
@@ -1226,5 +1226,3 @@ func (uc *BrandCoreUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 	// Stub return empty list and nil error since brand items schema/logic is introduced in Phase 06
 	return []interface{}{}, nil
 }
-
-

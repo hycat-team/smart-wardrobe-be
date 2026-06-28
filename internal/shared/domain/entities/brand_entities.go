@@ -63,18 +63,18 @@ type BrandCustomer struct {
 
 type BrandBenefit struct {
 	AuditableEntity
-	BrandID        uuid.UUID                             `gorm:"type:uuid;not null"`
-	Brand          *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
-	Name           string                                `gorm:"type:varchar(255);not null"`
-	Description    *string                               `gorm:"type:text"`
-	BenefitType    benefittype.BenefitType               `gorm:"type:varchar(50);not null"`
-	UnlockType     benefitunlocktype.BenefitUnlockType   `gorm:"type:varchar(50);not null"`
-	RequiredPoints *int                                  `gorm:"type:int"`
-	RequiredTierID *uuid.UUID                            `gorm:"type:uuid"`
-	RequiredTier   *LoyaltyTier                          `gorm:"foreignKey:RequiredTierID;constraint:OnDelete:SET NULL"`
+	BrandID        uuid.UUID                              `gorm:"type:uuid;not null"`
+	Brand          *Brand                                 `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	Name           string                                 `gorm:"type:varchar(255);not null"`
+	Description    *string                                `gorm:"type:text"`
+	BenefitType    benefittype.BenefitType                `gorm:"type:varchar(50);not null"`
+	UnlockType     benefitunlocktype.BenefitUnlockType    `gorm:"type:varchar(50);not null"`
+	RequiredPoints *int                                   `gorm:"type:int"`
+	RequiredTierID *uuid.UUID                             `gorm:"type:uuid"`
+	RequiredTier   *LoyaltyTier                           `gorm:"foreignKey:RequiredTierID;constraint:OnDelete:SET NULL"`
 	FeatureCode    *benefitfeaturecode.BenefitFeatureCode `gorm:"type:varchar(100)"`
-	FeatureConfig  JSONDocument                          `gorm:"type:jsonb"`
-	Status         benefitstatus.BenefitStatus           `gorm:"type:varchar(50);not null;default:ACTIVE"`
+	FeatureConfig  JSONDocument                           `gorm:"type:jsonb"`
+	Status         benefitstatus.BenefitStatus            `gorm:"type:varchar(50);not null;default:ACTIVE"`
 }
 
 type BenefitRedemption struct {
