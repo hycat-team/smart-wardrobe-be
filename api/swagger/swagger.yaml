@@ -2507,8 +2507,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy danh sách các cuộc hội thoại của brand (Staff)
       tags:
       - Brand Portal
@@ -2541,8 +2539,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy danh sách tin nhắn trong cuộc hội thoại (Staff)
       tags:
       - Brand Portal
@@ -2578,8 +2574,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Gửi phản hồi của brand staff (Staff)
       tags:
       - Brand Portal
@@ -2666,8 +2660,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: '[Staff] Lấy danh sách sản phẩm hoặc mẫu thử của Brand'
       tags:
       - Brand Portal
@@ -2698,8 +2690,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: '[Staff] Tạo sản phẩm hoặc mẫu thử của Brand'
       tags:
       - Brand Portal
@@ -2736,8 +2726,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: '[Staff] Cập nhật sản phẩm hoặc mẫu thử của Brand'
       tags:
       - Brand Portal
@@ -2770,8 +2758,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: '[Staff] Lấy phản hồi/đóng góp ý kiến mẫu thử kỹ thuật số'
       tags:
       - Brand Portal
@@ -2964,8 +2950,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy cuộc hội thoại hiện tại (User)
       tags:
       - Brand
@@ -2997,8 +2981,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Gửi tin nhắn đến brand (User)
       tags:
       - Brand
@@ -3026,8 +3008,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: '[User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand'
       tags:
       - Brand
@@ -3064,8 +3044,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: '[User] Gửi phản hồi, đánh giá mẫu thử kỹ thuật số'
       tags:
       - Brand

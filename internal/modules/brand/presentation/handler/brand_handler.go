@@ -479,7 +479,6 @@ func (h *BrandHandler) RedeemBenefit(c *gin.Context) error {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
 // @Router /api/v1/brands/{brandId}/conversation [get]
@@ -505,7 +504,6 @@ func (h *BrandHandler) GetUserConversation(c *gin.Context) error {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.SendBrandChatMessageReq true "Nội dung tin nhắn"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandConversationMessageRes}
@@ -536,7 +534,6 @@ func (h *BrandHandler) SendUserMessage(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandConversationRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations [get]
@@ -562,7 +559,6 @@ func (h *BrandHandler) ListBrandConversations(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param conversationId path string true "ID cuộc hội thoại"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandConversationMessageRes}
@@ -593,7 +589,6 @@ func (h *BrandHandler) ListConversationMessages(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param conversationId path string true "ID cuộc hội thoại"
 // @Param body body dto.SendBrandChatMessageReq true "Nội dung phản hồi"
@@ -629,7 +624,6 @@ func (h *BrandHandler) SendStaffMessage(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.CreateBrandItemReq true "Thông tin sản phẩm"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
@@ -660,7 +654,6 @@ func (h *BrandHandler) CreateBrandItem(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items [get]
@@ -686,7 +679,6 @@ func (h *BrandHandler) GetBrandItemsForStaff(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param itemId path string true "ID sản phẩm"
 // @Param body body dto.UpdateBrandItemReq true "Thông tin cập nhật"
@@ -722,7 +714,6 @@ func (h *BrandHandler) UpdateBrandItem(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param itemId path string true "ID sản phẩm mẫu thử"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.DigitalSampleResponseRes}
@@ -753,7 +744,6 @@ func (h *BrandHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
 // @Router /api/v1/brands/{brandId}/items [get]
@@ -779,7 +769,6 @@ func (h *BrandHandler) ListBrandItemsForUser(c *gin.Context) error {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param itemId path string true "ID sản phẩm mẫu thử"
 // @Param body body dto.SubmitSampleFeedbackReq true "Nội dung phản hồi"

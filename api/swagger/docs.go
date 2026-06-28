@@ -1472,11 +1472,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/conversations": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1523,11 +1518,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/messages": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1579,11 +1569,6 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1740,11 +1725,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/items": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1789,11 +1769,6 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1846,11 +1821,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/items/{itemId}": {
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1910,11 +1880,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/feedbacks": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -2246,11 +2211,6 @@ const docTemplate = `{
         },
         "/api/v1/brands/{brandId}/conversation": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -2294,11 +2254,6 @@ const docTemplate = `{
         },
         "/api/v1/brands/{brandId}/conversation/messages": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -2351,11 +2306,6 @@ const docTemplate = `{
         },
         "/api/v1/brands/{brandId}/items": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -2402,11 +2352,6 @@ const docTemplate = `{
         },
         "/api/v1/brands/{brandId}/items/{itemId}/feedbacks": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
