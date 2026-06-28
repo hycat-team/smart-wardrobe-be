@@ -12,6 +12,11 @@ var ProviderSet = wire.NewSet(
 	persistence.NewBrandRepository,
 	persistence.NewBrandMemberRepository,
 	persistence.NewBrandCustomerRepository,
+	persistence.NewLoyaltyProgramRepository,
+	persistence.NewLoyaltyTierRepository,
+	persistence.NewLoyaltyAccountRepository,
+	persistence.NewLoyaltyPointTransactionRepository,
+	persistence.NewBrandCustomerClaimRepository,
 	usecase.NewBrandCoreUseCase,
 	handler.NewBrandHandler,
 )

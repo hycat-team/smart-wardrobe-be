@@ -27,3 +27,31 @@ type IBrandCustomerRepository interface {
 	GetByBrandAndPhoneHash(ctx context.Context, brandID uuid.UUID, phoneHash string) (*entities.BrandCustomer, error)
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error)
 }
+
+type ILoyaltyProgramRepository interface {
+	shared_repos.IGenericRepository[entities.LoyaltyProgram, uuid.UUID]
+	GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) (*entities.LoyaltyProgram, error)
+}
+
+type ILoyaltyTierRepository interface {
+	shared_repos.IGenericRepository[entities.LoyaltyTier, uuid.UUID]
+	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.LoyaltyTier, error)
+	GetHighestEligibleBySpend(ctx context.Context, brandID uuid.UUID, totalSpend float64) (*entities.LoyaltyTier, error)
+}
+
+type ILoyaltyAccountRepository interface {
+	shared_repos.IGenericRepository[entities.LoyaltyAccount, uuid.UUID]
+	GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error)
+	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error)
+}
+
+type ILoyaltyPointTransactionRepository interface {
+	shared_repos.IGenericRepository[entities.LoyaltyPointTransaction, uuid.UUID]
+	GetByBrandAndIdempotencyKey(ctx context.Context, brandID uuid.UUID, idempotencyKey string) (*entities.LoyaltyPointTransaction, error)
+	GetByLoyaltyAccountID(ctx context.Context, loyaltyAccountID uuid.UUID) ([]*entities.LoyaltyPointTransaction, error)
+}
+
+type IBrandCustomerClaimRepository interface {
+	shared_repos.IGenericRepository[entities.BrandCustomerClaim, uuid.UUID]
+	GetByTokenHash(ctx context.Context, tokenHash string) (*entities.BrandCustomerClaim, error)
+}

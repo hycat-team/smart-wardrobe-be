@@ -77,6 +77,26 @@ func (BrandCustomer) TableName() string {
 	return "brand_customers"
 }
 
+func (LoyaltyProgram) TableName() string {
+	return "loyalty_programs"
+}
+
+func (LoyaltyTier) TableName() string {
+	return "loyalty_tiers"
+}
+
+func (LoyaltyAccount) TableName() string {
+	return "loyalty_accounts"
+}
+
+func (LoyaltyPointTransaction) TableName() string {
+	return "loyalty_point_transactions"
+}
+
+func (BrandCustomerClaim) TableName() string {
+	return "brand_customer_claims"
+}
+
 // TableName returns table name mapping for Post
 func (Post) TableName() string {
 	return "posts"

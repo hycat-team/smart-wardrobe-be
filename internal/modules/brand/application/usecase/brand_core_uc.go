@@ -28,6 +28,7 @@ type BrandCoreUseCase struct {
 	brandRepo    repositories.IBrandRepository
 	memberRepo   repositories.IBrandMemberRepository
 	customerRepo repositories.IBrandCustomerRepository
+	accountRepo  repositories.ILoyaltyAccountRepository
 	uow          shared_repos.IUnitOfWork
 }
 
@@ -35,12 +36,14 @@ func NewBrandCoreUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
+	accountRepo repositories.ILoyaltyAccountRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandCoreUseCase {
 	return &BrandCoreUseCase{
 		brandRepo:    brandRepo,
 		memberRepo:   memberRepo,
 		customerRepo: customerRepo,
+		accountRepo:  accountRepo,
 		uow:          uow,
 	}
 }
@@ -205,6 +208,9 @@ func (uc *BrandCoreUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, c
 	if existing, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID); err != nil {
 		return nil, err
 	} else if existing != nil {
+		if err := uc.ensureLoyaltyAccount(ctx, existing); err != nil {
+			return nil, err
+		}
 		return mapper.MapBrandCustomer(existing), nil
 	}
 
@@ -215,7 +221,12 @@ func (uc *BrandCoreUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, c
 		Status:       brandcustomerstatus.Active,
 		JoinedAt:     time.Now().UTC(),
 	}
-	if err := uc.customerRepo.Create(ctx, customer); err != nil {
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.customerRepo.Create(txCtx, customer); err != nil {
+			return err
+		}
+		return uc.ensureLoyaltyAccount(txCtx, customer)
+	}); err != nil {
 		return nil, err
 	}
 	return mapper.MapBrandCustomer(customer), nil
@@ -237,6 +248,9 @@ func (uc *BrandCoreUseCase) CreateOfflineCustomer(ctx context.Context, userID uu
 	if existing, err := uc.customerRepo.GetByBrandAndPhoneHash(ctx, brandID, phoneHash); err != nil {
 		return nil, err
 	} else if existing != nil {
+		if err := uc.ensureLoyaltyAccount(ctx, existing); err != nil {
+			return nil, err
+		}
 		return mapper.MapBrandCustomer(existing), nil
 	}
 
@@ -251,10 +265,34 @@ func (uc *BrandCoreUseCase) CreateOfflineCustomer(ctx context.Context, userID uu
 		JoinedAt:             time.Now().UTC(),
 		CreatedByMemberID:    &creator.ID,
 	}
-	if err := uc.customerRepo.Create(ctx, customer); err != nil {
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.customerRepo.Create(txCtx, customer); err != nil {
+			return err
+		}
+		return uc.ensureLoyaltyAccount(txCtx, customer)
+	}); err != nil {
 		return nil, err
 	}
 	return mapper.MapBrandCustomer(customer), nil
+}
+
+func (uc *BrandCoreUseCase) ensureLoyaltyAccount(ctx context.Context, customer *entities.BrandCustomer) error {
+	if customer == nil {
+		return nil
+	}
+	existing, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
+	if err != nil || existing != nil {
+		return err
+	}
+	account := &entities.LoyaltyAccount{
+		BrandID:         customer.BrandID,
+		BrandCustomerID: customer.ID,
+		UserID:          customer.UserID,
+		CurrentPoints:   0,
+		LifetimePoints:  0,
+		TotalSpend:      0,
+	}
+	return uc.accountRepo.Create(ctx, account)
 }
 
 func (uc *BrandCoreUseCase) RequireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {

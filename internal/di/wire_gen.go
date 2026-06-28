@@ -147,7 +147,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandRepository := persistence4.NewBrandRepository(gormDB)
 	iBrandMemberRepository := persistence4.NewBrandMemberRepository(gormDB)
 	iBrandCustomerRepository := persistence4.NewBrandCustomerRepository(gormDB)
-	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUnitOfWork)
+	iLoyaltyAccountRepository := persistence4.NewLoyaltyAccountRepository(gormDB)
+	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iUnitOfWork)
 	brandHandler := handler4.NewBrandHandler(iBrandCoreUseCase)
 	brandRouter := brand.NewRouter(brandHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
