@@ -55,6 +55,14 @@ Ví dụ đúng:
 ```sql
 SELECT ...
 FROM loyalty_accounts
+WHERE brand_id = $brandID AND brand_customer_id = $brandCustomerID;
+```
+
+Nếu query theo linked user thì vẫn phải đi qua brand scope:
+
+```sql
+SELECT ...
+FROM loyalty_accounts
 WHERE brand_id = $brandID AND user_id = $userID;
 ```
 

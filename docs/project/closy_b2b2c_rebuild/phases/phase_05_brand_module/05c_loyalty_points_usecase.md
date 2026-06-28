@@ -2,7 +2,7 @@
 
 ## Mục tiêu
 
-Tạo một API thống nhất để brand staff cộng/trừ điểm hoặc ghi nhận purchase offline cho customer bằng `user_id` hoặc số điện thoại.
+Tạo một API thống nhất để brand staff cộng/trừ điểm hoặc ghi nhận purchase offline cho customer bằng `user_id` hoặc số điện thoại. Nếu chỉ có số điện thoại, hệ thống tạo hoặc dùng lại `brand_customers` offline, không tạo `users`.
 
 ## Không làm trong phase này
 
@@ -12,6 +12,8 @@ Tạo một API thống nhất để brand staff cộng/trừ điểm hoặc ghi
 - Không sửa transaction cũ.
 - Không dùng remaining_points.
 - Không cho brand staff tạo ACTIVE user trực tiếp.
+- Không tạo `users UNVERIFIED` từ phone offline.
+- Không dùng SMS/phone OTP cho offline loyalty.
 ```
 
 ## API thống nhất
@@ -40,8 +42,10 @@ Request body gợi ý:
 Input rules:
 
 ```text
-- Phải có đúng một trong hai: user_id hoặc phone.
-- Nếu có phone, normalize về phone_e164.
+- Phải có ít nhất một trong các thông tin định danh customer: user_id, phone, external_customer_code.
+- Nếu có user_id, tìm hoặc tạo `brand_customer` linked với user đó.
+- Nếu không có user_id nhưng có phone, normalize phone, tính `phone_hash`, tìm hoặc tạo `brand_customer` offline/unlinked.
+- Không tạo `users` từ phone offline.
 - Phải có purchase_amount hoặc points_delta.
 - Nếu purchase_amount có và points_delta null: tính điểm theo loyalty_programs.amount_per_point.
 - Nếu points_delta có: dùng cho manual ADJUST hoặc manual EARN/REFUND tùy transaction_type.
@@ -70,13 +74,15 @@ Tất cả phải chạy trong DB transaction.
 
 ```text
 1. Check brand member permission.
-2. Resolve customer user:
+2. Resolve brand customer:
    - nếu user_id: load user.
-   - nếu phone: identity.FindOrCreateBrandCreatedUserByPhone.
-3. Nếu user status SUSPENDED/DELETED: reject.
+   - nếu user_id hợp lệ: find/create brand_customer với user_id.
+   - nếu phone: normalize phone, hash phone, find/create brand_customer với user_id NULL.
+3. Nếu có user và user status SUSPENDED/DELETED: reject.
 4. Find or create brand_customer:
    - joined_source OFFLINE_PURCHASE nếu có purchase_amount.
-   - joined_source STAFF_CREATED nếu chỉ manual adjust.
+   - joined_source SELF_JOIN nếu user tự join qua app.
+   - Không dùng STAFF_CREATED.
    - status ACTIVE.
    - customer_name update nếu currently empty và input có.
 5. Find or create loyalty_account.
@@ -95,6 +101,8 @@ Tất cả phải chạy trong DB transaction.
 14. Insert loyalty_point_transactions append-only.
 15. Commit.
 ```
+
+`loyalty_account` phải gắn `brand_customer_id`. `user_id` trong `loyalty_account` nullable và được set khi brand customer đã linked Closy account.
 
 ## Points calculation
 
@@ -179,9 +187,9 @@ Return:
 {
   "transaction_id": "uuid",
   "brand_id": "uuid",
-  "user_id": "uuid",
+  "brand_customer_id": "uuid",
+  "user_id": "nullable uuid",
   "customer_status": "ACTIVE",
-  "user_status": "UNVERIFIED or ACTIVE",
   "points_delta": 50,
   "balance_after": 120,
   "total_spend": 1500000,
@@ -194,8 +202,8 @@ Return:
 
 ## Tests
 
-- Staff enters phone not found -> creates UNVERIFIED user, brand_customer, loyalty_account, EARN transaction.
-- Staff enters phone already ACTIVE -> uses existing user.
+- Staff enters phone not found -> creates offline brand_customer with `user_id NULL`, loyalty_account, EARN transaction.
+- Staff enters phone already linked -> uses existing brand_customer/user.
 - Staff enters user_id -> no phone required.
 - Duplicate idempotency_key -> no double points.
 - purchase_amount calculates points correctly for FLOOR/ROUND/CEIL.
@@ -203,12 +211,14 @@ Return:
 - total_spend increases and tier updates.
 - Redeem/expire not available via this endpoint.
 - Non-member staff cannot grant points.
+- Phone offline flow does not create `users`.
 
 ## Acceptance checklist
 
 - [ ] One unified points API.
 - [ ] Accepts user_id or phone.
-- [ ] Creates UNVERIFIED user for offline phone if needed.
+- [ ] Phone offline creates/uses `brand_customers`, not `users`.
+- [ ] `joined_source` uses SELF_JOIN or OFFLINE_PURCHASE, not STAFF_CREATED.
 - [ ] Atomic DB transaction.
 - [ ] Idempotent behavior.
 - [ ] Append-only transaction insert.

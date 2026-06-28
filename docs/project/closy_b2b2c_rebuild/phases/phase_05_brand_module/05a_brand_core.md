@@ -72,16 +72,18 @@ DISABLED
 ```text
 id UUID PK
 brand_id UUID FK brands(id)
-user_id UUID FK users(id)
+user_id UUID FK users(id) NULL
 customer_name VARCHAR(255) NULL
+phone_e164 VARCHAR(50) NULL
+phone_hash VARCHAR(255) NULL
 external_customer_code VARCHAR(100) NULL
 joined_source VARCHAR(50)
 status VARCHAR(50)
 joined_at TIMESTAMP
+claimed_at TIMESTAMP NULL
 created_by_member_id UUID NULL
 created_at
 updated_at
-unique(brand_id, user_id)
 ```
 
 Joined source:
@@ -89,8 +91,17 @@ Joined source:
 ```text
 SELF_JOIN
 OFFLINE_PURCHASE
-STAFF_CREATED
+IMPORT optional sau MVP nếu cần migrate danh sách khách cũ
 ```
+
+MVP có thể chỉ dùng:
+
+```text
+SELF_JOIN
+OFFLINE_PURCHASE
+```
+
+Không dùng `STAFF_CREATED` vì actor tạo record đã được lưu bằng `created_by_member_id`; `joined_source` chỉ mô tả nguồn/trigger khiến khách trở thành brand customer.
 
 Status:
 
@@ -101,6 +112,25 @@ LEFT
 ```
 
 `created_by_member_id` nên trỏ `brand_members.id` nếu tiện. Nếu codebase dễ hơn thì trỏ `users.id`, nhưng phải đặt tên rõ như `created_by_user_id`.
+
+Linked/unlinked rule:
+
+```text
+user_id IS NULL     = khách offline chưa linked tài khoản Closy
+user_id IS NOT NULL = hồ sơ brand customer đã linked với tài khoản Closy thật
+```
+
+Không thêm `link_status`; trạng thái linked/unlinked suy ra trực tiếp từ `user_id`.
+
+Index/unique gợi ý:
+
+```sql
+CREATE UNIQUE INDEX ... ON brand_customers(brand_id, user_id)
+WHERE user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX ... ON brand_customers(brand_id, phone_hash)
+WHERE phone_hash IS NOT NULL;
+```
 
 ## Permission rules
 
@@ -184,6 +214,8 @@ Fit vào structure thật của repo, không tạo song song nếu repo có conv
 - Disabled member không vào được.
 - Suspended brand không cho portal actions.
 - User ACTIVE join loyalty tạo brand_customer.
+- Offline purchase tạo brand_customer với `user_id NULL`, `joined_source OFFLINE_PURCHASE`.
+- Không tạo duplicate offline customer theo `brand_id + phone_hash`.
 - Duplicate brand_customer không tạo duplicate.
 
 ## Acceptance checklist
@@ -191,5 +223,7 @@ Fit vào structure thật của repo, không tạo song song nếu repo có conv
 - [ ] Có brands/brand_members/brand_customers tables.
 - [ ] Brand staff login bằng users, không có brand account riêng.
 - [ ] Brand portal access check tập trung.
-- [ ] Customer membership unique theo brand/user.
+- [ ] Customer membership unique theo brand/user khi `user_id IS NOT NULL`.
+- [ ] Offline customer không tạo `users`.
+- [ ] Không dùng `STAFF_CREATED`.
 - [ ] Campaign và brand subscription chưa được tạo.

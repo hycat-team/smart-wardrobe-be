@@ -10,7 +10,7 @@ Tạo chat MVP giữa user và brand để phục vụ customer service. Đây l
 - Không tạo support_tickets.
 - Không tạo return_exchange_requests.
 - Không tạo marketing broadcast.
-- Không cho brand chat với user UNVERIFIED trong app.
+- Không tạo chat cho offline brand_customer chưa linked tài khoản Closy.
 - Không cho brand staff xem AI chat riêng của user.
 ```
 
@@ -140,7 +140,7 @@ Message:
 ## Tests
 
 - ACTIVE user can open conversation with brand where they are brand_customer ACTIVE.
-- UNVERIFIED user cannot use chat.
+- Offline brand_customer chưa linked Closy account không thể dùng chat trong app.
 - Staff from other brand cannot view conversation.
 - Disabled staff cannot reply.
 - Sending message updates last_message_at.

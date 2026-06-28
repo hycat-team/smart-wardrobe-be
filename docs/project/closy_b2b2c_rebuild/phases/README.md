@@ -23,7 +23,8 @@ Các quyết định cuối đã chốt:
 
 - Không tạo module `garment`, `samplelab`, `campaign`, `loyalty`, `chat`, `brand_subscription`.
 - Chỉ có 5 runtime modules: `identity`, `subscription`, `wardrobe`, `styling`, `brand`.
-- Phone-first identity, nhưng không tạo bảng OTP vì OTP đang xử lý qua Redis hiện có.
+- Không chuyển sang phone-first identity trong MVP; giữ auth hiện tại của Closy.
+- Không tạo bảng OTP mới; OTP hiện tại vẫn dùng Redis/email theo flow hiện có.
 - Không dùng `user_brand_consents` trong MVP.
 - Không dùng `loyalty_point_lots`.
 - Không dùng `remaining_points` trong `loyalty_point_transactions`.
@@ -31,13 +32,13 @@ Các quyết định cuối đã chốt:
 - Campaign out of scope trong MVP hiện tại.
 - Brand subscription/B2B billing out of scope trong MVP hiện tại.
 - Brand không đăng nhập bằng account riêng; brand staff là `users` được map qua `brand_members`.
-- User offline do brand tạo bằng phone có `status = UNVERIFIED`, `registration_source = BRAND_CREATED`.
-- User chỉ active khi verify phone bằng OTP flow hiện có.
+- Brand không tạo `users` cho khách offline chưa chủ động dùng Closy.
+- Khách offline được lưu trong `brand_customers` với `user_id` nullable, có thể claim/link về tài khoản Closy thật sau này bằng claim code/QR.
 - Brand không được xem raw wardrobe cá nhân của user.
 - AI outfit recommendation chỉ có `include_brand_items`; không có `required_brand_item_id`.
 - Hệ thống tự tìm brand items hợp lệ khi `include_brand_items = true`.
 - Tier loyalty dựa trên `total_spend`, không dựa trên `current_points`.
-- Một API loyalty points thống nhất nhận `user_id` hoặc `phone`.
+- Một API loyalty points thống nhất nhận `user_id` hoặc `phone`, nhưng phone chỉ dùng để tìm/tạo `brand_customers` offline, không tạo `users`.
 
 ## Cấu trúc phase
 
@@ -49,7 +50,7 @@ phases/
 │   ├── migration_and_testing_rules.md
 │   └── module_boundaries.md
 ├── phase_00_alignment.md
-├── phase_01_identity_phone_first/
+├── phase_01_identity_phone_first/  # tên folder cũ; nội dung hiện là giữ current auth, không phone-first
 │   ├── 01a_users_schema.md
 │   ├── 01b_auth_phone_first.md
 │   └── 01c_offline_unverified_user_contract.md

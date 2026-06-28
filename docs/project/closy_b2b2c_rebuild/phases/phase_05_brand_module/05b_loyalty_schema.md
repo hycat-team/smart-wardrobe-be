@@ -87,24 +87,37 @@ unique(brand_id, name)
 ```text
 id UUID PK
 brand_id UUID FK brands(id)
-user_id UUID FK users(id)
+brand_customer_id UUID FK brand_customers(id)
+user_id UUID FK users(id) NULL
 current_points INT
 lifetime_points INT
 total_spend DECIMAL(12,2)
 current_tier_id UUID FK loyalty_tiers(id) NULL
 created_at
 updated_at
-unique(brand_id, user_id)
 ```
 
 Meaning:
 
 ```text
+brand_customer_id = identity chính của loyalty trong brand
+user_id = nullable, chỉ có khi brand customer đã linked Closy account
 current_points = số dư point hiện tại, projection đọc nhanh
 lifetime_points = tổng point từng earn, không giảm khi redeem
 total_spend = tổng chi tiêu lifetime dùng xét tier
 current_tier_id = tier hiện tại theo total_spend
 ```
+
+Unique/index gợi ý:
+
+```sql
+CREATE UNIQUE INDEX ... ON loyalty_accounts(brand_customer_id);
+
+CREATE UNIQUE INDEX ... ON loyalty_accounts(brand_id, user_id)
+WHERE user_id IS NOT NULL;
+```
+
+Khi brand customer được claim/link, update `loyalty_accounts.user_id = current_user.id`.
 
 ### loyalty_point_transactions
 
@@ -114,7 +127,8 @@ Append-only ledger:
 id UUID PK
 loyalty_account_id UUID FK loyalty_accounts(id)
 brand_id UUID FK brands(id)
-user_id UUID FK users(id)
+brand_customer_id UUID FK brand_customers(id)
+user_id UUID FK users(id) NULL
 points_delta INT
 balance_after INT
 transaction_type VARCHAR(50)
@@ -157,9 +171,35 @@ CREATE UNIQUE INDEX ... ON loyalty_point_transactions(brand_id, idempotency_key)
 WHERE idempotency_key IS NOT NULL;
 
 CREATE INDEX ... ON loyalty_point_transactions(loyalty_account_id, created_at);
+CREATE INDEX ... ON loyalty_point_transactions(brand_customer_id, created_at);
 CREATE INDEX ... ON loyalty_point_transactions(brand_id, user_id);
 CREATE INDEX ... ON loyalty_point_transactions(expires_at)
 WHERE expires_at IS NOT NULL;
+```
+
+### brand_customer_claims
+
+Claim/link account bằng token, không cần SMS OTP.
+
+```text
+id UUID PK
+brand_customer_id UUID FK brand_customers(id)
+claim_token_hash VARCHAR(255)
+expires_at TIMESTAMP
+consumed_at TIMESTAMP NULL
+created_at TIMESTAMP
+```
+
+Rule:
+
+```text
+- Token/code phải lưu dạng hash, không lưu raw token.
+- Token dùng một lần.
+- Token có hạn dùng.
+- Claim thành công thì set consumed_at.
+- Chỉ cho claim nếu brand_customers.user_id IS NULL.
+- Claim thành công thì set brand_customers.user_id, brand_customers.claimed_at và loyalty_accounts.user_id.
+- Không cần OTP phone cho claim trong MVP.
 ```
 
 ## Expiry model without remaining_points
@@ -184,9 +224,11 @@ MVP có thể chưa chạy expiry job nếu chưa cần demo, nhưng schema khô
 Schema tests:
 
 - Chỉ một active loyalty_program mỗi brand.
-- Unique loyalty account theo brand/user.
+- Unique loyalty account theo brand_customer_id.
+- Unique loyalty account theo brand/user khi user_id non-null.
 - Transaction idempotency key unique theo brand khi non-null.
 - Có thể tạo transaction âm/dương.
+- Claim token không lưu raw token và chỉ dùng một lần.
 
 Domain tests:
 
@@ -197,6 +239,9 @@ Domain tests:
 ## Acceptance checklist
 
 - [ ] Loyalty schema tạo đủ.
+- [ ] `brand_customer_id` là identity chính của loyalty account.
+- [ ] `user_id` nullable cho offline customer.
+- [ ] Có `brand_customer_claims`.
 - [ ] Không có `loyalty_point_lots`.
 - [ ] Không có `remaining_points`.
 - [ ] `loyalty_point_transactions` append-only.

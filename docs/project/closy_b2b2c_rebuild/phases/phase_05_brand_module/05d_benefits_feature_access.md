@@ -74,7 +74,8 @@ ARCHIVED
 id UUID PK
 benefit_id UUID FK brand_benefits(id)
 brand_id UUID FK brands(id)
-user_id UUID FK users(id)
+brand_customer_id UUID FK brand_customers(id)
+user_id UUID FK users(id) NULL
 points_spent INT
 status VARCHAR(50)
 redeemed_at TIMESTAMP
@@ -144,7 +145,7 @@ Base checks:
 ```text
 - user status ACTIVE
 - brand status ACTIVE
-- brand_customer exists and status ACTIVE
+- brand_customer exists with user_id = userID and status ACTIVE
 ```
 
 Then check active benefits:
@@ -173,6 +174,7 @@ benefit_type = FEATURE_ACCESS
 unlock_type = POINT_REDEMPTION
 feature_code = requested feature
 benefit_redemptions exists for user with status REDEEMED or PENDING if business accepts PENDING
+benefit_redemptions should store brand_customer_id and nullable user_id for consistency with loyalty
 redemption expires_at is null or in future
 ```
 

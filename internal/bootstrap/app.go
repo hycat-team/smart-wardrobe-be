@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
-	communityWorker "smart-wardrobe-be/internal/modules/community/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -23,7 +22,6 @@ type AppWorkers struct {
 	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
 	WebhookInboxWorker          subWorker.IWebhookInboxWorker
 	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
-	PostHotnessWorker           communityWorker.IPostHotnessWorker
 	WardrobeBatchUploadWorker   *wardrobeWorker.WardrobeBatchUploadWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
 	FailedItemsCleanupWorker    wardrobeWorker.IFailedItemsCleanupWorker
@@ -79,7 +77,6 @@ func (a *App) Run() error {
 	a.Workers.PaymentReconciliationWorker.Start()
 	a.Workers.WebhookInboxWorker.Start()
 	a.Workers.AIUsageReconciliationWorker.Start()
-	a.Workers.PostHotnessWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
 
@@ -99,7 +96,6 @@ func (a *App) Run() error {
 	a.Workers.PaymentReconciliationWorker.Stop()
 	a.Workers.WebhookInboxWorker.Stop()
 	a.Workers.AIUsageReconciliationWorker.Stop()
-	a.Workers.PostHotnessWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()
 

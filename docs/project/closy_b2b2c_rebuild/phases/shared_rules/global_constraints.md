@@ -30,6 +30,8 @@ Nếu cần package con bên trong `brand`, có thể tạo folder nội bộ nh
 Không làm trong MVP rebuild phase hiện tại:
 
 ```text
+phone-first identity
+create UNVERIFIED users from brand offline purchase
 user_brand_consents
 phone_otp_challenges
 loyalty_point_lots
@@ -51,14 +53,23 @@ digital_sample_variants
 garment_specs
 ```
 
-## Phone-first identity
+## Identity trong MVP
 
-- `phone_e164` là định danh chính cho tài khoản mới.
-- `email` là optional.
-- OTP không tạo bảng DB vì hệ thống đang dùng Redis OTP hiện có.
-- User cũ đăng ký bằng email vẫn được giữ backward compatibility.
-- User mới self-signup phải có phone.
-- User offline do brand tạo bằng phone có `status = UNVERIFIED` và `registration_source = BRAND_CREATED`.
+- Không chuyển sang phone-first identity trong MVP.
+- Giữ auth hiện tại của Closy, gồm đăng ký/đăng nhập bằng email hoặc username + password và OTP email theo Redis flow hiện có.
+- Không bắt buộc user mới phải đăng ký bằng số điện thoại.
+- Không tạo `users` cho khách offline khi brand nhập số điện thoại tại cửa hàng.
+- Brand staff vẫn là `users` thật, được cấp quyền quản trị brand qua `brand_members`.
+- Nếu sau này cần phone/SMS/Zalo OTP, chỉ thêm implementation hạ tầng sau khi business chốt provider; MVP không phụ thuộc SMS OTP.
+
+## Offline loyalty identity
+
+- Khách offline chưa có tài khoản Closy được lưu trong `brand_customers`, không được tạo thành `users`.
+- `brand_customers.user_id IS NULL` nghĩa là offline/unlinked customer.
+- `brand_customers.user_id IS NOT NULL` nghĩa là đã linked với tài khoản Closy thật.
+- Không thêm `link_status`; trạng thái linked/unlinked suy ra từ `user_id`.
+- `phone_hash` dùng để lookup/dedupe theo số điện thoại mà không bắt buộc phụ thuộc raw phone.
+- Claim/link account dùng claim code hoặc QR claim token, không dùng OTP phone trong MVP.
 
 ## Brand identity
 
@@ -118,6 +129,8 @@ Tier dựa trên tổng chi tiêu:
 ```text
 loyalty_accounts.total_spend -> current_tier_id
 ```
+
+`loyalty_accounts` gắn với `brand_customer_id` là identity chính trong brand. `user_id` nullable để hỗ trợ offline customer chưa linked Closy account.
 
 Points là số dư dùng để redeem benefit:
 

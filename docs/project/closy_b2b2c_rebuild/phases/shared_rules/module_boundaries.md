@@ -7,7 +7,7 @@ Sở hữu:
 ```text
 users
 refresh_tokens
-phone/email verification state
+email verification state
 login/register/recovery/profile identity logic
 ```
 
@@ -25,12 +25,12 @@ Cung cấp cho module khác:
 
 ```text
 GetUserByID
-FindUserByPhone
-CreateBrandCreatedUnverifiedUser
-MarkPhoneVerified
+GetUserByEmailOrUsername
 ```
 
 Tên contract có thể khác theo codebase hiện tại, nhưng behavior phải tương đương.
+
+Không cung cấp contract tạo `UNVERIFIED user` từ số điện thoại offline trong MVP. Offline loyalty thuộc module `brand` qua `brand_customers`.
 
 ## wardrobe
 
@@ -108,6 +108,7 @@ Sở hữu:
 brands
 brand_members
 brand_customers
+brand_customer_claims
 loyalty_programs
 loyalty_tiers
 loyalty_accounts
@@ -126,7 +127,9 @@ CheckBrandMemberRole(userID, brandID) -> role/error
 ListEligibleBrandItemsForStyling(userID, filter) -> []BrandItemStylingDTO
 CheckBrandFeatureAccess(userID, brandID, featureCode) -> bool
 GrantOrAdjustLoyaltyPoints(input) -> LoyaltyTransactionDTO
-GetBrandCustomerLoyalty(userID, brandID) -> LoyaltyAccountDTO
+GetBrandCustomerLoyalty(brandCustomerID or userID, brandID) -> LoyaltyAccountDTO
+CreateOrResolveOfflineBrandCustomer(phone/customer info) -> BrandCustomerDTO
+ClaimBrandCustomer(currentUserID, claimToken) -> BrandCustomerDTO
 ```
 
 ## subscription
