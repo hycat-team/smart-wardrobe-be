@@ -1831,6 +1831,14 @@ func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.
 		return nil, branderrors.ErrCustomerAlreadyLinked()
 	}
 
+	existing, err := uc.customerRepo.GetByBrandAndUser(ctx, customer.BrandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, branderrors.ErrUserAlreadyHasCustomer()
+	}
+
 	var updatedCustomer *entities.BrandCustomer
 	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		now := time.Now().UTC()

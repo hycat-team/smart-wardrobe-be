@@ -109,3 +109,7 @@ func ErrTokenAlreadyUsed() *apperror.Error {
 func ErrTokenExpired() *apperror.Error {
 	return apperror.NewBadRequest("Mã claim đã hết hạn sử dụng.")
 }
+
+func ErrUserAlreadyHasCustomer() *apperror.Error {
+	return apperror.NewConflict("Tài khoản của bạn đã được liên kết với một hồ sơ khách hàng tại brand này.")
+}
