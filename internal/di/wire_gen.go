@@ -12,12 +12,16 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/admin"
 	"smart-wardrobe-be/internal/api/routes/auth"
+	"smart-wardrobe-be/internal/api/routes/brand"
 	category2 "smart-wardrobe-be/internal/api/routes/category"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
 	subscription2 "smart-wardrobe-be/internal/api/routes/subscription"
 	"smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
+	usecase2 "smart-wardrobe-be/internal/modules/brand/application/usecase"
+	persistence4 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
+	handler4 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
@@ -140,6 +144,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	outfitHandler := handler2.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
 	categoryRouter := category2.NewRouter(categoryHandler)
+	iBrandRepository := persistence4.NewBrandRepository(gormDB)
+	iBrandMemberRepository := persistence4.NewBrandMemberRepository(gormDB)
+	iBrandCustomerRepository := persistence4.NewBrandCustomerRepository(gormDB)
+	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUnitOfWork)
+	brandHandler := handler4.NewBrandHandler(iBrandCoreUseCase)
+	brandRouter := brand.NewRouter(brandHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AdminRouter:        adminRouter,
 		AuthRouter:         authRouter,
@@ -148,6 +158,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		WardrobeRouter:     wardrobeRouter,
 		OutfitRouter:       outfitRouter,
 		CategoryRouter:     categoryRouter,
+		BrandRouter:        brandRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)

@@ -15,6 +15,113 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/admin/brands": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Tạo brand active trực tiếp (Admin)",
+                "parameters": [
+                    {
+                        "description": "Thông tin brand",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/brands/{brandId}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Cập nhật trạng thái brand (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Trạng thái mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/categories": {
             "get": {
                 "description": "Cho phép Admin lấy danh sách toàn bộ danh mục trang phục trong hệ thống để quản trị",
@@ -1128,6 +1235,393 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Gửi yêu cầu tạo brand",
+                "parameters": [
+                    {
+                        "description": "Thông tin brand",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Lấy thông tin brand portal",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/customers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lấy danh sách các khách hàng đã liên kết với brand",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Lấy danh sách khách hàng của brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/customers/offline-purchase": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cho phép nhân viên/chủ brand ghi nhận thông tin khách hàng mua hàng offline",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Tạo khách hàng offline cho brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin khách hàng mua offline",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lấy danh sách tất cả các thành viên trực thuộc brand này",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Lấy danh sách thành viên của brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cho phép chủ sở hữu brand thêm thành viên mới vào thương hiệu của mình",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Thêm thành viên vào brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin thành viên mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "Lấy danh sách brand đang active",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/join-loyalty": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "Tham gia chương trình khách hàng thân thiết",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2537,6 +3031,183 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberReq": {
+            "type": "object",
+            "required": [
+                "role",
+                "userId"
+            ],
+            "properties": {
+                "role": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "claimedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByMemberId": {
+                    "type": "string"
+                },
+                "customerName": {
+                    "type": "string"
+                },
+                "externalCustomerCode": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "joinedAt": {
+                    "type": "string"
+                },
+                "joinedSource": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource"
+                },
+                "phoneE164": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole"
+                },
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberstatus.BrandMemberStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes": {
+            "type": "object",
+            "properties": {
+                "approvedAt": {
+                    "type": "string"
+                },
+                "approvedByUserId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logoUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "logoUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq": {
+            "type": "object",
+            "required": [
+                "phoneE164"
+            ],
+            "properties": {
+                "customerName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "externalCustomerCode": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "phoneE164": {
+                    "type": "string",
+                    "maxLength": 50
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes": {
             "type": "object",
             "properties": {
@@ -3948,6 +4619,75 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource": {
+            "type": "string",
+            "enum": [
+                "SELF_JOIN",
+                "OFFLINE_PURCHASE",
+                "IMPORT"
+            ],
+            "x-enum-varnames": [
+                "SelfJoin",
+                "OfflinePurchase",
+                "Import"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus": {
+            "type": "string",
+            "enum": [
+                "ACTIVE",
+                "BLOCKED",
+                "LEFT"
+            ],
+            "x-enum-varnames": [
+                "Active",
+                "Blocked",
+                "Left"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole": {
+            "type": "string",
+            "enum": [
+                "OWNER",
+                "MANAGER",
+                "SUPPORT_STAFF",
+                "MARKETER"
+            ],
+            "x-enum-varnames": [
+                "Owner",
+                "Manager",
+                "SupportStaff",
+                "Marketer"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brandmemberstatus.BrandMemberStatus": {
+            "type": "string",
+            "enum": [
+                "ACTIVE",
+                "INVITED",
+                "DISABLED"
+            ],
+            "x-enum-varnames": [
+                "Active",
+                "Invited",
+                "Disabled"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING_REVIEW",
+                "ACTIVE",
+                "SUSPENDED",
+                "ARCHIVED"
+            ],
+            "x-enum-varnames": [
+                "PendingReview",
+                "Active",
+                "Suspended",
+                "Archived"
+            ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus": {
             "type": "integer",

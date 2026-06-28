@@ -1,0 +1,125 @@
+package persistence
+
+import (
+	"context"
+	"errors"
+
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type BrandRepository struct {
+	shared_persist.GenericRepository[entities.Brand, uuid.UUID]
+}
+
+func NewBrandRepository(db *gorm.DB) repositories.IBrandRepository {
+	return &BrandRepository{
+		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, nil),
+	}
+}
+
+func (r *BrandRepository) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
+	var brand entities.Brand
+	err := r.GetDB(ctx).Where("slug = ?", slug).First(&brand).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &brand, nil
+}
+
+func (r *BrandRepository) GetActive(ctx context.Context) ([]*entities.Brand, error) {
+	var brands []*entities.Brand
+	err := r.GetDB(ctx).
+		Where("status = ?", brandstatus.Active).
+		Order("created_at DESC").
+		Find(&brands).Error
+	return brands, err
+}
+
+type BrandMemberRepository struct {
+	shared_persist.GenericRepository[entities.BrandMember, uuid.UUID]
+}
+
+func NewBrandMemberRepository(db *gorm.DB) repositories.IBrandMemberRepository {
+	return &BrandMemberRepository{
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandMember, uuid.UUID](db, []string{"User"}),
+	}
+}
+
+func (r *BrandMemberRepository) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandMember, error) {
+	var member entities.BrandMember
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ? AND user_id = ?", brandID, userID).
+		First(&member).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &member, nil
+}
+
+func (r *BrandMemberRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ?", brandID).
+		Order("created_at ASC").
+		Find(&members).Error
+	return members, err
+}
+
+type BrandCustomerRepository struct {
+	shared_persist.GenericRepository[entities.BrandCustomer, uuid.UUID]
+}
+
+func NewBrandCustomerRepository(db *gorm.DB) repositories.IBrandCustomerRepository {
+	return &BrandCustomerRepository{
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](db, []string{"User"}),
+	}
+}
+
+func (r *BrandCustomerRepository) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandCustomer, error) {
+	var customer entities.BrandCustomer
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ? AND user_id = ?", brandID, userID).
+		First(&customer).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &customer, nil
+}
+
+func (r *BrandCustomerRepository) GetByBrandAndPhoneHash(ctx context.Context, brandID uuid.UUID, phoneHash string) (*entities.BrandCustomer, error) {
+	var customer entities.BrandCustomer
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ? AND phone_hash = ?", brandID, phoneHash).
+		First(&customer).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &customer, nil
+}
+
+func (r *BrandCustomerRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error) {
+	var customers []*entities.BrandCustomer
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ?", brandID).
+		Order("created_at DESC").
+		Find(&customers).Error
+	return customers, err
+}

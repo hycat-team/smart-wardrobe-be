@@ -65,6 +65,18 @@ func (OutfitItem) TableName() string {
 	return "outfit_items"
 }
 
+func (Brand) TableName() string {
+	return "brands"
+}
+
+func (BrandMember) TableName() string {
+	return "brand_members"
+}
+
+func (BrandCustomer) TableName() string {
+	return "brand_customers"
+}
+
 // TableName returns table name mapping for Post
 func (Post) TableName() string {
 	return "posts"

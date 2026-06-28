@@ -1,0 +1,85 @@
+package mapper
+
+import (
+	"smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/entities"
+)
+
+func MapBrand(brand *entities.Brand) *dto.BrandRes {
+	if brand == nil {
+		return nil
+	}
+	return &dto.BrandRes{
+		ID:               brand.ID,
+		Slug:             brand.Slug,
+		Name:             brand.Name,
+		Description:      brand.Description,
+		LogoURL:          brand.LogoURL,
+		Status:           brand.Status,
+		CreatedByUserID:  brand.CreatedByUserID,
+		ApprovedByUserID: brand.ApprovedByUserID,
+		ApprovedAt:       brand.ApprovedAt,
+		CreatedAt:        brand.CreatedAt,
+		UpdatedAt:        brand.UpdatedAt,
+	}
+}
+
+func MapBrands(brands []*entities.Brand) []*dto.BrandRes {
+	res := make([]*dto.BrandRes, len(brands))
+	for idx, brand := range brands {
+		res[idx] = MapBrand(brand)
+	}
+	return res
+}
+
+func MapBrandMember(member *entities.BrandMember) *dto.BrandMemberRes {
+	if member == nil {
+		return nil
+	}
+	return &dto.BrandMemberRes{
+		ID:        member.ID,
+		BrandID:   member.BrandID,
+		UserID:    member.UserID,
+		Role:      member.Role,
+		Status:    member.Status,
+		CreatedAt: member.CreatedAt,
+		UpdatedAt: member.UpdatedAt,
+	}
+}
+
+func MapBrandMembers(members []*entities.BrandMember) []*dto.BrandMemberRes {
+	res := make([]*dto.BrandMemberRes, len(members))
+	for idx, member := range members {
+		res[idx] = MapBrandMember(member)
+	}
+	return res
+}
+
+func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
+	if customer == nil {
+		return nil
+	}
+	return &dto.BrandCustomerRes{
+		ID:                   customer.ID,
+		BrandID:              customer.BrandID,
+		UserID:               customer.UserID,
+		CustomerName:         customer.CustomerName,
+		PhoneE164:            customer.PhoneE164,
+		ExternalCustomerCode: customer.ExternalCustomerCode,
+		JoinedSource:         customer.JoinedSource,
+		Status:               customer.Status,
+		JoinedAt:             customer.JoinedAt,
+		ClaimedAt:            customer.ClaimedAt,
+		CreatedByMemberID:    customer.CreatedByMemberID,
+		CreatedAt:            customer.CreatedAt,
+		UpdatedAt:            customer.UpdatedAt,
+	}
+}
+
+func MapBrandCustomers(customers []*entities.BrandCustomer) []*dto.BrandCustomerRes {
+	res := make([]*dto.BrandCustomerRes, len(customers))
+	for idx, customer := range customers {
+		res[idx] = MapBrandCustomer(customer)
+	}
+	return res
+}
