@@ -48,7 +48,6 @@ type googleUsageMetadata struct {
 	TotalTokenCount      int64 `json:"totalTokenCount"`
 }
 
-
 func isRetryableCountTokensError(err error) bool {
 	if err == nil {
 		return false

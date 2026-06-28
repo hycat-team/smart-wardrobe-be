@@ -229,7 +229,7 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	}
 
 	groups := MapLLMResponseToGroups(candidates, llmRes)
-	
+
 	// Should have filtered out 'top', leaving only 'fullbody' and 'accessory'
 	if len(groups) != 2 {
 		t.Fatalf("expected 2 mapped groups after filtering, got %d", len(groups))
@@ -240,4 +240,3 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 		}
 	}
 }
-
