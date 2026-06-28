@@ -163,3 +163,6 @@ func (AICostPolicyOperation) TableName() string { return "ai_cost_policy_operati
 func (UserAIPolicyGrant) TableName() string     { return "user_ai_policy_grants" }
 func (AIUsagePeriodLedger) TableName() string   { return "ai_usage_period_ledgers" }
 func (AIUsageEvent) TableName() string          { return "ai_usage_events" }
+func (BrandBenefit) TableName() string          { return "brand_benefits" }
+func (BenefitRedemption) TableName() string     { return "benefit_redemptions" }
+

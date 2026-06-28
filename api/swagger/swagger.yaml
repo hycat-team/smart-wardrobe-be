@@ -9,6 +9,61 @@ definitions:
     - role
     - userId
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes:
+    properties:
+      benefitId:
+        type: string
+      brandCustomerId:
+        type: string
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      pointsSpent:
+        type: integer
+      redeemedAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      usedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes:
+    properties:
+      benefitType:
+        type: string
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      featureCode:
+        type: string
+      featureConfig: {}
+      id:
+        type: string
+      name:
+        type: string
+      requiredPoints:
+        type: integer
+      requiredTierId:
+        type: string
+      status:
+        type: string
+      unlockType:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes:
     properties:
       brandId:
@@ -79,6 +134,31 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus'
       updatedAt:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq:
+    properties:
+      benefitType:
+        type: string
+      description:
+        type: string
+      featureCode:
+        maxLength: 100
+        type: string
+      featureConfig: {}
+      name:
+        maxLength: 255
+        type: string
+      requiredPoints:
+        minimum: 0
+        type: integer
+      requiredTierId:
+        type: string
+      unlockType:
+        type: string
+    required:
+    - benefitType
+    - name
+    - unlockType
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandReq:
     properties:
@@ -171,6 +251,13 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq:
+    properties:
+      status:
+        type: string
+    required:
+    - status
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq:
     properties:
@@ -1351,8 +1438,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Tạo brand active trực tiếp (Admin)
       tags:
       - Admin
@@ -1384,8 +1469,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Cập nhật trạng thái brand (Admin)
       tags:
       - Admin
@@ -2131,8 +2214,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Gửi yêu cầu tạo brand
       tags:
       - Brand Portal
@@ -2156,9 +2237,100 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy thông tin brand portal
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/benefits:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách quyền lợi cho brand staff
+      tags:
+      - Brand Portal
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin quyền lợi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+              type: object
+      summary: Tạo quyền lợi cho brand (Staff)
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/benefits/{benefitId}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID quyền lợi
+        in: path
+        name: benefitId
+        required: true
+        type: string
+      - description: Trạng thái mới
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+              type: object
+      summary: Cập nhật trạng thái quyền lợi (Staff)
       tags:
       - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/customers:
@@ -2184,8 +2356,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy danh sách khách hàng của brand
       tags:
       - Brand Portal
@@ -2219,8 +2389,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Tạo khách hàng offline cho brand
       tags:
       - Brand Portal
@@ -2254,8 +2422,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Ghi nhận cộng/trừ điểm loyalty cho brand customer
       tags:
       - Brand Portal
@@ -2282,8 +2448,6 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
                   type: array
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy danh sách thành viên của brand
       tags:
       - Brand Portal
@@ -2316,8 +2480,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Thêm thành viên vào brand
       tags:
       - Brand Portal
@@ -2338,6 +2500,63 @@ paths:
                   type: array
               type: object
       summary: Lấy danh sách brand đang active
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/benefits:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách quyền lợi đang hoạt động của brand (User)
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/benefits/{benefitId}/redeem:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID quyền lợi
+        in: path
+        name: benefitId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
+              type: object
+      summary: Đổi quyền lợi của brand (User)
       tags:
       - Brand
   /api/v1/brands/{brandId}/join-loyalty:
@@ -2361,8 +2580,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
               type: object
-      security:
-      - BearerAuth: []
       summary: Tham gia chương trình khách hàng thân thiết
       tags:
       - Brand
@@ -2748,8 +2965,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO'
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy thông tin gói hội viên hiện tại
       tags:
       - Subscription
@@ -2773,8 +2988,6 @@ paths:
           description: Trạng thái tự động gia hạn mới
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-      security:
-      - BearerAuth: []
       summary: Thiết lập tự động gia hạn gói cước
       tags:
       - Subscription
@@ -2803,8 +3016,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO'
               type: object
-      security:
-      - BearerAuth: []
       summary: Lấy hạn ngạch sử dụng hàng ngày
       tags:
       - Subscription

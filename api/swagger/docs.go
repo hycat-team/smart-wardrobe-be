@@ -17,11 +17,6 @@ const docTemplate = `{
     "paths": {
         "/api/v1/admin/brands": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -67,11 +62,6 @@ const docTemplate = `{
         },
         "/api/v1/admin/brands/{brandId}/status": {
             "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1242,11 +1232,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1292,11 +1277,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1335,13 +1315,163 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/brand-portal/brands/{brandId}/customers": {
+        "/api/v1/brand-portal/brands/{brandId}/benefits": {
             "get": {
-                "security": [
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Lấy danh sách quyền lợi cho brand staff",
+                "parameters": [
                     {
-                        "BearerAuth": []
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Tạo quyền lợi cho brand (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin quyền lợi",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/benefits/{benefitId}/status": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Cập nhật trạng thái quyền lợi (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID quyền lợi",
+                        "name": "benefitId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Trạng thái mới",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/customers": {
+            "get": {
                 "description": "Lấy danh sách các khách hàng đã liên kết với brand",
                 "produces": [
                     "application/json"
@@ -1386,11 +1516,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/customers/offline-purchase": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Cho phép nhân viên/chủ brand ghi nhận thông tin khách hàng mua hàng offline",
                 "consumes": [
                     "application/json"
@@ -1444,11 +1569,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/loyalty/points": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "API thống nhất để brand staff ghi nhận điểm bằng userId, phone hoặc externalCustomerCode",
                 "consumes": [
                     "application/json"
@@ -1502,11 +1622,6 @@ const docTemplate = `{
         },
         "/api/v1/brand-portal/brands/{brandId}/members": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Lấy danh sách tất cả các thành viên trực thuộc brand này",
                 "produces": [
                     "application/json"
@@ -1549,11 +1664,6 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Cho phép chủ sở hữu brand thêm thành viên mới vào thương hiệu của mình",
                 "consumes": [
                     "application/json"
@@ -1639,13 +1749,104 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/brands/{brandId}/join-loyalty": {
-            "post": {
-                "security": [
+        "/api/v1/brands/{brandId}/benefits": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "Lấy danh sách quyền lợi đang hoạt động của brand (User)",
+                "parameters": [
                     {
-                        "BearerAuth": []
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/benefits/{benefitId}/redeem": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "Đổi quyền lợi của brand (User)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID quyền lợi",
+                        "name": "benefitId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/join-loyalty": {
+            "post": {
                 "description": "Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand",
                 "produces": [
                     "application/json"
@@ -2274,11 +2475,6 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Lấy thông tin chi tiết gói hội viên đang kích hoạt của người dùng hiện tại.\nĐịnh nghĩa enum PlanKind:\n- 0: DefaultFree (Gói miễn phí mặc định)\n- 1: Finite (Gói giới hạn số ngày sử dụng)\n- 2: Lifetime (Gói trọn đời không giới hạn thời gian)\nĐịnh nghĩa TierRank (Cấp độ gói):\n- 0: Cấp Free\n- 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)",
                 "consumes": [
                     "application/json"
@@ -2314,11 +2510,6 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/auto-renew": {
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Thiết lập bật hoặc tắt tính năng tự động gia hạn gói cước qua ví nội bộ khi hết hạn",
                 "consumes": [
                     "application/json"
@@ -2353,11 +2544,6 @@ const docTemplate = `{
         },
         "/api/v1/subscriptions/me/daily-quota": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Lấy hạn ngạch chi tiết và trạng thái sử dụng của người dùng trong ngày.\nĐịnh nghĩa enum PlanKind:\n- 0: DefaultFree (Gói miễn phí mặc định)\n- 1: Finite (Gói giới hạn số ngày sử dụng)\n- 2: Lifetime (Gói trọn đời không giới hạn thời gian)\nĐịnh nghĩa TierRank (Cấp độ gói):\n- 0: Cấp Free\n- 1: Cấp Premium (Gói có cấp Premium lớn hơn sẽ được ưu tiên kích hoạt trước)",
                 "consumes": [
                     "application/json"
@@ -3104,6 +3290,89 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes": {
+            "type": "object",
+            "properties": {
+                "benefitId": {
+                    "type": "string"
+                },
+                "brandCustomerId": {
+                    "type": "string"
+                },
+                "brandId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "pointsSpent": {
+                    "type": "integer"
+                },
+                "redeemedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "usedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes": {
+            "type": "object",
+            "properties": {
+                "benefitType": {
+                    "type": "string"
+                },
+                "brandId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "featureCode": {
+                    "type": "string"
+                },
+                "featureConfig": {},
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "requiredPoints": {
+                    "type": "integer"
+                },
+                "requiredTierId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "unlockType": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes": {
             "type": "object",
             "properties": {
@@ -3208,6 +3477,41 @@ const docTemplate = `{
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
+            "type": "object",
+            "required": [
+                "benefitType",
+                "name",
+                "unlockType"
+            ],
+            "properties": {
+                "benefitType": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "featureCode": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "featureConfig": {},
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "requiredPoints": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "requiredTierId": {
+                    "type": "string"
+                },
+                "unlockType": {
                     "type": "string"
                 }
             }
@@ -3342,6 +3646,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
                     "type": "string"
                 }
             }

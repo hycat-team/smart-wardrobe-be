@@ -105,3 +105,50 @@ type LoyaltyPointsTransactionRes struct {
 	TotalSpend      float64                                 `json:"totalSpend"`
 	CurrentTier     *LoyaltyTierBriefRes                    `json:"currentTier"`
 }
+
+type CreateBrandBenefitReq struct {
+	Name           string      `json:"name" binding:"required,max=255" label:"ten quyen loi"`
+	Description    *string     `json:"description" binding:"omitempty" label:"mo ta"`
+	BenefitType    string      `json:"benefitType" binding:"required" label:"loai quyen loi"`
+	UnlockType     string      `json:"unlockType" binding:"required" label:"loai mo khoa"`
+	RequiredPoints *int        `json:"requiredPoints" binding:"omitempty,min=0" label:"diem yeu cau"`
+	RequiredTierID *uuid.UUID  `json:"requiredTierId" binding:"omitempty" label:"ma hang yeu cau"`
+	FeatureCode    *string     `json:"featureCode" binding:"omitempty,max=100" label:"ma tinh nang"`
+	FeatureConfig  interface{} `json:"featureConfig" binding:"omitempty" label:"cau hinh tinh nang"`
+}
+
+type UpdateBenefitStatusReq struct {
+	Status string `json:"status" binding:"required" label:"trang thai"`
+}
+
+type BrandBenefitRes struct {
+	ID             uuid.UUID   `json:"id"`
+	BrandID        uuid.UUID   `json:"brandId"`
+	Name           string      `json:"name"`
+	Description    *string     `json:"description"`
+	BenefitType    string      `json:"benefitType"`
+	UnlockType     string      `json:"unlockType"`
+	RequiredPoints *int        `json:"requiredPoints"`
+	RequiredTierID *uuid.UUID  `json:"requiredTierId"`
+	FeatureCode    *string     `json:"featureCode"`
+	FeatureConfig  interface{} `json:"featureConfig"`
+	Status         string      `json:"status"`
+	CreatedAt      time.Time   `json:"createdAt"`
+	UpdatedAt      time.Time   `json:"updatedAt"`
+}
+
+type BenefitRedemptionRes struct {
+	ID              uuid.UUID  `json:"id"`
+	BenefitID       uuid.UUID  `json:"benefitId"`
+	BrandID         uuid.UUID  `json:"brandId"`
+	BrandCustomerID uuid.UUID  `json:"brandCustomerId"`
+	UserID          *uuid.UUID `json:"userId"`
+	PointsSpent     int        `json:"pointsSpent"`
+	Status          string     `json:"status"`
+	RedeemedAt      time.Time  `json:"redeemedAt"`
+	UsedAt          *time.Time `json:"usedAt"`
+	ExpiresAt       *time.Time `json:"expiresAt"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+

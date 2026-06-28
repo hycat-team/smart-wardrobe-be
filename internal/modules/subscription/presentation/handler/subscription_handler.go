@@ -44,7 +44,6 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
-// @Security BearerAuth
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -75,7 +74,6 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
-// @Security BearerAuth
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -100,7 +98,6 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 // @Param body body req_dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/auto-renew [put]
-// @Security BearerAuth
 func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

@@ -61,3 +61,32 @@ func ErrInsufficientLoyaltyPoints() *apperror.Error {
 func ErrUserNotFoundOrInactive() *apperror.Error {
 	return apperror.NewBadRequest("User khong ton tai hoac khong active.")
 }
+
+func ErrBenefitNotFound() *apperror.Error {
+	return apperror.NewNotFound("Khong tim thay quyen loi.")
+}
+
+func ErrBenefitNotActive() *apperror.Error {
+	return apperror.NewForbidden("Quyen loi khong active hoac da bi an.")
+}
+
+func ErrBenefitUnlockTypeNotSupported() *apperror.Error {
+	return apperror.NewBadRequest("Loai mo khoa quyen loi khong duoc ho tro.")
+}
+
+func ErrBenefitRequiredPointsNotMet() *apperror.Error {
+	return apperror.NewBadRequest("Quyen loi yeu cau so diem cao hon so du hien tai.")
+}
+
+func ErrBenefitRequiredTierNotMet() *apperror.Error {
+	return apperror.NewBadRequest("Tier cua ban khong dat yeu cau de nhan quyen loi nay.")
+}
+
+func ErrBenefitRedemptionExists() *apperror.Error {
+	return apperror.NewConflict("Ban da doi quyen loi nay va luot doi van dang con han.")
+}
+
+func ErrBenefitInvalidStatus() *apperror.Error {
+	return apperror.NewBadRequest("Trang thai quyen loi khong hop le.")
+}
+

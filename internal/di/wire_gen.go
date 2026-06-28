@@ -153,7 +153,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iLoyaltyAccountRepository := persistence4.NewLoyaltyAccountRepository(gormDB)
 	iLoyaltyPointTransactionRepository := persistence4.NewLoyaltyPointTransactionRepository(gormDB)
 	iLoyaltyPointLotRepository := persistence4.NewLoyaltyPointLotRepository(gormDB)
-	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iUnitOfWork)
+	iBrandBenefitRepository := persistence4.NewBrandBenefitRepository(gormDB)
+	iBenefitRedemptionRepository := persistence4.NewBenefitRedemptionRepository(gormDB)
+	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iUnitOfWork)
 	brandHandler := handler4.NewBrandHandler(iBrandCoreUseCase)
 	brandRouter := brand.NewRouter(brandHandler, authMiddleware)
 	appRouter := &routes.AppRouter{

@@ -38,7 +38,6 @@ func NewBrandHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *BrandHandler
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param body body dto.CreateBrandReq true "Thông tin brand"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brand-portal/brands [post]
@@ -64,7 +63,6 @@ func (h *BrandHandler) CreateBrandRequest(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param body body dto.CreateBrandReq true "Thông tin brand"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/admin/brands [post]
@@ -90,7 +88,6 @@ func (h *BrandHandler) CreateBrandAdmin(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.UpdateBrandStatusReq true "Trạng thái mới"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
@@ -135,7 +132,6 @@ func (h *BrandHandler) GetActiveBrands(c *gin.Context) error {
 // @Summary Lấy thông tin brand portal
 // @Tags Brand Portal
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brand-portal/brands/{brandId} [get]
@@ -162,7 +158,6 @@ func (h *BrandHandler) GetBrandForPortal(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.AddBrandMemberReq true "Thông tin thành viên mới"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
@@ -193,7 +188,6 @@ func (h *BrandHandler) AddBrandMember(c *gin.Context) error {
 // @Description Lấy danh sách tất cả các thành viên trực thuộc brand này
 // @Tags Brand Portal
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandMemberRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/members [get]
@@ -219,7 +213,6 @@ func (h *BrandHandler) GetBrandMembers(c *gin.Context) error {
 // @Description Lấy danh sách các khách hàng đã liên kết với brand
 // @Tags Brand Portal
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandCustomerRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/customers [get]
@@ -245,7 +238,6 @@ func (h *BrandHandler) GetBrandCustomers(c *gin.Context) error {
 // @Description Đăng ký người dùng hiện tại tham gia chương trình loyalty của brand
 // @Tags Brand
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
 // @Router /api/v1/brands/{brandId}/join-loyalty [post]
@@ -276,7 +268,6 @@ func (h *BrandHandler) JoinLoyalty(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.CreateOfflineBrandCustomerReq true "Thông tin khách hàng mua offline"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
@@ -308,7 +299,6 @@ func (h *BrandHandler) CreateOfflineCustomer(c *gin.Context) error {
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param brandId path string true "ID brand"
 // @Param body body dto.GrantLoyaltyPointsReq true "Thông tin giao dịch điểm"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.LoyaltyPointsTransactionRes}
@@ -331,5 +321,150 @@ func (h *BrandHandler) GrantLoyaltyPoints(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Created(c, msgBrandGrantPointsSuccess, res)
+	return nil
+}
+
+// CreateBrandBenefit creates a new benefit for a brand.
+// @Summary Tạo quyền lợi cho brand (Staff)
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param body body dto.CreateBrandBenefitReq true "Thông tin quyền lợi"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandBenefitRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/benefits [post]
+func (h *BrandHandler) CreateBrandBenefit(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var input dto.CreateBrandBenefitReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.CreateBrandBenefit(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, "Tạo quyền lợi brand thành công", res)
+	return nil
+}
+
+// ListBrandBenefitsForStaff lists all benefits for staff.
+// @Summary Lấy danh sách quyền lợi cho brand staff
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandBenefitRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/benefits [get]
+func (h *BrandHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.ListBrandBenefitsForStaff(c.Request.Context(), userID, brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy danh sách quyền lợi brand thành công", res)
+	return nil
+}
+
+// UpdateBenefitStatus updates the status of a benefit.
+// @Summary Cập nhật trạng thái quyền lợi (Staff)
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param benefitId path string true "ID quyền lợi"
+// @Param body body dto.UpdateBenefitStatusReq true "Trạng thái mới"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/benefits/{benefitId}/status [patch]
+func (h *BrandHandler) UpdateBenefitStatus(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	benefitID, err := uuid.Parse(c.Param("benefitId"))
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateBenefitStatusReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.UpdateBenefitStatus(c.Request.Context(), userID, brandID, benefitID, input.Status)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Cập nhật trạng thái quyền lợi thành công", res)
+	return nil
+}
+
+// ListActiveBenefitsForUser lists active benefits for a user.
+// @Summary Lấy danh sách quyền lợi đang hoạt động của brand (User)
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandBenefitRes}
+// @Router /api/v1/brands/{brandId}/benefits [get]
+func (h *BrandHandler) ListActiveBenefitsForUser(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.ListActiveBenefitsForUser(c.Request.Context(), userID, brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy danh sách quyền lợi brand thành công", res)
+	return nil
+}
+
+// RedeemBenefit allows a user to redeem a benefit.
+// @Summary Đổi quyền lợi của brand (User)
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param benefitId path string true "ID quyền lợi"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.BenefitRedemptionRes}
+// @Router /api/v1/brands/{brandId}/benefits/{benefitId}/redeem [post]
+func (h *BrandHandler) RedeemBenefit(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	benefitID, err := uuid.Parse(c.Param("benefitId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.RedeemBenefit(c.Request.Context(), userID, brandID, benefitID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, "Đổi quyền lợi thành công", res)
 	return nil
 }

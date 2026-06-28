@@ -28,6 +28,8 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	userBrands.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
+		userBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
+		userBrands.POST("/:brandId/benefits/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
 	}
 
 	portal := group.Group("/brand-portal")
@@ -40,6 +42,9 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
 		portal.POST("/brands/:brandId/customers/offline-purchase", shared_pres.WrapHandler(r.brandHandler.CreateOfflineCustomer))
 		portal.POST("/brands/:brandId/loyalty/points", shared_pres.WrapHandler(r.brandHandler.GrantLoyaltyPoints))
+		portal.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
+		portal.GET("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListBrandBenefitsForStaff))
+		portal.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))
 	}
 
 	admin := group.Group("/admin/brands")

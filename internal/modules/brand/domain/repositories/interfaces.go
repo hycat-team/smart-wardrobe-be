@@ -68,3 +68,16 @@ type IBrandCustomerClaimRepository interface {
 	shared_repos.IGenericRepository[entities.BrandCustomerClaim, uuid.UUID]
 	GetByTokenHash(ctx context.Context, tokenHash string) (*entities.BrandCustomerClaim, error)
 }
+
+type IBrandBenefitRepository interface {
+	shared_repos.IGenericRepository[entities.BrandBenefit, uuid.UUID]
+	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
+	GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
+}
+
+type IBenefitRedemptionRepository interface {
+	shared_repos.IGenericRepository[entities.BenefitRedemption, uuid.UUID]
+	GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BenefitRedemption, error)
+	GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error)
+}
+
