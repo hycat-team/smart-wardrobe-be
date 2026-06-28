@@ -3,13 +3,16 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type LoyaltyProgramRepository struct {
@@ -90,6 +93,36 @@ func (r *LoyaltyAccountRepository) GetByBrandCustomerID(ctx context.Context, bra
 	return &account, nil
 }
 
+func (r *LoyaltyAccountRepository) GetByBrandCustomerIDForUpdate(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error) {
+	var account entities.LoyaltyAccount
+	err := r.GetQueryWithPreload(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("brand_customer_id = ?", brandCustomerID).
+		First(&account).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &account, nil
+}
+
+func (r *LoyaltyAccountRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*entities.LoyaltyAccount, error) {
+	var account entities.LoyaltyAccount
+	err := r.GetQueryWithPreload(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", id).
+		First(&account).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &account, nil
+}
+
 func (r *LoyaltyAccountRepository) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	var account entities.LoyaltyAccount
 	err := r.GetQueryWithPreload(ctx).Where("brand_id = ? AND user_id = ?", brandID, userID).First(&account).Error
@@ -131,6 +164,61 @@ func (r *LoyaltyPointTransactionRepository) GetByLoyaltyAccountID(ctx context.Co
 		Order("created_at ASC, id ASC").
 		Find(&transactions).Error
 	return transactions, err
+}
+
+type LoyaltyPointLotRepository struct {
+	shared_persist.GenericRepository[entities.LoyaltyPointLot, uuid.UUID]
+}
+
+func NewLoyaltyPointLotRepository(db *gorm.DB) repositories.ILoyaltyPointLotRepository {
+	return &LoyaltyPointLotRepository{
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyPointLot, uuid.UUID](db, nil),
+	}
+}
+
+func (r *LoyaltyPointLotRepository) ListRedeemableLotsForUpdate(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) ([]*entities.LoyaltyPointLot, error) {
+	var lots []*entities.LoyaltyPointLot
+	err := r.GetDB(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("loyalty_account_id = ? AND status = ? AND remaining_points > 0 AND (expires_at IS NULL OR expires_at > ?)", loyaltyAccountID, loyaltypointlotstatus.Active, now).
+		Order("expires_at ASC NULLS LAST, created_at ASC").
+		Find(&lots).Error
+	return lots, err
+}
+
+func (r *LoyaltyPointLotRepository) ListExpiredLotsForUpdate(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) ([]*entities.LoyaltyPointLot, error) {
+	var lots []*entities.LoyaltyPointLot
+	err := r.GetDB(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("loyalty_account_id = ? AND status = ? AND remaining_points > 0 AND expires_at IS NOT NULL AND expires_at <= ?", loyaltyAccountID, loyaltypointlotstatus.Active, now).
+		Order("expires_at ASC, created_at ASC").
+		Find(&lots).Error
+	return lots, err
+}
+
+func (r *LoyaltyPointLotRepository) UpdateLotRemainingAndStatus(ctx context.Context, lotID uuid.UUID, remainingPoints int, status loyaltypointlotstatus.LoyaltyPointLotStatus) error {
+	return r.GetDB(ctx).
+		Model(&entities.LoyaltyPointLot{}).
+		Where("id = ?", lotID).
+		Updates(map[string]any{
+			"remaining_points": remainingPoints,
+			"status":           status,
+			"updated_at":       time.Now().UTC(),
+		}).Error
+}
+
+func (r *LoyaltyPointLotRepository) ListAccountsWithExpiredLots(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	var accountIDs []uuid.UUID
+	err := r.GetDB(ctx).
+		Model(&entities.LoyaltyPointLot{}).
+		Distinct("loyalty_account_id").
+		Where("status = ? AND remaining_points > 0 AND expires_at IS NOT NULL AND expires_at <= ?", loyaltypointlotstatus.Active, now).
+		Limit(limit).
+		Pluck("loyalty_account_id", &accountIDs).Error
+	return accountIDs, err
 }
 
 type BrandCustomerClaimRepository struct {

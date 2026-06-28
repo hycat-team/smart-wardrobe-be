@@ -93,6 +93,10 @@ func (LoyaltyPointTransaction) TableName() string {
 	return "loyalty_point_transactions"
 }
 
+func (LoyaltyPointLot) TableName() string {
+	return "loyalty_point_lots"
+}
+
 func (BrandCustomerClaim) TableName() string {
 	return "brand_customer_claims"
 }

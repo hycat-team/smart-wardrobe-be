@@ -3,6 +3,7 @@ package entities
 import (
 	"time"
 
+	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/shared/domain/constants/loyaltytransactiontype"
 
@@ -67,6 +68,24 @@ type LoyaltyPointTransaction struct {
 	CreatedByUserID  *uuid.UUID                                    `gorm:"type:uuid"`
 	CreatedByUser    *User                                         `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:SET NULL"`
 	CreatedAt        time.Time                                     `gorm:"type:timestamp with time zone;not null;default:now()"`
+}
+
+type LoyaltyPointLot struct {
+	AuditableEntity
+	LoyaltyAccountID  uuid.UUID                                   `gorm:"type:uuid;not null"`
+	LoyaltyAccount    *LoyaltyAccount                             `gorm:"foreignKey:LoyaltyAccountID;constraint:OnDelete:CASCADE"`
+	BrandID           uuid.UUID                                   `gorm:"type:uuid;not null"`
+	Brand             *Brand                                      `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	BrandCustomerID   uuid.UUID                                   `gorm:"type:uuid;not null"`
+	BrandCustomer     *BrandCustomer                              `gorm:"foreignKey:BrandCustomerID;constraint:OnDelete:CASCADE"`
+	UserID            *uuid.UUID                                  `gorm:"type:uuid"`
+	User              *User                                       `gorm:"foreignKey:UserID;constraint:OnDelete:SET NULL"`
+	EarnTransactionID uuid.UUID                                   `gorm:"type:uuid;not null;uniqueIndex"`
+	EarnTransaction   *LoyaltyPointTransaction                    `gorm:"foreignKey:EarnTransactionID;constraint:OnDelete:RESTRICT"`
+	EarnedPoints      int                                         `gorm:"type:int;not null"`
+	RemainingPoints   int                                         `gorm:"type:int;not null"`
+	ExpiresAt         *time.Time                                  `gorm:"type:timestamp with time zone"`
+	Status            loyaltypointlotstatus.LoyaltyPointLotStatus `gorm:"type:varchar(50);not null;default:ACTIVE"`
 }
 
 type BrandCustomerClaim struct {

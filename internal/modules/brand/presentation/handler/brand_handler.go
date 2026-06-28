@@ -22,6 +22,7 @@ const (
 	msgBrandCustomerListSuccess    = "Lấy danh sách khách hàng brand thành công"
 	msgBrandJoinLoyaltySuccess     = "Tham gia loyalty brand thành công"
 	msgBrandOfflineCustomerSuccess = "Tạo khách hàng offline thành công"
+	msgBrandGrantPointsSuccess     = "Ghi nhận giao dịch điểm loyalty thành công"
 )
 
 type BrandHandler struct {
@@ -298,5 +299,37 @@ func (h *BrandHandler) CreateOfflineCustomer(c *gin.Context) error {
 		return err
 	}
 	shared_pres.Created(c, msgBrandOfflineCustomerSuccess, res)
+	return nil
+}
+
+// GrantLoyaltyPoints records a loyalty point transaction.
+// @Summary Ghi nhận cộng/trừ điểm loyalty cho brand customer
+// @Description API thống nhất để brand staff ghi nhận điểm bằng userId, phone hoặc externalCustomerCode
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param brandId path string true "ID brand"
+// @Param body body dto.GrantLoyaltyPointsReq true "Thông tin giao dịch điểm"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.LoyaltyPointsTransactionRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/points [post]
+func (h *BrandHandler) GrantLoyaltyPoints(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var input dto.GrantLoyaltyPointsReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.GrantLoyaltyPoints(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, msgBrandGrantPointsSuccess, res)
 	return nil
 }

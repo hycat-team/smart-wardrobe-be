@@ -22,6 +22,7 @@ import (
 	usecase2 "smart-wardrobe-be/internal/modules/brand/application/usecase"
 	persistence4 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	handler4 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
+	worker3 "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
@@ -54,7 +55,7 @@ import (
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	handler2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
-	worker3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	worker4 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -147,8 +148,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandRepository := persistence4.NewBrandRepository(gormDB)
 	iBrandMemberRepository := persistence4.NewBrandMemberRepository(gormDB)
 	iBrandCustomerRepository := persistence4.NewBrandCustomerRepository(gormDB)
+	iLoyaltyProgramRepository := persistence4.NewLoyaltyProgramRepository(gormDB)
+	iLoyaltyTierRepository := persistence4.NewLoyaltyTierRepository(gormDB)
 	iLoyaltyAccountRepository := persistence4.NewLoyaltyAccountRepository(gormDB)
-	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iUnitOfWork)
+	iLoyaltyPointTransactionRepository := persistence4.NewLoyaltyPointTransactionRepository(gormDB)
+	iLoyaltyPointLotRepository := persistence4.NewLoyaltyPointLotRepository(gormDB)
+	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iUnitOfWork)
 	brandHandler := handler4.NewBrandHandler(iBrandCoreUseCase)
 	brandRouter := brand.NewRouter(brandHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
@@ -169,19 +174,21 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
 	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
 	iaiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostPolicyContract, l, cfg)
+	iLoyaltyPointExpiryWorker := worker3.NewLoyaltyPointExpiryWorker(iBrandCoreUseCase, l, cfg)
 	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
-	wardrobeBatchUploadWorker := worker3.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeWorkerUseCase, l)
+	wardrobeBatchUploadWorker := worker4.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeWorkerUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, l)
-	searchSyncWorker := worker3.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
-	iFailedItemsCleanupWorker := worker3.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
-	iProcessingRecoveryWorker := worker3.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
+	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
+	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
+	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,
 		WebhookInboxWorker:          iWebhookInboxWorker,
 		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
+		LoyaltyPointExpiryWorker:    iLoyaltyPointExpiryWorker,
 		WardrobeBatchUploadWorker:   wardrobeBatchUploadWorker,
 		ESAsyncWorker:               searchSyncWorker,
 		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,

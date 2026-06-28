@@ -19,8 +19,15 @@ type Config struct {
 	RabbitMQ      RabbitMQ           `mapstructure:"rabbitmq"`
 	Elasticsearch Elasticsearch      `mapstructure:"elasticsearch"`
 	Community     Community          `mapstructure:"community"`
+	Loyalty       Loyalty            `mapstructure:"loyalty"`
 	RAG           RAG                `mapstructure:"rag"`
 	Wardrobe      WardrobeProcessing `mapstructure:"wardrobe"`
+}
+
+type Loyalty struct {
+	ExpiryWorkerEnabled   bool          `mapstructure:"expiry_worker_enabled"`
+	ExpiryWorkerInterval  time.Duration `mapstructure:"expiry_worker_interval"`
+	ExpiryWorkerBatchSize int           `mapstructure:"expiry_worker_batch_size"`
 }
 
 type WardrobeProcessing struct {

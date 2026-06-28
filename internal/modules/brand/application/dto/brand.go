@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/loyaltytransactiontype"
 
 	"github.com/google/uuid"
 )
@@ -32,6 +33,20 @@ type CreateOfflineBrandCustomerReq struct {
 	CustomerName         *string `json:"customerName" binding:"omitempty,max=255"`
 	PhoneE164            string  `json:"phoneE164" binding:"required,max=50"`
 	ExternalCustomerCode *string `json:"externalCustomerCode" binding:"omitempty,max=100"`
+}
+
+type GrantLoyaltyPointsReq struct {
+	UserID               *uuid.UUID                                    `json:"userId" binding:"omitempty" label:"ma user"`
+	Phone                *string                                       `json:"phone" binding:"omitempty,max=50" label:"so dien thoai"`
+	CustomerName         *string                                       `json:"customerName" binding:"omitempty,max=255" label:"ten khach hang"`
+	ExternalCustomerCode *string                                       `json:"externalCustomerCode" binding:"omitempty,max=100" label:"ma khach hang ngoai"`
+	PurchaseAmount       *float64                                      `json:"purchaseAmount" binding:"omitempty,min=0" label:"gia tri mua hang"`
+	PointsDelta          *int                                          `json:"pointsDelta" binding:"omitempty" label:"diem thay doi"`
+	TransactionType      loyaltytransactiontype.LoyaltyTransactionType `json:"transactionType" binding:"required" label:"loai giao dich"`
+	Reason               *string                                       `json:"reason" binding:"omitempty,max=255" label:"ly do"`
+	ReferenceType        *string                                       `json:"referenceType" binding:"omitempty,max=100" label:"loai tham chieu"`
+	ReferenceID          *uuid.UUID                                    `json:"referenceId" binding:"omitempty" label:"ma tham chieu"`
+	IdempotencyKey       *string                                       `json:"idempotencyKey" binding:"omitempty,max=100" label:"khoa idempotency"`
 }
 
 type BrandRes struct {
@@ -72,4 +87,21 @@ type BrandCustomerRes struct {
 	CreatedByMemberID    *uuid.UUID                                          `json:"createdByMemberId"`
 	CreatedAt            time.Time                                           `json:"createdAt"`
 	UpdatedAt            time.Time                                           `json:"updatedAt"`
+}
+
+type LoyaltyTierBriefRes struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type LoyaltyPointsTransactionRes struct {
+	TransactionID   uuid.UUID                               `json:"transactionId"`
+	BrandID         uuid.UUID                               `json:"brandId"`
+	BrandCustomerID uuid.UUID                               `json:"brandCustomerId"`
+	UserID          *uuid.UUID                              `json:"userId"`
+	CustomerStatus  brandcustomerstatus.BrandCustomerStatus `json:"customerStatus"`
+	PointsDelta     int                                     `json:"pointsDelta"`
+	BalanceAfter    int                                     `json:"balanceAfter"`
+	TotalSpend      float64                                 `json:"totalSpend"`
+	CurrentTier     *LoyaltyTierBriefRes                    `json:"currentTier"`
 }

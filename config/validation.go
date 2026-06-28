@@ -62,6 +62,9 @@ func validateConfig(cfg *Config) error {
 	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
 		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}
+	if cfg.Loyalty.ExpiryWorkerInterval <= 0 || cfg.Loyalty.ExpiryWorkerBatchSize <= 0 {
+		return fmt.Errorf("loyalty expiry worker configuration is invalid")
+	}
 	// Validate Token Estimation Configurations
 	est := cfg.AI.TokenEstimation
 	if est.CharsPerToken <= 0 {

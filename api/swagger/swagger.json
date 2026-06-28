@@ -1434,6 +1434,64 @@
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/loyalty/points": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "API thống nhất để brand staff ghi nhận điểm bằng userId, phone hoặc externalCustomerCode",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Ghi nhận cộng/trừ điểm loyalty cho brand customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin giao dịch điểm",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/members": {
             "get": {
                 "security": [
@@ -3189,6 +3247,97 @@
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq": {
+            "type": "object",
+            "required": [
+                "transactionType"
+            ],
+            "properties": {
+                "customerName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "externalCustomerCode": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "idempotencyKey": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "pointsDelta": {
+                    "type": "integer"
+                },
+                "purchaseAmount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "referenceId": {
+                    "type": "string"
+                },
+                "referenceType": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "transactionType": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes": {
+            "type": "object",
+            "properties": {
+                "balanceAfter": {
+                    "type": "integer"
+                },
+                "brandCustomerId": {
+                    "type": "string"
+                },
+                "brandId": {
+                    "type": "string"
+                },
+                "currentTier": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes"
+                },
+                "customerStatus": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus"
+                },
+                "pointsDelta": {
+                    "type": "integer"
+                },
+                "totalSpend": {
+                    "type": "number"
+                },
+                "transactionId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq": {
             "type": "object",
             "required": [
@@ -4722,6 +4871,23 @@
                 "Male",
                 "Female",
                 "Other"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType": {
+            "type": "string",
+            "enum": [
+                "EARN",
+                "REDEEM",
+                "ADJUST",
+                "EXPIRE",
+                "REFUND"
+            ],
+            "x-enum-varnames": [
+                "Earn",
+                "Redeem",
+                "Adjust",
+                "Expire",
+                "Refund"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender": {

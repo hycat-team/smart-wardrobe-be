@@ -115,6 +115,20 @@ func (r *BrandCustomerRepository) GetByBrandAndPhoneHash(ctx context.Context, br
 	return &customer, nil
 }
 
+func (r *BrandCustomerRepository) GetByBrandAndExternalCode(ctx context.Context, brandID uuid.UUID, externalCustomerCode string) (*entities.BrandCustomer, error) {
+	var customer entities.BrandCustomer
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ? AND external_customer_code = ?", brandID, externalCustomerCode).
+		First(&customer).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &customer, nil
+}
+
 func (r *BrandCustomerRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error) {
 	var customers []*entities.BrandCustomer
 	err := r.GetQueryWithPreload(ctx).

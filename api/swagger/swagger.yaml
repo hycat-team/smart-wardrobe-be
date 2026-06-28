@@ -110,6 +110,68 @@ definitions:
     required:
     - phoneE164
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq:
+    properties:
+      customerName:
+        maxLength: 255
+        type: string
+      externalCustomerCode:
+        maxLength: 100
+        type: string
+      idempotencyKey:
+        maxLength: 100
+        type: string
+      phone:
+        maxLength: 50
+        type: string
+      pointsDelta:
+        type: integer
+      purchaseAmount:
+        minimum: 0
+        type: number
+      reason:
+        maxLength: 255
+        type: string
+      referenceId:
+        type: string
+      referenceType:
+        maxLength: 100
+        type: string
+      transactionType:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType'
+      userId:
+        type: string
+    required:
+    - transactionType
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes:
+    properties:
+      balanceAfter:
+        type: integer
+      brandCustomerId:
+        type: string
+      brandId:
+        type: string
+      currentTier:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes'
+      customerStatus:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus'
+      pointsDelta:
+        type: integer
+      totalSpend:
+        type: number
+      transactionId:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq:
     properties:
       status:
@@ -1153,6 +1215,20 @@ definitions:
     - Male
     - Female
     - Other
+  smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType:
+    enum:
+    - EARN
+    - REDEEM
+    - ADJUST
+    - EXPIRE
+    - REFUND
+    type: string
+    x-enum-varnames:
+    - Earn
+    - Redeem
+    - Adjust
+    - Expire
+    - Refund
   smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender:
     enum:
     - user
@@ -2146,6 +2222,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Tạo khách hàng offline cho brand
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/loyalty/points:
+    post:
+      consumes:
+      - application/json
+      description: API thống nhất để brand staff ghi nhận điểm bằng userId, phone
+        hoặc externalCustomerCode
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin giao dịch điểm
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Ghi nhận cộng/trừ điểm loyalty cho brand customer
       tags:
       - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/members:
