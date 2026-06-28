@@ -23,6 +23,8 @@ var ProviderSet = wire.NewSet(
 	persistence.NewBrandCustomerClaimRepository,
 	persistence.NewBrandBenefitRepository,
 	persistence.NewBenefitRedemptionRepository,
+	persistence.NewBrandConversationRepository,
+	persistence.NewBrandConversationMessageRepository,
 	usecase.NewBrandCoreUseCase,
 	wire.Bind(new(contract.IBrandContract), new(uc_interfaces.IBrandCoreUseCase)),
 	handler.NewBrandHandler,

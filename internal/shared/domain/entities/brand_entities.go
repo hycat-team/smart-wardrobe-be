@@ -8,6 +8,8 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitunlocktype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
@@ -92,4 +94,25 @@ type BenefitRedemption struct {
 	RedeemedAt      time.Time                                       `gorm:"type:timestamp with time zone;not null;default:now()"`
 	UsedAt          *time.Time                                      `gorm:"type:timestamp with time zone"`
 	ExpiresAt       *time.Time                                      `gorm:"type:timestamp with time zone"`
+}
+
+type BrandConversation struct {
+	AuditableEntity
+	BrandID       uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
+	Brand         *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	UserID        uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
+	User          *User                                 `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Status        conversationstatus.ConversationStatus `gorm:"type:varchar(50);not null;default:OPEN"`
+	LastMessageAt *time.Time                            `gorm:"type:timestamp with time zone"`
+}
+
+type BrandConversationMessage struct {
+	ID             uuid.UUID             `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ConversationID uuid.UUID             `gorm:"type:uuid;not null"`
+	Conversation   *BrandConversation    `gorm:"foreignKey:ConversationID;constraint:OnDelete:CASCADE"`
+	SenderUserID   *uuid.UUID            `gorm:"type:uuid"`
+	SenderUser     *User                 `gorm:"foreignKey:SenderUserID;constraint:OnDelete:SET NULL"`
+	SenderRole     senderrole.SenderRole `gorm:"type:varchar(50);not null"`
+	Message        string                `gorm:"type:text;not null"`
+	CreatedAt      time.Time             `gorm:"type:timestamp with time zone;not null;default:now()"`
 }

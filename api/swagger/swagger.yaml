@@ -64,6 +64,42 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes:
+    properties:
+      conversationId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      senderRole:
+        type: string
+      senderUserId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes:
+    properties:
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      customerName:
+        type: string
+      id:
+        type: string
+      lastMessageAt:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      userDisplayName:
+        type: string
+      userId:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes:
     properties:
       brandId:
@@ -251,6 +287,14 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.SendBrandChatMessageReq:
+    properties:
+      message:
+        minLength: 1
+        type: string
+    required:
+    - message
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq:
     properties:
@@ -2333,6 +2377,106 @@ paths:
       summary: Cập nhật trạng thái quyền lợi (Staff)
       tags:
       - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/conversations:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Lấy danh sách các cuộc hội thoại của brand (Staff)
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID cuộc hội thoại
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Lấy danh sách tin nhắn trong cuộc hội thoại (Staff)
+      tags:
+      - Brand Portal
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID cuộc hội thoại
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      - description: Nội dung phản hồi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.SendBrandChatMessageReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Gửi phản hồi của brand staff (Staff)
+      tags:
+      - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/customers:
     get:
       description: Lấy danh sách các khách hàng đã liên kết với brand
@@ -2557,6 +2701,66 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
               type: object
       summary: Đổi quyền lợi của brand (User)
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/conversation:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Lấy cuộc hội thoại hiện tại (User)
+      tags:
+      - Brand
+  /api/v1/brands/{brandId}/conversation/messages:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Nội dung tin nhắn
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.SendBrandChatMessageReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Gửi tin nhắn đến brand (User)
       tags:
       - Brand
   /api/v1/brands/{brandId}/join-loyalty:

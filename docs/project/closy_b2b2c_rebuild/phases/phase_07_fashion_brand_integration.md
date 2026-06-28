@@ -1,8 +1,14 @@
-# Phase 07 - Styling Refactor and Brand Item Integration
+# Phase 07 - Fashion Refactor and Brand Item Integration
 
 ## Mục tiêu
 
-Tách/chuẩn hóa module `styling` cho AI outfit recommendation và mở rộng luồng recommendation hiện có để hỗ trợ brand items bằng flag `include_brand_items`.
+Chuẩn hóa module `fashion` quản lý `FashionItem`, dịch vụ AI outfit recommendation, và **AI Chat cá nhân (Personal AI Chatbot)**. Mở rộng luồng recommendation hiện có để hỗ trợ trộn sản phẩm của brand thông qua flag `include_brand_items`.
+
+> [!IMPORTANT]
+> **Fashion Module làm trung tâm cho toàn bộ các chức năng AI và Fashion Items**:
+> 1. Tầng nghiệp vụ lưu trữ, truy xuất và cập nhật `FashionItem` nằm hoàn toàn dưới sự quản lý của module `fashion`.
+> 2. Luồng lưu outfit chạm vào `FashionItem` (như trong `wardrobe` module) sẽ gọi thông qua Service Contract của `fashion` thay vì trực tiếp truy cập repository của `FashionItem` như trước đây.
+> 3. Toàn bộ các chức năng AI bao gồm: AI Phối đồ (Recommendations), AI Vision (Phân tích ảnh trích xuất metadata), và AI Chat cá nhân (tư vấn trang phục dựa trên tủ đồ của user) đều được quy tụ về module `fashion`.
 
 ## Không làm trong phase này
 
@@ -10,7 +16,7 @@ Tách/chuẩn hóa module `styling` cho AI outfit recommendation và mở rộng
 - Không tạo GenerateSampleTrialStyling.
 - Không tạo GenerateDigitalSampleOutfit.
 - Không tạo required_brand_item_id.
-- Không để styling query trực tiếp brand/loyalty tables.
+- Không để fashion query trực tiếp brand/loyalty tables.
 - Không expose raw wardrobe cho brand.
 - Không tạo new AI endpoint song song nếu endpoint cũ đã có.
 ```
@@ -44,26 +50,26 @@ Nếu cần filter nhẹ sau này, có thể thêm `brand_id` hoặc `brand_item
 ## High-level flow
 
 ```text
-1. User gọi AI outfit recommendation.
+1. User gọi AI outfit recommendation hoặc AI Chat.
 2. subscription.ReserveAIUsage nếu current flow có quota reservation.
-3. styling gọi wardrobe.ListUserWardrobeItemsForStyling(userID, filter).
+3. fashion gọi wardrobe.ListUserWardrobeItemsForStyling(userID, filter) để lấy danh sách đồ cá nhân của user.
 4. Nếu include_brand_items = true:
-   - styling gọi brand.ListEligibleBrandItemsForStyling(userID, filter).
+   - fashion gọi brand.ListEligibleBrandItemsForStyling(userID, filter).
    - brand module tự check membership, benefit/feature access, brand/item status.
-5. styling merge candidates:
+5. fashion merge candidates:
    - user wardrobe items: item_context USER_WARDROBE
-   - brand items: item_context BRAND_ITEM
-6. Retrieval/rerank/prompt hiện có chọn outfit.
+   - brand items: item_context BRAND_ITEM (đối chiếu fashion_item metadata trực tiếp trong database của fashion)
+6. Retrieval/rerank/prompt hiện có chọn outfit hoặc trả lời tin nhắn chat.
 7. Save outfit + outfit_items:
-   - outfit_items.fashion_item_id
-   - outfit_items.item_context
+   - Gọi fashion contract để xác thực fashion_item_id và lưu outfit_items.
+   - Lưu outfit_items.item_context tương ứng.
 8. FinalizeAIUsage nếu success.
 9. RefundAIUsage nếu failure theo current quota rule.
 ```
 
 ## Candidate DTO
 
-Unify internal styling candidate:
+Unify internal fashion candidate:
 
 ```text
 fashion_item_id
@@ -92,48 +98,36 @@ source_label optional
 
 ## Brand contract eligibility
 
-Styling gọi:
+Fashion gọi:
 
 ```text
 ListEligibleBrandItemsForStyling(userID, filter)
 ```
 
 Brand module phải enforce:
-
-```text
 - user status ACTIVE
 - brand status ACTIVE
 - brand_customer status ACTIVE
 - brand_item status ACTIVE
 - PRODUCT: membership đủ cho recommendation MVP
 - SAMPLE: cần SAMPLE_MIX_ACCESS hoặc sample public config nếu có
-```
 
-Styling không biết chi tiết loyalty/benefit.
+Fashion không biết chi tiết loyalty/benefit.
 
 ## Recommendation behavior
 
 Nếu `include_brand_items = false`:
-
-```text
 - Behavior giống hiện tại.
 - Chỉ dùng wardrobe items của user.
-```
 
 Nếu `include_brand_items = true` nhưng user không eligible brand nào:
-
-```text
 - Không fail.
 - Fallback về wardrobe-only recommendation.
 - Response có thể kèm warning/metadata nếu API hiện có hỗ trợ.
-```
 
 Nếu brand candidates có nhưng AI không chọn:
-
-```text
 - Vẫn hợp lệ.
 - include_brand_items không có nghĩa bắt buộc phải dùng brand item.
-```
 
 ## Prompt/retrieval guidance
 
@@ -152,18 +146,12 @@ MVP không cần thiết kế thuật toán hoàn toàn mới.
 ## Save outfit rules
 
 Khi AI output chọn candidate:
-
-```text
 - USER_WARDROBE -> save item_context USER_WARDROBE.
 - BRAND_ITEM -> save item_context BRAND_ITEM.
-```
 
 Validation:
-
-```text
 - USER_WARDROBE candidate must belong to user.
 - BRAND_ITEM candidate must come from brand contract result of this request.
-```
 
 Không accept arbitrary brand fashion_item_id từ client.
 
@@ -213,7 +201,7 @@ Keep backward compatibility if FE expects old shape; add fields without removing
 
 - [ ] No `required_brand_item_id`.
 - [ ] No separate sample generation usecase.
-- [ ] Styling uses brand contract for eligibility.
+- [ ] Fashion uses brand contract for eligibility.
 - [ ] Brand item candidates are optional.
 - [ ] outfit_items store correct item_context.
 - [ ] No raw wardrobe exposed to brand.

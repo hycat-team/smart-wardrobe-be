@@ -80,3 +80,15 @@ type IBenefitRedemptionRepository interface {
 	GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BenefitRedemption, error)
 	GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error)
 }
+
+type IBrandConversationRepository interface {
+	shared_repos.IGenericRepository[entities.BrandConversation, uuid.UUID]
+	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandConversation, error)
+	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandConversation, error)
+	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*entities.BrandConversation, error)
+}
+
+type IBrandConversationMessageRepository interface {
+	shared_repos.IGenericRepository[entities.BrandConversationMessage, uuid.UUID]
+	GetByConversationID(ctx context.Context, conversationID uuid.UUID) ([]*entities.BrandConversationMessage, error)
+}

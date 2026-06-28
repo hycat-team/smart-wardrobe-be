@@ -151,3 +151,28 @@ type BenefitRedemptionRes struct {
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
+
+type SendBrandChatMessageReq struct {
+	Message string `json:"message" binding:"required,min=1" label:"noi dung tin nhan"`
+}
+
+type BrandConversationRes struct {
+	ID              uuid.UUID  `json:"id"`
+	BrandID         uuid.UUID  `json:"brandId"`
+	UserID          uuid.UUID  `json:"userId"`
+	CustomerName    *string    `json:"customerName"`
+	UserDisplayName *string    `json:"userDisplayName"`
+	Status          string     `json:"status"`
+	LastMessageAt   *time.Time `json:"lastMessageAt"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+type BrandConversationMessageRes struct {
+	ID             uuid.UUID  `json:"id"`
+	ConversationID uuid.UUID  `json:"conversationId"`
+	SenderRole     string     `json:"senderRole"`
+	SenderUserID   *uuid.UUID `json:"senderUserId"`
+	Message        string     `json:"message"`
+	CreatedAt      time.Time  `json:"createdAt"`
+}

@@ -158,10 +158,12 @@ func (UserSubscriptionEvent) TableName() string {
 func (SubscriptionRenewalAttempt) TableName() string {
 	return "subscription_renewal_attempts"
 }
-func (AICostPolicy) TableName() string          { return "ai_cost_policies" }
-func (AICostPolicyOperation) TableName() string { return "ai_cost_policy_operations" }
-func (UserAIPolicyGrant) TableName() string     { return "user_ai_policy_grants" }
-func (AIUsagePeriodLedger) TableName() string   { return "ai_usage_period_ledgers" }
-func (AIUsageEvent) TableName() string          { return "ai_usage_events" }
-func (BrandBenefit) TableName() string          { return "brand_benefits" }
-func (BenefitRedemption) TableName() string     { return "benefit_redemptions" }
+func (AICostPolicy) TableName() string             { return "ai_cost_policies" }
+func (AICostPolicyOperation) TableName() string    { return "ai_cost_policy_operations" }
+func (UserAIPolicyGrant) TableName() string        { return "user_ai_policy_grants" }
+func (AIUsagePeriodLedger) TableName() string      { return "ai_usage_period_ledgers" }
+func (AIUsageEvent) TableName() string             { return "ai_usage_events" }
+func (BrandBenefit) TableName() string             { return "brand_benefits" }
+func (BenefitRedemption) TableName() string        { return "benefit_redemptions" }
+func (BrandConversation) TableName() string        { return "brand_conversations" }
+func (BrandConversationMessage) TableName() string { return "brand_conversation_messages" }

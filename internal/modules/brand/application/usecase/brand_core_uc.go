@@ -20,6 +20,8 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitunlocktype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
@@ -48,6 +50,8 @@ type BrandCoreUseCase struct {
 	lotRepo        repositories.ILoyaltyPointLotRepository
 	benefitRepo    repositories.IBrandBenefitRepository
 	redemptionRepo repositories.IBenefitRedemptionRepository
+	convRepo       repositories.IBrandConversationRepository
+	msgRepo        repositories.IBrandConversationMessageRepository
 	uow            shared_repos.IUnitOfWork
 }
 
@@ -63,6 +67,8 @@ func NewBrandCoreUseCase(
 	lotRepo repositories.ILoyaltyPointLotRepository,
 	benefitRepo repositories.IBrandBenefitRepository,
 	redemptionRepo repositories.IBenefitRedemptionRepository,
+	convRepo repositories.IBrandConversationRepository,
+	msgRepo repositories.IBrandConversationMessageRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandCoreUseCase {
 	return &BrandCoreUseCase{
@@ -77,6 +83,8 @@ func NewBrandCoreUseCase(
 		lotRepo:        lotRepo,
 		benefitRepo:    benefitRepo,
 		redemptionRepo: redemptionRepo,
+		convRepo:       convRepo,
+		msgRepo:        msgRepo,
 		uow:            uow,
 	}
 }
@@ -1225,4 +1233,220 @@ func parseValidDurationDays(doc entities.JSONDocument) int {
 func (uc *BrandCoreUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, filter interface{}) (interface{}, error) {
 	// Stub return empty list and nil error since brand items schema/logic is introduced in Phase 06
 	return []interface{}{}, nil
+}
+
+func (uc *BrandCoreUseCase) GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandConversationRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrUserNotFoundOrInactive()
+	}
+
+	conv, err := uc.convRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil {
+		// Return 404 with clear message as optimized in Grill-me
+		return nil, branderrors.ErrBrandNotFound() // We will return conversation not found via custom error or a default NotFound
+	}
+
+	user, _ := uc.userRepo.GetByID(ctx, userID)
+	userDisp := getUserDisplayName(user)
+	return mapper.MapBrandConversation(conv, customer.CustomerName, &userDisp), nil
+}
+
+func (uc *BrandCoreUseCase) SendUserMessage(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrUserNotFoundOrInactive()
+	}
+
+	var messageRes *dto.BrandConversationMessageRes
+	now := time.Now().UTC()
+
+	// MULTI-WRITE USECASE -> Apply Unit of Work (uow) pattern
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		conv, err := uc.convRepo.GetByBrandAndUser(txCtx, brandID, userID)
+		if err != nil {
+			return err
+		}
+
+		if conv == nil {
+			// First message -> create conversation automatically as requested
+			conv = &entities.BrandConversation{
+				BrandID:       brandID,
+				UserID:        userID,
+				Status:        conversationstatus.Open,
+				LastMessageAt: &now,
+			}
+			if err := uc.convRepo.Create(txCtx, conv); err != nil {
+				return err
+			}
+		} else {
+			// Update status and last message time
+			conv.Status = conversationstatus.Open
+			conv.LastMessageAt = &now
+			if err := uc.convRepo.Update(txCtx, conv); err != nil {
+				return err
+			}
+		}
+
+		msg := &entities.BrandConversationMessage{
+			ConversationID: conv.ID,
+			SenderUserID:   &userID,
+			SenderRole:     senderrole.Customer,
+			Message:        strings.TrimSpace(input.Message),
+			CreatedAt:      now,
+		}
+		if err := uc.msgRepo.Create(txCtx, msg); err != nil {
+			return err
+		}
+
+		messageRes = mapper.MapBrandConversationMessage(msg)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return messageRes, nil
+}
+
+func (uc *BrandCoreUseCase) ListBrandConversations(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandConversationRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+		return nil, err
+	}
+
+	conversations, err := uc.convRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+
+	var res []*dto.BrandConversationRes
+	for _, conv := range conversations {
+		customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, conv.UserID)
+		user, _ := uc.userRepo.GetByID(ctx, conv.UserID)
+		userDisp := getUserDisplayName(user)
+		var custName *string
+		if customer != nil {
+			custName = customer.CustomerName
+		}
+		res = append(res, mapper.MapBrandConversation(conv, custName, &userDisp))
+	}
+
+	return res, nil
+}
+
+func (uc *BrandCoreUseCase) ListConversationMessages(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) ([]*dto.BrandConversationMessageRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+		return nil, err
+	}
+
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	messages, err := uc.msgRepo.GetByConversationID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapBrandConversationMessages(messages), nil
+}
+
+func (uc *BrandCoreUseCase) SendStaffMessage(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+		return nil, err
+	}
+
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	var messageRes *dto.BrandConversationMessageRes
+	now := time.Now().UTC()
+
+	// MULTI-WRITE USECASE -> Apply Unit of Work (uow) pattern
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		lockedConv, err := uc.convRepo.GetByIDForUpdate(txCtx, conversationID)
+		if err != nil {
+			return err
+		}
+		if lockedConv == nil {
+			return branderrors.ErrBrandNotFound()
+		}
+
+		lockedConv.Status = conversationstatus.Open
+		lockedConv.LastMessageAt = &now
+		if err := uc.convRepo.Update(txCtx, lockedConv); err != nil {
+			return err
+		}
+
+		msg := &entities.BrandConversationMessage{
+			ConversationID: lockedConv.ID,
+			SenderUserID:   &staffUserID,
+			SenderRole:     senderrole.BrandStaff,
+			Message:        strings.TrimSpace(input.Message),
+			CreatedAt:      now,
+		}
+		if err := uc.msgRepo.Create(txCtx, msg); err != nil {
+			return err
+		}
+
+		messageRes = mapper.MapBrandConversationMessage(msg)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return messageRes, nil
+}
+
+func getUserDisplayName(u *entities.User) string {
+	if u == nil {
+		return ""
+	}
+	var parts []string
+	if u.FirstName != nil && *u.FirstName != "" {
+		parts = append(parts, *u.FirstName)
+	}
+	if u.LastName != nil && *u.LastName != "" {
+		parts = append(parts, *u.LastName)
+	}
+	name := strings.TrimSpace(strings.Join(parts, " "))
+	if name == "" {
+		return u.Username
+	}
+	return name
 }

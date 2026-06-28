@@ -143,3 +143,42 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 		UpdatedAt:       red.UpdatedAt,
 	}
 }
+
+func MapBrandConversation(conv *entities.BrandConversation, customerName *string, userDisplayName *string) *dto.BrandConversationRes {
+	if conv == nil {
+		return nil
+	}
+	return &dto.BrandConversationRes{
+		ID:              conv.ID,
+		BrandID:         conv.BrandID,
+		UserID:          conv.UserID,
+		CustomerName:    customerName,
+		UserDisplayName: userDisplayName,
+		Status:          string(conv.Status),
+		LastMessageAt:   conv.LastMessageAt,
+		CreatedAt:       conv.CreatedAt,
+		UpdatedAt:       conv.UpdatedAt,
+	}
+}
+
+func MapBrandConversationMessage(msg *entities.BrandConversationMessage) *dto.BrandConversationMessageRes {
+	if msg == nil {
+		return nil
+	}
+	return &dto.BrandConversationMessageRes{
+		ID:             msg.ID,
+		ConversationID: msg.ConversationID,
+		SenderRole:     string(msg.SenderRole),
+		SenderUserID:   msg.SenderUserID,
+		Message:        msg.Message,
+		CreatedAt:      msg.CreatedAt,
+	}
+}
+
+func MapBrandConversationMessages(messages []*entities.BrandConversationMessage) []*dto.BrandConversationMessageRes {
+	res := make([]*dto.BrandConversationMessageRes, len(messages))
+	for idx, msg := range messages {
+		res[idx] = MapBrandConversationMessage(msg)
+	}
+	return res
+}
