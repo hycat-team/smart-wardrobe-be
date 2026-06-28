@@ -83,7 +83,7 @@ wire:
 
 swagger:
 	@echo Generating Swagger specifications...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community
 	@echo Swagger generation finished.
 
 generate: wire swagger

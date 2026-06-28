@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"smart-wardrobe-be/internal/modules/community/application/dto"
+	communitydto "smart-wardrobe-be/internal/modules/community/application/dto"
 	"smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
@@ -144,11 +144,11 @@ func (h *AdminHandler) DeletePostItem(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param query query dto.AdminGetPostsQueryReq false "Bộ lọc danh sách bài đăng"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostListRes} "Lấy danh sách bài đăng thành công"
+// @Param query query communitydto.AdminGetPostsQueryReq false "Bộ lọc danh sách bài đăng"
+// @Success 200 {object} shared_pres.APIResponse{data=communitydto.AdminPostListRes} "Lấy danh sách bài đăng thành công"
 // @Router /api/v1/admin/posts [get]
 func (h *AdminHandler) GetPosts(c *gin.Context) error {
-	var query dto.AdminGetPostsQueryReq
+	var query communitydto.AdminGetPostsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
@@ -168,11 +168,11 @@ func (h *AdminHandler) GetPosts(c *gin.Context) error {
 // @Tags Admin
 // @Accept json
 // @Produce json
-// @Param query query dto.AdminGetPostItemsQueryReq false "Bộ lọc danh sách listing"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminPostItemListRes} "Lấy danh sách sản phẩm bài đăng thành công"
+// @Param query query communitydto.AdminGetPostItemsQueryReq false "Bộ lọc danh sách listing"
+// @Success 200 {object} shared_pres.APIResponse{data=communitydto.AdminPostItemListRes} "Lấy danh sách sản phẩm bài đăng thành công"
 // @Router /api/v1/admin/post-items [get]
 func (h *AdminHandler) GetPostItems(c *gin.Context) error {
-	var query dto.AdminGetPostItemsQueryReq
+	var query communitydto.AdminGetPostItemsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
