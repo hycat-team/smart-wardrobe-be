@@ -194,14 +194,14 @@ func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAc
 	return r.transactions, nil
 }
 
-func newLoyaltyLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entities.LoyaltyPointLot) (*BrandCoreUseCase, *loyaltyLotsAccountRepo, *loyaltyLotsLotRepo, *loyaltyLotsTxRepo) {
+func newLoyaltyLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entities.LoyaltyPointLot) (*BrandLoyaltyUseCase, *loyaltyLotsAccountRepo, *loyaltyLotsLotRepo, *loyaltyLotsTxRepo) {
 	accountRepo := &loyaltyLotsAccountRepo{accounts: map[uuid.UUID]*entities.LoyaltyAccount{account.ID: account}}
 	lotRepo := &loyaltyLotsLotRepo{lots: map[uuid.UUID]*entities.LoyaltyPointLot{}}
 	for _, lot := range lots {
 		lotRepo.lots[lot.ID] = lot
 	}
 	txRepo := &loyaltyLotsTxRepo{}
-	uc := &BrandCoreUseCase{
+	uc := &BrandLoyaltyUseCase{
 		accountRepo: accountRepo,
 		lotRepo:     lotRepo,
 		txRepo:      txRepo,
@@ -241,35 +241,5 @@ func TestProcessExpiredLoyaltyPointLotsGroupsExpiredLotsAndIsIdempotent(t *testi
 	}
 	if expiredPoints != 0 || accountRepo.accounts[account.ID].CurrentPoints != 30 || len(txRepo.transactions) != 1 {
 		t.Fatalf("expected idempotent second run, got expired=%d balance=%d tx=%d", expiredPoints, accountRepo.accounts[account.ID].CurrentPoints, len(txRepo.transactions))
-	}
-}
-
-func TestRedeemLoyaltyPointsExpiresDueLotsBeforeBalanceCheck(t *testing.T) {
-	now := time.Now().UTC()
-	account := &entities.LoyaltyAccount{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: uuid.New(), BrandCustomerID: uuid.New(), CurrentPoints: 200}
-	expiredAt := now.Add(-time.Hour)
-	validAt := now.Add(time.Hour)
-	uc, accountRepo, lotRepo, txRepo := newLoyaltyLotsTestUseCase(account,
-		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &expiredAt, Status: loyaltypointlotstatus.Active},
-		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &validAt, Status: loyaltypointlotstatus.Active},
-	)
-
-	if _, err := uc.redeemLoyaltyPointsFromLots(context.Background(), account.ID, 150, now, nil, nil, nil, nil); err == nil {
-		t.Fatal("expected insufficient points after expiry")
-	}
-	if accountRepo.accounts[account.ID].CurrentPoints != 100 {
-		t.Fatalf("expected balance 100 after on-demand expiry, got %d", accountRepo.accounts[account.ID].CurrentPoints)
-	}
-	if len(txRepo.transactions) != 1 || txRepo.transactions[0].TransactionType != loyaltytransactiontype.Expire {
-		t.Fatalf("expected only EXPIRE transaction, got %#v", txRepo.transactions)
-	}
-	expiredCount := 0
-	for _, lot := range lotRepo.lots {
-		if lot.Status == loyaltypointlotstatus.Expired {
-			expiredCount++
-		}
-	}
-	if expiredCount != 1 {
-		t.Fatalf("expected one expired lot, got %d", expiredCount)
 	}
 }

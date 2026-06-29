@@ -172,7 +172,7 @@ func TestSendUserMessage_AutoCreateAndReopen(t *testing.T) {
 	convRepo := &mockConvRepo{conversations: make(map[string]*entities.BrandConversation)}
 	msgRepo := &mockMsgRepo{messages: make(map[uuid.UUID]*entities.BrandConversationMessage)}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandChatUseCase{
 		brandRepo:    brandRepo,
 		customerRepo: customerRepo,
 		convRepo:     convRepo,
@@ -257,7 +257,7 @@ func TestSendStaffMessage_Authorization(t *testing.T) {
 	}}
 	msgRepo := &mockMsgRepo{messages: make(map[uuid.UUID]*entities.BrandConversationMessage)}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandChatUseCase{
 		brandRepo:  brandRepo,
 		memberRepo: memberRepo,
 		convRepo:   convRepo,

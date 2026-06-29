@@ -12,11 +12,15 @@ import (
 )
 
 type BrandPortalHandler struct {
-	brandUC usecase_interfaces.IBrandCoreUseCase
+	brandUC usecase_interfaces.IBrandUseCase
+	itemUC  usecase_interfaces.IBrandItemUseCase
 }
 
-func NewBrandPortalHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *BrandPortalHandler {
-	return &BrandPortalHandler{brandUC: brandUC}
+func NewBrandPortalHandler(brandUC usecase_interfaces.IBrandUseCase, itemUC usecase_interfaces.IBrandItemUseCase) *BrandPortalHandler {
+	return &BrandPortalHandler{
+		brandUC: brandUC,
+		itemUC:  itemUC,
+	}
 }
 
 // CreateBrandRequest creates a pending brand request.
@@ -270,7 +274,7 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.CreateBrandItem(c.Request.Context(), userID, brandID, input)
+	res, err := h.itemUC.CreateBrandItem(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -295,7 +299,7 @@ func (h *BrandPortalHandler) GetBrandItemsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemsForStaff(c.Request.Context(), userID, brandID)
+	res, err := h.itemUC.GetBrandItemsForStaff(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -319,7 +323,7 @@ func (h *BrandPortalHandler) GetBrandItemUploadSignature(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemUploadSignature(c.Request.Context(), userID, brandID)
+	res, err := h.itemUC.GetBrandItemUploadSignature(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -348,7 +352,7 @@ func (h *BrandPortalHandler) GetBrandItemForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemForStaff(c.Request.Context(), userID, brandID, itemID)
+	res, err := h.itemUC.GetBrandItemForStaff(c.Request.Context(), userID, brandID, itemID)
 	if err != nil {
 		return err
 	}
@@ -383,7 +387,7 @@ func (h *BrandPortalHandler) UpdateBrandItem(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.UpdateBrandItem(c.Request.Context(), userID, brandID, itemID, input)
+	res, err := h.itemUC.UpdateBrandItem(c.Request.Context(), userID, brandID, itemID, input)
 	if err != nil {
 		return err
 	}
@@ -418,7 +422,7 @@ func (h *BrandPortalHandler) UpdateBrandItemStatus(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.UpdateBrandItemStatus(c.Request.Context(), userID, brandID, itemID, input.Status)
+	res, err := h.itemUC.UpdateBrandItemStatus(c.Request.Context(), userID, brandID, itemID, input.Status)
 	if err != nil {
 		return err
 	}
@@ -448,7 +452,7 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemFeedbacks(c.Request.Context(), userID, brandID, itemID)
+	res, err := h.itemUC.GetBrandItemFeedbacks(c.Request.Context(), userID, brandID, itemID)
 	if err != nil {
 		return err
 	}
@@ -473,7 +477,7 @@ func (h *BrandPortalHandler) ListBrandItemsForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListBrandItemsForUser(c.Request.Context(), userID, brandID)
+	res, err := h.itemUC.ListBrandItemsForUser(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -497,7 +501,7 @@ func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemForUser(c.Request.Context(), userID, itemID)
+	res, err := h.itemUC.GetBrandItemForUser(c.Request.Context(), userID, itemID)
 	if err != nil {
 		return err
 	}
@@ -527,7 +531,7 @@ func (h *BrandPortalHandler) SubmitSampleFeedback(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.SubmitSampleFeedback(c.Request.Context(), userID, itemID, input)
+	res, err := h.itemUC.SubmitSampleFeedback(c.Request.Context(), userID, itemID, input)
 	if err != nil {
 		return err
 	}

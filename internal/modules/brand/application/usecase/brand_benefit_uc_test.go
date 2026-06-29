@@ -17,6 +17,8 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -258,7 +260,7 @@ func TestCreateBrandBenefit(t *testing.T) {
 
 	benefitRepo := &mockBenefitRepo{benefits: make(map[uuid.UUID]*entities.BrandBenefit)}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandBenefitUseCase{
 		brandRepo:   brandRepo,
 		memberRepo:  memberRepo,
 		benefitRepo: benefitRepo,
@@ -297,7 +299,6 @@ func TestRedeemBenefit_InsufficientPoints(t *testing.T) {
 
 	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
 		brandID: {
-			Slug:   "closy",
 			Name:   "Closy Brand",
 			Status: brandstatus.Active,
 		},
@@ -331,7 +332,7 @@ func TestRedeemBenefit_InsufficientPoints(t *testing.T) {
 		},
 	}}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandBenefitUseCase{
 		brandRepo:      brandRepo,
 		customerRepo:   customerRepo,
 		benefitRepo:    benefitRepo,
@@ -383,4 +384,50 @@ func ptr[T any](v T) *T {
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func newBenefitLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entities.LoyaltyPointLot) (*BrandBenefitUseCase, *loyaltyLotsAccountRepo, *loyaltyLotsLotRepo, *loyaltyLotsTxRepo) {
+	accountRepo := &loyaltyLotsAccountRepo{accounts: map[uuid.UUID]*entities.LoyaltyAccount{account.ID: account}}
+	lotRepo := &loyaltyLotsLotRepo{lots: map[uuid.UUID]*entities.LoyaltyPointLot{}}
+	for _, lot := range lots {
+		lotRepo.lots[lot.ID] = lot
+	}
+	txRepo := &loyaltyLotsTxRepo{}
+	uc := &BrandBenefitUseCase{
+		accountRepo: accountRepo,
+		lotRepo:     lotRepo,
+		txRepo:      txRepo,
+		uow:         loyaltyLotsTestUOW{},
+	}
+	return uc, accountRepo, lotRepo, txRepo
+}
+
+func TestRedeemLoyaltyPointsExpiresDueLotsBeforeBalanceCheck(t *testing.T) {
+	now := time.Now().UTC()
+	account := &entities.LoyaltyAccount{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: uuid.New(), BrandCustomerID: uuid.New(), CurrentPoints: 200}
+	expiredAt := now.Add(-time.Hour)
+	validAt := now.Add(time.Hour)
+	uc, accountRepo, lotRepo, txRepo := newBenefitLotsTestUseCase(account,
+		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &expiredAt, Status: loyaltypointlotstatus.Active},
+		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &validAt, Status: loyaltypointlotstatus.Active},
+	)
+
+	if _, err := uc.redeemLoyaltyPointsFromLots(context.Background(), account.ID, 150, now, nil, nil, nil, nil); err == nil {
+		t.Fatal("expected insufficient points after expiry")
+	}
+	if accountRepo.accounts[account.ID].CurrentPoints != 100 {
+		t.Fatalf("expected balance 100 after on-demand expiry, got %d", accountRepo.accounts[account.ID].CurrentPoints)
+	}
+	if len(txRepo.transactions) != 1 || txRepo.transactions[0].TransactionType != loyaltytransactiontype.Expire {
+		t.Fatalf("expected only EXPIRE transaction, got %#v", txRepo.transactions)
+	}
+	expiredCount := 0
+	for _, lot := range lotRepo.lots {
+		if lot.Status == loyaltypointlotstatus.Expired {
+			expiredCount++
+		}
+	}
+	if expiredCount != 1 {
+		t.Fatalf("expected one expired lot, got %d", expiredCount)
+	}
 }

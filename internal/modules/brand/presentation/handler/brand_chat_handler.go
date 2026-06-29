@@ -12,11 +12,11 @@ import (
 )
 
 type BrandChatHandler struct {
-	brandUC usecase_interfaces.IBrandCoreUseCase
+	chatUC usecase_interfaces.IBrandChatUseCase
 }
 
-func NewBrandChatHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *BrandChatHandler {
-	return &BrandChatHandler{brandUC: brandUC}
+func NewBrandChatHandler(chatUC usecase_interfaces.IBrandChatUseCase) *BrandChatHandler {
+	return &BrandChatHandler{chatUC: chatUC}
 }
 
 // GetUserConversation returns the user's conversation with a brand.
@@ -36,7 +36,7 @@ func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetUserConversation(c.Request.Context(), userID, brandID)
+	res, err := h.chatUC.GetUserConversation(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (h *BrandChatHandler) SendUserMessage(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.SendUserMessage(c.Request.Context(), userID, brandID, input)
+	res, err := h.chatUC.SendUserMessage(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListBrandConversations(c.Request.Context(), userID, brandID)
+	res, err := h.chatUC.ListBrandConversations(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListConversationMessages(c.Request.Context(), userID, brandID, conversationID)
+	res, err := h.chatUC.ListConversationMessages(c.Request.Context(), userID, brandID, conversationID)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (h *BrandChatHandler) SendStaffMessage(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.SendStaffMessage(c.Request.Context(), userID, brandID, conversationID, input)
+	res, err := h.chatUC.SendStaffMessage(c.Request.Context(), userID, brandID, conversationID, input)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.MarkUserConversationRead(c.Request.Context(), userID, brandID)
+	res, err := h.chatUC.MarkUserConversationRead(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (h *BrandChatHandler) MarkStaffConversationRead(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.MarkStaffConversationRead(c.Request.Context(), userID, brandID, conversationID)
+	res, err := h.chatUC.MarkStaffConversationRead(c.Request.Context(), userID, brandID, conversationID)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func (h *BrandChatHandler) CloseConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.CloseBrandConversation(c.Request.Context(), userID, brandID, conversationID)
+	res, err := h.chatUC.CloseBrandConversation(c.Request.Context(), userID, brandID, conversationID)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (h *BrandChatHandler) ReopenConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ReopenBrandConversation(c.Request.Context(), userID, brandID, conversationID)
+	res, err := h.chatUC.ReopenBrandConversation(c.Request.Context(), userID, brandID, conversationID)
 	if err != nil {
 		return err
 	}

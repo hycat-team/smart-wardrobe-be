@@ -18,14 +18,14 @@ type ILoyaltyPointExpiryWorker interface {
 }
 
 type LoyaltyPointExpiryWorker struct {
-	useCase uc_interfaces.IBrandCoreUseCase
+	useCase uc_interfaces.IBrandLoyaltyUseCase
 	log     logger.Interface
 	cfg     *config.Config
 	stopCh  chan struct{}
 }
 
 func NewLoyaltyPointExpiryWorker(
-	useCase uc_interfaces.IBrandCoreUseCase,
+	useCase uc_interfaces.IBrandLoyaltyUseCase,
 	log logger.Interface,
 	cfg *config.Config,
 ) ILoyaltyPointExpiryWorker {

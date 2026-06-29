@@ -28,7 +28,7 @@ func TestGetBrandsForAdmin(t *testing.T) {
 		},
 	}}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandUseCase{
 		brandRepo: brandRepo,
 	}
 

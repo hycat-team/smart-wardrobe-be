@@ -12,11 +12,24 @@ import (
 )
 
 type BrandLoyaltyHandler struct {
-	brandUC usecase_interfaces.IBrandCoreUseCase
+	brandUC   usecase_interfaces.IBrandUseCase
+	loyaltyUC usecase_interfaces.IBrandLoyaltyUseCase
+	benefitUC usecase_interfaces.IBrandBenefitUseCase
+	claimUC   usecase_interfaces.IBrandClaimUseCase
 }
 
-func NewBrandLoyaltyHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *BrandLoyaltyHandler {
-	return &BrandLoyaltyHandler{brandUC: brandUC}
+func NewBrandLoyaltyHandler(
+	brandUC usecase_interfaces.IBrandUseCase,
+	loyaltyUC usecase_interfaces.IBrandLoyaltyUseCase,
+	benefitUC usecase_interfaces.IBrandBenefitUseCase,
+	claimUC usecase_interfaces.IBrandClaimUseCase,
+) *BrandLoyaltyHandler {
+	return &BrandLoyaltyHandler{
+		brandUC:   brandUC,
+		loyaltyUC: loyaltyUC,
+		benefitUC: benefitUC,
+		claimUC:   claimUC,
+	}
 }
 
 // AddBrandMember adds members to a brand.
@@ -92,7 +105,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomers(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandCustomers(c.Request.Context(), userID, brandID)
+	res, err := h.loyaltyUC.GetBrandCustomers(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -121,7 +134,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomer(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandCustomer(c.Request.Context(), userID, brandID, customerID)
+	res, err := h.loyaltyUC.GetBrandCustomer(c.Request.Context(), userID, brandID, customerID)
 	if err != nil {
 		return err
 	}
@@ -150,7 +163,7 @@ func (h *BrandLoyaltyHandler) JoinLoyalty(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.JoinLoyalty(c.Request.Context(), userID, role, brandID)
+	res, err := h.loyaltyUC.JoinLoyalty(c.Request.Context(), userID, role, brandID)
 	if err != nil {
 		return err
 	}
@@ -181,7 +194,7 @@ func (h *BrandLoyaltyHandler) CreateOfflineCustomer(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.CreateOfflineCustomer(c.Request.Context(), userID, brandID, input)
+	res, err := h.loyaltyUC.CreateOfflineCustomer(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -212,7 +225,7 @@ func (h *BrandLoyaltyHandler) GrantLoyaltyPoints(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.GrantLoyaltyPoints(c.Request.Context(), userID, brandID, input)
+	res, err := h.loyaltyUC.GrantLoyaltyPoints(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -231,7 +244,7 @@ func (h *BrandLoyaltyHandler) ListUserBrandLoyalties(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListUserBrandLoyalties(c.Request.Context(), userID)
+	res, err := h.loyaltyUC.ListUserBrandLoyalties(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -255,7 +268,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetUserBrandLoyalty(c.Request.Context(), userID, brandID)
+	res, err := h.loyaltyUC.GetUserBrandLoyalty(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -279,7 +292,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) er
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetUserBrandLoyaltyTransactions(c.Request.Context(), userID, brandID)
+	res, err := h.loyaltyUC.GetUserBrandLoyaltyTransactions(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -308,7 +321,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Conte
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetLoyaltyAccountTransactionsForStaff(c.Request.Context(), userID, brandID, accountID)
+	res, err := h.loyaltyUC.GetLoyaltyAccountTransactionsForStaff(c.Request.Context(), userID, brandID, accountID)
 	if err != nil {
 		return err
 	}
@@ -332,7 +345,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetLoyaltyProgramForStaff(c.Request.Context(), userID, brandID)
+	res, err := h.loyaltyUC.GetLoyaltyProgramForStaff(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -356,7 +369,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetLoyaltyTiersForStaff(c.Request.Context(), userID, brandID)
+	res, err := h.loyaltyUC.GetLoyaltyTiersForStaff(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -386,7 +399,7 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.CreateBrandBenefit(c.Request.Context(), userID, brandID, input)
+	res, err := h.benefitUC.CreateBrandBenefit(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -411,7 +424,7 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListBrandBenefitsForStaff(c.Request.Context(), userID, brandID)
+	res, err := h.benefitUC.ListBrandBenefitsForStaff(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -446,7 +459,7 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.UpdateBenefitStatus(c.Request.Context(), userID, brandID, benefitID, input.Status)
+	res, err := h.benefitUC.UpdateBenefitStatus(c.Request.Context(), userID, brandID, benefitID, input.Status)
 	if err != nil {
 		return err
 	}
@@ -471,7 +484,7 @@ func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListActiveBenefitsForUser(c.Request.Context(), userID, brandID)
+	res, err := h.benefitUC.ListActiveBenefitsForUser(c.Request.Context(), userID, brandID)
 	if err != nil {
 		return err
 	}
@@ -496,7 +509,7 @@ func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.RedeemBenefit(c.Request.Context(), userID, benefitID)
+	res, err := h.benefitUC.RedeemBenefit(c.Request.Context(), userID, benefitID)
 	if err != nil {
 		return err
 	}
@@ -520,7 +533,7 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetActiveBenefitForUser(c.Request.Context(), userID, benefitID)
+	res, err := h.benefitUC.GetActiveBenefitForUser(c.Request.Context(), userID, benefitID)
 	if err != nil {
 		return err
 	}
@@ -539,7 +552,7 @@ func (h *BrandLoyaltyHandler) ListBenefitRedemptionsForUser(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListBenefitRedemptionsForUser(c.Request.Context(), userID)
+	res, err := h.benefitUC.ListBenefitRedemptionsForUser(c.Request.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -570,7 +583,7 @@ func (h *BrandLoyaltyHandler) CreateClaimToken(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.CreateBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID)
+	res, err := h.claimUC.CreateBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID)
 	if err != nil {
 		return err
 	}
@@ -599,7 +612,7 @@ func (h *BrandLoyaltyHandler) ListClaimTokens(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.ListBrandCustomerClaims(c.Request.Context(), staffUserID, brandID, customerID)
+	res, err := h.claimUC.ListBrandCustomerClaims(c.Request.Context(), staffUserID, brandID, customerID)
 	if err != nil {
 		return err
 	}
@@ -639,7 +652,7 @@ func (h *BrandLoyaltyHandler) RevokeClaimToken(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.RevokeBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID, claimID, input)
+	res, err := h.claimUC.RevokeBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID, claimID, input)
 	if err != nil {
 		return err
 	}
@@ -665,7 +678,7 @@ func (h *BrandLoyaltyHandler) ClaimOfflineAccount(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.ClaimBrandCustomer(c.Request.Context(), userID, input.ClaimToken, c.ClientIP())
+	res, err := h.claimUC.ClaimBrandCustomer(c.Request.Context(), userID, input.ClaimToken, c.ClientIP())
 	if err != nil {
 		return err
 	}
@@ -697,7 +710,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetUserBrandLoyaltyLots(c.Request.Context(), userID, brandID, query)
+	res, err := h.loyaltyUC.GetUserBrandLoyaltyLots(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -734,7 +747,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountLotsForStaff(c *gin.Context) erro
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetLoyaltyAccountLotsForStaff(c.Request.Context(), userID, brandID, accountID, query)
+	res, err := h.loyaltyUC.GetLoyaltyAccountLotsForStaff(c.Request.Context(), userID, brandID, accountID, query)
 	if err != nil {
 		return err
 	}

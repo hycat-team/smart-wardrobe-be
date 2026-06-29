@@ -1,7 +1,6 @@
 package brand
 
 import (
-	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/contract"
 	"smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
@@ -27,8 +26,13 @@ var ProviderSet = wire.NewSet(
 	persistence.NewBrandConversationMessageRepository,
 	persistence.NewBrandItemRepository,
 	persistence.NewDigitalSampleResponseRepository,
-	usecase.NewBrandCoreUseCase,
-	wire.Bind(new(contract.IBrandContract), new(uc_interfaces.IBrandCoreUseCase)),
+	usecase.NewBrandUseCase,
+	usecase.NewBrandLoyaltyUseCase,
+	usecase.NewBrandBenefitUseCase,
+	usecase.NewBrandItemUseCase,
+	usecase.NewBrandChatUseCase,
+	usecase.NewBrandClaimUseCase,
+	contract.NewBrandContract,
 	handler.NewBrandPortalHandler,
 	handler.NewBrandLoyaltyHandler,
 	handler.NewBrandChatHandler,

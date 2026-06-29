@@ -168,7 +168,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	feedbackRepo := &mockDigitalSampleResponseRepo{feedbacks: make(map[uuid.UUID]*entities.DigitalSampleResponse)}
 	fashionContract := &mockFashionContract{}
 
-	uc := &BrandCoreUseCase{
+	uc := &BrandItemUseCase{
 		brandRepo:       brandRepo,
 		memberRepo:      memberRepo,
 		brandItemRepo:   brandItemRepo,
