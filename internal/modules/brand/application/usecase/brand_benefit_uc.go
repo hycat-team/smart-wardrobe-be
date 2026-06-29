@@ -18,7 +18,6 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitunlocktype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
@@ -68,7 +67,7 @@ func NewBrandBenefitUseCase(
 }
 
 func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -132,7 +131,7 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 }
 
 func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	benefits, err := uc.benefitRepo.GetByBrandID(ctx, brandID)
@@ -212,7 +211,7 @@ func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context
 }
 
 func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -561,32 +560,6 @@ func (uc *BrandBenefitUseCase) expireDueLotsForAccount(ctx context.Context, loya
 		return 0, err
 	}
 	return expiredPoints, nil
-}
-
-func (uc *BrandBenefitUseCase) requireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
-	if err != nil {
-		return err
-	}
-	if brand == nil {
-		return branderrors.ErrBrandNotFound()
-	}
-	if brand.Status != brandstatus.Active {
-		return branderrors.ErrBrandNotActive()
-	}
-	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil {
-		return err
-	}
-	if member == nil || member.Status != brandmemberstatus.Active {
-		return branderrors.ErrBrandPortalForbidden()
-	}
-	for _, allowedRole := range allowedRoles {
-		if member.Role == allowedRole {
-			return nil
-		}
-	}
-	return branderrors.ErrBrandPortalForbidden()
 }
 
 func parseValidDurationDays(doc entities.JSONDocument) int {

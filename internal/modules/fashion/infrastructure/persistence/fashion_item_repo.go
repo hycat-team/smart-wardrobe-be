@@ -18,8 +18,9 @@ type FashionItemRepository struct {
 }
 
 func NewFashionItemRepository(db *gorm.DB) repositories.IFashionItemRepository {
+	relations := []string{"Category"}
 	return &FashionItemRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.FashionItem, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.FashionItem, uuid.UUID](db, relations),
 	}
 }
 

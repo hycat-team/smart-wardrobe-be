@@ -17,8 +17,9 @@ type BrandItemRepository struct {
 }
 
 func NewBrandItemRepository(db *gorm.DB) repositories.IBrandItemRepository {
+	relations := []string{"Brand", "FashionItem", "FashionItem.Category"}
 	return &BrandItemRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandItem, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandItem, uuid.UUID](db, relations),
 	}
 }
 
@@ -73,8 +74,9 @@ type DigitalSampleResponseRepository struct {
 }
 
 func NewDigitalSampleResponseRepository(db *gorm.DB) repositories.IDigitalSampleResponseRepository {
+	relations := []string{"BrandItem", "User", "Outfit"}
 	return &DigitalSampleResponseRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.DigitalSampleResponse, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.DigitalSampleResponse, uuid.UUID](db, relations),
 	}
 }
 

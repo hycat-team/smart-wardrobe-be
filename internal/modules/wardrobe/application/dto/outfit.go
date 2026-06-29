@@ -9,19 +9,19 @@ import (
 )
 
 type SaveOutfitReq struct {
-	Name          string              `json:"name" binding:"required,max=255" label:"ten bat buoc"`
-	Description   *string             `json:"description" binding:"omitempty" label:"mo ta"`
-	CoverImageUrl *string             `json:"coverImageUrl" binding:"omitempty,url" label:"duong dan anh bia"`
-	CoverPublicID *string             `json:"coverPublicId" binding:"omitempty,max=255" label:"ma anh bia"`
-	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive" label:"danh sach mon do"`
+	Name          string              `json:"name" binding:"required,max=255" label:"tên trang phục"`
+	Description   *string             `json:"description" binding:"omitempty" label:"mô tả"`
+	CoverImageUrl *string             `json:"coverImageUrl" binding:"omitempty,url" label:"đường dẫn ảnh bìa"`
+	CoverPublicID *string             `json:"coverPublicId" binding:"omitempty,max=255" label:"mã ảnh bìa"`
+	Items         []SaveOutfitItemReq `json:"items" binding:"required,dive" label:"danh sách món đồ"`
 }
 
 type SaveOutfitItemReq struct {
-	FashionItemID uuid.UUID `json:"fashionItemId" binding:"required" label:"ma fashion item"`
-	PositionX     float64   `json:"positionX" label:"vi tri X"`
-	PositionY     float64   `json:"positionY" label:"vi tri Y"`
-	Scale         float64   `json:"scale" binding:"required,min=0.1" label:"ti le hien thi"`
-	LayerOrder    int16     `json:"layerOrder" binding:"required" label:"thu tu lop"`
+	FashionItemID uuid.UUID `json:"fashionItemId" binding:"required" label:"mã sản phẩm thời trang"`
+	PositionX     float64   `json:"positionX" label:"vị trí X"`
+	PositionY     float64   `json:"positionY" label:"vị trí Y"`
+	Scale         float64   `json:"scale" binding:"required,min=0.1" label:"tỷ lệ hiển thị"`
+	LayerOrder    int16     `json:"layerOrder" binding:"required" label:"thứ tự lớp"`
 }
 
 type OutfitRes struct {

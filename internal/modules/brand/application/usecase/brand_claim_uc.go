@@ -16,8 +16,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -59,7 +57,7 @@ func NewBrandClaimUseCase(
 }
 
 func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.CreateClaimTokenRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -113,7 +111,7 @@ func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staff
 }
 
 func (uc *BrandClaimUseCase) ListBrandCustomerClaims(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) ([]*dto.ClaimTokenRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -131,7 +129,7 @@ func (uc *BrandClaimUseCase) ListBrandCustomerClaims(ctx context.Context, staffU
 }
 
 func (uc *BrandClaimUseCase) RevokeBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID, claimID uuid.UUID, input dto.RevokeClaimTokenReq) (*dto.ClaimTokenRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -242,32 +240,6 @@ func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid
 	}
 
 	return mapper.MapBrandCustomer(updatedCustomer), nil
-}
-
-func (uc *BrandClaimUseCase) requireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
-	if err != nil {
-		return err
-	}
-	if brand == nil {
-		return branderrors.ErrBrandNotFound()
-	}
-	if brand.Status != brandstatus.Active {
-		return branderrors.ErrBrandNotActive()
-	}
-	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil {
-		return err
-	}
-	if member == nil || member.Status != brandmemberstatus.Active {
-		return branderrors.ErrBrandPortalForbidden()
-	}
-	for _, allowedRole := range allowedRoles {
-		if member.Role == allowedRole {
-			return nil
-		}
-	}
-	return branderrors.ErrBrandPortalForbidden()
 }
 
 func generateClaimToken() (string, error) {

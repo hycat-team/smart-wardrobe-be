@@ -18,8 +18,9 @@ type BrandConversationRepository struct {
 }
 
 func NewBrandConversationRepository(db *gorm.DB) repositories.IBrandConversationRepository {
+	relations := []string{"Brand", "User"}
 	return &BrandConversationRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversation, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversation, uuid.UUID](db, relations),
 	}
 }
 
@@ -61,8 +62,9 @@ type BrandConversationMessageRepository struct {
 }
 
 func NewBrandConversationMessageRepository(db *gorm.DB) repositories.IBrandConversationMessageRepository {
+	relations := []string{"Conversation", "SenderUser"}
 	return &BrandConversationMessageRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversationMessage, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversationMessage, uuid.UUID](db, relations),
 	}
 }
 

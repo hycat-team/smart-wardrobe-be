@@ -20,8 +20,9 @@ type LoyaltyProgramRepository struct {
 }
 
 func NewLoyaltyProgramRepository(db *gorm.DB) repositories.ILoyaltyProgramRepository {
+	relations := []string{"Brand"}
 	return &LoyaltyProgramRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyProgram, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyProgram, uuid.UUID](db, relations),
 	}
 }
 
@@ -42,8 +43,9 @@ type LoyaltyTierRepository struct {
 }
 
 func NewLoyaltyTierRepository(db *gorm.DB) repositories.ILoyaltyTierRepository {
+	relations := []string{"Brand"}
 	return &LoyaltyTierRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyTier, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyTier, uuid.UUID](db, relations),
 	}
 }
 
@@ -76,8 +78,9 @@ type LoyaltyAccountRepository struct {
 }
 
 func NewLoyaltyAccountRepository(db *gorm.DB) repositories.ILoyaltyAccountRepository {
+	relations := []string{"Brand", "BrandCustomer", "User", "CurrentTier"}
 	return &LoyaltyAccountRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyAccount, uuid.UUID](db, []string{"CurrentTier"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyAccount, uuid.UUID](db, relations),
 	}
 }
 
@@ -149,8 +152,9 @@ type LoyaltyPointTransactionRepository struct {
 }
 
 func NewLoyaltyPointTransactionRepository(db *gorm.DB) repositories.ILoyaltyPointTransactionRepository {
+	relations := []string{"LoyaltyAccount", "Brand", "BrandCustomer", "User", "CreatedByUser"}
 	return &LoyaltyPointTransactionRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyPointTransaction, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyPointTransaction, uuid.UUID](db, relations),
 	}
 }
 
@@ -180,8 +184,9 @@ type LoyaltyPointLotRepository struct {
 }
 
 func NewLoyaltyPointLotRepository(db *gorm.DB) repositories.ILoyaltyPointLotRepository {
+	relations := []string{"LoyaltyAccount", "Brand", "BrandCustomer", "User", "EarnTransaction"}
 	return &LoyaltyPointLotRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyPointLot, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.LoyaltyPointLot, uuid.UUID](db, relations),
 	}
 }
 
@@ -273,8 +278,9 @@ type BrandCustomerClaimRepository struct {
 }
 
 func NewBrandCustomerClaimRepository(db *gorm.DB) repositories.IBrandCustomerClaimRepository {
+	relations := []string{"BrandCustomer", "RevokedByUser"}
 	return &BrandCustomerClaimRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomerClaim, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomerClaim, uuid.UUID](db, relations),
 	}
 }
 

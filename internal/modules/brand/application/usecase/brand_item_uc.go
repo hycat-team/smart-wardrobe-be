@@ -19,7 +19,6 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/votetype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -64,7 +63,7 @@ func NewBrandItemUseCase(
 }
 
 func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
-	if err := uc.requireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	return uc.mediaService.GenerateUploadSignature(ctx, shared_dto.UploadSignatureParams{
@@ -182,7 +181,7 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -232,7 +231,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 }
 
 func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
@@ -247,7 +246,7 @@ func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUser
 }
 
 func (uc *BrandItemUseCase) GetBrandItemForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -283,7 +282,7 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -309,7 +308,7 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status string) (*dto.BrandItemRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -334,7 +333,7 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 }
 
 func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	feedbacks, err := uc.feedbackRepo.GetByBrandItemID(ctx, itemID)
@@ -406,32 +405,6 @@ func (uc *BrandItemUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 	}
 
 	return mapToDigitalSampleResponseRes(feedback), nil
-}
-
-func (uc *BrandItemUseCase) requireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
-	if err != nil {
-		return err
-	}
-	if brand == nil {
-		return branderrors.ErrBrandNotFound()
-	}
-	if brand.Status != brandstatus.Active {
-		return branderrors.ErrBrandNotActive()
-	}
-	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil {
-		return err
-	}
-	if member == nil || member.Status != brandmemberstatus.Active {
-		return branderrors.ErrBrandPortalForbidden()
-	}
-	for _, allowedRole := range allowedRoles {
-		if member.Role == allowedRole {
-			return nil
-		}
-	}
-	return branderrors.ErrBrandPortalForbidden()
 }
 
 func isValidVoteType(vote votetype.VoteType) bool {

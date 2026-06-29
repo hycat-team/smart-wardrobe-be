@@ -15,7 +15,6 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -151,7 +150,7 @@ func (uc *BrandChatUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 }
 
 func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandConversationRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -189,7 +188,7 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 }
 
 func (uc *BrandChatUseCase) ListConversationMessages(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) ([]*dto.BrandConversationMessageRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -210,7 +209,7 @@ func (uc *BrandChatUseCase) ListConversationMessages(ctx context.Context, staffU
 }
 
 func (uc *BrandChatUseCase) SendStaffMessage(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -287,7 +286,7 @@ func (uc *BrandChatUseCase) MarkUserConversationRead(ctx context.Context, userID
 }
 
 func (uc *BrandChatUseCase) MarkStaffConversationRead(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	conv, err := uc.convRepo.GetByID(ctx, conversationID)
@@ -306,7 +305,7 @@ func (uc *BrandChatUseCase) MarkStaffConversationRead(ctx context.Context, staff
 }
 
 func (uc *BrandChatUseCase) CloseBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	conv, err := uc.convRepo.GetByID(ctx, conversationID)
@@ -327,7 +326,7 @@ func (uc *BrandChatUseCase) CloseBrandConversation(ctx context.Context, staffUse
 }
 
 func (uc *BrandChatUseCase) ReopenBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
-	if err := uc.requireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	conv, err := uc.convRepo.GetByID(ctx, conversationID)
@@ -373,32 +372,6 @@ func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, 
 	res.UserUnreadCount = userUnread
 	res.StaffUnreadCount = staffUnread
 	return res, nil
-}
-
-func (uc *BrandChatUseCase) requireBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, allowedRoles ...brandmemberrole.BrandMemberRole) error {
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
-	if err != nil {
-		return err
-	}
-	if brand == nil {
-		return branderrors.ErrBrandNotFound()
-	}
-	if brand.Status != brandstatus.Active {
-		return branderrors.ErrBrandNotActive()
-	}
-	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil {
-		return err
-	}
-	if member == nil || member.Status != brandmemberstatus.Active {
-		return branderrors.ErrBrandPortalForbidden()
-	}
-	for _, allowedRole := range allowedRoles {
-		if member.Role == allowedRole {
-			return nil
-		}
-	}
-	return branderrors.ErrBrandPortalForbidden()
 }
 
 func getUserDisplayName(u *entities.User) string {

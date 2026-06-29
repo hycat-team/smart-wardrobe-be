@@ -18,8 +18,9 @@ type BrandBenefitRepository struct {
 }
 
 func NewBrandBenefitRepository(db *gorm.DB) repositories.IBrandBenefitRepository {
+	relations := []string{"Brand", "RequiredTier"}
 	return &BrandBenefitRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandBenefit, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandBenefit, uuid.UUID](db, relations),
 	}
 }
 
@@ -46,8 +47,9 @@ type BenefitRedemptionRepository struct {
 }
 
 func NewBenefitRedemptionRepository(db *gorm.DB) repositories.IBenefitRedemptionRepository {
+	relations := []string{"Benefit", "Brand", "BrandCustomer", "User"}
 	return &BenefitRedemptionRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BenefitRedemption, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BenefitRedemption, uuid.UUID](db, relations),
 	}
 }
 

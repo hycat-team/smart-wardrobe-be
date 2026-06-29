@@ -17,20 +17,20 @@ import (
 type UploadSignatureResult = shared_dto.UploadSignatureResult
 
 type CreateBrandReq struct {
-	Slug         string  `json:"slug" binding:"required,max=100" label:"slug brand"`
-	Name         string  `json:"name" binding:"required,max=255" label:"ten brand"`
-	Description  *string `json:"description" binding:"omitempty" label:"mo ta"`
-	LogoURL      *string `json:"logoUrl" binding:"omitempty,url" label:"logo brand"`
-	LogoPublicID *string `json:"logoPublicId" binding:"omitempty,max=255" label:"cloudinary public id logo brand"`
+	Slug         string  `json:"slug" binding:"required,max=100" label:"slug thương hiệu"`
+	Name         string  `json:"name" binding:"required,max=255" label:"tên thương hiệu"`
+	Description  *string `json:"description" binding:"omitempty" label:"mô tả"`
+	LogoURL      *string `json:"logoUrl" binding:"omitempty,url" label:"logo thương hiệu"`
+	LogoPublicID *string `json:"logoPublicId" binding:"omitempty,max=255" label:"mã ảnh logo thương hiệu"`
 }
 
 type UpdateBrandLogoReq struct {
-	LogoURL      string `json:"logoUrl" binding:"required,url" label:"logo brand"`
-	LogoPublicID string `json:"logoPublicId" binding:"required,max=255" label:"cloudinary public id logo brand"`
+	LogoURL      string `json:"logoUrl" binding:"required,url" label:"logo thương hiệu"`
+	LogoPublicID string `json:"logoPublicId" binding:"required,max=255" label:"mã ảnh logo thương hiệu"`
 }
 
 type UpdateBrandStatusReq struct {
-	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trang thai brand"`
+	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trạng thái thương hiệu"`
 }
 
 type AddBrandMembersReq struct {
@@ -39,7 +39,7 @@ type AddBrandMembersReq struct {
 
 type AddBrandMemberItemReq struct {
 	EmailOrUsername string                          `json:"emailOrUsername" binding:"required,max=255" label:"email hoặc tên đăng nhập"`
-	Role            brandmemberrole.BrandMemberRole `json:"role" binding:"required" label:"vai trò brand"`
+	Role            brandmemberrole.BrandMemberRole `json:"role" binding:"required" label:"vai trò thành viên"`
 }
 
 type AddBrandMemberItemResult struct {
@@ -56,23 +56,23 @@ type AddBrandMembersRes struct {
 }
 
 type CreateOfflineBrandCustomerReq struct {
-	CustomerName         *string `json:"customerName" binding:"omitempty,max=255"`
-	PhoneE164            string  `json:"phoneE164" binding:"required,max=50"`
-	ExternalCustomerCode *string `json:"externalCustomerCode" binding:"omitempty,max=100"`
+	CustomerName         *string `json:"customerName" binding:"omitempty,max=255" label:"tên khách hàng"`
+	PhoneE164            string  `json:"phoneE164" binding:"required,max=50" label:"số điện thoại"`
+	ExternalCustomerCode *string `json:"externalCustomerCode" binding:"omitempty,max=100" label:"mã khách hàng liên kết"`
 }
 
 type GrantLoyaltyPointsReq struct {
-	UserID               *uuid.UUID                                    `json:"userId" binding:"omitempty" label:"ma user"`
-	Phone                *string                                       `json:"phone" binding:"omitempty,max=50" label:"so dien thoai"`
-	CustomerName         *string                                       `json:"customerName" binding:"omitempty,max=255" label:"ten khach hang"`
-	ExternalCustomerCode *string                                       `json:"externalCustomerCode" binding:"omitempty,max=100" label:"ma khach hang ngoai"`
-	PurchaseAmount       *float64                                      `json:"purchaseAmount" binding:"omitempty,min=0" label:"gia tri mua hang"`
-	PointsDelta          *int                                          `json:"pointsDelta" binding:"omitempty" label:"diem thay doi"`
-	TransactionType      loyaltytransactiontype.LoyaltyTransactionType `json:"transactionType" binding:"required" label:"loai giao dich"`
-	Reason               *string                                       `json:"reason" binding:"omitempty,max=255" label:"ly do"`
-	ReferenceType        *string                                       `json:"referenceType" binding:"omitempty,max=100" label:"loai tham chieu"`
-	ReferenceID          *uuid.UUID                                    `json:"referenceId" binding:"omitempty" label:"ma tham chieu"`
-	IdempotencyKey       *string                                       `json:"idempotencyKey" binding:"omitempty,max=100" label:"khoa idempotency"`
+	UserID               *uuid.UUID                                    `json:"userId" binding:"omitempty" label:"mã người dùng"`
+	Phone                *string                                       `json:"phone" binding:"omitempty,max=50" label:"số điện thoại"`
+	CustomerName         *string                                       `json:"customerName" binding:"omitempty,max=255" label:"tên khách hàng"`
+	ExternalCustomerCode *string                                       `json:"externalCustomerCode" binding:"omitempty,max=100" label:"mã khách hàng liên kết"`
+	PurchaseAmount       *float64                                      `json:"purchaseAmount" binding:"omitempty,min=0" label:"giá trị mua hàng"`
+	PointsDelta          *int                                          `json:"pointsDelta" binding:"omitempty" label:"điểm thay đổi"`
+	TransactionType      loyaltytransactiontype.LoyaltyTransactionType `json:"transactionType" binding:"required" label:"loại giao dịch"`
+	Reason               *string                                       `json:"reason" binding:"omitempty,max=255" label:"lý do"`
+	ReferenceType        *string                                       `json:"referenceType" binding:"omitempty,max=100" label:"loại tham chiếu"`
+	ReferenceID          *uuid.UUID                                    `json:"referenceId" binding:"omitempty" label:"mã tham chiếu"`
+	IdempotencyKey       *string                                       `json:"idempotencyKey" binding:"omitempty,max=100" label:"khóa idempotency"`
 }
 
 type BrandRes struct {
@@ -212,14 +212,14 @@ type LoyaltyPointTransactionDetailRes struct {
 }
 
 type CreateBrandBenefitReq struct {
-	Name           string      `json:"name" binding:"required,max=255" label:"ten quyen loi"`
-	Description    *string     `json:"description" binding:"omitempty" label:"mo ta"`
-	BenefitType    string      `json:"benefitType" binding:"required" label:"loai quyen loi"`
-	UnlockType     string      `json:"unlockType" binding:"required" label:"loai mo khoa"`
-	RequiredPoints *int        `json:"requiredPoints" binding:"omitempty,min=0" label:"diem yeu cau"`
-	RequiredTierID *uuid.UUID  `json:"requiredTierId" binding:"omitempty" label:"ma hang yeu cau"`
-	FeatureCode    *string     `json:"featureCode" binding:"omitempty,max=100" label:"ma tinh nang"`
-	FeatureConfig  interface{} `json:"featureConfig" binding:"omitempty" label:"cau hinh tinh nang"`
+	Name           string      `json:"name" binding:"required,max=255" label:"tên quyền lợi"`
+	Description    *string     `json:"description" binding:"omitempty" label:"mô tả"`
+	BenefitType    string      `json:"benefitType" binding:"required" label:"loại quyền lợi"`
+	UnlockType     string      `json:"unlockType" binding:"required" label:"loại mở khóa"`
+	RequiredPoints *int        `json:"requiredPoints" binding:"omitempty,min=0" label:"điểm yêu cầu"`
+	RequiredTierID *uuid.UUID  `json:"requiredTierId" binding:"omitempty" label:"mã hạng yêu cầu"`
+	FeatureCode    *string     `json:"featureCode" binding:"omitempty,max=100" label:"mã tính năng"`
+	FeatureConfig  interface{} `json:"featureConfig" binding:"omitempty" label:"cấu hình tính năng"`
 }
 
 type UpdateBenefitStatusReq struct {
@@ -258,7 +258,7 @@ type BenefitRedemptionRes struct {
 }
 
 type SendBrandChatMessageReq struct {
-	Message string `json:"message" binding:"required,min=1" label:"noi dung tin nhan"`
+	Message string `json:"message" binding:"required,min=1" label:"nội dung tin nhắn"`
 }
 
 type BrandConversationRes struct {
@@ -287,26 +287,26 @@ type BrandConversationMessageRes struct {
 }
 
 type CreateBrandItemReq struct {
-	CategoryID    *uuid.UUID `json:"categoryId" binding:"omitempty"`
-	ImageUrl      string     `json:"imageUrl" binding:"required,url"`
-	ImagePublicID string     `json:"imagePublicId" binding:"required"`
-	ProductCode   *string    `json:"productCode" binding:"omitempty,max=100"`
-	Name          string     `json:"name" binding:"required,max=255"`
-	Description   *string    `json:"description" binding:"omitempty"`
-	Price         *float64   `json:"price" binding:"omitempty,gt=0"`
-	ItemType      string     `json:"itemType" binding:"required"` // E.g. "BRAND_RETAIL" or "DIGITAL_SAMPLE"
-	Status        string     `json:"status" binding:"omitempty"`  // DRAFT, ACTIVE, ARCHIVED
+	CategoryID    *uuid.UUID `json:"categoryId" binding:"omitempty" label:"mã danh mục"`
+	ImageUrl      string     `json:"imageUrl" binding:"required,url" label:"đường dẫn hình ảnh"`
+	ImagePublicID string     `json:"imagePublicId" binding:"required" label:"mã hình ảnh"`
+	ProductCode   *string    `json:"productCode" binding:"omitempty,max=100" label:"mã sản phẩm"`
+	Name          string     `json:"name" binding:"required,max=255" label:"tên sản phẩm"`
+	Description   *string    `json:"description" binding:"omitempty" label:"mô tả"`
+	Price         *float64   `json:"price" binding:"omitempty,gt=0" label:"giá sản phẩm"`
+	ItemType      string     `json:"itemType" binding:"required" label:"loại sản phẩm"` // E.g. "BRAND_RETAIL" or "DIGITAL_SAMPLE"
+	Status        string     `json:"status" binding:"omitempty" label:"trạng thái"`     // DRAFT, ACTIVE, ARCHIVED
 }
 
 type UpdateBrandItemReq struct {
-	Name        string   `json:"name" binding:"required,max=255"`
-	Description *string  `json:"description" binding:"omitempty"`
-	Price       *float64 `json:"price" binding:"omitempty,gt=0"`
-	Status      string   `json:"status" binding:"required"` // DRAFT, ACTIVE, ARCHIVED
+	Name        string   `json:"name" binding:"required,max=255" label:"tên sản phẩm"`
+	Description *string  `json:"description" binding:"omitempty" label:"mô tả"`
+	Price       *float64 `json:"price" binding:"omitempty,gt=0" label:"giá sản phẩm"`
+	Status      string   `json:"status" binding:"required" label:"trạng thái"` // DRAFT, ACTIVE, ARCHIVED
 }
 
 type UpdateBrandItemStatusReq struct {
-	Status string `json:"status" binding:"required" label:"trang thai item"`
+	Status string `json:"status" binding:"required" label:"trạng thái sản phẩm"`
 }
 
 type BrandItemRes struct {
@@ -325,10 +325,10 @@ type BrandItemRes struct {
 }
 
 type SubmitSampleFeedbackReq struct {
-	OutfitID     *uuid.UUID `json:"outfitId" binding:"omitempty"`
-	VoteType     *string    `json:"voteType" binding:"omitempty"` // like, dislike, would_buy, not_interested
-	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5"`
-	FeedbackText *string    `json:"feedbackText" binding:"omitempty"`
+	OutfitID     *uuid.UUID `json:"outfitId" binding:"omitempty" label:"mã trang phục"`
+	VoteType     *string    `json:"voteType" binding:"omitempty" label:"loại bình chọn"` // like, dislike, would_buy, not_interested
+	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5" label:"đánh giá"`
+	FeedbackText *string    `json:"feedbackText" binding:"omitempty" label:"nội dung phản hồi"`
 }
 
 type DigitalSampleResponseRes struct {
@@ -364,13 +364,13 @@ type RevokeClaimTokenReq struct {
 }
 
 type ClaimOfflineAccountReq struct {
-	ClaimToken string `json:"claimToken" binding:"required"`
+	ClaimToken string `json:"claimToken" binding:"required" label:"mã nhận tài khoản"`
 }
 
 type GetBrandsAdminQueryReq struct {
 	shared_dto.PaginationQuery
-	Status *brandstatus.BrandStatus `form:"status" binding:"omitempty"`
-	Query  *string                  `form:"q" binding:"omitempty"`
+	Status *brandstatus.BrandStatus `form:"status" binding:"omitempty" label:"trạng thái"`
+	Query  *string                  `form:"q" binding:"omitempty" label:"từ khóa tìm kiếm"`
 }
 
 type AdminBrandListRes = shared_dto.PaginationResult[*BrandRes]

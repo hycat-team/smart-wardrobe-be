@@ -21,8 +21,9 @@ type BrandRepository struct {
 }
 
 func NewBrandRepository(db *gorm.DB) repositories.IBrandRepository {
+	relations := []string{"CreatedByUser", "ApprovedByUser"}
 	return &BrandRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, nil),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, relations),
 	}
 }
 
@@ -142,7 +143,7 @@ type BrandCustomerRepository struct {
 
 func NewBrandCustomerRepository(db *gorm.DB) repositories.IBrandCustomerRepository {
 	return &BrandCustomerRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](db, []string{"User"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](db, []string{"User", "Brand"}),
 	}
 }
 
