@@ -107,18 +107,18 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
     *   `200 OK`: Trả về mảng danh sách đặc quyền `BrandBenefitRes`.
 
 ### 2. Khách hàng xem thông tin chi tiết một đặc quyền đang active
-*   **Endpoint:** `GET /api/v1/brands/:brandId/benefits/:benefitId`
+*   **Endpoint:** `GET /api/v1/brand-benefits/:benefitId`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc một bản ghi đặc quyền `brand_benefits` đang active.
-*   **Mô tả:** Trả về thông tin chi tiết và điều kiện áp dụng của một đặc quyền cụ thể.
+*   **Mô tả:** Trả về thông tin chi tiết và điều kiện áp dụng của một đặc quyền cụ thể theo `benefitId`. Backend tự xác định brand từ bản ghi `brand_benefits`, chỉ trả về khi user là khách hàng loyalty active của brand đó và đặc quyền đang ở trạng thái `active`.
 *   **Response:**
     *   `200 OK`: Trả về thông tin đặc quyền `BrandBenefitRes`.
 
 ### 3. Khách hàng thực hiện quy đổi đặc quyền
-*   **Endpoint:** `POST /api/v1/brands/:brandId/benefits/:benefitId/redeem`
+*   **Endpoint:** `POST /api/v1/brand-benefits/:benefitId/redeem`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Tạo bản ghi lượt đổi quà `benefit_redemptions`, thực hiện trừ số dư điểm trong tài khoản loyalty nếu đặc quyền yêu cầu điểm để quy đổi.
-*   **Mô tả:** Đổi mã giảm giá voucher hoặc kích hoạt đặc quyền truy cập (feature access) bằng điểm tích lũy hoặc nhận miễn phí theo quyền lợi hạng thẻ thành viên (tier privilege). Trạng thái của lượt đổi `status` tham chiếu tại [constants/brand.md:BenefitRedemptionStatus](constants/brand.md#9-trang-thai-quy-doi-dac-quyen-benefitredemptionstatus).
+*   **Mô tả:** Đổi mã giảm giá voucher hoặc kích hoạt đặc quyền truy cập (feature access) theo `benefitId`. Backend tự xác định brand từ bản ghi `brand_benefits`, kiểm tra user là khách hàng loyalty active của brand đó, rồi áp dụng điều kiện đổi bằng điểm tích lũy hoặc quyền lợi hạng thẻ thành viên (tier privilege). Trạng thái của lượt đổi `status` tham chiếu tại [constants/brand.md:BenefitRedemptionStatus](constants/brand.md#9-trang-thai-quy-doi-dac-quyen-benefitredemptionstatus).
 *   **Response:**
     *   `201 Created`: Trả về thông tin kết quả quy đổi `BenefitRedemptionRes`.
 

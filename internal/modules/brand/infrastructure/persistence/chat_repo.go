@@ -36,7 +36,7 @@ func (r *BrandConversationRepository) GetByBrandAndUser(ctx context.Context, bra
 
 func (r *BrandConversationRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandConversation, error) {
 	var list []*entities.BrandConversation
-	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Order("last_message_at desc").Find(&list).Error
+	err := r.GetDB(ctx).Preload("User").Where("brand_id = ?", brandID).Order("last_message_at desc").Find(&list).Error
 	if err != nil {
 		return nil, err
 	}

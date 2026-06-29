@@ -31,6 +31,22 @@ func (r *BrandItemRepository) GetByBrandID(ctx context.Context, brandID uuid.UUI
 	return items, nil
 }
 
+func (r *BrandItemRepository) GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error) {
+	if len(brandIDs) == 0 {
+		return []*entities.BrandItem{}, nil
+	}
+	var items []*entities.BrandItem
+	err := r.GetDB(ctx).
+		Preload("FashionItem").
+		Preload("FashionItem.Category").
+		Where("brand_id IN ?", brandIDs).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (r *BrandItemRepository) GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error) {
 	var item entities.BrandItem
 	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error

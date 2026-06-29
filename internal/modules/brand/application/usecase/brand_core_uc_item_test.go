@@ -50,6 +50,19 @@ func (m *mockBrandItemRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID)
 	}
 	return res, nil
 }
+func (m *mockBrandItemRepo) GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error) {
+	allowed := make(map[uuid.UUID]struct{}, len(brandIDs))
+	for _, brandID := range brandIDs {
+		allowed[brandID] = struct{}{}
+	}
+	var res []*entities.BrandItem
+	for _, item := range m.items {
+		if _, ok := allowed[item.BrandID]; ok {
+			res = append(res, item)
+		}
+	}
+	return res, nil
+}
 func (m *mockBrandItemRepo) GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error) {
 	for _, item := range m.items {
 		if item.BrandID == brandID && item.ProductCode != nil && *item.ProductCode == code {
@@ -210,7 +223,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	}
 
 	// 4. User submits feedback
-	voteType := "UP"
+	voteType := "like"
 	feedbackText := "Great quality dress!"
 	rating := 5
 	feedbackInput := dto.SubmitSampleFeedbackReq{
@@ -223,7 +236,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to submit feedback: %v", err)
 	}
-	if *fRes.VoteType != "UP" || *fRes.FeedbackText != "Great quality dress!" {
+	if *fRes.VoteType != "like" || *fRes.FeedbackText != "Great quality dress!" {
 		t.Errorf("Unexpected feedback response: %+v", fRes)
 	}
 

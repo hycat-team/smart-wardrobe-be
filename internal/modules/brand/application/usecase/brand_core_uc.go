@@ -278,36 +278,112 @@ func (uc *BrandCoreUseCase) GetBrandCustomer(ctx context.Context, userID uuid.UU
 	return mapper.MapBrandCustomer(customer), nil
 }
 
-func (uc *BrandCoreUseCase) AddBrandMember(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMemberReq) (*dto.BrandMemberRes, error) {
-	if !isValidBrandMemberRole(input.Role) {
-		return nil, branderrors.ErrInvalidBrandMemberRole(input.Role)
-	}
+func (uc *BrandCoreUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error) {
 	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
 		return nil, err
 	}
-	existing, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, input.UserID)
+
+	result := &dto.AddBrandMembersRes{
+		Created: []dto.AddBrandMemberItemResult{},
+		Updated: []dto.AddBrandMemberItemResult{},
+		Failed:  []dto.AddBrandMemberItemResult{},
+	}
+	resolvedUsersByID := make(map[uuid.UUID]struct {
+		emailOrUsername string
+		role            brandmemberrole.BrandMemberRole
+	})
+	resolvedUserOrder := make([]uuid.UUID, 0, len(input.Members))
+	seenInputs := make(map[string]struct{})
+
+	for _, memberInput := range input.Members {
+		identifier := strings.TrimSpace(memberInput.EmailOrUsername)
+		normalizedIdentifier := strings.ToLower(identifier)
+		if _, exists := seenInputs[normalizedIdentifier]; exists {
+			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
+				EmailOrUsername: identifier,
+				ReasonCode:      "duplicate_input",
+				Message:         "Email hoặc tên đăng nhập bị trùng trong danh sách gửi lên.",
+			})
+			continue
+		}
+		seenInputs[normalizedIdentifier] = struct{}{}
+
+		if !isValidBrandMemberRole(memberInput.Role) {
+			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
+				EmailOrUsername: identifier,
+				ReasonCode:      "invalid_role",
+				Message:         "Vai trò thành viên brand không hợp lệ.",
+			})
+			continue
+		}
+
+		user, err := uc.userRepo.GetByUsernameOrEmail(ctx, identifier)
+		if err != nil {
+			return nil, err
+		}
+		if user == nil || user.Status != userstatus.Active {
+			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
+				EmailOrUsername: identifier,
+				ReasonCode:      "user_not_found_or_inactive",
+				Message:         "Không tìm thấy user đang hoạt động theo email hoặc tên đăng nhập.",
+			})
+			continue
+		}
+		if _, exists := resolvedUsersByID[user.ID]; exists {
+			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
+				EmailOrUsername: identifier,
+				ReasonCode:      "duplicate_user",
+				Message:         "Email hoặc tên đăng nhập trỏ đến user đã có trong danh sách gửi lên.",
+			})
+			continue
+		}
+		resolvedUsersByID[user.ID] = struct {
+			emailOrUsername string
+			role            brandmemberrole.BrandMemberRole
+		}{emailOrUsername: identifier, role: memberInput.Role}
+		resolvedUserOrder = append(resolvedUserOrder, user.ID)
+	}
+
+	existingMembers, err := uc.memberRepo.GetByBrandAndUserIDs(ctx, brandID, resolvedUserOrder)
 	if err != nil {
 		return nil, err
 	}
-	if existing != nil {
-		existing.Role = input.Role
-		existing.Status = brandmemberstatus.Active
-		if err := uc.memberRepo.Update(ctx, existing); err != nil {
-			return nil, err
-		}
-		return mapper.MapBrandMember(existing), nil
+	existingByUserID := make(map[uuid.UUID]*entities.BrandMember, len(existingMembers))
+	for _, existing := range existingMembers {
+		existingByUserID[existing.UserID] = existing
 	}
 
-	member := &entities.BrandMember{
-		BrandID: brandID,
-		UserID:  input.UserID,
-		Role:    input.Role,
-		Status:  brandmemberstatus.Active,
+	for _, resolvedUserID := range resolvedUserOrder {
+		resolved := resolvedUsersByID[resolvedUserID]
+		if existing := existingByUserID[resolvedUserID]; existing != nil {
+			existing.Role = resolved.role
+			existing.Status = brandmemberstatus.Active
+			if err := uc.memberRepo.Update(ctx, existing); err != nil {
+				return nil, err
+			}
+			result.Updated = append(result.Updated, dto.AddBrandMemberItemResult{
+				EmailOrUsername: resolved.emailOrUsername,
+				Member:          mapper.MapBrandMember(existing),
+			})
+			continue
+		}
+
+		member := &entities.BrandMember{
+			BrandID: brandID,
+			UserID:  resolvedUserID,
+			Role:    resolved.role,
+			Status:  brandmemberstatus.Active,
+		}
+		if err := uc.memberRepo.Create(ctx, member); err != nil {
+			return nil, err
+		}
+		result.Created = append(result.Created, dto.AddBrandMemberItemResult{
+			EmailOrUsername: resolved.emailOrUsername,
+			Member:          mapper.MapBrandMember(member),
+		})
 	}
-	if err := uc.memberRepo.Create(ctx, member); err != nil {
-		return nil, err
-	}
-	return mapper.MapBrandMember(member), nil
+
+	return result, nil
 }
 
 func (uc *BrandCoreUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error) {
@@ -558,27 +634,35 @@ func (uc *BrandCoreUseCase) ListUserBrandLoyalties(ctx context.Context, userID u
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*dto.BrandLoyaltyRes, 0, len(customers))
+	activeCustomerIDs := make([]uuid.UUID, 0, len(customers))
+	activeCustomers := make([]*entities.BrandCustomer, 0, len(customers))
 	for _, customer := range customers {
 		if customer.Status != brandcustomerstatus.Active {
 			continue
 		}
-		account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
-		if err != nil {
-			return nil, err
-		}
+		activeCustomerIDs = append(activeCustomerIDs, customer.ID)
+		activeCustomers = append(activeCustomers, customer)
+	}
+	accounts, err := uc.accountRepo.GetByBrandCustomerIDs(ctx, activeCustomerIDs)
+	if err != nil {
+		return nil, err
+	}
+	accountByCustomerID := make(map[uuid.UUID]*entities.LoyaltyAccount, len(accounts))
+	for _, account := range accounts {
+		accountByCustomerID[account.BrandCustomerID] = account
+	}
+
+	res := make([]*dto.BrandLoyaltyRes, 0, len(customers))
+	for _, customer := range activeCustomers {
+		account := accountByCustomerID[customer.ID]
 		if account == nil {
 			continue
-		}
-		brand, err := uc.brandRepo.GetByID(ctx, customer.BrandID)
-		if err != nil {
-			return nil, err
 		}
 		lot, err := uc.lotRepo.GetNearestExpiringActiveLot(ctx, account.ID, time.Now().UTC())
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, mapBrandLoyalty(account, customer, brand, lot))
+		res = append(res, mapBrandLoyalty(account, customer, customer.Brand, lot))
 	}
 	return res, nil
 }
@@ -1207,6 +1291,15 @@ func isValidBrandMemberRole(role brandmemberrole.BrandMemberRole) bool {
 	}
 }
 
+func isValidVoteType(vote votetype.VoteType) bool {
+	switch vote {
+	case votetype.Like, votetype.Dislike, votetype.WouldBuy, votetype.NotInterested:
+		return true
+	default:
+		return false
+	}
+}
+
 func hashPhone(phone string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(phone)))
 	return hex.EncodeToString(sum[:])
@@ -1311,16 +1404,16 @@ func (uc *BrandCoreUseCase) ListActiveBenefitsForUser(ctx context.Context, userI
 	return mapper.MapBrandBenefits(benefits), nil
 }
 
-func (uc *BrandCoreUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
-	if _, err := uc.GetUserBrandLoyalty(ctx, userID, brandID); err != nil {
-		return nil, err
-	}
+func (uc *BrandCoreUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
 	benefit, err := uc.benefitRepo.GetByID(ctx, benefitID)
 	if err != nil {
 		return nil, err
 	}
-	if benefit == nil || benefit.BrandID != brandID {
+	if benefit == nil {
 		return nil, branderrors.ErrBenefitNotFound()
+	}
+	if _, err := uc.GetUserBrandLoyalty(ctx, userID, benefit.BrandID); err != nil {
+		return nil, err
 	}
 	if benefit.Status != benefitstatus.Active {
 		return nil, branderrors.ErrBenefitNotActive()
@@ -1333,21 +1426,20 @@ func (uc *BrandCoreUseCase) ListBenefitRedemptionsForUser(ctx context.Context, u
 	if err != nil {
 		return nil, err
 	}
-	var res []*dto.BenefitRedemptionRes
+	customerIDs := make([]uuid.UUID, 0, len(customers))
 	for _, customer := range customers {
 		if customer.Status != brandcustomerstatus.Active {
 			continue
 		}
-		redemptions, err := uc.redemptionRepo.GetByBrandCustomerID(ctx, customer.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, redemption := range redemptions {
-			res = append(res, mapper.MapBenefitRedemption(redemption))
-		}
+		customerIDs = append(customerIDs, customer.ID)
 	}
-	if res == nil {
-		return []*dto.BenefitRedemptionRes{}, nil
+	redemptions, err := uc.redemptionRepo.GetByBrandCustomerIDs(ctx, customerIDs)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*dto.BenefitRedemptionRes, 0, len(redemptions))
+	for _, redemption := range redemptions {
+		res = append(res, mapper.MapBenefitRedemption(redemption))
 	}
 	return res, nil
 }
@@ -1443,7 +1535,16 @@ func (uc *BrandCoreUseCase) CheckBrandFeatureAccess(ctx context.Context, userID 
 	return false, nil
 }
 
-func (uc *BrandCoreUseCase) RedeemBenefit(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID) (*dto.BenefitRedemptionRes, error) {
+func (uc *BrandCoreUseCase) RedeemBenefit(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BenefitRedemptionRes, error) {
+	benefit, err := uc.benefitRepo.GetByID(ctx, benefitID)
+	if err != nil {
+		return nil, err
+	}
+	if benefit == nil {
+		return nil, branderrors.ErrBenefitNotFound()
+	}
+	brandID := benefit.BrandID
+
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -1460,13 +1561,6 @@ func (uc *BrandCoreUseCase) RedeemBenefit(ctx context.Context, userID uuid.UUID,
 		return nil, branderrors.ErrUserNotFoundOrInactive()
 	}
 
-	benefit, err := uc.benefitRepo.GetByID(ctx, benefitID)
-	if err != nil {
-		return nil, err
-	}
-	if benefit == nil || benefit.BrandID != brandID {
-		return nil, branderrors.ErrBenefitNotFound()
-	}
 	if benefit.Status != benefitstatus.Active {
 		return nil, branderrors.ErrBenefitNotActive()
 	}
@@ -1616,42 +1710,48 @@ func (uc *BrandCoreUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		return nil, err
 	}
 
-	var eligibleBrandItems []*entities.BrandItem
+	activeBrandIDs := make([]uuid.UUID, 0, len(customers))
 	for _, customer := range customers {
-		if customer.Status != brandcustomerstatus.Active {
+		if customer.Status != brandcustomerstatus.Active || customer.Brand == nil || customer.Brand.Status != brandstatus.Active {
+			continue
+		}
+		activeBrandIDs = append(activeBrandIDs, customer.BrandID)
+	}
+
+	brandItems, err := uc.brandItemRepo.GetByBrandIDs(ctx, activeBrandIDs)
+	if err != nil {
+		return nil, err
+	}
+	brandItemsByBrandID := make(map[uuid.UUID][]*entities.BrandItem, len(activeBrandIDs))
+	for _, item := range brandItems {
+		brandItemsByBrandID[item.BrandID] = append(brandItemsByBrandID[item.BrandID], item)
+	}
+
+	eligibleBrandItems := make([]*entities.BrandItem, 0, len(brandItems))
+	sampleAccessByBrandID := make(map[uuid.UUID]bool, len(activeBrandIDs))
+	sampleAccessChecked := make(map[uuid.UUID]struct{}, len(activeBrandIDs))
+	for _, customer := range customers {
+		if customer.Status != brandcustomerstatus.Active || customer.Brand == nil || customer.Brand.Status != brandstatus.Active {
 			continue
 		}
 
-		brand, err := uc.brandRepo.GetByID(ctx, customer.BrandID)
-		if err != nil {
-			return nil, err
+		if _, checked := sampleAccessChecked[customer.BrandID]; !checked {
+			hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "sample_mix_access")
+			if err != nil {
+				return nil, err
+			}
+			sampleAccessByBrandID[customer.BrandID] = hasSampleAccess
+			sampleAccessChecked[customer.BrandID] = struct{}{}
 		}
-		if brand == nil || brand.Status != brandstatus.Active {
-			continue
-		}
-
-		// Check SAMPLE_MIX_ACCESS feature access for this brand
-		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "sample_mix_access")
-		if err != nil {
-			return nil, err
-		}
-
-		brandItems, err := uc.brandItemRepo.GetByBrandID(ctx, customer.BrandID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, item := range brandItems {
+		for _, item := range brandItemsByBrandID[customer.BrandID] {
 			if item.Status != branditemstatus.Active {
 				continue
 			}
 
 			if item.ItemType == branditemtype.Product {
 				eligibleBrandItems = append(eligibleBrandItems, item)
-			} else if item.ItemType == branditemtype.Sample {
-				if hasSampleAccess {
-					eligibleBrandItems = append(eligibleBrandItems, item)
-				}
+			} else if item.ItemType == branditemtype.Sample && sampleAccessByBrandID[customer.BrandID] {
+				eligibleBrandItems = append(eligibleBrandItems, item)
 			}
 		}
 	}
@@ -1813,12 +1913,21 @@ func (uc *BrandCoreUseCase) ListBrandConversations(ctx context.Context, staffUse
 	if err != nil {
 		return nil, err
 	}
+	customers, err := uc.customerRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	customerByUserID := make(map[uuid.UUID]*entities.BrandCustomer, len(customers))
+	for _, customer := range customers {
+		if customer.UserID != nil {
+			customerByUserID[*customer.UserID] = customer
+		}
+	}
 
 	var res []*dto.BrandConversationRes
 	for _, conv := range conversations {
-		customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, conv.UserID)
-		user, _ := uc.userRepo.GetByID(ctx, conv.UserID)
-		userDisp := getUserDisplayName(user)
+		customer := customerByUserID[conv.UserID]
+		userDisp := getUserDisplayName(conv.User)
 		var custName *string
 		if customer != nil {
 			custName = customer.CustomerName
@@ -2043,20 +2152,20 @@ func (uc *BrandCoreUseCase) GetBrandItemForStaff(ctx context.Context, staffUserI
 	return mapToBrandItemRes(item), nil
 }
 
-func (uc *BrandCoreUseCase) GetBrandItemForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+func (uc *BrandCoreUseCase) GetBrandItemForUser(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
+	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.Status != branditemstatus.Active {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	brand, err := uc.brandRepo.GetByID(ctx, item.BrandID)
 	if err != nil {
 		return nil, err
 	}
 	if brand == nil || brand.Status != brandstatus.Active {
 		return nil, branderrors.ErrBrandNotActive()
-	}
-	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
-	if err != nil {
-		return nil, err
-	}
-	if item == nil || item.BrandID != brandID || item.Status != branditemstatus.Active {
-		return nil, branderrors.ErrBrandNotFound()
 	}
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
@@ -2155,10 +2264,20 @@ func (uc *BrandCoreUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 	if brandItem == nil || brandItem.Status != branditemstatus.Active {
 		return nil, branderrors.ErrBrandNotFound()
 	}
+	brand, err := uc.brandRepo.GetByID(ctx, brandItem.BrandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
 
 	var vote *votetype.VoteType
 	if input.VoteType != nil {
-		v := votetype.VoteType(*input.VoteType)
+		v := votetype.VoteType(strings.ToLower(strings.TrimSpace(*input.VoteType)))
+		if !isValidVoteType(v) {
+			return nil, branderrors.ErrInvalidVoteType(*input.VoteType)
+		}
 		vote = &v
 	}
 

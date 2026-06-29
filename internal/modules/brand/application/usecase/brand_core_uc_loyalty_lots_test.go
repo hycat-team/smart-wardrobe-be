@@ -40,6 +40,17 @@ func (r *loyaltyLotsAccountRepo) Delete(ctx context.Context, id uuid.UUID) error
 func (r *loyaltyLotsAccountRepo) GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	return nil, nil
 }
+func (r *loyaltyLotsAccountRepo) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.LoyaltyAccount, error) {
+	var accounts []*entities.LoyaltyAccount
+	for _, brandCustomerID := range brandCustomerIDs {
+		for _, account := range r.accounts {
+			if account.BrandCustomerID == brandCustomerID {
+				accounts = append(accounts, account)
+			}
+		}
+	}
+	return accounts, nil
+}
 func (r *loyaltyLotsAccountRepo) GetByBrandCustomerIDForUpdate(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	for _, account := range r.accounts {
 		if account.BrandCustomerID == brandCustomerID {

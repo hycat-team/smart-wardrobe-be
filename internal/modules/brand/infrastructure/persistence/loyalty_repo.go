@@ -93,6 +93,15 @@ func (r *LoyaltyAccountRepository) GetByBrandCustomerID(ctx context.Context, bra
 	return &account, nil
 }
 
+func (r *LoyaltyAccountRepository) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.LoyaltyAccount, error) {
+	if len(brandCustomerIDs) == 0 {
+		return []*entities.LoyaltyAccount{}, nil
+	}
+	var accounts []*entities.LoyaltyAccount
+	err := r.GetQueryWithPreload(ctx).Where("brand_customer_id IN ?", brandCustomerIDs).Find(&accounts).Error
+	return accounts, err
+}
+
 func (r *LoyaltyAccountRepository) GetByBrandCustomerIDForUpdate(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	var account entities.LoyaltyAccount
 	err := r.GetQueryWithPreload(ctx).

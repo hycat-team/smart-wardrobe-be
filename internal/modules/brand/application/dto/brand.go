@@ -33,9 +33,26 @@ type UpdateBrandStatusReq struct {
 	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trang thai brand"`
 }
 
-type AddBrandMemberReq struct {
-	UserID uuid.UUID                       `json:"userId" binding:"required" label:"ma user"`
-	Role   brandmemberrole.BrandMemberRole `json:"role" binding:"required" label:"vai tro brand"`
+type AddBrandMembersReq struct {
+	Members []AddBrandMemberItemReq `json:"members" binding:"required,min=1,max=50,dive" label:"danh sách thành viên"`
+}
+
+type AddBrandMemberItemReq struct {
+	EmailOrUsername string                          `json:"emailOrUsername" binding:"required,max=255" label:"email hoặc tên đăng nhập"`
+	Role            brandmemberrole.BrandMemberRole `json:"role" binding:"required" label:"vai trò brand"`
+}
+
+type AddBrandMemberItemResult struct {
+	EmailOrUsername string          `json:"emailOrUsername"`
+	Member          *BrandMemberRes `json:"member,omitempty"`
+	ReasonCode      string          `json:"reasonCode,omitempty"`
+	Message         string          `json:"message,omitempty"`
+}
+
+type AddBrandMembersRes struct {
+	Created []AddBrandMemberItemResult `json:"created"`
+	Updated []AddBrandMemberItemResult `json:"updated"`
+	Failed  []AddBrandMemberItemResult `json:"failed"`
 }
 
 type CreateOfflineBrandCustomerReq struct {
@@ -289,7 +306,7 @@ type BrandItemRes struct {
 
 type SubmitSampleFeedbackReq struct {
 	OutfitID     *uuid.UUID `json:"outfitId" binding:"omitempty"`
-	VoteType     *string    `json:"voteType" binding:"omitempty"` // UP, DOWN
+	VoteType     *string    `json:"voteType" binding:"omitempty"` // like, dislike, would_buy, not_interested
 	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5"`
 	FeedbackText *string    `json:"feedbackText" binding:"omitempty"`
 }

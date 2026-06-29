@@ -60,6 +60,18 @@ func (r *BenefitRedemptionRepository) GetByBrandCustomerID(ctx context.Context, 
 	return redemptions, nil
 }
 
+func (r *BenefitRedemptionRepository) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error) {
+	if len(brandCustomerIDs) == 0 {
+		return []*entities.BenefitRedemption{}, nil
+	}
+	var redemptions []*entities.BenefitRedemption
+	err := r.GetDB(ctx).Where("brand_customer_id IN ?", brandCustomerIDs).Find(&redemptions).Error
+	if err != nil {
+		return nil, err
+	}
+	return redemptions, nil
+}
+
 func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error) {
 	var redemption entities.BenefitRedemption
 	// Join brand_benefits to filter by feature_code and check if redemption status is REDEEMED

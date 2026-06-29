@@ -3,8 +3,8 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/messagesender"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"

@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
 	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
 
 	"github.com/google/uuid"
 )

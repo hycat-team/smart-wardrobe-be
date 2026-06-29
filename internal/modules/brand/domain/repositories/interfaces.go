@@ -20,6 +20,7 @@ type IBrandRepository interface {
 type IBrandMemberRepository interface {
 	shared_repos.IGenericRepository[entities.BrandMember, uuid.UUID]
 	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandMember, error)
+	GetByBrandAndUserIDs(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) ([]*entities.BrandMember, error)
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error)
 	GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error)
 }
@@ -47,6 +48,7 @@ type ILoyaltyTierRepository interface {
 type ILoyaltyAccountRepository interface {
 	shared_repos.IGenericRepository[entities.LoyaltyAccount, uuid.UUID]
 	GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error)
+	GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.LoyaltyAccount, error)
 	GetByBrandCustomerIDForUpdate(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error)
 	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*entities.LoyaltyAccount, error)
 	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error)
@@ -81,6 +83,7 @@ type IBrandBenefitRepository interface {
 type IBenefitRedemptionRepository interface {
 	shared_repos.IGenericRepository[entities.BenefitRedemption, uuid.UUID]
 	GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BenefitRedemption, error)
+	GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error)
 	GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error)
 }
 
@@ -99,6 +102,7 @@ type IBrandConversationMessageRepository interface {
 type IBrandItemRepository interface {
 	shared_repos.IGenericRepository[entities.BrandItem, uuid.UUID]
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error)
+	GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error)
 	GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error)
 	GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error)
 }

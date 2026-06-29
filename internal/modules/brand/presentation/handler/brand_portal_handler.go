@@ -460,19 +460,14 @@ func (h *BrandPortalHandler) ListBrandItemsForUser(c *gin.Context) error {
 }
 
 // GetBrandItemForUser gets active brand item detail.
-// @Summary Lấy chi tiết sản phẩm active của brand
+// @Summary Lấy chi tiết sản phẩm brand đang hoạt động
 // @Tags Brand
 // @Produce json
-// @Param brandId path string true "ID brand"
 // @Param itemId path string true "ID item"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
-// @Router /api/v1/brands/{brandId}/items/{itemId} [get]
+// @Router /api/v1/brand-items/{itemId} [get]
 func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
 	if err != nil {
 		return err
 	}
@@ -480,7 +475,7 @@ func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetBrandItemForUser(c.Request.Context(), userID, brandID, itemID)
+	res, err := h.brandUC.GetBrandItemForUser(c.Request.Context(), userID, itemID)
 	if err != nil {
 		return err
 	}
@@ -493,11 +488,10 @@ func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
 // @Param itemId path string true "ID sản phẩm mẫu thử"
 // @Param body body dto.SubmitSampleFeedbackReq true "Nội dung phản hồi"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.DigitalSampleResponseRes}
-// @Router /api/v1/brands/{brandId}/items/{itemId}/feedbacks [post]
+// @Router /api/v1/brand-items/{itemId}/feedbacks [post]
 func (h *BrandPortalHandler) SubmitSampleFeedback(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

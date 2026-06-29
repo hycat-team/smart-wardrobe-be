@@ -10,8 +10,8 @@ import (
 	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/community/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

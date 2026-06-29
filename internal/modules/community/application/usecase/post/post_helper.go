@@ -10,10 +10,10 @@ import (
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/community/posttype"
 	"smart-wardrobe-be/internal/shared/domain/constants/community/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemcondition"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 

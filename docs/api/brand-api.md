@@ -126,20 +126,58 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Response:**
     *   `200 OK`: Trả về thông tin thương hiệu sau cập nhật `BrandRes`.
 
-### 4. Thêm thành viên mới vào thương hiệu
+### 4. Thêm nhiều thành viên mới vào thương hiệu
 *   **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/members`
-*   **Tác nhân (Actor):** Chủ thương hiệu (Brand owner).
-*   **Đối tượng ảnh hưởng:** Tạo bản ghi thành viên `brand_members`.
-*   **Mô tả:** Thêm một tài khoản user đã tồn tại vào danh sách thành viên quản lý thương hiệu với vai trò cụ thể. Vai trò `role` tham chiếu [constants/brand.md:BrandMemberRole](constants/brand.md#2-vai-tro-thanh-vien-trong-brand-brandmemberrole).
+*   **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/manager).
+*   **Đối tượng ảnh hưởng:** Tạo mới hoặc cập nhật bản ghi thành viên `brand_members`.
+*   **Mô tả:** Thêm nhiều tài khoản user đã tồn tại vào danh sách thành viên quản lý thương hiệu bằng `emailOrUsername`. Backend tự tìm user theo email hoặc tên đăng nhập; frontend không cần biết `userId`. Nếu user đã là thành viên của brand, backend cập nhật `role`, chuyển `status` về `active` và trả về trong nhóm `updated`. Vai trò `role` tham chiếu [constants/brand.md:BrandMemberRole](constants/brand.md#2-vai-tro-thanh-vien-trong-brand-brandmemberrole).
 *   **Request Body:**
     ```json
     {
-      "userId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
-      "role": "support_staff"
+      "members": [
+        {
+          "emailOrUsername": "staff01@localbrand.vn",
+          "role": "support_staff"
+        },
+        {
+          "emailOrUsername": "marketer01",
+          "role": "marketer"
+        }
+      ]
     }
     ```
+*   **Validation chính:**
+    *   `members`: bắt buộc, tối thiểu 1 phần tử, tối đa 50 phần tử.
+    *   `members[].emailOrUsername`: bắt buộc, tối đa 255 ký tự.
+    *   `members[].role`: bắt buộc, chỉ nhận vai trò hợp lệ của thành viên brand.
 *   **Response:**
-    *   `201 Created`: Trả về thông tin thành viên vừa thêm `BrandMemberRes`.
+    *   `201 Created`: Trả về kết quả xử lý theo nhóm `created`, `updated`, `failed`.
+    ```json
+    {
+      "created": [
+        {
+          "emailOrUsername": "staff01@localbrand.vn",
+          "member": {
+            "id": "64c7f08d-78ce-4f69-9304-9a04497c1111",
+            "brandId": "b7b6a0f1-15e7-4897-951f-52afc8a11111",
+            "userId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
+            "role": "support_staff",
+            "status": "active",
+            "createdAt": "2026-06-29T10:00:00Z",
+            "updatedAt": "2026-06-29T10:00:00Z"
+          }
+        }
+      ],
+      "updated": [],
+      "failed": [
+        {
+          "emailOrUsername": "unknown_user",
+          "reasonCode": "user_not_found_or_inactive",
+          "message": "Không tìm thấy user đang hoạt động theo email hoặc tên đăng nhập."
+        }
+      ]
+    }
+    ```
 
 ### 5. Lấy danh sách thành viên quản lý thương hiệu
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/members`

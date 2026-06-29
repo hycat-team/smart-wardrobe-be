@@ -19,15 +19,15 @@ func NewBrandLoyaltyHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *Brand
 	return &BrandLoyaltyHandler{brandUC: brandUC}
 }
 
-// AddBrandMember adds a member to a brand.
-// @Summary Thêm thành viên vào brand
-// @Description Cho phép chủ sở hữu brand thêm thành viên mới vào thương hiệu của mình
+// AddBrandMember adds members to a brand.
+// @Summary Thêm nhiều thành viên vào brand
+// @Description Cho phép owner hoặc manager thêm nhiều thành viên bằng email hoặc tên đăng nhập. Thành viên đã tồn tại sẽ được cập nhật vai trò và kích hoạt lại.
 // @Tags Brand Member
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Param body body dto.AddBrandMemberReq true "Thông tin thành viên mới"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
+// @Param body body dto.AddBrandMembersReq true "Danh sách thành viên cần thêm"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.AddBrandMembersRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/members [post]
 func (h *BrandLoyaltyHandler) AddBrandMember(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -38,11 +38,11 @@ func (h *BrandLoyaltyHandler) AddBrandMember(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	var input dto.AddBrandMemberReq
+	var input dto.AddBrandMembersReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.AddBrandMember(c.Request.Context(), userID, brandID, input)
+	res, err := h.brandUC.AddBrandMembers(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -480,20 +480,15 @@ func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
 }
 
 // RedeemBenefit allows a user to redeem a benefit.
-// @Summary Đổi quyền lợi của brand (User)
+// @Summary Đổi quyền lợi brand (User)
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
-// @Param brandId path string true "ID brand"
 // @Param benefitId path string true "ID quyền lợi"
 // @Success 201 {object} shared_pres.APIResponse{data=dto.BenefitRedemptionRes}
-// @Router /api/v1/brands/{brandId}/benefits/{benefitId}/redeem [post]
+// @Router /api/v1/brand-benefits/{benefitId}/redeem [post]
 func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
 	if err != nil {
 		return err
 	}
@@ -501,7 +496,7 @@ func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.RedeemBenefit(c.Request.Context(), userID, brandID, benefitID)
+	res, err := h.brandUC.RedeemBenefit(c.Request.Context(), userID, benefitID)
 	if err != nil {
 		return err
 	}
@@ -510,19 +505,14 @@ func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 }
 
 // GetActiveBenefitForUser gets active benefit detail for a user.
-// @Summary Lấy chi tiết quyền lợi hoạt động của brand
+// @Summary Lấy chi tiết quyền lợi brand đang hoạt động
 // @Tags Brand Benefit
 // @Produce json
-// @Param brandId path string true "ID brand"
 // @Param benefitId path string true "ID benefit"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitRes}
-// @Router /api/v1/brands/{brandId}/benefits/{benefitId} [get]
+// @Router /api/v1/brand-benefits/{benefitId} [get]
 func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
 	if err != nil {
 		return err
 	}
@@ -530,7 +520,7 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.brandUC.GetActiveBenefitForUser(c.Request.Context(), userID, brandID, benefitID)
+	res, err := h.brandUC.GetActiveBenefitForUser(c.Request.Context(), userID, benefitID)
 	if err != nil {
 		return err
 	}

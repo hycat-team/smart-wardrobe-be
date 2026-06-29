@@ -17,18 +17,18 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
     *   `200 OK`: Trả về mảng danh sách vật phẩm `BrandItemRes`.
 
 ### 2. Xem thông tin chi tiết một sản phẩm/mẫu thử đang active
-*   **Endpoint:** `GET /api/v1/brands/:brandId/items/:itemId`
+*   **Endpoint:** `GET /api/v1/brand-items/:itemId`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc thông tin một bản ghi sản phẩm `brand_items` đang active.
-*   **Mô tả:** Trả về toàn bộ hồ sơ chi tiết của vật phẩm bao gồm liên kết metadata thời trang `fashionItemId`, mã sản phẩm `productCode`, tên gọi `name`, mô tả `description`, giá bán dự kiến `price`, phân loại `itemType` và trạng thái `status`.
+*   **Mô tả:** Trả về toàn bộ hồ sơ chi tiết của vật phẩm theo `itemId`. Backend tự xác định brand từ bản ghi `brand_items`, chỉ trả về item khi brand đang hoạt động và item ở trạng thái `active`.
 *   **Response:**
     *   `200 OK`: Trả về thông tin chi tiết `BrandItemRes`.
 
 ### 3. Gửi bình chọn (vote) và ý kiến nhận xét đóng góp cho mẫu thiết kế ảo
-*   **Endpoint:** `POST /api/v1/brands/:brandId/items/:itemId/feedbacks`
+*   **Endpoint:** `POST /api/v1/brand-items/:itemId/feedbacks`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Tạo bản ghi phản hồi mẫu thử `digital_sample_responses`, có thể ghi nhận liên kết với bộ trang phục phối đồ nếu request cung cấp mã `outfitId`.
-*   **Mô tả:** Người dùng thực hiện bình chọn cho mẫu thử. Loại bình chọn `voteType` tham chiếu chi tiết tại [constants/brand.md:VoteType](constants/brand.md#12-loai-vote-san-pham-mau-votetype). Nếu liên kết với outfit của người dùng (`outfitId`), hệ thống sẽ thực hiện kiểm tra xác thực quyền sở hữu outfit của user hiện tại và tính hợp lệ của việc kết hợp với brand item đó.
+*   **Mô tả:** Người dùng thực hiện bình chọn cho mẫu thử theo `itemId`. Backend tự xác định brand từ bản ghi `brand_items`, từ chối request nếu brand không hoạt động hoặc item không ở trạng thái `active`. Loại bình chọn `voteType` chỉ nhận `like`, `dislike`, `would_buy`, `not_interested` và tham chiếu chi tiết tại [constants/brand.md:VoteType](constants/brand.md#12-loai-vote-san-pham-mau-votetype). Nếu liên kết với outfit của người dùng (`outfitId`), hệ thống sẽ thực hiện kiểm tra xác thực quyền sở hữu outfit của user hiện tại và tính hợp lệ của việc kết hợp với brand item đó.
 *   **Request Body:**
     ```json
     {

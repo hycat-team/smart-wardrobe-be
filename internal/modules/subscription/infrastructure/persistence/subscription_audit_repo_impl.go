@@ -6,8 +6,8 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 )
 

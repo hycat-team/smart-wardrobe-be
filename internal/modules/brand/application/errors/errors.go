@@ -90,6 +90,10 @@ func ErrBenefitInvalidStatus() *apperror.Error {
 	return apperror.NewBadRequest("Trang thai quyen loi khong hop le.")
 }
 
+func ErrInvalidVoteType(voteType any) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Loại voteType không hợp lệ: %v.", voteType))
+}
+
 func ErrCustomerNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy khách hàng của brand.")
 }

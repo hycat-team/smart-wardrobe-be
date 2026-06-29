@@ -31,13 +31,23 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
 		userBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
-		userBrands.GET("/:brandId/benefits/:benefitId", shared_pres.WrapHandler(r.brandHandler.GetActiveBenefitForUser))
-		userBrands.POST("/:brandId/benefits/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
 		userBrands.GET("/:brandId/conversation", shared_pres.WrapHandler(r.brandHandler.GetUserConversation))
 		userBrands.POST("/:brandId/conversation/messages", shared_pres.WrapHandler(r.brandHandler.SendUserMessage))
 		userBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandItemsForUser))
-		userBrands.GET("/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForUser))
-		userBrands.POST("/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.SubmitSampleFeedback))
+	}
+
+	userBrandItems := group.Group("/brand-items")
+	userBrandItems.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	{
+		userBrandItems.GET("/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForUser))
+		userBrandItems.POST("/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.SubmitSampleFeedback))
+	}
+
+	userBrandBenefits := group.Group("/brand-benefits")
+	userBrandBenefits.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	{
+		userBrandBenefits.GET("/:benefitId", shared_pres.WrapHandler(r.brandHandler.GetActiveBenefitForUser))
+		userBrandBenefits.POST("/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
 	}
 
 	meBrands := group.Group("/me")

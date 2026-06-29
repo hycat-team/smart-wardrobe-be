@@ -69,6 +69,17 @@ func (r *BrandMemberRepository) GetByBrandAndUser(ctx context.Context, brandID u
 	return &member, nil
 }
 
+func (r *BrandMemberRepository) GetByBrandAndUserIDs(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) ([]*entities.BrandMember, error) {
+	if len(userIDs) == 0 {
+		return []*entities.BrandMember{}, nil
+	}
+	var members []*entities.BrandMember
+	err := r.GetQueryWithPreload(ctx).
+		Where("brand_id = ? AND user_id IN ?", brandID, userIDs).
+		Find(&members).Error
+	return members, err
+}
+
 func (r *BrandMemberRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
 	var members []*entities.BrandMember
 	err := r.GetQueryWithPreload(ctx).
@@ -152,6 +163,7 @@ func (r *BrandCustomerRepository) GetByBrandID(ctx context.Context, brandID uuid
 func (r *BrandCustomerRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error) {
 	var customers []*entities.BrandCustomer
 	err := r.GetQueryWithPreload(ctx).
+		Preload("Brand").
 		Where("user_id = ?", userID).
 		Find(&customers).Error
 	return customers, err

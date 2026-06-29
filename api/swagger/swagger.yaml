@@ -1,13 +1,51 @@
 definitions:
-  smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberReq:
+  smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemReq:
     properties:
-      role:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole'
-      userId:
+      emailOrUsername:
+        maxLength: 255
         type: string
+      role:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole'
     required:
+    - emailOrUsername
     - role
-    - userId
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult:
+    properties:
+      emailOrUsername:
+        type: string
+      member:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
+      message:
+        type: string
+      reasonCode:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersReq:
+    properties:
+      members:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemReq'
+        maxItems: 50
+        minItems: 1
+        type: array
+    required:
+    - members
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersRes:
+    properties:
+      created:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult'
+        type: array
+      failed:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult'
+        type: array
+      updated:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult'
+        type: array
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes:
     properties:
@@ -119,11 +157,11 @@ definitions:
       joinedAt:
         type: string
       joinedSource:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerjoinedsource.BrandCustomerJoinedSource'
       phoneE164:
         type: string
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerstatus.BrandCustomerStatus'
       updatedAt:
         type: string
       userId:
@@ -186,9 +224,9 @@ definitions:
       id:
         type: string
       role:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole'
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandmemberstatus.BrandMemberStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus'
       updatedAt:
         type: string
       userId:
@@ -217,7 +255,7 @@ definitions:
       slug:
         type: string
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
       updatedAt:
         type: string
     type: object
@@ -370,7 +408,7 @@ definitions:
         maxLength: 100
         type: string
       transactionType:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltytransactiontype.LoyaltyTransactionType'
       userId:
         type: string
     required:
@@ -435,7 +473,7 @@ definitions:
       currentTier:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes'
       customerStatus:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerstatus.BrandCustomerStatus'
       pointsDelta:
         type: integer
       totalSpend:
@@ -511,7 +549,7 @@ definitions:
         minimum: 1
         type: integer
       voteType:
-        description: UP, DOWN
+        description: like, dislike, would_buy, not_interested
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq:
@@ -558,7 +596,7 @@ definitions:
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq:
     properties:
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
     required:
     - status
     type: object
@@ -654,7 +692,7 @@ definitions:
         type: string
       gender:
         allOf:
-        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender'
         enum:
         - 0
         - 1
@@ -753,7 +791,7 @@ definitions:
         type: string
       gender:
         allOf:
-        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender'
         enum:
         - 0
         - 1
@@ -768,7 +806,7 @@ definitions:
     properties:
       status:
         allOf:
-        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus'
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_identity_userstatus.UserStatus'
         enum:
         - 0
         - 1
@@ -825,15 +863,15 @@ definitions:
       firstName:
         type: string
       gender:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_gender.Gender'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender'
       id:
         type: string
       lastName:
         type: string
       roleSlug:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_identity_roleslug.RoleSlug'
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_identity_userstatus.UserStatus'
       subscription:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes'
       username:
@@ -910,7 +948,7 @@ definitions:
       orderCode:
         type: integer
       paymentStatus:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_depositstatus.DepositStatus'
       paymentUrl:
         type: string
     type: object
@@ -931,7 +969,7 @@ definitions:
       name:
         type: string
       planKind:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind'
       price:
         type: number
       slug:
@@ -954,7 +992,7 @@ definitions:
       previousBalance:
         type: number
       transactionType:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_walletstatementtype.WalletStatementType'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_walletstatementtype.WalletStatementType'
       userID:
         type: string
     type: object
@@ -982,7 +1020,7 @@ definitions:
       fallbackPlanCode:
         type: string
       fallbackPlanKind:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind'
       fallbackTierRank:
         type: integer
       isAutoRenewEnabled:
@@ -998,7 +1036,7 @@ definitions:
       planID:
         type: string
       planKind:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind'
       planName:
         type: string
       planSlug:
@@ -1017,7 +1055,7 @@ definitions:
       fallbackPlanCode:
         type: string
       fallbackPlanKind:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind'
       fallbackTierRank:
         type: integer
       isAutoRenewEnabled:
@@ -1029,7 +1067,7 @@ definitions:
       planID:
         type: string
       planKind:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind'
       planName:
         type: string
       planSlug:
@@ -1099,7 +1137,7 @@ definitions:
       id:
         type: string
       sender:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_messagesender.MessageSender'
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.ChatSessionRes:
     properties:
@@ -1222,7 +1260,7 @@ definitions:
       name:
         type: string
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobe_outfitstatus.OutfitStatus'
       updatedAt:
         type: string
       userId:
@@ -1470,7 +1508,7 @@ definitions:
       seasonality:
         type: string
       status:
-        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobe_wardrobestatus.WardrobeItemStatus'
       style:
         type: string
       userId:
@@ -1545,61 +1583,112 @@ definitions:
       timestamp:
         type: integer
     type: object
-  smart-wardrobe-be_internal_shared_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerjoinedsource.BrandCustomerJoinedSource:
     enum:
-    - SELF_JOIN
-    - OFFLINE_PURCHASE
-    - IMPORT
+    - self_join
+    - offline_purchase
+    - import
     type: string
     x-enum-varnames:
     - SelfJoin
     - OfflinePurchase
     - Import
-  smart-wardrobe-be_internal_shared_domain_constants_brandcustomerstatus.BrandCustomerStatus:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerstatus.BrandCustomerStatus:
     enum:
-    - ACTIVE
-    - BLOCKED
-    - LEFT
+    - active
+    - blocked
+    - left
     type: string
     x-enum-varnames:
     - Active
     - Blocked
     - Left
-  smart-wardrobe-be_internal_shared_domain_constants_brandmemberrole.BrandMemberRole:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole:
     enum:
-    - OWNER
-    - MANAGER
-    - SUPPORT_STAFF
-    - MARKETER
+    - owner
+    - manager
+    - support_staff
+    - marketer
     type: string
     x-enum-varnames:
     - Owner
     - Manager
     - SupportStaff
     - Marketer
-  smart-wardrobe-be_internal_shared_domain_constants_brandmemberstatus.BrandMemberStatus:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus:
     enum:
-    - ACTIVE
-    - INVITED
-    - DISABLED
+    - active
+    - invited
+    - disabled
     type: string
     x-enum-varnames:
     - Active
     - Invited
     - Disabled
-  smart-wardrobe-be_internal_shared_domain_constants_brandstatus.BrandStatus:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus:
     enum:
-    - PENDING_REVIEW
-    - ACTIVE
-    - SUSPENDED
-    - ARCHIVED
+    - pending_review
+    - active
+    - suspended
+    - archived
     type: string
     x-enum-varnames:
     - PendingReview
     - Active
     - Suspended
     - Archived
-  smart-wardrobe-be_internal_shared_domain_constants_depositstatus.DepositStatus:
+  smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltytransactiontype.LoyaltyTransactionType:
+    enum:
+    - earn
+    - redeem
+    - adjust
+    - expire
+    - refund
+    type: string
+    x-enum-varnames:
+    - Earn
+    - Redeem
+    - Adjust
+    - Expire
+    - Refund
+  smart-wardrobe-be_internal_shared_domain_constants_identity_roleslug.RoleSlug:
+    enum:
+    - admin
+    - user
+    type: string
+    x-enum-varnames:
+    - Admin
+    - User
+  smart-wardrobe-be_internal_shared_domain_constants_identity_userstatus.UserStatus:
+    enum:
+    - 0
+    - 1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Active
+    - Inactive
+  smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-varnames:
+    - Unknown
+    - Male
+    - Female
+    - Other
+  smart-wardrobe-be_internal_shared_domain_constants_shared_messagesender.MessageSender:
+    enum:
+    - user
+    - ai
+    type: string
+    x-enum-varnames:
+    - User
+    - AI
+  smart-wardrobe-be_internal_shared_domain_constants_subscription_depositstatus.DepositStatus:
     enum:
     - 0
     - 1
@@ -1624,50 +1713,7 @@ definitions:
     - Cancelled
     - Expired
     - InvestigationRequired
-  smart-wardrobe-be_internal_shared_domain_constants_gender.Gender:
-    enum:
-    - 0
-    - 1
-    - 2
-    - 3
-    type: integer
-    x-enum-varnames:
-    - Unknown
-    - Male
-    - Female
-    - Other
-  smart-wardrobe-be_internal_shared_domain_constants_loyaltytransactiontype.LoyaltyTransactionType:
-    enum:
-    - EARN
-    - REDEEM
-    - ADJUST
-    - EXPIRE
-    - REFUND
-    type: string
-    x-enum-varnames:
-    - Earn
-    - Redeem
-    - Adjust
-    - Expire
-    - Refund
-  smart-wardrobe-be_internal_shared_domain_constants_messagesender.MessageSender:
-    enum:
-    - user
-    - ai
-    type: string
-    x-enum-varnames:
-    - User
-    - AI
-  smart-wardrobe-be_internal_shared_domain_constants_outfitstatus.OutfitStatus:
-    enum:
-    - 0
-    - 1
-    format: int32
-    type: integer
-    x-enum-varnames:
-    - Draft
-    - Active
-  smart-wardrobe-be_internal_shared_domain_constants_plankind.PlanKind:
+  smart-wardrobe-be_internal_shared_domain_constants_subscription_plankind.PlanKind:
     enum:
     - 0
     - 1
@@ -1678,30 +1724,13 @@ definitions:
     - DefaultFree
     - Finite
     - Lifetime
-  smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
+  smart-wardrobe-be_internal_shared_domain_constants_subscription_walletstatementtype.WalletStatementType:
     enum:
-    - admin
-    - user
-    type: string
-    x-enum-varnames:
-    - Admin
-    - User
-  smart-wardrobe-be_internal_shared_domain_constants_userstatus.UserStatus:
-    enum:
-    - 0
-    - 1
-    format: int32
-    type: integer
-    x-enum-varnames:
-    - Active
-    - Inactive
-  smart-wardrobe-be_internal_shared_domain_constants_walletstatementtype.WalletStatementType:
-    enum:
-    - TOPUP
-    - SUBSCRIPTION_PURCHASE
-    - SUBSCRIPTION_RENEWAL
-    - LOWER_TIER_PAYMENT_CREDIT
-    - SAME_LIFETIME_PAYMENT_CREDIT
+    - topup
+    - subscription_purchase
+    - subscription_renewal
+    - lower_tier_payment_credit
+    - same_lifetime_payment_credit
     type: string
     x-enum-varnames:
     - Topup
@@ -1709,7 +1738,16 @@ definitions:
     - SubscriptionRenewal
     - LowerTierPaymentCredit
     - SameLifetimePaymentCredit
-  smart-wardrobe-be_internal_shared_domain_constants_wardrobestatus.WardrobeItemStatus:
+  smart-wardrobe-be_internal_shared_domain_constants_wardrobe_outfitstatus.OutfitStatus:
+    enum:
+    - 0
+    - 1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Draft
+    - Active
+  smart-wardrobe-be_internal_shared_domain_constants_wardrobe_wardrobestatus.WardrobeItemStatus:
     enum:
     - 0
     - 1
@@ -2525,6 +2563,108 @@ paths:
       summary: Đặt lại mật khẩu
       tags:
       - Auth
+  /api/v1/brand-benefits/{benefitId}:
+    get:
+      parameters:
+      - description: ID benefit
+        in: path
+        name: benefitId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+              type: object
+      summary: Lấy chi tiết quyền lợi brand đang hoạt động
+      tags:
+      - Brand Benefit
+  /api/v1/brand-benefits/{benefitId}/redeem:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID quyền lợi
+        in: path
+        name: benefitId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
+              type: object
+      summary: Đổi quyền lợi brand (User)
+      tags:
+      - Brand Benefit
+  /api/v1/brand-items/{itemId}:
+    get:
+      parameters:
+      - description: ID item
+        in: path
+        name: itemId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+              type: object
+      summary: Lấy chi tiết sản phẩm brand đang hoạt động
+      tags:
+      - Brand
+  /api/v1/brand-items/{itemId}/feedbacks:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID sản phẩm mẫu thử
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Nội dung phản hồi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.SubmitSampleFeedbackReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
+              type: object
+      summary: '[User] Gửi phản hồi, đánh giá mẫu thử kỹ thuật số'
+      tags:
+      - Brand
   /api/v1/brand-portal/brands:
     post:
       consumes:
@@ -3262,20 +3402,21 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cho phép chủ sở hữu brand thêm thành viên mới vào thương hiệu của
-        mình
+      description: Cho phép owner hoặc manager thêm nhiều thành viên bằng email hoặc
+        tên đăng nhập. Thành viên đã tồn tại sẽ được cập nhật vai trò và kích hoạt
+        lại.
       parameters:
       - description: ID brand
         in: path
         name: brandId
         required: true
         type: string
-      - description: Thông tin thành viên mới
+      - description: Danh sách thành viên cần thêm
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberReq'
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersReq'
       produces:
       - application/json
       responses:
@@ -3286,9 +3427,9 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersRes'
               type: object
-      summary: Thêm thành viên vào brand
+      summary: Thêm nhiều thành viên vào brand
       tags:
       - Brand Member
   /api/v1/brand-portal/brands/logo-upload-signature:
@@ -3396,64 +3537,6 @@ paths:
       summary: Lấy danh sách quyền lợi đang hoạt động của brand (User)
       tags:
       - Brand Benefit
-  /api/v1/brands/{brandId}/benefits/{benefitId}:
-    get:
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: ID benefit
-        in: path
-        name: benefitId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
-              type: object
-      summary: Lấy chi tiết quyền lợi hoạt động của brand
-      tags:
-      - Brand Benefit
-  /api/v1/brands/{brandId}/benefits/{benefitId}/redeem:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: ID quyền lợi
-        in: path
-        name: benefitId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
-              type: object
-      summary: Đổi quyền lợi của brand (User)
-      tags:
-      - Brand Benefit
   /api/v1/brands/{brandId}/conversation:
     get:
       consumes:
@@ -3535,70 +3618,6 @@ paths:
                   type: array
               type: object
       summary: '[User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand'
-      tags:
-      - Brand
-  /api/v1/brands/{brandId}/items/{itemId}:
-    get:
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: ID item
-        in: path
-        name: itemId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
-              type: object
-      summary: Lấy chi tiết sản phẩm active của brand
-      tags:
-      - Brand
-  /api/v1/brands/{brandId}/items/{itemId}/feedbacks:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: ID sản phẩm mẫu thử
-        in: path
-        name: itemId
-        required: true
-        type: string
-      - description: Nội dung phản hồi
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.SubmitSampleFeedbackReq'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes'
-              type: object
-      summary: '[User] Gửi phản hồi, đánh giá mẫu thử kỹ thuật số'
       tags:
       - Brand
   /api/v1/brands/{brandId}/join-loyalty:

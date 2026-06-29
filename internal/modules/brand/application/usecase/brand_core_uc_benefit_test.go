@@ -52,6 +52,15 @@ func (m *mockMemberRepo) Delete(ctx context.Context, id uuid.UUID) error        
 func (m *mockMemberRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandMember, error) {
 	return m.members[brandID.String()+"_"+userID.String()], nil
 }
+func (m *mockMemberRepo) GetByBrandAndUserIDs(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	for _, userID := range userIDs {
+		if member := m.members[brandID.String()+"_"+userID.String()]; member != nil {
+			members = append(members, member)
+		}
+	}
+	return members, nil
+}
 func (m *mockMemberRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
 	return nil, nil
 }
@@ -168,6 +177,9 @@ func (m *mockRedemptionRepo) Update(ctx context.Context, red *entities.BenefitRe
 }
 func (m *mockRedemptionRepo) Delete(ctx context.Context, id uuid.UUID) error { return nil }
 func (m *mockRedemptionRepo) GetByBrandCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BenefitRedemption, error) {
+	return nil, nil
+}
+func (m *mockRedemptionRepo) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error) {
 	return nil, nil
 }
 func (m *mockRedemptionRepo) GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error) {
@@ -309,7 +321,7 @@ func TestRedeemBenefit_InsufficientPoints(t *testing.T) {
 		uow:            loyaltyLotsTestUOW{},
 	}
 
-	_, err := uc.RedeemBenefit(context.Background(), userID, brandID, benefitID)
+	_, err := uc.RedeemBenefit(context.Background(), userID, benefitID)
 	if err == nil {
 		t.Fatalf("Expected insufficient points error, got nil")
 	}
