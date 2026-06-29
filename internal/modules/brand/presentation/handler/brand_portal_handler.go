@@ -99,6 +99,28 @@ func (h *BrandPortalHandler) UpdateBrandStatusAdmin(c *gin.Context) error {
 	return nil
 }
 
+// GetBrandsAdmin lấy danh sách brand cho Admin
+// @Summary Lấy danh sách brand (Admin)
+// @Description Cho phép admin lấy danh sách brand phân trang, tìm kiếm theo tên/slug và lọc theo trạng thái của brand.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param query query dto.GetBrandsAdminQueryReq false "Bộ lọc danh sách brand"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminBrandListRes} "Lấy danh sách brand thành công"
+// @Router /api/v1/admin/brands [get]
+func (h *BrandPortalHandler) GetBrandsAdmin(c *gin.Context) error {
+	var query dto.GetBrandsAdminQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetBrandsForAdmin(c.Request.Context(), query)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandListSuccess, res)
+	return nil
+}
+
 // GetActiveBrands lists public active brands.
 // @Summary Lấy danh sách brand đang active
 // @Tags Brand

@@ -2,11 +2,13 @@ package usecase
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefittype"
@@ -35,6 +37,25 @@ func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.B
 	return nil, nil
 }
 func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error) { return nil, nil }
+func (m *mockBrandRepo) GetBrandsForAdmin(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	var list []*entities.Brand
+	for _, b := range m.brands {
+		if filter.Status != nil && b.Status != *filter.Status {
+			continue
+		}
+		if filter.Query != nil {
+			q := strings.ToLower(*filter.Query)
+			if !strings.Contains(strings.ToLower(b.Name), q) && !strings.Contains(strings.ToLower(b.Slug), q) {
+				continue
+			}
+		}
+		list = append(list, b)
+	}
+	return &repositories.BrandListResult{
+		Brands:     list,
+		TotalCount: int64(len(list)),
+	}, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember

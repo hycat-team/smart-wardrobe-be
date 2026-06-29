@@ -103,6 +103,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	admin := group.Group("/admin/brands")
 	admin.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Admin))
 	{
+		admin.GET("", shared_pres.WrapHandler(r.brandHandler.GetBrandsAdmin))
 		admin.POST("", shared_pres.WrapHandler(r.brandHandler.CreateBrandAdmin))
 		admin.PATCH("/:brandId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandStatusAdmin))
 	}

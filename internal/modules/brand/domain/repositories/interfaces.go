@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -11,10 +12,23 @@ import (
 	"github.com/google/uuid"
 )
 
+type BrandFilter struct {
+	Status *brandstatus.BrandStatus
+	Query  *string
+	Page   int
+	Limit  int
+}
+
+type BrandListResult struct {
+	Brands     []*entities.Brand
+	TotalCount int64
+}
+
 type IBrandRepository interface {
 	shared_repos.IGenericRepository[entities.Brand, uuid.UUID]
 	GetBySlug(ctx context.Context, slug string) (*entities.Brand, error)
 	GetActive(ctx context.Context) ([]*entities.Brand, error)
+	GetBrandsForAdmin(ctx context.Context, filter BrandFilter) (*BrandListResult, error)
 }
 
 type IBrandMemberRepository interface {

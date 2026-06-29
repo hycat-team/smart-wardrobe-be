@@ -89,7 +89,49 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Mô tả:** Phục vụ cho mục đích vận hành nội bộ, seed dữ liệu demo, hoặc đối tác đặc biệt đã phê duyệt trực tiếp.
 *   **Request Body:** Tương tự cấu trúc `POST /api/v1/brand-portal/brands`.
 *   **Response:**
-    *   `201 Created`: Trả về thông tin thương hiệu `BrandRes`.
+*   `201 Created`: Trả về thông tin thương hiệu `BrandRes`.
+
+### 5. Admin lấy danh sách thương hiệu
+*   **Endpoint:** `GET /api/v1/admin/brands`
+*   **Tác nhân (Actor):** Quản trị viên hệ thống (Admin Closy).
+*   **Đối tượng ảnh hưởng:** Đọc danh sách thương hiệu (`brands`).
+*   **Mô tả:** Cho phép admin lấy danh sách thương hiệu phân trang, hỗ trợ lọc theo trạng thái `status` (`pending_review`, `active`, `suspended`, `archived`) và tìm kiếm theo tên hoặc slug nhãn hàng qua query param `q`.
+*   **Query Parameters:**
+    *   `page` (int, optional): Số trang cần lấy, mặc định `1`.
+    *   `limit` (int, optional): Số lượng phần tử mỗi trang, mặc định `20`.
+    *   `status` (string, optional): Trạng thái của nhãn hàng.
+    *   `q` (string, optional): Từ khóa tìm kiếm theo tên hoặc slug.
+*   **Response:**
+    *   `200 OK`: Trả về danh sách thương hiệu phân trang `AdminBrandListRes`.
+        ```json
+        {
+          "success": true,
+          "data": {
+            "items": [
+              {
+                "id": "787c9f80-0a15-4be4-8a48-f68cdbf5f154",
+                "slug": "local-brand-a",
+                "name": "Local Brand A",
+                "description": "Thương hiệu thời trang nội địa",
+                "logoUrl": "https://res.cloudinary.com/.../logo.png",
+                "logoPublicId": "brands/local-brand-a/logo",
+                "status": "active",
+                "createdByUserId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
+                "approvedByUserId": "3d9164cb-1c61-44d1-b82e-4efbb5f4b222",
+                "approvedAt": "2026-06-29T10:00:00Z",
+                "createdAt": "2026-06-29T09:00:00Z",
+                "updatedAt": "2026-06-29T10:00:00Z"
+              }
+            ],
+            "metadata": {
+              "page": 1,
+              "limit": 20,
+              "totalItems": 1,
+              "totalPages": 1
+            }
+          }
+        }
+        ```
 
 ---
 

@@ -47,6 +47,15 @@ definitions:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult'
         type: array
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.AdminBrandListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes:
     properties:
       benefitId:
@@ -1856,6 +1865,49 @@ info:
   version: "1.0"
 paths:
   /api/v1/admin/brands:
+    get:
+      consumes:
+      - application/json
+      description: Cho phép admin lấy danh sách brand phân trang, tìm kiếm theo tên/slug
+        và lọc theo trạng thái của brand.
+      parameters:
+      - in: query
+        name: limit
+        type: integer
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: q
+        type: string
+      - enum:
+        - pending_review
+        - active
+        - suspended
+        - archived
+        in: query
+        name: status
+        type: string
+        x-enum-varnames:
+        - PendingReview
+        - Active
+        - Suspended
+        - Archived
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách brand thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AdminBrandListRes'
+              type: object
+      summary: Lấy danh sách brand (Admin)
+      tags:
+      - Admin
     post:
       consumes:
       - application/json

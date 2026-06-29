@@ -366,3 +366,11 @@ type RevokeClaimTokenReq struct {
 type ClaimOfflineAccountReq struct {
 	ClaimToken string `json:"claimToken" binding:"required"`
 }
+
+type GetBrandsAdminQueryReq struct {
+	shared_dto.PaginationQuery
+	Status *brandstatus.BrandStatus `form:"status" binding:"omitempty"`
+	Query  *string                  `form:"q" binding:"omitempty"`
+}
+
+type AdminBrandListRes = shared_dto.PaginationResult[*BrandRes]

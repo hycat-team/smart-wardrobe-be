@@ -16,6 +16,73 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/api/v1/admin/brands": {
+            "get": {
+                "description": "Cho phép admin lấy danh sách brand phân trang, tìm kiếm theo tên/slug và lọc theo trạng thái của brand.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Lấy danh sách brand (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "pending_review",
+                            "active",
+                            "suspended",
+                            "archived"
+                        ],
+                        "type": "string",
+                        "x-enum-varnames": [
+                            "PendingReview",
+                            "Active",
+                            "Suspended",
+                            "Archived"
+                        ],
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy danh sách brand thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AdminBrandListRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "post": {
                 "consumes": [
                     "application/json"
@@ -5141,6 +5208,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemResult"
                     }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.AdminBrandListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
                 }
             }
         },
