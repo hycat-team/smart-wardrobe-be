@@ -2,5 +2,6 @@
 
 Tài liệu thiết kế API phục vụ phát hành chiến dịch tiếp thị của Brand.
 
-*   `GET /api/v1/brand/campaigns`: Xem danh sách chiến dịch đang diễn ra.
-*   `POST /api/v1/brand/campaigns`: Tạo mới một chiến dịch tiếp thị.
+> [!NOTE]
+> **Hiện tại chưa có API nào thuộc module Campaign được triển khai trong codebase.**
+> Tài liệu này không liệt kê endpoint cho đến khi module Campaign có route/handler implemented.
