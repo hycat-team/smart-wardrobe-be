@@ -245,6 +245,29 @@ func (r *LoyaltyPointLotRepository) GetNearestExpiringActiveLot(ctx context.Cont
 	return &lot, nil
 }
 
+func (r *LoyaltyPointLotRepository) ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	query := r.GetDB(ctx).Where("loyalty_account_id = ?", loyaltyAccountID)
+	if status != nil {
+		query = query.Where("status = ?", *status)
+	}
+	if expiresAt != nil {
+		query = query.Where("expires_at <= ?", *expiresAt)
+	}
+	var lots []*entities.LoyaltyPointLot
+	err := query.
+		Order("expires_at ASC NULLS LAST, created_at ASC").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&lots).Error
+	return lots, err
+}
+
 type BrandCustomerClaimRepository struct {
 	shared_persist.GenericRepository[entities.BrandCustomerClaim, uuid.UUID]
 }
@@ -265,4 +288,22 @@ func (r *BrandCustomerClaimRepository) GetByTokenHash(ctx context.Context, token
 		return nil, err
 	}
 	return &claim, nil
+}
+
+func (r *BrandCustomerClaimRepository) GetActiveByCustomerID(ctx context.Context, brandCustomerID uuid.UUID, now time.Time) ([]*entities.BrandCustomerClaim, error) {
+	var claims []*entities.BrandCustomerClaim
+	err := r.GetDB(ctx).
+		Where("brand_customer_id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?", brandCustomerID, now).
+		Order("created_at ASC").
+		Find(&claims).Error
+	return claims, err
+}
+
+func (r *BrandCustomerClaimRepository) GetByCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BrandCustomerClaim, error) {
+	var claims []*entities.BrandCustomerClaim
+	err := r.GetDB(ctx).
+		Where("brand_customer_id = ?", brandCustomerID).
+		Order("created_at DESC").
+		Find(&claims).Error
+	return claims, err
 }

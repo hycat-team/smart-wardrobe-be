@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -66,9 +67,18 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 		run.AddSuccess(1)
 
 	case eventconstants.ActionDeleted:
-		if err := uc.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String()); err != nil {
+		if eventPayload.ItemType != int(itemtype.SystemCatalogItem) {
+			run.AddSkipped(1)
+			return nil
+		}
+		documentID := eventPayload.FashionItemID
+		if documentID == uuid.Nil {
+			documentID = eventPayload.ItemID
+		}
+		if err := uc.searchIndex.DeleteItem(ctx, documentID.String()); err != nil {
 			run.ChildWarn(uc.logger, "Failed to delete item from search index",
 				zap.String("itemId", eventPayload.ItemID.String()),
+				zap.String("fashionItemId", documentID.String()),
 				zap.Error(err),
 			)
 			if !uc.searchIndex.IsHealthy() {

@@ -102,12 +102,17 @@ type BenefitRedemption struct {
 
 type BrandConversation struct {
 	AuditableEntity
-	BrandID       uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
-	Brand         *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
-	UserID        uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
-	User          *User                                 `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Status        conversationstatus.ConversationStatus `gorm:"type:varchar(50);not null;default:OPEN"`
-	LastMessageAt *time.Time                            `gorm:"type:timestamp with time zone"`
+	BrandID         uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
+	Brand           *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	UserID          uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
+	User            *User                                 `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Status          conversationstatus.ConversationStatus `gorm:"type:varchar(50);not null;default:OPEN"`
+	LastMessageAt   *time.Time                            `gorm:"type:timestamp with time zone"`
+	UserLastReadAt  *time.Time                            `gorm:"type:timestamp with time zone"`
+	StaffLastReadAt *time.Time                            `gorm:"type:timestamp with time zone"`
+	ClosedAt        *time.Time                            `gorm:"type:timestamp with time zone"`
+	ClosedByUserID  *uuid.UUID                            `gorm:"type:uuid"`
+	ClosedByUser    *User                                 `gorm:"foreignKey:ClosedByUserID;constraint:OnDelete:SET NULL"`
 }
 
 type BrandConversationMessage struct {

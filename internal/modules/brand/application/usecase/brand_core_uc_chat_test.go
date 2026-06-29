@@ -89,6 +89,18 @@ func (m *mockMsgRepo) GetByConversationID(ctx context.Context, conversationID uu
 	}
 	return list, nil
 }
+func (m *mockMsgRepo) CountUnread(ctx context.Context, conversationID uuid.UUID, senderRole string, since *time.Time) (int, error) {
+	count := 0
+	for _, msg := range m.messages {
+		if msg.ConversationID != conversationID || string(msg.SenderRole) != senderRole {
+			continue
+		}
+		if since == nil || msg.CreatedAt.After(*since) {
+			count++
+		}
+	}
+	return count, nil
+}
 
 type mockUserRepo struct{}
 

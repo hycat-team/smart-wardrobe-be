@@ -66,7 +66,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Đối tượng ảnh hưởng:** Đọc danh sách thương hiệu mà người dùng hiện tại (current user) đang là thành viên hoạt động (active member).
 *   **Mô tả:** Sử dụng cho giao diện chuyển đổi thương hiệu (brand switcher) trên portal.
 *   **Response:**
-    *   `200 OK`: Trả về mảng danh sách thương hiệu `BrandRes`.
+    *   `200 OK`: Trả về mảng danh sách thương hiệu `PortalBrandRes`.
 
 ### 3. Admin cập nhật trạng thái của thương hiệu
 *   **Endpoint:** `PATCH /api/v1/admin/brands/:brandId/status`
@@ -101,11 +101,11 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Đối tượng ảnh hưởng:** Đọc thông tin hồ sơ của brand trong phạm vi quyền quản trị.
 *   **Mô tả:** Trả về thông tin chi tiết của brand phục vụ trang Dashboard quản trị. Chỉ có thành viên active của nhãn hàng hoặc Admin mới có quyền truy cập.
 *   **Response:**
-    *   `200 OK`: Trả về thông tin chi tiết `BrandRes`.
+    *   `200 OK`: Trả về thông tin chi tiết `PortalBrandRes`.
 
 ### 2. Lấy chữ ký tải lên ảnh logo của thương hiệu
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/logo-upload-signature`
-*   **Tác nhân (Actor):** Người dùng cổng Brand Portal.
+*   **Tác nhân (Actor):** Người dùng của Brand Portal.
 *   **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
 *   **Mô tả:** Lấy mã chữ ký Cloudinary upload signature để phía client có thể tải logo trực tiếp lên Cloudinary.
 *   **Response:**
@@ -113,7 +113,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 
 ### 3. Cập nhật logo mới của thương hiệu
 *   **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/logo`
-*   **Tác nhân (Actor):** Chủ nhãn hàng hoặc quản lý nhãn hàng (Brand owner/manager).
+*   **Tác nhân (Actor):** Chủ nhãn hàng hoặc quản lý nhãn hàng (Brand owner/staff).
 *   **Đối tượng ảnh hưởng:** Cập nhật đường dẫn logo của brand.
 *   **Mô tả:** Lưu lại đường dẫn URL và mã nhận diện public ID của logo mới đã tải lên thành công.
 *   **Request Body:**
@@ -128,7 +128,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 
 ### 4. Thêm nhiều thành viên mới vào thương hiệu
 *   **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/members`
-*   **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/manager).
+*   **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
 *   **Đối tượng ảnh hưởng:** Tạo mới hoặc cập nhật bản ghi thành viên `brand_members`.
 *   **Mô tả:** Thêm nhiều tài khoản user đã tồn tại vào danh sách thành viên quản lý thương hiệu bằng `emailOrUsername`. Backend tự tìm user theo email hoặc tên đăng nhập; frontend không cần biết `userId`. Nếu user đã là thành viên của brand, backend cập nhật `role`, chuyển `status` về `active` và trả về trong nhóm `updated`. Vai trò `role` tham chiếu [constants/brand.md:BrandMemberRole](constants/brand.md#2-vai-tro-thanh-vien-trong-brand-brandmemberrole).
 *   **Request Body:**
@@ -137,11 +137,11 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
       "members": [
         {
           "emailOrUsername": "staff01@localbrand.vn",
-          "role": "support_staff"
+          "role": "staff"
         },
         {
-          "emailOrUsername": "marketer01",
-          "role": "marketer"
+          "emailOrUsername": "staff01",
+          "role": "staff"
         }
       ]
     }
@@ -161,7 +161,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
             "id": "64c7f08d-78ce-4f69-9304-9a04497c1111",
             "brandId": "b7b6a0f1-15e7-4897-951f-52afc8a11111",
             "userId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
-            "role": "support_staff",
+            "role": "staff",
             "status": "active",
             "createdAt": "2026-06-29T10:00:00Z",
             "updatedAt": "2026-06-29T10:00:00Z"
@@ -181,7 +181,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 
 ### 5. Lấy danh sách thành viên quản lý thương hiệu
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/members`
-*   **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/manager).
+*   **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách bản ghi thành viên `brand_members`.
 *   **Mô tả:** Trả về danh sách tất cả các thành viên quản trị của nhãn hàng. Vai trò `role` và trạng thái `status` tham chiếu [constants/brand.md](constants/brand.md).
 *   **Response:**
@@ -261,3 +261,24 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 *   Khách hàng offline chưa thực hiện liên kết bắt buộc phải trả về giá trị `userId = null` trong các DTO.
 *   Mọi luồng liên kết tài khoản offline chỉ hỗ trợ qua mã claim token hoặc mã QR trên hóa đơn, phiên bản MVP không sử dụng OTP gửi qua số điện thoại để link tự động.
 *   Nhân viên của nhãn hàng chỉ được quyền truy vấn thông tin khách hàng và tạo mã claim thuộc nhãn hàng của mình quản lý.
+
+---
+
+## Cập nhật MVP: Vai trò Brand Portal và QR Claim
+
+### Vai trò thành viên Brand Portal
+*   Mô hình vai trò hiện tại chỉ còn hai giá trị:
+    *   `owner`: chủ sở hữu brand, mỗi brand chỉ có một owner active.
+    *   `staff`: nhân viên vận hành brand portal.
+*   Các vai trò cũ `staff`, `staff`, `staff` được gom về `staff`.
+*   API `POST /api/v1/brand-portal/brands/:brandId/members` chỉ cho phép thêm hoặc cập nhật thành viên với role `staff`; không dùng API này để tạo owner mới.
+*   API `GET /api/v1/brand-portal/me/brands` và `GET /api/v1/brand-portal/brands/:brandId` trả thêm thông tin membership của current user gồm `memberId`, `memberRole`, `memberStatus` để frontend biết quyền của user trong brand đang chọn.
+
+### Quy trình QR Claim khách offline
+*   Staff gọi `POST /api/v1/brand-portal/brands/:brandId/customers/:customerId/claim-token` để tạo claim token cho khách offline.
+*   Backend chỉ trả raw claim token một lần trong response; database chỉ lưu hash của token.
+*   Frontend/POS tự dùng raw token để tạo QR hoặc deep link. Backend không sinh ảnh QR.
+*   Khi khách quét QR, nếu chưa đăng nhập, frontend phải đưa khách qua luồng đăng nhập hoặc đăng ký trước.
+*   Sau khi khách đã có access token, frontend gọi `POST /api/v1/brands/claim` với `claimToken`.
+*   Backend luôn liên kết hồ sơ offline vào current authenticated user lấy từ JWT, không nhận `userId` từ request body.
+*   Claim token có thể bị thu hồi bởi staff qua API revoke; API list/status claim token không trả raw token.

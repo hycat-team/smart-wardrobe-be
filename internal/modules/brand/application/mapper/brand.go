@@ -35,6 +35,32 @@ func MapBrands(brands []*entities.Brand) []*dto.BrandRes {
 	return res
 }
 
+func MapPortalBrand(member *entities.BrandMember) *dto.PortalBrandRes {
+	if member == nil || member.Brand == nil {
+		return nil
+	}
+	brand := MapBrand(member.Brand)
+	if brand == nil {
+		return nil
+	}
+	return &dto.PortalBrandRes{
+		BrandRes:     *brand,
+		MemberID:     member.ID,
+		MemberRole:   member.Role,
+		MemberStatus: member.Status,
+	}
+}
+
+func MapPortalBrands(members []*entities.BrandMember) []*dto.PortalBrandRes {
+	res := make([]*dto.PortalBrandRes, 0, len(members))
+	for _, member := range members {
+		if mapped := MapPortalBrand(member); mapped != nil {
+			res = append(res, mapped)
+		}
+	}
+	return res
+}
+
 func MapBrandMember(member *entities.BrandMember) *dto.BrandMemberRes {
 	if member == nil {
 		return nil
@@ -157,6 +183,8 @@ func MapBrandConversation(conv *entities.BrandConversation, customerName *string
 		UserDisplayName: userDisplayName,
 		Status:          string(conv.Status),
 		LastMessageAt:   conv.LastMessageAt,
+		UserLastReadAt:  conv.UserLastReadAt,
+		StaffLastReadAt: conv.StaffLastReadAt,
 		CreatedAt:       conv.CreatedAt,
 		UpdatedAt:       conv.UpdatedAt,
 	}

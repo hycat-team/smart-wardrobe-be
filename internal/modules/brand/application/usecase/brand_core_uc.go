@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
@@ -43,6 +46,7 @@ import (
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type BrandCoreUseCase struct {
@@ -65,6 +69,8 @@ type BrandCoreUseCase struct {
 	fashionContract fashion_contract.IFashionContract
 	mediaService    media.IMediaService
 	uow             shared_repos.IUnitOfWork
+	redisClient     *redis.Client
+	cfg             *config.Config
 }
 
 func NewBrandCoreUseCase(
@@ -87,6 +93,8 @@ func NewBrandCoreUseCase(
 	fashionContract fashion_contract.IFashionContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
+	redisClient *redis.Client,
+	cfg *config.Config,
 ) uc_interfaces.IBrandCoreUseCase {
 	return &BrandCoreUseCase{
 		brandRepo:       brandRepo,
@@ -108,6 +116,8 @@ func NewBrandCoreUseCase(
 		fashionContract: fashionContract,
 		mediaService:    mediaService,
 		uow:             uow,
+		redisClient:     redisClient,
+		cfg:             cfg,
 	}
 }
 
@@ -204,18 +214,12 @@ func (uc *BrandCoreUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUI
 	return mapper.MapBrand(brand), nil
 }
 
-func (uc *BrandCoreUseCase) GetBrandsForPortalUser(ctx context.Context, userID uuid.UUID) ([]*dto.BrandRes, error) {
+func (uc *BrandCoreUseCase) GetBrandsForPortalUser(ctx context.Context, userID uuid.UUID) ([]*dto.PortalBrandRes, error) {
 	members, err := uc.memberRepo.GetActiveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	brands := make([]*entities.Brand, 0, len(members))
-	for _, member := range members {
-		if member.Brand != nil {
-			brands = append(brands, member.Brand)
-		}
-	}
-	return mapper.MapBrands(brands), nil
+	return mapper.MapPortalBrands(members), nil
 }
 
 func (uc *BrandCoreUseCase) GetBrandLogoUploadSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
@@ -225,7 +229,7 @@ func (uc *BrandCoreUseCase) GetBrandLogoUploadSignature(ctx context.Context, use
 }
 
 func (uc *BrandCoreUseCase) GetBrandItemUploadSignature(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	return uc.mediaService.GenerateUploadSignature(ctx, shared_dto.UploadSignatureParams{
@@ -234,7 +238,7 @@ func (uc *BrandCoreUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 }
 
 func (uc *BrandCoreUseCase) UpdateBrandLogo(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandLogoReq) (*dto.BrandRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
@@ -253,19 +257,22 @@ func (uc *BrandCoreUseCase) UpdateBrandLogo(ctx context.Context, userID uuid.UUI
 	return mapper.MapBrand(brand), nil
 }
 
-func (uc *BrandCoreUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+func (uc *BrandCoreUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.PortalBrandRes, error) {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
-	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrand(brand), nil
+	if member == nil || member.Brand == nil {
+		return nil, branderrors.ErrBrandPortalForbidden()
+	}
+	return mapper.MapPortalBrand(member), nil
 }
 
 func (uc *BrandCoreUseCase) GetBrandCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.BrandCustomerRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -279,7 +286,7 @@ func (uc *BrandCoreUseCase) GetBrandCustomer(ctx context.Context, userID uuid.UU
 }
 
 func (uc *BrandCoreUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -308,11 +315,11 @@ func (uc *BrandCoreUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUI
 		}
 		seenInputs[normalizedIdentifier] = struct{}{}
 
-		if !isValidBrandMemberRole(memberInput.Role) {
+		if memberInput.Role != brandmemberrole.Staff {
 			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
 				EmailOrUsername: identifier,
 				ReasonCode:      "invalid_role",
-				Message:         "Vai trò thành viên brand không hợp lệ.",
+				Message:         "API thêm thành viên chỉ cho phép vai trò staff.",
 			})
 			continue
 		}
@@ -387,7 +394,7 @@ func (uc *BrandCoreUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUI
 }
 
 func (uc *BrandCoreUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	members, err := uc.memberRepo.GetByBrandID(ctx, brandID)
@@ -398,7 +405,7 @@ func (uc *BrandCoreUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUI
 }
 
 func (uc *BrandCoreUseCase) GetBrandCustomers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandCustomerRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customers, err := uc.customerRepo.GetByBrandID(ctx, brandID)
@@ -453,7 +460,7 @@ func (uc *BrandCoreUseCase) CreateOfflineCustomer(ctx context.Context, userID uu
 	if strings.TrimSpace(input.PhoneE164) == "" {
 		return nil, branderrors.ErrPhoneRequired()
 	}
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	creator, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
@@ -500,7 +507,7 @@ func (uc *BrandCoreUseCase) GrantLoyaltyPoints(ctx context.Context, staffUserID 
 	var response *dto.LoyaltyPointsTransactionRes
 
 	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		if err := uc.RequireBrandRole(txCtx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+		if err := uc.RequireBrandRole(txCtx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 			return err
 		}
 
@@ -715,8 +722,26 @@ func (uc *BrandCoreUseCase) GetUserBrandLoyaltyTransactions(ctx context.Context,
 	return mapLoyaltyTransactions(transactions), nil
 }
 
+func (uc *BrandCoreUseCase) GetUserBrandLoyaltyLots(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return []*dto.LoyaltyPointLotRes{}, nil
+	}
+	return uc.listLoyaltyLots(ctx, account.ID, query)
+}
+
 func (uc *BrandCoreUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID) ([]*dto.LoyaltyPointTransactionDetailRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
@@ -733,8 +758,35 @@ func (uc *BrandCoreUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context.Co
 	return mapLoyaltyTransactions(transactions), nil
 }
 
+func (uc *BrandCoreUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil || account.BrandID != brandID {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	return uc.listLoyaltyLots(ctx, loyaltyAccountID, query)
+}
+
+func (uc *BrandCoreUseCase) listLoyaltyLots(ctx context.Context, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+	var status *loyaltypointlotstatus.LoyaltyPointLotStatus
+	if query.Status != nil && strings.TrimSpace(*query.Status) != "" {
+		value := loyaltypointlotstatus.LoyaltyPointLotStatus(strings.ToLower(strings.TrimSpace(*query.Status)))
+		status = &value
+	}
+	lots, err := uc.lotRepo.ListByAccountID(ctx, loyaltyAccountID, status, query.ExpiresAt, query.Page, query.Limit)
+	if err != nil {
+		return nil, err
+	}
+	return mapLoyaltyPointLots(lots), nil
+}
+
 func (uc *BrandCoreUseCase) GetLoyaltyProgramForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) (*dto.LoyaltyProgramRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	program, err := uc.programRepo.GetActiveByBrandID(ctx, brandID)
@@ -748,7 +800,7 @@ func (uc *BrandCoreUseCase) GetLoyaltyProgramForStaff(ctx context.Context, staff
 }
 
 func (uc *BrandCoreUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	tiers, err := uc.tierRepo.GetByBrandID(ctx, brandID)
@@ -1129,12 +1181,22 @@ func mapLoyaltyPointLot(lot *entities.LoyaltyPointLot) *dto.LoyaltyPointLotRes {
 		return nil
 	}
 	return &dto.LoyaltyPointLotRes{
-		ID:              lot.ID,
-		EarnedPoints:    lot.EarnedPoints,
-		RemainingPoints: lot.RemainingPoints,
-		ExpiresAt:       lot.ExpiresAt,
-		Status:          string(lot.Status),
+		ID:                lot.ID,
+		EarnedPoints:      lot.EarnedPoints,
+		RemainingPoints:   lot.RemainingPoints,
+		ExpiresAt:         lot.ExpiresAt,
+		Status:            string(lot.Status),
+		EarnTransactionID: lot.EarnTransactionID,
+		CreatedAt:         lot.CreatedAt,
 	}
+}
+
+func mapLoyaltyPointLots(lots []*entities.LoyaltyPointLot) []*dto.LoyaltyPointLotRes {
+	res := make([]*dto.LoyaltyPointLotRes, 0, len(lots))
+	for _, lot := range lots {
+		res = append(res, mapLoyaltyPointLot(lot))
+	}
+	return res
 }
 
 func mapLoyaltyTransaction(tx *entities.LoyaltyPointTransaction) *dto.LoyaltyPointTransactionDetailRes {
@@ -1284,7 +1346,7 @@ func isValidBrandStatus(status brandstatus.BrandStatus) bool {
 
 func isValidBrandMemberRole(role brandmemberrole.BrandMemberRole) bool {
 	switch role {
-	case brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer:
+	case brandmemberrole.Owner, brandmemberrole.Staff:
 		return true
 	default:
 		return false
@@ -1306,7 +1368,7 @@ func hashPhone(phone string) string {
 }
 
 func (uc *BrandCoreUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -1370,7 +1432,7 @@ func (uc *BrandCoreUseCase) CreateBrandBenefit(ctx context.Context, staffUserID 
 }
 
 func (uc *BrandCoreUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	benefits, err := uc.benefitRepo.GetByBrandID(ctx, brandID)
@@ -1445,7 +1507,7 @@ func (uc *BrandCoreUseCase) ListBenefitRedemptionsForUser(ctx context.Context, u
 }
 
 func (uc *BrandCoreUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -1833,7 +1895,7 @@ func (uc *BrandCoreUseCase) GetUserConversation(ctx context.Context, userID uuid
 
 	user, _ := uc.userRepo.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
-	return mapper.MapBrandConversation(conv, customer.CustomerName, &userDisp), nil
+	return uc.mapBrandConversationWithUnread(ctx, conv, customer.CustomerName, &userDisp)
 }
 
 func (uc *BrandCoreUseCase) SendUserMessage(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
@@ -1878,6 +1940,8 @@ func (uc *BrandCoreUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 			// Update status and last message time
 			conv.Status = conversationstatus.Open
 			conv.LastMessageAt = &now
+			conv.ClosedAt = nil
+			conv.ClosedByUserID = nil
 			if err := uc.convRepo.Update(txCtx, conv); err != nil {
 				return err
 			}
@@ -1905,7 +1969,7 @@ func (uc *BrandCoreUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 }
 
 func (uc *BrandCoreUseCase) ListBrandConversations(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandConversationRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -1932,14 +1996,18 @@ func (uc *BrandCoreUseCase) ListBrandConversations(ctx context.Context, staffUse
 		if customer != nil {
 			custName = customer.CustomerName
 		}
-		res = append(res, mapper.MapBrandConversation(conv, custName, &userDisp))
+		mapped, err := uc.mapBrandConversationWithUnread(ctx, conv, custName, &userDisp)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, mapped)
 	}
 
 	return res, nil
 }
 
 func (uc *BrandCoreUseCase) ListConversationMessages(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) ([]*dto.BrandConversationMessageRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -1960,7 +2028,7 @@ func (uc *BrandCoreUseCase) ListConversationMessages(ctx context.Context, staffU
 }
 
 func (uc *BrandCoreUseCase) SendStaffMessage(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -1987,6 +2055,8 @@ func (uc *BrandCoreUseCase) SendStaffMessage(ctx context.Context, staffUserID uu
 
 		lockedConv.Status = conversationstatus.Open
 		lockedConv.LastMessageAt = &now
+		lockedConv.ClosedAt = nil
+		lockedConv.ClosedByUserID = nil
 		if err := uc.convRepo.Update(txCtx, lockedConv); err != nil {
 			return err
 		}
@@ -2010,6 +2080,118 @@ func (uc *BrandCoreUseCase) SendStaffMessage(ctx context.Context, staffUserID uu
 		return nil, err
 	}
 	return messageRes, nil
+}
+
+func (uc *BrandCoreUseCase) MarkUserConversationRead(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandConversationRes, error) {
+	conv, err := uc.convRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.UserLastReadAt = &now
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	user, _ := uc.userRepo.GetByID(ctx, userID)
+	userDisp := getUserDisplayName(user)
+	var custName *string
+	if customer != nil {
+		custName = customer.CustomerName
+	}
+	return uc.mapBrandConversationWithUnread(ctx, conv, custName, &userDisp)
+}
+
+func (uc *BrandCoreUseCase) MarkStaffConversationRead(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.StaffLastReadAt = &now
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandCoreUseCase) CloseBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.Status = conversationstatus.Closed
+	conv.ClosedAt = &now
+	conv.ClosedByUserID = &staffUserID
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandCoreUseCase) ReopenBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	conv.Status = conversationstatus.Open
+	conv.ClosedAt = nil
+	conv.ClosedByUserID = nil
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandCoreUseCase) mapStaffConversation(ctx context.Context, conv *entities.BrandConversation) (*dto.BrandConversationRes, error) {
+	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, conv.BrandID, conv.UserID)
+	user, _ := uc.userRepo.GetByID(ctx, conv.UserID)
+	userDisp := getUserDisplayName(user)
+	var custName *string
+	if customer != nil {
+		custName = customer.CustomerName
+	}
+	return uc.mapBrandConversationWithUnread(ctx, conv, custName, &userDisp)
+}
+
+func (uc *BrandCoreUseCase) mapBrandConversationWithUnread(ctx context.Context, conv *entities.BrandConversation, customerName *string, userDisplayName *string) (*dto.BrandConversationRes, error) {
+	res := mapper.MapBrandConversation(conv, customerName, userDisplayName)
+	if res == nil {
+		return nil, nil
+	}
+	userUnread, err := uc.msgRepo.CountUnread(ctx, conv.ID, string(senderrole.BrandStaff), conv.UserLastReadAt)
+	if err != nil {
+		return nil, err
+	}
+	staffUnread, err := uc.msgRepo.CountUnread(ctx, conv.ID, string(senderrole.Customer), conv.StaffLastReadAt)
+	if err != nil {
+		return nil, err
+	}
+	res.UserUnreadCount = userUnread
+	res.StaffUnreadCount = staffUnread
+	return res, nil
 }
 
 func getUserDisplayName(u *entities.User) string {
@@ -2072,7 +2254,7 @@ func mapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.Dig
 }
 
 func (uc *BrandCoreUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -2122,7 +2304,7 @@ func (uc *BrandCoreUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 }
 
 func (uc *BrandCoreUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
@@ -2137,7 +2319,7 @@ func (uc *BrandCoreUseCase) GetBrandItemsForStaff(ctx context.Context, staffUser
 }
 
 func (uc *BrandCoreUseCase) GetBrandItemForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -2173,7 +2355,7 @@ func (uc *BrandCoreUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 }
 
 func (uc *BrandCoreUseCase) UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -2199,7 +2381,7 @@ func (uc *BrandCoreUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 }
 
 func (uc *BrandCoreUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status string) (*dto.BrandItemRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	item, err := uc.brandItemRepo.GetByID(ctx, itemID)
@@ -2224,7 +2406,7 @@ func (uc *BrandCoreUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 }
 
 func (uc *BrandCoreUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff, brandmemberrole.Marketer); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	feedbacks, err := uc.feedbackRepo.GetByBrandItemID(ctx, itemID)
@@ -2299,7 +2481,7 @@ func (uc *BrandCoreUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 }
 
 func (uc *BrandCoreUseCase) CreateBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.CreateClaimTokenRes, error) {
-	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Manager, brandmemberrole.SupportStaff); err != nil {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -2313,11 +2495,29 @@ func (uc *BrandCoreUseCase) CreateBrandCustomerClaim(ctx context.Context, staffU
 		return nil, branderrors.ErrCustomerAlreadyLinked()
 	}
 
-	token := uuid.New().String()
+	activeClaims, err := uc.claimRepo.GetActiveByCustomerID(ctx, customerID, time.Now().UTC())
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	reason := "Rotated by new claim token"
+	for _, active := range activeClaims {
+		active.RevokedAt = &now
+		active.RevokedByUserID = &staffUserID
+		active.RevokedReason = &reason
+		if err := uc.claimRepo.Update(ctx, active); err != nil {
+			return nil, err
+		}
+	}
+
+	token, err := generateClaimToken()
+	if err != nil {
+		return nil, err
+	}
 	hash := sha256.Sum256([]byte(token))
 	hashStr := hex.EncodeToString(hash[:])
 
-	expiresAt := time.Now().UTC().Add(24 * time.Hour)
+	expiresAt := now.Add(24 * time.Hour)
 	claim := &entities.BrandCustomerClaim{
 		BrandCustomerID: customerID,
 		ClaimTokenHash:  hashStr,
@@ -2334,10 +2534,59 @@ func (uc *BrandCoreUseCase) CreateBrandCustomerClaim(ctx context.Context, staffU
 	}, nil
 }
 
-func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string) (*dto.BrandCustomerRes, error) {
+func (uc *BrandCoreUseCase) ListBrandCustomerClaims(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) ([]*dto.ClaimTokenRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	customer, err := uc.customerRepo.GetByID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.BrandID != brandID {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	claims, err := uc.claimRepo.GetByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	return mapClaimTokens(claims), nil
+}
+
+func (uc *BrandCoreUseCase) RevokeBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID, claimID uuid.UUID, input dto.RevokeClaimTokenReq) (*dto.ClaimTokenRes, error) {
+	if err := uc.RequireBrandRole(ctx, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	customer, err := uc.customerRepo.GetByID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.BrandID != brandID {
+		return nil, branderrors.ErrCustomerNotFound()
+	}
+	claim, err := uc.claimRepo.GetByID(ctx, claimID)
+	if err != nil {
+		return nil, err
+	}
+	if claim == nil || claim.BrandCustomerID != customerID {
+		return nil, branderrors.ErrInvalidToken()
+	}
+	now := time.Now().UTC()
+	claim.RevokedAt = &now
+	claim.RevokedByUserID = &staffUserID
+	claim.RevokedReason = input.Reason
+	if err := uc.claimRepo.Update(ctx, claim); err != nil {
+		return nil, err
+	}
+	return mapClaimToken(claim), nil
+}
+
+func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) (*dto.BrandCustomerRes, error) {
 	token := strings.TrimSpace(claimToken)
 	if token == "" {
 		return nil, branderrors.ErrInvalidToken()
+	}
+	if err := uc.checkClaimRateLimit(ctx, userID, token, clientIP); err != nil {
+		return nil, err
 	}
 	hash := sha256.Sum256([]byte(token))
 	hashStr := hex.EncodeToString(hash[:])
@@ -2351,6 +2600,9 @@ func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.
 	}
 	if claim.ConsumedAt != nil {
 		return nil, branderrors.ErrTokenAlreadyUsed()
+	}
+	if claim.RevokedAt != nil {
+		return nil, branderrors.ErrTokenRevoked()
 	}
 	if time.Now().UTC().After(claim.ExpiresAt) {
 		return nil, branderrors.ErrTokenExpired()
@@ -2412,4 +2664,94 @@ func (uc *BrandCoreUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.
 	}
 
 	return mapper.MapBrandCustomer(updatedCustomer), nil
+}
+
+func generateClaimToken() (string, error) {
+	buf := make([]byte, 9)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	token := base64.RawURLEncoding.EncodeToString(buf)
+	if len(token) > 12 {
+		token = token[:12]
+	}
+	return token, nil
+}
+
+func (uc *BrandCoreUseCase) checkClaimRateLimit(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) error {
+	if uc.redisClient == nil || uc.cfg == nil {
+		return branderrors.ErrClaimRateLimitUnavailable()
+	}
+	tokenHash := sha256.Sum256([]byte(claimToken))
+	limits := []struct {
+		key   string
+		limit int
+	}{
+		{key: "claim:ip:" + strings.TrimSpace(clientIP), limit: uc.cfg.ClaimRateLimit.IPLimit},
+		{key: "claim:user:" + userID.String(), limit: uc.cfg.ClaimRateLimit.UserLimit},
+		{key: "claim:token:" + hex.EncodeToString(tokenHash[:]), limit: uc.cfg.ClaimRateLimit.TokenLimit},
+	}
+	window := uc.cfg.ClaimRateLimit.WindowSeconds
+	for _, item := range limits {
+		allowed, err := uc.consumeClaimRateLimit(ctx, item.key, item.limit, window)
+		if err != nil {
+			return branderrors.ErrClaimRateLimitUnavailable()
+		}
+		if !allowed {
+			return branderrors.ErrClaimRateLimited()
+		}
+	}
+	return nil
+}
+
+func (uc *BrandCoreUseCase) consumeClaimRateLimit(ctx context.Context, key string, limit int, windowSeconds int) (bool, error) {
+	script := redis.NewScript(`
+local current = redis.call("INCR", KEYS[1])
+if current == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+if current > tonumber(ARGV[2]) then
+  return 0
+end
+return 1
+`)
+	res, err := script.Run(ctx, uc.redisClient, []string{key}, windowSeconds, limit).Int()
+	if err != nil {
+		return false, err
+	}
+	return res == 1, nil
+}
+
+func mapClaimToken(claim *entities.BrandCustomerClaim) *dto.ClaimTokenRes {
+	if claim == nil {
+		return nil
+	}
+	status := "active"
+	now := time.Now().UTC()
+	if claim.ConsumedAt != nil {
+		status = "consumed"
+	} else if claim.RevokedAt != nil {
+		status = "revoked"
+	} else if now.After(claim.ExpiresAt) {
+		status = "expired"
+	}
+	return &dto.ClaimTokenRes{
+		ID:              claim.ID,
+		BrandCustomerID: claim.BrandCustomerID,
+		ExpiresAt:       claim.ExpiresAt,
+		ConsumedAt:      claim.ConsumedAt,
+		RevokedAt:       claim.RevokedAt,
+		RevokedByUserID: claim.RevokedByUserID,
+		RevokedReason:   claim.RevokedReason,
+		Status:          status,
+		CreatedAt:       claim.CreatedAt,
+	}
+}
+
+func mapClaimTokens(claims []*entities.BrandCustomerClaim) []*dto.ClaimTokenRes {
+	res := make([]*dto.ClaimTokenRes, 0, len(claims))
+	for _, claim := range claims {
+		res = append(res, mapClaimToken(claim))
+	}
+	return res
 }

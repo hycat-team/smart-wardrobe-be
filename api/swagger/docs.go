@@ -1511,7 +1511,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes"
                                         }
                                     }
                                 }
@@ -1722,6 +1722,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/close": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Chat"
+                ],
+                "summary": "Đóng hội thoại brand (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hội thoại",
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/messages": {
             "get": {
                 "consumes": [
@@ -1823,6 +1870,100 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/read": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Chat"
+                ],
+                "summary": "Đánh dấu đã đọc hội thoại brand (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hội thoại",
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/reopen": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Chat"
+                ],
+                "summary": "Mở lại hội thoại brand (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hội thoại",
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes"
                                         }
                                     }
                                 }
@@ -2018,6 +2159,122 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy danh sách mã claim của khách hàng offline",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID của Brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID của khách hàng",
+                        "name": "customerId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens/{claimId}/revoke": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Thu hồi mã claim của khách hàng offline",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID của Brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID của khách hàng",
+                        "name": "customerId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID của mã claim",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin thu hồi",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.RevokeClaimTokenReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes"
                                         }
                                     }
                                 }
@@ -2431,6 +2688,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy danh sách lô điểm của loyalty account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID loyalty account",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trạng thái lô điểm",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày hết hạn tối đa",
+                        "name": "expiresAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/transactions": {
             "get": {
                 "produces": [
@@ -2661,7 +2992,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Cho phép owner hoặc manager thêm nhiều thành viên bằng email hoặc tên đăng nhập. Thành viên đã tồn tại sẽ được cập nhật vai trò và kích hoạt lại.",
+                "description": "Cho phép owner thêm nhiều thành viên với vai trò staff bằng email hoặc tên đăng nhập. API này không tạo owner mới.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2671,7 +3002,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand Member"
                 ],
-                "summary": "Thêm nhiều thành viên vào brand",
+                "summary": "Thêm thành viên vào brand",
                 "parameters": [
                     {
                         "type": "string",
@@ -2735,7 +3066,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes"
                                             }
                                         }
                                     }
@@ -2998,6 +3329,46 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/conversation/read": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Chat"
+                ],
+                "summary": "Đánh dấu đã đọc hội thoại brand (User)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes"
                                         }
                                     }
                                 }
@@ -3431,6 +3802,73 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandLoyaltyRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/brand-loyalties/{brandId}/lots": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy danh sách lô điểm loyalty của tôi theo brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trạng thái lô điểm",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày hết hạn tối đa",
+                        "name": "expiresAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes"
+                                            }
                                         }
                                     }
                                 }
@@ -4830,6 +5268,12 @@ const docTemplate = `{
                 "lastMessageAt": {
                     "type": "string"
                 },
+                "staffLastReadAt": {
+                    "type": "string"
+                },
+                "staffUnreadCount": {
+                    "type": "integer"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -4841,6 +5285,12 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
+                },
+                "userLastReadAt": {
+                    "type": "string"
+                },
+                "userUnreadCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -5035,6 +5485,38 @@ const docTemplate = `{
             ],
             "properties": {
                 "claimToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes": {
+            "type": "object",
+            "properties": {
+                "brandCustomerId": {
+                    "type": "string"
+                },
+                "consumedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "revokedAt": {
+                    "type": "string"
+                },
+                "revokedByUserId": {
+                    "type": "string"
+                },
+                "revokedReason": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -5254,6 +5736,12 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes": {
             "type": "object",
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "earnTransactionId": {
+                    "type": "string"
+                },
                 "earnedPoints": {
                     "type": "integer"
                 },
@@ -5425,6 +5913,65 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes": {
+            "type": "object",
+            "properties": {
+                "approvedAt": {
+                    "type": "string"
+                },
+                "approvedByUserId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logoPublicId": {
+                    "type": "string"
+                },
+                "logoUrl": {
+                    "type": "string"
+                },
+                "memberId": {
+                    "type": "string"
+                },
+                "memberRole": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole"
+                },
+                "memberStatus": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.RevokeClaimTokenReq": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -7031,15 +7578,11 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "owner",
-                "manager",
-                "support_staff",
-                "marketer"
+                "staff"
             ],
             "x-enum-varnames": [
                 "Owner",
-                "Manager",
-                "SupportStaff",
-                "Marketer"
+                "Staff"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus": {

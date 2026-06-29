@@ -117,3 +117,15 @@ func ErrTokenExpired() *apperror.Error {
 func ErrUserAlreadyHasCustomer() *apperror.Error {
 	return apperror.NewConflict("Tài khoản của bạn đã được liên kết với một hồ sơ khách hàng tại brand này.")
 }
+
+func ErrTokenRevoked() *apperror.Error {
+	return apperror.NewBadRequest("Mã claim đã bị thu hồi.")
+}
+
+func ErrClaimRateLimited() *apperror.Error {
+	return apperror.NewTooManyRequest("Bạn đã thử claim quá nhiều lần. Vui lòng thử lại sau.")
+}
+
+func ErrClaimRateLimitUnavailable() *apperror.Error {
+	return apperror.NewError(503, "Dịch vụ tạm thời gián đoạn", "Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
+}

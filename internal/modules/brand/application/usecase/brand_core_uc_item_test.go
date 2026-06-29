@@ -158,7 +158,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 			brandID.String() + "_" + staffUserID.String(): {
 				BrandID: brandID,
 				UserID:  staffUserID,
-				Role:    brandmemberrole.SupportStaff,
+				Role:    brandmemberrole.Staff,
 				Status:  brandmemberstatus.Active,
 			},
 		},

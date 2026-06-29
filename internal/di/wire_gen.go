@@ -156,7 +156,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandItemRepository := persistence5.NewBrandItemRepository(gormDB)
 	iDigitalSampleResponseRepository := persistence5.NewDigitalSampleResponseRepository(gormDB)
 	iBrandCustomerClaimRepository := persistence5.NewBrandCustomerClaimRepository(gormDB)
-	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iBrandConversationRepository, iBrandConversationMessageRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iBrandCustomerClaimRepository, iFashionContract, iMediaService, iUnitOfWork)
+	iBrandCoreUseCase := usecase2.NewBrandCoreUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iBrandConversationRepository, iBrandConversationMessageRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iBrandCustomerClaimRepository, iFashionContract, iMediaService, iUnitOfWork, client, cfg)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iBrandCoreUseCase, iMediaService)
 	outfitHandler := handler2.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)

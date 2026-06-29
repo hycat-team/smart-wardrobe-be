@@ -32,6 +32,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
 		userBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
 		userBrands.GET("/:brandId/conversation", shared_pres.WrapHandler(r.brandHandler.GetUserConversation))
+		userBrands.POST("/:brandId/conversation/read", shared_pres.WrapHandler(r.brandHandler.MarkUserConversationRead))
 		userBrands.POST("/:brandId/conversation/messages", shared_pres.WrapHandler(r.brandHandler.SendUserMessage))
 		userBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandItemsForUser))
 	}
@@ -56,6 +57,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		meBrands.GET("/brand-loyalties", shared_pres.WrapHandler(r.brandHandler.ListUserBrandLoyalties))
 		meBrands.GET("/brand-loyalties/:brandId", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyalty))
 		meBrands.GET("/brand-loyalties/:brandId/transactions", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyaltyTransactions))
+		meBrands.GET("/brand-loyalties/:brandId/lots", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyaltyLots))
 		meBrands.GET("/benefit-redemptions", shared_pres.WrapHandler(r.brandHandler.ListBenefitRedemptionsForUser))
 	}
 
@@ -72,9 +74,12 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
 		portal.GET("/brands/:brandId/customers/:customerId", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomer))
 		portal.POST("/brands/:brandId/customers/:customerId/claim-token", shared_pres.WrapHandler(r.brandHandler.CreateClaimToken))
+		portal.GET("/brands/:brandId/customers/:customerId/claim-tokens", shared_pres.WrapHandler(r.brandHandler.ListClaimTokens))
+		portal.POST("/brands/:brandId/customers/:customerId/claim-tokens/:claimId/revoke", shared_pres.WrapHandler(r.brandHandler.RevokeClaimToken))
 		portal.POST("/brands/:brandId/customers/offline-purchase", shared_pres.WrapHandler(r.brandHandler.CreateOfflineCustomer))
 		portal.POST("/brands/:brandId/loyalty/points", shared_pres.WrapHandler(r.brandHandler.GrantLoyaltyPoints))
 		portal.GET("/brands/:brandId/loyalty/accounts/:accountId/transactions", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountTransactionsForStaff))
+		portal.GET("/brands/:brandId/loyalty/accounts/:accountId/lots", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountLotsForStaff))
 		portal.GET("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyProgramForStaff))
 		portal.GET("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForStaff))
 		portal.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
@@ -82,6 +87,9 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))
 		portal.GET("/brands/:brandId/conversations", shared_pres.WrapHandler(r.brandHandler.ListBrandConversations))
 		portal.GET("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.ListConversationMessages))
+		portal.POST("/brands/:brandId/conversations/:conversationId/read", shared_pres.WrapHandler(r.brandHandler.MarkStaffConversationRead))
+		portal.POST("/brands/:brandId/conversations/:conversationId/close", shared_pres.WrapHandler(r.brandHandler.CloseConversation))
+		portal.POST("/brands/:brandId/conversations/:conversationId/reopen", shared_pres.WrapHandler(r.brandHandler.ReopenConversation))
 		portal.POST("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.SendStaffMessage))
 		portal.POST("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.CreateBrandItem))
 		portal.GET("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.GetBrandItemsForStaff))

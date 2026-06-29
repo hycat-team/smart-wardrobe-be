@@ -59,6 +59,9 @@ func validateConfig(cfg *Config) error {
 	if cfg.PayOS.ExpiredMinutes <= 0 {
 		return fmt.Errorf("payos expiration must be greater than 0")
 	}
+	if cfg.ClaimRateLimit.IPLimit <= 0 || cfg.ClaimRateLimit.UserLimit <= 0 || cfg.ClaimRateLimit.TokenLimit <= 0 || cfg.ClaimRateLimit.WindowSeconds <= 0 {
+		return fmt.Errorf("claim rate limit configuration is invalid")
+	}
 	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
 		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}

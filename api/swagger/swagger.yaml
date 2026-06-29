@@ -129,6 +129,10 @@ definitions:
         type: string
       lastMessageAt:
         type: string
+      staffLastReadAt:
+        type: string
+      staffUnreadCount:
+        type: integer
       status:
         type: string
       updatedAt:
@@ -137,6 +141,10 @@ definitions:
         type: string
       userId:
         type: string
+      userLastReadAt:
+        type: string
+      userUnreadCount:
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes:
     properties:
@@ -265,6 +273,27 @@ definitions:
         type: string
     required:
     - claimToken
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes:
+    properties:
+      brandCustomerId:
+        type: string
+      consumedAt:
+        type: string
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      revokedAt:
+        type: string
+      revokedByUserId:
+        type: string
+      revokedReason:
+        type: string
+      status:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateBrandBenefitReq:
     properties:
@@ -416,6 +445,10 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes:
     properties:
+      createdAt:
+        type: string
+      earnTransactionId:
+        type: string
       earnedPoints:
         type: integer
       expiresAt:
@@ -528,6 +561,45 @@ definitions:
       rank:
         type: integer
       updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes:
+    properties:
+      approvedAt:
+        type: string
+      approvedByUserId:
+        type: string
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      logoPublicId:
+        type: string
+      logoUrl:
+        type: string
+      memberId:
+        type: string
+      memberRole:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole'
+      memberStatus:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus'
+      name:
+        type: string
+      slug:
+        type: string
+      status:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
+      updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.RevokeClaimTokenReq:
+    properties:
+      reason:
+        maxLength: 255
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.SendBrandChatMessageReq:
@@ -1606,15 +1678,11 @@ definitions:
   smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole:
     enum:
     - owner
-    - manager
-    - support_staff
-    - marketer
+    - staff
     type: string
     x-enum-varnames:
     - Owner
-    - Manager
-    - SupportStaff
-    - Marketer
+    - Staff
   smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberstatus.BrandMemberStatus:
     enum:
     - active
@@ -2709,7 +2777,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes'
               type: object
       summary: Lấy thông tin brand portal
       tags:
@@ -2834,6 +2902,34 @@ paths:
       summary: Lấy danh sách các cuộc hội thoại của brand (Staff)
       tags:
       - Brand Chat
+  /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/close:
+    post:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hội thoại
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+              type: object
+      summary: Đóng hội thoại brand (Staff)
+      tags:
+      - Brand Chat
   /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/messages:
     get:
       consumes:
@@ -2899,6 +2995,62 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
               type: object
       summary: Gửi phản hồi của brand staff (Staff)
+      tags:
+      - Brand Chat
+  /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/read:
+    post:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hội thoại
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+              type: object
+      summary: Đánh dấu đã đọc hội thoại brand (Staff)
+      tags:
+      - Brand Chat
+  /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/reopen:
+    post:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hội thoại
+        in: path
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+              type: object
+      summary: Mở lại hội thoại brand (Staff)
       tags:
       - Brand Chat
   /api/v1/brand-portal/brands/{brandId}/customers:
@@ -2985,6 +3137,77 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateClaimTokenRes'
               type: object
       summary: Tạo mã claim cho khách hàng offline
+      tags:
+      - Brand Loyalty
+  /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens:
+    get:
+      parameters:
+      - description: ID của Brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID của khách hàng
+        in: path
+        name: customerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách mã claim của khách hàng offline
+      tags:
+      - Brand Loyalty
+  /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens/{claimId}/revoke:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID của Brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID của khách hàng
+        in: path
+        name: customerId
+        required: true
+        type: string
+      - description: ID của mã claim
+        in: path
+        name: claimId
+        required: true
+        type: string
+      - description: Thông tin thu hồi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.RevokeClaimTokenReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.ClaimTokenRes'
+              type: object
+      summary: Thu hồi mã claim của khách hàng offline
       tags:
       - Brand Loyalty
   /api/v1/brand-portal/brands/{brandId}/customers/offline-purchase:
@@ -3262,6 +3485,52 @@ paths:
       summary: Cập nhật logo brand
       tags:
       - Brand Portal
+  /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID loyalty account
+        in: path
+        name: accountId
+        required: true
+        type: string
+      - description: Trạng thái lô điểm
+        in: query
+        name: status
+        type: string
+      - description: Ngày hết hạn tối đa
+        in: query
+        name: expiresAt
+        type: string
+      - description: Trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách lô điểm của loyalty account
+      tags:
+      - Brand Loyalty
   /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/transactions:
     get:
       parameters:
@@ -3402,9 +3671,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cho phép owner hoặc manager thêm nhiều thành viên bằng email hoặc
-        tên đăng nhập. Thành viên đã tồn tại sẽ được cập nhật vai trò và kích hoạt
-        lại.
+      description: Cho phép owner thêm nhiều thành viên với vai trò staff bằng email
+        hoặc tên đăng nhập. API này không tạo owner mới.
       parameters:
       - description: ID brand
         in: path
@@ -3429,7 +3697,7 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersRes'
               type: object
-      summary: Thêm nhiều thành viên vào brand
+      summary: Thêm thành viên vào brand
       tags:
       - Brand Member
   /api/v1/brand-portal/brands/logo-upload-signature:
@@ -3462,7 +3730,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes'
                   type: array
               type: object
       summary: Lấy danh sách brand của staff hiện tại
@@ -3591,6 +3859,29 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
               type: object
       summary: Gửi tin nhắn đến brand (User)
+      tags:
+      - Brand Chat
+  /api/v1/brands/{brandId}/conversation/read:
+    post:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+              type: object
+      summary: Đánh dấu đã đọc hội thoại brand (User)
       tags:
       - Brand Chat
   /api/v1/brands/{brandId}/items:
@@ -3873,6 +4164,47 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandLoyaltyRes'
               type: object
       summary: Lấy chi tiết điểm loyalty của tôi theo brand
+      tags:
+      - Brand Loyalty
+  /api/v1/me/brand-loyalties/{brandId}/lots:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Trạng thái lô điểm
+        in: query
+        name: status
+        type: string
+      - description: Ngày hết hạn tối đa
+        in: query
+        name: expiresAt
+        type: string
+      - description: Trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointLotRes'
+                  type: array
+              type: object
+      summary: Lấy danh sách lô điểm loyalty của tôi theo brand
       tags:
       - Brand Loyalty
   /api/v1/me/brand-loyalties/{brandId}/transactions:

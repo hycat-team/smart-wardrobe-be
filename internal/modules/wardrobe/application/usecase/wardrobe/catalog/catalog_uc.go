@@ -185,9 +185,11 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 	}
 
 	payload := dto.WardrobeEventPayload{
-		ItemID: item.ID,
-		UserID: item.UserID,
-		Action: eventconstants.ActionUpdated,
+		ItemID:        item.ID,
+		UserID:        item.UserID,
+		FashionItemID: item.FashionItemID,
+		ItemType:      int(item.ItemType),
+		Action:        eventconstants.ActionUpdated,
 	}
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeUpdated, payload)
 
@@ -210,9 +212,11 @@ func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, i
 	}
 
 	payload := dto.WardrobeEventPayload{
-		ItemID: id,
-		UserID: item.UserID,
-		Action: eventconstants.ActionDeleted,
+		ItemID:        id,
+		UserID:        item.UserID,
+		FashionItemID: item.FashionItemID,
+		ItemType:      int(item.ItemType),
+		Action:        eventconstants.ActionDeleted,
 	}
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
 

@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_search "smart-wardrobe-be/internal/shared/infrastructure/search"
 	"smart-wardrobe-be/pkg/utils/stringutils"
@@ -13,8 +14,11 @@ func NewWardrobeSearchIndexService(searchEngine *shared_search.ElasticsearchClie
 }
 
 func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *entities.WardrobeItem) error {
+	if item.ItemType != itemtype.SystemCatalogItem {
+		return nil
+	}
 	doc := buildItemDocument(item)
-	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.ID.String(), doc)
+	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.FashionItemID.String(), doc)
 }
 
 func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) error {

@@ -42,6 +42,11 @@ rate_limit:
     token_limit: 100
     tokens_per_period: 20
     replenishment_seconds: 10
+claim_rate_limit:
+    ip_limit: 20
+    user_limit: 10
+    token_limit: 5
+    window_seconds: 600
 payos:
     return_url: https://closy.hycat.online
     cancel_url: https://closy.hycat.online

@@ -86,9 +86,11 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 
 	for _, cloned := range clonedItems {
 		payload := dto.WardrobeEventPayload{
-			ItemID: cloned.ID,
-			UserID: cloned.UserID,
-			Action: "created",
+			ItemID:        cloned.ID,
+			UserID:        cloned.UserID,
+			FashionItemID: cloned.FashionItemID,
+			ItemType:      int(cloned.ItemType),
+			Action:        "created",
 		}
 		_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
 	}
@@ -185,9 +187,11 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	}
 
 	payload := dto.WardrobeEventPayload{
-		ItemID: item.ID,
-		UserID: item.UserID,
-		Action: eventconstants.ActionCreated,
+		ItemID:        item.ID,
+		UserID:        item.UserID,
+		FashionItemID: item.FashionItemID,
+		ItemType:      int(item.ItemType),
+		Action:        eventconstants.ActionCreated,
 	}
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 
@@ -273,9 +277,11 @@ func (uc *WardrobeItemUseCase) DeleteWardrobeItemsBulk(ctx context.Context, user
 		}
 
 		payload := dto.WardrobeEventPayload{
-			ItemID: item.ID,
-			UserID: item.UserID,
-			Action: eventconstants.ActionDeleted,
+			ItemID:        item.ID,
+			UserID:        item.UserID,
+			FashionItemID: item.FashionItemID,
+			ItemType:      int(item.ItemType),
+			Action:        eventconstants.ActionDeleted,
 		}
 		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
 	}
@@ -308,9 +314,11 @@ func (uc *WardrobeItemUseCase) DeleteLockedWardrobeItems(ctx context.Context, us
 		}
 
 		payload := dto.WardrobeEventPayload{
-			ItemID: item.ID,
-			UserID: item.UserID,
-			Action: eventconstants.ActionDeleted,
+			ItemID:        item.ID,
+			UserID:        item.UserID,
+			FashionItemID: item.FashionItemID,
+			ItemType:      int(item.ItemType),
+			Action:        eventconstants.ActionDeleted,
 		}
 		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
 	}

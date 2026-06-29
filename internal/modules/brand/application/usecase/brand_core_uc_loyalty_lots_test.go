@@ -97,6 +97,22 @@ func (r *loyaltyLotsLotRepo) ListRedeemableLotsForUpdate(ctx context.Context, lo
 	}
 	return lots, nil
 }
+func (r *loyaltyLotsLotRepo) ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error) {
+	var lots []*entities.LoyaltyPointLot
+	for _, lot := range r.lots {
+		if lot.LoyaltyAccountID != loyaltyAccountID {
+			continue
+		}
+		if status != nil && lot.Status != *status {
+			continue
+		}
+		if expiresAt != nil && (lot.ExpiresAt == nil || !lot.ExpiresAt.Before(*expiresAt)) {
+			continue
+		}
+		lots = append(lots, lot)
+	}
+	return lots, nil
+}
 func (r *loyaltyLotsLotRepo) ListExpiredLotsForUpdate(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) ([]*entities.LoyaltyPointLot, error) {
 	var lots []*entities.LoyaltyPointLot
 	for _, lot := range r.lots {

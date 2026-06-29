@@ -20,8 +20,8 @@ func NewBrandLoyaltyHandler(brandUC usecase_interfaces.IBrandCoreUseCase) *Brand
 }
 
 // AddBrandMember adds members to a brand.
-// @Summary Thêm nhiều thành viên vào brand
-// @Description Cho phép owner hoặc manager thêm nhiều thành viên bằng email hoặc tên đăng nhập. Thành viên đã tồn tại sẽ được cập nhật vai trò và kích hoạt lại.
+// @Summary Thêm thành viên vào brand
+// @Description Cho phép owner thêm nhiều thành viên với vai trò staff bằng email hoặc tên đăng nhập. API này không tạo owner mới.
 // @Tags Brand Member
 // @Accept json
 // @Produce json
@@ -578,6 +578,75 @@ func (h *BrandLoyaltyHandler) CreateClaimToken(c *gin.Context) error {
 	return nil
 }
 
+// ListClaimTokens lists issued claim token metadata for an offline customer.
+// @Summary Lấy danh sách mã claim của khách hàng offline
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID của Brand"
+// @Param customerId path string true "ID của khách hàng"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.ClaimTokenRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens [get]
+func (h *BrandLoyaltyHandler) ListClaimTokens(c *gin.Context) error {
+	staffUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	customerID, err := uuid.Parse(c.Param("customerId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.ListBrandCustomerClaims(c.Request.Context(), staffUserID, brandID, customerID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy danh sách mã claim thành công", res)
+	return nil
+}
+
+// RevokeClaimToken revokes one issued claim token.
+// @Summary Thu hồi mã claim của khách hàng offline
+// @Tags Brand Loyalty
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID của Brand"
+// @Param customerId path string true "ID của khách hàng"
+// @Param claimId path string true "ID của mã claim"
+// @Param body body dto.RevokeClaimTokenReq true "Thông tin thu hồi"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.ClaimTokenRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/customers/{customerId}/claim-tokens/{claimId}/revoke [post]
+func (h *BrandLoyaltyHandler) RevokeClaimToken(c *gin.Context) error {
+	staffUserID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	customerID, err := uuid.Parse(c.Param("customerId"))
+	if err != nil {
+		return err
+	}
+	claimID, err := uuid.Parse(c.Param("claimId"))
+	if err != nil {
+		return err
+	}
+	var input dto.RevokeClaimTokenReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.brandUC.RevokeBrandCustomerClaim(c.Request.Context(), staffUserID, brandID, customerID, claimID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Thu hồi mã claim thành công", res)
+	return nil
+}
+
 // ClaimOfflineAccount links an offline customer and loyalty account to the current user.
 // @Summary Liên kết tài khoản khách hàng offline
 // @Description Người dùng nhập mã claim nhận được để liên kết hồ sơ mua hàng offline của họ với tài khoản online.
@@ -596,10 +665,79 @@ func (h *BrandLoyaltyHandler) ClaimOfflineAccount(c *gin.Context) error {
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.ClaimBrandCustomer(c.Request.Context(), userID, input.ClaimToken)
+	res, err := h.brandUC.ClaimBrandCustomer(c.Request.Context(), userID, input.ClaimToken, c.ClientIP())
 	if err != nil {
 		return err
 	}
 	shared_pres.Success(c, msgBrandClaimCustomerSuccess, res)
+	return nil
+}
+
+// GetUserBrandLoyaltyLots lists current user's loyalty point lots for a brand.
+// @Summary Lấy danh sách lô điểm loyalty của tôi theo brand
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param status query string false "Trạng thái lô điểm"
+// @Param expiresAt query string false "Ngày hết hạn tối đa"
+// @Param page query int false "Trang"
+// @Param limit query int false "Số lượng"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointLotRes}
+// @Router /api/v1/me/brand-loyalties/{brandId}/lots [get]
+func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var query dto.ListLoyaltyPointLotsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetUserBrandLoyaltyLots(c.Request.Context(), userID, brandID, query)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy danh sách lô điểm loyalty thành công", res)
+	return nil
+}
+
+// GetLoyaltyAccountLotsForStaff lists point lots for a loyalty account.
+// @Summary Lấy danh sách lô điểm của loyalty account
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param accountId path string true "ID loyalty account"
+// @Param status query string false "Trạng thái lô điểm"
+// @Param expiresAt query string false "Ngày hết hạn tối đa"
+// @Param page query int false "Trang"
+// @Param limit query int false "Số lượng"
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointLotRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots [get]
+func (h *BrandLoyaltyHandler) GetLoyaltyAccountLotsForStaff(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	accountID, err := uuid.Parse(c.Param("accountId"))
+	if err != nil {
+		return err
+	}
+	var query dto.ListLoyaltyPointLotsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetLoyaltyAccountLotsForStaff(c.Request.Context(), userID, brandID, accountID, query)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy danh sách lô điểm loyalty account thành công", res)
 	return nil
 }

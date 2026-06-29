@@ -67,11 +67,14 @@ type ILoyaltyPointLotRepository interface {
 	UpdateLotRemainingAndStatus(ctx context.Context, lotID uuid.UUID, remainingPoints int, status loyaltypointlotstatus.LoyaltyPointLotStatus) error
 	ListAccountsWithExpiredLots(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
 	GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error)
+	ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error)
 }
 
 type IBrandCustomerClaimRepository interface {
 	shared_repos.IGenericRepository[entities.BrandCustomerClaim, uuid.UUID]
 	GetByTokenHash(ctx context.Context, tokenHash string) (*entities.BrandCustomerClaim, error)
+	GetActiveByCustomerID(ctx context.Context, brandCustomerID uuid.UUID, now time.Time) ([]*entities.BrandCustomerClaim, error)
+	GetByCustomerID(ctx context.Context, brandCustomerID uuid.UUID) ([]*entities.BrandCustomerClaim, error)
 }
 
 type IBrandBenefitRepository interface {
@@ -97,6 +100,7 @@ type IBrandConversationRepository interface {
 type IBrandConversationMessageRepository interface {
 	shared_repos.IGenericRepository[entities.BrandConversationMessage, uuid.UUID]
 	GetByConversationID(ctx context.Context, conversationID uuid.UUID) ([]*entities.BrandConversationMessage, error)
+	CountUnread(ctx context.Context, conversationID uuid.UUID, senderRole string, since *time.Time) (int, error)
 }
 
 type IBrandItemRepository interface {

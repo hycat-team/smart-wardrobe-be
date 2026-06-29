@@ -163,3 +163,106 @@ func (h *BrandChatHandler) SendStaffMessage(c *gin.Context) error {
 	shared_pres.Created(c, "Gửi phản hồi thành công", res)
 	return nil
 }
+
+// MarkUserConversationRead marks the current user's brand conversation as read.
+// @Summary Đánh dấu đã đọc hội thoại brand (User)
+// @Tags Brand Chat
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
+// @Router /api/v1/brands/{brandId}/conversation/read [post]
+func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.MarkUserConversationRead(c.Request.Context(), userID, brandID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Đánh dấu đã đọc hội thoại thành công", res)
+	return nil
+}
+
+// MarkStaffConversationRead marks a brand conversation as read for staff.
+// @Summary Đánh dấu đã đọc hội thoại brand (Staff)
+// @Tags Brand Chat
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param conversationId path string true "ID hội thoại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/read [post]
+func (h *BrandChatHandler) MarkStaffConversationRead(c *gin.Context) error {
+	userID, brandID, conversationID, err := parseStaffConversationParams(c)
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.MarkStaffConversationRead(c.Request.Context(), userID, brandID, conversationID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Đánh dấu đã đọc hội thoại thành công", res)
+	return nil
+}
+
+// CloseConversation closes a brand conversation.
+// @Summary Đóng hội thoại brand (Staff)
+// @Tags Brand Chat
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param conversationId path string true "ID hội thoại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/close [post]
+func (h *BrandChatHandler) CloseConversation(c *gin.Context) error {
+	userID, brandID, conversationID, err := parseStaffConversationParams(c)
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.CloseBrandConversation(c.Request.Context(), userID, brandID, conversationID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Đóng hội thoại thành công", res)
+	return nil
+}
+
+// ReopenConversation reopens a brand conversation.
+// @Summary Mở lại hội thoại brand (Staff)
+// @Tags Brand Chat
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param conversationId path string true "ID hội thoại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/reopen [post]
+func (h *BrandChatHandler) ReopenConversation(c *gin.Context) error {
+	userID, brandID, conversationID, err := parseStaffConversationParams(c)
+	if err != nil {
+		return err
+	}
+	res, err := h.brandUC.ReopenBrandConversation(c.Request.Context(), userID, brandID, conversationID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Mở lại hội thoại thành công", res)
+	return nil
+}
+
+func parseStaffConversationParams(c *gin.Context) (uuid.UUID, uuid.UUID, uuid.UUID, error) {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, err
+	}
+	conversationID, err := uuid.Parse(c.Param("conversationId"))
+	if err != nil {
+		return uuid.Nil, uuid.Nil, uuid.Nil, err
+	}
+	return userID, brandID, conversationID, nil
+}

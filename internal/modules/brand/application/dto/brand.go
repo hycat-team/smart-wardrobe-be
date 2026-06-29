@@ -90,6 +90,13 @@ type BrandRes struct {
 	UpdatedAt        time.Time               `json:"updatedAt"`
 }
 
+type PortalBrandRes struct {
+	BrandRes
+	MemberID     uuid.UUID                           `json:"memberId"`
+	MemberRole   brandmemberrole.BrandMemberRole     `json:"memberRole"`
+	MemberStatus brandmemberstatus.BrandMemberStatus `json:"memberStatus"`
+}
+
 type BrandMemberRes struct {
 	ID        uuid.UUID                           `json:"id"`
 	BrandID   uuid.UUID                           `json:"brandId"`
@@ -157,11 +164,20 @@ type LoyaltyTierRes struct {
 }
 
 type LoyaltyPointLotRes struct {
-	ID              uuid.UUID  `json:"id"`
-	EarnedPoints    int        `json:"earnedPoints"`
-	RemainingPoints int        `json:"remainingPoints"`
-	ExpiresAt       *time.Time `json:"expiresAt"`
-	Status          string     `json:"status"`
+	ID                uuid.UUID  `json:"id"`
+	EarnedPoints      int        `json:"earnedPoints"`
+	RemainingPoints   int        `json:"remainingPoints"`
+	ExpiresAt         *time.Time `json:"expiresAt"`
+	Status            string     `json:"status"`
+	EarnTransactionID uuid.UUID  `json:"earnTransactionId,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+type ListLoyaltyPointLotsQueryReq struct {
+	Status    *string    `form:"status" binding:"omitempty" label:"trạng thái lô điểm"`
+	ExpiresAt *time.Time `form:"expiresAt" binding:"omitempty" label:"ngày hết hạn"`
+	Page      int        `form:"page" binding:"omitempty,min=1" label:"trang"`
+	Limit     int        `form:"limit" binding:"omitempty,min=1,max=100" label:"số lượng"`
 }
 
 type BrandLoyaltyRes struct {
@@ -246,15 +262,19 @@ type SendBrandChatMessageReq struct {
 }
 
 type BrandConversationRes struct {
-	ID              uuid.UUID  `json:"id"`
-	BrandID         uuid.UUID  `json:"brandId"`
-	UserID          uuid.UUID  `json:"userId"`
-	CustomerName    *string    `json:"customerName"`
-	UserDisplayName *string    `json:"userDisplayName"`
-	Status          string     `json:"status"`
-	LastMessageAt   *time.Time `json:"lastMessageAt"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	ID               uuid.UUID  `json:"id"`
+	BrandID          uuid.UUID  `json:"brandId"`
+	UserID           uuid.UUID  `json:"userId"`
+	CustomerName     *string    `json:"customerName"`
+	UserDisplayName  *string    `json:"userDisplayName"`
+	Status           string     `json:"status"`
+	LastMessageAt    *time.Time `json:"lastMessageAt"`
+	UserLastReadAt   *time.Time `json:"userLastReadAt"`
+	StaffLastReadAt  *time.Time `json:"staffLastReadAt"`
+	UserUnreadCount  int        `json:"userUnreadCount"`
+	StaffUnreadCount int        `json:"staffUnreadCount"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 type BrandConversationMessageRes struct {
@@ -325,6 +345,22 @@ type DigitalSampleResponseRes struct {
 type CreateClaimTokenRes struct {
 	ClaimToken string    `json:"claimToken"`
 	ExpiresAt  time.Time `json:"expiresAt"`
+}
+
+type ClaimTokenRes struct {
+	ID              uuid.UUID  `json:"id"`
+	BrandCustomerID uuid.UUID  `json:"brandCustomerId"`
+	ExpiresAt       time.Time  `json:"expiresAt"`
+	ConsumedAt      *time.Time `json:"consumedAt"`
+	RevokedAt       *time.Time `json:"revokedAt"`
+	RevokedByUserID *uuid.UUID `json:"revokedByUserId"`
+	RevokedReason   *string    `json:"revokedReason"`
+	Status          string     `json:"status"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}
+
+type RevokeClaimTokenReq struct {
+	Reason *string `json:"reason" binding:"omitempty,max=255" label:"lý do thu hồi"`
 }
 
 type ClaimOfflineAccountReq struct {

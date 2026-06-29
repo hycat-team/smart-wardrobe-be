@@ -3,25 +3,26 @@ package config
 import "time"
 
 type Config struct {
-	Database      Database           `mapstructure:"database"`
-	Redis         Redis              `mapstructure:"redis"`
-	Server        Server             `mapstructure:"server"`
-	Startup       Startup            `mapstructure:"startup"`
-	Jwt           Jwt                `mapstructure:"jwt"`
-	Logger        Logger             `mapstructure:"logger"`
-	Quota         Quota              `mapstructure:"quota"`
-	Otp           Otp                `mapstructure:"otp"`
-	Email         Email              `mapstructure:"email"`
-	RateLimit     RateLimit          `mapstructure:"rate_limit"`
-	PayOS         PayOS              `mapstructure:"payos"`
-	Cloudinary    Cloudinary         `mapstructure:"cloudinary"`
-	AI            AIServiceConfig    `mapstructure:"ai"`
-	RabbitMQ      RabbitMQ           `mapstructure:"rabbitmq"`
-	Elasticsearch Elasticsearch      `mapstructure:"elasticsearch"`
-	Community     Community          `mapstructure:"community"`
-	Loyalty       Loyalty            `mapstructure:"loyalty"`
-	RAG           RAG                `mapstructure:"rag"`
-	Wardrobe      WardrobeProcessing `mapstructure:"wardrobe"`
+	Database       Database           `mapstructure:"database"`
+	Redis          Redis              `mapstructure:"redis"`
+	Server         Server             `mapstructure:"server"`
+	Startup        Startup            `mapstructure:"startup"`
+	Jwt            Jwt                `mapstructure:"jwt"`
+	Logger         Logger             `mapstructure:"logger"`
+	Quota          Quota              `mapstructure:"quota"`
+	Otp            Otp                `mapstructure:"otp"`
+	Email          Email              `mapstructure:"email"`
+	RateLimit      RateLimit          `mapstructure:"rate_limit"`
+	ClaimRateLimit ClaimRateLimit     `mapstructure:"claim_rate_limit"`
+	PayOS          PayOS              `mapstructure:"payos"`
+	Cloudinary     Cloudinary         `mapstructure:"cloudinary"`
+	AI             AIServiceConfig    `mapstructure:"ai"`
+	RabbitMQ       RabbitMQ           `mapstructure:"rabbitmq"`
+	Elasticsearch  Elasticsearch      `mapstructure:"elasticsearch"`
+	Community      Community          `mapstructure:"community"`
+	Loyalty        Loyalty            `mapstructure:"loyalty"`
+	RAG            RAG                `mapstructure:"rag"`
+	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
 }
 
 type Loyalty struct {
@@ -207,6 +208,13 @@ type RateLimit struct {
 	TokenLimit           int `mapstructure:"token_limit"`
 	TokensPerPeriod      int `mapstructure:"tokens_per_period"`
 	ReplenishmentSeconds int `mapstructure:"replenishment_seconds"`
+}
+
+type ClaimRateLimit struct {
+	IPLimit       int `mapstructure:"ip_limit"`
+	UserLimit     int `mapstructure:"user_limit"`
+	TokenLimit    int `mapstructure:"token_limit"`
+	WindowSeconds int `mapstructure:"window_seconds"`
 }
 
 type Community struct {

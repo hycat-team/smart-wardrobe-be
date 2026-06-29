@@ -138,7 +138,7 @@ func (h *BrandPortalHandler) GetActiveBrand(c *gin.Context) error {
 // @Summary Lấy danh sách brand của staff hiện tại
 // @Tags Brand Portal
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandRes}
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.PortalBrandRes}
 // @Router /api/v1/brand-portal/me/brands [get]
 func (h *BrandPortalHandler) GetMyPortalBrands(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -207,7 +207,7 @@ func (h *BrandPortalHandler) UpdateBrandLogo(c *gin.Context) error {
 // @Tags Brand Portal
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PortalBrandRes}
 // @Router /api/v1/brand-portal/brands/{brandId} [get]
 func (h *BrandPortalHandler) GetBrandForPortal(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

@@ -95,4 +95,8 @@ type BrandCustomerClaim struct {
 	ClaimTokenHash  string         `gorm:"type:varchar(255);not null;uniqueIndex"`
 	ExpiresAt       time.Time      `gorm:"type:timestamp with time zone;not null"`
 	ConsumedAt      *time.Time     `gorm:"type:timestamp with time zone"`
+	RevokedAt       *time.Time     `gorm:"type:timestamp with time zone"`
+	RevokedByUserID *uuid.UUID     `gorm:"type:uuid"`
+	RevokedByUser   *User          `gorm:"foreignKey:RevokedByUserID;constraint:OnDelete:SET NULL"`
+	RevokedReason   *string        `gorm:"type:varchar(255)"`
 }

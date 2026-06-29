@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -72,4 +73,18 @@ func (r *BrandConversationMessageRepository) GetByConversationID(ctx context.Con
 		return nil, err
 	}
 	return list, nil
+}
+
+func (r *BrandConversationMessageRepository) CountUnread(ctx context.Context, conversationID uuid.UUID, senderRole string, since *time.Time) (int, error) {
+	query := r.GetDB(ctx).
+		Model(&entities.BrandConversationMessage{}).
+		Where("conversation_id = ? AND sender_role = ?", conversationID, senderRole)
+	if since != nil {
+		query = query.Where("created_at > ?", *since)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
