@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
 
 	"github.com/google/uuid"
 )

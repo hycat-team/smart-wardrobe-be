@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
 
 	"github.com/google/uuid"
 )
@@ -148,7 +149,7 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 		}
 
 		attachTestPolicies(repo.plans)
-		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
+		repo.plans[1].AICostPolicy.EnforcementMode = aienforcementmode.Strict
 		repo.plans[1].AICostPolicy.PeriodDays = 1
 		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
 		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)
@@ -193,7 +194,7 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 		}
 
 		attachTestPolicies(repo.plans)
-		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
+		repo.plans[1].AICostPolicy.EnforcementMode = aienforcementmode.Strict
 		repo.plans[1].AICostPolicy.PeriodDays = 1
 		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
 		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)

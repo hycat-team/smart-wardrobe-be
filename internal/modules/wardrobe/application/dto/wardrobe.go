@@ -7,7 +7,7 @@ import (
 	"time"
 
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 
 	"github.com/google/uuid"
 )

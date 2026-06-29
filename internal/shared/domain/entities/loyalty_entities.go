@@ -3,9 +3,9 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltyroundingmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
 
 	"github.com/google/uuid"
 )

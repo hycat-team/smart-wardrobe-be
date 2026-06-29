@@ -7,7 +7,7 @@ import (
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/community/application/interface/usecase"
 	_ "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/posttype"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -116,7 +116,7 @@ func (h *PostHandler) GetFeed(c *gin.Context) error {
 	}
 
 	query.Sort = strings.TrimSpace(strings.ToLower(query.Sort))
-	query.PostType = posttype.PostType(strings.TrimSpace(strings.ToUpper(string(query.PostType))))
+	query.PostType = posttype.PostType(strings.TrimSpace(strings.ToLower(string(query.PostType))))
 
 	response, err := h.postUC.GetFeed(c.Request.Context(), viewerUserID, query)
 	if err != nil {

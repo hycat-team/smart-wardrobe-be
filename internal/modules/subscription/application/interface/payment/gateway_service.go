@@ -35,9 +35,9 @@ type CheckoutSessionResult struct {
 type ProviderPaymentStatus string
 
 const (
-	ProviderPending   ProviderPaymentStatus = "PENDING"
+	ProviderPending   ProviderPaymentStatus = "pending"
 	ProviderPaid      ProviderPaymentStatus = "PAID"
-	ProviderCancelled ProviderPaymentStatus = "CANCELLED"
+	ProviderCancelled ProviderPaymentStatus = "cancelled"
 	ProviderUnknown   ProviderPaymentStatus = "UNKNOWN"
 )
 

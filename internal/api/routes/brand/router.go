@@ -3,7 +3,7 @@ package brand
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	brand_handler "smart-wardrobe-be/internal/modules/brand/presentation/handler"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 
 	"github.com/google/uuid"
 )

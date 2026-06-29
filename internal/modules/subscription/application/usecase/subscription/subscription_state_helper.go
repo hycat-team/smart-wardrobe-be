@@ -6,7 +6,7 @@ import (
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

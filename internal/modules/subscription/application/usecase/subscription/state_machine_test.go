@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

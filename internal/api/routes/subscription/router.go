@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/api/middleware"
 	subscription_handler "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"

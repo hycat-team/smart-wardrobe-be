@@ -7,14 +7,14 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitredemptionstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefittype"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitunlocktype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitredemptionstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefittype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitunlocktype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -232,12 +232,12 @@ func TestCreateBrandBenefit(t *testing.T) {
 		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
 	}
 
-	featCode := "SAMPLE_MIX_ACCESS"
+	featCode := "sample_mix_access"
 	input := dto.CreateBrandBenefitReq{
 		Name:           "Test Benefit",
 		Description:    ptr("Test Desc"),
-		BenefitType:    "FEATURE_ACCESS",
-		UnlockType:     "POINT_REDEMPTION",
+		BenefitType:    "feature_access",
+		UnlockType:     "point_redemption",
 		RequiredPoints: intPtr(100),
 		FeatureCode:    &featCode,
 		FeatureConfig:  map[string]interface{}{"valid_duration_days": 30},

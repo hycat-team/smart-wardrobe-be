@@ -7,9 +7,9 @@ import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
 	communityerrors "smart-wardrobe-be/internal/modules/community/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/posttype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/posttype"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -432,7 +432,7 @@ func (uc *UserPostUseCase) validateCreatePostInput(postType posttype.PostType, c
 
 // normalizePostType canonicalizes the requested post type into the domain enum.
 func (uc *UserPostUseCase) normalizePostType(raw posttype.PostType) (posttype.PostType, error) {
-	switch posttype.PostType(strings.ToUpper(strings.TrimSpace(string(raw)))) {
+	switch posttype.PostType(strings.ToLower(strings.TrimSpace(string(raw)))) {
 	case posttype.Outfit:
 		return posttype.Outfit, nil
 	case posttype.Sale:

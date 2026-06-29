@@ -1,7 +1,7 @@
 package contract
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"time"
 
 	"github.com/google/uuid"

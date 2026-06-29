@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 

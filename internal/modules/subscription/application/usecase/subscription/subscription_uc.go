@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"

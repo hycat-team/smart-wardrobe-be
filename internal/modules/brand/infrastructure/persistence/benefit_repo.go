@@ -34,7 +34,7 @@ func (r *BrandBenefitRepository) GetByBrandID(ctx context.Context, brandID uuid.
 
 func (r *BrandBenefitRepository) GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
 	var benefits []*entities.BrandBenefit
-	err := r.GetDB(ctx).Where("brand_id = ? AND status = ?", brandID, "ACTIVE").Find(&benefits).Error
+	err := r.GetDB(ctx).Where("brand_id = ? AND status = ?", brandID, "active").Find(&benefits).Error
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.C
 	err := r.GetDB(ctx).
 		Joins("JOIN brand_benefits ON brand_benefits.id = benefit_redemptions.benefit_id").
 		Where("benefit_redemptions.brand_customer_id = ? AND benefit_redemptions.status = ? AND brand_benefits.feature_code = ? AND (benefit_redemptions.expires_at IS NULL OR benefit_redemptions.expires_at > ?)",
-			brandCustomerID, "REDEEMED", featureCode, now).
+			brandCustomerID, "redeemed", featureCode, now).
 		First(&redemption).Error
 
 	if err != nil {

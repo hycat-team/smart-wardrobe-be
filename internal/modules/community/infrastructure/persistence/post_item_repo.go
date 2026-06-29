@@ -5,9 +5,9 @@ import (
 
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/transferstate"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/transferstate"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

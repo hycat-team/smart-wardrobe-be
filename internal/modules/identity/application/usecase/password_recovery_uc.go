@@ -16,7 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 

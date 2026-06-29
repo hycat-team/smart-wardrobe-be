@@ -2,7 +2,7 @@ package usecase
 
 import (
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 

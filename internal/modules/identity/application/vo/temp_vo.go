@@ -1,6 +1,6 @@
 package vo
 
-import "smart-wardrobe-be/internal/shared/domain/constants/gender"
+import "smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 
 type TempUserCacheModel struct {
 	Username     string        `json:"Username"`

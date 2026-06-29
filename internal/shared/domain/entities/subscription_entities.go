@@ -3,12 +3,16 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/benefitresolution"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefitresolution"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aiusageeventstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/deposittransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/subscriptionrenewalstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/walletstatementtype"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -34,18 +38,18 @@ type SubscriptionPlan struct {
 
 type AICostPolicy struct {
 	AuditableEntity
-	Code                         string                   `gorm:"type:varchar(100);not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:1"`
-	Version                      int64                    `gorm:"type:bigint;not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:2"`
-	Name                         string                   `gorm:"type:varchar(150);not null"`
-	EnforcementMode              string                   `gorm:"type:varchar(30);not null"`
-	PeriodDays                   int                      `gorm:"type:int;not null"`
-	HardCostMicroVND             *int64                   `gorm:"type:bigint"`
-	CompactThresholdBPS          int                      `gorm:"type:int;not null"`
-	FreeRouteThresholdBPS        int                      `gorm:"type:int;not null"`
-	UnknownHoldMinutes           int                      `gorm:"type:int;not null"`
-	MaxUnknownPaidRequestsPerDay int                      `gorm:"type:int;not null"`
-	IsActive                     bool                     `gorm:"type:boolean;not null"`
-	Operations                   []*AICostPolicyOperation `gorm:"foreignKey:PolicyID"`
+	Code                         string                            `gorm:"type:varchar(100);not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:1"`
+	Version                      int64                             `gorm:"type:bigint;not null;uniqueIndex:ux_ai_cost_policy_code_version,priority:2"`
+	Name                         string                            `gorm:"type:varchar(150);not null"`
+	EnforcementMode              aienforcementmode.AIEnforcementMode `gorm:"type:varchar(30);not null"`
+	PeriodDays                   int                               `gorm:"type:int;not null"`
+	HardCostMicroVND             *int64                            `gorm:"type:bigint"`
+	CompactThresholdBPS          int                               `gorm:"type:int;not null"`
+	FreeRouteThresholdBPS        int                               `gorm:"type:int;not null"`
+	UnknownHoldMinutes           int                               `gorm:"type:int;not null"`
+	MaxUnknownPaidRequestsPerDay int                               `gorm:"type:int;not null"`
+	IsActive                     bool                              `gorm:"type:boolean;not null"`
+	Operations                   []*AICostPolicyOperation          `gorm:"foreignKey:PolicyID"`
 }
 
 type AICostPolicyOperation struct {
@@ -66,18 +70,19 @@ type AICostPolicyOperation struct {
 
 type UserAIPolicyGrant struct {
 	AuditableEntity
-	UserID                     uuid.UUID    `gorm:"type:uuid;not null"`
-	PolicyID                   uuid.UUID    `gorm:"type:uuid;not null"`
-	PlanID                     uuid.UUID    `gorm:"type:uuid;not null"`
-	PlanCode                   string       `gorm:"type:varchar(100);not null"`
-	TierRank                   int          `gorm:"type:int;not null"`
-	PolicySnapshot             JSONDocument `gorm:"type:jsonb;not null"`
-	EffectiveFrom              time.Time    `gorm:"type:timestamp with time zone;not null"`
-	EffectiveTo                *time.Time   `gorm:"type:timestamp with time zone"`
-	Status                     string       `gorm:"type:varchar(20);not null"`
-	SourceEventID              *uuid.UUID   `gorm:"type:uuid"`
-	SourceDepositTransactionID *uuid.UUID   `gorm:"type:uuid"`
+	UserID                     uuid.UUID                           `gorm:"type:uuid;not null"`
+	PolicyID                   uuid.UUID                           `gorm:"type:uuid;not null"`
+	PlanID                     uuid.UUID                           `gorm:"type:uuid;not null"`
+	PlanCode                   string                              `gorm:"type:varchar(100);not null"`
+	TierRank                   int                                 `gorm:"type:int;not null"`
+	PolicySnapshot             JSONDocument                        `gorm:"type:jsonb;not null"`
+	EffectiveFrom              time.Time                           `gorm:"type:timestamp with time zone;not null"`
+	EffectiveTo                *time.Time                          `gorm:"type:timestamp with time zone"`
+	Status                     aipolicygrantstatus.AIPolicyGrantStatus `gorm:"type:varchar(20);not null"`
+	SourceEventID              *uuid.UUID                          `gorm:"type:uuid"`
+	SourceDepositTransactionID *uuid.UUID                          `gorm:"type:uuid"`
 }
+
 
 type AIUsagePeriodLedger struct {
 	AuditableEntity
@@ -110,10 +115,10 @@ type AIUsageEvent struct {
 	PromptTokens             int64            `gorm:"type:bigint;not null"`
 	OutputTokens             int64            `gorm:"type:bigint;not null"`
 	ThinkingTokens           int64            `gorm:"type:bigint;not null"`
-	ReservedCostMicroVND     int64            `gorm:"type:bigint;not null"`
-	ActualCostMicroVND       int64            `gorm:"type:bigint;not null"`
-	EstimatedMaxCostMicroVND int64            `gorm:"type:bigint;not null"`
-	Status                   string           `gorm:"type:varchar(30);not null"`
+	ReservedCostMicroVND     int64                               `gorm:"type:bigint;not null"`
+	ActualCostMicroVND       int64                               `gorm:"type:bigint;not null"`
+	EstimatedMaxCostMicroVND int64                               `gorm:"type:bigint;not null"`
+	Status                   aiusageeventstatus.AIUsageEventStatus `gorm:"type:varchar(30);not null"`
 	FinishReason             *string          `gorm:"type:varchar(100)"`
 	ErrorCode                *string          `gorm:"type:varchar(100)"`
 	EstimatedPromptTokens    *int64           `gorm:"type:bigint"`      // Token count used during preflight (estimated or provider-counted)
@@ -277,8 +282,8 @@ type SubscriptionRenewalAttempt struct {
 	UserID                      uuid.UUID  `gorm:"type:uuid;not null"`
 	ExpectedPlanID              uuid.UUID  `gorm:"type:uuid;not null"`
 	ExpectedExpiresAt           time.Time  `gorm:"type:timestamp with time zone;not null"`
-	ExpectedSubscriptionVersion int64      `gorm:"type:bigint;not null"`
-	Status                      string     `gorm:"type:varchar(50);not null"`
+	ExpectedSubscriptionVersion int64                                               `gorm:"type:bigint;not null"`
+	Status                      subscriptionrenewalstatus.SubscriptionRenewalStatus `gorm:"type:varchar(50);not null"`
 	AttemptCount                int        `gorm:"type:int;not null;default:0"`
 	LastErrorCode               *string    `gorm:"type:varchar(100)"`
 	LastErrorMessage            *string    `gorm:"type:text"`

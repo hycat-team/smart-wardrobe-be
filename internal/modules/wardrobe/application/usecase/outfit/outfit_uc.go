@@ -15,9 +15,9 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/logger"
 

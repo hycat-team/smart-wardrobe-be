@@ -8,8 +8,9 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
 )
 
 const strictPolicyExposureWarnToleranceMicroVND int64 = 1_000_000_000 // 1,000 VND
@@ -45,7 +46,7 @@ func (v *SubscriptionCatalogValidator) Validate(ctx context.Context) error {
 		if p.PlanKind == plankind.DefaultFree && p.IsActive {
 			activeDefaultFreeCount++
 		}
-		if p.IsActive && p.AICostPolicy != nil && p.AICostPolicy.EnforcementMode == "STRICT" {
+		if p.IsActive && p.AICostPolicy != nil && p.AICostPolicy.EnforcementMode == aienforcementmode.Strict {
 			if err := v.validateStrictPolicy(p.AICostPolicy); err != nil {
 				return fmt.Errorf("subscription plan %q AI policy invalid: %w", p.Slug, err)
 			}

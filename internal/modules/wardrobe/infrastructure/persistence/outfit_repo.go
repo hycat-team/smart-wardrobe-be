@@ -7,9 +7,9 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

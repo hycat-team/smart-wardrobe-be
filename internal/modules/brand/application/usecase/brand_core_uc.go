@@ -19,26 +19,26 @@ import (
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitfeaturecode"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitredemptionstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefittype"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefit/benefitunlocktype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/conversationstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandchat/senderrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/votetype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltyroundingmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltytransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitredemptionstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefittype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitunlocktype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/votetype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -1225,8 +1225,8 @@ func (uc *BrandCoreUseCase) CreateBrandBenefit(ctx context.Context, staffUserID 
 		return nil, branderrors.ErrBrandNotActive()
 	}
 
-	bType := benefittype.BenefitType(strings.ToUpper(input.BenefitType))
-	uType := benefitunlocktype.BenefitUnlockType(strings.ToUpper(input.UnlockType))
+	bType := benefittype.BenefitType(strings.ToLower(input.BenefitType))
+	uType := benefitunlocktype.BenefitUnlockType(strings.ToLower(input.UnlockType))
 
 	benefit := &entities.BrandBenefit{
 		BrandID:     brandID,
@@ -1257,7 +1257,7 @@ func (uc *BrandCoreUseCase) CreateBrandBenefit(ctx context.Context, staffUserID 
 	}
 
 	if input.FeatureCode != nil {
-		fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToUpper(*input.FeatureCode))
+		fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToLower(*input.FeatureCode))
 		benefit.FeatureCode = &fCode
 	}
 
@@ -1365,7 +1365,7 @@ func (uc *BrandCoreUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID
 		return nil, branderrors.ErrBenefitNotFound()
 	}
 
-	bStatus := benefitstatus.BenefitStatus(strings.ToUpper(status))
+	bStatus := benefitstatus.BenefitStatus(strings.ToLower(status))
 	if bStatus != benefitstatus.Active && bStatus != benefitstatus.Inactive && bStatus != benefitstatus.Archived {
 		return nil, branderrors.ErrBenefitInvalidStatus()
 	}
@@ -1401,7 +1401,7 @@ func (uc *BrandCoreUseCase) CheckBrandFeatureAccess(ctx context.Context, userID 
 	}
 
 	now := time.Now().UTC()
-	fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToUpper(featureCode))
+	fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToLower(featureCode))
 
 	for _, benefit := range benefits {
 		if benefit.BenefitType != benefittype.FeatureAccess || benefit.FeatureCode == nil || *benefit.FeatureCode != fCode {
@@ -1631,7 +1631,7 @@ func (uc *BrandCoreUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		}
 
 		// Check SAMPLE_MIX_ACCESS feature access for this brand
-		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "SAMPLE_MIX_ACCESS")
+		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "sample_mix_access")
 		if err != nil {
 			return nil, err
 		}
@@ -1693,7 +1693,7 @@ func (uc *BrandCoreUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 	}
 
 	if brandItem.ItemType == branditemtype.Sample {
-		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, "SAMPLE_MIX_ACCESS")
+		hasSampleAccess, err := uc.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, "sample_mix_access")
 		if err != nil {
 			return false, nil, err
 		}
@@ -2100,7 +2100,7 @@ func (uc *BrandCoreUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	nextStatus := branditemstatus.BrandItemStatus(strings.ToUpper(strings.TrimSpace(status)))
+	nextStatus := branditemstatus.BrandItemStatus(strings.ToLower(strings.TrimSpace(status)))
 	if nextStatus != branditemstatus.Draft && nextStatus != branditemstatus.Active && nextStatus != branditemstatus.Archived {
 		return nil, branderrors.ErrBenefitInvalidStatus()
 	}

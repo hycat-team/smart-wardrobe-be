@@ -6,8 +6,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 

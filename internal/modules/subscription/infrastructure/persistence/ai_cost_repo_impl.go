@@ -8,6 +8,9 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aiusageeventstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -32,7 +35,7 @@ func (r *AICostRepository) ResolvePolicy(ctx context.Context, userID uuid.UUID, 
 	var grant entities.UserAIPolicyGrant
 	err := db.Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).Order("effective_from DESC").First(&grant).Error
 	if err == nil && grant.PlanID != sub.SubscriptionPlanID {
-		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": "CLOSED", "updated_at": now}).Error
+		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": "closed", "updated_at": now}).Error
 		err = gorm.ErrRecordNotFound
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -41,7 +44,7 @@ func (r *AICostRepository) ResolvePolicy(ctx context.Context, userID uuid.UUID, 
 			return nil, nil, nil, errors.New("subscription plan has no AI cost policy")
 		}
 		snapshot, _ := json.Marshal(policy)
-		grant = entities.UserAIPolicyGrant{UserID: userID, PolicyID: policy.ID, PlanID: sub.SubscriptionPlanID, PlanCode: sub.CurrentPlanCode, TierRank: sub.CurrentTierRank, PolicySnapshot: entities.JSONDocument(snapshot), EffectiveFrom: sub.StartedAt, EffectiveTo: sub.ExpiresAt, Status: "ACTIVE"}
+		grant = entities.UserAIPolicyGrant{UserID: userID, PolicyID: policy.ID, PlanID: sub.SubscriptionPlanID, PlanCode: sub.CurrentPlanCode, TierRank: sub.CurrentTierRank, PolicySnapshot: entities.JSONDocument(snapshot), EffectiveFrom: sub.StartedAt, EffectiveTo: sub.ExpiresAt, Status: aipolicygrantstatus.Active}
 		if err = db.Create(&grant).Error; err != nil {
 			return nil, nil, nil, err
 		}
@@ -91,18 +94,18 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *entities.UserAIPo
 		}
 		if event.LogicalRoute != "paid" {
 			admitted = true
-		} else if policy.EnforcementMode == "OBSERVE_ONLY" {
+		} else if policy.EnforcementMode == aienforcementmode.ObserveOnly {
 			var attempts int64
 			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 			if err = tx.Model(&entities.AIUsageEvent{}).Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", grant.UserID, operation.Operation, day, "paid").Count(&attempts).Error; err != nil {
 				return err
 			}
 			admitted = attempts < int64(operation.MaxPaidAttemptsPerDay)
-		} else if policy.EnforcementMode == "STRICT" && policy.HardCostMicroVND != nil {
+		} else if policy.EnforcementMode == aienforcementmode.Strict && policy.HardCostMicroVND != nil {
 			threshold := *policy.HardCostMicroVND * int64(policy.FreeRouteThresholdBPS) / 10000
 			var unknown int64
 			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-			if err = tx.Model(&entities.AIUsageEvent{}).Where("user_id=? AND status IN ? AND created_at>=?", grant.UserID, []string{"UNKNOWN_USAGE", "EXPIRED_UNVERIFIED"}, day).Count(&unknown).Error; err != nil {
+			if err = tx.Model(&entities.AIUsageEvent{}).Where("user_id=? AND status IN ? AND created_at>=?", grant.UserID, []string{string(aiusageeventstatus.UnknownUsage), string(aiusageeventstatus.ExpiredUnverified)}, day).Count(&unknown).Error; err != nil {
 				return err
 			}
 			admitted = unknown < int64(policy.MaxUnknownPaidRequestsPerDay) && ledger.ActualCostMicroVND+ledger.ReservedCostMicroVND+event.ReservedCostMicroVND <= threshold
@@ -125,7 +128,7 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *entities.UserAIPo
 }
 
 func (r *AICostRepository) MarkInFlight(ctx context.Context, id uuid.UUID, at time.Time) error {
-	return r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("request_id=?", id).Updates(map[string]any{"status": "IN_FLIGHT", "sent_at": at, "updated_at": at}).Error
+	return r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("request_id=?", id).Updates(map[string]any{"status": aiusageeventstatus.InFlight, "sent_at": at, "updated_at": at}).Error
 }
 
 func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, output, thinking, cost int64, provider, model, finish string, at time.Time) error {
@@ -134,14 +137,14 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&e, "request_id=?", id).Error; err != nil {
 			return err
 		}
-		if e.Status == "CONFIRMED" || e.Status == "RELEASED" || e.Status == "EXPIRED_UNVERIFIED" {
+		if e.Status == aiusageeventstatus.Confirmed || e.Status == aiusageeventstatus.Released || e.Status == aiusageeventstatus.ExpiredUnverified {
 			return nil
 		}
 		paid := e.LogicalRoute == "paid"
 		if !paid {
 			cost = 0
 		}
-		updates := map[string]any{"status": "CONFIRMED", "prompt_tokens": prompt, "output_tokens": output, "thinking_tokens": thinking, "actual_cost_micro_vnd": cost, "reserved_cost_micro_vnd": 0, "provider": provider, "model": model, "finish_reason": finish, "completed_at": at, "updated_at": at}
+		updates := map[string]any{"status": aiusageeventstatus.Confirmed, "prompt_tokens": prompt, "output_tokens": output, "thinking_tokens": thinking, "actual_cost_micro_vnd": cost, "reserved_cost_micro_vnd": 0, "provider": provider, "model": model, "finish_reason": finish, "completed_at": at, "updated_at": at}
 		if err := tx.Model(&e).Updates(updates).Error; err != nil {
 			return err
 		}
@@ -159,14 +162,14 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 }
 
 func (r *AICostRepository) Release(ctx context.Context, id uuid.UUID, reason string, at time.Time) error {
-	return r.finishWithoutCost(ctx, id, "RELEASED", reason, nil, at)
+	return r.finishWithoutCost(ctx, id, string(aiusageeventstatus.Released), reason, nil, at)
 }
 func (r *AICostRepository) MarkUnknown(ctx context.Context, id uuid.UUID, reason string, expires time.Time) error {
-	updates := map[string]any{"status": "UNKNOWN_USAGE", "error_code": reason, "updated_at": time.Now()}
+	updates := map[string]any{"status": aiusageeventstatus.UnknownUsage, "error_code": reason, "updated_at": time.Now()}
 	if !expires.IsZero() {
 		updates["unknown_expires_at"] = expires
 	}
-	return r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("request_id=? AND status IN ?", id, []string{"RESERVED", "IN_FLIGHT"}).Updates(updates).Error
+	return r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("request_id=? AND status IN ?", id, []aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Reserved, aiusageeventstatus.InFlight}).Updates(updates).Error
 }
 func (r *AICostRepository) finishWithoutCost(ctx context.Context, id uuid.UUID, status, reason string, expires *time.Time, at time.Time) error {
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
@@ -174,7 +177,7 @@ func (r *AICostRepository) finishWithoutCost(ctx context.Context, id uuid.UUID, 
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&e, "request_id=?", id).Error; err != nil {
 			return err
 		}
-		if e.Status == "CONFIRMED" || e.Status == "RELEASED" || e.Status == "EXPIRED_UNVERIFIED" {
+		if e.Status == aiusageeventstatus.Confirmed || e.Status == aiusageeventstatus.Released || e.Status == aiusageeventstatus.ExpiredUnverified {
 			return nil
 		}
 		if err := tx.Model(&e).Updates(map[string]any{"status": status, "error_code": reason, "reserved_cost_micro_vnd": 0, "unknown_expires_at": expires, "completed_at": at, "updated_at": at}).Error; err != nil {
@@ -185,13 +188,13 @@ func (r *AICostRepository) finishWithoutCost(ctx context.Context, id uuid.UUID, 
 }
 func (r *AICostRepository) ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error) {
 	var ids []uuid.UUID
-	err := r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("status IN ? AND unknown_expires_at <= ?", []string{"RESERVED", "UNKNOWN_USAGE"}, now).Limit(limit).Pluck("request_id", &ids).Error
+	err := r.GetDB(ctx).Model(&entities.AIUsageEvent{}).Where("status IN ? AND unknown_expires_at <= ?", []aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Reserved, aiusageeventstatus.UnknownUsage}, now).Limit(limit).Pluck("request_id", &ids).Error
 	if err != nil {
 		return 0, err
 	}
 	var n int64
 	for _, id := range ids {
-		if err = r.finishWithoutCost(ctx, id, "EXPIRED_UNVERIFIED", "usage_unverified_expired", nil, now); err != nil {
+		if err = r.finishWithoutCost(ctx, id, string(aiusageeventstatus.ExpiredUnverified), "usage_unverified_expired", nil, now); err != nil {
 			return n, err
 		}
 		n++

@@ -116,7 +116,7 @@ func (uc *UserPostUseCase) getPersonalizedHotFeed(ctx context.Context, viewerUse
 		post := record.Post
 		visibleItems := getVisiblePostItems(post)
 
-		if post.PostType == "SALE" && len(visibleItems) == 0 {
+		if post.PostType == "sale" && len(visibleItems) == 0 {
 			continue
 		}
 

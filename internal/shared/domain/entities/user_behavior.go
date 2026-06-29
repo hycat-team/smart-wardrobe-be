@@ -1,8 +1,8 @@
 package entities
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"time"
 )
 

@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -182,7 +182,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create brand item: %v", err)
 	}
-	if res.Name != "Sample Dress" || res.Status != "DRAFT" {
+	if res.Name != "Sample Dress" || res.Status != "draft" {
 		t.Errorf("Unexpected created brand item values: %+v", res)
 	}
 
@@ -196,7 +196,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update brand item: %v", err)
 	}
-	if updateRes.Name != "Sample Dress v2" || updateRes.Status != "ACTIVE" {
+	if updateRes.Name != "Sample Dress v2" || updateRes.Status != "active" {
 		t.Errorf("Unexpected updated brand item values: %+v", updateRes)
 	}
 

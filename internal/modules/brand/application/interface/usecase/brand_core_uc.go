@@ -6,8 +6,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

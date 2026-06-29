@@ -17,7 +17,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
@@ -323,7 +323,7 @@ func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.W
 		_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 		brandItem, _ := uc.brandRepo.GetByID(ctx, job.ItemID)
 		if brandItem != nil {
-			brandItem.Status = "DRAFT"
+			brandItem.Status = "draft"
 			_ = uc.brandRepo.Update(ctx, brandItem)
 		}
 		return
@@ -394,7 +394,7 @@ func (uc *WardrobeWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Wa
 		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, job.FashionItemID, job.ProcessingVersion, reviewReason)
 		brandItem, _ := uc.brandRepo.GetByID(ctx, job.ItemID)
 		if brandItem != nil {
-			brandItem.Status = "DRAFT"
+			brandItem.Status = "draft"
 			_ = uc.brandRepo.Update(ctx, brandItem)
 		}
 		return
@@ -442,7 +442,7 @@ func (uc *WardrobeWorkerUseCase) completeProcessedItem(ctx context.Context, job 
 		}
 		brandItem, err := uc.brandRepo.GetByID(ctx, job.ItemID)
 		if err == nil && brandItem != nil {
-			brandItem.Status = "ACTIVE"
+			brandItem.Status = "active"
 			_ = uc.brandRepo.Update(ctx, brandItem)
 		}
 		return nil

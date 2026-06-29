@@ -3,7 +3,7 @@ package community
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	community_handler "smart-wardrobe-be/internal/modules/community/presentation/handler"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"

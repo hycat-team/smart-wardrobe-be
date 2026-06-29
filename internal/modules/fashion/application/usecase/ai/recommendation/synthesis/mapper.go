@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 

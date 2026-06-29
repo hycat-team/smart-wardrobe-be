@@ -3,7 +3,7 @@ package persistence
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

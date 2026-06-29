@@ -8,8 +8,9 @@ import (
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/walletstatementtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/subscriptionrenewalstatus"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -19,10 +20,10 @@ import (
 )
 
 const (
-	renewalStatusRenewed    = "renewed"
-	renewalStatusDowngraded = "downgraded"
-	renewalStatusSkipped    = "skipped"
-	renewalStatusFailed     = "failed"
+	renewalStatusRenewed    = subscriptionrenewalstatus.Renewed
+	renewalStatusDowngraded = subscriptionrenewalstatus.Downgraded
+	renewalStatusSkipped    = subscriptionrenewalstatus.Skipped
+	renewalStatusFailed     = subscriptionrenewalstatus.Failed
 )
 
 const (
@@ -42,7 +43,7 @@ const (
 )
 
 type RenewalExecutionResult struct {
-	Status            string
+	Status            subscriptionrenewalstatus.SubscriptionRenewalStatus
 	Reason            string
 	UserID            uuid.UUID
 	ExpiresAt         *time.Time
@@ -102,7 +103,7 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run
 					zap.String("userId", sub.UserID.String()),
 					zap.Time("expiresAt", *sub.ExpiresAt),
 					zap.String("reason", result.Reason),
-					zap.String("result", renewalStatusFailed),
+					zap.String("result", string(renewalStatusFailed)),
 					zap.Error(err),
 				)
 				continue
@@ -236,18 +237,18 @@ func (uc *SubscriptionUseCase) executeScheduledRenewal(
 	if err != nil {
 		return err
 	}
-	if existing != nil && existing.Status == "Succeeded" {
+	if existing != nil && existing.Status == subscriptionrenewalstatus.Succeeded {
 		result.Status = renewalStatusRenewed
 		result.Reason = renewalReasonRenewed
 		return nil
 	}
 	if existing == nil {
-		existing = &entities.SubscriptionRenewalAttempt{RenewalAttemptKey: key, UserID: lockedSub.UserID, ExpectedPlanID: plan.ID, ExpectedExpiresAt: *lockedSub.ExpiresAt, ExpectedSubscriptionVersion: lockedSub.Version, Status: "Processing", AttemptCount: 1}
+		existing = &entities.SubscriptionRenewalAttempt{RenewalAttemptKey: key, UserID: lockedSub.UserID, ExpectedPlanID: plan.ID, ExpectedExpiresAt: *lockedSub.ExpiresAt, ExpectedSubscriptionVersion: lockedSub.Version, Status: subscriptionrenewalstatus.Processing, AttemptCount: 1}
 		if err := uc.renewalAttemptRepo.Create(txCtx, existing); err != nil {
 			return err
 		}
 	} else {
-		existing.Status = "Processing"
+		existing.Status = subscriptionrenewalstatus.Processing
 		existing.AttemptCount++
 		if err := uc.renewalAttemptRepo.Update(txCtx, existing); err != nil {
 			return err
@@ -275,7 +276,7 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 	uc.log.Info("Downgraded subscription during scheduled renewal",
 		zap.String("user_id", lockedSub.UserID.String()),
 		zap.String("plan_id", lockedSub.SubscriptionPlanID.String()),
-		zap.String("result", renewalStatusDowngraded),
+		zap.String("result", string(renewalStatusDowngraded)),
 		zap.String("reason", reason),
 	)
 	result.Status = renewalStatusDowngraded
@@ -348,7 +349,7 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 	if attempt, err := uc.renewalAttemptRepo.GetByKey(txCtx, key); err != nil {
 		return err
 	} else if attempt != nil {
-		attempt.Status = "Succeeded"
+		attempt.Status = subscriptionrenewalstatus.Succeeded
 		attempt.CompletedAt = &now
 		if err := uc.renewalAttemptRepo.Update(txCtx, attempt); err != nil {
 			return err
@@ -361,7 +362,7 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 		zap.Float64("amount", sharedmoney.ToFloat(plan.Price)),
 		zap.String("currency", string(userWallet.Currency)),
 		zap.String("transaction_type", string(walletstatementtype.SubscriptionRenewal)),
-		zap.String("result", renewalStatusRenewed),
+		zap.String("result", string(renewalStatusRenewed)),
 		zap.String("reason", result.Reason),
 	)
 	result.Status = renewalStatusRenewed

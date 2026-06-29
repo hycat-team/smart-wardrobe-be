@@ -19,7 +19,7 @@ import (
 	"smart-wardrobe-be/config"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/shopspring/decimal"
@@ -166,14 +166,14 @@ func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) 
 	}
 	status := payment.ProviderUnknown
 	switch strings.ToUpper(response.Data.Status) {
-	case "PENDING":
+	case "pending":
 		status = payment.ProviderPending
 	case "PAID":
 		status = payment.ProviderPaid
-	case "CANCELLED":
+	case "cancelled":
 		status = payment.ProviderCancelled
 	}
-	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "VND", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
+	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "vnd", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
 }
 
 func (s *PayOSService) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {

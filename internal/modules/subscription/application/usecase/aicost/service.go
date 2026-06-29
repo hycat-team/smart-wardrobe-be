@@ -9,6 +9,8 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aiusageeventstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -60,7 +62,7 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 	}
 	route := op.NormalRoute
 	maxIn, maxOut := op.NormalMaxInputTokens, op.NormalMaxOutputTokens
-	if policy.EnforcementMode == "FREE_ONLY" {
+	if policy.EnforcementMode == aienforcementmode.FreeOnly {
 		route = op.FreeRoute
 	}
 	inputRate, outputRate, fx := s.rates()
@@ -87,7 +89,7 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 		TokenCountLatencyMs:      meta.TokenCountLatencyMs,
 		ReservedCostMicroVND:     reserve,
 		EstimatedMaxCostMicroVND: reserve,
-		Status:                   "RESERVED",
+		Status:                   aiusageeventstatus.Reserved,
 		UnknownExpiresAt:         &unknownExpires,
 	}
 
@@ -98,7 +100,7 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 	if !admitted {
 		return s.PrepareFree(ctx, userID, operation, meta.EstimatedPromptTokens, op.NormalMaxOutputTokens)
 	}
-	if admitted && policy.EnforcementMode == "STRICT" && policy.HardCostMicroVND != nil {
+	if admitted && policy.EnforcementMode == aienforcementmode.Strict && policy.HardCostMicroVND != nil {
 		ratio := int64(policy.FreeRouteThresholdBPS)
 		if ratio <= 0 {
 			ratio = 10000
@@ -119,7 +121,7 @@ func (s *Service) PrepareFree(ctx context.Context, userID uuid.UUID, operation s
 	}
 	requestID := uuid.New()
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
-	event := &entities.AIUsageEvent{RequestID: requestID, UserID: userID, Operation: operation, LogicalRoute: contract.AIRouteFree, PromptTokens: promptTokens, Status: "RESERVED", UnknownExpiresAt: &unknownExpires}
+	event := &entities.AIUsageEvent{RequestID: requestID, UserID: userID, Operation: operation, LogicalRoute: contract.AIRouteFree, PromptTokens: promptTokens, Status: aiusageeventstatus.Reserved, UnknownExpiresAt: &unknownExpires}
 	_, admitted, err := s.repo.Reserve(ctx, grant, policy, op, event, now)
 	if err != nil {
 		return nil, err

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/benefitresolution"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefitresolution"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 

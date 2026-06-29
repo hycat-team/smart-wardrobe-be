@@ -3,7 +3,7 @@ package wardrobe
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	wardrobe_handler "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"

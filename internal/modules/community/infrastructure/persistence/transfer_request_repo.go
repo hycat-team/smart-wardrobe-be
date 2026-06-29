@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/requeststatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

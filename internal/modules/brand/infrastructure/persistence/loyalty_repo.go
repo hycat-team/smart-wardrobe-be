@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

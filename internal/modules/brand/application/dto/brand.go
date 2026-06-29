@@ -4,12 +4,12 @@ import (
 	"time"
 
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerjoinedsource"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
 
 	"github.com/google/uuid"
 )

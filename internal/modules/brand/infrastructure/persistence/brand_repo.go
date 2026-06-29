@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 

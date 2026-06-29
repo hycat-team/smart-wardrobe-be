@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 	"strings"

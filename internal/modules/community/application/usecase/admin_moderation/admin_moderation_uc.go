@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"

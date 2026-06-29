@@ -9,8 +9,8 @@ import (
 	"smart-wardrobe-be/internal/modules/community/domain/dto"
 	"smart-wardrobe-be/internal/modules/community/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/postitemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/community/postitemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -82,7 +82,7 @@ func (r *PostRepository) baseFeedQuery(ctx context.Context) *gorm.DB {
 	return r.GetQueryWithPreload(ctx).Model(&entities.Post{}).
 		Joins("JOIN users ON users.id = posts.user_id").
 		Where("posts.is_deleted = ? AND users.is_deleted = ?", false, false).
-		Where("posts.post_type <> ? OR EXISTS (SELECT 1 FROM post_items WHERE post_items.post_id = posts.id AND post_items.status <> ?)", "SALE", postitemstatus.Hidden)
+		Where("posts.post_type <> ? OR EXISTS (SELECT 1 FROM post_items WHERE post_items.post_id = posts.id AND post_items.status <> ?)", "sale", postitemstatus.Hidden)
 }
 
 func (r *PostRepository) GetFeed(ctx context.Context, query dto.FeedQuery) (*dto.FeedResult, error) {
@@ -222,7 +222,7 @@ func (r *PostRepository) GetDetail(ctx context.Context, postPublicID string) (*e
 	}
 	items = validItems
 
-	if post.PostType == "SALE" && len(items) == 0 {
+	if post.PostType == "sale" && len(items) == 0 {
 		return nil, nil, nil, nil
 	}
 

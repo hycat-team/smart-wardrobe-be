@@ -4,7 +4,7 @@ import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"

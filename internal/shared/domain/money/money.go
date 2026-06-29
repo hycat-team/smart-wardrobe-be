@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 
 	"github.com/shopspring/decimal"
 )
@@ -74,7 +74,7 @@ func ValidateSupportedCurrency(cur currency.Currency) error {
 }
 
 func ValidateSupportedCurrencyText(cur string) error {
-	normalized := strings.ToUpper(strings.TrimSpace(cur))
+	normalized := strings.ToLower(strings.TrimSpace(cur))
 	if normalized == "" {
 		return apperror.NewBadRequest(ErrUnsupportedCurrency)
 	}

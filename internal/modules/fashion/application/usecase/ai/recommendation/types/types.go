@@ -6,7 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 

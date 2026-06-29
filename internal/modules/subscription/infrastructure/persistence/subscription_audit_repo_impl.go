@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aipolicygrantstatus"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 )
 
@@ -40,18 +41,18 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 	}
 	start := event.EffectiveAt
 	end := sub.ExpiresAt
-	status := "ACTIVE"
+	status := aipolicygrantstatus.Active
 	if event.EventType == "EXTENDED" && plan.DurationDays != nil && sub.ExpiresAt != nil {
 		start = sub.ExpiresAt.AddDate(0, 0, -*plan.DurationDays)
 		if start.After(event.OccurredAt) {
-			status = "FUTURE"
+			status = aipolicygrantstatus.Future
 		}
 	}
 	if event.EventType != "EXTENDED" {
-		if err := db.Where("user_id=? AND status=?", event.UserID, "FUTURE").Delete(&entities.UserAIPolicyGrant{}).Error; err != nil {
+		if err := db.Where("user_id=? AND status=?", event.UserID, string(aipolicygrantstatus.Future)).Delete(&entities.UserAIPolicyGrant{}).Error; err != nil {
 			return err
 		}
-		if err := db.Model(&entities.UserAIPolicyGrant{}).Where("user_id=? AND status=? AND effective_from < ?", event.UserID, "ACTIVE", event.EffectiveAt).Updates(map[string]any{"status": "CLOSED", "effective_to": event.EffectiveAt, "updated_at": event.OccurredAt}).Error; err != nil {
+		if err := db.Model(&entities.UserAIPolicyGrant{}).Where("user_id=? AND status=? AND effective_from < ?", event.UserID, string(aipolicygrantstatus.Active), event.EffectiveAt).Updates(map[string]any{"status": aipolicygrantstatus.Closed, "effective_to": event.EffectiveAt, "updated_at": event.OccurredAt}).Error; err != nil {
 			return err
 		}
 	} else {

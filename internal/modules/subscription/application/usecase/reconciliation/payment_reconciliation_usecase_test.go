@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/subscription/depositstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"

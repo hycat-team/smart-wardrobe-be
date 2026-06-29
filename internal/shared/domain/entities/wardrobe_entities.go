@@ -3,11 +3,11 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/messagesender"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/messagesender"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 
 	"github.com/google/uuid"
 )
