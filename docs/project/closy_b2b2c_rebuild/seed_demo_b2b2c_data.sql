@@ -11,28 +11,28 @@ ON CONFLICT (id) DO NOTHING;
 -- 2. Brands
 INSERT INTO brands (id, slug, name, description, logo_url, logo_public_id, status, created_by_user_id, approved_by_user_id, approved_at, created_at, updated_at)
 VALUES
-    ('33333333-3333-3333-3333-333333333333', 'closy-brand', 'Closy Brand', 'Closy Fashion Brand Demo B2B2C', 'https://logo.com/closy', 'brands/logos/closy-brand-logo', 'ACTIVE', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', now(), now(), now())
+    ('33333333-3333-3333-3333-333333333333', 'closy-brand', 'Closy Brand', 'Closy Fashion Brand Demo B2B2C', 'https://logo.com/closy', 'brands/logos/closy-brand-logo', 'active', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Brand Members
 INSERT INTO brand_members (id, brand_id, user_id, role, status, created_at, updated_at)
 VALUES
-    ('44444444-4444-4444-4444-444444444441', '33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'owner', 'ACTIVE', now(), now()),
-    ('44444444-4444-4444-4444-444444444442', '33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111112', 'manager', 'ACTIVE', now(), now())
+    ('44444444-4444-4444-4444-444444444441', '33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'owner', 'active', now(), now()),
+    ('44444444-4444-4444-4444-444444444442', '33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111112', 'manager', 'active', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. Brand Customers
 INSERT INTO brand_customers (id, brand_id, user_id, customer_name, phone_e164, phone_hash, joined_source, status, joined_at, created_at, updated_at)
 VALUES
-    ('55555555-5555-5555-5555-555555555551', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222221', 'Bronze User', '+84911111111', '89c96804cf9c870c3523f1de76654f74dc7b552e311e99abbc25b4e7e4038923', 'SELF_JOIN', 'ACTIVE', now(), now(), now()),
-    ('55555555-5555-5555-5555-555555555552', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'Gold User', '+84922222222', '279b348bff07a69e8b7fec1fae9c2dfe33fa48aa382c74406d0310782cea0457', 'SELF_JOIN', 'ACTIVE', now(), now(), now()),
-    ('55555555-5555-5555-5555-555555555553', '33333333-3333-3333-3333-333333333333', NULL, 'Offline Client', '+84999999999', 'c0670defeccfaa974f32e596cfa63c8316731ee0e198b64a1b4e52063195ff13', 'OFFLINE_PURCHASE', 'ACTIVE', now(), now(), now())
+    ('55555555-5555-5555-5555-555555555551', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222221', 'Bronze User', '+84911111111', '89c96804cf9c870c3523f1de76654f74dc7b552e311e99abbc25b4e7e4038923', 'self_join', 'active', now(), now(), now()),
+    ('55555555-5555-5555-5555-555555555552', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'Gold User', '+84922222222', '279b348bff07a69e8b7fec1fae9c2dfe33fa48aa382c74406d0310782cea0457', 'self_join', 'active', now(), now(), now()),
+    ('55555555-5555-5555-5555-555555555553', '33333333-3333-3333-3333-333333333333', NULL, 'Offline Client', '+84999999999', 'c0670defeccfaa974f32e596cfa63c8316731ee0e198b64a1b4e52063195ff13', 'offline_purchase', 'active', now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- 5. Loyalty Program & Tiers
 INSERT INTO loyalty_programs (id, brand_id, name, amount_per_point, point_expiry_days, rounding_mode, is_active, created_at, updated_at)
 VALUES
-    ('66666666-6666-6666-6666-666666666666', '33333333-3333-3333-3333-333333333333', 'Closy Loyalty Program', 10000.00, NULL, 'FLOOR', true, now(), now())
+    ('66666666-6666-6666-6666-666666666666', '33333333-3333-3333-3333-333333333333', 'Closy Loyalty Program', 10000.00, NULL, 'floor', true, now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO loyalty_tiers (id, brand_id, name, rank, min_total_spend, description, created_at, updated_at)
@@ -76,7 +76,7 @@ VALUES
         '22222222-2222-2222-2222-222222222222',
         500,
         500,
-        'EARN',
+        'earn',
         'Seed demo spend for Gold tier',
         5000000.00,
         'SEED_DEMO',
@@ -111,7 +111,7 @@ VALUES
         500,
         500,
         NULL,
-        'ACTIVE',
+        'active',
         now(),
         now()
     )
@@ -132,8 +132,8 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO brand_items (id, brand_id, fashion_item_id, product_code, name, description, price, item_type, status, created_at, updated_at)
 VALUES
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'CLSY-RED-TEE', 'Áo thun đỏ Closy', 'Chất liệu thun cotton thoáng mát co giãn tốt', 200000.00, 'PRODUCT', 'ACTIVE', now(), now()),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab', 'CLSY-YELLOW-SAMPLE', 'Mẫu thử Áo thun vàng Closy', 'Thiết kế mẫu thử vàng nổi bật mùa hè', 0.00, 'SAMPLE', 'ACTIVE', now(), now())
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'CLSY-RED-TEE', 'Áo thun đỏ Closy', 'Chất liệu thun cotton thoáng mát co giãn tốt', 200000.00, 'product', 'active', now(), now()),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab', 'CLSY-YELLOW-SAMPLE', 'Mẫu thử Áo thun vàng Closy', 'Thiết kế mẫu thử vàng nổi bật mùa hè', 0.00, 'sample', 'active', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- 10. Demo wardrobe fashion item.
@@ -152,11 +152,11 @@ ON CONFLICT (id) DO NOTHING;
 -- 12. Chat
 INSERT INTO brand_conversations (id, brand_id, user_id, status, last_message_at, created_at, updated_at)
 VALUES
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'OPEN', now(), now(), now())
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'open', now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO brand_conversation_messages (id, conversation_id, sender_user_id, sender_role, message, created_at)
 VALUES
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 'CUSTOMER', 'Tôi muốn tư vấn phối đồ với sản phẩm của brand', now() - interval '1 hour'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111112', 'BRAND_STAFF', 'Xin chào, chúng tôi có các mẫu thử mới rất phù hợp với bạn.', now() - interval '30 minutes')
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 'customer', 'Tôi muốn tư vấn phối đồ với sản phẩm của brand', now() - interval '1 hour'),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111112', 'brand_staff', 'Xin chào, chúng tôi có các mẫu thử mới rất phù hợp với bạn.', now() - interval '30 minutes')
 ON CONFLICT (id) DO NOTHING;
