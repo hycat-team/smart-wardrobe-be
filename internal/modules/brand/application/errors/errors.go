@@ -7,87 +7,87 @@ import (
 )
 
 func ErrBrandNotFound() *apperror.Error {
-	return apperror.NewNotFound("Khong tim thay brand.")
+	return apperror.NewNotFound("Không tìm thấy brand.")
 }
 
 func ErrBrandSlugExists() *apperror.Error {
-	return apperror.NewConflict("Slug brand da ton tai.")
+	return apperror.NewConflict("Slug brand đã tồn tại.")
 }
 
 func ErrBrandPortalForbidden() *apperror.Error {
-	return apperror.NewForbidden("Ban khong co quyen quan tri brand nay.")
+	return apperror.NewForbidden("Bạn không có quyền quản trị brand này.")
 }
 
 func ErrBrandNotActive() *apperror.Error {
-	return apperror.NewForbidden("Brand chua active hoac da bi khoa.")
+	return apperror.NewForbidden("Brand chưa active hoặc đã bị khóa.")
 }
 
 func ErrInvalidBrandStatus(status any) *apperror.Error {
-	return apperror.NewBadRequest(fmt.Sprintf("Trang thai brand khong hop le: %v.", status))
+	return apperror.NewBadRequest(fmt.Sprintf("Trạng thái brand không hợp lệ: %v.", status))
 }
 
 func ErrInvalidBrandMemberRole(role any) *apperror.Error {
-	return apperror.NewBadRequest(fmt.Sprintf("Vai tro brand member khong hop le: %v.", role))
+	return apperror.NewBadRequest(fmt.Sprintf("Vai trò brand member không hợp lệ: %v.", role))
 }
 
 func ErrPhoneRequired() *apperror.Error {
-	return apperror.NewBadRequest("So dien thoai offline customer khong duoc de trong.")
+	return apperror.NewBadRequest("Số điện thoại offline customer không được để trống.")
 }
 
 func ErrCustomerIdentifierRequired() *apperror.Error {
-	return apperror.NewBadRequest("Can co userId, phone hoac externalCustomerCode de xac dinh khach hang.")
+	return apperror.NewBadRequest("Cần có userId, phone hoặc externalCustomerCode để xác định khách hàng.")
 }
 
 func ErrPurchaseAmountOrPointsRequired() *apperror.Error {
-	return apperror.NewBadRequest("Can co purchaseAmount hoac pointsDelta.")
+	return apperror.NewBadRequest("Cần có purchaseAmount hoặc pointsDelta.")
 }
 
 func ErrInvalidLoyaltyTransactionType() *apperror.Error {
-	return apperror.NewBadRequest("Loai giao dich loyalty khong duoc ho tro qua endpoint nay.")
+	return apperror.NewBadRequest("Loại giao dịch loyalty không được hỗ trợ qua endpoint này.")
 }
 
 func ErrPointsDeltaZero() *apperror.Error {
-	return apperror.NewBadRequest("pointsDelta khong duoc bang 0.")
+	return apperror.NewBadRequest("pointsDelta không được bằng 0.")
 }
 
 func ErrActiveLoyaltyProgramRequired() *apperror.Error {
-	return apperror.NewBadRequest("Brand chua co loyalty program active.")
+	return apperror.NewNotFound("Brand chưa có loyalty program active.")
 }
 
 func ErrInsufficientLoyaltyPoints() *apperror.Error {
-	return apperror.NewBadRequest("So du diem loyalty khong du de thuc hien giao dich.")
+	return apperror.NewBadRequest("Số dư điểm loyalty không đủ để thực hiện giao dịch.")
 }
 
 func ErrUserNotFoundOrInactive() *apperror.Error {
-	return apperror.NewBadRequest("User khong ton tai hoac khong active.")
+	return apperror.NewNotFound("User không tồn tại hoặc không active.")
 }
 
 func ErrBenefitNotFound() *apperror.Error {
-	return apperror.NewNotFound("Khong tim thay quyen loi.")
+	return apperror.NewNotFound("Không tìm thấy quyền lợi.")
 }
 
 func ErrBenefitNotActive() *apperror.Error {
-	return apperror.NewForbidden("Quyen loi khong active hoac da bi an.")
+	return apperror.NewForbidden("Quyền lợi không active hoặc đã bị ẩn.")
 }
 
 func ErrBenefitUnlockTypeNotSupported() *apperror.Error {
-	return apperror.NewBadRequest("Loai mo khoa quyen loi khong duoc ho tro.")
+	return apperror.NewBadRequest("Loại mở khóa quyền lợi không được hỗ trợ.")
 }
 
 func ErrBenefitRequiredPointsNotMet() *apperror.Error {
-	return apperror.NewBadRequest("Quyen loi yeu cau so diem cao hon so du hien tai.")
+	return apperror.NewBadRequest("Quyền lợi yêu cầu số điểm cao hơn số dư hiện tại.")
 }
 
 func ErrBenefitRequiredTierNotMet() *apperror.Error {
-	return apperror.NewBadRequest("Tier cua ban khong dat yeu cau de nhan quyen loi nay.")
+	return apperror.NewBadRequest("Tier của bạn không đạt yêu cầu để nhận quyền lợi này.")
 }
 
 func ErrBenefitRedemptionExists() *apperror.Error {
-	return apperror.NewConflict("Ban da doi quyen loi nay va luot doi van dang con han.")
+	return apperror.NewConflict("Bạn đã đổi quyền lợi này và lượt đổi vẫn đang còn hạn.")
 }
 
 func ErrBenefitInvalidStatus() *apperror.Error {
-	return apperror.NewBadRequest("Trang thai quyen loi khong hop le.")
+	return apperror.NewBadRequest("Trạng thái quyền lợi không hợp lệ.")
 }
 
 func ErrInvalidVoteType(voteType any) *apperror.Error {
@@ -127,7 +127,7 @@ func ErrClaimRateLimited() *apperror.Error {
 }
 
 func ErrClaimRateLimitUnavailable() *apperror.Error {
-	return apperror.NewError(503, "Dịch vụ tạm thời gián đoạn", "Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
+	return apperror.NewServiceUnavailable("Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
 }
 
 func ErrProductCodeExists() *apperror.Error {
