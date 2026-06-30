@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
@@ -71,13 +72,13 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, filter interface{}) (interface{}, error) {
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if user == nil || user.Status != userstatus.Active {
-		return []*entities.BrandItem{}, nil
+		return []*dto.BrandItemStylingDTO{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
@@ -102,7 +103,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		brandItemsByBrandID[item.BrandID] = append(brandItemsByBrandID[item.BrandID], item)
 	}
 
-	eligibleBrandItems := make([]*entities.BrandItem, 0, len(brandItems))
+	eligibleBrandItems := make([]*dto.BrandItemStylingDTO, 0, len(brandItems))
 	sampleAccessByBrandID := make(map[uuid.UUID]bool, len(activeBrandIDs))
 	sampleAccessChecked := make(map[uuid.UUID]struct{}, len(activeBrandIDs))
 	for _, customer := range customers {
@@ -123,10 +124,11 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 				continue
 			}
 
-			if item.ItemType == branditemtype.Product {
-				eligibleBrandItems = append(eligibleBrandItems, item)
-			} else if item.ItemType == branditemtype.Sample && sampleAccessByBrandID[customer.BrandID] {
-				eligibleBrandItems = append(eligibleBrandItems, item)
+			canUseItem := item.ItemType == branditemtype.Product ||
+				(item.ItemType == branditemtype.Sample && sampleAccessByBrandID[item.BrandID])
+
+			if canUseItem {
+				eligibleBrandItems = append(eligibleBrandItems, mapper.MapToBrandItemStylingDTO(item))
 			}
 		}
 	}
@@ -134,7 +136,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 	return eligibleBrandItems, nil
 }
 
-func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *entities.BrandItem, error) {
+func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, err
@@ -177,12 +179,22 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 		}
 	}
 
-	return true, brandItem, nil
+	return true, mapper.MapToBrandItemRes(brandItem), nil
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {
 	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
+	}
+
+	if input.ProductCode != nil && *input.ProductCode != "" {
+		existing, err := uc.brandItemRepo.GetByProductCode(ctx, brandID, *input.ProductCode)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return nil, branderrors.ErrProductCodeExists()
+		}
 	}
 
 	brandItemID := uuid.New()
@@ -227,7 +239,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, fashionItemID)
 	item.FashionItem = fashionItem
 
-	return mapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
@@ -240,7 +252,7 @@ func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUser
 	}
 	res := make([]*dto.BrandItemRes, len(items))
 	for i, item := range items {
-		res[i] = mapToBrandItemRes(item)
+		res[i] = mapper.MapToBrandItemRes(item)
 	}
 	return res, nil
 }
@@ -258,7 +270,7 @@ func (uc *BrandItemUseCase) GetBrandItemForStaff(ctx context.Context, staffUserI
 	}
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
-	return mapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
@@ -278,7 +290,7 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 	}
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
-	return mapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item), nil
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error) {
@@ -304,7 +316,7 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
 
-	return mapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item), nil
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status string) (*dto.BrandItemRes, error) {
@@ -329,7 +341,7 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	}
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
-	return mapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
@@ -342,7 +354,7 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 	}
 	res := make([]*dto.DigitalSampleResponseRes, len(feedbacks))
 	for i, f := range feedbacks {
-		res[i] = mapToDigitalSampleResponseRes(f)
+		res[i] = mapper.MapToDigitalSampleResponseRes(f)
 	}
 	return res, nil
 }
@@ -360,7 +372,7 @@ func (uc *BrandItemUseCase) ListBrandItemsForUser(ctx context.Context, userID uu
 	}
 	res := make([]*dto.BrandItemRes, len(activeItems))
 	for i, item := range activeItems {
-		res[i] = mapToBrandItemRes(item)
+		res[i] = mapper.MapToBrandItemRes(item)
 	}
 	return res, nil
 }
@@ -404,7 +416,7 @@ func (uc *BrandItemUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 		return nil, err
 	}
 
-	return mapToDigitalSampleResponseRes(feedback), nil
+	return mapper.MapToDigitalSampleResponseRes(feedback), nil
 }
 
 func isValidVoteType(vote votetype.VoteType) bool {
@@ -413,46 +425,5 @@ func isValidVoteType(vote votetype.VoteType) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func mapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
-	if item == nil {
-		return nil
-	}
-	return &dto.BrandItemRes{
-		ID:            item.ID,
-		BrandID:       item.BrandID,
-		FashionItemID: item.FashionItemID,
-		ProductCode:   item.ProductCode,
-		Name:          item.Name,
-		Description:   item.Description,
-		Price:         item.Price,
-		ItemType:      string(item.ItemType),
-		Status:        string(item.Status),
-		FashionItem:   item.FashionItem,
-		CreatedAt:     item.CreatedAt,
-		UpdatedAt:     item.UpdatedAt,
-	}
-}
-
-func mapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.DigitalSampleResponseRes {
-	if res == nil {
-		return nil
-	}
-	var voteStr *string
-	if res.VoteType != nil {
-		s := string(*res.VoteType)
-		voteStr = &s
-	}
-	return &dto.DigitalSampleResponseRes{
-		ID:           res.ID,
-		BrandItemID:  res.BrandItemID,
-		UserID:       res.UserID,
-		OutfitID:     res.OutfitID,
-		VoteType:     voteStr,
-		Rating:       res.Rating,
-		FeedbackText: res.FeedbackText,
-		CreatedAt:    res.CreatedAt,
 	}
 }

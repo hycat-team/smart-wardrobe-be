@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
@@ -142,11 +143,19 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 				FashionItem:   brandItem.FashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
-				BrandItem:     brandItem,
-				PositionX:     itemReq.PositionX,
-				PositionY:     itemReq.PositionY,
-				Scale:         itemReq.Scale,
-				LayerOrder:    itemReq.LayerOrder,
+				BrandItem: &entities.BrandItem{
+					AuditableEntity: entities.AuditableEntity{
+						BaseEntity: entities.BaseEntity{ID: brandItem.ID},
+					},
+					BrandID:  brandItem.BrandID,
+					ItemType: branditemtype.BrandItemType(brandItem.ItemType),
+					Name:     brandItem.Name,
+					Price:    brandItem.Price,
+				},
+				PositionX:  itemReq.PositionX,
+				PositionY:  itemReq.PositionY,
+				Scale:      itemReq.Scale,
+				LayerOrder: itemReq.LayerOrder,
 			}
 		}
 	}
@@ -250,11 +259,19 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 				FashionItem:   brandItem.FashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
-				BrandItem:     brandItem,
-				PositionX:     itemReq.PositionX,
-				PositionY:     itemReq.PositionY,
-				Scale:         itemReq.Scale,
-				LayerOrder:    itemReq.LayerOrder,
+				BrandItem: &entities.BrandItem{
+					AuditableEntity: entities.AuditableEntity{
+						BaseEntity: entities.BaseEntity{ID: brandItem.ID},
+					},
+					BrandID:  brandItem.BrandID,
+					ItemType: branditemtype.BrandItemType(brandItem.ItemType),
+					Name:     brandItem.Name,
+					Price:    brandItem.Price,
+				},
+				PositionX:  itemReq.PositionX,
+				PositionY:  itemReq.PositionY,
+				Scale:      itemReq.Scale,
+				LayerOrder: itemReq.LayerOrder,
 			}
 		}
 	}

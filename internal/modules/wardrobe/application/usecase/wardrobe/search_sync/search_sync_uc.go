@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
@@ -53,7 +54,8 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 			return nil
 		}
 
-		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
+		doc := mapper.MapToSearchDocumentDTO(item)
+		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index item in search index",
 				zap.String("itemId", item.ID.String()),
 				zap.Error(err),
@@ -113,7 +115,8 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 
 	successCount := 0
 	for _, item := range items {
-		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
+		doc := mapper.MapToSearchDocumentDTO(item)
+		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index system catalog item during initial sync",
 				zap.Error(err),
 			)

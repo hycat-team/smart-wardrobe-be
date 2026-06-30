@@ -129,3 +129,7 @@ func ErrClaimRateLimited() *apperror.Error {
 func ErrClaimRateLimitUnavailable() *apperror.Error {
 	return apperror.NewError(503, "Dịch vụ tạm thời gián đoạn", "Chưa thể kiểm tra giới hạn thử claim. Vui lòng thử lại sau.")
 }
+
+func ErrProductCodeExists() *apperror.Error {
+	return apperror.NewConflict("Mã sản phẩm đã tồn tại trong thương hiệu này.")
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -253,12 +254,10 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	}
 	activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
 
-	var eligibleBrandItems []*entities.BrandItem
+	var eligibleBrandItems []*brand_dto.BrandItemStylingDTO
 	if uc.brandContract != nil {
-		if res, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, nil); err == nil {
-			if items, ok := res.([]*entities.BrandItem); ok {
-				eligibleBrandItems = items
-			}
+		if items, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{}); err == nil {
+			eligibleBrandItems = items
 		}
 	}
 

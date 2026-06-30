@@ -54,7 +54,7 @@ type PaymentLinkInfo struct {
 
 type IPaymentGatewayService interface {
 	CreateCheckoutSession(ctx context.Context, req *CheckoutSessionReq) (*CheckoutSessionResult, error)
-	VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error)
+	VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) error
 	GetPaymentLinkInfo(ctx context.Context, orderCode int64) (*PaymentLinkInfo, error)
 	CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error
 }

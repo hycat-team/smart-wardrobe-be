@@ -193,13 +193,15 @@ definitions:
       description:
         type: string
       fashionItem:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_entities.FashionItem'
         description: Detailed fashion metadata
       fashionItemId:
         type: string
       id:
         type: string
       itemType:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_branditem_branditemtype.BrandItemType'
       name:
         type: string
       price:
@@ -207,7 +209,7 @@ definitions:
       productCode:
         type: string
       status:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_branditem_branditemstatus.BrandItemStatus'
       updatedAt:
         type: string
     type: object
@@ -622,6 +624,7 @@ definitions:
   smart-wardrobe-be_internal_modules_brand_application_dto.SubmitSampleFeedbackReq:
     properties:
       feedbackText:
+        maxLength: 1000
         type: string
       outfitId:
         type: string
@@ -630,7 +633,11 @@ definitions:
         minimum: 1
         type: integer
       voteType:
-        description: like, dislike, would_buy, not_interested
+        enum:
+        - like
+        - dislike
+        - would_buy
+        - not_interested
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq:
@@ -649,6 +656,8 @@ definitions:
         type: string
       price:
         type: number
+      productCode:
+        type: string
       status:
         description: DRAFT, ACTIVE, ARCHIVED
         type: string
@@ -1708,6 +1717,24 @@ definitions:
     - Active
     - Blocked
     - Left
+  smart-wardrobe-be_internal_shared_domain_constants_brand_branditem_branditemstatus.BrandItemStatus:
+    enum:
+    - draft
+    - active
+    - archived
+    type: string
+    x-enum-varnames:
+    - Draft
+    - Active
+    - Archived
+  smart-wardrobe-be_internal_shared_domain_constants_brand_branditem_branditemtype.BrandItemType:
+    enum:
+    - product
+    - sample
+    type: string
+    x-enum-varnames:
+    - Product
+    - Sample
   smart-wardrobe-be_internal_shared_domain_constants_brand_brandmemberrole.BrandMemberRole:
     enum:
     - owner
@@ -1886,6 +1913,76 @@ definitions:
     - Processing
     - Failed
     - NeedsReview
+  smart-wardrobe-be_internal_shared_domain_entities.Category:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      sortOrder:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_shared_domain_entities.FashionItem:
+    properties:
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_entities.Category'
+      categoryID:
+        type: string
+      color:
+        type: string
+      colorHex:
+        type: string
+      colorHue:
+        type: number
+      colorLightness:
+        type: number
+      colorSaturation:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      embedding:
+        items:
+          type: number
+        type: array
+      fit:
+        type: string
+      id:
+        type: string
+      imagePublicID:
+        type: string
+      imageUrl:
+        type: string
+      lastProcessingAttemptAt:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      processingErrorReason:
+        type: string
+      processingRetryCount:
+        type: integer
+      processingStartedAt:
+        type: string
+      processingVersion:
+        type: integer
+      reviewReason:
+        type: string
+      seasonality:
+        type: string
+      style:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   smart-wardrobe-be_internal_shared_presentation.APIResponse:
     properties:
       data: {}

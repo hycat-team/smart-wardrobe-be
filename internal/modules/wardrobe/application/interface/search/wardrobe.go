@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
 type IWardrobeSearchService interface {
@@ -12,7 +11,7 @@ type IWardrobeSearchService interface {
 }
 
 type IWardrobeSearchIndexService interface {
-	IndexItem(ctx context.Context, item *entities.WardrobeItem) error
+	IndexItem(ctx context.Context, item *dto.SearchDocumentDTO) error
 	DeleteItem(ctx context.Context, itemID string) error
 	IsHealthy() bool
 }

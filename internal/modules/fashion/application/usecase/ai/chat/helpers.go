@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
@@ -13,7 +14,7 @@ var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|g
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*entities.BrandItem, recent []*entities.Message) string {
+func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message) string {
 	return buildChatSystemPromptWithLimits(summary, wardrobeItems, brandItems, recent, 4000, 1500)
 }
 
@@ -25,7 +26,7 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*entities.BrandItem, recent []*entities.Message, summaryLimit, messageLimit int) string {
+func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
@@ -102,10 +103,7 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 				strings.TrimSpace(*fashion.Color) != ""
 			hasStyle := fashion.Style != nil &&
 				strings.TrimSpace(*fashion.Style) != ""
-			brandName := ""
-			if item.Brand != nil {
-				brandName = item.Brand.Name
-			}
+			brandName := item.BrandName
 
 			if !hasCategory && !hasColor && !hasStyle && brandName == "" {
 				continue

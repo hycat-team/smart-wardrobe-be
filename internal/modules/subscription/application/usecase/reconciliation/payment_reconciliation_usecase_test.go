@@ -73,8 +73,8 @@ type fakePaymentGatewayService struct {
 func (f *fakePaymentGatewayService) CreateCheckoutSession(ctx context.Context, req *payment.CheckoutSessionReq) (*payment.CheckoutSessionResult, error) {
 	return nil, nil
 }
-func (f *fakePaymentGatewayService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error) {
-	return nil, nil
+func (f *fakePaymentGatewayService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) error {
+	return nil
 }
 func (f *fakePaymentGatewayService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error) {
 	if f.getPaymentLinkInfoFunc != nil {

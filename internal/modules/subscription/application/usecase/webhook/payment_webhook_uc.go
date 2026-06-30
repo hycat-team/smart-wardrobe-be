@@ -192,7 +192,8 @@ func (uc *PaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, in
 
 // parseVerifiedWebhookPayload verifies the signature and decodes the callback body.
 func (uc *PaymentWebhookUseCase) parseVerifiedWebhookPayload(ctx context.Context, rawBody []byte, signature string) (*WebhookPayload, error) {
-	if _, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
+	if err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
+		uc.log.Warn("Failed to verify PayOS webhook signature", zap.Error(err))
 		return nil, subscriptionerrors.ErrVerifySignatureFailed()
 	}
 

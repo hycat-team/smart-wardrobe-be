@@ -6,11 +6,14 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -308,6 +311,7 @@ type CreateBrandItemReq struct {
 }
 
 type UpdateBrandItemReq struct {
+	ProductCode *string  `json:"productCode" binding:"omitempty" label:"mã sản phẩm"`
 	Name        string   `json:"name" binding:"required,max=255" label:"tên sản phẩm"`
 	Description *string  `json:"description" binding:"omitempty" label:"mô tả"`
 	Price       *float64 `json:"price" binding:"omitempty,gt=0" label:"giá sản phẩm"`
@@ -319,25 +323,40 @@ type UpdateBrandItemStatusReq struct {
 }
 
 type BrandItemRes struct {
-	ID            uuid.UUID `json:"id"`
-	BrandID       uuid.UUID `json:"brandId"`
-	FashionItemID uuid.UUID `json:"fashionItemId"`
-	ProductCode   *string   `json:"productCode"`
-	Name          string    `json:"name"`
-	Description   *string   `json:"description"`
-	Price         *float64  `json:"price"`
-	ItemType      string    `json:"itemType"`
-	Status        string    `json:"status"`
-	FashionItem   any       `json:"fashionItem,omitempty"` // Detailed fashion metadata
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID            uuid.UUID                       `json:"id"`
+	BrandID       uuid.UUID                       `json:"brandId"`
+	FashionItemID uuid.UUID                       `json:"fashionItemId"`
+	ProductCode   *string                         `json:"productCode"`
+	Name          string                          `json:"name"`
+	Description   *string                         `json:"description"`
+	Price         *float64                        `json:"price"`
+	ItemType      branditemtype.BrandItemType     `json:"itemType"`
+	Status        branditemstatus.BrandItemStatus `json:"status"`
+	FashionItem   *entities.FashionItem           `json:"fashionItem,omitempty"` // Detailed fashion metadata
+	CreatedAt     time.Time                       `json:"createdAt"`
+	UpdatedAt     time.Time                       `json:"updatedAt"`
 }
 
 type SubmitSampleFeedbackReq struct {
-	OutfitID     *uuid.UUID `json:"outfitId" binding:"omitempty" label:"mã trang phục"`
-	VoteType     *string    `json:"voteType" binding:"omitempty" label:"loại bình chọn"` // like, dislike, would_buy, not_interested
-	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5" label:"đánh giá"`
-	FeedbackText *string    `json:"feedbackText" binding:"omitempty" label:"nội dung phản hồi"`
+	OutfitID     *uuid.UUID `json:"outfitId"`
+	VoteType     *string    `json:"voteType" binding:"omitempty,oneof=like dislike would_buy not_interested" label:"loại vote"`
+	Rating       *int       `json:"rating" binding:"omitempty,min=1,max=5" label:"điểm đánh giá"`
+	FeedbackText *string    `json:"feedbackText" binding:"omitempty,max=1000" label:"phản hồi"`
+}
+
+type ListEligibleBrandItemsReq struct {
+}
+
+type BrandItemStylingDTO struct {
+	ID            uuid.UUID                       `json:"id"`
+	BrandID       uuid.UUID                       `json:"brandId"`
+	BrandName     string                          `json:"brandName,omitempty"`
+	FashionItemID uuid.UUID                       `json:"fashionItemId"`
+	ProductCode   *string                         `json:"productCode"`
+	Name          string                          `json:"name"`
+	ItemType      branditemtype.BrandItemType     `json:"itemType"`
+	Status        branditemstatus.BrandItemStatus `json:"status"`
+	FashionItem   *entities.FashionItem           `json:"fashionItem,omitempty"`
 }
 
 type DigitalSampleResponseRes struct {

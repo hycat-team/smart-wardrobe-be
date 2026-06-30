@@ -8,12 +8,14 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -115,38 +117,43 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	// Fetch Brand items if requested
 	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
-		brandItemsRaw, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, nil)
+		brandItems, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
 		if err == nil {
-			if brandItems, ok := brandItemsRaw.([]*entities.BrandItem); ok {
-				for _, brandItem := range brandItems {
-					if brandCandidatesCount >= maxBrandCandidates {
-						break
-					}
-					if brandItem.FashionItem == nil {
-						continue
-					}
-					mockWardrobeItem := &entities.WardrobeItem{
-						AuditableEntity: entities.AuditableEntity{
-							BaseEntity: entities.BaseEntity{
-								ID: brandItem.FashionItemID,
-							},
-						},
-						FashionItemID: brandItem.FashionItemID,
-						FashionItem:   brandItem.FashionItem,
-					}
-					rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
-						Item:            mockWardrobeItem,
-						Source:          types.CandidateSourceRetrieval,
-						VectorScore:     0.95,
-						LexicalScore:    0.95,
-						RetrievalScore:  0.95,
-						RetrievalRank:   brandCandidatesCount + 1,
-						RetrievalSource: types.CandidateSourceRetrieval,
-						ItemContext:     outfititemcontext.BrandItem,
-						BrandItem:       brandItem,
-					})
-					brandCandidatesCount++
+			for _, brandItem := range brandItems {
+				if brandCandidatesCount >= maxBrandCandidates {
+					break
 				}
+				if brandItem.FashionItem == nil {
+					continue
+				}
+				mockWardrobeItem := &entities.WardrobeItem{
+					AuditableEntity: entities.AuditableEntity{
+						BaseEntity: entities.BaseEntity{
+							ID: brandItem.FashionItemID,
+						},
+					},
+					FashionItemID: brandItem.FashionItemID,
+					FashionItem:   brandItem.FashionItem,
+				}
+				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+					Item:            mockWardrobeItem,
+					Source:          types.CandidateSourceRetrieval,
+					VectorScore:     0.95,
+					LexicalScore:    0.95,
+					RetrievalScore:  0.95,
+					RetrievalRank:   brandCandidatesCount + 1,
+					RetrievalSource: types.CandidateSourceRetrieval,
+					ItemContext:     outfititemcontext.BrandItem,
+					BrandItem: &entities.BrandItem{
+						AuditableEntity: entities.AuditableEntity{
+							BaseEntity: entities.BaseEntity{ID: brandItem.ID},
+						},
+						BrandID:  brandItem.BrandID,
+						ItemType: branditemtype.BrandItemType(brandItem.ItemType),
+						Name:     brandItem.Name,
+					},
+				})
+				brandCandidatesCount++
 			}
 		}
 	}

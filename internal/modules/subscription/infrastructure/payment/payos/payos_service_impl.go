@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"sort"
 	"strconv"
 	"strings"
@@ -207,7 +208,7 @@ func (s *PayOSService) doJSON(ctx context.Context, method, url string, body []by
 	return nil
 }
 
-func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error) {
+func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) error {
 	var payload struct {
 		Code      string         `json:"code"`
 		Desc      string         `json:"desc"`
@@ -215,7 +216,7 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signat
 		Data      map[string]any `json:"data"`
 	}
 	if err := json.Unmarshal(rawBody, &payload); err != nil {
-		return nil, fmt.Errorf("failed to parse webhook payload: %w", err)
+		return apperror.NewInternalError("Failed to parse PayOS webhook body")
 	}
 
 	sigToVerify := signatureHeader
@@ -224,19 +225,14 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signat
 	}
 
 	if sigToVerify == "" {
-		return nil, errors.New("missing signature for webhook validation")
+		return apperror.NewUnauthorized("Missing payload checksum")
 	}
 
 	if !s.VerifyWebhookSignature(payload.Data, sigToVerify) {
-		return nil, errors.New("invalid payos signature")
+		return apperror.NewUnauthorized("Invalid PayOS webhook signature")
 	}
 
-	var fullMap map[string]any
-	if err := json.Unmarshal(rawBody, &fullMap); err != nil {
-		return nil, fmt.Errorf("failed to parse complete webhook map: %w", err)
-	}
-
-	return fullMap, nil
+	return nil
 }
 
 func (s *PayOSService) VerifyWebhookSignature(dataMap map[string]any, expectedSignature string) bool {
