@@ -50,6 +50,7 @@ type IBrandCustomerRepository interface {
 
 type ILoyaltyProgramRepository interface {
 	shared_repos.IGenericRepository[entities.LoyaltyProgram, uuid.UUID]
+	GetByBrandID(ctx context.Context, brandID uuid.UUID) (*entities.LoyaltyProgram, error)
 	GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) (*entities.LoyaltyProgram, error)
 }
 

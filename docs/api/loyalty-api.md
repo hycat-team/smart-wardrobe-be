@@ -84,7 +84,26 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về cấu hình chương trình `LoyaltyProgramRes`.
 
-### 2. Lấy danh sách thiết lập các hạng thành viên của nhãn hàng
+### 2. Tạo và cập nhật cấu hình chương trình loyalty
+
+- **Endpoint:** `PUT /api/v1/brand-portal/brands/:brandId/loyalty/program`
+- **Tác nhân (Actor):** Chủ thương hiệu (Brand owner).
+- **Đối tượng ảnh hưởng:** Tạo mới hoặc cập nhật bản ghi trong bảng dữ liệu chương trình loyalty `loyalty_programs`.
+- **Mô tả:** API cho phép tạo hoặc cập nhật cấu hình thiết lập quy tắc tích điểm của nhãn hàng. Nếu chưa có chương trình loyalty, hệ thống sẽ tạo mới. Nếu đã có, hệ thống sẽ cập nhật thông tin hiện tại. `pointExpiryDays` là optional, nếu không truyền thì xem như điểm sẽ không hết hạn.
+- **Request Body:**
+    ```json
+    {
+        "name": "Chương trình thành viên thân thiết",
+        "amountPerPoint": 10000,
+        "pointExpiryDays": 365,
+        "roundingMode": "floor",
+        "isActive": true
+    }
+    ```
+- **Response:**
+    - `200 OK`: Trả về cấu hình chương trình `LoyaltyProgramRes`.
+
+### 3. Lấy danh sách thiết lập các hạng thành viên của nhãn hàng
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/tiers`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
@@ -93,7 +112,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về mảng danh sách hạng thành viên `LoyaltyTierRes`.
 
-### 3. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
+### 4. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/accounts/:accountId/transactions`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).

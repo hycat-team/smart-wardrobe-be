@@ -468,6 +468,47 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyProgramForStaff(ctx context.Context, st
 	return mapLoyaltyProgram(program), nil
 }
 
+func (uc *BrandLoyaltyUseCase) UpsertLoyaltyProgram(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.UpsertLoyaltyProgramReq) (*dto.LoyaltyProgramRes, error) {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
+		return nil, err
+	}
+
+	program, err := uc.programRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+
+	if program == nil {
+		program = &entities.LoyaltyProgram{
+			BrandID:         brandID,
+			Name:            input.Name,
+			AmountPerPoint:  input.AmountPerPoint,
+			PointExpiryDays: input.PointExpiryDays,
+			RoundingMode:    input.RoundingMode,
+			IsActive:        true,
+		}
+		if input.IsActive != nil {
+			program.IsActive = *input.IsActive
+		}
+		if err := uc.programRepo.Create(ctx, program); err != nil {
+			return nil, err
+		}
+	} else {
+		program.Name = input.Name
+		program.AmountPerPoint = input.AmountPerPoint
+		program.PointExpiryDays = input.PointExpiryDays
+		program.RoundingMode = input.RoundingMode
+		if input.IsActive != nil {
+			program.IsActive = *input.IsActive
+		}
+		if err := uc.programRepo.Update(ctx, program); err != nil {
+			return nil, err
+		}
+	}
+
+	return mapLoyaltyProgram(program), nil
+}
+
 func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error) {
 	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err

@@ -353,6 +353,36 @@ func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
 	return nil
 }
 
+// UpsertLoyaltyProgram creates or updates the loyalty program for a brand.
+// @Summary Tạo/Cập nhật chương trình loyalty (Owner)
+// @Tags Brand Loyalty
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param body body dto.UpsertLoyaltyProgramReq true "Thông tin cấu hình"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyProgramRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/program [put]
+func (h *BrandLoyaltyHandler) UpsertLoyaltyProgram(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var input dto.UpsertLoyaltyProgramReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.UpsertLoyaltyProgram(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Cập nhật chương trình loyalty thành công", res)
+	return nil
+}
+
 // GetLoyaltyTiersForStaff lists loyalty tiers for a brand.
 // @Summary Lấy danh sách hạng loyalty của brand
 // @Tags Brand Loyalty

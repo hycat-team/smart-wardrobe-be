@@ -2970,6 +2970,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Tạo/Cập nhật chương trình loyalty (Owner)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cấu hình",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpsertLoyaltyProgramReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyProgramRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/api/v1/brand-portal/brands/{brandId}/loyalty/tiers": {
@@ -6180,6 +6230,42 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.UpsertLoyaltyProgramReq": {
+            "type": "object",
+            "required": [
+                "amountPerPoint",
+                "name",
+                "roundingMode"
+            ],
+            "properties": {
+                "amountPerPoint": {
+                    "type": "number"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "pointExpiryDays": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "roundingMode": {
+                    "enum": [
+                        "floor",
+                        "round",
+                        "ceil"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltyroundingmode.LoyaltyRoundingMode"
+                        }
+                    ]
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes": {
             "type": "object",
             "properties": {
@@ -7692,6 +7778,19 @@ const docTemplate = `{
                 "Active",
                 "Suspended",
                 "Archived"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltyroundingmode.LoyaltyRoundingMode": {
+            "type": "string",
+            "enum": [
+                "floor",
+                "round",
+                "ceil"
+            ],
+            "x-enum-varnames": [
+                "Floor",
+                "Round",
+                "Ceil"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltytransactiontype.LoyaltyTransactionType": {

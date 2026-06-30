@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
 
 	"github.com/google/uuid"
@@ -150,6 +151,14 @@ type LoyaltyProgramRes struct {
 	IsActive        bool      `json:"isActive"`
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type UpsertLoyaltyProgramReq struct {
+	Name            string                                  `json:"name" binding:"required,max=255" label:"tên chương trình"`
+	AmountPerPoint  float64                                 `json:"amountPerPoint" binding:"required,gt=0" label:"số tiền trên mỗi điểm"`
+	PointExpiryDays *int                                    `json:"pointExpiryDays" binding:"omitempty,min=0" label:"số ngày hết hạn điểm"`
+	RoundingMode    loyaltyroundingmode.LoyaltyRoundingMode `json:"roundingMode" binding:"required,oneof=floor round ceil" label:"chế độ làm tròn"`
+	IsActive        *bool                                   `json:"isActive" binding:"omitempty" label:"trạng thái hoạt động"`
 }
 
 type LoyaltyTierRes struct {

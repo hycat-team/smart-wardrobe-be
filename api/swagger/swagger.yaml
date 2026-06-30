@@ -694,6 +694,30 @@ definitions:
       timestamp:
         type: integer
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.UpsertLoyaltyProgramReq:
+    properties:
+      amountPerPoint:
+        type: number
+      isActive:
+        type: boolean
+      name:
+        maxLength: 255
+        type: string
+      pointExpiryDays:
+        minimum: 0
+        type: integer
+      roundingMode:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltyroundingmode.LoyaltyRoundingMode'
+        enum:
+        - floor
+        - round
+        - ceil
+    required:
+    - amountPerPoint
+    - name
+    - roundingMode
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes:
     properties:
       items:
@@ -1714,6 +1738,16 @@ definitions:
     - Active
     - Suspended
     - Archived
+  smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltyroundingmode.LoyaltyRoundingMode:
+    enum:
+    - floor
+    - round
+    - ceil
+    type: string
+    x-enum-varnames:
+    - Floor
+    - Round
+    - Ceil
   smart-wardrobe-be_internal_shared_domain_constants_brand_loyaltytransactiontype.LoyaltyTransactionType:
     enum:
     - earn
@@ -3667,6 +3701,36 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyProgramRes'
               type: object
       summary: Lấy chương trình loyalty hoạt động của brand
+      tags:
+      - Brand Loyalty
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin cấu hình
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpsertLoyaltyProgramReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyProgramRes'
+              type: object
+      summary: Tạo/Cập nhật chương trình loyalty (Owner)
       tags:
       - Brand Loyalty
   /api/v1/brand-portal/brands/{brandId}/loyalty/tiers:

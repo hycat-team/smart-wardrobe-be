@@ -102,3 +102,65 @@ Các hằng số dùng trong APIs liên quan đến Thương hiệu, Thành viê
     - `dislike`: Không thích mẫu thiết kế.
     - `would_buy`: Sẵn sàng mua nếu sản phẩm được sản xuất.
     - `not_interested`: Không quan tâm.
+
+## 13. Trạng thái của đặc quyền (BenefitStatus)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/benefit/benefitstatus`
+- **Các giá trị hợp lệ:**
+    - `active`: Đặc quyền đang hoạt động.
+    - `inactive`: Đặc quyền tạm ngưng hoạt động.
+    - `archived`: Đặc quyền đã bị lưu trữ.
+
+## 14. Các hình thức xử lý khi giải quyết ưu đãi (BenefitResolution)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/benefitresolution`
+- **Các giá trị hợp lệ:**
+    - `subscription_activated`: Kích hoạt gói đăng ký mới.
+    - `subscription_extended`: Gia hạn gói đăng ký hiện tại.
+    - `subscription_upgraded`: Nâng cấp gói đăng ký.
+    - `lifetime_overlaid_by_finite`: Gói trọn đời bị ghi đè tạm thời bởi gói có thời hạn.
+    - `lifetime_replaced`: Gói trọn đời bị thay thế.
+    - `same_lifetime_payment_credited_to_wallet`: Mua trùng gói trọn đời, tiền được cộng vào ví.
+    - `lower_tier_payment_credited_to_wallet`: Mua gói thấp hơn, tiền được cộng vào ví.
+    - `wallet_topup_credited`: Tiền nạp được cộng vào ví.
+
+## 15. Trạng thái lô điểm thưởng Loyalty (LoyaltyPointLotStatus)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/loyaltypointlotstatus`
+- **Các giá trị hợp lệ:**
+    - `active`: Lô điểm đang hoạt động và có thể sử dụng.
+    - `consumed`: Lô điểm đã được sử dụng hết.
+    - `expired`: Lô điểm đã hết hạn.
+
+## 16. Chế độ làm tròn điểm Loyalty (LoyaltyRoundingMode)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/loyaltyroundingmode`
+- **Các giá trị hợp lệ:**
+    - `floor`: Làm tròn xuống (ví dụ: 1.9 -> 1).
+    - `round`: Làm tròn gần nhất (ví dụ: 1.5 -> 2, 1.4 -> 1).
+    - `ceil`: Làm tròn lên (ví dụ: 1.1 -> 2).
+
+## 17. Loại giao dịch điểm Loyalty (LoyaltyTransactionType)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/loyaltytransactiontype`
+- **Các giá trị hợp lệ:**
+    - `earn`: Tích lũy điểm (cộng điểm).
+    - `redeem`: Đổi điểm lấy ưu đãi (trừ điểm).
+    - `adjust`: Điều chỉnh điểm thủ công (cộng/trừ).
+    - `expire`: Điểm hết hạn (trừ điểm).
+    - `refund`: Hoàn điểm (cộng lại điểm).
+
+## 18. Trạng thái cuộc hội thoại (ConversationStatus)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/brandchat/conversationstatus`
+- **Các giá trị hợp lệ:**
+    - `open`: Cuộc hội thoại đang mở.
+    - `closed`: Cuộc hội thoại đã đóng.
+
+## 19. Vai trò người gửi tin nhắn (SenderRole)
+
+- **Đường dẫn package:** `internal/shared/domain/constants/brand/brandchat/senderrole`
+- **Các giá trị hợp lệ:**
+    - `customer`: Khách hàng gửi.
+    - `brand_staff`: Nhân viên nhãn hàng gửi.
+    - `system`: Hệ thống tự động gửi.
