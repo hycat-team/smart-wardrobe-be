@@ -103,10 +103,6 @@ func (uc *UserPostUseCase) resolvePostItems(ctx context.Context, postType postty
 	return result, nil
 }
 
-func (uc *UserPostUseCase) syncPostTotalPrice(ctx context.Context, postID uuid.UUID) error {
-	return SyncPostTotalPrice(ctx, uc.publishing.postRepo, uc.publishing.postItemRepo, postID)
-}
-
 // SyncPostTotalPrice recalculates the total visible price of a post from its current items.
 func SyncPostTotalPrice(ctx context.Context, postRepo repositories.IPostRepository, postItemRepo repositories.IPostItemRepository, postID uuid.UUID) error {
 	total, err := postItemRepo.SumVisiblePriceByPostID(ctx, postID)

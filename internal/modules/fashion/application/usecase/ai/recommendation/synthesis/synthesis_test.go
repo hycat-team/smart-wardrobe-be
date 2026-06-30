@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -133,7 +134,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 		},
 	}
 
-	groups := MapLLMResponseToGroups(candidates, llmRes)
+	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
 	if len(groups) != 1 {
 		t.Fatalf("expected 1 mapped group, got %d", len(groups))
 	}
@@ -228,7 +229,7 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 		},
 	}
 
-	groups := MapLLMResponseToGroups(candidates, llmRes)
+	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
 
 	// Should have filtered out 'top', leaving only 'fullbody' and 'accessory'
 	if len(groups) != 2 {

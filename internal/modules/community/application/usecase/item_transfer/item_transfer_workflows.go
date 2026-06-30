@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/community/transferstate"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -80,7 +81,7 @@ func (uc *ItemTransferUseCase) GetSellerTransferPosts(ctx context.Context, selle
 		buyerIDs = append(buyerIDs, *item.BuyerUserID)
 	}
 
-	buyerUsers, err := uc.identityCtr.GetByIDs(ctx, uniqueUUIDs(buyerIDs))
+	buyerUsers, err := uc.identityCtr.GetByIDs(ctx, sliceutils.UniqueUUIDs(buyerIDs))
 	if err != nil {
 		buyerUsers = nil
 	}

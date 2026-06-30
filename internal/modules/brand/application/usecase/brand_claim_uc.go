@@ -125,7 +125,7 @@ func (uc *BrandClaimUseCase) ListBrandCustomerClaims(ctx context.Context, staffU
 	if err != nil {
 		return nil, err
 	}
-	return mapClaimTokens(claims), nil
+	return mapper.MapClaimTokens(claims), nil
 }
 
 func (uc *BrandClaimUseCase) RevokeBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID, claimID uuid.UUID, input dto.RevokeClaimTokenReq) (*dto.ClaimTokenRes, error) {
@@ -153,7 +153,7 @@ func (uc *BrandClaimUseCase) RevokeBrandCustomerClaim(ctx context.Context, staff
 	if err := uc.claimRepo.Update(ctx, claim); err != nil {
 		return nil, err
 	}
-	return mapClaimToken(claim), nil
+	return mapper.MapClaimToken(claim), nil
 }
 
 func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) (*dto.BrandCustomerRes, error) {
@@ -296,38 +296,4 @@ return 1
 		return false, err
 	}
 	return res == 1, nil
-}
-
-func mapClaimToken(claim *entities.BrandCustomerClaim) *dto.ClaimTokenRes {
-	if claim == nil {
-		return nil
-	}
-	status := "active"
-	now := time.Now().UTC()
-	if claim.ConsumedAt != nil {
-		status = "consumed"
-	} else if claim.RevokedAt != nil {
-		status = "revoked"
-	} else if now.After(claim.ExpiresAt) {
-		status = "expired"
-	}
-	return &dto.ClaimTokenRes{
-		ID:              claim.ID,
-		BrandCustomerID: claim.BrandCustomerID,
-		ExpiresAt:       claim.ExpiresAt,
-		ConsumedAt:      claim.ConsumedAt,
-		RevokedAt:       claim.RevokedAt,
-		RevokedByUserID: claim.RevokedByUserID,
-		RevokedReason:   claim.RevokedReason,
-		Status:          status,
-		CreatedAt:       claim.CreatedAt,
-	}
-}
-
-func mapClaimTokens(claims []*entities.BrandCustomerClaim) []*dto.ClaimTokenRes {
-	res := make([]*dto.ClaimTokenRes, 0, len(claims))
-	for _, claim := range claims {
-		res = append(res, mapClaimToken(claim))
-	}
-	return res
 }

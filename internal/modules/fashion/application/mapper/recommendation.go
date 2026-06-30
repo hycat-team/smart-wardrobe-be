@@ -1,5 +1,4 @@
-// Package synthesis implements response synthesis, LLM prompt assembly, response parsing, and validation.
-package synthesis
+package mapper
 
 import (
 	"fmt"
@@ -8,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
@@ -93,7 +92,7 @@ func MapLLMResponseToGroups(
 			hasFullbody = true
 		}
 
-		primaryDTO := mapper.MapToWardrobeItemRes(primary)
+		primaryDTO := wardrobe_mapper.MapToWardrobeItemRes(primary)
 		if cand, found := promptCandidateMap[primary.ID]; found {
 			enrichWardrobeItemRes(primaryDTO, cand)
 		}
@@ -178,7 +177,7 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		altDTO := mapper.MapToWardrobeItemRes(altItem)
+		altDTO := wardrobe_mapper.MapToWardrobeItemRes(altItem)
 		if cand, found := promptCandidateMap[altItem.ID]; found {
 			enrichWardrobeItemRes(altDTO, cand)
 		}
@@ -206,7 +205,7 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		altDTO := mapper.MapToWardrobeItemRes(item)
+		altDTO := wardrobe_mapper.MapToWardrobeItemRes(item)
 		enrichWardrobeItemRes(altDTO, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {

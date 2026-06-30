@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/requeststatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -24,7 +25,7 @@ func (uc *ItemTransferUseCase) CreateTransferRequests(ctx context.Context, buyer
 	}
 
 	createRequests := func(txCtx context.Context) error {
-		uniquePostItemIDs := uniqueUUIDs(postItemIDs)
+		uniquePostItemIDs := sliceutils.UniqueUUIDs(postItemIDs)
 		postItems, err := uc.postItemRepo.GetByIDs(txCtx, uniquePostItemIDs)
 		if err != nil {
 			return err
@@ -40,7 +41,7 @@ func (uc *ItemTransferUseCase) CreateTransferRequests(ctx context.Context, buyer
 			postIDs = append(postIDs, postItem.PostID)
 		}
 
-		posts, err := uc.postRepo.GetByIDs(txCtx, uniqueUUIDs(postIDs))
+		posts, err := uc.postRepo.GetByIDs(txCtx, sliceutils.UniqueUUIDs(postIDs))
 		if err != nil {
 			return err
 		}
@@ -125,7 +126,7 @@ func (uc *ItemTransferUseCase) GetPendingTransfers(ctx context.Context, buyerUse
 		sellerIDs = append(sellerIDs, item.Post.UserID)
 	}
 
-	sellerUsers, err := uc.identityCtr.GetByIDs(ctx, uniqueUUIDs(sellerIDs))
+	sellerUsers, err := uc.identityCtr.GetByIDs(ctx, sliceutils.UniqueUUIDs(sellerIDs))
 	if err != nil {
 		sellerUsers = nil
 	}

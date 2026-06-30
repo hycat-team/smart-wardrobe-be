@@ -138,7 +138,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomer(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, msgBrandDetailSuccess, res)
+	shared_pres.Success(c, msgBrandCustomerDetailSuccess, res)
 	return nil
 }
 

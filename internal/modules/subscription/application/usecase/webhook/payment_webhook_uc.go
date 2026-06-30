@@ -329,14 +329,12 @@ func (uc *PaymentWebhookUseCase) persistWebhookInbox(ctx context.Context, payloa
 		return nil, subscriptionerrors.ErrInvalidAmount()
 	}
 	ref, link := payload.Data.Reference, payload.Data.PaymentLinkId
-	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currencyFromText(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
+	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
 	if err := uc.inboxRepo.Create(ctx, inbox); err != nil {
 		return nil, err
 	}
 	return inbox, nil
 }
-
-func currencyFromText(value string) currency.Currency { return currency.Currency(value) }
 
 // markWebhookTransactionSuccess updates the deposit transaction status after a successful callback.
 func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(

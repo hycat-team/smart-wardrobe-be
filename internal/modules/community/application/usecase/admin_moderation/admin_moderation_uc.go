@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -243,7 +244,7 @@ func (uc *AdminCommunityModerationUseCase) GetPostsForAdmin(ctx context.Context,
 		postIDs = append(postIDs, post.ID)
 	}
 
-	postItems, err := uc.postItemRepo.GetByPostIDs(ctx, uniqueUUIDs(postIDs))
+	postItems, err := uc.postItemRepo.GetByPostIDs(ctx, sliceutils.UniqueUUIDs(postIDs))
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +256,7 @@ func (uc *AdminCommunityModerationUseCase) GetPostsForAdmin(ctx context.Context,
 		postItemsByPostID[item.PostID] = append(postItemsByPostID[item.PostID], item)
 	}
 
-	postMedia, err := uc.postMediaRepo.GetByPostIDs(ctx, uniqueUUIDs(postIDs))
+	postMedia, err := uc.postMediaRepo.GetByPostIDs(ctx, sliceutils.UniqueUUIDs(postIDs))
 	if err != nil {
 		return nil, err
 	}
@@ -429,21 +430,3 @@ func (uc *AdminCommunityModerationUseCase) AdminRestoreComment(ctx context.Conte
 }
 
 var _ uc_interfaces.IAdminCommunityModerationUseCase = (*AdminCommunityModerationUseCase)(nil)
-
-func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
-	if len(ids) == 0 {
-		return nil
-	}
-
-	seen := make(map[uuid.UUID]struct{}, len(ids))
-	result := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if _, exists := seen[id]; exists {
-			continue
-		}
-		seen[id] = struct{}{}
-		result = append(result, id)
-	}
-
-	return result
-}

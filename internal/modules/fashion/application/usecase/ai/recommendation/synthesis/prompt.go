@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
@@ -102,7 +103,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 		}
 
 		if fashion != nil && fashion.Category != nil {
-			candidatePayload["category"] = CategorySlugToWearingRole(fashion.Category.Slug)
+			candidatePayload["category"] = fashion_mapper.CategorySlugToWearingRole(fashion.Category.Slug)
 		}
 		if fashion != nil && fashion.Color != nil {
 			candidatePayload["color"] = *fashion.Color

@@ -168,7 +168,7 @@ func (uc *UserPostUseCase) persistNewPostAggregate(
 		}
 	}
 
-	return uc.syncPostTotalPrice(txCtx, postEntity.ID)
+	return SyncPostTotalPrice(txCtx, uc.publishing.postRepo, uc.publishing.postItemRepo, postEntity.ID)
 }
 
 // persistUpdatedPostAggregate applies the post aggregate diff and re-syncs affected item states.
@@ -201,7 +201,7 @@ func (uc *UserPostUseCase) updatePostBaseFields(
 	if err := uc.replacePostMedia(txCtx, postEntity.ID, media); err != nil {
 		return err
 	}
-	if err := uc.syncPostTotalPrice(txCtx, postEntity.ID); err != nil {
+	if err := SyncPostTotalPrice(txCtx, uc.publishing.postRepo, uc.publishing.postItemRepo, postEntity.ID); err != nil {
 		return err
 	}
 	if err := uc.publishing.postRepo.MarkHotnessDirty(txCtx, postEntity.ID); err != nil {
@@ -397,7 +397,7 @@ func (uc *UserPostUseCase) RemovePostItems(ctx context.Context, userID uuid.UUID
 		if err := uc.publishing.postItemRepo.DeleteByPostAndIDs(txCtx, postEntity.ID, postItemIDs); err != nil {
 			return err
 		}
-		if err := uc.syncPostTotalPrice(txCtx, postEntity.ID); err != nil {
+		if err := SyncPostTotalPrice(txCtx, uc.publishing.postRepo, uc.publishing.postItemRepo, postEntity.ID); err != nil {
 			return err
 		}
 		if remainingCount == 0 {

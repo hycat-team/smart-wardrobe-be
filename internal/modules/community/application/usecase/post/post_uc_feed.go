@@ -12,6 +12,7 @@ import (
 	shared_repo_dto "smart-wardrobe-be/internal/modules/community/domain/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -405,7 +406,7 @@ func cosineDistance(a, b entities.Vector) float64 {
 }
 
 func (uc *UserPostUseCase) loadPostDetailsByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID][]*entities.PostItem, map[uuid.UUID][]*entities.PostMedia, error) {
-	postIDs = uniqueUUIDs(postIDs)
+	postIDs = sliceutils.UniqueUUIDs(postIDs)
 
 	postItems, err := uc.feed.postItemRepo.GetByPostIDs(ctx, postIDs)
 	if err != nil {
@@ -434,22 +435,4 @@ func (uc *UserPostUseCase) loadPostDetailsByPostIDs(ctx context.Context, postIDs
 	}
 
 	return postItemsByPostID, mediaByPostID, nil
-}
-
-func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
-	if len(ids) == 0 {
-		return nil
-	}
-
-	seen := make(map[uuid.UUID]struct{}, len(ids))
-	result := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if _, exists := seen[id]; exists {
-			continue
-		}
-		seen[id] = struct{}{}
-		result = append(result, id)
-	}
-
-	return result
 }

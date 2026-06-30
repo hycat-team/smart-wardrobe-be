@@ -2,8 +2,6 @@ package usecase
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"math"
 	"strings"
 	"time"
@@ -26,6 +24,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )
@@ -150,7 +149,7 @@ func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID
 		return nil, err
 	}
 	phone := strings.TrimSpace(input.PhoneE164)
-	phoneHash := hashPhone(phone)
+	phoneHash := stringutils.HashSHA256(phone)
 	if existing, err := uc.customerRepo.GetByBrandAndPhoneHash(ctx, brandID, phoneHash); err != nil {
 		return nil, err
 	} else if existing != nil {
@@ -207,7 +206,7 @@ func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUser
 				if err != nil {
 					return err
 				}
-				response = mapLoyaltyTransactionResponse(existingTx, account, customer)
+				response = mapper.MapLoyaltyTransactionResponse(existingTx, account, customer)
 				return nil
 			}
 		}
@@ -242,7 +241,7 @@ func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUser
 			return branderrors.ErrInsufficientLoyaltyPoints()
 		}
 
-		spendAmount := valueOrNil(input.PurchaseAmount)
+		spendAmount := input.PurchaseAmount
 		if input.PurchaseAmount != nil && input.TransactionType == loyaltytransactiontype.Earn {
 			account.TotalSpend += *input.PurchaseAmount
 		}
@@ -268,12 +267,12 @@ func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUser
 		}
 
 		if pointsDelta == 0 {
-			response = mapLoyaltyTransactionResponse(nil, account, customer)
+			response = mapper.MapLoyaltyTransactionResponse(nil, account, customer)
 			return nil
 		}
 
 		expiresAt := calculateTransactionExpiry(input.TransactionType, program)
-		idempotencyKey := trimmedStringPtr(input.IdempotencyKey)
+		idempotencyKey := stringutils.TrimmedPtr(input.IdempotencyKey)
 		tx := &entities.LoyaltyPointTransaction{
 			LoyaltyAccountID: account.ID,
 			BrandID:          brandID,
@@ -309,7 +308,7 @@ func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUser
 				return err
 			}
 		}
-		response = mapLoyaltyTransactionResponse(tx, account, customer)
+		response = mapper.MapLoyaltyTransactionResponse(tx, account, customer)
 		return nil
 	})
 	if err != nil {
@@ -351,7 +350,7 @@ func (uc *BrandLoyaltyUseCase) ListUserBrandLoyalties(ctx context.Context, userI
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, mapBrandLoyalty(account, customer, customer.Brand, lot))
+		res = append(res, mapper.MapBrandLoyalty(account, customer, customer.Brand, lot))
 	}
 	return res, nil
 }
@@ -379,7 +378,7 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyalty(ctx context.Context, userID u
 	if err != nil {
 		return nil, err
 	}
-	return mapBrandLoyalty(account, customer, brand, lot), nil
+	return mapper.MapBrandLoyalty(account, customer, brand, lot), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyPointTransactionDetailRes, error) {
@@ -401,7 +400,7 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	return mapLoyaltyTransactions(transactions), nil
+	return mapper.MapLoyaltyTransactions(transactions), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
@@ -437,7 +436,7 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context
 	if err != nil {
 		return nil, err
 	}
-	return mapLoyaltyTransactions(transactions), nil
+	return mapper.MapLoyaltyTransactions(transactions), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
@@ -465,7 +464,7 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyProgramForStaff(ctx context.Context, st
 	if program == nil {
 		return nil, branderrors.ErrActiveLoyaltyProgramRequired()
 	}
-	return mapLoyaltyProgram(program), nil
+	return mapper.MapLoyaltyProgram(program), nil
 }
 
 func (uc *BrandLoyaltyUseCase) UpsertLoyaltyProgram(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.UpsertLoyaltyProgramReq) (*dto.LoyaltyProgramRes, error) {
@@ -506,7 +505,7 @@ func (uc *BrandLoyaltyUseCase) UpsertLoyaltyProgram(ctx context.Context, staffUs
 		}
 	}
 
-	return mapLoyaltyProgram(program), nil
+	return mapper.MapLoyaltyProgram(program), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error) {
@@ -517,7 +516,7 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staf
 	if err != nil {
 		return nil, err
 	}
-	return mapLoyaltyTiers(tiers), nil
+	return mapper.MapLoyaltyTiers(tiers), nil
 }
 
 func (uc *BrandLoyaltyUseCase) ProcessExpiredLoyaltyPointLots(ctx context.Context, now time.Time, batchSize int) (int, error) {
@@ -604,7 +603,7 @@ func (uc *BrandLoyaltyUseCase) listLoyaltyLots(ctx context.Context, loyaltyAccou
 	if err != nil {
 		return nil, err
 	}
-	return mapLoyaltyPointLots(lots), nil
+	return mapper.MapLoyaltyPointLots(lots), nil
 }
 
 func (uc *BrandLoyaltyUseCase) ensureLoyaltyAccount(ctx context.Context, customer *entities.BrandCustomer) error {
@@ -654,8 +653,8 @@ func (uc *BrandLoyaltyUseCase) resolveBrandCustomerForPoints(ctx context.Context
 	}
 
 	if input.Phone != nil && strings.TrimSpace(*input.Phone) != "" {
-		phone := normalizePhone(*input.Phone)
-		phoneHash := hashPhone(phone)
+		phone := strings.TrimSpace(*input.Phone)
+		phoneHash := stringutils.HashSHA256(phone)
 		existing, err := uc.customerRepo.GetByBrandAndPhoneHash(ctx, brandID, phoneHash)
 		if err != nil {
 			return nil, err
@@ -693,7 +692,7 @@ func (uc *BrandLoyaltyUseCase) resolveBrandCustomerForPoints(ctx context.Context
 		return customer, nil
 	}
 
-	externalCode := strings.TrimSpace(valueOrEmpty(input.ExternalCustomerCode))
+	externalCode := strings.TrimSpace(stringutils.GetString(input.ExternalCustomerCode))
 	existing, err := uc.customerRepo.GetByBrandAndExternalCode(ctx, brandID, externalCode)
 	if err != nil {
 		return nil, err
@@ -774,191 +773,4 @@ func calculateTransactionExpiry(transactionType loyaltytransactiontype.LoyaltyTr
 	}
 	expiresAt := time.Now().UTC().AddDate(0, 0, *program.PointExpiryDays)
 	return &expiresAt
-}
-
-func mapLoyaltyTransactionResponse(tx *entities.LoyaltyPointTransaction, account *entities.LoyaltyAccount, customer *entities.BrandCustomer) *dto.LoyaltyPointsTransactionRes {
-	if account == nil || customer == nil {
-		return nil
-	}
-	var transactionID uuid.UUID
-	var pointsDelta int
-	var balanceAfter = account.CurrentPoints
-	if tx != nil {
-		transactionID = tx.ID
-		pointsDelta = tx.PointsDelta
-		balanceAfter = tx.BalanceAfter
-	}
-	var currentTier *dto.LoyaltyTierBriefRes
-	if account.CurrentTier != nil {
-		currentTier = &dto.LoyaltyTierBriefRes{
-			ID:   account.CurrentTier.ID,
-			Name: account.CurrentTier.Name,
-		}
-	}
-	return &dto.LoyaltyPointsTransactionRes{
-		TransactionID:   transactionID,
-		BrandID:         account.BrandID,
-		BrandCustomerID: customer.ID,
-		UserID:          customer.UserID,
-		CustomerStatus:  customer.Status,
-		PointsDelta:     pointsDelta,
-		BalanceAfter:    balanceAfter,
-		TotalSpend:      account.TotalSpend,
-		CurrentTier:     currentTier,
-	}
-}
-
-func mapBrandLoyalty(account *entities.LoyaltyAccount, customer *entities.BrandCustomer, brand *entities.Brand, lot *entities.LoyaltyPointLot) *dto.BrandLoyaltyRes {
-	if account == nil || customer == nil {
-		return nil
-	}
-	var currentTier *dto.LoyaltyTierBriefRes
-	if account.CurrentTier != nil {
-		currentTier = &dto.LoyaltyTierBriefRes{
-			ID:   account.CurrentTier.ID,
-			Name: account.CurrentTier.Name,
-		}
-	}
-	return &dto.BrandLoyaltyRes{
-		BrandID:                 account.BrandID,
-		Brand:                   mapper.MapBrand(brand),
-		BrandCustomerID:         customer.ID,
-		LoyaltyAccountID:        account.ID,
-		CurrentPoints:           account.CurrentPoints,
-		LifetimePoints:          account.LifetimePoints,
-		TotalSpend:              account.TotalSpend,
-		CurrentTier:             currentTier,
-		NearestExpiringPointLot: mapLoyaltyPointLot(lot),
-	}
-}
-
-func mapLoyaltyPointLot(lot *entities.LoyaltyPointLot) *dto.LoyaltyPointLotRes {
-	if lot == nil {
-		return nil
-	}
-	return &dto.LoyaltyPointLotRes{
-		ID:                lot.ID,
-		EarnedPoints:      lot.EarnedPoints,
-		RemainingPoints:   lot.RemainingPoints,
-		ExpiresAt:         lot.ExpiresAt,
-		Status:            string(lot.Status),
-		EarnTransactionID: lot.EarnTransactionID,
-		CreatedAt:         lot.CreatedAt,
-	}
-}
-
-func mapLoyaltyPointLots(lots []*entities.LoyaltyPointLot) []*dto.LoyaltyPointLotRes {
-	res := make([]*dto.LoyaltyPointLotRes, 0, len(lots))
-	for _, lot := range lots {
-		res = append(res, mapLoyaltyPointLot(lot))
-	}
-	return res
-}
-
-func mapLoyaltyTransaction(tx *entities.LoyaltyPointTransaction) *dto.LoyaltyPointTransactionDetailRes {
-	if tx == nil {
-		return nil
-	}
-	return &dto.LoyaltyPointTransactionDetailRes{
-		ID:               tx.ID,
-		LoyaltyAccountID: tx.LoyaltyAccountID,
-		BrandID:          tx.BrandID,
-		BrandCustomerID:  tx.BrandCustomerID,
-		UserID:           tx.UserID,
-		PointsDelta:      tx.PointsDelta,
-		BalanceAfter:     tx.BalanceAfter,
-		TransactionType:  string(tx.TransactionType),
-		Reason:           tx.Reason,
-		SpendAmount:      tx.SpendAmount,
-		ReferenceType:    tx.ReferenceType,
-		ReferenceID:      tx.ReferenceID,
-		ExpiresAt:        tx.ExpiresAt,
-		IdempotencyKey:   tx.IdempotencyKey,
-		CreatedByUserID:  tx.CreatedByUserID,
-		CreatedAt:        tx.CreatedAt,
-	}
-}
-
-func mapLoyaltyTransactions(transactions []*entities.LoyaltyPointTransaction) []*dto.LoyaltyPointTransactionDetailRes {
-	res := make([]*dto.LoyaltyPointTransactionDetailRes, len(transactions))
-	for i, tx := range transactions {
-		res[i] = mapLoyaltyTransaction(tx)
-	}
-	return res
-}
-
-func mapLoyaltyProgram(program *entities.LoyaltyProgram) *dto.LoyaltyProgramRes {
-	if program == nil {
-		return nil
-	}
-	return &dto.LoyaltyProgramRes{
-		ID:              program.ID,
-		BrandID:         program.BrandID,
-		Name:            program.Name,
-		AmountPerPoint:  program.AmountPerPoint,
-		PointExpiryDays: program.PointExpiryDays,
-		RoundingMode:    string(program.RoundingMode),
-		IsActive:        program.IsActive,
-		CreatedAt:       program.CreatedAt,
-		UpdatedAt:       program.UpdatedAt,
-	}
-}
-
-func mapLoyaltyTier(tier *entities.LoyaltyTier) *dto.LoyaltyTierRes {
-	if tier == nil {
-		return nil
-	}
-	return &dto.LoyaltyTierRes{
-		ID:            tier.ID,
-		BrandID:       tier.BrandID,
-		Name:          tier.Name,
-		Rank:          tier.Rank,
-		MinTotalSpend: tier.MinTotalSpend,
-		Description:   tier.Description,
-		CreatedAt:     tier.CreatedAt,
-		UpdatedAt:     tier.UpdatedAt,
-	}
-}
-
-func mapLoyaltyTiers(tiers []*entities.LoyaltyTier) []*dto.LoyaltyTierRes {
-	res := make([]*dto.LoyaltyTierRes, len(tiers))
-	for i, tier := range tiers {
-		res[i] = mapLoyaltyTier(tier)
-	}
-	return res
-}
-
-func hashPhone(phone string) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(phone)))
-	return hex.EncodeToString(sum[:])
-}
-
-func normalizePhone(phone string) string {
-	return strings.TrimSpace(phone)
-}
-
-func valueOrNil(value *float64) *float64 {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
-}
-
-func trimmedStringPtr(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	trimmed := strings.TrimSpace(*value)
-	if trimmed == "" {
-		return nil
-	}
-	return &trimmed
-}
-
-func valueOrEmpty(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }

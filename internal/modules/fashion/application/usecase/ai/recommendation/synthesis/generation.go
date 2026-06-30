@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
+	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/application/ai"
@@ -79,7 +80,7 @@ func GenerateOutfitRecommendation(
 	}
 	resolveOutfitAliases(&llmRes, candidates)
 
-	validGroups := MapLLMResponseToGroups(candidates, llmRes)
+	validGroups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
 	if len(validGroups) == 0 {
 		return nil, NewFallbackTraceError(
 			"invalid_outfit_structure",
