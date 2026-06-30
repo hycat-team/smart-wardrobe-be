@@ -21,6 +21,40 @@ const (
 	msgBrandFeedbackSubmitSuccess   = "Gửi feedback sản phẩm thành công"
 	msgBrandCreateClaimTokenSuccess = "Tạo mã claim liên kết tài khoản thành công"
 	msgBrandClaimCustomerSuccess    = "Liên kết tài khoản loyalty thành công"
+
+	// Upload & Brand Portal
+	msgBrandGetUploadLogoSignatureSuccess  = "Lấy chữ ký upload logo brand thành công"
+	msgBrandUpdateLogoSuccess              = "Cập nhật logo brand thành công"
+	msgBrandGetUploadItemSignatureSuccess  = "Lấy chữ ký upload ảnh sản phẩm brand thành công"
+
+	// Brand Chat
+	msgBrandChatGetUserConversationSuccess     = "Lấy thông tin hội thoại thành công"
+	msgBrandChatSendUserMessageSuccess         = "Gửi tin nhắn thành công"
+	msgBrandChatListBrandConversationsSuccess  = "Lấy danh sách hội thoại thành công"
+	msgBrandChatListConversationMessagesSuccess = "Lấy danh sách tin nhắn thành công"
+	msgBrandChatSendStaffMessageSuccess        = "Gửi phản hồi thành công"
+	msgBrandChatMarkConversationReadSuccess    = "Đánh dấu đã đọc hội thoại thành công"
+	msgBrandChatCloseConversationSuccess       = "Đóng hội thoại thành công"
+	msgBrandChatReopenConversationSuccess      = "Mở lại hội thoại thành công"
+
+	// Brand Loyalty 추가
+	msgBrandLoyaltyListSuccess                 = "Lấy danh sách loyalty brand thành công"
+	msgBrandLoyaltyDetailSuccess               = "Lấy chi tiết loyalty brand thành công"
+	msgBrandLoyaltyGetPointsHistorySuccess     = "Lấy lịch sử điểm loyalty thành công"
+	msgBrandLoyaltyGetAccountHistorySuccess    = "Lấy lịch sử điểm loyalty account thành công"
+	msgBrandLoyaltyGetProgramSuccess           = "Lấy chương trình loyalty thành công"
+	msgBrandLoyaltyUpdateProgramSuccess        = "Cập nhật chương trình loyalty thành công"
+	msgBrandLoyaltyGetTiersSuccess             = "Lấy danh sách hạng loyalty thành công"
+	msgBrandLoyaltyCreateBenefitSuccess        = "Tạo quyền lợi brand thành công"
+	msgBrandLoyaltyListBenefitsSuccess         = "Lấy danh sách quyền lợi brand thành công"
+	msgBrandLoyaltyUpdateBenefitStatusSuccess  = "Cập nhật trạng thái quyền lợi thành công"
+	msgBrandLoyaltyRedeemBenefitSuccess        = "Đổi quyền lợi thành công"
+	msgBrandLoyaltyGetBenefitDetailSuccess     = "Lấy chi tiết quyền lợi brand thành công"
+	msgBrandLoyaltyListRedeemedBenefitsSuccess = "Lấy danh sách quyền lợi đã nhận thành công"
+	msgBrandLoyaltyListClaimTokensSuccess      = "Lấy danh sách mã claim thành công"
+	msgBrandLoyaltyRevokeClaimTokenSuccess     = "Thu hồi mã claim thành công"
+	msgBrandLoyaltyListPointBatchesSuccess     = "Lấy danh sách lô điểm loyalty thành công"
+	msgBrandLoyaltyListAccountBatchesSuccess   = "Lấy danh sách lô điểm loyalty account thành công"
 )
 
 type BrandHandler struct {

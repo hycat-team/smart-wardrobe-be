@@ -248,7 +248,7 @@ func (h *BrandLoyaltyHandler) ListUserBrandLoyalties(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách loyalty brand thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListSuccess, res)
 	return nil
 }
 
@@ -272,7 +272,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chi tiết loyalty brand thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyDetailSuccess, res)
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) er
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy lịch sử điểm loyalty thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyGetPointsHistorySuccess, res)
 	return nil
 }
 
@@ -325,7 +325,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Conte
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy lịch sử điểm loyalty account thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyGetAccountHistorySuccess, res)
 	return nil
 }
 
@@ -349,7 +349,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chương trình loyalty thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyGetProgramSuccess, res)
 	return nil
 }
 
@@ -379,7 +379,7 @@ func (h *BrandLoyaltyHandler) UpsertLoyaltyProgram(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Cập nhật chương trình loyalty thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyUpdateProgramSuccess, res)
 	return nil
 }
 
@@ -403,7 +403,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách hạng loyalty thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyGetTiersSuccess, res)
 	return nil
 }
 
@@ -433,7 +433,7 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Created(c, "Tạo quyền lợi brand thành công", res)
+	shared_pres.Created(c, msgBrandLoyaltyCreateBenefitSuccess, res)
 	return nil
 }
 
@@ -458,7 +458,7 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách quyền lợi brand thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListBenefitsSuccess, res)
 	return nil
 }
 
@@ -493,7 +493,7 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Cập nhật trạng thái quyền lợi thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyUpdateBenefitStatusSuccess, res)
 	return nil
 }
 
@@ -518,7 +518,7 @@ func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách quyền lợi brand thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListBenefitsSuccess, res)
 	return nil
 }
 
@@ -543,7 +543,7 @@ func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Created(c, "Đổi quyền lợi thành công", res)
+	shared_pres.Created(c, msgBrandLoyaltyRedeemBenefitSuccess, res)
 	return nil
 }
 
@@ -567,7 +567,7 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chi tiết quyền lợi brand thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyGetBenefitDetailSuccess, res)
 	return nil
 }
 
@@ -586,7 +586,7 @@ func (h *BrandLoyaltyHandler) ListBenefitRedemptionsForUser(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách quyền lợi đã nhận thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListRedeemedBenefitsSuccess, res)
 	return nil
 }
 
@@ -646,7 +646,7 @@ func (h *BrandLoyaltyHandler) ListClaimTokens(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách mã claim thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListClaimTokensSuccess, res)
 	return nil
 }
 
@@ -686,7 +686,7 @@ func (h *BrandLoyaltyHandler) RevokeClaimToken(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Thu hồi mã claim thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyRevokeClaimTokenSuccess, res)
 	return nil
 }
 
@@ -744,7 +744,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách lô điểm loyalty thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListPointBatchesSuccess, res)
 	return nil
 }
 
@@ -781,6 +781,6 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountLotsForStaff(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách lô điểm loyalty account thành công", res)
+	shared_pres.Success(c, msgBrandLoyaltyListAccountBatchesSuccess, res)
 	return nil
 }

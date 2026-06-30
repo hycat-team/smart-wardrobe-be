@@ -18,6 +18,7 @@ const (
 	msgWardrobeGetUploadSignatureSuccess    = "Lấy chữ ký tải ảnh trang phục thành công"
 	msgWardrobeGetItemsSuccess              = "Lấy danh sách trang phục thành công"
 	msgWardrobeGetItemByIDSuccess           = "Lấy thông tin chi tiết trang phục thành công"
+	msgWardrobeGetStatsSuccess              = "Lấy số liệu thống kê tủ đồ thành công"
 	msgWardrobeCloneItemSuccess             = "Nhân bản trang phục thành công"
 	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
 	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
@@ -446,6 +447,6 @@ func (h *WardrobeItemHandler) GetWardrobeStats(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy số liệu thống kê tủ đồ thành công", stats)
+	shared_pres.Success(c, msgWardrobeGetStatsSuccess, stats)
 	return nil
 }

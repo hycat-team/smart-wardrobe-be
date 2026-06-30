@@ -40,7 +40,7 @@ func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thông tin hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatGetUserConversationSuccess, res)
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (h *BrandChatHandler) SendUserMessage(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Created(c, "Gửi tin nhắn thành công", res)
+	shared_pres.Created(c, msgBrandChatSendUserMessageSuccess, res)
 	return nil
 }
 
@@ -95,7 +95,7 @@ func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatListBrandConversationsSuccess, res)
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách tin nhắn thành công", res)
+	shared_pres.Success(c, msgBrandChatListConversationMessagesSuccess, res)
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (h *BrandChatHandler) SendStaffMessage(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Created(c, "Gửi phản hồi thành công", res)
+	shared_pres.Created(c, msgBrandChatSendStaffMessageSuccess, res)
 	return nil
 }
 
@@ -184,7 +184,7 @@ func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Đánh dấu đã đọc hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatMarkConversationReadSuccess, res)
 	return nil
 }
 
@@ -205,7 +205,7 @@ func (h *BrandChatHandler) MarkStaffConversationRead(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Đánh dấu đã đọc hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatMarkConversationReadSuccess, res)
 	return nil
 }
 
@@ -226,7 +226,7 @@ func (h *BrandChatHandler) CloseConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Đóng hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatCloseConversationSuccess, res)
 	return nil
 }
 
@@ -247,7 +247,7 @@ func (h *BrandChatHandler) ReopenConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Mở lại hội thoại thành công", res)
+	shared_pres.Success(c, msgBrandChatReopenConversationSuccess, res)
 	return nil
 }
 

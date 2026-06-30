@@ -194,7 +194,7 @@ func (h *BrandPortalHandler) GetBrandLogoUploadSignature(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chữ ký upload logo brand thành công", res)
+	shared_pres.Success(c, msgBrandGetUploadLogoSignatureSuccess, res)
 	return nil
 }
 
@@ -224,7 +224,7 @@ func (h *BrandPortalHandler) UpdateBrandLogo(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Cập nhật logo brand thành công", res)
+	shared_pres.Success(c, msgBrandUpdateLogoSuccess, res)
 	return nil
 }
 
@@ -327,7 +327,7 @@ func (h *BrandPortalHandler) GetBrandItemUploadSignature(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chữ ký upload ảnh sản phẩm brand thành công", res)
+	shared_pres.Success(c, msgBrandGetUploadItemSignatureSuccess, res)
 	return nil
 }
 
