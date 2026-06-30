@@ -48,7 +48,17 @@ func (r *BrandRepository) GetActive(ctx context.Context) ([]*entities.Brand, err
 	return brands, err
 }
 
+func (r *BrandRepository) GetActiveFiltered(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	activeStatus := brandstatus.Active
+	filter.Status = &activeStatus
+	return r.getBrands(ctx, filter)
+}
+
 func (r *BrandRepository) GetBrandsForAdmin(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	return r.getBrands(ctx, filter)
+}
+
+func (r *BrandRepository) getBrands(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
 	db := r.GetDB(ctx).Model(&entities.Brand{})
 
 	if filter.Status != nil && *filter.Status != "" {

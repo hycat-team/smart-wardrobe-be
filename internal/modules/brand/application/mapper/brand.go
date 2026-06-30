@@ -117,7 +117,7 @@ func MapBrandBenefit(benefit *entities.BrandBenefit) *dto.BrandBenefitRes {
 	if benefit == nil {
 		return nil
 	}
-	var rawConfig interface{}
+	var rawConfig any
 	if len(benefit.FeatureConfig) > 0 {
 		_ = json.Unmarshal(benefit.FeatureConfig, &rawConfig)
 	}

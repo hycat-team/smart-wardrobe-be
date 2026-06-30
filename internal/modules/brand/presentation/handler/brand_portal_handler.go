@@ -127,12 +127,18 @@ func (h *BrandPortalHandler) GetBrandsAdmin(c *gin.Context) error {
 
 // GetActiveBrands lists public active brands.
 // @Summary Lấy danh sách brand đang active
+// @Description Supports pagination and search by brand name or slug.
 // @Tags Brand
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandRes}
+// @Param query query dto.GetActiveBrandsQueryReq false "Active brand filters"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PublicBrandListRes}
 // @Router /api/v1/brands [get]
 func (h *BrandPortalHandler) GetActiveBrands(c *gin.Context) error {
-	res, err := h.brandUC.GetActiveBrands(c.Request.Context())
+	var query dto.GetActiveBrandsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.brandUC.GetActiveBrands(c.Request.Context(), query)
 	if err != nil {
 		return err
 	}

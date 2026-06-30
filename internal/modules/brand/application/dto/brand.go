@@ -224,14 +224,14 @@ type LoyaltyPointTransactionDetailRes struct {
 }
 
 type CreateBrandBenefitReq struct {
-	Name           string      `json:"name" binding:"required,max=255" label:"tên quyền lợi"`
-	Description    *string     `json:"description" binding:"omitempty" label:"mô tả"`
-	BenefitType    string      `json:"benefitType" binding:"required" label:"loại quyền lợi"`
-	UnlockType     string      `json:"unlockType" binding:"required" label:"loại mở khóa"`
-	RequiredPoints *int        `json:"requiredPoints" binding:"omitempty,min=0" label:"điểm yêu cầu"`
-	RequiredTierID *uuid.UUID  `json:"requiredTierId" binding:"omitempty" label:"mã hạng yêu cầu"`
-	FeatureCode    *string     `json:"featureCode" binding:"omitempty,max=100" label:"mã tính năng"`
-	FeatureConfig  interface{} `json:"featureConfig" binding:"omitempty" label:"cấu hình tính năng"`
+	Name           string     `json:"name" binding:"required,max=255" label:"tên quyền lợi"`
+	Description    *string    `json:"description" binding:"omitempty" label:"mô tả"`
+	BenefitType    string     `json:"benefitType" binding:"required" label:"loại quyền lợi"`
+	UnlockType     string     `json:"unlockType" binding:"required" label:"loại mở khóa"`
+	RequiredPoints *int       `json:"requiredPoints" binding:"omitempty,min=0" label:"điểm yêu cầu"`
+	RequiredTierID *uuid.UUID `json:"requiredTierId" binding:"omitempty" label:"mã hạng yêu cầu"`
+	FeatureCode    *string    `json:"featureCode" binding:"omitempty,max=100" label:"mã tính năng"`
+	FeatureConfig  any        `json:"featureConfig" binding:"omitempty" label:"cấu hình tính năng"`
 }
 
 type UpdateBenefitStatusReq struct {
@@ -239,19 +239,19 @@ type UpdateBenefitStatusReq struct {
 }
 
 type BrandBenefitRes struct {
-	ID             uuid.UUID   `json:"id"`
-	BrandID        uuid.UUID   `json:"brandId"`
-	Name           string      `json:"name"`
-	Description    *string     `json:"description"`
-	BenefitType    string      `json:"benefitType"`
-	UnlockType     string      `json:"unlockType"`
-	RequiredPoints *int        `json:"requiredPoints"`
-	RequiredTierID *uuid.UUID  `json:"requiredTierId"`
-	FeatureCode    *string     `json:"featureCode"`
-	FeatureConfig  interface{} `json:"featureConfig"`
-	Status         string      `json:"status"`
-	CreatedAt      time.Time   `json:"createdAt"`
-	UpdatedAt      time.Time   `json:"updatedAt"`
+	ID             uuid.UUID  `json:"id"`
+	BrandID        uuid.UUID  `json:"brandId"`
+	Name           string     `json:"name"`
+	Description    *string    `json:"description"`
+	BenefitType    string     `json:"benefitType"`
+	UnlockType     string     `json:"unlockType"`
+	RequiredPoints *int       `json:"requiredPoints"`
+	RequiredTierID *uuid.UUID `json:"requiredTierId"`
+	FeatureCode    *string    `json:"featureCode"`
+	FeatureConfig  any        `json:"featureConfig"`
+	Status         string     `json:"status"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
 type BenefitRedemptionRes struct {
@@ -401,4 +401,10 @@ type GetBrandsAdminQueryReq struct {
 	Query  *string                  `form:"q" binding:"omitempty" label:"từ khóa tìm kiếm"`
 }
 
+type GetActiveBrandsQueryReq struct {
+	shared_dto.PaginationQuery
+	Query *string `form:"q" binding:"omitempty" label:"từ khóa tìm kiếm"`
+}
+
 type AdminBrandListRes = shared_dto.PaginationResult[*BrandRes]
+type PublicBrandListRes = shared_dto.PaginationResult[*BrandRes]

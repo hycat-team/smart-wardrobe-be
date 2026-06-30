@@ -57,9 +57,10 @@ Các hằng số dùng trong APIs liên quan đến Thương hiệu, Thành viê
 
 - **Đường dẫn package:** `internal/shared/domain/constants/brand/benefit/benefitunlocktype`
 - **Các giá trị hợp lệ:**
-    - `tier_privilege`: Đặc quyền tự động mở khóa theo hạng thành viên (Loyalty Tiers).
-    - `point_redemption`: Cần dùng điểm loyalty tích lũy để quy đổi đặc quyền.
-    - `manual_grant`: Được thương hiệu trao tặng thủ công.
+    - `tier_privilege`: Đặc quyền tự động mở khóa theo hạng thành viên (Loyalty Tiers). FE cần chọn `requiredTierId`, không cần nhập `requiredPoints`.
+    - `point_redemption`: Cần dùng điểm loyalty tích lũy để quy đổi đặc quyền. FE cần nhập `requiredPoints`, không cần chọn `requiredTierId`.
+    - `manual_grant`: Được thương hiệu trao tặng thủ công. FE không cần nhập `requiredPoints` hoặc `requiredTierId`.
+- **Ghi chú logic:** `tier_privilege` được kiểm tra động theo `currentTier.rank >= requiredTier.rank`, không cần tự tạo lượt đổi trước. Với `point_redemption`, nếu `requiredPoints` là `null`, `0` hoặc nhỏ hơn `0` thì hệ thống xem như không yêu cầu điểm; user vẫn gọi API redeem để tạo quyền sở hữu benefit khi benefit cần redemption.
 
 ## 8. Mã đặc quyền hệ thống (BenefitFeatureCode)
 

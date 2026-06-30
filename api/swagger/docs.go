@@ -3196,6 +3196,7 @@ const docTemplate = `{
         },
         "/api/v1/brands": {
             "get": {
+                "description": "Supports pagination and search by brand name or slug.",
                 "produces": [
                     "application/json"
                 ],
@@ -3203,6 +3204,23 @@ const docTemplate = `{
                     "Brand"
                 ],
                 "summary": "Lấy danh sách brand đang active",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3215,10 +3233,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PublicBrandListRes"
                                         }
                                     }
                                 }
@@ -6099,6 +6114,20 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.PublicBrandListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
                 }
             }
         },

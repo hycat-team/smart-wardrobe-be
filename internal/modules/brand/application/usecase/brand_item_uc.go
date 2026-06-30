@@ -15,6 +15,7 @@ import (
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
@@ -112,7 +113,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		}
 
 		if _, checked := sampleAccessChecked[customer.BrandID]; !checked {
-			hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, "sample_mix_access")
+			hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, benefitfeaturecode.SampleMixAccess)
 			if err != nil {
 				return nil, err
 			}
@@ -170,7 +171,7 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 	}
 
 	if brandItem.ItemType == branditemtype.Sample {
-		hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, "sample_mix_access")
+		hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, benefitfeaturecode.SampleMixAccess)
 		if err != nil {
 			return false, nil, err
 		}

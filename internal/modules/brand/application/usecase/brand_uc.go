@@ -145,12 +145,25 @@ func (uc *BrandUseCase) GetBrandsForAdmin(ctx context.Context, query dto.GetBran
 	}, nil
 }
 
-func (uc *BrandUseCase) GetActiveBrands(ctx context.Context) ([]*dto.BrandRes, error) {
-	brands, err := uc.brandRepo.GetActive(ctx)
+func (uc *BrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActiveBrandsQueryReq) (*dto.PublicBrandListRes, error) {
+	filter := repositories.BrandFilter{
+		Query: query.Query,
+		Page:  query.Page,
+		Limit: query.Limit,
+	}
+
+	result, err := uc.brandRepo.GetActiveFiltered(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrands(brands), nil
+
+	mappedItems := mapper.MapBrands(result.Brands)
+	metadata := shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount)
+
+	return &shared_dto.PaginationResult[*dto.BrandRes]{
+		Items:    mappedItems,
+		Metadata: metadata,
+	}, nil
 }
 
 func (uc *BrandUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUID) (*dto.BrandRes, error) {

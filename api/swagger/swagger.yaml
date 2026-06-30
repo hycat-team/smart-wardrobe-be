@@ -607,6 +607,15 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.PublicBrandListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.RevokeClaimTokenReq:
     properties:
       reason:
@@ -3951,6 +3960,17 @@ paths:
       - Brand Portal
   /api/v1/brands:
     get:
+      description: Supports pagination and search by brand name or slug.
+      parameters:
+      - in: query
+        name: limit
+        type: integer
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: q
+        type: string
       produces:
       - application/json
       responses:
@@ -3961,9 +3981,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.PublicBrandListRes'
               type: object
       summary: Lấy danh sách brand đang active
       tags:

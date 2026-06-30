@@ -168,20 +168,37 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Đối tượng ảnh hưởng:** Tạo bản ghi đặc quyền mới `brand_benefits`.
 - **Mô tả:** Thiết lập đặc quyền, ưu đãi voucher hoặc mở khóa tính năng ảo trên Closy dành cho các hạng thẻ khách hàng của thương hiệu.
 - **Request Body:**
+    - Ví dụ benefit theo hạng thành viên (`unlockType = tier_privilege`):
     ```json
     {
-        "name": "Voucher 50k Cho Member Bạc",
-        "description": "Mã giảm giá trực tiếp dành cho khách hàng đạt hạng Bạc trở lên",
-        "benefitType": "voucher",
+        "name": "Quyền thử đồ mẫu cho hạng Gold",
+        "description": "Cho phép khách hàng Gold trở lên thử phối đồ với sample của brand",
+        "benefitType": "feature_access",
         "unlockType": "tier_privilege",
-        "requiredPoints": 100,
         "requiredTierId": "a98c9f80-0a15-4be4-8a48-f68cdbf5f111",
-        "featureCode": "brand_item_recommendation",
+        "featureCode": "sample_mix_access",
         "featureConfig": {
-            "maxItems": 3
+            "validDurationDays": 30
         }
     }
     ```
+
+    - Ví dụ benefit đổi bằng điểm (`unlockType = point_redemption`):
+    ```json
+    {
+        "name": "Voucher 50k",
+        "description": "Mã giảm giá trực tiếp cho khách hàng đổi bằng điểm loyalty",
+        "benefitType": "voucher",
+        "unlockType": "point_redemption",
+        "requiredPoints": 100
+    }
+    ```
+- **Ghi chú field:**
+    - `unlockType = tier_privilege`: FE hiển thị và gửi `requiredTierId`; không hiển thị / không gửi `requiredPoints`. User có quyền khi tier hiện tại có `rank` lớn hơn hoặc bằng tier yêu cầu.
+    - `unlockType = point_redemption`: FE hiển thị `requiredPoints`; không hiển thị / không gửi `requiredTierId`. Nếu gửi `requiredPoints = null`, `0` hoặc số âm thì backend lưu là `null` và benefit không yêu cầu điểm khi redeem.
+    - `unlockType = manual_grant`: FE không cần hiển thị `requiredPoints` hoặc `requiredTierId`; benefit được brand trao thủ công.
+    - `featureCode`: bắt buộc khi `benefitType = feature_access` và phải nằm trong [constants/brand.md:BenefitFeatureCode](constants/brand.md#8-ma-dac-quyen-he-thong-benefitfeaturecode).
+    - `featureConfig`: JSON tuỳ chọn. Backend hiện chỉ đọc `validDurationDays` để tính `expiresAt` của lượt redeem; các key khác chỉ được lưu lại và trả về, chưa dùng để check quyền.
 - **Response:**
     - `201 Created`: Trả về thông tin đặc quyền vừa tạo `BrandBenefitRes`.
 

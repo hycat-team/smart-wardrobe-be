@@ -142,7 +142,7 @@ func parseValidDurationDays(doc entities.JSONDocument) int {
 	if err := json.Unmarshal(doc, &config); err != nil {
 		return 0
 	}
-	if val, ok := config["valid_duration_days"]; ok {
+	if val, ok := config["validDurationDays"]; ok {
 		if floatVal, ok := val.(float64); ok {
 			return int(floatVal)
 		}

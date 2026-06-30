@@ -28,6 +28,7 @@ type IBrandRepository interface {
 	shared_repos.IGenericRepository[entities.Brand, uuid.UUID]
 	GetBySlug(ctx context.Context, slug string) (*entities.Brand, error)
 	GetActive(ctx context.Context) ([]*entities.Brand, error)
+	GetActiveFiltered(ctx context.Context, filter BrandFilter) (*BrandListResult, error)
 	GetBrandsForAdmin(ctx context.Context, filter BrandFilter) (*BrandListResult, error)
 }
 
