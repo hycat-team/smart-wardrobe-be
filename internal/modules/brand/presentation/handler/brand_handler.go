@@ -23,19 +23,19 @@ const (
 	msgBrandClaimCustomerSuccess    = "Liên kết tài khoản loyalty thành công"
 
 	// Upload & Brand Portal
-	msgBrandGetUploadLogoSignatureSuccess  = "Lấy chữ ký upload logo brand thành công"
-	msgBrandUpdateLogoSuccess              = "Cập nhật logo brand thành công"
-	msgBrandGetUploadItemSignatureSuccess  = "Lấy chữ ký upload ảnh sản phẩm brand thành công"
+	msgBrandGetUploadLogoSignatureSuccess = "Lấy chữ ký upload logo brand thành công"
+	msgBrandUpdateLogoSuccess             = "Cập nhật logo brand thành công"
+	msgBrandGetUploadItemSignatureSuccess = "Lấy chữ ký upload ảnh sản phẩm brand thành công"
 
 	// Brand Chat
-	msgBrandChatGetUserConversationSuccess     = "Lấy thông tin hội thoại thành công"
-	msgBrandChatSendUserMessageSuccess         = "Gửi tin nhắn thành công"
-	msgBrandChatListBrandConversationsSuccess  = "Lấy danh sách hội thoại thành công"
+	msgBrandChatGetUserConversationSuccess      = "Lấy thông tin hội thoại thành công"
+	msgBrandChatSendUserMessageSuccess          = "Gửi tin nhắn thành công"
+	msgBrandChatListBrandConversationsSuccess   = "Lấy danh sách hội thoại thành công"
 	msgBrandChatListConversationMessagesSuccess = "Lấy danh sách tin nhắn thành công"
-	msgBrandChatSendStaffMessageSuccess        = "Gửi phản hồi thành công"
-	msgBrandChatMarkConversationReadSuccess    = "Đánh dấu đã đọc hội thoại thành công"
-	msgBrandChatCloseConversationSuccess       = "Đóng hội thoại thành công"
-	msgBrandChatReopenConversationSuccess      = "Mở lại hội thoại thành công"
+	msgBrandChatSendStaffMessageSuccess         = "Gửi phản hồi thành công"
+	msgBrandChatMarkConversationReadSuccess     = "Đánh dấu đã đọc hội thoại thành công"
+	msgBrandChatCloseConversationSuccess        = "Đóng hội thoại thành công"
+	msgBrandChatReopenConversationSuccess       = "Mở lại hội thoại thành công"
 
 	// Brand Loyalty 추가
 	msgBrandLoyaltyListSuccess                 = "Lấy danh sách loyalty brand thành công"
