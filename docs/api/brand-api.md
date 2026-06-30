@@ -8,6 +8,11 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 
 ### 1. Lấy danh sách brand đang hoạt động (active)
 *   **Endpoint:** `GET /api/v1/brands`
+*   **Query Params:**
+    *   `q` (optional): Search keyword matched against brand `name` or `slug`, case-insensitive.
+    *   `page` (optional): Current page, defaults to `1`.
+    *   `limit` (optional): Items per page, defaults to `20`.
+*   **Example:** `GET /api/v1/brands?q=seed&page=1&limit=20`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách dữ liệu các nhãn hàng (`brands`) có trạng thái active.
 *   **Mô tả:** Trả về các thương hiệu công khai (brand public) đang hoạt động để người dùng có thể duyệt xem, đăng ký tham gia chương trình loyalty, xem các đặc quyền (benefits) và danh sách sản phẩm. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
@@ -16,7 +21,8 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
         ```json
         {
           "success": true,
-          "data": [
+          "data": {
+            "items": [
             {
               "id": "787c9f80-0a15-4be4-8a48-f68cdbf5f154",
               "slug": "local-brand-a",
@@ -26,7 +32,14 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
               "logoPublicId": "brands/local-brand-a/logo",
               "status": "active"
             }
-          ]
+            ],
+            "metadata": {
+              "page": 1,
+              "limit": 20,
+              "totalItems": 1,
+              "totalPages": 1
+            }
+          }
         }
         ```
 

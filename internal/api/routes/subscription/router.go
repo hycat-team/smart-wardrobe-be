@@ -1,11 +1,9 @@
 package subscription
 
 import (
-	"net/http"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/api/middleware"
 	subscription_handler "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
@@ -52,16 +50,16 @@ func (r *SubscriptionRouter) Init(group *gin.RouterGroup) {
 
 		// paymentWriteApi routes are disabled in production environment
 		paymentWriteApi := authSubApi.Group("")
-		if r.cfg.Server.Env == "production" {
-			paymentWriteApi.Use(func(c *gin.Context) {
-				c.JSON(http.StatusForbidden, apperror.NewError(
-					http.StatusForbidden,
-					"Tính năng tạm đóng",
-					"Tính năng nạp tiền và đăng ký gói hội viên đang tạm đóng ở phiên bản thử nghiệm này.",
-				))
-				c.Abort()
-			})
-		}
+		// if r.cfg.Server.Env == "production" {
+		// 	paymentWriteApi.Use(func(c *gin.Context) {
+		// 		c.JSON(http.StatusForbidden, apperror.NewError(
+		// 			http.StatusForbidden,
+		// 			"Tính năng tạm đóng",
+		// 			"Tính năng nạp tiền và đăng ký gói hội viên đang tạm đóng ở phiên bản thử nghiệm này.",
+		// 		))
+		// 		c.Abort()
+		// 	})
+		// }
 		{
 			paymentWriteApi.POST("/me/wallet/topup", shared_pres.WrapHandler(r.billingHandler.CreateWalletTopUp))
 			paymentWriteApi.POST("/me/purchase", shared_pres.WrapHandler(r.billingHandler.CreateDirectPurchase))

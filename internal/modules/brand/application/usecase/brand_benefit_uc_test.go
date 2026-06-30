@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefittype"
@@ -39,6 +40,11 @@ func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.B
 	return nil, nil
 }
 func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error) { return nil, nil }
+func (m *mockBrandRepo) GetActiveFiltered(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	activeStatus := brandstatus.Active
+	filter.Status = &activeStatus
+	return m.GetBrandsForAdmin(ctx, filter)
+}
 func (m *mockBrandRepo) GetBrandsForAdmin(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
 	var list []*entities.Brand
 	for _, b := range m.brands {
@@ -275,7 +281,7 @@ func TestCreateBrandBenefit(t *testing.T) {
 		UnlockType:     "point_redemption",
 		RequiredPoints: intPtr(100),
 		FeatureCode:    &featCode,
-		FeatureConfig:  map[string]interface{}{"valid_duration_days": 30},
+		FeatureConfig:  map[string]any{"validDurationDays": 30},
 	}
 
 	res, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, input)
@@ -288,6 +294,136 @@ func TestCreateBrandBenefit(t *testing.T) {
 	}
 	if *res.RequiredPoints != 100 {
 		t.Errorf("Expected 100 points, got %d", *res.RequiredPoints)
+	}
+}
+
+func TestCreateBrandBenefitTreatsZeroRequiredPointsAsNil(t *testing.T) {
+	brandID := uuid.New()
+	userID := uuid.New()
+
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			Slug:   "closy",
+			Name:   "Closy Brand",
+			Status: brandstatus.Active,
+		},
+	}}
+
+	memberRepo := &mockMemberRepo{members: map[string]*entities.BrandMember{
+		brandID.String() + "_" + userID.String(): {
+			BrandID: brandID,
+			UserID:  userID,
+			Role:    brandmemberrole.Owner,
+			Status:  brandmemberstatus.Active,
+		},
+	}}
+
+	benefitRepo := &mockBenefitRepo{benefits: make(map[uuid.UUID]*entities.BrandBenefit)}
+
+	uc := &BrandBenefitUseCase{
+		brandRepo:   brandRepo,
+		memberRepo:  memberRepo,
+		benefitRepo: benefitRepo,
+		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
+	}
+
+	featCode := "sample_mix_access"
+	input := dto.CreateBrandBenefitReq{
+		Name:           "Free Feature",
+		BenefitType:    "feature_access",
+		UnlockType:     "point_redemption",
+		RequiredPoints: intPtr(0),
+		FeatureCode:    &featCode,
+	}
+
+	res, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, input)
+	if err != nil {
+		t.Fatalf("Expected nil err, got %v", err)
+	}
+	if res.RequiredPoints != nil {
+		t.Fatalf("Expected nil required points, got %d", *res.RequiredPoints)
+	}
+}
+
+func TestCreateBrandBenefitRejectsInvalidFeatureCode(t *testing.T) {
+	brandID := uuid.New()
+	userID := uuid.New()
+
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			Slug:   "closy",
+			Name:   "Closy Brand",
+			Status: brandstatus.Active,
+		},
+	}}
+
+	memberRepo := &mockMemberRepo{members: map[string]*entities.BrandMember{
+		brandID.String() + "_" + userID.String(): {
+			BrandID: brandID,
+			UserID:  userID,
+			Role:    brandmemberrole.Owner,
+			Status:  brandmemberstatus.Active,
+		},
+	}}
+
+	uc := &BrandBenefitUseCase{
+		brandRepo:   brandRepo,
+		memberRepo:  memberRepo,
+		benefitRepo: &mockBenefitRepo{benefits: make(map[uuid.UUID]*entities.BrandBenefit)},
+		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
+	}
+
+	typoFeatureCode := "sample_mix_acess"
+	input := dto.CreateBrandBenefitReq{
+		Name:           "Broken Feature",
+		BenefitType:    "feature_access",
+		UnlockType:     "point_redemption",
+		RequiredPoints: intPtr(100),
+		FeatureCode:    &typoFeatureCode,
+	}
+
+	if _, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, input); err == nil {
+		t.Fatal("Expected invalid feature code error, got nil")
+	}
+}
+
+func TestCreateBrandBenefitRequiresFeatureCodeForFeatureAccess(t *testing.T) {
+	brandID := uuid.New()
+	userID := uuid.New()
+
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			Slug:   "closy",
+			Name:   "Closy Brand",
+			Status: brandstatus.Active,
+		},
+	}}
+
+	memberRepo := &mockMemberRepo{members: map[string]*entities.BrandMember{
+		brandID.String() + "_" + userID.String(): {
+			BrandID: brandID,
+			UserID:  userID,
+			Role:    brandmemberrole.Owner,
+			Status:  brandmemberstatus.Active,
+		},
+	}}
+
+	uc := &BrandBenefitUseCase{
+		brandRepo:   brandRepo,
+		memberRepo:  memberRepo,
+		benefitRepo: &mockBenefitRepo{benefits: make(map[uuid.UUID]*entities.BrandBenefit)},
+		tierRepo:    &mockTierRepo{tiers: make(map[uuid.UUID]*entities.LoyaltyTier)},
+	}
+
+	input := dto.CreateBrandBenefitReq{
+		Name:           "Missing Feature Code",
+		BenefitType:    "feature_access",
+		UnlockType:     "point_redemption",
+		RequiredPoints: intPtr(100),
+	}
+
+	if _, err := uc.CreateBrandBenefit(context.Background(), userID, brandID, input); err == nil {
+		t.Fatal("Expected missing feature code error, got nil")
 	}
 }
 
@@ -350,6 +486,67 @@ func TestRedeemBenefit_InsufficientPoints(t *testing.T) {
 
 	if err.Error() != branderrors.ErrInsufficientLoyaltyPoints().Error() {
 		t.Errorf("Expected %v, got %v", branderrors.ErrInsufficientLoyaltyPoints(), err)
+	}
+}
+
+func TestRedeemBenefitAllowsFreePointRedemption(t *testing.T) {
+	brandID := uuid.New()
+	userID := uuid.New()
+	benefitID := uuid.New()
+	custID := uuid.New()
+
+	featCode := benefitfeaturecode.SampleMixAccess
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID: {
+			Name:   "Closy Brand",
+			Status: brandstatus.Active,
+		},
+	}}
+
+	customerRepo := &mockCustomerRepo{customers: map[string]*entities.BrandCustomer{
+		brandID.String() + "_" + userID.String(): {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: custID}},
+			BrandID:         brandID,
+			UserID:          &userID,
+			Status:          brandcustomerstatus.Active,
+		},
+	}}
+
+	benefitRepo := &mockBenefitRepo{benefits: map[uuid.UUID]*entities.BrandBenefit{
+		benefitID: {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: benefitID}},
+			BrandID:         brandID,
+			Name:            "Free Sample Access",
+			BenefitType:     benefittype.FeatureAccess,
+			UnlockType:      benefitunlocktype.PointRedemption,
+			FeatureCode:     &featCode,
+			Status:          benefitstatus.Active,
+		},
+	}}
+	redemptionRepo := &mockRedemptionRepo{redemptions: make(map[uuid.UUID]*entities.BenefitRedemption)}
+	txRepo := &mockTxRepo{transactions: make(map[uuid.UUID]*entities.LoyaltyPointTransaction)}
+
+	uc := &BrandBenefitUseCase{
+		brandRepo:      brandRepo,
+		customerRepo:   customerRepo,
+		benefitRepo:    benefitRepo,
+		redemptionRepo: redemptionRepo,
+		txRepo:         txRepo,
+		uow:            loyaltyLotsTestUOW{},
+	}
+
+	res, err := uc.RedeemBenefit(context.Background(), userID, benefitID)
+	if err != nil {
+		t.Fatalf("Expected nil err, got %v", err)
+	}
+	if res.PointsSpent != 0 {
+		t.Fatalf("Expected 0 points spent, got %d", res.PointsSpent)
+	}
+	if len(txRepo.transactions) != 0 {
+		t.Fatalf("Expected no loyalty point transactions, got %d", len(txRepo.transactions))
+	}
+	if len(redemptionRepo.redemptions) != 1 {
+		t.Fatalf("Expected one redemption, got %d", len(redemptionRepo.redemptions))
 	}
 }
 

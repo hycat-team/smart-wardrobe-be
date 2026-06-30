@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
 
 	"github.com/google/uuid"
 )
@@ -24,7 +25,7 @@ func NewBrandContract(
 	}
 }
 
-func (c *BrandContract) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode string) (bool, error) {
+func (c *BrandContract) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode benefitfeaturecode.BenefitFeatureCode) (bool, error) {
 	return c.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, featureCode)
 }
 

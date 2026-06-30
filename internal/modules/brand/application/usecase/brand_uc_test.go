@@ -77,3 +77,48 @@ func TestGetBrandsForAdmin(t *testing.T) {
 		t.Errorf("Expected gucci, got %s", resSearch.Items[0].Slug)
 	}
 }
+
+func TestGetActiveBrandsFiltersPublicList(t *testing.T) {
+	brandID1 := uuid.New()
+	brandID2 := uuid.New()
+	brandID3 := uuid.New()
+
+	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
+		brandID1: {
+			Slug:   "closy-active",
+			Name:   "Closy Active Brand",
+			Status: brandstatus.Active,
+		},
+		brandID2: {
+			Slug:   "closy-pending",
+			Name:   "Closy Pending Brand",
+			Status: brandstatus.PendingReview,
+		},
+		brandID3: {
+			Slug:   "other-active",
+			Name:   "Other Active Brand",
+			Status: brandstatus.Active,
+		},
+	}}
+
+	uc := &BrandUseCase{
+		brandRepo: brandRepo,
+	}
+
+	searchQuery := "closy"
+	res, err := uc.GetActiveBrands(context.Background(), dto.GetActiveBrandsQueryReq{
+		Query: &searchQuery,
+	})
+	if err != nil {
+		t.Fatalf("Expected nil err, got %v", err)
+	}
+	if len(res.Items) != 1 {
+		t.Fatalf("Expected 1 item, got %d", len(res.Items))
+	}
+	if res.Items[0].Slug != "closy-active" {
+		t.Errorf("Expected closy-active, got %s", res.Items[0].Slug)
+	}
+	if res.Metadata.TotalItems != 1 {
+		t.Errorf("Expected TotalItems to be 1, got %d", res.Metadata.TotalItems)
+	}
+}

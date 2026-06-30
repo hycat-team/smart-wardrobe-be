@@ -90,10 +90,9 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 	}
 
 	if uType == benefitunlocktype.PointRedemption {
-		if input.RequiredPoints == nil || *input.RequiredPoints <= 0 {
-			return nil, branderrors.ErrPurchaseAmountOrPointsRequired()
+		if input.RequiredPoints != nil && *input.RequiredPoints > 0 {
+			benefit.RequiredPoints = input.RequiredPoints
 		}
-		benefit.RequiredPoints = input.RequiredPoints
 	} else if uType == benefitunlocktype.TierPrivilege {
 		if input.RequiredTierID == nil {
 			return nil, branderrors.ErrInvalidBrandMemberRole("Yeu cau phai co requiredTierId")
@@ -108,9 +107,17 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 		benefit.RequiredTierID = input.RequiredTierID
 	}
 
-	if input.FeatureCode != nil {
-		fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToLower(*input.FeatureCode))
+	if bType == benefittype.FeatureAccess {
+		if input.FeatureCode == nil {
+			return nil, branderrors.ErrBenefitFeatureCodeRequired()
+		}
+		fCode, ok := benefitfeaturecode.Parse(*input.FeatureCode)
+		if !ok {
+			return nil, branderrors.ErrInvalidBenefitFeatureCode(*input.FeatureCode)
+		}
 		benefit.FeatureCode = &fCode
+	} else if input.FeatureCode != nil && strings.TrimSpace(*input.FeatureCode) != "" {
+		return nil, branderrors.ErrInvalidBenefitFeatureCode(*input.FeatureCode)
 	}
 
 	if input.FeatureConfig != nil {
@@ -234,7 +241,11 @@ func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUse
 	return mapper.MapBrandBenefit(benefit), nil
 }
 
-func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode string) (bool, error) {
+func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode benefitfeaturecode.BenefitFeatureCode) (bool, error) {
+	if !featureCode.IsValid() {
+		return false, branderrors.ErrInvalidBenefitFeatureCode(featureCode)
+	}
+
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return false, err
@@ -257,10 +268,8 @@ func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, user
 	}
 
 	now := time.Now().UTC()
-	fCode := benefitfeaturecode.BenefitFeatureCode(strings.ToLower(featureCode))
-
 	for _, benefit := range benefits {
-		if benefit.BenefitType != benefittype.FeatureAccess || benefit.FeatureCode == nil || *benefit.FeatureCode != fCode {
+		if benefit.BenefitType != benefittype.FeatureAccess || benefit.FeatureCode == nil || *benefit.FeatureCode != featureCode {
 			continue
 		}
 
@@ -284,7 +293,7 @@ func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, user
 				return true, nil
 			}
 		} else if benefit.UnlockType == benefitunlocktype.PointRedemption || benefit.UnlockType == benefitunlocktype.ManualGrant {
-			red, err := uc.redemptionRepo.GetActiveRedemptionByFeature(ctx, customer.ID, featureCode, now)
+			red, err := uc.redemptionRepo.GetActiveRedemptionByFeature(ctx, customer.ID, string(featureCode), now)
 			if err != nil {
 				return false, err
 			}
@@ -332,14 +341,6 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 
 	if benefit.UnlockType == benefitunlocktype.PointRedemption {
 		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-			account, err := uc.accountRepo.GetByBrandCustomerIDForUpdate(txCtx, customer.ID)
-			if err != nil {
-				return err
-			}
-			if account == nil {
-				return branderrors.ErrInsufficientLoyaltyPoints()
-			}
-
 			var featStr string
 			if benefit.FeatureCode != nil {
 				featStr = string(*benefit.FeatureCode)
@@ -357,12 +358,22 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 				reqPoints = *benefit.RequiredPoints
 			}
 
-			reason := "Doi quyen loi: " + benefit.Name
-			refType := "BENEFIT_REDEMPTION"
-			refID := benefit.ID
-			_, err = uc.redeemLoyaltyPointsFromLots(txCtx, account.ID, reqPoints, now, &reason, &refType, &refID, &userID)
-			if err != nil {
-				return err
+			if reqPoints > 0 {
+				account, err := uc.accountRepo.GetByBrandCustomerIDForUpdate(txCtx, customer.ID)
+				if err != nil {
+					return err
+				}
+				if account == nil {
+					return branderrors.ErrInsufficientLoyaltyPoints()
+				}
+
+				reason := "Doi quyen loi: " + benefit.Name
+				refType := "BENEFIT_REDEMPTION"
+				refID := benefit.ID
+				_, err = uc.redeemLoyaltyPointsFromLots(txCtx, account.ID, reqPoints, now, &reason, &refType, &refID, &userID)
+				if err != nil {
+					return err
+				}
 			}
 
 			var expiresAt *time.Time

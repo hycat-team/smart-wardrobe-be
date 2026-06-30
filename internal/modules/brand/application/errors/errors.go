@@ -90,6 +90,14 @@ func ErrBenefitInvalidStatus() *apperror.Error {
 	return apperror.NewBadRequest("Trạng thái quyền lợi không hợp lệ.")
 }
 
+func ErrInvalidBenefitFeatureCode(featureCode any) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Mã tính năng quyền lợi không hợp lệ: %v.", featureCode))
+}
+
+func ErrBenefitFeatureCodeRequired() *apperror.Error {
+	return apperror.NewBadRequest("Quyền lợi feature_access bắt buộc phải có featureCode hợp lệ.")
+}
+
 func ErrInvalidVoteType(voteType any) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Loại voteType không hợp lệ: %v.", voteType))
 }
