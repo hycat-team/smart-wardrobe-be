@@ -153,7 +153,10 @@ type BrandCustomerRepository struct {
 
 func NewBrandCustomerRepository(db *gorm.DB) repositories.IBrandCustomerRepository {
 	return &BrandCustomerRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](db, []string{"User", "Brand"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](
+			db,
+			[]string{"User", "Brand"},
+		),
 	}
 }
 

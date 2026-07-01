@@ -52,6 +52,9 @@ func (r *BrandItemRepository) GetByProductCode(ctx context.Context, brandID uuid
 	var item entities.BrandItem
 	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &item, nil

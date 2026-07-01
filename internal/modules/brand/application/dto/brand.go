@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -114,7 +115,6 @@ type BrandMemberRes struct {
 type BrandCustomerRes struct {
 	ID                   uuid.UUID                                           `json:"id"`
 	BrandID              uuid.UUID                                           `json:"brandId"`
-	UserID               *uuid.UUID                                          `json:"userId"`
 	CustomerName         *string                                             `json:"customerName"`
 	PhoneE164            *string                                             `json:"phoneE164"`
 	ExternalCustomerCode *string                                             `json:"externalCustomerCode"`
@@ -125,6 +125,16 @@ type BrandCustomerRes struct {
 	CreatedByMemberID    *uuid.UUID                                          `json:"createdByMemberId"`
 	CreatedAt            time.Time                                           `json:"createdAt"`
 	UpdatedAt            time.Time                                           `json:"updatedAt"`
+	User                 *BrandCustomerUserRes                               `json:"user,omitempty"`
+}
+
+type BrandCustomerUserRes struct {
+	ID        uuid.UUID     `json:"id"`
+	Username  string        `json:"username"`
+	FirstName string        `json:"firstName"`
+	LastName  string        `json:"lastName,omitempty"`
+	Gender    gender.Gender `json:"gender"`
+	AvatarUrl *string       `json:"avatarUrl,omitempty"`
 }
 
 type LoyaltyTierBriefRes struct {
