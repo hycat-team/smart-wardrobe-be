@@ -1,25 +1,25 @@
-# ADR 001: Pivot sang mô hình kinh doanh B2B2C
+# ADR 001: Pivot to B2B2C business model
 
-- **Trạng thái**: Accepted
-- **Ngày quyết định**: 2026-06-28
-- **Người quyết định**: Duck
+- **Status**: Accepted
+- **Decision Date**: 2026-06-28
+- **Decision Maker**: Duck
 
-## 1. Ngữ cảnh
+## 1. Context
 
-Mô hình ban đầu định vị Closy là mạng xã hội chia sẻ thời trang kết hợp sàn mua bán đồ cũ (Community & Resale marketplace). Tuy nhiên, sau quá trình khảo sát người dùng và phân tích dữ liệu, nhận thấy:
+The initial model positioned Closy as a fashion sharing social network combined with a second-hand marketplace (Community & Resale marketplace). However, after user surveys and data analysis, it was realized that:
 
-1. Chi phí vận hành mạng xã hội và kiểm duyệt nội dung rất cao.
-2. Sàn đồ cũ P2P có biên lợi nhuận thấp và gặp khó khăn lớn về logistics, lòng tin khách hàng.
-3. Các nhãn hàng thời trang thiết kế nội địa (Local Brands) có nhu cầu rất lớn về tìm kiếm giải pháp loyalty, tương tác khách hàng và kiểm nghiệm thị trường.
+1. The operational cost of a social network and content moderation is very high.
+2. P2P second-hand marketplaces have low profit margins and face major difficulties in logistics and customer trust.
+3. Domestic fashion designer brands (Local Brands) have a huge need for solutions regarding loyalty, customer engagement, and market testing.
 
-## 2. Quyết định
+## 2. Decision
 
-Chuyển đổi định vị Closy sang mô hình B2B2C:
+Transition Closy's positioning to a B2B2C model:
 
-- B2C: Tập trung hoàn toàn vào tối ưu Tủ đồ số và AI Outfit Assistant.
-- B2B: Cung cấp giải pháp Loyalty, Campaign và Digital Sample Lab cho các nhãn hàng đối tác.
+- B2C: Focus entirely on optimizing the Digital Wardrobe and AI Outfit Assistant.
+- B2B: Provide Loyalty, Campaign, and Digital Sample Lab solutions for partner brands.
 
-## 3. Hệ quả
+## 3. Consequences
 
-- Tích cực: Có mô hình dòng tiền B2B rõ ràng từ phía thương hiệu, giảm thiểu chi phí kiểm duyệt và rủi ro pháp lý so với sàn P2P.
-- Cần giải quyết: Phải xây dựng thêm Brand Portal và các tính năng tích hợp Loyalty, Digital Sample Lab.
+- Positive: A clear B2B cash flow model from brands, minimizing moderation costs and legal risks compared to a P2P marketplace.
+- To be resolved: Must build an additional Brand Portal and integrated features for Loyalty and Digital Sample Lab.

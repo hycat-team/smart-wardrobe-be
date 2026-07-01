@@ -1,13 +1,13 @@
-# Nghiệp vụ Chiến dịch (Campaign Domain)
+# Campaign Domain
 
-Brand dùng Chiến dịch (Campaign) để tiếp cận và kích cầu mua sắm từ người dùng.
+Brands use Campaigns to reach and stimulate shopping demand from users.
 
-## 1. Loại chiến dịch (Campaign Types)
-*   **Chiến dịch ưu đãi**: Phân phối voucher giảm giá cho các nhóm người dùng có hành vi thời trang phù hợp (ví dụ: gửi voucher mua chân váy cho những ai có nhiều áo sơ mi trong tủ đồ số).
-*   **Chiến dịch khảo sát**: Khuyến khích người dùng tham gia bình chọn mẫu thử trong Digital Sample Lab để nhận điểm Loyalty.
+## 1. Campaign Types
+*   **Promotion Campaign**: Distribute discount vouchers to user groups with appropriate fashion behaviors (e.g., sending a voucher for buying skirts to those who have many shirts in their digital wardrobe).
+*   **Survey Campaign**: Encourage users to participate in voting for prototypes in the Digital Sample Lab to receive Loyalty points.
 
-## 2. Người tham gia (Campaign Participant)
-*   Đối tượng người dùng mục tiêu được nhắm đến dựa trên bộ lọc tủ đồ số hoặc lịch sử mua sắm.
+## 2. Campaign Participant
+*   The target audience is aimed at based on digital wardrobe filters or shopping history.
 
-## 3. Phần thưởng (Reward & Voucher)
-*   Voucher/mã giảm giá được sinh động hoặc liên kết với hệ thống POS của nhãn hàng để áp dụng khi thanh toán.
+## 3. Reward & Voucher
+*   Vouchers/discount codes are dynamically generated or linked to the brand's POS system to be applied at checkout.

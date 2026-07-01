@@ -1,22 +1,22 @@
-# ADR 003: Triển khai tính năng Digital Sample Lab cho B2B
+# ADR 003: Implement Digital Sample Lab feature for B2B
 
-- **Trạng thái**: Accepted
-- **Ngày quyết định**: 2026-06-28
-- **Người quyết định**: Duck
+- **Status**: Accepted
+- **Decision Date**: 2026-06-28
+- **Decision Maker**: Duck
 
-## 1. Ngữ cảnh
+## 1. Context
 
-Các thương hiệu thiết kế gặp khó khăn trong việc thử nghiệm phản hồi của khách hàng đối với các sản phẩm mẫu (vải thử mẫu thực tế tốn kém và mất nhiều thời gian chế tác). Việc số hóa mẫu thử 3D hoặc bản vẽ và phân phối đến tệp người dùng tiềm năng trên ứng dụng sẽ giải quyết triệt để painpoint này.
+Designer brands face difficulties in testing customer feedback on prototype products (actual fabric sampling is expensive and time-consuming). Digitizing 3D prototypes or sketches and distributing them to a potential user base on the app will thoroughly resolve this pain point.
 
-## 2. Quyết định
+## 2. Decision
 
-Phát triển module **Digital Sample Lab**:
+Develop the **Digital Sample Lab** module:
 
-- Cung cấp API cho nhãn hàng đẩy sản phẩm mẫu thử ảo (hình ảnh thiết kế 3D/concept).
-- Xây dựng cơ chế bình chọn (Voting) và thu thập phản hồi (Feedback) của người dùng Closy.
-- Tự động tổng hợp dữ liệu ẩn danh và trực quan hóa lên Insight Dashboard.
+- Provide APIs for brands to push virtual prototype products (3D design images/concepts).
+- Build a voting mechanism and collect feedback from Closy users.
+- Automatically aggregate anonymized data and visualize it on the Insight Dashboard.
 
-## 3. Hệ quả
+## 3. Consequences
 
-- Tích cực: Tạo ra giá trị đặc biệt thu hút các nhãn hàng hợp tác lâu dài.
-- Cần giải quyết: Cần tối ưu hóa trải nghiệm ướm thử ảo (Virtual Trial) trên điện thoại và thiết kế database hỗ trợ vote/feedback với hiệu năng cao.
+- Positive: Creates special value attracting brands for long-term partnerships.
+- To be resolved: Need to optimize the Virtual Trial experience on mobile phones and design a database supporting high-performance vote/feedback.

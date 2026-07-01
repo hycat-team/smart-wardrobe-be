@@ -1,155 +1,155 @@
-# Đặc tả các quy tắc bất đồng bộ, ngưỡng và tương quan theo thời gian
+# Specification of asynchronous rules, thresholds, and time correlation
 
-## I. Pipeline bộ nhớ hội thoại theo ngưỡng bất đồng bộ
+## I. Asynchronous threshold-based conversational memory pipeline
 
-Để tránh phình to context window và tối ưu chi phí token, hệ thống không nên xử lý lại toàn bộ lịch sử hội thoại theo thời gian thực. Thay vào đó, nó phối hợp cơ chế tóm tắt bất đồng bộ theo ngưỡng cùng với sliding window.
+To avoid bloating the context window and optimize token costs, the system should not reprocess the entire conversation history in real time. Instead, it coordinates an asynchronous threshold-based summarization mechanism with a sliding window.
 
 ```mermaid
 graph TD
-    A[Dòng trao đổi tin nhắn liên tục] --> B{Số tin nhắn thô chưa nén >= 10?}
-    B -- Không --> C[Duy trì tốc độ thấp trễ bằng sliding window với 5 tin nhắn gần nhất]
-    B -- Có --> D[Kích hoạt worker tóm tắt nền]
-    D --> E[Lấy 10 tin nhắn thô + context_summary hiện tại]
-    E --> F[Gọi prompt nén để tạo summary hợp nhất]
-    F --> G[Ghi đè context_summary và dọn hoặc lưu trữ 10 tin nhắn cũ]
+    A[Continuous message exchange stream] --> B{Number of uncompressed raw messages >= 10?}
+    B -- No --> C[Maintain low latency with a sliding window of the last 5 messages]
+    B -- Yes --> D[Trigger background summarization worker]
+    D --> E[Fetch 10 raw messages + current context_summary]
+    E --> F[Call compression prompt to generate a merged summary]
+    F --> G[Overwrite context_summary and clear or archive 10 old messages]
 
 ```
 
-### 1. Cơ chế vận hành mục tiêu
+### 1. Target Operational Mechanism
 
-- **Đánh giá luồng đang hoạt động:** khi người dùng đang chat, hệ thống chỉ lấy một cửa sổ nhỏ các tin nhắn gần nhất để giữ độ trễ thấp.
-- **Ngưỡng kích hoạt bất đồng bộ:** khi số tin nhắn thô chạm ngưỡng, một tiến trình nền được kích hoạt.
-- **Hợp nhất tiến dần:** worker nén phần hội thoại thô với summary hiện có.
-- **Ghi nhận trạng thái:** summary mới thay thế summary cũ và dữ liệu thô cũ được dọn bớt.
+- **Evaluate active flow:** When the user is chatting, the system only fetches a small window of the most recent messages to maintain low latency.
+- **Asynchronous trigger threshold:** When the number of raw messages hits a threshold, a background process is triggered.
+- **Progressive merging:** The worker compresses the raw conversation with the existing summary.
+- **Status recording:** The new summary replaces the old summary and old raw data is partially cleared.
 
-### 2. Phiên bản hiện tại
+### 2. Current Version
 
-Phiên bản hiện tại của backend đã có:
+The current version of the backend already has:
 
-- phiên chat AI
-- danh sách phiên
-- lịch sử tin nhắn
-- xử lý phản hồi theo stream
+- AI chat sessions
+- Session listing
+- Message history
+- Streamed response handling
 
-Tuy nhiên, pipeline summary nền theo ngưỡng như mô tả trên vẫn nên được xem là **thiết kế mục tiêu hoặc hướng mở rộng kiến trúc**, không mặc định hiểu là toàn bộ cơ chế này đã chạy đầy đủ nếu code chưa thể hiện trọn vẹn.
+However, the background threshold-based summary pipeline described above should still be considered a **target design or architectural expansion direction**, and not by default assumed to be fully running if the code does not fully reflect it.
 
-### 3. Ma trận đánh đổi kiến trúc
+### 3. Architectural Trade-off Matrix
 
-Tư duy chọn cơ chế ngưỡng tin nhắn thay vì phụ thuộc vào việc người dùng rời phiên vẫn còn giá trị ở mức thiết kế:
+The reasoning of choosing a message threshold mechanism instead of relying on the user leaving the session remains valuable at the design level:
 
-| Thuộc tính kiến trúc      | Lợi ích vận hành                                                                                                                                                                                                 | Đánh đổi hệ thống                                                                                                                                                                                                 |
+| Architectural Property      | Operational Benefit                                                                                                                                                                                                 | System Trade-off                                                                                                                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Giữ context gọn**       | Việc nén định kỳ giúp prompt chính duy trì kích thước token ổn định, giảm trượt ngữ cảnh và giảm chi phí.                                                                                                      | Phát sinh thêm chi phí nền cho việc tóm tắt nếu người dùng chat rất dài.                                                                                                                                        |
-| **Tính xác định ở server** | Logic kích hoạt nằm hoàn toàn ở phía server, ít phụ thuộc vào hành vi phía client.                                                                                                                               | Nếu prompt tóm tắt không tốt, thông tin cũ có thể bị mờ dần sau nhiều vòng nén.                                                                                                                                |
+| **Keep context compact**       | Periodic compression helps the main prompt maintain a stable token size, reducing context drift and costs.                                                                                                      | Incurs additional background costs for summarization if the user chats for very long.                                                                                                                                        |
+| **Server-side determinism** | The trigger logic is completely on the server side, less dependent on client-side behavior.                                                                                                                               | If the summarization prompt is poor, old information may fade out after many compression cycles.                                                                                                                                |
 
 ---
 
-## II. Thành phần xu hướng toàn cục của hệ thống cộng đồng
+## II. Global trend components of the community system
 
-Feed cộng đồng dùng tư duy gravity và time-decay thay vì chỉ xếp theo thời gian tạo.
+The community feed uses gravity and time-decay concepts instead of just chronological sorting.
 
-### 1. Tầng ghi nhận tương tác thời gian thực
+### 1. Real-time interaction recording layer
 
-Khi người dùng like hoặc comment:
+When a user likes or comments:
 
-- bộ đếm `like_count` và `comment_count` được cập nhật ngay
-- bước này được tối giản để tránh làm chậm tương tác
+- The `like_count` and `comment_count` counters are updated immediately.
+- This step is minimized to avoid slowing down interactions.
 
-### 2. Tầng phân tích theo lịch
+### 2. Schedule-based analysis layer
 
-Thiết kế cũ mô tả một job chạy định kỳ để tính lại `global_hotness_score` theo công thức time-decay.
+The old design describes a job running periodically to recalculate `global_hotness_score` based on the time-decay formula.
 
 $$\text{global\_hotness\_score} = \frac{(\text{Like\_Count} \times 1) + (\text{Comment\_Count} \times 2) - 1}{(\text{Age\_In\_Hours} + 2)^{G}}$$
 
-### 3. Phiên bản hiện tại
+### 3. Current Version
 
-Phiên bản hiện tại đã có:
+The current version already has:
 
-- post score snapshot
-- feed hot
-- personalized hot feed
-- logic mark dirty và các lớp repository phục vụ cập nhật score
+- Post score snapshot
+- Hot feed
+- Personalized hot feed
+- Mark dirty logic and repository layers serving score updates
 
-Điều này cho thấy ý tưởng global hotness vẫn đang tồn tại ở sản phẩm, dù chu kỳ job hoặc chi tiết công thức cụ thể có thể khác implementation lý tưởng trong docs cũ.
+This shows that the global hotness idea still exists in the product, even though the job cycle or specific formula details might differ from the ideal implementation in the old docs.
 
-### 4. Ý nghĩa của các tham số
+### 4. Meaning of parameters
 
-- **Like count** và **comment count** vẫn là hai tín hiệu tương tác quan trọng.
-- **Age in hours** vẫn là cơ sở hợp lý để giảm dần lợi thế của bài cũ.
-- **Gravity coefficient** vẫn là biến điều tiết mức suy giảm theo thời gian.
+- **Like count** and **comment count** remain two important interaction signals.
+- **Age in hours** remains a reasonable basis to gradually reduce the advantage of old posts.
+- **Gravity coefficient** remains a moderation variable for time-based decay.
 
-### Thiết kế mục tiêu và phiên bản hiện tại
+### Target Design and Current Version
 
-Tài liệu này giữ nguyên công thức cũ như đặc tả mục tiêu để tránh mất ý tưởng thuật toán, đồng thời khi đọc cần hiểu rằng code hiện tại đang hiện thực hóa cùng tinh thần business nhưng có thể không dùng đúng nguyên văn toàn bộ chi tiết này.
-
----
-
-## III. Các cơ chế bất đồng bộ đã có thật trong phiên bản hiện tại
-
-Phần dưới đây được bổ sung để phản ánh chính xác hơn trạng thái backend hiện tại mà không xóa đi phần thiết kế cũ.
-
-### 1. Worker gia hạn hội viên tự động
-
-Phiên bản hiện tại đã có worker gia hạn hội viên:
-
-- chạy một lần khi ứng dụng khởi động
-- sau đó chạy theo lịch hằng ngày
-- gọi usecase `ProcessScheduledRenewals`
-
-Đây là cơ chế bất đồng bộ thật đang tồn tại trong hệ thống.
-
-### 2. Worker batch upload wardrobe
-
-Phiên bản hiện tại đã có worker tiêu thụ job batch upload:
-
-- nhận job từ hệ thống phát sự kiện
-- xử lý từng item ở nền
-- gọi AI để phân tích ảnh
-- cập nhật metadata và embedding
-
-Điều này là hiện thực trực tiếp của tư duy “digitization bất đồng bộ” đã được mô tả ở các tài liệu trước.
-
-### 3. Worker dọn item lỗi
-
-Phiên bản hiện tại đã có worker dọn item thất bại:
-
-- chạy lúc khởi động
-- chạy theo lịch định kỳ
-- gọi `CleanupFailedItems`
-
-Vai trò của worker này là giữ cho dữ liệu tủ đồ không bị tích tụ item lỗi lâu ngày.
-
-### 4. Retry và backoff cho job xử lý nền
-
-Phiên bản hiện tại đã có các hành vi thực tế sau:
-
-- phân biệt lỗi tạm thời và lỗi nghiêm trọng
-- retry job với số lần giới hạn
-- tăng dần thời gian chờ giữa các lần retry
-- đánh dấu item thất bại nếu vượt ngưỡng
-
-Đây là phần triển khai thực tế rất quan trọng cần được ghi nhận như hiện trạng của hệ thống.
-
-### 5. Dữ liệu `last_used_at` và suy giảm vòng đời item
-
-Tài liệu cũ nói nhiều về decay theo thời gian.
-
-Phiên bản hiện tại đã có nền dữ liệu để phục vụ hướng này:
-
-- khi người dùng lưu outfit hoặc cập nhật outfit, hệ thống chạm `last_used_at` cho các item liên quan
-
-Điều đó có nghĩa là:
-
-- phần suy giảm vòng đời item chưa nên coi là hoàn tất toàn bộ
-- nhưng nền dữ liệu cho decay logic đã thực sự có trong code
+This document keeps the old formula as a target specification to avoid losing the algorithmic idea, and when reading, it should be understood that the current code implements the same business spirit but might not use exactly all of these details verbatim.
 
 ---
 
-## IV. Cách đọc tài liệu này trong bối cảnh hiện tại
+## III. Asynchronous mechanisms that actually exist in the current version
 
-Khi đọc tài liệu này, cần phân biệt hai lớp:
+The section below is added to more accurately reflect the current backend status without deleting the old design.
 
-- **Thiết kế mục tiêu:** summary theo ngưỡng cho chat, công thức hotness hoàn chỉnh, các engine giảm tải token hoặc correlation sâu hơn
-- **Phiên bản hiện tại:** renewal worker, batch upload worker, cleanup worker, retry và dữ liệu `last_used_at`
+### 1. Auto-renewal worker
 
-Nhờ vậy, tài liệu vẫn giữ nguyên toàn bộ mô tả cũ, nhưng không còn làm người đọc hiểu nhầm rằng mọi phần đều đã được implement giống hệt đặc tả ban đầu.
+The current version already has a membership renewal worker:
+
+- Runs once when the application starts
+- Then runs on a daily schedule
+- Calls the `ProcessScheduledRenewals` usecase
+
+This is a real asynchronous mechanism existing in the system.
+
+### 2. Batch upload wardrobe worker
+
+The current version already has a worker consuming batch upload jobs:
+
+- Receives jobs from the event broadcasting system
+- Processes each item in the background
+- Calls AI to analyze images
+- Updates metadata and embeddings
+
+This is a direct implementation of the "asynchronous digitization" mindset described in previous documents.
+
+### 3. Failed item cleanup worker
+
+The current version already has a failed item cleanup worker:
+
+- Runs at startup
+- Runs on a periodic schedule
+- Calls `CleanupFailedItems`
+
+The role of this worker is to keep the wardrobe data from accumulating failed items over time.
+
+### 4. Retry and backoff for background jobs
+
+The current version already has the following real behaviors:
+
+- Distinguishes between temporary errors and critical errors
+- Retries jobs with a limit count
+- Gradually increases wait time between retries
+- Marks the item as failed if the threshold is exceeded
+
+This is a very important real implementation part that needs to be acknowledged as the system's current state.
+
+### 5. `last_used_at` data and item lifecycle decay
+
+Old documents talked a lot about time-based decay.
+
+The current version already has the data foundation to serve this direction:
+
+- When a user saves or updates an outfit, the system touches `last_used_at` for the related items.
+
+This means:
+
+- The item lifecycle decay part should not be considered fully complete yet.
+- But the data foundation for the decay logic genuinely exists in the code.
+
+---
+
+## IV. How to read this document in the current context
+
+When reading this document, it is necessary to distinguish two layers:
+
+- **Target design:** threshold-based summary for chat, complete hotness formula, token-saving engines or deeper correlations.
+- **Current version:** renewal worker, batch upload worker, cleanup worker, retry, and `last_used_at` data.
+
+Thus, the document still retains all old descriptions, but no longer misleads readers into thinking everything has been implemented exactly as the initial specification.

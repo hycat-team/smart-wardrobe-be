@@ -72,17 +72,19 @@ Some modules currently expose a single `provider.go` that aggregates:
 - handlers
 - workers
 
-`wardrobe`, `community`, and part of `subscription` follow this shape today. Docs and code generation should not assume every module already has per-layer provider files.
+This is a valid style. Docs and code generation should not assume every module already has per-layer provider files.
 
 ### Global DI registration
 
-`internal/di/wire.go` is the composition root and currently wires:
+`internal/di/wire.go` is the composition root. It wires:
 
 - shared services
-- all four modules: `identity`, `subscription`, `wardrobe`, `community`
+- all active modules (listed by imports in `wire.go`)
 - middleware
 - route groups
 - runtime workers bundled in `bootstrap.AppWorkers`
+
+Modules no longer in runtime (archived) are excluded from `wire.go` but may remain in the tree.
 
 ---
 
@@ -95,8 +97,8 @@ These rules are already reflected in the codebase and should remain mandatory fo
 Prefer shared presentation helpers:
 
 ```go
-shared_pres.Success(c, "Thong bao thanh cong", data)
-shared_pres.Created(c, "Tao moi thanh cong", data)
+shared_pres.Success(c, "Thông báo thành công", data)
+shared_pres.Created(c, "Tạo mới thành công", data)
 ```
 
 ### Handlers return `error`
@@ -124,12 +126,12 @@ Swagger comments in handlers should stay in Vietnamese and describe the real rou
 Use this shape:
 
 ```go
-// @Summary Dang ky tai khoan
-// @Description Dang ky tai khoan moi cho nguoi dung va gui OTP xac thuc qua email
+// @Summary Đăng ký tài khoản
+// @Description Đăng ký tài khoản mới cho người dùng và gửi OTP xác thực qua email
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param body body dto.RegisterReq true "Thong tin dang ky"
+// @Param body body dto.RegisterReq true "Thông tin đăng ký"
 // @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/auth/register [post]
 ```
@@ -167,22 +169,24 @@ Handlers should not manually craft error JSON responses.
 
 The current route layout includes both public and authenticated resource groups. When adding new endpoints, match existing patterns:
 
-- Use `/me/...` for resources owned by the authenticated user, such as `/api/v1/me`, `/api/v1/me/outfits`, `/api/v1/me/wardrobe-items`, `/api/v1/subscriptions/me/...`
-- Keep admin-only endpoints under `/api/v1/admin/...`
-- Keep AI endpoints under `/api/v1/ai/...`
-- Keep transfer flows under `/api/v1/transfers/...`
+- Use `/me/...` for resources owned by the authenticated user.
+- Keep admin-only endpoints under `/api/v1/admin/...`.
+- Keep AI endpoints under `/api/v1/ai/...`.
+- Each business module registers its own route group under `/api/v1/<name>/...`.
 
-Do not document only `auth` and `subscription`; the live API surface also includes wardrobe, outfits, community, category, and admin routes.
+To see the current route groups, check `internal/api/routes/` or `internal/api/routes/router.go`.
 
 ---
 
 ## 7. Search, messaging, and async workflow conventions
 
-The repository now includes asynchronous and search-oriented components that must be treated as standard architecture:
+The repository includes asynchronous and search-oriented components that must be treated as standard architecture:
 
 - RabbitMQ for event-driven background processing
-- Elasticsearch for wardrobe search indexing and querying
-- scheduled workers for subscription renewal, failed-item cleanup, and feed hotness recomputation
+- Elasticsearch for search indexing and querying
+- Scheduled workers for renewal, expiry, reconciliation, AI processing, and cleanup
+
+Current workers are discoverable in `bootstrap.AppWorkers` at `internal/bootstrap/app.go`.
 
 Feature docs should mention these adapters whenever a flow depends on them.
 
@@ -196,7 +200,7 @@ Presentation code should depend on interfaces from `application/interface/usecas
 
 ### Module isolation
 
-Use module contracts for cross-module collaboration. Current examples include identity, subscription, and wardrobe contracts.
+Use module contracts for cross-module collaboration. Current contract packages are discoverable under `internal/modules/<name>/contract/`.
 
 ### Shared entities are allowed by design
 

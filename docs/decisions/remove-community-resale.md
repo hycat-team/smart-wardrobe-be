@@ -1,18 +1,18 @@
-# ADR 002: Loại bỏ tính năng Community Posts & Resale làm core
+# ADR 002: Remove Community Posts & Resale features as core
 
-- **Trạng thái**: Accepted
-- **Ngày quyết định**: 2026-06-28
-- **Người quyết định**: Duck
+- **Status**: Accepted
+- **Decision Date**: 2026-06-28
+- **Decision Maker**: Duck
 
-## 1. Ngữ cảnh
+## 1. Context
 
-Tính năng đăng bài cộng đồng (community post), bán đồ cũ (resale) và bàn giao đồ cũ giữa người dùng (transfer item) phát sinh nhiều friction point trong trải nghiệm thực tế và làm loãng định vị tủ đồ cá nhân thông minh của ứng dụng.
+The community post feature, second-hand selling (resale), and handing over second-hand items between users (transfer item) generate many friction points in the actual experience and dilute the app's positioning as a smart personal digital wardrobe.
 
-## 2. Quyết định
+## 2. Decision
 
-Loại bỏ hoàn toàn các luồng P2P transaction và social feed khỏi lõi MVP mới. Lưu trữ toàn bộ tài liệu đặc tả cũ vào thư mục `docs/archive/` để tham khảo khi cần, không mở rộng hoặc duy trì code liên quan đến phần này trong tương lai gần.
+Completely remove all P2P transaction flows and social feed from the new MVP core. Store all old specification documents in the `docs/archive/` folder for reference when needed, and do not expand or maintain code related to this part in the near future.
 
-## 3. Hệ quả
+## 3. Consequences
 
-- Tích cực: Giảm thiểu độ phức tạp của codebase, tập trung nguồn lực phát triển mảng B2B.
-- Tiêu cực: Một số phần code liên quan đến community và resale sẽ được dọn dẹp hoặc đóng băng (deprecated).
+- Positive: Minimizes codebase complexity, focuses resources on developing the B2B segment.
+- Negative: Some code sections related to community and resale will be cleaned up or frozen (deprecated).

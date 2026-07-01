@@ -1,12 +1,12 @@
-# Đặc tả engine quy tắc lý thuyết màu sắc thời trang
+# Fashion Color Theory Engine Specification
 
-## I. Thuật toán chuyển đổi không gian màu từ RGB sang HSL
+## I. Color Space Conversion Algorithm from RGB to HSL
 
-Dữ liệu màu trang phục ban đầu thường được lưu hoặc trích xuất dưới dạng RGB với $R, G, B \in [0, 255]$. Để đánh giá đặc tính thị giác của con người và tính toán vị trí trên vòng tròn màu, hệ thống chuyển đổi dữ liệu này sang không gian HSL.
+Initial clothing color data is usually stored or extracted as RGB with $R, G, B \in [0, 255]$. To evaluate human visual characteristics and calculate positions on the color wheel, the system converts this data into the HSL color space.
 
-### 1. Chuẩn hóa đầu vào
+### 1. Input Normalization
 
-Chuyển ba kênh màu từ thang 8-bit sang hệ số phân số:
+Convert the three color channels from an 8-bit scale to a fractional scale:
 
 $$R' = \frac{R}{255}$$
 
@@ -14,7 +14,7 @@ $$G' = \frac{G}{255}$$
 
 $$B' = \frac{B}{255}$$
 
-Xác định giá trị lớn nhất, nhỏ nhất và độ chênh:
+Determine the maximum, minimum, and difference values:
 
 $$C_{max} = \max(R', G', B')$$
 
@@ -22,126 +22,126 @@ $$C_{min} = \min(R', G', B')$$
 
 $$\Delta = C_{max} - C_{min}$$
 
-### 2. Tính độ sáng Lightness ($L$)
+### 2. Calculate Lightness ($L$)
 
-Độ sáng là mức trung bình về cảm nhận sáng tối của màu:
+Lightness is the average perception of the lightness or darkness of a color:
 
 $$L = \frac{C_{max} + C_{min}}{2}$$
 
-### 3. Tính độ bão hòa Saturation ($S$)
+### 3. Calculate Saturation ($S$)
 
-Độ bão hòa biểu diễn độ tinh khiết của màu:
+Saturation represents the purity of the color:
 
-- **Trường hợp vô sắc ($\Delta = 0$)**  
+- **Achromatic case ($\Delta = 0$)**  
   $$S = 0$$
 
-- **Trường hợp có sắc độ ($\Delta > 0$)**  
+- **Chromatic case ($\Delta > 0$)**  
   $$
   S = \begin{cases}
-  \frac{\Delta}{C_{max} + C_{min}} & \text{nếu } L \le 0.5 \\
-  \frac{\Delta}{2 - (C_{max} + C_{min})} & \text{nếu } L > 0.5
+  \frac{\Delta}{C_{max} + C_{min}} & \text{if } L \le 0.5 \\
+  \frac{\Delta}{2 - (C_{max} + C_{min})} & \text{if } L > 0.5
   \end{cases}
   $$
 
-### 4. Tính Hue ($H$)
+### 4. Calculate Hue ($H$)
 
-Hue là vị trí góc của màu trên vòng tròn màu 360 độ:
+Hue is the angular position of the color on the 360-degree color wheel:
 
 $$
 H = \begin{cases}
-0^\circ & \text{nếu } \Delta = 0 \\
-60^\circ \times \left( \frac{G' - B'}{\Delta} \bmod 6 \right) & \text{nếu } C_{max} = R' \\
-60^\circ \times \left( \frac{B' - R'}{\Delta} + 2 \right) & \text{nếu } C_{max} = G' \\
-60^\circ \times \left( \frac{R' - G'}{\Delta} + 4 \right) & \text{nếu } C_{max} = B'
+0^\circ & \text{if } \Delta = 0 \\
+60^\circ \times \left( \frac{G' - B'}{\Delta} \bmod 6 \right) & \text{if } C_{max} = R' \\
+60^\circ \times \left( \frac{B' - R'}{\Delta} + 2 \right) & \text{if } C_{max} = G' \\
+60^\circ \times \left( \frac{R' - G'}{\Delta} + 4 \right) & \text{if } C_{max} = B'
 \end{cases}
 $$
 
-### Phiên bản hiện tại
+### Current Version
 
-Phiên bản hiện tại của hệ thống chưa nên bị hiểu là toàn bộ công thức trên đang được sử dụng như một engine hình học hoàn chỉnh trong mọi luồng.
+The current version of the system should not be understood as having the entire formula above being used as a complete geometric engine in every flow.
 
-Tuy nhiên, dữ liệu màu vẫn đang có vai trò thật trong backend hiện tại:
+However, color data still plays a real role in the current backend:
 
-- được AI trích xuất khi xử lý ảnh item
-- được lưu thành metadata của item
-- được dùng trong rich text context để sinh embedding
+- Extracted by AI when processing item images
+- Stored as item metadata
+- Used in rich text context to generate embeddings
 
-Nói cách khác, phần công thức vẫn được giữ như nền tảng lý thuyết mục tiêu, còn vai trò hiện tại của màu sắc là dữ liệu đầu vào quan trọng cho AI và cho các hướng phối đồ nâng cao.
-
----
-
-## II. Pipeline lọc màu vô sắc
-
-Trước khi chạy các phép ghép cặp theo góc hình học, hệ thống tách các màu trung tính ra khỏi các màu có điểm neo sắc độ rõ ràng.
-
-- Một item được xếp vào `Neutral_Pool` thay vì `Chroma_Pool` nếu thỏa một trong các điều kiện:
-  - **Đen:** $L \le 10\%$
-  - **Trắng:** $L \ge 90\%$
-  - **Xám:** $S \le 10\%$
-
-### Thiết kế mục tiêu
-
-Thiết kế này giúp hệ thống:
-
-- tránh ép các màu trung tính vào các luật hình học không cần thiết
-- cho phép item trung tính kết hợp linh hoạt hơn
-
-### Phiên bản hiện tại
-
-Phiên bản hiện tại của code chưa nên được mô tả là đã hiện thực đầy đủ pipeline `Neutral_Pool` hoặc `Chroma_Pool` theo đúng đặc tả cũ ở mọi bước recommendation.
-
-Tuy vậy, khái niệm này vẫn nên được giữ trong docs vì:
-
-- nó là nền lý thuyết hợp lý cho hệ phối đồ
-- nó có thể được dùng lại trong local swap, recommendation nâng cao hoặc các bộ lọc cục bộ sau này
+In other words, the formula part is kept as the target theoretical foundation, while the current role of color is as an important input for AI and for advanced outfit coordination directions.
 
 ---
 
-## III. Quy tắc phối màu hình học
+## II. Achromatic Color Filtering Pipeline
 
-Với các item còn mang màu sắc có cấu trúc rõ, engine sẽ tính độ lệch góc trên vòng tròn màu:
+Before running paired matching according to geometric angles, the system separates neutral colors from colors with clear chromatic anchor points.
+
+- An item is placed into the `Neutral_Pool` instead of the `Chroma_Pool` if it meets one of the following conditions:
+  - **Black:** $L \le 10\%$
+  - **White:** $L \ge 90\%$
+  - **Gray:** $S \le 10\%$
+
+### Target Design
+
+This design helps the system:
+
+- Avoid forcing neutral colors into unnecessary geometric rules
+- Allow neutral items to combine more flexibly
+
+### Current Version
+
+The current version of the code should not be described as having fully implemented the `Neutral_Pool` or `Chroma_Pool` pipeline exactly as the old specification in every recommendation step.
+
+However, this concept should still be kept in the docs because:
+
+- It is a reasonable theoretical foundation for the outfit coordination system
+- It can be reused in local swap, advanced recommendation, or local filters in the future
+
+---
+
+## III. Geometric Color Coordination Rules
+
+For items with structured colors, the engine will calculate the angle difference on the color wheel:
 
 $$\Delta H = |H_{\text{Item1}} - H_{\text{Item2}}|$$
 
 $$\Delta H_{\text{final}} = \min(\Delta H, 360^\circ - \Delta H)$$
 
-### 1. Tổ hợp màu tương đồng
+### 1. Analogous Color Combination
 
-Mục tiêu là tạo các outfit hài hòa và ít tương phản.
+The goal is to create harmonious and low-contrast outfits.
 
-- **Ràng buộc chính:**
+- **Primary constraint:**
 
 $$\Delta H_{\text{final}} < 30^\circ$$
 
-- **Ràng buộc tương phản sáng tối tối thiểu:**
+- **Minimum Lightness/Darkness contrast constraint:**
 
 $$|L_{\text{Item1}} - L_{\text{Item2}}| \ge 15\%$$
 
-### 2. Tổ hợp màu bổ sung
+### 2. Complementary Color Combination
 
-Mục tiêu là tạo phối màu tương phản mạnh.
+The goal is to create a strongly contrasting color scheme.
 
-- **Ràng buộc chính:**
+- **Primary constraint:**
 
 $$165^\circ \le \Delta H_{\text{final}} \le 195^\circ$$
 
-### Phiên bản hiện tại
+### Current Version
 
-Các quy tắc này vẫn được giữ nguyên trong tài liệu như **engine lý thuyết mục tiêu** của hệ thống phối đồ.
+These rules are kept in the document as the **target theoretical engine** of the outfit coordination system.
 
-Ở trạng thái hiện tại:
+In the current state:
 
-- backend đã có AI recommendation
-- backend đã có metadata màu
-- backend đã có các mô tả trong tài liệu khác về stage lọc màu hoặc style matrix
+- The backend already has AI recommendation
+- The backend already has color metadata
+- The backend already has descriptions in other documents about the color filter stage or style matrix
 
-Nhưng không nên khẳng định quá mức rằng mọi công thức ở đây đang chạy trực tiếp và đầy đủ trong toàn bộ implementation hiện tại nếu code chưa thể hiện rõ từng bước.
+But it should not be overly asserted that all formulas here are running directly and fully in the entire current implementation if the code doesn't clearly show every step.
 
 ---
 
-## IV. Sơ đồ tương tác dữ liệu đầu ra
+## IV. Output Data Interaction Diagram
 
-Sau khi backend hoàn thành việc tính toán các cặp phối màu, payload có thể được đóng gói thành schema chuẩn cho các bước AI hoặc tổng hợp phía sau.
+After the backend completes calculating color combinations, the payload can be packaged into a standard schema for subsequent AI or aggregation steps.
 
 ```json
 {
@@ -154,13 +154,13 @@ Sau khi backend hoàn thành việc tính toán các cặp phối màu, payload 
         "set_id": "pair_01",
         "top": {
           "id": "uuid-1",
-          "name": "Áo thun cam",
+          "name": "Orange T-shirt",
           "hex": "#FF5733",
           "hsl": [11, 100, 60]
         },
         "bottom": {
           "id": "uuid-2",
-          "name": "Quần jean xanh dương",
+          "name": "Blue Jeans",
           "hex": "#2E4053",
           "hsl": [210, 28, 25]
         },
@@ -177,14 +177,14 @@ Sau khi backend hoàn thành việc tính toán các cặp phối màu, payload 
 }
 ```
 
-### Định hướng đầu ra mục tiêu theo recommendation hiện tại
+### Target Output Direction based on Current Recommendation
 
-Khi đối chiếu với DTO recommendation hiện tại, lớp dữ liệu màu và các cặp đã tiền kiểm có thể được dùng như đầu vào để tạo ra output nghiệp vụ ở dạng:
+When mapped with the current recommendation DTO, the color data layer and pre-validated pairs can be used as input to generate business output in the form of:
 
 ```json
 {
-  "title": "Bộ casual đi chơi cuối tuần",
-  "explanation": "Phối hợp tông trung tính với điểm nhấn màu nhẹ, phù hợp thời tiết và phong cách người dùng",
+  "title": "Casual weekend outfit",
+  "explanation": "Combines neutral tones with light color accents, suitable for weather and user style",
   "items": [
     {
       "role": "top",
@@ -200,21 +200,21 @@ Khi đối chiếu với DTO recommendation hiện tại, lớp dữ liệu màu
 }
 ```
 
-Schema này cho thấy dữ liệu lý thuyết màu không nhất thiết phải đi thẳng ra ngoài dưới dạng cặp màu thuần túy. Thay vào đó, nó có thể được tiêu hóa thành:
+This schema shows that theoretical color data does not necessarily need to go straight out as pure color pairs. Instead, it can be digested into:
 
-- tiêu đề outfit
-- giải thích lựa chọn
-- các nhóm item theo vai trò
-- item chính và item thay thế cho từng vai trò
+- Outfit title
+- Selection explanation
+- Item groups by role
+- Primary and alternative items for each role
 
-### Phiên bản hiện tại
+### Current Version
 
-Schema trên vẫn là mô tả rất hữu ích của **dữ liệu mục tiêu** cho các bước tổng hợp outfit bằng AI hoặc các bộ lọc cục bộ.
+The above schema is still a very useful description of the **target data** for outfit aggregation steps using AI or local filters.
 
-Ở backend hiện tại:
+In the current backend:
 
-- item đã có dữ liệu màu và embedding
-- rich text context đã sử dụng metadata màu
-- recommendation engine đã có nền dữ liệu để tiến dần tới dạng payload như trên
+- Items already have color data and embeddings
+- Rich text context uses color metadata
+- The recommendation engine has the data foundation to gradually move towards a payload like above
 
-Do đó, phần này không bị loại bỏ mà được hiểu là mô hình dữ liệu đích cho các phiên bản recommendation sâu hơn.
+Therefore, this section is not removed but understood as the target data model for deeper recommendation versions.

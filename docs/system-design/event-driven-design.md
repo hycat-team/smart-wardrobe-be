@@ -1,14 +1,14 @@
-# Kiến trúc Hướng Sự kiện (Event-Driven Design)
+# Event-Driven Design
 
-Kiến trúc hướng sự kiện giúp xử lý bất đồng bộ các tác vụ AI tiêu tốn nhiều thời gian và tài nguyên, đảm bảo API Gateway luôn phản hồi nhanh chóng.
+Event-driven architecture helps asynchronously process AI tasks that consume a lot of time and resources, ensuring the API Gateway always responds quickly.
 
-## 1. Cơ chế hoạt động với RabbitMQ
+## 1. Operating Mechanism with RabbitMQ
 
-- Khi người dùng upload trang phục, API lưu thông tin tạm thời và đẩy một sự kiện `wardrobe.item.uploaded` vào hàng đợi RabbitMQ.
-- Worker tiêu thụ sự kiện (Event Consumer) nhận job và gửi ảnh qua AI API để xử lý tách nền và trích xuất nhãn.
-- Sau khi nhận kết quả từ AI, Worker cập nhật trạng thái Item thành `Active` và gửi thông báo qua WebSocket đến người dùng.
+- When a user uploads an item of clothing, the API saves temporary information and pushes a `wardrobe.item.uploaded` event into the RabbitMQ queue.
+- The Event Consumer worker receives the job and sends the image via the AI API for background removal and label extraction.
+- After receiving the results from AI, the Worker updates the Item status to `Active` and sends a notification via WebSocket to the user.
 
-## 2. Ưu điểm kiến trúc
+## 2. Architectural Advantages
 
-- **Tránh timeout**: Client không phải chờ đợi phản hồi đồng bộ từ các mô hình AI chậm chạp.
-- **Đảm bảo độ tin cậy**: Hỗ trợ cơ chế retry và dead-letter queue (DLQ) khi gọi dịch vụ AI ngoài bị lỗi kết nối tạm thời.
+- **Avoid timeouts**: The client does not have to wait for synchronous responses from slow AI models.
+- **Ensure reliability**: Supports retry and dead-letter queue (DLQ) mechanisms when calling external AI services encounters temporary connection errors.

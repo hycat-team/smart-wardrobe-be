@@ -1,15 +1,15 @@
-# Hướng dẫn thiết lập CI/CD (CI/CD Setup Guide)
+# CI/CD Setup Guide
 
-Dự án sử dụng GitHub Actions làm hệ thống tích hợp và triển khai tự động.
+The project uses GitHub Actions as the automated integration and deployment system.
 
-## 1. Các Secrets cần cấu hình trên GitHub Repository
-Để đảm bảo an toàn bảo mật, toàn bộ thông tin nhạy cảm của máy chủ VPS được lưu trữ dưới dạng GitHub Repository Secrets:
+## 1. Secrets to Configure on the GitHub Repository
+To ensure security, all sensitive information of the VPS server is stored as GitHub Repository Secrets:
 
-*   `SSH_PRIVATE_KEY`: Khóa SSH Private Key dùng để truy cập vào VPS.
-*   `VPS_HOST`: Địa chỉ IP của máy chủ VPS (ví dụ: `[VPS_IP_PLACEHOLDER]`).
-*   `VPS_USER`: Tên tài khoản SSH đăng nhập vào máy chủ (ví dụ: `root`).
-*   `CLOUDINARY_URL`, `DATABASE_URL`, `RABBITMQ_URL`... và các khóa môi trường cấu hình ứng dụng.
+*   `SSH_PRIVATE_KEY`: The SSH Private Key used to access the VPS.
+*   `VPS_HOST`: The IP address of the VPS server (e.g., `[VPS_IP_PLACEHOLDER]`).
+*   `VPS_USER`: The SSH account name to log into the server (e.g., `root`).
+*   `CLOUDINARY_URL`, `DATABASE_URL`, `RABBITMQ_URL`... and other application environment configuration keys.
 
-## 2. Luồng CI/CD (Workflow)
-*   **CI**: Tự động kích hoạt khi có PR vào nhánh `develop` hoặc `main`. Chạy kiểm tra fmt, tests và build thử.
-*   **CD**: Tự động kích hoạt khi merge PR vào nhánh `main`. Build Docker Image, đẩy lên Docker Registry và kết nối SSH để deploy tự động trên VPS.
+## 2. CI/CD Workflow
+*   **CI**: Automatically triggers when there is a PR to the `develop` or `main` branch. Runs formatting checks, tests, and a test build.
+*   **CD**: Automatically triggers when merging a PR into the `main` branch. Builds the Docker Image, pushes it to the Docker Registry, and connects via SSH for automated deployment on the VPS.

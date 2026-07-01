@@ -1,18 +1,18 @@
-# Chiến lược viết test (Testing Strategy)
+# Testing Strategy
 
-Đảm bảo độ tin cậy của mã nguồn khi nâng cấp và bảo trì hệ thống.
+Ensure the reliability of the source code when upgrading and maintaining the system.
 
 ## 1. Unit Testing
 
-- Viết test độc lập cho từng module tại `usecase` hoặc `repository`.
-- Mock các kết nối ngoài (Database, Cache, Third-party AI) sử dụng GoMock hoặc Testify.
+- Write independent tests for each module at the `usecase` or `repository` level.
+- Mock external connections (Database, Cache, Third-party AI) using GoMock or Testify.
 
-## 2. Cách chạy bộ kiểm thử
+## 2. How to Run the Test Suite
 
-Chạy toàn bộ các bài kiểm tra tự động trên môi trường local:
+Run all automated tests on the local environment:
 
 ```bash
 make test
 ```
 
-Đảm bảo tất cả test case đều pass trước khi gửi Pull Request.
+Ensure all test cases pass before submitting a Pull Request.

@@ -1,13 +1,13 @@
-# Nghiệp vụ Phối đồ (Outfit Domain)
+# Outfit Domain
 
-Nghiệp vụ phối đồ liên kết các Wardrobe Items đơn lẻ thành bộ trang phục hoàn chỉnh (Outfit).
+The outfit coordination business connects individual Wardrobe Items into a complete clothing set (Outfit).
 
-## 1. Thành phần của một Outfit
-Một Outfit thông thường có thể bao gồm:
-*   Áo (Top) + Quần/Váy (Bottom) + Giày (Shoes).
-*   Đầm liền (Dress) + Giày (Shoes).
-*   Các phụ kiện đi kèm (Mũ, Kính, Túi xách...).
+## 1. Components of an Outfit
+A typical Outfit may include:
+*   Top + Bottom + Shoes.
+*   Dress + Shoes.
+*   Accompanying accessories (Hat, Glasses, Bag...).
 
-## 2. Lưu trữ Outfit
-*   Người dùng có thể tự phối đồ thủ công (Manual Outfit Creation) hoặc lưu lại gợi ý của AI.
-*   Mỗi Outfit được gán nhãn dịp mặc (Dạo phố, Đi làm, Dự tiệc...) và có thể đặt lịch mặc trong tương lai.
+## 2. Outfit Storage
+*   Users can manually coordinate outfits (Manual Outfit Creation) or save AI suggestions.
+*   Each Outfit is tagged with occasions to wear (Streetwear, Work, Party...) and can be scheduled to wear in the future.

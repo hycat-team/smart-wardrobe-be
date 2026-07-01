@@ -1,31 +1,31 @@
-# Hướng dẫn tạo và chạy Migration (Migration Guide)
+# Migration Guide
 
-Hệ thống sử dụng **Goose** làm công cụ quản lý các lượt cập nhật cơ sở dữ liệu.
+The system uses **Goose** as the tool to manage database updates.
 
-## 1. Nguyên tắc cốt lõi
+## 1. Core Principles
 
-- Tuyệt đối không được chỉnh sửa trực tiếp các script cơ sở dữ liệu đã có trong thư mục `/init-db`.
-- Mọi thay đổi lược đồ database phải được thực hiện thông qua file migration sql mới được tạo bằng Goose.
+- Absolutely do not directly edit the existing database scripts in the `/init-db` folder.
+- All database schema changes must be done through a new SQL migration file created using Goose.
 
-## 2. Tạo một file migration mới
+## 2. Create a new migration file
 
-Chạy lệnh sau trên terminal để sinh file migration mới:
+Run the following command in the terminal to generate a new migration file:
 
 ```bash
-make migration-create name=ten_file_migration
+make migration-create name=migration_file_name
 ```
 
-Thao tác này sẽ tạo một file `.sql` mới trong thư mục `/migrations` có định dạng thời gian và tên bạn vừa nhập.
+This operation will create a new `.sql` file in the `/migrations` folder with a timestamp format and the name you just entered.
 
-## 3. Thực thi migration
+## 3. Execute migration
 
-Để chạy tất cả các migration chưa được thực thi lên cơ sở dữ liệu local:
+To run all unexecuted migrations on the local database:
 
 ```bash
 make migration-up
 ```
 
-Để rollback migration gần nhất:
+To rollback the most recent migration:
 
 ```bash
 make migration-down

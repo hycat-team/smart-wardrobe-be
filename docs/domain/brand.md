@@ -1,17 +1,17 @@
-# Nghiệp vụ Thương hiệu (Brand Domain)
+# Brand Domain
 
-Mô tả nghiệp vụ quản lý các đối tác thương hiệu trên nền tảng Closy.
+Business description for managing brand partners on the Closy platform.
 
-## 1. Thông tin Thương hiệu (Brand Profile)
-Mỗi thương hiệu đăng ký trên hệ thống sẽ sở hữu một hồ sơ chứa:
-*   Tên thương hiệu, Logo, Mô tả, Website và các kênh mạng xã hội.
-*   Địa chỉ các cửa hàng vật lý để tích hợp với dịch vụ Loyalty/Support.
+## 1. Brand Profile
+Every brand registered on the system will own a profile containing:
+*   Brand Name, Logo, Description, Website, and social media channels.
+*   Addresses of physical stores to integrate with Loyalty/Support services.
 
-## 2. Vai trò thành viên trong Brand (Brand Members & Roles)
-Một Brand Portal hỗ trợ quản trị phân quyền nội bộ nhãn hàng:
-*   **Owner (Chủ sở hữu)**: Quyền cao nhất, quản lý thanh toán, phân quyền tài khoản khác.
-*   **Manager (Quản lý)**: Tạo chiến dịch (Campaign), thiết lập mức tích điểm (Loyalty rules), quản lý sản phẩm trong Digital Sample Lab.
-*   **Staff (Nhân viên)**: Tiếp nhận và xử lý Support ticket từ khách hàng, xác thực quét hóa đơn tích điểm.
+## 2. Brand Members & Roles
+A Brand Portal supports internal access control management for the brand:
+*   **Owner**: Highest privilege, manages billing, assigns roles to other accounts.
+*   **Manager**: Creates Campaigns, sets up reward point levels (Loyalty rules), manages products in the Digital Sample Lab.
+*   **Staff**: Receives and processes Support tickets from customers, verifies receipt scans for point accumulation.
 
-## 3. Khách hàng của Brand (Brand Customer / Members)
-*   Người dùng Closy đăng ký tham gia chương trình thành viên của Brand để trở thành Brand Customer và bắt đầu tích lũy điểm thưởng.
+## 3. Brand Customer / Members
+*   Closy users register to join a Brand's membership program to become a Brand Customer and start accumulating reward points.

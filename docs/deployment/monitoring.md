@@ -1,11 +1,11 @@
-# Giám sát Hệ thống (Monitoring)
+# System Monitoring
 
-Theo dõi sức khỏe và hiệu năng của hệ thống backend Closy.
+Monitor the health and performance of the Closy backend system.
 
-## 1. Hệ thống Log (Logging)
-*   Hệ thống sử dụng thư viện `zap` để ghi nhận các log thông tin và lỗi của ứng dụng.
-*   Log được xuất ra console và lưu vào các file log xoay vòng định kỳ (log rotation) đặt tại thư mục log được cấu hình trong file `.env`.
+## 1. Logging System
+*   The system uses the `zap` library to record application info and error logs.
+*   Logs are output to the console and saved to periodically rotated log files (log rotation) located in the log directory configured in the `.env` file.
 
 ## 2. API Health Check
-*   Đường dẫn giám sát sức khỏe của API: `/api/v1/health`.
-*   Cấu hình công cụ giám sát (Uptime Kuma hoặc tương đương) gửi thông báo về kênh Slack/Telegram của đội kỹ thuật nếu endpoint này không phản hồi quá 2 phút.
+*   API health monitoring path: `/api/v1/health`.
+*   Configure a monitoring tool (Uptime Kuma or equivalent) to send notifications to the technical team's Slack/Telegram channel if this endpoint does not respond for more than 2 minutes.
