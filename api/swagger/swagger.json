@@ -5471,7 +5471,30 @@
                 "updatedAt": {
                     "type": "string"
                 },
-                "userId": {
+                "user": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerUserRes"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerUserRes": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
