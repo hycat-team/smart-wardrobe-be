@@ -6,6 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 func MapBrand(brand *entities.Brand) *dto.BrandRes {
@@ -117,6 +119,24 @@ func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
 		}
 	}
 
+	var loyaltyAccount *dto.CustomerLoyaltyAccountRes
+	if customer.LoyaltyAccount != nil {
+		var currentTier *dto.LoyaltyTierBriefRes
+		if customer.LoyaltyAccount.CurrentTier != nil {
+			currentTier = &dto.LoyaltyTierBriefRes{
+				ID:   customer.LoyaltyAccount.CurrentTier.ID,
+				Name: customer.LoyaltyAccount.CurrentTier.Name,
+			}
+		}
+		loyaltyAccount = &dto.CustomerLoyaltyAccountRes{
+			ID:             customer.LoyaltyAccount.ID,
+			CurrentPoints:  customer.LoyaltyAccount.CurrentPoints,
+			LifetimePoints: customer.LoyaltyAccount.LifetimePoints,
+			TotalSpend:     customer.LoyaltyAccount.TotalSpend,
+			CurrentTier:    currentTier,
+		}
+	}
+
 	return &dto.BrandCustomerRes{
 		ID:                   customer.ID,
 		BrandID:              customer.BrandID,
@@ -131,6 +151,7 @@ func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
 		CreatedAt:            customer.CreatedAt,
 		UpdatedAt:            customer.UpdatedAt,
 		User:                 customerUser,
+		LoyaltyAccount:       loyaltyAccount,
 	}
 }
 
@@ -200,7 +221,7 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 	}
 }
 
-func MapBrandConversation(conv *entities.BrandConversation, customerName *string, userDisplayName *string) *dto.BrandConversationRes {
+func MapBrandConversation(conv *entities.BrandConversation, customerId uuid.UUID, customerName *string, userDisplayName *string) *dto.BrandConversationRes {
 	if conv == nil {
 		return nil
 	}
@@ -208,6 +229,7 @@ func MapBrandConversation(conv *entities.BrandConversation, customerName *string
 		ID:              conv.ID,
 		BrandID:         conv.BrandID,
 		UserID:          conv.UserID,
+		CustomerId:      customerId,
 		CustomerName:    customerName,
 		UserDisplayName: userDisplayName,
 		Status:          string(conv.Status),

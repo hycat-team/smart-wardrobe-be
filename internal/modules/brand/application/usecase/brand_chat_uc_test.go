@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/conversationstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
@@ -89,6 +90,19 @@ func (m *mockMsgRepo) GetByConversationID(ctx context.Context, conversationID uu
 	}
 	return list, nil
 }
+func (m *mockMsgRepo) GetByConversationIDPaginated(ctx context.Context, filter repositories.BrandConversationMessageFilter) (*repositories.BrandConversationMessageListResult, error) {
+	var list []*entities.BrandConversationMessage
+	for _, msg := range m.messages {
+		if msg.ConversationID == filter.ConversationID {
+			list = append(list, msg)
+		}
+	}
+	return &repositories.BrandConversationMessageListResult{
+		Messages:   list,
+		TotalCount: int64(len(list)),
+	}, nil
+}
+
 func (m *mockMsgRepo) CountUnread(ctx context.Context, conversationID uuid.UUID, senderRole string, since *time.Time) (int, error) {
 	count := 0
 	for _, msg := range m.messages {

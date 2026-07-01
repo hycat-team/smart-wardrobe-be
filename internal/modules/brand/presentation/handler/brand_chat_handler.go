@@ -19,13 +19,15 @@ func NewBrandChatHandler(chatUC usecase_interfaces.IBrandChatUseCase) *BrandChat
 	return &BrandChatHandler{chatUC: chatUC}
 }
 
-// GetUserConversation returns the user's conversation with a brand.
+// GetUserConversation returns the user's conversation with a brand including paginated messages.
 // @Summary Lấy cuộc hội thoại hiện tại (User)
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationRes}
+// @Param page query int false "Trang hiện tại (mặc định: 1)"
+// @Param limit query int false "Số lượng tin nhắn mỗi trang (mặc định: 20)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationDetailRes}
 // @Router /api/v1/brands/{brandId}/conversation [get]
 func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -36,7 +38,11 @@ func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.chatUC.GetUserConversation(c.Request.Context(), userID, brandID)
+	var query dto.GetConversationMessagesQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.chatUC.GetUserConversation(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -99,14 +105,16 @@ func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
 	return nil
 }
 
-// ListConversationMessages lists messages in a conversation.
+// ListConversationMessages lists paginated messages in a conversation.
 // @Summary Lấy danh sách tin nhắn trong cuộc hội thoại (Staff)
 // @Tags Brand Chat
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
 // @Param conversationId path string true "ID cuộc hội thoại"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandConversationMessageRes}
+// @Param page query int false "Trang hiện tại (mặc định: 1)"
+// @Param limit query int false "Số lượng tin nhắn mỗi trang (mặc định: 20)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationMessageListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/conversations/{conversationId}/messages [get]
 func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -121,7 +129,11 @@ func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.chatUC.ListConversationMessages(c.Request.Context(), userID, brandID, conversationID)
+	var query dto.GetConversationMessagesQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.chatUC.ListConversationMessages(c.Request.Context(), userID, brandID, conversationID, query)
 	if err != nil {
 		return err
 	}

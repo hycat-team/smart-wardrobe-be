@@ -12,6 +12,8 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
@@ -21,6 +23,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
@@ -68,15 +71,34 @@ func NewBrandLoyaltyUseCase(
 	}
 }
 
-func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandCustomerRes, error) {
+func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandCustomersQueryReq) (*dto.BrandCustomerListRes, error) {
 	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
-	customers, err := uc.customerRepo.GetByBrandID(ctx, brandID)
+
+	var statusFilter *brandcustomerstatus.BrandCustomerStatus
+	if query.Status != nil {
+		val := brandcustomerstatus.BrandCustomerStatus(*query.Status)
+		statusFilter = &val
+	}
+
+	filter := repositories.BrandCustomerFilter{
+		BrandID: brandID,
+		Status:  statusFilter,
+		Query:   query.Query,
+		Page:    query.Page,
+		Limit:   query.Limit,
+	}
+
+	result, err := uc.customerRepo.GetByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandCustomers(customers), nil
+
+	return &dto.BrandCustomerListRes{
+		Items:    mapper.MapBrandCustomers(result.Customers),
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
+	}, nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.BrandCustomerRes, error) {
@@ -418,22 +440,34 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, user
 	return uc.listLoyaltyLots(ctx, account.ID, query)
 }
 
-func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID) ([]*dto.LoyaltyPointTransactionDetailRes, error) {
+func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.GetLoyaltyTransactionsQueryReq) (*dto.LoyaltyTransactionListRes, error) {
 	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
+
 	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
 	if err != nil {
 		return nil, err
 	}
 	if account == nil || account.BrandID != brandID {
-		return nil, branderrors.ErrCustomerNotFound()
+		return nil, apperror.NewNotFound("Không tìm thấy tài khoản tích điểm này")
 	}
-	transactions, err := uc.txRepo.GetByLoyaltyAccountID(ctx, loyaltyAccountID)
+
+	filter := repositories.LoyaltyTransactionFilter{
+		LoyaltyAccountID: account.ID,
+		Page:             query.Page,
+		Limit:            query.Limit,
+	}
+
+	result, err := uc.txRepo.GetByLoyaltyAccountIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapLoyaltyTransactions(transactions), nil
+
+	return &dto.LoyaltyTransactionListRes{
+		Items:    mapper.MapLoyaltyTransactions(result.Transactions),
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
+	}, nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {

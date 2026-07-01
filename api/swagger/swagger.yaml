@@ -111,6 +111,52 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationDetailRes:
+    properties:
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      customerId:
+        type: string
+      customerName:
+        type: string
+      id:
+        type: string
+      lastMessageAt:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+      staffLastReadAt:
+        type: string
+      staffUnreadCount:
+        type: integer
+      status:
+        type: string
+      updatedAt:
+        type: string
+      userDisplayName:
+        type: string
+      userId:
+        type: string
+      userLastReadAt:
+        type: string
+      userUnreadCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes:
     properties:
       conversationId:
@@ -131,6 +177,8 @@ definitions:
       brandId:
         type: string
       createdAt:
+        type: string
+      customerId:
         type: string
       customerName:
         type: string
@@ -155,6 +203,15 @@ definitions:
       userUnreadCount:
         type: integer
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes:
     properties:
       brandId:
@@ -175,6 +232,8 @@ definitions:
         type: string
       joinedSource:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandcustomerjoinedsource.BrandCustomerJoinedSource'
+      loyaltyAccount:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CustomerLoyaltyAccountRes'
       phoneE164:
         type: string
       status:
@@ -208,9 +267,7 @@ definitions:
       description:
         type: string
       fashionItem:
-        allOf:
-        - $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_entities.FashionItem'
-        description: Detailed fashion metadata
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_entities.FashionItem'
       fashionItemId:
         type: string
       id:
@@ -357,7 +414,6 @@ definitions:
       imageUrl:
         type: string
       itemType:
-        description: E.g. "BRAND_RETAIL" or "DIGITAL_SAMPLE"
         type: string
       name:
         maxLength: 255
@@ -368,7 +424,6 @@ definitions:
         maxLength: 100
         type: string
       status:
-        description: DRAFT, ACTIVE, ARCHIVED
         type: string
     required:
     - imagePublicId
@@ -415,6 +470,19 @@ definitions:
         type: string
     required:
     - phoneE164
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.CustomerLoyaltyAccountRes:
+    properties:
+      currentPoints:
+        type: integer
+      currentTier:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierBriefRes'
+      id:
+        type: string
+      lifetimePoints:
+        type: integer
+      totalSpend:
+        type: number
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.DigitalSampleResponseRes:
     properties:
@@ -589,6 +657,15 @@ definitions:
       updatedAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTransactionListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointTransactionDetailRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.PortalBrandRes:
     properties:
       approvedAt:
@@ -683,7 +760,6 @@ definitions:
       productCode:
         type: string
       status:
-        description: DRAFT, ACTIVE, ARCHIVED
         type: string
     required:
     - name
@@ -3152,6 +3228,14 @@ paths:
         name: conversationId
         required: true
         type: string
+      - description: 'Trang hiện tại (mặc định: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Số lượng tin nhắn mỗi trang (mặc định: 20)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -3162,9 +3246,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationMessageListRes'
               type: object
       summary: Lấy danh sách tin nhắn trong cuộc hội thoại (Staff)
       tags:
@@ -3269,6 +3351,22 @@ paths:
         name: brandId
         required: true
         type: string
+      - description: 'Trang hiện tại (mặc định: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Số lượng bản ghi trên mỗi trang (mặc định: 20)'
+        in: query
+        name: limit
+        type: integer
+      - description: Từ khóa tìm kiếm (tên, SĐT, mã KH)
+        in: query
+        name: q
+        type: string
+      - description: Trạng thái khách hàng (ACTIVE, INACTIVE)
+        in: query
+        name: status
+        type: string
       produces:
       - application/json
       responses:
@@ -3279,9 +3377,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerListRes'
               type: object
       summary: Lấy danh sách khách hàng của brand
       tags:
@@ -3741,6 +3837,14 @@ paths:
   /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/transactions:
     get:
       parameters:
+      - description: 'Trang hiện tại (mặc định: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Số lượng bản ghi trên mỗi trang (mặc định: 20)'
+        in: query
+        name: limit
+        type: integer
       - description: ID brand
         in: path
         name: brandId
@@ -3761,9 +3865,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyPointTransactionDetailRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTransactionListRes'
               type: object
       summary: Lấy lịch sử điểm của loyalty account
       tags:
@@ -4061,6 +4163,14 @@ paths:
         name: brandId
         required: true
         type: string
+      - description: 'Trang hiện tại (mặc định: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Số lượng tin nhắn mỗi trang (mặc định: 20)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -4071,7 +4181,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationRes'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationDetailRes'
               type: object
       summary: Lấy cuộc hội thoại hiện tại (User)
       tags:

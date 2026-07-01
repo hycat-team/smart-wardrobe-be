@@ -219,3 +219,40 @@ func (r *BrandCustomerRepository) GetByUserID(ctx context.Context, userID uuid.U
 		Find(&customers).Error
 	return customers, err
 }
+
+func (r *BrandCustomerRepository) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandCustomerFilter) (*repositories.BrandCustomerListResult, error) {
+	db := r.GetQueryWithPreload(ctx).Where("brand_id = ?", filter.BrandID)
+
+	// Since we added LoyaltyAccount relation, we preload it and its nested tier
+	db = db.Preload("LoyaltyAccount").Preload("LoyaltyAccount.CurrentTier")
+
+	if filter.Status != nil && *filter.Status != "" {
+		db = db.Where("status = ?", *filter.Status)
+	}
+
+	if filter.Query != nil && *filter.Query != "" {
+		queryStr := "%" + strings.ToLower(*filter.Query) + "%"
+		db = db.Where("LOWER(customer_name) LIKE ? OR phone_e164 LIKE ? OR LOWER(external_customer_code) LIKE ?", queryStr, queryStr, queryStr)
+	}
+
+	var totalCount int64
+	if err := db.Model(&entities.BrandCustomer{}).Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	var customers []*entities.BrandCustomer
+	if err := db.Order("created_at DESC").Find(&customers).Error; err != nil {
+		return nil, err
+	}
+
+	return &repositories.BrandCustomerListResult{
+		Customers:  customers,
+		TotalCount: totalCount,
+	}, nil
+}

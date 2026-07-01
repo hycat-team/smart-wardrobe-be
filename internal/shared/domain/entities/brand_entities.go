@@ -65,6 +65,7 @@ type BrandCustomer struct {
 	ClaimedAt            *time.Time                                          `gorm:"type:timestamp with time zone"`
 	CreatedByMemberID    *uuid.UUID                                          `gorm:"type:uuid"`
 	CreatedByMember      *BrandMember                                        `gorm:"foreignKey:CreatedByMemberID;constraint:OnDelete:SET NULL"`
+	LoyaltyAccount       *LoyaltyAccount                                     `gorm:"foreignKey:BrandCustomerID"`
 }
 
 type BrandBenefit struct {

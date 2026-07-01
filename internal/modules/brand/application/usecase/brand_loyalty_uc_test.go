@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -192,6 +193,9 @@ func (r *loyaltyLotsTxRepo) GetByBrandAndIdempotencyKey(ctx context.Context, bra
 }
 func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAccountID uuid.UUID) ([]*entities.LoyaltyPointTransaction, error) {
 	return r.transactions, nil
+}
+func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
+	return nil, nil
 }
 
 func newLoyaltyLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entities.LoyaltyPointLot) (*BrandLoyaltyUseCase, *loyaltyLotsAccountRepo, *loyaltyLotsLotRepo, *loyaltyLotsTxRepo) {

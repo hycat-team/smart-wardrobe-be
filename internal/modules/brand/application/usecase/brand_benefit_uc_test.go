@@ -141,6 +141,9 @@ func (m *mockCustomerRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([
 	}
 	return list, nil
 }
+func (m *mockCustomerRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandCustomerFilter) (*repositories.BrandCustomerListResult, error) {
+	return nil, nil
+}
 
 type mockBenefitRepo struct {
 	benefits map[uuid.UUID]*entities.BrandBenefit
@@ -572,6 +575,9 @@ func (m *mockTxRepo) GetByBrandAndIdempotencyKey(ctx context.Context, brandID uu
 	return nil, nil
 }
 func (m *mockTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAccountID uuid.UUID) ([]*entities.LoyaltyPointTransaction, error) {
+	return nil, nil
+}
+func (m *mockTxRepo) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
 	return nil, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -189,6 +190,31 @@ func (r *LoyaltyPointTransactionRepository) GetByLoyaltyAccountID(ctx context.Co
 		Order("created_at ASC, id ASC").
 		Find(&transactions).Error
 	return transactions, err
+}
+
+func (r *LoyaltyPointTransactionRepository) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
+	db := r.GetDB(ctx).Model(&entities.LoyaltyPointTransaction{}).Where("loyalty_account_id = ?", filter.LoyaltyAccountID)
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	var transactions []*entities.LoyaltyPointTransaction
+	if err := db.Order("created_at DESC, id DESC").Find(&transactions).Error; err != nil {
+		return nil, err
+	}
+
+	return &repositories.LoyaltyTransactionListResult{
+		Transactions: transactions,
+		TotalCount:   totalCount,
+	}, nil
 }
 
 type LoyaltyPointLotRepository struct {

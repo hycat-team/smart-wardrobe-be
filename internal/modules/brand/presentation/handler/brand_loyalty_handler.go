@@ -94,7 +94,11 @@ func (h *BrandLoyaltyHandler) GetBrandMembers(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandCustomerRes}
+// @Param page query int false "Trang hiện tại (mặc định: 1)"
+// @Param limit query int false "Số lượng bản ghi trên mỗi trang (mặc định: 20)"
+// @Param q query string false "Từ khóa tìm kiếm (tên, SĐT, mã KH)"
+// @Param status query string false "Trạng thái khách hàng (ACTIVE, INACTIVE)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandCustomerListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/customers [get]
 func (h *BrandLoyaltyHandler) GetBrandCustomers(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -105,7 +109,13 @@ func (h *BrandLoyaltyHandler) GetBrandCustomers(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.loyaltyUC.GetBrandCustomers(c.Request.Context(), userID, brandID)
+
+	var query dto.GetBrandCustomersQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	res, err := h.loyaltyUC.GetBrandCustomers(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -302,11 +312,13 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) er
 
 // GetLoyaltyAccountTransactionsForStaff lists transactions for a loyalty account.
 // @Summary Lấy lịch sử điểm của loyalty account
+// @Param page query int false "Trang hiện tại (mặc định: 1)"
+// @Param limit query int false "Số lượng bản ghi trên mỗi trang (mặc định: 20)"
 // @Tags Brand Loyalty
 // @Produce json
 // @Param brandId path string true "ID brand"
 // @Param accountId path string true "ID loyalty account"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointTransactionDetailRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTransactionListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/transactions [get]
 func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -321,7 +333,13 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Conte
 	if err != nil {
 		return err
 	}
-	res, err := h.loyaltyUC.GetLoyaltyAccountTransactionsForStaff(c.Request.Context(), userID, brandID, accountID)
+
+	var query dto.GetLoyaltyTransactionsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	res, err := h.loyaltyUC.GetLoyaltyAccountTransactionsForStaff(c.Request.Context(), userID, brandID, accountID, query)
 	if err != nil {
 		return err
 	}
