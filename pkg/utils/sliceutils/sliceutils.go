@@ -61,3 +61,21 @@ func UniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
 
 	return result
 }
+
+func IndexBy[T any, K comparable](collection []T, keyExtractor func(T) K) map[K]T {
+	result := make(map[K]T, len(collection))
+	for _, item := range collection {
+		key := keyExtractor(item)
+		result[key] = item
+	}
+	return result
+}
+
+func GroupBy[T any, K comparable](collection []T, keyExtractor func(T) K) map[K][]T {
+	result := make(map[K][]T)
+	for _, item := range collection {
+		key := keyExtractor(item)
+		result[key] = append(result[key], item)
+	}
+	return result
+}
