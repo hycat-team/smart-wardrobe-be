@@ -187,7 +187,7 @@ func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem", "BrandItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}
@@ -212,7 +212,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem", "BrandItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}
