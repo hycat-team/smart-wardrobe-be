@@ -11,7 +11,7 @@ import (
 func NormalizeText(text string) string {
 	lowered := strings.ToLower(text)
 	lowered = strings.ReplaceAll(lowered, "đừng", "dung_neg")
-	lowered = strings.ReplaceAll(lowered, "dungf", "dung_neg")
+	// lowered = strings.ReplaceAll(lowered, "dungf", "dung_neg")
 
 	padded := lowered
 	padded = strings.ReplaceAll(padded, ",", " , ")
