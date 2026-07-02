@@ -39,11 +39,3 @@ Code comments:
 Identifiers (function names, variables, structs, interfaces, packages, database tables, columns):
 
 - English
-
-## Application, Usecase, and Handler Structure
-
-- Mapper functions converting between entity/domain models and DTOs/responses must be placed in the `application/mapper` folder of the respective module. Do not place mappers in the usecase file.
-- Within `application/mapper`, it is allowed to split into multiple mapper files by business group to avoid a single file becoming too long.
-- Helpers serving only one usecase/usecase file must be extracted into a separate file in the same package, and the filename must have the `_helper.go` suffix.
-- Do not create a helper if the function only wraps a simple expression and does not clarify the business meaning. Prefer inlining or reusing utilities in `pkg/utils`.
-- Return messages in the presentation handler must be declared as variables/constants at the top of the handler file following the existing pattern, rather than hard-coding directly in each response.
