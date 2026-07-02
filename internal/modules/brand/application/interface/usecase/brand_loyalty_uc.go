@@ -25,5 +25,7 @@ type IBrandLoyaltyUseCase interface {
 	GetLoyaltyProgramForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) (*dto.LoyaltyProgramRes, error)
 	UpsertLoyaltyProgram(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.UpsertLoyaltyProgramReq) (*dto.LoyaltyProgramRes, error)
 	GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error)
+	CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error)
+	UpdateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID, input dto.UpdateLoyaltyTierReq) (*dto.LoyaltyTierRes, error)
 	ProcessExpiredLoyaltyPointLots(ctx context.Context, now time.Time, batchSize int) (int, error)
 }

@@ -20,6 +20,8 @@ type ILoyaltyProgramRepository interface {
 type ILoyaltyTierRepository interface {
 	shared_repos.IGenericRepository[entities.LoyaltyTier, uuid.UUID]
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.LoyaltyTier, error)
+	GetByBrandAndName(ctx context.Context, brandID uuid.UUID, name string) (*entities.LoyaltyTier, error)
+	GetByBrandAndRank(ctx context.Context, brandID uuid.UUID, rank int) (*entities.LoyaltyTier, error)
 	GetHighestEligibleBySpend(ctx context.Context, brandID uuid.UUID, totalSpend float64) (*entities.LoyaltyTier, error)
 }
 

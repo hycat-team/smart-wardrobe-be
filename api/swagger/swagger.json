@@ -3043,6 +3043,115 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Tạo hạng thành viên cho brand (Owner)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin hạng thành viên",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateLoyaltyTierReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Cập nhật hạng thành viên (Owner)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hạng thành viên",
+                        "name": "tierId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cập nhật hạng thành viên",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateLoyaltyTierReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/api/v1/brand-portal/brands/{brandId}/members": {
@@ -6030,6 +6139,31 @@
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.CreateLoyaltyTierReq": {
+            "type": "object",
+            "required": [
+                "minTotalSpend",
+                "name",
+                "rank"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "minTotalSpend": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "rank": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq": {
             "type": "object",
             "required": [
@@ -6538,6 +6672,26 @@
             "properties": {
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateLoyaltyTierReq": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "minTotalSpend": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "rank": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },

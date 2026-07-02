@@ -89,6 +89,8 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.GET("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyProgramForStaff))
 		portal.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
 		portal.GET("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForStaff))
+		portal.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
+		portal.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))
 		portal.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
 		portal.GET("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListBrandBenefitsForStaff))
 		portal.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))

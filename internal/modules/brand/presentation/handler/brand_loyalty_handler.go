@@ -401,6 +401,71 @@ func (h *BrandLoyaltyHandler) UpsertLoyaltyProgram(c *gin.Context) error {
 	return nil
 }
 
+// CreateLoyaltyTier creates a new loyalty tier for a brand.
+// @Summary Tạo hạng thành viên cho brand (Owner)
+// @Tags Brand Loyalty
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param body body dto.CreateLoyaltyTierReq true "Thông tin hạng thành viên"
+// @Success 201 {object} shared_pres.APIResponse{data=dto.LoyaltyTierRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers [post]
+func (h *BrandLoyaltyHandler) CreateLoyaltyTier(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var input dto.CreateLoyaltyTierReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.CreateLoyaltyTier(c.Request.Context(), userID, brandID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Created(c, msgBrandLoyaltyCreateTierSuccess, res)
+	return nil
+}
+
+// UpdateLoyaltyTier updates a loyalty tier.
+// @Summary Cập nhật hạng thành viên (Owner)
+// @Tags Brand Loyalty
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param tierId path string true "ID hạng thành viên"
+// @Param body body dto.UpdateLoyaltyTierReq true "Thông tin cập nhật hạng thành viên"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId} [put]
+func (h *BrandLoyaltyHandler) UpdateLoyaltyTier(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	tierID, err := uuid.Parse(c.Param("tierId"))
+	if err != nil {
+		return err
+	}
+	var input dto.UpdateLoyaltyTierReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.UpdateLoyaltyTier(c.Request.Context(), userID, brandID, tierID, input)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandLoyaltyUpdateTierSuccess, res)
+	return nil
+}
+
 // GetLoyaltyTiersForStaff lists loyalty tiers for a brand.
 // @Summary Lấy danh sách hạng loyalty của brand
 // @Tags Brand Loyalty

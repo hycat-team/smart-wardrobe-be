@@ -112,7 +112,41 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về mảng danh sách hạng thành viên `LoyaltyTierRes`.
 
-### 4. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
+### 4. Tạo hạng thành viên mới (Brand Owner)
+
+- **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/loyalty/tiers`
+- **Tác nhân (Actor):** Chủ thương hiệu (Brand owner).
+- **Đối tượng ảnh hưởng:** Tạo bản ghi mới trong bảng `loyalty_tiers`.
+- **Mô tả:** Tạo một hạng thành viên mới cho nhãn hàng. Tên hạng (`name`) và thứ tự hạng (`rank`) phải là duy nhất trong cùng một nhãn hàng. Hệ thống tự kiểm tra trùng lặp và trả về lỗi nếu đã tồn tại.
+- **Request Body:**
+    ```json
+    {
+        "name": "Gold",
+        "rank": 3,
+        "minTotalSpend": 5000000,
+        "description": "Hạng Gold - Chi tiêu từ 5 triệu"
+    }
+    ```
+- **Response:**
+    - `201 Created`: Trả về thông tin hạng thành viên vừa tạo `LoyaltyTierRes`.
+
+### 5. Cập nhật hạng thành viên (Brand Owner)
+
+- **Endpoint:** `PUT /api/v1/brand-portal/brands/:brandId/loyalty/tiers/:tierId`
+- **Tác nhân (Actor):** Chủ thương hiệu (Brand owner).
+- **Đối tượng ảnh hưởng:** Cập nhật bản ghi trong bảng `loyalty_tiers`.
+- **Mô tả:** Cập nhật thông tin hạng thành viên. Tất cả các trường đều là tùy chọn (optional), chỉ gửi những trường cần thay đổi. Hệ thống tự kiểm tra trùng lặp tên và thứ tự hạng (loại trừ chính hạng đang cập nhật).
+- **Request Body:**
+    ```json
+    {
+        "name": "Gold Plus",
+        "minTotalSpend": 6000000
+    }
+    ```
+- **Response:**
+    - `200 OK`: Trả về thông tin hạng thành viên sau khi cập nhật `LoyaltyTierRes`.
+
+### 6. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/accounts/:accountId/transactions`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).

@@ -550,6 +550,89 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staf
 	return mapper.MapLoyaltyTiers(tiers), nil
 }
 
+func (uc *BrandLoyaltyUseCase) CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
+		return nil, err
+	}
+
+	existing, err := uc.tierRepo.GetByBrandAndName(ctx, brandID, input.Name)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, branderrors.ErrTierNameExists(input.Name)
+	}
+
+	existing, err = uc.tierRepo.GetByBrandAndRank(ctx, brandID, input.Rank)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, branderrors.ErrTierRankExists(input.Rank)
+	}
+
+	tier := &entities.LoyaltyTier{
+		BrandID:       brandID,
+		Name:          input.Name,
+		Rank:          input.Rank,
+		MinTotalSpend: input.MinTotalSpend,
+		Description:   input.Description,
+	}
+	if err := uc.tierRepo.Create(ctx, tier); err != nil {
+		return nil, err
+	}
+	return mapper.MapLoyaltyTier(tier), nil
+}
+
+func (uc *BrandLoyaltyUseCase) UpdateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID, input dto.UpdateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {
+	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
+		return nil, err
+	}
+
+	tier, err := uc.tierRepo.GetByID(ctx, tierID)
+	if err != nil {
+		return nil, err
+	}
+	if tier == nil || tier.BrandID != brandID {
+		return nil, branderrors.ErrTierNotFound()
+	}
+
+	if input.Name != nil {
+		existing, err := uc.tierRepo.GetByBrandAndName(ctx, brandID, *input.Name)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil && existing.ID != tierID {
+			return nil, branderrors.ErrTierNameExists(*input.Name)
+		}
+		tier.Name = *input.Name
+	}
+
+	if input.Rank != nil {
+		existing, err := uc.tierRepo.GetByBrandAndRank(ctx, brandID, *input.Rank)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil && existing.ID != tierID {
+			return nil, branderrors.ErrTierRankExists(*input.Rank)
+		}
+		tier.Rank = *input.Rank
+	}
+
+	if input.MinTotalSpend != nil {
+		tier.MinTotalSpend = *input.MinTotalSpend
+	}
+
+	if input.Description != nil {
+		tier.Description = input.Description
+	}
+
+	if err := uc.tierRepo.Update(ctx, tier); err != nil {
+		return nil, err
+	}
+	return mapper.MapLoyaltyTier(tier), nil
+}
+
 func (uc *BrandLoyaltyUseCase) ProcessExpiredLoyaltyPointLots(ctx context.Context, now time.Time, batchSize int) (int, error) {
 	accountIDs, err := uc.lotRepo.ListAccountsWithExpiredLots(ctx, now, batchSize)
 	if err != nil {

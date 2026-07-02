@@ -141,3 +141,15 @@ func ErrClaimRateLimitUnavailable() *apperror.Error {
 func ErrProductCodeExists() *apperror.Error {
 	return apperror.NewConflict("Mã sản phẩm đã tồn tại trong thương hiệu này.")
 }
+
+func ErrTierNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy hạng thành viên này.")
+}
+
+func ErrTierNameExists(name string) *apperror.Error {
+	return apperror.NewConflict(fmt.Sprintf("Hạng thành viên \"%s\" đã tồn tại trong thương hiệu này.", name))
+}
+
+func ErrTierRankExists(rank int) *apperror.Error {
+	return apperror.NewConflict(fmt.Sprintf("Hạng thành viên thứ %d đã tồn tại trong thương hiệu này.", rank))
+}

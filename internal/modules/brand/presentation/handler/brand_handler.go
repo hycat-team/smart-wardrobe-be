@@ -45,6 +45,8 @@ const (
 	msgBrandLoyaltyGetProgramSuccess           = "Lấy chương trình loyalty thành công"
 	msgBrandLoyaltyUpdateProgramSuccess        = "Cập nhật chương trình loyalty thành công"
 	msgBrandLoyaltyGetTiersSuccess             = "Lấy danh sách hạng loyalty thành công"
+	msgBrandLoyaltyCreateTierSuccess           = "Tạo hạng thành viên thành công"
+	msgBrandLoyaltyUpdateTierSuccess           = "Cập nhật hạng thành viên thành công"
 	msgBrandLoyaltyCreateBenefitSuccess        = "Tạo quyền lợi brand thành công"
 	msgBrandLoyaltyListBenefitsSuccess         = "Lấy danh sách quyền lợi brand thành công"
 	msgBrandLoyaltyUpdateBenefitStatusSuccess  = "Cập nhật trạng thái quyền lợi thành công"

@@ -248,6 +248,12 @@ func (m *mockTierRepo) Delete(ctx context.Context, id uuid.UUID) error          
 func (m *mockTierRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.LoyaltyTier, error) {
 	return nil, nil
 }
+func (m *mockTierRepo) GetByBrandAndName(ctx context.Context, brandID uuid.UUID, name string) (*entities.LoyaltyTier, error) {
+	return nil, nil
+}
+func (m *mockTierRepo) GetByBrandAndRank(ctx context.Context, brandID uuid.UUID, rank int) (*entities.LoyaltyTier, error) {
+	return nil, nil
+}
 func (m *mockTierRepo) GetHighestEligibleBySpend(ctx context.Context, brandID uuid.UUID, totalSpend float64) (*entities.LoyaltyTier, error) {
 	return nil, nil
 }

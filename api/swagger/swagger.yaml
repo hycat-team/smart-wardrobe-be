@@ -472,6 +472,24 @@ definitions:
       expiresAt:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.CreateLoyaltyTierReq:
+    properties:
+      description:
+        type: string
+      minTotalSpend:
+        minimum: 0
+        type: number
+      name:
+        maxLength: 255
+        type: string
+      rank:
+        minimum: 1
+        type: integer
+    required:
+    - minTotalSpend
+    - name
+    - rank
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq:
     properties:
       customerName:
@@ -812,6 +830,20 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
     required:
     - status
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.UpdateLoyaltyTierReq:
+    properties:
+      description:
+        type: string
+      minTotalSpend:
+        minimum: 0
+        type: number
+      name:
+        maxLength: 255
+        type: string
+      rank:
+        minimum: 1
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UploadSignatureResult:
     properties:
@@ -3975,6 +4007,72 @@ paths:
                   type: array
               type: object
       summary: Lấy danh sách hạng loyalty của brand
+      tags:
+      - Brand Loyalty
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin hạng thành viên
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.CreateLoyaltyTierReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierRes'
+              type: object
+      summary: Tạo hạng thành viên cho brand (Owner)
+      tags:
+      - Brand Loyalty
+  /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hạng thành viên
+        in: path
+        name: tierId
+        required: true
+        type: string
+      - description: Thông tin cập nhật hạng thành viên
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateLoyaltyTierReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierRes'
+              type: object
+      summary: Cập nhật hạng thành viên (Owner)
       tags:
       - Brand Loyalty
   /api/v1/brand-portal/brands/{brandId}/members:

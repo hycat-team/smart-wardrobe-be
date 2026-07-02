@@ -56,6 +56,20 @@ type UpsertLoyaltyProgramReq struct {
 	IsActive        *bool                                   `json:"isActive" binding:"omitempty" label:"trạng thái hoạt động"`
 }
 
+type UpdateLoyaltyTierReq struct {
+	Name          *string  `json:"name" binding:"omitempty,max=255" label:"tên hạng thành viên"`
+	Rank          *int     `json:"rank" binding:"omitempty,min=1" label:"thứ tự hạng"`
+	MinTotalSpend *float64 `json:"minTotalSpend" binding:"omitempty,min=0" label:"chi tiêu tích lũy tối thiểu"`
+	Description   *string  `json:"description" binding:"omitempty" label:"mô tả"`
+}
+
+type CreateLoyaltyTierReq struct {
+	Name          string  `json:"name" binding:"required,max=255" label:"tên hạng thành viên"`
+	Rank          int     `json:"rank" binding:"required,min=1" label:"thứ tự hạng"`
+	MinTotalSpend float64 `json:"minTotalSpend" binding:"required,min=0" label:"chi tiêu tích lũy tối thiểu"`
+	Description   *string `json:"description" binding:"omitempty" label:"mô tả"`
+}
+
 type LoyaltyTierRes struct {
 	ID            uuid.UUID `json:"id"`
 	BrandID       uuid.UUID `json:"brandId"`
