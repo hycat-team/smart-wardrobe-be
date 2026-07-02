@@ -55,6 +55,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
 	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
@@ -154,7 +155,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandBenefitUseCase := usecase2.NewBrandBenefitUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iLoyaltyTierRepository, iUnitOfWork)
 	iBrandItemRepository := persistence5.NewBrandItemRepository(gormDB)
 	iDigitalSampleResponseRepository := persistence5.NewDigitalSampleResponseRepository(gormDB)
-	iBrandItemUseCase := usecase2.NewBrandItemUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iUserRepository, iFashionContract, iMediaService, iBrandBenefitUseCase)
+	iBrandItemUseCase := usecase2.NewBrandItemUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iUserRepository, iFashionContract, rabbitMQClient, iMediaService, iBrandBenefitUseCase)
 	iBrandContract := contract2.NewBrandContract(iBrandBenefitUseCase, iBrandItemUseCase)
 	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iBrandContract, iMediaService)
 	outfitHandler := handler2.NewOutfitHandler(iOutfitUseCase)
@@ -203,8 +204,11 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	searchSyncWorker := worker3.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
+	iWardrobeContract := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository, iSubscriptionUseCase)
+	iFashionInitUseCase := worker4.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iWardrobeContract, iBrandContract)
+	fashionInitWorker := worker5.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
 	visionCategoryCache := worker4.NewVisionCategoryCache(cfg, iCategoryRepository, l)
-	iFashionWorkerUseCase := worker4.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionItemRepository, iBrandItemRepository)
+	iFashionWorkerUseCase := worker4.NewFashionWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionItemRepository, iBrandItemRepository)
 	iFailedItemsCleanupWorker := worker5.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
 	iProcessingRecoveryWorker := worker5.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker5.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
@@ -215,6 +219,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
 		LoyaltyPointExpiryWorker:    iLoyaltyPointExpiryWorker,
 		ESAsyncWorker:               searchSyncWorker,
+		FashionInitWorker:           fashionInitWorker,
 		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
 		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
 		FashionAnalyzeWorker:        fashionAnalyzeWorker,

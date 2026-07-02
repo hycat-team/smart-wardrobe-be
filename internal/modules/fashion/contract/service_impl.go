@@ -22,35 +22,6 @@ func NewFashionContract(fashionItemRepo repositories.IFashionItemRepository, eve
 	}
 }
 
-func (c *FashionContract) CreateFashionItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, itemType string, categoryID *uuid.UUID, imageUrl string, imagePublicID string) (uuid.UUID, error) {
-	item := &entities.FashionItem{
-		CategoryID:        categoryID,
-		ImageUrl:          imageUrl,
-		ImagePublicID:     imagePublicID,
-		ProcessingVersion: 1,
-	}
-	err := c.fashionItemRepo.Create(ctx, item)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	// Publish async analysis event to RabbitMQ
-	job := FashionAnalyzeJobDTO{
-		FashionItemID:     item.ID,
-		ItemID:            itemID,
-		ItemType:          itemType,
-		UserID:            userID,
-		ImageUrl:          imageUrl,
-		ImagePublicID:     imagePublicID,
-		CategoryID:        categoryID,
-		ProcessingVersion: 1,
-		RetryCount:        0,
-	}
-	_ = c.eventPublisher.Publish(ctx, "fashion.event.analyze_item", job)
-
-	return item.ID, nil
-}
-
 func mapToFashionItemRes(fi *entities.FashionItem) *FashionItemRes {
 	if fi == nil {
 		return nil

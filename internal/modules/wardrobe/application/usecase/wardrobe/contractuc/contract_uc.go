@@ -42,8 +42,8 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 	}
 
 	fashionItemID := sourceItem.FashionItemID
-	if fashionItemID == uuid.Nil {
-		fashionItemID = sourceItem.ID
+	if fashionItemID == nil {
+		fashionItemID = &sourceItem.ID
 	}
 	cloned := &entities.WardrobeItem{
 		UserID:        targetUserID,
@@ -118,6 +118,18 @@ func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userI
 	}
 
 	return nil
+}
+
+func (uc *WardrobeContractUseCase) SetFashionItemID(ctx context.Context, itemID uuid.UUID, fashionItemID uuid.UUID) error {
+	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
+	if err != nil {
+		return err
+	}
+	if item == nil {
+		return nil
+	}
+	item.FashionItemID = &fashionItemID
+	return uc.wardrobeRepo.Update(ctx, item)
 }
 
 func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {

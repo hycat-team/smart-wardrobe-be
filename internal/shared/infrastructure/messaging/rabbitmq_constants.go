@@ -5,10 +5,12 @@ const (
 	ExchangeType = "topic"
 
 	// Queues
-	QueueElasticsearchSync  = "elasticsearch_sync_queue"
-	QueueFashionAnalyzeItem = "fashion_analyze_item_queue"
+	QueueElasticsearchSync = "elasticsearch_sync_queue"
+	QueueFashionInit       = "fashion_init_queue"
+	QueueFashionAnalyze    = "fashion_analyze_queue"
 
 	// Routing Keys
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
-	RoutingKeyFashionAnalyzeItem        = "fashion.event.analyze_item"
+	RoutingKeyFashionInit               = "fashion.event.init"
+	RoutingKeyFashionAnalyze            = "fashion.event.analyze"
 )

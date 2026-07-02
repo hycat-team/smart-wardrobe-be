@@ -4,6 +4,8 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/utils/stringutils"
+
+	"github.com/google/uuid"
 )
 
 func MapToSearchDocumentDTO(item *entities.WardrobeItem) *dto.SearchDocumentDTO {
@@ -28,27 +30,33 @@ func MapToSearchDocumentDTO(item *entities.WardrobeItem) *dto.SearchDocumentDTO 
 		categoryDTO.Slug = fashion.Category.Slug
 	}
 
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
 	return &dto.SearchDocumentDTO{
-		ID:              item.ID,
-		UserID:          item.UserID,
-		FashionItemID:   item.FashionItemID,
-		ItemType:        item.ItemType,
-		ImageUrl:        fashion.ImageUrl,
-		ImagePublicID:   fashion.ImagePublicID,
-		Color:           stringutils.GetString(fashion.Color),
-		Style:           stringutils.GetString(fashion.Style),
-		Material:        stringutils.GetString(fashion.Material),
-		Pattern:         stringutils.GetString(fashion.Pattern),
-		Fit:             stringutils.GetString(fashion.Fit),
-		Seasonality:     stringutils.GetString(fashion.Seasonality),
-		Description:     stringutils.GetString(fashion.Description),
-		Status:          item.Status,
-		CreatedAt:       item.CreatedAt,
-		Category:        categoryDTO,
-		Price:           item.Price,
-		ColorHex:        fashion.ColorHex,
-		ColorHue:        fashion.ColorHue,
-		ColorSaturation: fashion.ColorSaturation,
-		ColorLightness:  fashion.ColorLightness,
+		ID:               item.ID,
+		UserID:           item.UserID,
+		FashionItemID:    fashionItemID,
+		ItemType:         item.ItemType,
+		ImageUrl:         fashion.ImageUrl,
+		ImagePublicID:    fashion.ImagePublicID,
+		Color:            stringutils.GetString(fashion.Color),
+		Style:            stringutils.GetString(fashion.Style),
+		Material:         stringutils.GetString(fashion.Material),
+		Pattern:          stringutils.GetString(fashion.Pattern),
+		Fit:              stringutils.GetString(fashion.Fit),
+		Seasonality:      stringutils.GetString(fashion.Seasonality),
+		Description:      stringutils.GetString(fashion.Description),
+		Status:           item.Status,
+		CreatedAt:        item.CreatedAt,
+		FashionCreatedAt: fashion.CreatedAt,
+		FashionUpdatedAt: fashion.UpdatedAt,
+		Category:         categoryDTO,
+		Price:            item.Price,
+		ColorHex:         fashion.ColorHex,
+		ColorHue:         fashion.ColorHue,
+		ColorSaturation:  fashion.ColorSaturation,
+		ColorLightness:   fashion.ColorLightness,
 	}
 }

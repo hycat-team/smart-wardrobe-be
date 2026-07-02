@@ -3,6 +3,8 @@ package mapper
 import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 func MapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
@@ -39,10 +41,14 @@ func MapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
 	if item == nil {
 		return nil
 	}
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
 	return &dto.BrandItemRes{
 		ID:            item.ID,
 		BrandID:       item.BrandID,
-		FashionItemID: item.FashionItemID,
+		FashionItemID: fashionItemID,
 		ProductCode:   item.ProductCode,
 		Name:          item.Name,
 		Description:   item.Description,
@@ -84,11 +90,15 @@ func MapToBrandItemStylingDTO(item *entities.BrandItem) *dto.BrandItemStylingDTO
 	if item.Brand != nil {
 		brandName = item.Brand.Name
 	}
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
 	return &dto.BrandItemStylingDTO{
 		ID:            item.ID,
 		BrandID:       item.BrandID,
 		BrandName:     brandName,
-		FashionItemID: item.FashionItemID,
+		FashionItemID: fashionItemID,
 		ProductCode:   item.ProductCode,
 		Name:          item.Name,
 		ItemType:      item.ItemType,

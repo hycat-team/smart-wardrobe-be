@@ -26,6 +26,7 @@ type AppWorkers struct {
 	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
 	LoyaltyPointExpiryWorker    brandWorker.ILoyaltyPointExpiryWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
+	FashionInitWorker           *fashionWorker.FashionInitWorker
 	FailedItemsCleanupWorker    fashionWorker.IFailedItemsCleanupWorker
 	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker
 	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker

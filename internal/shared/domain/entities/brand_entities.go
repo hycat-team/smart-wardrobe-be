@@ -133,7 +133,7 @@ type BrandItem struct {
 	AuditableEntity
 	BrandID       uuid.UUID                       `gorm:"type:uuid;not null;uniqueIndex:uq_brand_items_brand_product_code"`
 	Brand         *Brand                          `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
-	FashionItemID uuid.UUID                       `gorm:"type:uuid;not null;uniqueIndex:uq_brand_items_fashion_item"`
+	FashionItemID *uuid.UUID                      `gorm:"type:uuid;uniqueIndex:uq_brand_items_fashion_item"`
 	FashionItem   *FashionItem                    `gorm:"foreignKey:FashionItemID;constraint:OnDelete:CASCADE"`
 	ProductCode   *string                         `gorm:"type:varchar(100);uniqueIndex:uq_brand_items_brand_product_code"`
 	Name          string                          `gorm:"type:varchar(255);not null"`

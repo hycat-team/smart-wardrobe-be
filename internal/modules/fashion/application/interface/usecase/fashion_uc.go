@@ -25,6 +25,10 @@ type IWardrobeChatUseCase interface {
 	ProcessChatMessageStream(ctx context.Context, userID uuid.UUID, contextID uuid.UUID, content string) (<-chan string, func(success bool) error, error)
 }
 
+type IFashionInitUseCase interface {
+	ProcessInitJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error
+}
+
 type IFashionWorkerUseCase interface {
 	ProcessBackgroundBatchUploadJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error
 	CleanupFailedItems(ctx context.Context, run *workerlog.Run) error

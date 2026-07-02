@@ -37,7 +37,7 @@ func NewFashionAnalyzeWorker(
 
 func (w *FashionAnalyzeWorker) startConsume() {
 	ctx := context.Background()
-	deliveries, err := w.messageClient.Consume(shared_msg.QueueFashionAnalyzeItem)
+	deliveries, err := w.messageClient.Consume(shared_msg.QueueFashionAnalyze)
 	if err != nil {
 		w.logger.Error("Failed to initiate fashion analyze job consumption process", zap.Error(err))
 		return

@@ -37,3 +37,11 @@ func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, us
 func (c *BrandContract) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *entities.FashionItem, error) {
 	return c.itemUC.CheckBrandItemEligibility(ctx, userID, fashionItemID)
 }
+
+func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error {
+	return c.itemUC.SetFashionItemID(ctx, brandItemID, fashionItemID)
+}
+
+func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status string) error {
+	return c.itemUC.UpdateBrandItemStatusDirect(ctx, brandItemID, status)
+}

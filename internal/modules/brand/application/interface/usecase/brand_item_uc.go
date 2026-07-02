@@ -23,4 +23,6 @@ type IBrandItemUseCase interface {
 	ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error)
 	ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error)
 	SubmitSampleFeedback(ctx context.Context, userID uuid.UUID, brandItemID uuid.UUID, input dto.SubmitSampleFeedbackReq) (*dto.DigitalSampleResponseRes, error)
+	SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error
+	UpdateBrandItemStatusDirect(ctx context.Context, brandItemID uuid.UUID, status string) error
 }

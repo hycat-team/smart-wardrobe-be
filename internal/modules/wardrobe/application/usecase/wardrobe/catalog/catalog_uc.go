@@ -107,8 +107,8 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 	newItems := make([]*entities.WardrobeItem, len(templates))
 	for i, original := range templates {
 		fashionItemID := original.FashionItemID
-		if fashionItemID == uuid.Nil {
-			fashionItemID = original.ID
+		if fashionItemID == nil {
+			fashionItemID = &original.ID
 		}
 		newItems[i] = &entities.WardrobeItem{
 			UserID:        userID,
@@ -184,10 +184,14 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		return nil, err
 	}
 
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
 	payload := dto.WardrobeEventPayload{
 		ItemID:        item.ID,
 		UserID:        item.UserID,
-		FashionItemID: item.FashionItemID,
+		FashionItemID: fashionItemID,
 		ItemType:      int(item.ItemType),
 		Action:        eventconstants.ActionUpdated,
 	}
@@ -211,10 +215,14 @@ func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, i
 		return err
 	}
 
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
 	payload := dto.WardrobeEventPayload{
 		ItemID:        id,
 		UserID:        item.UserID,
-		FashionItemID: item.FashionItemID,
+		FashionItemID: fashionItemID,
 		ItemType:      int(item.ItemType),
 		Action:        eventconstants.ActionDeleted,
 	}

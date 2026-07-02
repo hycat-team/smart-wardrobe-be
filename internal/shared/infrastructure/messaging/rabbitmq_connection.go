@@ -57,8 +57,15 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return err
 	}
 
-	// 3. Declare and Bind Fashion Analyze Item Queue
-	if err := r.DeclareAndBindQueue(QueueFashionAnalyzeItem, RoutingKeyFashionAnalyzeItem); err != nil {
+	// 3. Declare and Bind Fashion Init Queue
+	if err := r.DeclareAndBindQueue(QueueFashionInit, RoutingKeyFashionInit); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 4. Declare and Bind Fashion Analyze Queue
+	if err := r.DeclareAndBindQueue(QueueFashionAnalyze, RoutingKeyFashionAnalyze); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
 		return err

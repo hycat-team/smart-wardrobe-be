@@ -20,12 +20,14 @@ var ProviderSet = wire.NewSet(
 	chat.NewWardrobeChatUseCase,
 	recommendation.NewOutfitRecommendationUseCase,
 	worker.NewVisionCategoryCache,
-	worker.NewWardrobeWorkerUseCase,
+	worker.NewFashionWorkerUseCase,
+	worker.NewFashionInitUseCase,
 
 	contract.NewFashionContract,
 
 	handler.NewWardrobeAIHandler,
 	presentation_worker.NewFailedItemsCleanupWorker,
 	presentation_worker.NewProcessingRecoveryWorker,
+	presentation_worker.NewFashionInitWorker,
 	presentation_worker.NewFashionAnalyzeWorker,
 )

@@ -125,7 +125,9 @@ func (r *OutfitRepository) attachUserWardrobeItems(ctx context.Context, outfit *
 
 	wardrobeByFashionID := make(map[uuid.UUID]*entities.WardrobeItem, len(wardrobeItems))
 	for _, wardrobeItem := range wardrobeItems {
-		wardrobeByFashionID[wardrobeItem.FashionItemID] = wardrobeItem
+		if wardrobeItem.FashionItemID != nil {
+			wardrobeByFashionID[*wardrobeItem.FashionItemID] = wardrobeItem
+		}
 	}
 	for _, item := range outfit.Items {
 		if item.ItemContext == outfititemcontext.UserWardrobe {
@@ -162,7 +164,9 @@ func (r *OutfitRepository) attachBrandItems(ctx context.Context, outfit *entitie
 
 	brandByFashionID := make(map[uuid.UUID]*entities.BrandItem, len(brandItems))
 	for _, brandItem := range brandItems {
-		brandByFashionID[brandItem.FashionItemID] = brandItem
+		if brandItem.FashionItemID != nil {
+			brandByFashionID[*brandItem.FashionItemID] = brandItem
+		}
 	}
 	for _, item := range outfit.Items {
 		if item.ItemContext == outfititemcontext.BrandItem {

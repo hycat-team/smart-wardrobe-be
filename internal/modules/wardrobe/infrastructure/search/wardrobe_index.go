@@ -26,21 +26,23 @@ func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) e
 
 func buildItemDocument(item *dto.SearchDocumentDTO) map[string]any {
 	doc := map[string]any{
-		"id":              item.ID.String(),
-		"user_id":         item.UserID.String(),
-		"fashion_item_id": item.FashionItemID.String(),
-		"item_type":       int(item.ItemType),
-		"image_url":       item.ImageUrl,
-		"image_public_id": item.ImagePublicID,
-		"color":           item.Color,
-		"style":           item.Style,
-		"material":        item.Material,
-		"pattern":         item.Pattern,
-		"fit":             item.Fit,
-		"seasonality":     item.Seasonality,
-		"description":     item.Description,
-		"status":          item.Status,
-		"created_at":      item.CreatedAt,
+		"id":                 item.ID.String(),
+		"user_id":            item.UserID.String(),
+		"fashion_item_id":    item.FashionItemID.String(),
+		"item_type":          int(item.ItemType),
+		"image_url":          item.ImageUrl,
+		"image_public_id":    item.ImagePublicID,
+		"color":              item.Color,
+		"style":              item.Style,
+		"material":           item.Material,
+		"pattern":            item.Pattern,
+		"fit":                item.Fit,
+		"seasonality":        item.Seasonality,
+		"description":        item.Description,
+		"status":             item.Status,
+		"created_at":         item.CreatedAt,
+		"fashion_created_at": item.FashionCreatedAt,
+		"fashion_updated_at": item.FashionUpdatedAt,
 	}
 
 	doc["category"] = map[string]any{

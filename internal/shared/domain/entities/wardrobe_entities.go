@@ -42,7 +42,7 @@ type WardrobeItem struct {
 	SoftDeleteEntity
 	UserID        uuid.UUID                         `gorm:"type:uuid;not null"`
 	User          *User                             `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	FashionItemID uuid.UUID                         `gorm:"column:fashion_item_id;type:uuid;not null"`
+	FashionItemID *uuid.UUID                        `gorm:"column:fashion_item_id;type:uuid"`
 	FashionItem   *FashionItem                      `gorm:"foreignKey:FashionItemID;constraint:OnDelete:RESTRICT"`
 	Price         *float64                          `gorm:"column:purchase_price;type:decimal(12,2)"`
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"` // 'in_wardrobe', 'selling', 'sold'

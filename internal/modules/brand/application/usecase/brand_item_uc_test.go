@@ -76,7 +76,7 @@ func (m *mockBrandItemRepo) GetByProductCode(ctx context.Context, brandID uuid.U
 }
 func (m *mockBrandItemRepo) GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error) {
 	for _, item := range m.items {
-		if item.FashionItemID == fashionItemID {
+		if item.FashionItemID != nil && *item.FashionItemID == fashionItemID {
 			return item, nil
 		}
 	}

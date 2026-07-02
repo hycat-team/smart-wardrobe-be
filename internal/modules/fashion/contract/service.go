@@ -29,9 +29,9 @@ type FashionItemRes struct {
 }
 
 type FashionAnalyzeJobDTO struct {
-	FashionItemID     uuid.UUID  `json:"fashionItemId"`
-	ItemID            uuid.UUID  `json:"itemId"`   // WardrobeItem ID or BrandItem ID
-	ItemType          string     `json:"itemType"` // "wardrobe" or "brand"
+	FashionItemID     *uuid.UUID `json:"fashionItemId,omitempty"`
+	ItemID            uuid.UUID  `json:"itemId"`
+	ItemType          string     `json:"itemType"`
 	UserID            uuid.UUID  `json:"userId"`
 	ImageUrl          string     `json:"imageUrl"`
 	ImagePublicID     string     `json:"imagePublicId"`
@@ -42,7 +42,6 @@ type FashionAnalyzeJobDTO struct {
 }
 
 type IFashionContract interface {
-	CreateFashionItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, itemType string, categoryID *uuid.UUID, imageUrl string, imagePublicID string) (uuid.UUID, error)
 	GetFashionItem(ctx context.Context, id uuid.UUID) (*FashionItemRes, error)
 	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*FashionItemRes, error)
 }

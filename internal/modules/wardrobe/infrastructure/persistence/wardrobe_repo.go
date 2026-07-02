@@ -151,11 +151,11 @@ func (r *WardrobeItemRepository) Update(ctx context.Context, item *entities.Ward
 	if item == nil {
 		return nil
 	}
-	if item.FashionItemID != uuid.Nil {
+	if item.FashionItemID != nil {
 		if item.FashionItem != nil {
-			item.FashionItem.ID = item.FashionItemID
+			item.FashionItem.ID = *item.FashionItemID
 			if err := r.GetDB(ctx).Model(&entities.FashionItem{}).
-				Where("id = ?", item.FashionItemID).
+				Where("id = ?", *item.FashionItemID).
 				Updates(item.FashionItem).Error; err != nil {
 				return err
 			}
@@ -306,11 +306,11 @@ func (r *WardrobeItemRepository) ClaimManualAnalysisRetry(ctx context.Context, u
 		if err := tx.Where("id = ?", itemID).First(&item).Error; err != nil {
 			return err
 		}
-		if item.FashionItemID == uuid.Nil {
-			item.FashionItemID = item.ID
+		if item.FashionItemID == nil {
+			item.FashionItemID = &item.ID
 		}
 		if err := tx.Model(&entities.FashionItem{}).
-			Where("id = ?", item.FashionItemID).
+			Where("id = ?", *item.FashionItemID).
 			Updates(map[string]any{
 				"review_reason":              nil,
 				"processing_error_reason":    nil,
@@ -347,11 +347,11 @@ func (r *WardrobeItemRepository) ClaimStaleProcessingRetry(ctx context.Context, 
 			}
 			return err
 		}
-		if item.FashionItemID == uuid.Nil {
-			item.FashionItemID = item.ID
+		if item.FashionItemID == nil {
+			item.FashionItemID = &item.ID
 		}
 		result := tx.Model(&entities.FashionItem{}).
-			Where("id = ? AND processing_version = ?", item.FashionItemID, processingVersion).
+			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
 			Updates(map[string]any{
 				"processing_retry_count":     gorm.Expr("processing_retry_count + 1"),
 				"last_processing_attempt_at": now,
@@ -431,8 +431,8 @@ func (r *WardrobeItemRepository) updateProcessingState(ctx context.Context, item
 			}
 			return err
 		}
-		if item.FashionItemID == uuid.Nil {
-			item.FashionItemID = item.ID
+		if item.FashionItemID == nil {
+			item.FashionItemID = &item.ID
 		}
 
 		wardrobeUpdates := map[string]any{}
@@ -459,7 +459,7 @@ func (r *WardrobeItemRepository) updateProcessingState(ctx context.Context, item
 			fashionUpdates[key] = value
 		}
 		result := tx.Model(&entities.FashionItem{}).
-			Where("id = ? AND processing_version = ?", item.FashionItemID, processingVersion).
+			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
 			Updates(fashionUpdates)
 		if result.Error != nil {
 			return result.Error
@@ -514,16 +514,16 @@ func (r *WardrobeItemRepository) ensureFashionItemBeforeCreateWithDB(db *gorm.DB
 	if item.ID == uuid.Nil {
 		item.ID = uuid.New()
 	}
-	if item.FashionItemID == uuid.Nil {
-		item.FashionItemID = item.ID
+	if item.FashionItemID == nil {
+		item.FashionItemID = &item.ID
 	}
-	if item.FashionItemID != item.ID && item.FashionItem == nil {
+	if *item.FashionItemID != item.ID && item.FashionItem == nil {
 		return nil
 	}
 	if item.FashionItem == nil {
 		item.FashionItem = &entities.FashionItem{}
 	}
-	item.FashionItem.ID = item.FashionItemID
+	item.FashionItem.ID = *item.FashionItemID
 	if item.FashionItem.CreatedAt.IsZero() {
 		item.FashionItem.CreatedAt = item.CreatedAt
 	}

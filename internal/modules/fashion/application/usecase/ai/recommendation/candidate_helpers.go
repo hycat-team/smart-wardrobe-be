@@ -133,7 +133,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 							ID: brandItem.FashionItemID,
 						},
 					},
-					FashionItemID: brandItem.FashionItemID,
+					FashionItemID: &brandItem.FashionItemID,
 					FashionItem:   fashionItem,
 				}
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{

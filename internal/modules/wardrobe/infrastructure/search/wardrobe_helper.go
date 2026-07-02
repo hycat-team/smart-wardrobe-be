@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,20 +20,22 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"category"`
-		ImageUrl        string   `json:"image_url"`
-		ImagePublicID   string   `json:"image_public_id"`
-		Color           string   `json:"color"`
-		ColorHex        *string  `json:"color_hex,omitempty"`
-		ColorHue        *float64 `json:"color_hue,omitempty"`
-		ColorSaturation *float64 `json:"color_saturation,omitempty"`
-		ColorLightness  *float64 `json:"color_lightness,omitempty"`
-		Style           string   `json:"style"`
-		Material        string   `json:"material"`
-		Pattern         string   `json:"pattern"`
-		Fit             string   `json:"fit"`
-		Seasonality     string   `json:"seasonality"`
-		Description     string   `json:"description"`
-		Price           *float64 `json:"price,omitempty"`
+		ImageUrl         string    `json:"image_url"`
+		ImagePublicID    string    `json:"image_public_id"`
+		Color            string    `json:"color"`
+		ColorHex         *string   `json:"color_hex,omitempty"`
+		ColorHue         *float64  `json:"color_hue,omitempty"`
+		ColorSaturation  *float64  `json:"color_saturation,omitempty"`
+		ColorLightness   *float64  `json:"color_lightness,omitempty"`
+		Style            string    `json:"style"`
+		Material         string    `json:"material"`
+		Pattern          string    `json:"pattern"`
+		Fit              string    `json:"fit"`
+		Seasonality      string    `json:"seasonality"`
+		Description      string    `json:"description"`
+		Price            *float64  `json:"price,omitempty"`
+		FashionCreatedAt time.Time `json:"fashion_created_at"`
+		FashionUpdatedAt time.Time `json:"fashion_updated_at"`
 	}
 
 	var esResult struct {
@@ -79,6 +82,8 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			Seasonality:     strPtr(hit.Source.Seasonality),
 			Description:     strPtr(hit.Source.Description),
 			CategoryName:    &hit.Source.Category.Name,
+			CreatedAt:       hit.Source.FashionCreatedAt,
+			UpdatedAt:       hit.Source.FashionUpdatedAt,
 		}
 
 		results[idx] = &dto.SearchWardrobeItemRes{
