@@ -5,23 +5,53 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
+func MapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
+	if fi == nil {
+		return nil
+	}
+	var categoryName *string
+	if fi.Category != nil {
+		categoryName = &fi.Category.Name
+	}
+	return &dto.FashionItemRes{
+		ID:              fi.ID,
+		CategoryID:      fi.CategoryID,
+		CategoryName:    categoryName,
+		ImageUrl:        fi.ImageUrl,
+		ImagePublicID:   fi.ImagePublicID,
+		Color:           fi.Color,
+		ColorHex:        fi.ColorHex,
+		ColorHue:        fi.ColorHue,
+		ColorSaturation: fi.ColorSaturation,
+		ColorLightness:  fi.ColorLightness,
+		Style:           fi.Style,
+		Material:        fi.Material,
+		Pattern:         fi.Pattern,
+		Fit:             fi.Fit,
+		Seasonality:     fi.Seasonality,
+		Description:     fi.Description,
+		CreatedAt:       fi.CreatedAt,
+		UpdatedAt:       fi.UpdatedAt,
+	}
+}
+
 func MapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
 	if item == nil {
 		return nil
 	}
 	return &dto.BrandItemRes{
-		ID:            item.ID,
-		BrandID:       item.BrandID,
+		ID:          item.ID,
+		BrandID:     item.BrandID,
 		FashionItemID: item.FashionItemID,
-		ProductCode:   item.ProductCode,
-		Name:          item.Name,
-		Description:   item.Description,
-		Price:         item.Price,
-		ItemType:      item.ItemType,
-		Status:        item.Status,
-		FashionItem:   item.FashionItem,
-		CreatedAt:     item.CreatedAt,
-		UpdatedAt:     item.UpdatedAt,
+		ProductCode: item.ProductCode,
+		Name:        item.Name,
+		Description: item.Description,
+		Price:       item.Price,
+		ItemType:    item.ItemType,
+		Status:      item.Status,
+		FashionItem: MapToFashionItemRes(item.FashionItem),
+		CreatedAt:   item.CreatedAt,
+		UpdatedAt:   item.UpdatedAt,
 	}
 }
 
@@ -63,6 +93,6 @@ func MapToBrandItemStylingDTO(item *entities.BrandItem) *dto.BrandItemStylingDTO
 		Name:          item.Name,
 		ItemType:      item.ItemType,
 		Status:        item.Status,
-		FashionItem:   item.FashionItem,
+		FashionItem:   MapToFashionItemRes(item.FashionItem),
 	}
 }

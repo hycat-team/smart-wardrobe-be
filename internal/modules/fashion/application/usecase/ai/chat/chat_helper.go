@@ -97,8 +97,8 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 				continue
 			}
 
-			hasCategory := fashion.Category != nil &&
-				strings.TrimSpace(fashion.Category.Name) != ""
+			hasCategory := fashion.CategoryName != nil &&
+				strings.TrimSpace(*fashion.CategoryName) != ""
 			hasColor := fashion.Color != nil &&
 				strings.TrimSpace(*fashion.Color) != ""
 			hasStyle := fashion.Style != nil &&
@@ -115,7 +115,7 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 				fmt.Fprintf(&builder, "Brand: %s; ", brandName)
 			}
 			if hasCategory {
-				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
+				fmt.Fprintf(&builder, "Category: %s; ", *fashion.CategoryName)
 			}
 			if hasColor {
 				fmt.Fprintf(&builder, "Color: %s; ", *fashion.Color)

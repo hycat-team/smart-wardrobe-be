@@ -117,13 +117,14 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	// Fetch Brand items if requested
 	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
-		brandItems, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
+		brandItemDTOS, fashionItems, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
 		if err == nil {
-			for _, brandItem := range brandItems {
+			for i, brandItem := range brandItemDTOS {
 				if brandCandidatesCount >= maxBrandCandidates {
 					break
 				}
-				if brandItem.FashionItem == nil {
+				fashionItem := fashionItems[i]
+				if fashionItem == nil {
 					continue
 				}
 				mockWardrobeItem := &entities.WardrobeItem{
@@ -133,7 +134,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 						},
 					},
 					FashionItemID: brandItem.FashionItemID,
-					FashionItem:   brandItem.FashionItem,
+					FashionItem:   fashionItem,
 				}
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,

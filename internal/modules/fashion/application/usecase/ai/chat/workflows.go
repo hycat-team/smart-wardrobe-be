@@ -256,7 +256,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 
 	var eligibleBrandItems []*brand_dto.BrandItemStylingDTO
 	if uc.brandContract != nil {
-		if items, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{}); err == nil {
+		if items, _, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{}); err == nil {
 			eligibleBrandItems = items
 		}
 	}

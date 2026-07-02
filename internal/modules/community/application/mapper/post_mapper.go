@@ -4,6 +4,7 @@ import (
 	community_dto "smart-wardrobe-be/internal/modules/community/application/dto"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
 
@@ -88,65 +89,7 @@ func MapPost(post *entities.Post, items []*entities.PostItem, media []*entities.
 }
 
 func MapWardrobeItem(item *entities.WardrobeItem) *wardrobe_dto.WardrobeItemRes {
-	if item == nil {
-		return nil
-	}
-
-	color := ""
-	style := ""
-	material := ""
-	pattern := ""
-	fit := ""
-	seasonality := ""
-	fashion := item.FashionItem
-	if fashion == nil {
-		fashion = &entities.FashionItem{}
-	}
-	if fashion.Color != nil {
-		color = *fashion.Color
-	}
-	if fashion.Style != nil {
-		style = *fashion.Style
-	}
-	if fashion.Material != nil {
-		material = *fashion.Material
-	}
-	if fashion.Pattern != nil {
-		pattern = *fashion.Pattern
-	}
-	if fashion.Fit != nil {
-		fit = *fashion.Fit
-	}
-	if fashion.Seasonality != nil {
-		seasonality = *fashion.Seasonality
-	}
-
-	var category *wardrobe_dto.CategoryRes
-	if fashion.Category != nil {
-		category = &wardrobe_dto.CategoryRes{
-			ID:   fashion.Category.ID,
-			Name: fashion.Category.Name,
-			Slug: fashion.Category.Slug,
-		}
-	}
-
-	return &wardrobe_dto.WardrobeItemRes{
-		ID:            item.ID,
-		UserID:        item.UserID,
-		Category:      category,
-		ImageUrl:      fashion.ImageUrl,
-		ImagePublicID: fashion.ImagePublicID,
-		Color:         color,
-		Style:         style,
-		Material:      material,
-		Pattern:       pattern,
-		Fit:           fit,
-		Seasonality:   seasonality,
-		Price:         item.Price,
-		Status:        item.Status,
-		IsLocked:      false,
-		CreatedAt:     item.CreatedAt,
-	}
+	return wardrobe_mapper.MapToWardrobeItemRes(item)
 }
 
 func MapUserDisplayFields(user *entities.User) (string, string, *string) {

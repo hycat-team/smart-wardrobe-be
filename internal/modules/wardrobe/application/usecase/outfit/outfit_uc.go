@@ -130,7 +130,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 			}
 		} else {
 			// Check brand item eligibility
-			isEligible, brandItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			isEligible, brandItem, fashionItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +140,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 
 			outfitItems[idx] = &entities.OutfitItem{
 				FashionItemID: itemReq.FashionItemID,
-				FashionItem:   brandItem.FashionItem,
+				FashionItem:   fashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
 				BrandItem: &entities.BrandItem{
@@ -245,7 +245,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 			}
 		} else {
 			// Check brand item eligibility
-			isEligible, brandItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			isEligible, brandItem, fashionItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
 			if err != nil {
 				return nil, err
 			}
@@ -256,7 +256,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 			outfitItems[idx] = &entities.OutfitItem{
 				OutfitID:      id,
 				FashionItemID: itemReq.FashionItemID,
-				FashionItem:   brandItem.FashionItem,
+				FashionItem:   fashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
 				BrandItem: &entities.BrandItem{

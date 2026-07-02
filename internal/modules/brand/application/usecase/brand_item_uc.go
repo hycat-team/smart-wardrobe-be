@@ -75,18 +75,18 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, error) {
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*entities.FashionItem, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if user == nil || user.Status != userstatus.Active {
-		return []*dto.BrandItemStylingDTO{}, nil
+		return []*dto.BrandItemStylingDTO{}, []*entities.FashionItem{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	activeBrandIDs := make([]uuid.UUID, 0, len(customers))
@@ -99,14 +99,15 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 
 	brandItems, err := uc.brandItemRepo.GetByBrandIDs(ctx, activeBrandIDs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	brandItemsByBrandID := make(map[uuid.UUID][]*entities.BrandItem, len(activeBrandIDs))
 	for _, item := range brandItems {
 		brandItemsByBrandID[item.BrandID] = append(brandItemsByBrandID[item.BrandID], item)
 	}
 
-	eligibleBrandItems := make([]*dto.BrandItemStylingDTO, 0, len(brandItems))
+	eligibleDTOS := make([]*dto.BrandItemStylingDTO, 0, len(brandItems))
+	eligibleItems := make([]*entities.BrandItem, 0, len(brandItems))
 	sampleAccessByBrandID := make(map[uuid.UUID]bool, len(activeBrandIDs))
 	sampleAccessChecked := make(map[uuid.UUID]struct{}, len(activeBrandIDs))
 	for _, customer := range customers {
@@ -117,7 +118,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		if _, checked := sampleAccessChecked[customer.BrandID]; !checked {
 			hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, customer.BrandID, benefitfeaturecode.SampleMixAccess)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			sampleAccessByBrandID[customer.BrandID] = hasSampleAccess
 			sampleAccessChecked[customer.BrandID] = struct{}{}
@@ -131,58 +132,64 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 				(item.ItemType == branditemtype.Sample && sampleAccessByBrandID[item.BrandID])
 
 			if canUseItem {
-				eligibleBrandItems = append(eligibleBrandItems, mapper.MapToBrandItemStylingDTO(item))
+				eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item))
+				eligibleItems = append(eligibleItems, item)
 			}
 		}
 	}
 
-	return eligibleBrandItems, nil
+	fashionItems := make([]*entities.FashionItem, len(eligibleItems))
+	for i, item := range eligibleItems {
+		fashionItems[i] = item.FashionItem
+	}
+
+	return eligibleDTOS, fashionItems, nil
 }
 
-func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, error) {
+func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *entities.FashionItem, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	if user == nil || user.Status != userstatus.Active {
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	brandItem, err := uc.brandItemRepo.GetByFashionItemID(ctx, fashionItemID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	if brandItem == nil || brandItem.Status != branditemstatus.Active {
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	brand, err := uc.brandRepo.GetByID(ctx, brandItem.BrandID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	if brand == nil || brand.Status != brandstatus.Active {
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandItem.BrandID, userID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	if customer == nil || customer.Status != brandcustomerstatus.Active {
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	if brandItem.ItemType == branditemtype.Sample {
 		hasSampleAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandItem.BrandID, benefitfeaturecode.SampleMixAccess)
 		if err != nil {
-			return false, nil, err
+			return false, nil, nil, err
 		}
 		if !hasSampleAccess {
-			return false, nil, nil
+			return false, nil, nil, nil
 		}
 	}
 
-	return true, mapper.MapToBrandItemRes(brandItem), nil
+	return true, mapper.MapToBrandItemRes(brandItem), brandItem.FashionItem, nil
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {

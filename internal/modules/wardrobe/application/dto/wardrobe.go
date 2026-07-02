@@ -18,6 +18,27 @@ type CreateWardrobeItemReq struct {
 	ImagePublicID string    `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
+type FashionItemRes struct {
+	ID              uuid.UUID  `json:"id"`
+	CategoryID      *uuid.UUID `json:"categoryId,omitempty"`
+	CategoryName    *string    `json:"categoryName,omitempty"`
+	ImageUrl        string     `json:"imageUrl"`
+	ImagePublicID   string     `json:"imagePublicId"`
+	Color           *string    `json:"color,omitempty"`
+	ColorHex        *string    `json:"colorHex,omitempty"`
+	ColorHue        *float64   `json:"colorHue,omitempty"`
+	ColorSaturation *float64   `json:"colorSaturation,omitempty"`
+	ColorLightness  *float64   `json:"colorLightness,omitempty"`
+	Style           *string    `json:"style,omitempty"`
+	Material        *string    `json:"material,omitempty"`
+	Pattern         *string    `json:"pattern,omitempty"`
+	Fit             *string    `json:"fit,omitempty"`
+	Seasonality     *string    `json:"seasonality,omitempty"`
+	Description     *string    `json:"description,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
 type BrandItemBriefRes struct {
 	ID        uuid.UUID `json:"id"`
 	BrandID   uuid.UUID `json:"brandId"`
@@ -28,29 +49,16 @@ type BrandItemBriefRes struct {
 }
 
 type WardrobeItemRes struct {
-	ID                    uuid.UUID                         `json:"id"`
-	UserID                uuid.UUID                         `json:"userId"`
-	Category              *CategoryRes                      `json:"category,omitempty"`
-	ImageUrl              string                            `json:"imageUrl"`
-	ImagePublicID         string                            `json:"imagePublicId"`
-	Color                 string                            `json:"color"`
-	ColorHex              string                            `json:"colorHex"`
-	ColorHue              *float64                          `json:"colorHue,omitempty"`
-	ColorSaturation       *float64                          `json:"colorSaturation,omitempty"`
-	ColorLightness        *float64                          `json:"colorLightness,omitempty"`
-	Style                 string                            `json:"style"`
-	Material              string                            `json:"material"`
-	Pattern               string                            `json:"pattern"`
-	Fit                   string                            `json:"fit"`
-	Seasonality           string                            `json:"seasonality"`
-	Price                 *float64                          `json:"price,omitempty"`
-	Status                wardrobestatus.WardrobeItemStatus `json:"status"`
-	ReviewReason          *string                           `json:"reviewReason,omitempty"`
-	ProcessingErrorReason *string                           `json:"processingErrorReason,omitempty"`
-	IsLocked              bool                              `json:"isLocked"`
-	ItemContext           string                            `json:"itemContext,omitempty"`
-	BrandItem             *BrandItemBriefRes                `json:"brandItem,omitempty"`
-	CreatedAt             time.Time                         `json:"createdAt"`
+	ID          uuid.UUID                         `json:"id"`
+	UserID      uuid.UUID                         `json:"userId"`
+	Category    *CategoryRes                      `json:"category,omitempty"`
+	Price       *float64                          `json:"price,omitempty"`
+	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked    bool                              `json:"isLocked"`
+	ItemContext string                            `json:"itemContext,omitempty"`
+	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	FashionItem *FashionItemRes                   `json:"fashionItem,omitempty"`
+	CreatedAt   time.Time                         `json:"createdAt"`
 }
 
 type CloneWardrobeItemReq struct {
@@ -143,22 +151,11 @@ type WardrobeEventPayload struct {
 }
 
 type SearchWardrobeItemRes struct {
-	ID              uuid.UUID    `json:"id"`
-	Category        *CategoryRes `json:"category,omitempty"`
-	ImageUrl        string       `json:"imageUrl"`
-	ImagePublicID   string       `json:"imagePublicId"`
-	Color           string       `json:"color"`
-	ColorHex        string       `json:"colorHex"`
-	ColorHue        *float64     `json:"colorHue,omitempty"`
-	ColorSaturation *float64     `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64     `json:"colorLightness,omitempty"`
-	Style           string       `json:"style"`
-	Material        string       `json:"material"`
-	Pattern         string       `json:"pattern"`
-	Fit             string       `json:"fit"`
-	Seasonality     string       `json:"seasonality"`
-	Price           *float64     `json:"price,omitempty"`
-	IsSystem        bool         `json:"isSystem"`
+	ID          uuid.UUID       `json:"id"`
+	Category    *CategoryRes    `json:"category,omitempty"`
+	Price       *float64        `json:"price,omitempty"`
+	IsSystem    bool            `json:"isSystem"`
+	FashionItem *FashionItemRes `json:"fashionItem,omitempty"`
 }
 
 type GetWardrobeItemsQueryReq struct {
