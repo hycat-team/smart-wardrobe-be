@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
@@ -147,12 +148,12 @@ type mockFashionContract struct{}
 func (m *mockFashionContract) CreateFashionItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, itemType string, categoryID *uuid.UUID, imageUrl string, imagePublicID string) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
-func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*entities.FashionItem, error) {
-	return &entities.FashionItem{
+func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_contract.FashionItemRes, error) {
+	return &fashion_contract.FashionItemRes{
 		ImageUrl: "http://example.com/image.jpg",
 	}, nil
 }
-func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.FashionItemRes, error) {
 	return nil, nil
 }
 

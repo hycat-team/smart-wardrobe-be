@@ -40,18 +40,18 @@ func MapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
 		return nil
 	}
 	return &dto.BrandItemRes{
-		ID:          item.ID,
-		BrandID:     item.BrandID,
+		ID:            item.ID,
+		BrandID:       item.BrandID,
 		FashionItemID: item.FashionItemID,
-		ProductCode: item.ProductCode,
-		Name:        item.Name,
-		Description: item.Description,
-		Price:       item.Price,
-		ItemType:    item.ItemType,
-		Status:      item.Status,
-		FashionItem: MapToFashionItemRes(item.FashionItem),
-		CreatedAt:   item.CreatedAt,
-		UpdatedAt:   item.UpdatedAt,
+		ProductCode:   item.ProductCode,
+		Name:          item.Name,
+		Description:   item.Description,
+		Price:         item.Price,
+		ItemType:      item.ItemType,
+		Status:        item.Status,
+		FashionItem:   MapToFashionItemRes(item.FashionItem),
+		CreatedAt:     item.CreatedAt,
+		UpdatedAt:     item.UpdatedAt,
 	}
 }
 

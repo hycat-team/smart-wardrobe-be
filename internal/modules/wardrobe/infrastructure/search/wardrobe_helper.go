@@ -14,7 +14,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 		ID            string `json:"id"`
 		FashionItemID string `json:"fashion_item_id"`
 		ItemType      int    `json:"item_type"`
-		Category struct {
+		Category      struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`

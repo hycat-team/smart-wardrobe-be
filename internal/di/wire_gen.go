@@ -27,11 +27,11 @@ import (
 	worker2 "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/chat"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation"
-	worker3 "smart-wardrobe-be/internal/modules/fashion/application/usecase/worker"
+	worker4 "smart-wardrobe-be/internal/modules/fashion/application/usecase/worker"
 	"smart-wardrobe-be/internal/modules/fashion/contract"
 	persistence4 "smart-wardrobe-be/internal/modules/fashion/infrastructure/persistence"
 	handler5 "smart-wardrobe-be/internal/modules/fashion/presentation/handler"
-	worker4 "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
+	worker5 "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
 	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
@@ -61,7 +61,7 @@ import (
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	handler2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
-	worker5 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	worker3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -199,24 +199,21 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWebhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
 	iaiUsageReconciliationWorker := worker.NewAIUsageReconciliationWorker(iaiCostPolicyContract, l, cfg)
 	iLoyaltyPointExpiryWorker := worker2.NewLoyaltyPointExpiryWorker(iBrandLoyaltyUseCase, l, cfg)
-	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
-	visionCategoryCache := worker3.NewVisionCategoryCache(cfg, iCategoryRepository, l)
-	iFashionWorkerUseCase := worker3.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionItemRepository, iBrandItemRepository)
-	wardrobeBatchUploadWorker := worker4.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iFashionWorkerUseCase, l)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, l)
-	searchSyncWorker := worker5.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
-	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
-	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
-	fashionAnalyzeWorker := worker4.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
+	searchSyncWorker := worker3.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
+	visionCategoryCache := worker4.NewVisionCategoryCache(cfg, iCategoryRepository, l)
+	iFashionWorkerUseCase := worker4.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionItemRepository, iBrandItemRepository)
+	iFailedItemsCleanupWorker := worker5.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
+	iProcessingRecoveryWorker := worker5.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
+	fashionAnalyzeWorker := worker5.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,
 		WebhookInboxWorker:          iWebhookInboxWorker,
 		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
 		LoyaltyPointExpiryWorker:    iLoyaltyPointExpiryWorker,
-		WardrobeBatchUploadWorker:   wardrobeBatchUploadWorker,
 		ESAsyncWorker:               searchSyncWorker,
 		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
 		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,

@@ -22,19 +22,20 @@ type UpdateBenefitStatusReq struct {
 }
 
 type BrandBenefitRes struct {
-	ID             uuid.UUID  `json:"id"`
-	BrandID        uuid.UUID  `json:"brandId"`
-	Name           string     `json:"name"`
-	Description    *string    `json:"description"`
-	BenefitType    string     `json:"benefitType"`
-	UnlockType     string     `json:"unlockType"`
-	RequiredPoints *int       `json:"requiredPoints"`
-	RequiredTierID *uuid.UUID `json:"requiredTierId"`
-	FeatureCode    *string    `json:"featureCode"`
-	FeatureConfig  any        `json:"featureConfig"`
-	Status         string     `json:"status"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
+	ID               uuid.UUID  `json:"id"`
+	BrandID          uuid.UUID  `json:"brandId"`
+	Name             string     `json:"name"`
+	Description      *string    `json:"description"`
+	BenefitType      string     `json:"benefitType"`
+	UnlockType       string     `json:"unlockType"`
+	RequiredPoints   *int       `json:"requiredPoints"`
+	RequiredTierID   *uuid.UUID `json:"requiredTierId"`
+	RequiredTierName *string    `json:"requiredTierName,omitempty"`
+	FeatureCode      *string    `json:"featureCode"`
+	FeatureConfig    any        `json:"featureConfig"`
+	Status           string     `json:"status"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 type BenefitRedemptionRes struct {

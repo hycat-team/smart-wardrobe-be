@@ -27,6 +27,5 @@ var ProviderSet = wire.NewSet(
 	handler.NewWardrobeAIHandler,
 	presentation_worker.NewFailedItemsCleanupWorker,
 	presentation_worker.NewProcessingRecoveryWorker,
-	presentation_worker.NewWardrobeBatchUploadWorker,
 	presentation_worker.NewFashionAnalyzeWorker,
 )

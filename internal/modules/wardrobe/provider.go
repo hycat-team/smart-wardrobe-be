@@ -22,7 +22,6 @@ var ProviderSet = wire.NewSet(
 	persistence.NewOutfitRepository,
 	search.NewWardrobeSearchService,
 	search.NewWardrobeSearchIndexService,
-	messaging.NewWardrobeBatchUploadJobConsumer,
 	messaging.NewSearchSyncEventConsumer,
 
 	item.NewWardrobeItemUseCase,

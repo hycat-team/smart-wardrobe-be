@@ -51,10 +51,52 @@ func (c *FashionContract) CreateFashionItem(ctx context.Context, userID uuid.UUI
 	return item.ID, nil
 }
 
-func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*entities.FashionItem, error) {
-	return c.fashionItemRepo.GetByID(ctx, id)
+func mapToFashionItemRes(fi *entities.FashionItem) *FashionItemRes {
+	if fi == nil {
+		return nil
+	}
+	var categoryName *string
+	if fi.Category != nil {
+		categoryName = &fi.Category.Name
+	}
+	return &FashionItemRes{
+		ID:              fi.ID,
+		CategoryID:      fi.CategoryID,
+		CategoryName:    categoryName,
+		ImageUrl:        fi.ImageUrl,
+		ImagePublicID:   fi.ImagePublicID,
+		Color:           fi.Color,
+		ColorHex:        fi.ColorHex,
+		ColorHue:        fi.ColorHue,
+		ColorSaturation: fi.ColorSaturation,
+		ColorLightness:  fi.ColorLightness,
+		Style:           fi.Style,
+		Material:        fi.Material,
+		Pattern:         fi.Pattern,
+		Fit:             fi.Fit,
+		Seasonality:     fi.Seasonality,
+		Description:     fi.Description,
+		CreatedAt:       fi.CreatedAt,
+		UpdatedAt:       fi.UpdatedAt,
+	}
 }
 
-func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
-	return c.fashionItemRepo.GetByIDs(ctx, ids)
+func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*FashionItemRes, error) {
+	item, err := c.fashionItemRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return mapToFashionItemRes(item), nil
+}
+
+func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*FashionItemRes, error) {
+	items, err := c.fashionItemRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*FashionItemRes, len(items))
+	for i, item := range items {
+		res[i] = mapToFashionItemRes(item)
+	}
+	return res, nil
 }

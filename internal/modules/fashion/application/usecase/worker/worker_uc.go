@@ -9,10 +9,11 @@ import (
 
 	"smart-wardrobe-be/config"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -75,8 +76,13 @@ func NewWardrobeWorkerUseCase(
 }
 
 // ProcessBackgroundBatchUploadJob analyzes a processing wardrobe item and finalizes its AI metadata.
-func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) error {
+func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	run.AddTotal(1)
+
+	if job.SkipVision {
+		return uc.processManualClassify(ctx, job, run)
+	}
+
 	item, err := uc.loadProcessableItem(ctx, job, run)
 	if err != nil {
 		return err
@@ -123,6 +129,74 @@ func (uc *WardrobeWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Con
 	run.AddSuccess(1)
 	run.AddSummaryFields(zap.Bool("reviewRequired", false))
 
+	return nil
+}
+
+func (uc *WardrobeWorkerUseCase) processManualClassify(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error {
+	var fashionItem *entities.FashionItem
+	if job.ItemType == "brand" {
+		brandItem, err := uc.brandRepo.GetByID(ctx, job.ItemID)
+		if err != nil {
+			return err
+		}
+		if brandItem == nil || brandItem.FashionItem == nil {
+			run.AddSkipped(1)
+			run.ChildWarn(uc.logger, "Manual classify skipped: brand item or fashion item not found",
+				zap.String("itemId", job.ItemID.String()),
+			)
+			return nil
+		}
+		fashionItem = brandItem.FashionItem
+	} else {
+		wardrobeItem, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
+		if err != nil {
+			return err
+		}
+		if wardrobeItem == nil || wardrobeItem.FashionItem == nil {
+			run.AddSkipped(1)
+			run.ChildWarn(uc.logger, "Manual classify skipped: wardrobe item or fashion item not found",
+				zap.String("itemId", job.ItemID.String()),
+			)
+			return nil
+		}
+		fashionItem = wardrobeItem.FashionItem
+	}
+
+	categoryName := ""
+	if fashionItem.Category != nil {
+		categoryName = fashionItem.Category.Name
+	}
+	color := stringutils.GetString(fashionItem.Color)
+	style := stringutils.GetString(fashionItem.Style)
+	material := stringutils.GetString(fashionItem.Material)
+	pattern := stringutils.GetString(fashionItem.Pattern)
+	fit := stringutils.GetString(fashionItem.Fit)
+	seasonality := stringutils.GetString(fashionItem.Seasonality)
+	description := stringutils.GetString(fashionItem.Description)
+
+	richTextContext := shared.BuildRichTextContext(categoryName, color, style, material, pattern, fit, seasonality, description)
+
+	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
+	if err != nil {
+		run.ChildError(uc.logger, "Manual classify embedding failed",
+			zap.String("itemId", job.ItemID.String()),
+			zap.Error(err),
+		)
+		uc.handleJobFailure(ctx, job, err, run)
+		return nil
+	}
+
+	updateMap := map[string]any{
+		"embedding": entities.Vector(embedding),
+	}
+
+	if err := uc.completeProcessedItem(ctx, job, updateMap); err != nil {
+		uc.handleJobFailure(ctx, job, err, run)
+		return nil
+	}
+
+	run.AddSuccess(1)
+	run.AddSummaryFields(zap.Bool("reviewRequired", false))
 	return nil
 }
 
@@ -273,11 +347,8 @@ func (uc *WardrobeWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context
 	return nil
 }
 
-func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, err error, run *workerlog.Run) {
+func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, err error, run *workerlog.Run) {
 	topic := "fashion.event.analyze_item"
-	if job.ItemType == "" {
-		topic = eventconstants.TopicWardrobeBatchUpload
-	}
 
 	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
 		job.RetryCount++
@@ -331,7 +402,7 @@ func (uc *WardrobeWorkerUseCase) handleJobFailure(ctx context.Context, job dto.W
 	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 }
 
-func (uc *WardrobeWorkerUseCase) loadProcessableItem(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) (any, error) {
+func (uc *WardrobeWorkerUseCase) loadProcessableItem(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) (any, error) {
 	if job.ItemType == "brand" {
 		item, err := uc.brandRepo.GetByID(ctx, job.ItemID)
 		if err != nil {
@@ -363,7 +434,7 @@ func (uc *WardrobeWorkerUseCase) loadProcessableItem(ctx context.Context, job dt
 
 func (uc *WardrobeWorkerUseCase) analyzeWardrobeImage(
 	ctx context.Context,
-	job dto.WardrobeBatchUploadJobDTO,
+	job fashion_contract.FashionAnalyzeJobDTO,
 	snapshot *VisionCategorySnapshot,
 ) (*dto.FashionMetadataResult, error) {
 	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, snapshot.Prompt)
@@ -386,7 +457,7 @@ func (uc *WardrobeWorkerUseCase) analyzeWardrobeImage(
 	return &result.FashionMetadataResult, nil
 }
 
-func (uc *WardrobeWorkerUseCase) markNeedsReview(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, reviewReason string) {
+func (uc *WardrobeWorkerUseCase) markNeedsReview(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, reviewReason string) {
 	if reviewReason == "" {
 		reviewReason = "uncertain_category"
 	}
@@ -431,7 +502,7 @@ func (uc *WardrobeWorkerUseCase) buildCompletedItemUpdate(
 	return updateMap, nil
 }
 
-func (uc *WardrobeWorkerUseCase) completeProcessedItem(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, updateMap map[string]any) error {
+func (uc *WardrobeWorkerUseCase) completeProcessedItem(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, updateMap map[string]any) error {
 	if job.ItemType == "brand" {
 		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, job.FashionItemID, job.ProcessingVersion, updateMap)
 		if err != nil {
@@ -466,8 +537,10 @@ func (uc *WardrobeWorkerUseCase) completeProcessedItem(ctx context.Context, job 
 }
 
 func (uc *WardrobeWorkerUseCase) publishProcessingRetry(ctx context.Context, item *entities.WardrobeItem) error {
-	job := dto.WardrobeBatchUploadJobDTO{
+	job := fashion_contract.FashionAnalyzeJobDTO{
+		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
+		ItemType:          "wardrobe",
 		UserID:            item.UserID,
 		CategoryID:        item.FashionCategoryID(),
 		ImageUrl:          item.FashionImageUrl(),
@@ -476,7 +549,7 @@ func (uc *WardrobeWorkerUseCase) publishProcessingRetry(ctx context.Context, ite
 		ProcessingVersion: item.FashionItem.ProcessingVersion,
 	}
 
-	return uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeBatchUpload, job)
+	return uc.eventPublisher.Publish(ctx, "fashion.event.analyze_item", job)
 }
 
 func resolveDetectedCategory(categorySlug string, snapshot *VisionCategorySnapshot) (*uuid.UUID, string) {

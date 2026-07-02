@@ -5,7 +5,6 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
-	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
 )
@@ -29,8 +28,4 @@ type IWardrobeCatalogUseCase interface {
 	GetSystemCatalogItems(ctx context.Context, query dto.GetSystemCatalogItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error)
 	UpdateSystemCatalogItem(ctx context.Context, id uuid.UUID, input dto.UpdateSystemCatalogItemReq) (*dto.WardrobeItemRes, error)
 	DeleteSystemCatalogItem(ctx context.Context, id uuid.UUID) error
-}
-
-type IWardrobeWorkerUseCase interface {
-	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) error
 }

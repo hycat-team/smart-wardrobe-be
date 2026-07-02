@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
@@ -24,7 +26,7 @@ type IWardrobeChatUseCase interface {
 }
 
 type IFashionWorkerUseCase interface {
-	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.WardrobeBatchUploadJobDTO, run *workerlog.Run) error
+	ProcessBackgroundBatchUploadJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error
 	CleanupFailedItems(ctx context.Context, run *workerlog.Run) error
 	RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error
 }

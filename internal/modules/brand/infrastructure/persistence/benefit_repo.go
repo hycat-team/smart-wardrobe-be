@@ -26,7 +26,7 @@ func NewBrandBenefitRepository(db *gorm.DB) repositories.IBrandBenefitRepository
 
 func (r *BrandBenefitRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
 	var benefits []*entities.BrandBenefit
-	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Find(&benefits).Error
+	err := r.GetQueryWithPreload(ctx).Where("brand_id = ?", brandID).Find(&benefits).Error
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (r *BrandBenefitRepository) GetByBrandID(ctx context.Context, brandID uuid.
 
 func (r *BrandBenefitRepository) GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
 	var benefits []*entities.BrandBenefit
-	err := r.GetDB(ctx).Where("brand_id = ? AND status = ?", brandID, "active").Find(&benefits).Error
+	err := r.GetQueryWithPreload(ctx).Where("brand_id = ? AND status = ?", brandID, "active").Find(&benefits).Error
 	if err != nil {
 		return nil, err
 	}

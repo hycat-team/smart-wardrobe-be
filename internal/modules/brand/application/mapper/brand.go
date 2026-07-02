@@ -194,20 +194,25 @@ func MapBrandBenefit(benefit *entities.BrandBenefit) *dto.BrandBenefitRes {
 		str := string(*benefit.FeatureCode)
 		featCode = &str
 	}
+	var requiredTierName *string
+	if benefit.RequiredTier != nil {
+		requiredTierName = &benefit.RequiredTier.Name
+	}
 	return &dto.BrandBenefitRes{
-		ID:             benefit.ID,
-		BrandID:        benefit.BrandID,
-		Name:           benefit.Name,
-		Description:    benefit.Description,
-		BenefitType:    string(benefit.BenefitType),
-		UnlockType:     string(benefit.UnlockType),
-		RequiredPoints: benefit.RequiredPoints,
-		RequiredTierID: benefit.RequiredTierID,
-		FeatureCode:    featCode,
-		FeatureConfig:  rawConfig,
-		Status:         string(benefit.Status),
-		CreatedAt:      benefit.CreatedAt,
-		UpdatedAt:      benefit.UpdatedAt,
+		ID:               benefit.ID,
+		BrandID:          benefit.BrandID,
+		Name:             benefit.Name,
+		Description:      benefit.Description,
+		BenefitType:      string(benefit.BenefitType),
+		UnlockType:       string(benefit.UnlockType),
+		RequiredPoints:   benefit.RequiredPoints,
+		RequiredTierID:   benefit.RequiredTierID,
+		RequiredTierName: requiredTierName,
+		FeatureCode:      featCode,
+		FeatureConfig:    rawConfig,
+		Status:           string(benefit.Status),
+		CreatedAt:        benefit.CreatedAt,
+		UpdatedAt:        benefit.UpdatedAt,
 	}
 }
 

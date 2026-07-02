@@ -246,8 +246,14 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 		return nil, err
 	}
 
-	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, fashionItemID)
-	item.FashionItem = fashionItem
+	item.FashionItem = &entities.FashionItem{
+		AuditableEntity: entities.AuditableEntity{
+			BaseEntity: entities.BaseEntity{ID: fashionItemID},
+		},
+		ImageUrl:      input.ImageUrl,
+		ImagePublicID: input.ImagePublicID,
+		CategoryID:    input.CategoryID,
+	}
 
 	return mapper.MapToBrandItemRes(item), nil
 }
@@ -278,8 +284,6 @@ func (uc *BrandItemUseCase) GetBrandItemForStaff(ctx context.Context, staffUserI
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
-	item.FashionItem = fashionItem
 	return mapper.MapToBrandItemRes(item), nil
 }
 
@@ -310,8 +314,6 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 			return nil, branderrors.ErrBrandPortalForbidden()
 		}
 	}
-	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
-	item.FashionItem = fashionItem
 	return mapper.MapToBrandItemRes(item), nil
 }
 
@@ -335,8 +337,6 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err
 	}
-	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
-	item.FashionItem = fashionItem
 
 	return mapper.MapToBrandItemRes(item), nil
 }
@@ -361,8 +361,6 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err
 	}
-	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
-	item.FashionItem = fashionItem
 	return mapper.MapToBrandItemRes(item), nil
 }
 

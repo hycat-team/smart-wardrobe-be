@@ -211,7 +211,7 @@ func (r *LoyaltyPointTransactionRepository) GetByLoyaltyAccountID(ctx context.Co
 	var transactions []*entities.LoyaltyPointTransaction
 	err := r.GetDB(ctx).
 		Where("loyalty_account_id = ?", loyaltyAccountID).
-		Order("created_at ASC, id ASC").
+		Order("created_at DESC").
 		Find(&transactions).Error
 	return transactions, err
 }
@@ -231,7 +231,7 @@ func (r *LoyaltyPointTransactionRepository) GetByLoyaltyAccountIDPaginated(ctx c
 	db = shared_persist.ApplyPagination(db, paginationQuery)
 
 	var transactions []*entities.LoyaltyPointTransaction
-	if err := db.Order("created_at DESC, id DESC").Find(&transactions).Error; err != nil {
+	if err := db.Order("created_at DESC").Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 

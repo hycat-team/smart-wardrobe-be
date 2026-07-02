@@ -5593,6 +5593,9 @@ const docTemplate = `{
                 "requiredTierId": {
                     "type": "string"
                 },
+                "requiredTierName": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -5855,7 +5858,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fashionItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_entities.FashionItem"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes"
                 },
                 "fashionItemId": {
                     "type": "string"
@@ -6237,6 +6240,65 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "voteType": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "categoryName": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "colorHue": {
+                    "type": "number"
+                },
+                "colorLightness": {
+                    "type": "number"
+                },
+                "colorSaturation": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -7623,6 +7685,65 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "categoryName": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "colorHue": {
+                    "type": "number"
+                },
+                "colorLightness": {
+                    "type": "number"
+                },
+                "colorSaturation": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imagePublicId": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq": {
             "type": "object",
             "required": [
@@ -7892,50 +8013,17 @@ const docTemplate = `{
                 "category": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
-                "color": {
-                    "type": "string"
-                },
-                "colorHex": {
-                    "type": "string"
-                },
-                "colorHue": {
-                    "type": "number"
-                },
-                "colorLightness": {
-                    "type": "number"
-                },
-                "colorSaturation": {
-                    "type": "number"
-                },
-                "fit": {
-                    "type": "string"
+                "fashionItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
-                    "type": "string"
-                },
-                "imageUrl": {
                     "type": "string"
                 },
                 "isSystem": {
                     "type": "boolean"
                 },
-                "material": {
-                    "type": "string"
-                },
-                "pattern": {
-                    "type": "string"
-                },
                 "price": {
                     "type": "number"
-                },
-                "seasonality": {
-                    "type": "string"
-                },
-                "style": {
-                    "type": "string"
                 }
             }
         },
@@ -8036,34 +8124,13 @@ const docTemplate = `{
                 "category": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
-                "color": {
-                    "type": "string"
-                },
-                "colorHex": {
-                    "type": "string"
-                },
-                "colorHue": {
-                    "type": "number"
-                },
-                "colorLightness": {
-                    "type": "number"
-                },
-                "colorSaturation": {
-                    "type": "number"
-                },
                 "createdAt": {
                     "type": "string"
                 },
-                "fit": {
-                    "type": "string"
+                "fashionItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
-                    "type": "string"
-                },
-                "imageUrl": {
                     "type": "string"
                 },
                 "isLocked": {
@@ -8072,29 +8139,11 @@ const docTemplate = `{
                 "itemContext": {
                     "type": "string"
                 },
-                "material": {
-                    "type": "string"
-                },
-                "pattern": {
-                    "type": "string"
-                },
                 "price": {
                     "type": "number"
                 },
-                "processingErrorReason": {
-                    "type": "string"
-                },
-                "reviewReason": {
-                    "type": "string"
-                },
-                "seasonality": {
-                    "type": "string"
-                },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_wardrobe_wardrobestatus.WardrobeItemStatus"
-                },
-                "style": {
-                    "type": "string"
                 },
                 "userId": {
                     "type": "string"
@@ -8479,112 +8528,6 @@ const docTemplate = `{
                 "Failed",
                 "NeedsReview"
             ]
-        },
-        "smart-wardrobe-be_internal_shared_domain_entities.Category": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_shared_domain_entities.FashionItem": {
-            "type": "object",
-            "properties": {
-                "category": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_entities.Category"
-                },
-                "categoryID": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "colorHex": {
-                    "type": "string"
-                },
-                "colorHue": {
-                    "type": "number"
-                },
-                "colorLightness": {
-                    "type": "number"
-                },
-                "colorSaturation": {
-                    "type": "number"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "embedding": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "fit": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "imagePublicID": {
-                    "type": "string"
-                },
-                "imageUrl": {
-                    "type": "string"
-                },
-                "lastProcessingAttemptAt": {
-                    "type": "string"
-                },
-                "material": {
-                    "type": "string"
-                },
-                "pattern": {
-                    "type": "string"
-                },
-                "processingErrorReason": {
-                    "type": "string"
-                },
-                "processingRetryCount": {
-                    "type": "integer"
-                },
-                "processingStartedAt": {
-                    "type": "string"
-                },
-                "processingVersion": {
-                    "type": "integer"
-                },
-                "reviewReason": {
-                    "type": "string"
-                },
-                "seasonality": {
-                    "type": "string"
-                },
-                "style": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
         },
         "smart-wardrobe-be_internal_shared_presentation.APIResponse": {
             "type": "object",

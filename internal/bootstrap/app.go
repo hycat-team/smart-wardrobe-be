@@ -25,7 +25,6 @@ type AppWorkers struct {
 	WebhookInboxWorker          subWorker.IWebhookInboxWorker
 	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
 	LoyaltyPointExpiryWorker    brandWorker.ILoyaltyPointExpiryWorker
-	WardrobeBatchUploadWorker   *fashionWorker.WardrobeBatchUploadWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
 	FailedItemsCleanupWorker    fashionWorker.IFailedItemsCleanupWorker
 	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker

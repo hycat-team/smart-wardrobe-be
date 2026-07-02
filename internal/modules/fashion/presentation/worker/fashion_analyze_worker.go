@@ -6,7 +6,6 @@ import (
 
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
@@ -66,20 +65,7 @@ func (w *FashionAnalyzeWorker) startConsume() {
 				zap.Int("retryCount", job.RetryCount),
 			)
 
-			// Map to WardrobeBatchUploadJobDTO to reuse the existing usecase processing logic
-			legacyJob := dto.WardrobeBatchUploadJobDTO{
-				ItemID:            job.ItemID,
-				FashionItemID:     job.FashionItemID,
-				UserID:            job.UserID,
-				ImageUrl:          job.ImageUrl,
-				ImagePublicID:     job.ImagePublicID,
-				CategoryID:        job.CategoryID,
-				ProcessingVersion: job.ProcessingVersion,
-				RetryCount:        job.RetryCount,
-				ItemType:          job.ItemType,
-			}
-
-			err := w.useCase.ProcessBackgroundBatchUploadJob(ctx, legacyJob, run)
+			err := w.useCase.ProcessBackgroundBatchUploadJob(ctx, job, run)
 			if err != nil {
 				run.LogFailure(w.logger, err,
 					zap.String("fashionItemId", job.FashionItemID.String()),
