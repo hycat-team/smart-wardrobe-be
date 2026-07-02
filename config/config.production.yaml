@@ -58,6 +58,7 @@ payos:
     reconciliation_max_age_hours: 168
 cloudinary:
     avatar_folder: closy/avatars
+    brands_folder: closy/brands
     item_folder: closy/items
     outfit_folder: closy/outfits
     post_folder: closy/posts

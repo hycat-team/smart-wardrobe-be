@@ -58,6 +58,7 @@ payos:
     reconciliation_max_age_hours: 168
 cloudinary:
     avatar_folder: smart_wardrobe/avatars
+    brands_folder: smart_wardrobe/brands
     item_folder: smart_wardrobe/items
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts

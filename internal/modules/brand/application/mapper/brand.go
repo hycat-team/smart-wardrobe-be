@@ -10,39 +10,51 @@ import (
 	"github.com/google/uuid"
 )
 
-func MapBrand(brand *entities.Brand) *dto.BrandRes {
+func MapBrand(brand *entities.Brand, totalCustomer int) *dto.BrandRes {
 	if brand == nil {
 		return nil
 	}
-	return &dto.BrandRes{
-		ID:               brand.ID,
-		Slug:             brand.Slug,
-		Name:             brand.Name,
-		Description:      brand.Description,
-		LogoURL:          brand.LogoURL,
-		LogoPublicID:     brand.LogoPublicID,
-		Status:           brand.Status,
-		CreatedByUserID:  brand.CreatedByUserID,
-		ApprovedByUserID: brand.ApprovedByUserID,
-		ApprovedAt:       brand.ApprovedAt,
-		CreatedAt:        brand.CreatedAt,
-		UpdatedAt:        brand.UpdatedAt,
+	res := &dto.BrandRes{
+		ID:                 brand.ID,
+		Slug:               brand.Slug,
+		Name:               brand.Name,
+		Description:        brand.Description,
+		LogoURL:            brand.LogoURL,
+		LogoPublicID:       brand.LogoPublicID,
+		BackgroundURL:      brand.BackgroundURL,
+		BackgroundPublicID: brand.BackgroundPublicID,
+		Status:             brand.Status,
+		CreatedByUserID:    brand.CreatedByUserID,
+		ApprovedByUserID:   brand.ApprovedByUserID,
+		ApprovedAt:         brand.ApprovedAt,
+		CreatedAt:          brand.CreatedAt,
+		UpdatedAt:          brand.UpdatedAt,
 	}
-}
-
-func MapBrands(brands []*entities.Brand) []*dto.BrandRes {
-	res := make([]*dto.BrandRes, len(brands))
-	for idx, brand := range brands {
-		res[idx] = MapBrand(brand)
+	if totalCustomer >= 0 {
+		res.TotalCustomer = &totalCustomer
 	}
 	return res
 }
 
-func MapPortalBrand(member *entities.BrandMember) *dto.PortalBrandRes {
+func MapBrands(brands []*entities.Brand, totalCustomerByBrandID map[uuid.UUID]int) []*dto.BrandRes {
+	res := make([]*dto.BrandRes, len(brands))
+	for idx, brand := range brands {
+		count := -1
+		if totalCustomerByBrandID != nil {
+			if c, ok := totalCustomerByBrandID[brand.ID]; ok {
+				count = c
+			}
+		}
+		res[idx] = MapBrand(brand, count)
+	}
+	return res
+}
+
+func MapPortalBrand(member *entities.BrandMember, totalCustomer int) *dto.PortalBrandRes {
 	if member == nil || member.Brand == nil {
 		return nil
 	}
-	brand := MapBrand(member.Brand)
+	brand := MapBrand(member.Brand, totalCustomer)
 	if brand == nil {
 		return nil
 	}
@@ -54,10 +66,16 @@ func MapPortalBrand(member *entities.BrandMember) *dto.PortalBrandRes {
 	}
 }
 
-func MapPortalBrands(members []*entities.BrandMember) []*dto.PortalBrandRes {
+func MapPortalBrands(members []*entities.BrandMember, totalCustomerByBrandID map[uuid.UUID]int) []*dto.PortalBrandRes {
 	res := make([]*dto.PortalBrandRes, 0, len(members))
 	for _, member := range members {
-		if mapped := MapPortalBrand(member); mapped != nil {
+		count := -1
+		if totalCustomerByBrandID != nil {
+			if c, ok := totalCustomerByBrandID[member.BrandID]; ok {
+				count = c
+			}
+		}
+		if mapped := MapPortalBrand(member, count); mapped != nil {
 			res = append(res, mapped)
 		}
 	}

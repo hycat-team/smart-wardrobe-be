@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -81,3 +82,9 @@ type DigitalSampleResponseRes struct {
 
 type ListEligibleBrandItemsReq struct {
 }
+
+type GetBrandItemsQueryReq struct {
+	shared_dto.PaginationQuery
+}
+
+type BrandItemListRes = shared_dto.PaginationResult[*BrandItemRes]

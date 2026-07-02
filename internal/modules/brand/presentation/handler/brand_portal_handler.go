@@ -185,12 +185,12 @@ func (h *BrandPortalHandler) GetMyPortalBrands(c *gin.Context) error {
 	return nil
 }
 
-// GetBrandLogoUploadSignature gets Cloudinary signature for brand logo upload.
-// @Summary Lấy chữ ký upload logo brand
+// GetBrandLogoUploadSignature gets Cloudinary signature for brand images upload (logo + background).
+// @Summary Lấy chữ ký upload logo/ảnh nền brand
 // @Tags Brand Portal
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult}
-// @Router /api/v1/brand-portal/brands/logo-upload-signature [get]
+// @Router /api/v1/brand-portal/brands/profile-images/upload-signature [get]
 func (h *BrandPortalHandler) GetBrandLogoUploadSignature(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -204,16 +204,16 @@ func (h *BrandPortalHandler) GetBrandLogoUploadSignature(c *gin.Context) error {
 	return nil
 }
 
-// UpdateBrandLogo updates brand logo Cloudinary references.
-// @Summary Cập nhật logo brand
+// UpdateBrandImages updates brand logo and/or background Cloudinary references.
+// @Summary Cập nhật logo/ảnh nền brand
 // @Tags Brand Portal
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Param body body dto.UpdateBrandLogoReq true "Thông tin logo"
+// @Param body body dto.UpdateBrandImagesReq true "Thông tin logo và ảnh nền"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
-// @Router /api/v1/brand-portal/brands/{brandId}/logo [patch]
-func (h *BrandPortalHandler) UpdateBrandLogo(c *gin.Context) error {
+// @Router /api/v1/brand-portal/brands/{brandId}/profile-images [patch]
+func (h *BrandPortalHandler) UpdateBrandImages(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -222,11 +222,11 @@ func (h *BrandPortalHandler) UpdateBrandLogo(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	var input dto.UpdateBrandLogoReq
+	var input dto.UpdateBrandImagesReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
-	res, err := h.brandUC.UpdateBrandLogo(c.Request.Context(), userID, brandID, input)
+	res, err := h.brandUC.UpdateBrandImages(c.Request.Context(), userID, brandID, input)
 	if err != nil {
 		return err
 	}
@@ -474,7 +474,42 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 // @Param brandId path string true "ID brand"
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
 // @Router /api/v1/brands/{brandId}/items [get]
-func (h *BrandPortalHandler) ListBrandItemsForUser(c *gin.Context) error {
+// ListBrandProducts lists active products for a brand (public, paginated).
+// @Summary Lấy danh sách sản phẩm brand (public)
+// @Tags Brand
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param page query int false "Trang"
+// @Param limit query int false "Số lượng"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListRes}
+// @Router /api/v1/brands/{brandId}/items [get]
+func (h *BrandPortalHandler) ListBrandProducts(c *gin.Context) error {
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	var query dto.GetBrandItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.itemUC.ListBrandProductsForCustomer(c.Request.Context(), brandID, query)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandItemListSuccess, res)
+	return nil
+}
+
+// ListBrandSamples lists active samples for a brand customer (requires sample_mix_access).
+// @Summary Lấy danh sách mẫu thử brand
+// @Tags Brand
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param page query int false "Trang"
+// @Param limit query int false "Số lượng"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListRes}
+// @Router /api/v1/brands/{brandId}/items/samples [get]
+func (h *BrandPortalHandler) ListBrandSamples(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -483,7 +518,11 @@ func (h *BrandPortalHandler) ListBrandItemsForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.itemUC.ListBrandItemsForUser(c.Request.Context(), userID, brandID)
+	var query dto.GetBrandItemsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.itemUC.ListBrandSamplesForCustomer(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -491,22 +530,20 @@ func (h *BrandPortalHandler) ListBrandItemsForUser(c *gin.Context) error {
 	return nil
 }
 
-// GetBrandItemForUser gets active brand item detail.
-// @Summary Lấy chi tiết sản phẩm brand đang hoạt động
+// GetBrandItemForUser gets active brand item detail. Product is public, sample requires auth + access check.
+// @Summary Lấy chi tiết sản phẩm/mẫu thử brand (product public, sample yêu cầu auth)
+// @Description Product public hoàn toàn (không cần đăng nhập). Sample yêu cầu user đã đăng nhập và có quyền sample_mix_access, nếu không đủ quyền trả về 403.
 // @Tags Brand
 // @Produce json
 // @Param itemId path string true "ID item"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-items/{itemId} [get]
 func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
-	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
 	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
 		return err
 	}
+	userID := contextutils.GetUserIdOptional(c)
 	res, err := h.itemUC.GetBrandItemForUser(c.Request.Context(), userID, itemID)
 	if err != nil {
 		return err

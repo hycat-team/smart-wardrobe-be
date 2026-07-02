@@ -24,19 +24,21 @@ import (
 
 type Brand struct {
 	AuditableEntity
-	Slug             string                  `gorm:"type:varchar(100);uniqueIndex;not null"`
-	Name             string                  `gorm:"type:varchar(255);not null"`
-	Description      *string                 `gorm:"type:text"`
-	LogoURL          *string                 `gorm:"column:logo_url;type:varchar(500)"`
-	LogoPublicID     *string                 `gorm:"column:logo_public_id;type:varchar(255)"`
-	Status           brandstatus.BrandStatus `gorm:"type:varchar(50);not null;default:PENDING_REVIEW"`
-	CreatedByUserID  uuid.UUID               `gorm:"type:uuid;not null"`
-	CreatedByUser    *User                   `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:RESTRICT"`
-	ApprovedByUserID *uuid.UUID              `gorm:"type:uuid"`
-	ApprovedByUser   *User                   `gorm:"foreignKey:ApprovedByUserID;constraint:OnDelete:SET NULL"`
-	ApprovedAt       *time.Time              `gorm:"type:timestamp with time zone"`
-	Members          []*BrandMember          `gorm:"foreignKey:BrandID"`
-	Customers        []*BrandCustomer        `gorm:"foreignKey:BrandID"`
+	Slug               string                  `gorm:"type:varchar(100);uniqueIndex;not null"`
+	Name               string                  `gorm:"type:varchar(255);not null"`
+	Description        *string                 `gorm:"type:text"`
+	LogoURL            *string                 `gorm:"column:logo_url;type:varchar(500)"`
+	LogoPublicID       *string                 `gorm:"column:logo_public_id;type:varchar(255)"`
+	BackgroundURL      *string                 `gorm:"column:background_url;type:varchar(500)"`
+	BackgroundPublicID *string                 `gorm:"column:background_public_id;type:varchar(255)"`
+	Status             brandstatus.BrandStatus `gorm:"type:varchar(50);not null;default:PENDING_REVIEW"`
+	CreatedByUserID    uuid.UUID               `gorm:"type:uuid;not null"`
+	CreatedByUser      *User                   `gorm:"foreignKey:CreatedByUserID;constraint:OnDelete:RESTRICT"`
+	ApprovedByUserID   *uuid.UUID              `gorm:"type:uuid"`
+	ApprovedByUser     *User                   `gorm:"foreignKey:ApprovedByUserID;constraint:OnDelete:SET NULL"`
+	ApprovedAt         *time.Time              `gorm:"type:timestamp with time zone"`
+	Members            []*BrandMember          `gorm:"foreignKey:BrandID"`
+	Customers          []*BrandCustomer        `gorm:"foreignKey:BrandID"`
 }
 
 type BrandMember struct {

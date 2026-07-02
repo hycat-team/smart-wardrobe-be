@@ -258,6 +258,15 @@ definitions:
       username:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes:
     properties:
       brandId:
@@ -329,6 +338,10 @@ definitions:
         type: string
       approvedByUserId:
         type: string
+      backgroundPublicId:
+        type: string
+      backgroundUrl:
+        type: string
       createdAt:
         type: string
       createdByUserId:
@@ -347,6 +360,8 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
+      totalCustomer:
+        type: integer
       updatedAt:
         type: string
     type: object
@@ -672,6 +687,10 @@ definitions:
         type: string
       approvedByUserId:
         type: string
+      backgroundPublicId:
+        type: string
+      backgroundUrl:
+        type: string
       createdAt:
         type: string
       createdByUserId:
@@ -696,6 +715,8 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus'
+      totalCustomer:
+        type: integer
       updatedAt:
         type: string
     type: object
@@ -748,6 +769,19 @@ definitions:
     required:
     - status
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandImagesReq:
+    properties:
+      backgroundPublicId:
+        maxLength: 255
+        type: string
+      backgroundUrl:
+        type: string
+      logoPublicId:
+        maxLength: 255
+        type: string
+      logoUrl:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandItemReq:
     properties:
       description:
@@ -771,17 +805,6 @@ definitions:
         type: string
     required:
     - status
-    type: object
-  smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandLogoReq:
-    properties:
-      logoPublicId:
-        maxLength: 255
-        type: string
-      logoUrl:
-        type: string
-    required:
-    - logoPublicId
-    - logoUrl
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandStatusReq:
     properties:
@@ -2964,6 +2987,9 @@ paths:
       - Brand Benefit
   /api/v1/brand-items/{itemId}:
     get:
+      description: Product public hoàn toàn (không cần đăng nhập). Sample yêu cầu
+        user đã đăng nhập và có quyền sample_mix_access, nếu không đủ quyền trả về
+        403.
       parameters:
       - description: ID item
         in: path
@@ -2982,7 +3008,8 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
               type: object
-      summary: Lấy chi tiết sản phẩm brand đang hoạt động
+      summary: Lấy chi tiết sản phẩm/mẫu thử brand (product public, sample yêu cầu
+        auth)
       tags:
       - Brand
   /api/v1/brand-items/{itemId}/feedbacks:
@@ -3757,37 +3784,6 @@ paths:
       summary: Lấy chữ ký upload ảnh sản phẩm brand
       tags:
       - Brand Item
-  /api/v1/brand-portal/brands/{brandId}/logo:
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: Thông tin logo
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandLogoReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
-              type: object
-      summary: Cập nhật logo brand
-      tags:
-      - Brand Portal
   /api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots:
     get:
       parameters:
@@ -4039,7 +4035,38 @@ paths:
       summary: Thêm thành viên vào brand
       tags:
       - Brand Member
-  /api/v1/brand-portal/brands/logo-upload-signature:
+  /api/v1/brand-portal/brands/{brandId}/profile-images:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Thông tin logo và ảnh nền
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandImagesReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+              type: object
+      summary: Cập nhật logo/ảnh nền brand
+      tags:
+      - Brand Portal
+  /api/v1/brand-portal/brands/profile-images/upload-signature:
     get:
       produces:
       - application/json
@@ -4053,7 +4080,7 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UploadSignatureResult'
               type: object
-      summary: Lấy chữ ký upload logo brand
+      summary: Lấy chữ ký upload logo/ảnh nền brand
       tags:
       - Brand Portal
   /api/v1/brand-portal/me/brands:
@@ -4250,6 +4277,52 @@ paths:
         name: brandId
         required: true
         type: string
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes'
+              type: object
+      summary: Lấy danh sách sản phẩm brand (public)
+      tags:
+      - Brand
+      - Brand
+  /api/v1/brands/{brandId}/items/samples:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -4260,11 +4333,9 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes'
               type: object
-      summary: '[User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand'
+      summary: Lấy danh sách mẫu thử brand
       tags:
       - Brand
   /api/v1/brands/{brandId}/join-loyalty:

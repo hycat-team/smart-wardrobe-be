@@ -28,6 +28,7 @@ import (
 type BrandUseCase struct {
 	brandRepo    repositories.IBrandRepository
 	memberRepo   repositories.IBrandMemberRepository
+	customerRepo repositories.IBrandCustomerRepository
 	userRepo     identity_repos.IUserRepository
 	mediaService media.IMediaService
 	uow          shared_repos.IUnitOfWork
@@ -37,6 +38,7 @@ type BrandUseCase struct {
 func NewBrandUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
+	customerRepo repositories.IBrandCustomerRepository,
 	userRepo identity_repos.IUserRepository,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
@@ -45,6 +47,7 @@ func NewBrandUseCase(
 	return &BrandUseCase{
 		brandRepo:    brandRepo,
 		memberRepo:   memberRepo,
+		customerRepo: customerRepo,
 		userRepo:     userRepo,
 		mediaService: mediaService,
 		uow:          uow,
@@ -96,7 +99,7 @@ func (uc *BrandUseCase) createBrandWithOwner(ctx context.Context, creatorID uuid
 		return nil, err
 	}
 
-	return mapper.MapBrand(brand), nil
+	return mapper.MapBrand(brand, -1), nil
 }
 
 func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandStatusReq) (*dto.BrandRes, error) {
@@ -120,7 +123,7 @@ func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID
 	if err := uc.brandRepo.Update(ctx, brand); err != nil {
 		return nil, err
 	}
-	return mapper.MapBrand(brand), nil
+	return mapper.MapBrand(brand, -1), nil
 }
 
 func (uc *BrandUseCase) GetBrandsForAdmin(ctx context.Context, query dto.GetBrandsAdminQueryReq) (*dto.AdminBrandListRes, error) {
@@ -136,7 +139,20 @@ func (uc *BrandUseCase) GetBrandsForAdmin(ctx context.Context, query dto.GetBran
 		return nil, err
 	}
 
-	mappedItems := mapper.MapBrands(result.Brands)
+	brandIDs := make([]uuid.UUID, len(result.Brands))
+	for i, b := range result.Brands {
+		brandIDs[i] = b.ID
+	}
+	counts, err := uc.customerRepo.CountByBrandIDs(ctx, brandIDs)
+	if err != nil {
+		return nil, err
+	}
+	totalCustomerByBrandID := make(map[uuid.UUID]int, len(counts))
+	for id, cnt := range counts {
+		totalCustomerByBrandID[id] = int(cnt)
+	}
+
+	mappedItems := mapper.MapBrands(result.Brands, totalCustomerByBrandID)
 	metadata := shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount)
 
 	return &shared_dto.PaginationResult[*dto.BrandRes]{
@@ -157,7 +173,20 @@ func (uc *BrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActive
 		return nil, err
 	}
 
-	mappedItems := mapper.MapBrands(result.Brands)
+	brandIDs := make([]uuid.UUID, len(result.Brands))
+	for i, b := range result.Brands {
+		brandIDs[i] = b.ID
+	}
+	counts, err := uc.customerRepo.CountByBrandIDs(ctx, brandIDs)
+	if err != nil {
+		return nil, err
+	}
+	totalCustomerByBrandID := make(map[uuid.UUID]int, len(counts))
+	for id, cnt := range counts {
+		totalCustomerByBrandID[id] = int(cnt)
+	}
+
+	mappedItems := mapper.MapBrands(result.Brands, totalCustomerByBrandID)
 	metadata := shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount)
 
 	return &shared_dto.PaginationResult[*dto.BrandRes]{
@@ -177,7 +206,11 @@ func (uc *BrandUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUID) (
 	if brand.Status != brandstatus.Active {
 		return nil, branderrors.ErrBrandNotActive()
 	}
-	return mapper.MapBrand(brand), nil
+	totalCustomer, err := uc.customerRepo.CountByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MapBrand(brand, int(totalCustomer)), nil
 }
 
 func (uc *BrandUseCase) GetBrandsForPortalUser(ctx context.Context, userID uuid.UUID) ([]*dto.PortalBrandRes, error) {
@@ -185,16 +218,28 @@ func (uc *BrandUseCase) GetBrandsForPortalUser(ctx context.Context, userID uuid.
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapPortalBrands(members), nil
+	brandIDs := make([]uuid.UUID, len(members))
+	for i, m := range members {
+		brandIDs[i] = m.BrandID
+	}
+	counts, err := uc.customerRepo.CountByBrandIDs(ctx, brandIDs)
+	if err != nil {
+		return nil, err
+	}
+	totalCustomerByBrandID := make(map[uuid.UUID]int, len(counts))
+	for id, cnt := range counts {
+		totalCustomerByBrandID[id] = int(cnt)
+	}
+	return mapper.MapPortalBrands(members, totalCustomerByBrandID), nil
 }
 
 func (uc *BrandUseCase) GetBrandLogoUploadSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error) {
 	return uc.mediaService.GenerateUploadSignature(ctx, shared_dto.UploadSignatureParams{
-		Folder: fmt.Sprintf("brands/logos/%s", userID.String()),
+		Folder: fmt.Sprintf("%s/%s", uc.cfg.Cloudinary.BrandsFolder, userID.String()),
 	})
 }
 
-func (uc *BrandUseCase) UpdateBrandLogo(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandLogoReq) (*dto.BrandRes, error) {
+func (uc *BrandUseCase) UpdateBrandImages(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandImagesReq) (*dto.BrandRes, error) {
 	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
@@ -205,13 +250,23 @@ func (uc *BrandUseCase) UpdateBrandLogo(ctx context.Context, userID uuid.UUID, b
 	if brand == nil {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	brand.LogoURL = &input.LogoURL
-	brand.LogoPublicID = &input.LogoPublicID
+	if input.LogoURL != nil {
+		brand.LogoURL = input.LogoURL
+	}
+	if input.LogoPublicID != nil {
+		brand.LogoPublicID = input.LogoPublicID
+	}
+	if input.BackgroundURL != nil {
+		brand.BackgroundURL = input.BackgroundURL
+	}
+	if input.BackgroundPublicID != nil {
+		brand.BackgroundPublicID = input.BackgroundPublicID
+	}
 	brand.UpdatedAt = time.Now().UTC()
 	if err := uc.brandRepo.Update(ctx, brand); err != nil {
 		return nil, err
 	}
-	return mapper.MapBrand(brand), nil
+	return mapper.MapBrand(brand, -1), nil
 }
 
 func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.PortalBrandRes, error) {
@@ -225,7 +280,11 @@ func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID,
 	if member == nil || member.Brand == nil {
 		return nil, branderrors.ErrBrandPortalForbidden()
 	}
-	return mapper.MapPortalBrand(member), nil
+	totalCustomer, err := uc.customerRepo.CountByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MapPortalBrand(member, int(totalCustomer)), nil
 }
 
 func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error) {

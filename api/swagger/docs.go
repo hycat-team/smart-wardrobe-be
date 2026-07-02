@@ -1382,13 +1382,14 @@ const docTemplate = `{
         },
         "/api/v1/brand-items/{itemId}": {
             "get": {
+                "description": "Product public hoàn toàn (không cần đăng nhập). Sample yêu cầu user đã đăng nhập và có quyền sample_mix_access, nếu không đủ quyền trả về 403.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Brand"
                 ],
-                "summary": "Lấy chi tiết sản phẩm brand đang hoạt động",
+                "summary": "Lấy chi tiết sản phẩm/mẫu thử brand (product public, sample yêu cầu auth)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1517,7 +1518,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/brand-portal/brands/logo-upload-signature": {
+        "/api/v1/brand-portal/brands/profile-images/upload-signature": {
             "get": {
                 "produces": [
                     "application/json"
@@ -1525,7 +1526,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand Portal"
                 ],
-                "summary": "Lấy chữ ký upload logo brand",
+                "summary": "Lấy chữ ký upload logo/ảnh nền brand",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2733,58 +2734,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/brand-portal/brands/{brandId}/logo": {
-            "patch": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Brand Portal"
-                ],
-                "summary": "Cập nhật logo brand",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID brand",
-                        "name": "brandId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Thông tin logo",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandLogoReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/brand-portal/brands/{brandId}/loyalty/accounts/{accountId}/lots": {
             "get": {
                 "produces": [
@@ -3199,6 +3148,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/profile-images": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Cập nhật logo/ảnh nền brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin logo và ảnh nền",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandImagesReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/me/brands": {
             "get": {
                 "produces": [
@@ -3567,12 +3568,14 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "Brand",
                     "Brand"
                 ],
-                "summary": "[User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand",
+                "summary": "Lấy danh sách sản phẩm brand (public)",
                 "parameters": [
                     {
                         "type": "string",
@@ -3580,6 +3583,25 @@ const docTemplate = `{
                         "name": "brandId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3594,10 +3616,59 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/items/samples": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "Lấy danh sách mẫu thử brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes"
                                         }
                                     }
                                 }
@@ -5648,6 +5719,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes": {
             "type": "object",
             "properties": {
@@ -5756,6 +5841,12 @@ const docTemplate = `{
                 "approvedByUserId": {
                     "type": "string"
                 },
+                "backgroundPublicId": {
+                    "type": "string"
+                },
+                "backgroundUrl": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -5782,6 +5873,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus"
+                },
+                "totalCustomer": {
+                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -6267,6 +6361,12 @@ const docTemplate = `{
                 "approvedByUserId": {
                     "type": "string"
                 },
+                "backgroundPublicId": {
+                    "type": "string"
+                },
+                "backgroundUrl": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -6302,6 +6402,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_brand_brandstatus.BrandStatus"
+                },
+                "totalCustomer": {
+                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -6380,6 +6483,25 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandImagesReq": {
+            "type": "object",
+            "properties": {
+                "backgroundPublicId": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "backgroundUrl": {
+                    "type": "string"
+                },
+                "logoPublicId": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "logoUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandItemReq": {
             "type": "object",
             "required": [
@@ -6412,22 +6534,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandLogoReq": {
-            "type": "object",
-            "required": [
-                "logoPublicId",
-                "logoUrl"
-            ],
-            "properties": {
-                "logoPublicId": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "logoUrl": {
                     "type": "string"
                 }
             }

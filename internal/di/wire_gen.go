@@ -160,7 +160,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	outfitHandler := handler2.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
 	categoryRouter := category2.NewRouter(categoryHandler)
-	iBrandUseCase := usecase2.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iUserRepository, iMediaService, iUnitOfWork, cfg)
+	iBrandUseCase := usecase2.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iMediaService, iUnitOfWork, cfg)
 	brandPortalHandler := handler4.NewBrandPortalHandler(iBrandUseCase, iBrandItemUseCase)
 	iLoyaltyProgramRepository := persistence5.NewLoyaltyProgramRepository(gormDB)
 	iBrandLoyaltyUseCase := usecase2.NewBrandLoyaltyUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserRepository, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iUnitOfWork, cfg)

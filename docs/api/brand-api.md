@@ -15,7 +15,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Example:** `GET /api/v1/brands?q=seed&page=1&limit=20`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách dữ liệu các nhãn hàng (`brands`) có trạng thái active.
-*   **Mô tả:** Trả về các thương hiệu công khai (brand public) đang hoạt động để người dùng có thể duyệt xem, đăng ký tham gia chương trình loyalty, xem các đặc quyền (benefits) và danh sách sản phẩm. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
+*   **Mô tả:** Trả về các thương hiệu công khai (brand public) đang hoạt động để người dùng có thể duyệt xem, đăng ký tham gia chương trình loyalty, xem các đặc quyền (benefits) và danh sách sản phẩm. Trả về thêm `totalCustomer` là tổng số khách hàng đã tham gia loyalty của brand. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
 *   **Response:**
     *   `200 OK`:
         ```json
@@ -30,7 +30,10 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
               "description": "Thương hiệu thời trang nội địa",
               "logoUrl": "https://res.cloudinary.com/.../logo.png",
               "logoPublicId": "brands/local-brand-a/logo",
-              "status": "active"
+              "backgroundUrl": null,
+              "backgroundPublicId": null,
+              "status": "active",
+              "totalCustomer": 150
             }
             ],
             "metadata": {
@@ -47,9 +50,70 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Endpoint:** `GET /api/v1/brands/:brandId`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc thông tin của một nhãn hàng (`brands`) đang active.
-*   **Mô tả:** Trả về hồ sơ công khai (profile public) của thương hiệu. Endpoint chỉ trả về thông tin đối với các brand đang active.
+*   **Mô tả:** Trả về hồ sơ công khai (profile public) của thương hiệu. Endpoint chỉ trả về thông tin đối với các brand đang active. Trả về thêm `totalCustomer`, `backgroundUrl`, `backgroundPublicId`.
 *   **Response:**
     *   `200 OK`: Trả về thông tin chi tiết nhãn hàng `BrandRes`.
+
+---
+
+## Flow 1b: Danh sách sản phẩm công khai của brand
+
+### 1. Lấy danh sách sản phẩm (product) của brand (public, phân trang)
+*   **Endpoint:** `GET /api/v1/brands/:brandId/items`
+*   **Tác nhân (Actor):** Public (không yêu cầu xác thực).
+*   **Đối tượng ảnh hưởng:** Đọc danh sách `brand_items` có `itemType = product` và `status = active` của brand.
+*   **Mô tả:** Trả về danh sách sản phẩm thương mại đang hoạt động của thương hiệu, phân trang. Mặc định chỉ lọc `BrandItemType = product`.
+*   **Query Params:**
+    *   `page` (optional): Trang hiện tại, mặc định `1`.
+    *   `limit` (optional): Số lượng mỗi trang, mặc định `20`.
+*   **Response:**
+    *   `200 OK`:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "items": [
+              {
+                "id": "uuid",
+                "brandId": "uuid",
+                "fashionItemId": "uuid",
+                "name": "Áo khoác gió thu đông",
+                "itemType": "product",
+                "status": "active"
+              }
+            ],
+            "metadata": {
+              "page": 1,
+              "limit": 20,
+              "totalItems": 10,
+              "totalPages": 1
+            }
+          }
+        }
+        ```
+
+### 2. Lấy danh sách mẫu thử (sample) của brand (yêu cầu sample_mix_access)
+*   **Endpoint:** `GET /api/v1/brands/:brandId/items/samples`
+*   **Tác nhân (Actor):** Khách hàng (Customer) đã đăng nhập.
+*   **Đối tượng ảnh hưởng:** Đọc danh sách `brand_items` có `itemType = sample` và `status = active` của brand.
+*   **Mô tả:** Trả về danh sách mẫu thử kỹ thuật số phân trang. Yêu cầu user có quyền `sample_mix_access` (thông qua benefit feature access). Nếu không đủ quyền, trả về `403 Forbidden`.
+*   **Query Params:**
+    *   `page` (optional): Trang hiện tại, mặc định `1`.
+    *   `limit` (optional): Số lượng mỗi trang, mặc định `20`.
+*   **Error Response:**
+    *   `403 Forbidden`: Người dùng không có quyền `sample_mix_access`.
+*   **Response:**
+    *   `200 OK`: Trả về danh sách mẫu thử phân trang `BrandItemListRes`.
+
+### 3. Xem chi tiết sản phẩm/mẫu thử (product public, sample yêu cầu auth)
+*   **Endpoint:** `GET /api/v1/brand-items/:itemId`
+*   **Tác nhân (Actor):** Public đối với product; Customer đã đăng nhập đối với sample.
+*   **Đối tượng ảnh hưởng:** Đọc một bản ghi `brand_items` đang active.
+*   **Mô tả:** Trả về chi tiết sản phẩm hoặc mẫu thử. Nếu item có `itemType = product`, public hoàn toàn (không cần auth). Nếu item có `itemType = sample`, backend kiểm tra user đã đăng nhập và có quyền `sample_mix_access`; nếu không đủ quyền trả về `403 Forbidden`.
+*   **Response:**
+    *   `200 OK`: Trả về chi tiết `BrandItemRes`.
+*   **Error Response:**
+    *   `403 Forbidden`: Item là sample nhưng user không có quyền `sample_mix_access`.
 
 ---
 
@@ -128,7 +192,10 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
                 "description": "Thương hiệu thời trang nội địa",
                 "logoUrl": "https://res.cloudinary.com/.../logo.png",
                 "logoPublicId": "brands/local-brand-a/logo",
+                "backgroundUrl": null,
+                "backgroundPublicId": null,
                 "status": "active",
+                "totalCustomer": 150,
                 "createdByUserId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
                 "approvedByUserId": "3d9164cb-1c61-44d1-b82e-4efbb5f4b222",
                 "approvedAt": "2026-06-29T10:00:00Z",
@@ -158,24 +225,26 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 *   **Response:**
     *   `200 OK`: Trả về thông tin chi tiết `PortalBrandRes`.
 
-### 2. Lấy chữ ký tải lên ảnh logo của thương hiệu
-*   **Endpoint:** `GET /api/v1/brand-portal/brands/logo-upload-signature`
+### 2. Lấy chữ ký tải lên ảnh của thương hiệu (logo và background)
+*   **Endpoint:** `GET /api/v1/brand-portal/brands/profile-images/upload-signature`
 *   **Tác nhân (Actor):** Người dùng của Brand Portal.
 *   **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
-*   **Mô tả:** Lấy mã chữ ký Cloudinary upload signature để phía client có thể tải logo trực tiếp lên Cloudinary.
+*   **Mô tả:** Lấy mã chữ ký Cloudinary upload signature. Folder tải lên là `smart_wardrobe/brands/{userId}` (dev) hoặc `closy/brands/{userId}` (production). FE dùng chung signature này cho cả logo và ảnh nền.
 *   **Response:**
     *   `200 OK`: Trả về kết quả chữ ký `UploadSignatureResult`.
 
-### 3. Cập nhật logo mới của thương hiệu
-*   **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/logo`
+### 3. Cập nhật logo và/hoặc ảnh nền của thương hiệu
+*   **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/profile-images`
 *   **Tác nhân (Actor):** Chủ nhãn hàng hoặc quản lý nhãn hàng (Brand owner/staff).
-*   **Đối tượng ảnh hưởng:** Cập nhật đường dẫn logo của brand.
-*   **Mô tả:** Lưu lại đường dẫn URL và mã nhận diện public ID của logo mới đã tải lên thành công.
+*   **Đối tượng ảnh hưởng:** Cập nhật đường dẫn logo và/hoặc ảnh nền của brand.
+*   **Mô tả:** Lưu lại đường dẫn URL và mã nhận diện public ID của logo và/hoặc ảnh nền mới đã tải lên thành công. Cả 2 trường đều không bắt buộc, chỉ update các trường được gửi.
 *   **Request Body:**
     ```json
     {
       "logoUrl": "https://res.cloudinary.com/.../new-logo.png",
-      "logoPublicId": "brands/local-brand-a/new-logo"
+      "logoPublicId": "smart_wardrobe/brands/user-id/new-logo",
+      "backgroundUrl": "https://res.cloudinary.com/.../background.png",
+      "backgroundPublicId": "smart_wardrobe/brands/user-id/background"
     }
     ```
 *   **Response:**
@@ -264,13 +333,18 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 *   **Response:**
     *   `201 Created`: Trả về thông tin khách hàng nhãn hàng `BrandCustomerRes`.
 
-### 2. Lấy danh sách khách hàng của nhãn hàng
+### 2. Lấy danh sách khách hàng của nhãn hàng (phân trang)
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/customers`
 *   **Tác nhân (Actor):** Nhân viên hỗ trợ của nhãn hàng (Brand staff).
 *   **Đối tượng ảnh hưởng:** Đọc danh sách bản ghi khách hàng `brand_customers`.
-*   **Mô tả:** Trả về toàn bộ danh sách khách hàng bao gồm cả khách đã liên kết tài khoản và khách hàng offline chưa liên kết. Nhân viên chỉ xem được danh sách khách hàng thuộc thương hiệu mình được phân quyền.
+*   **Query Params:**
+    *   `page` (optional): Trang hiện tại, mặc định `1`.
+    *   `limit` (optional): Số lượng mỗi trang, mặc định `20`.
+    *   `q` (optional): Từ khóa tìm kiếm (tên, SĐT, mã KH).
+    *   `status` (optional): Trạng thái khách hàng (`ACTIVE`, `INACTIVE`).
+*   **Mô tả:** Trả về danh sách khách hàng phân trang bao gồm cả khách đã liên kết tài khoản và khách hàng offline chưa liên kết. Nhân viên chỉ xem được danh sách khách hàng thuộc thương hiệu mình được phân quyền.
 *   **Response:**
-    *   `200 OK`: Trả về mảng danh sách khách hàng `BrandCustomerRes`.
+    *   `200 OK`: Trả về danh sách khách hàng phân trang `BrandCustomerListRes`.
 
 ### 3. Lấy thông tin chi tiết một khách hàng của nhãn hàng
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/customers/:customerId`

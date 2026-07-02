@@ -32,6 +32,8 @@ type IBrandCustomerRepository interface {
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error)
 	GetByBrandIDPaginated(ctx context.Context, filter BrandCustomerFilter) (*BrandCustomerListResult, error)
+	CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error)
+	CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 }
 
 type IBrandCustomerClaimRepository interface {

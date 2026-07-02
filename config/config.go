@@ -125,6 +125,7 @@ type Cloudinary struct {
 	ApiKey       string `mapstructure:"-"`
 	ApiSecret    string `mapstructure:"-"`
 	AvatarFolder string `mapstructure:"avatar_folder"`
+	BrandsFolder string `mapstructure:"brands_folder"`
 	ItemFolder   string `mapstructure:"item_folder"`
 	OutfitFolder string `mapstructure:"outfit_folder"`
 	PostFolder   string `mapstructure:"post_folder"`

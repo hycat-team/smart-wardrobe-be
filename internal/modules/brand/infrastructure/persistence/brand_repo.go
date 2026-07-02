@@ -256,3 +256,33 @@ func (r *BrandCustomerRepository) GetByBrandIDPaginated(ctx context.Context, fil
 		TotalCount: totalCount,
 	}, nil
 }
+
+func (r *BrandCustomerRepository) CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BrandCustomer{}).Where("brand_id = ?", brandID).Count(&count).Error
+	return count, err
+}
+
+func (r *BrandCustomerRepository) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	if len(brandIDs) == 0 {
+		return map[uuid.UUID]int64{}, nil
+	}
+	type result struct {
+		BrandID uuid.UUID
+		Count   int64
+	}
+	var rows []result
+	err := r.GetDB(ctx).Model(&entities.BrandCustomer{}).
+		Select("brand_id, COUNT(*) AS count").
+		Where("brand_id IN ?", brandIDs).
+		Group("brand_id").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		counts[row.BrandID] = row.Count
+	}
+	return counts, nil
+}

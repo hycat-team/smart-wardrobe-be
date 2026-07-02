@@ -29,7 +29,8 @@ func TestGetBrandsForAdmin(t *testing.T) {
 	}}
 
 	uc := &BrandUseCase{
-		brandRepo: brandRepo,
+		brandRepo:    brandRepo,
+		customerRepo: &mockCustomerRepo{},
 	}
 
 	// 1. Get all brands (no filters)
@@ -102,7 +103,8 @@ func TestGetActiveBrandsFiltersPublicList(t *testing.T) {
 	}}
 
 	uc := &BrandUseCase{
-		brandRepo: brandRepo,
+		brandRepo:    brandRepo,
+		customerRepo: &mockCustomerRepo{},
 	}
 
 	searchQuery := "closy"

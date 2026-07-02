@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
@@ -81,6 +82,38 @@ func NewDigitalSampleResponseRepository(db *gorm.DB) repositories.IDigitalSample
 	return &DigitalSampleResponseRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.DigitalSampleResponse, uuid.UUID](db, relations),
 	}
+}
+
+func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
+	db := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ?", filter.BrandID)
+
+	if filter.ItemType != nil && *filter.ItemType != "" {
+		db = db.Where("item_type = ?", *filter.ItemType)
+	}
+	if filter.Status != nil && *filter.Status != "" {
+		db = db.Where("status = ?", *filter.Status)
+	}
+
+	var totalCount int64
+	if err := db.Model(&entities.BrandItem{}).Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+	}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	var items []*entities.BrandItem
+	if err := db.Order("created_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	return &repositories.BrandItemListResult{
+		Items:      items,
+		TotalCount: totalCount,
+	}, nil
 }
 
 func (r *DigitalSampleResponseRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.DigitalSampleResponse, error) {

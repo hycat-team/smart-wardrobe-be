@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
 	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
@@ -79,6 +81,25 @@ func (m *mockBrandItemRepo) GetByFashionItemID(ctx context.Context, fashionItemI
 	}
 	return nil, nil
 }
+func (m *mockBrandItemRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
+	var list []*entities.BrandItem
+	for _, item := range m.items {
+		if item.BrandID != filter.BrandID {
+			continue
+		}
+		if filter.ItemType != nil && *filter.ItemType != "" && item.ItemType != *filter.ItemType {
+			continue
+		}
+		if filter.Status != nil && *filter.Status != "" && item.Status != *filter.Status {
+			continue
+		}
+		list = append(list, item)
+	}
+	return &repositories.BrandItemListResult{
+		Items:      list,
+		TotalCount: int64(len(list)),
+	}, nil
+}
 
 type mockDigitalSampleResponseRepo struct {
 	feedbacks map[uuid.UUID]*entities.DigitalSampleResponse
@@ -135,6 +156,33 @@ func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.U
 	return nil, nil
 }
 
+type mockBenefitUC struct{}
+
+func (m *mockBenefitUC) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode benefitfeaturecode.BenefitFeatureCode) (bool, error) {
+	return true, nil
+}
+func (m *mockBenefitUC) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) ListActiveBenefitsForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID) ([]*dto.BenefitRedemptionRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
+	return nil, nil
+}
+func (m *mockBenefitUC) RedeemBenefit(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BenefitRedemptionRes, error) {
+	return nil, nil
+}
+
 func TestBrandItemAndFeedbackFlow(t *testing.T) {
 	ctx := context.Background()
 	brandID := uuid.New()
@@ -174,6 +222,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 		brandItemRepo:   brandItemRepo,
 		feedbackRepo:    feedbackRepo,
 		fashionContract: fashionContract,
+		benefitUC:       &mockBenefitUC{},
 	}
 
 	// 1. Staff creates BrandItem
@@ -213,13 +262,14 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 		t.Errorf("Unexpected updated brand item values: %+v", updateRes)
 	}
 
-	// 3. User lists brand items
-	userItems, err := uc.ListBrandItemsForUser(ctx, customerUserID, brandID)
+	// 3. User lists brand samples
+	query := dto.GetBrandItemsQueryReq{}
+	userItems, err := uc.ListBrandSamplesForCustomer(ctx, customerUserID, brandID, query)
 	if err != nil {
-		t.Fatalf("Failed to list active brand items: %v", err)
+		t.Fatalf("Failed to list brand samples: %v", err)
 	}
-	if len(userItems) != 1 {
-		t.Errorf("Expected 1 item for user, got %d", len(userItems))
+	if len(userItems.Items) != 1 {
+		t.Errorf("Expected 1 sample for user, got %d", len(userItems.Items))
 	}
 
 	// 4. User submits feedback

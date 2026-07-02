@@ -30,6 +30,25 @@ func GetUserId(c *gin.Context) (uuid.UUID, error) {
 	return uid, nil
 }
 
+func GetUserIdOptional(c *gin.Context) uuid.UUID {
+	val, exists := c.Get(CtxUserId)
+	if !exists {
+		return uuid.Nil
+	}
+	switch v := val.(type) {
+	case uuid.UUID:
+		return v
+	case string:
+		parsed, err := uuid.Parse(v)
+		if err != nil {
+			return uuid.Nil
+		}
+		return parsed
+	default:
+		return uuid.Nil
+	}
+}
+
 func GetRoleSlug(c *gin.Context) (roleslug.RoleSlug, error) {
 	val, exists := c.Get(CtxRoleSlug)
 	if !exists {

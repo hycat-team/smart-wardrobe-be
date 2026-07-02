@@ -28,6 +28,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var activeStatus = branditemstatus.Active
+
 type BrandItemUseCase struct {
 	brandRepo       repositories.IBrandRepository
 	memberRepo      repositories.IBrandMemberRepository
@@ -289,6 +291,18 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 	if brand == nil || brand.Status != brandstatus.Active {
 		return nil, branderrors.ErrBrandNotActive()
 	}
+	if item.ItemType == branditemtype.Sample {
+		if userID == uuid.Nil {
+			return nil, branderrors.ErrBrandPortalForbidden()
+		}
+		hasAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, item.BrandID, benefitfeaturecode.SampleMixAccess)
+		if err != nil {
+			return nil, err
+		}
+		if !hasAccess {
+			return nil, branderrors.ErrBrandPortalForbidden()
+		}
+	}
 	fashionItem, _ := uc.fashionContract.GetFashionItem(ctx, item.FashionItemID)
 	item.FashionItem = fashionItem
 	return mapper.MapToBrandItemRes(item), nil
@@ -360,22 +374,57 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 	return res, nil
 }
 
-func (uc *BrandItemUseCase) ListBrandItemsForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
-	items, err := uc.brandItemRepo.GetByBrandID(ctx, brandID)
+func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+	productType := branditemtype.Product
+	filter := repositories.BrandItemFilter{
+		BrandID:  brandID,
+		ItemType: &productType,
+		Status:   &activeStatus,
+		Page:     query.Page,
+		Limit:    query.Limit,
+	}
+	result, err := uc.brandItemRepo.GetByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	var activeItems []*entities.BrandItem
-	for _, item := range items {
-		if item.Status == branditemstatus.Active {
-			activeItems = append(activeItems, item)
-		}
+	items := make([]*dto.BrandItemRes, len(result.Items))
+	for i, item := range result.Items {
+		items[i] = mapper.MapToBrandItemRes(item)
 	}
-	res := make([]*dto.BrandItemRes, len(activeItems))
-	for i, item := range activeItems {
-		res[i] = mapper.MapToBrandItemRes(item)
+	return &dto.BrandItemListRes{
+		Items:    items,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
+	}, nil
+}
+
+func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+	hasAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, benefitfeaturecode.SampleMixAccess)
+	if err != nil {
+		return nil, err
 	}
-	return res, nil
+	if !hasAccess {
+		return nil, branderrors.ErrBrandPortalForbidden()
+	}
+	sampleType := branditemtype.Sample
+	filter := repositories.BrandItemFilter{
+		BrandID:  brandID,
+		ItemType: &sampleType,
+		Status:   &activeStatus,
+		Page:     query.Page,
+		Limit:    query.Limit,
+	}
+	result, err := uc.brandItemRepo.GetByBrandIDPaginated(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*dto.BrandItemRes, len(result.Items))
+	for i, item := range result.Items {
+		items[i] = mapper.MapToBrandItemRes(item)
+	}
+	return &dto.BrandItemListRes{
+		Items:    items,
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
+	}, nil
 }
 
 func (uc *BrandItemUseCase) SubmitSampleFeedback(ctx context.Context, userID uuid.UUID, brandItemID uuid.UUID, input dto.SubmitSampleFeedbackReq) (*dto.DigitalSampleResponseRes, error) {

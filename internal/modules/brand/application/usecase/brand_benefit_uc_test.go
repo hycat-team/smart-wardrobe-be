@@ -144,6 +144,12 @@ func (m *mockCustomerRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([
 func (m *mockCustomerRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandCustomerFilter) (*repositories.BrandCustomerListResult, error) {
 	return nil, nil
 }
+func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
+}
 
 type mockBenefitRepo struct {
 	benefits map[uuid.UUID]*entities.BrandBenefit

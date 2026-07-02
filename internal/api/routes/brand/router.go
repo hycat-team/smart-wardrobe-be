@@ -23,6 +23,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	{
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
+		publicBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandProducts))
 	}
 
 	userBrands := group.Group("/brands")
@@ -34,14 +35,19 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		userBrands.GET("/:brandId/conversation", shared_pres.WrapHandler(r.brandHandler.GetUserConversation))
 		userBrands.POST("/:brandId/conversation/read", shared_pres.WrapHandler(r.brandHandler.MarkUserConversationRead))
 		userBrands.POST("/:brandId/conversation/messages", shared_pres.WrapHandler(r.brandHandler.SendUserMessage))
-		userBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandItemsForUser))
+		userBrands.GET("/:brandId/items/samples", shared_pres.WrapHandler(r.brandHandler.ListBrandSamples))
 	}
 
 	userBrandItems := group.Group("/brand-items")
 	userBrandItems.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 	{
-		userBrandItems.GET("/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForUser))
 		userBrandItems.POST("/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.SubmitSampleFeedback))
+	}
+
+	optAuthBrandItems := group.Group("/brand-items")
+	optAuthBrandItems.Use(r.authMiddleware.OptionalHandle())
+	{
+		optAuthBrandItems.GET("/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForUser))
 	}
 
 	userBrandBenefits := group.Group("/brand-benefits")
@@ -66,9 +72,9 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	{
 		portal.GET("/me/brands", shared_pres.WrapHandler(r.brandHandler.GetMyPortalBrands))
 		portal.POST("/brands", shared_pres.WrapHandler(r.brandHandler.CreateBrandRequest))
-		portal.GET("/brands/logo-upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandLogoUploadSignature))
+		portal.GET("/brands/profile-images/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandLogoUploadSignature))
 		portal.GET("/brands/:brandId", shared_pres.WrapHandler(r.brandHandler.GetBrandForPortal))
-		portal.PATCH("/brands/:brandId/logo", shared_pres.WrapHandler(r.brandHandler.UpdateBrandLogo))
+		portal.PATCH("/brands/:brandId/profile-images", shared_pres.WrapHandler(r.brandHandler.UpdateBrandImages))
 		portal.POST("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.AddBrandMember))
 		portal.GET("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.GetBrandMembers))
 		portal.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
