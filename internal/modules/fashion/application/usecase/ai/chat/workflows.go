@@ -6,10 +6,10 @@ import (
 	"time"
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"

@@ -5,8 +5,8 @@ import (
 	"math"
 	"sort"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 // RankCandidates tính toán điểm số, xếp hạng và đa dạng hóa bể ứng viên nhằm chọn ra các món đồ phù hợp nhất để gửi cho LLM/AI.

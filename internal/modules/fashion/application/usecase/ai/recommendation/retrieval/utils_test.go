@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 )
 
 func TestBuildRecommendationSemanticQueryAfterExplicitMerge(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 )
 
 func TestLocalRecommendationQueryRewriterBuildsTaxonomyTermsAndHardFilters(t *testing.T) {

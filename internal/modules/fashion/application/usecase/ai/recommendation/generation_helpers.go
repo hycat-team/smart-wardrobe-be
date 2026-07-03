@@ -3,10 +3,10 @@ package recommendation
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 
 	"github.com/google/uuid"
 )

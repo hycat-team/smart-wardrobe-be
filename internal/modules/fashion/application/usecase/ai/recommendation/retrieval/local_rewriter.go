@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 // LocalRecommendationQueryRewriter xây dựng các truy vấn tìm kiếm bằng quy tắc phân tích tĩnh (rule-based) cục bộ từ ý định của người dùng.

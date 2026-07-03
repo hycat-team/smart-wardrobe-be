@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+
+	"github.com/google/uuid"
+)
 
 // Season represents the fashion seasonality
 type Season string
@@ -40,15 +44,15 @@ type RecommendedOutfitRes struct {
 }
 
 type RecommendedItemGroup struct {
-	Role         string             `json:"role"`
-	Primary      *WardrobeItemRes   `json:"primary"`
-	Alternatives []*WardrobeItemRes `json:"alternatives"`
+	Role         string                         `json:"role"`
+	Primary      *wardrobeDto.WardrobeItemRes   `json:"primary"`
+	Alternatives []*wardrobeDto.WardrobeItemRes `json:"alternatives"`
 }
 
 type PendingTransferRes struct {
-	PostItemID uuid.UUID        `json:"postItemId"`
-	Item       *WardrobeItemRes `json:"item"`
-	SellerName string           `json:"sellerName"`
+	PostItemID uuid.UUID                    `json:"postItemId"`
+	Item       *wardrobeDto.WardrobeItemRes `json:"item"`
+	SellerName string                       `json:"sellerName"`
 }
 
 type ParsedIntent struct {

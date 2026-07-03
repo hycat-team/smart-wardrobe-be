@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"

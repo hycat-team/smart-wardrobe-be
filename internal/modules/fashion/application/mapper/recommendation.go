@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
@@ -153,8 +154,8 @@ func resolveAlternativeCandidates(
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,
-) []*dto.WardrobeItemRes {
-	alternatives := make([]*dto.WardrobeItemRes, 0, 2)
+) []*wardrobeDto.WardrobeItemRes {
+	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
 		var altItem *entities.WardrobeItem
 		if idx, ok := parseAliasIndex(altID); ok {
@@ -216,7 +217,7 @@ func resolveAlternativeCandidates(
 	return alternatives
 }
 
-func enrichWardrobeItemRes(res *dto.WardrobeItemRes, cand types.CandidateForPrompt) {
+func enrichWardrobeItemRes(res *wardrobeDto.WardrobeItemRes, cand types.CandidateForPrompt) {
 	if res == nil {
 		return
 	}
@@ -229,7 +230,7 @@ func enrichWardrobeItemRes(res *dto.WardrobeItemRes, cand types.CandidateForProm
 		if cand.BrandItem.Brand != nil {
 			brandName = cand.BrandItem.Brand.Name
 		}
-		res.BrandItem = &dto.BrandItemBriefRes{
+		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
 			ID:        cand.BrandItem.ID,
 			BrandID:   cand.BrandItem.BrandID,
 			BrandName: brandName,

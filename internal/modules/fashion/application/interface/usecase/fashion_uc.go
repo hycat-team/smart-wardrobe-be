@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 

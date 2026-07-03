@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 // BuildRecommendationSemanticQuery định dạng các trường thuộc tính ý định đã phân tích thành một chuỗi truy vấn phân tách bằng ký tự "|" để làm đầu vào cho mô hình Vector Embedding.

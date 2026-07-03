@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -237,7 +238,7 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 				return fmt.Errorf("failed to delete item %s: %w", item.ID.String(), err)
 			}
 
-			payload := dto.WardrobeEventPayload{
+			payload := wardrobeDto.WardrobeEventPayload{
 				ItemID: item.ID,
 				UserID: item.UserID,
 				Action: eventconstants.ActionDeleted,
@@ -527,7 +528,7 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job f
 		return nil
 	}
 
-	payload := dto.WardrobeEventPayload{
+	payload := wardrobeDto.WardrobeEventPayload{
 		ItemID: job.ItemID,
 		UserID: job.UserID,
 		Action: eventconstants.ActionCreated,

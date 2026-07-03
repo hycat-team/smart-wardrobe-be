@@ -5,8 +5,9 @@ import (
 	"math"
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )
@@ -230,7 +231,7 @@ func buildItemGroup(
 	primary *entities.WardrobeItem,
 	all []*entities.WardrobeItem,
 ) *dto.RecommendedItemGroup {
-	alternatives := make([]*dto.WardrobeItemRes, 0, 2)
+	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, item := range all {
 		if item.ID == primary.ID {
 			continue

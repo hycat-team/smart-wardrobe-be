@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"

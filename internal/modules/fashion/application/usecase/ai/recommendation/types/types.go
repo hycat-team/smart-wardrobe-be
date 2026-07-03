@@ -4,8 +4,8 @@ package types
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
 	"smart-wardrobe-be/internal/shared/domain/entities"
 )

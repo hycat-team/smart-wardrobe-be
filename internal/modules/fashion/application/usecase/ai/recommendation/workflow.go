@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 // RecommendOutfit thực hiện quy trình gợi ý trang phục dựa trên các món đồ hiện có trong tủ đồ của người dùng và các tùy chọn yêu cầu.

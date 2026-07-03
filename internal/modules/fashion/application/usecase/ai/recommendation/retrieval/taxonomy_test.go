@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 )
 
 func TestTaxonomyExpansionDoesNotGenerateTermsOutsideAllowlist(t *testing.T) {

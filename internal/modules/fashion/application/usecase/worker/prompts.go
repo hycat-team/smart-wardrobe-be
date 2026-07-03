@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 )
 
 func getVisionSystemPrompt(categories []dto.AICategoryRef) string {
