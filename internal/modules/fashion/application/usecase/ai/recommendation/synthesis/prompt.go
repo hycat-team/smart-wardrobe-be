@@ -64,7 +64,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
-	builder.WriteString("- If the recommended outfit contains a top (\"top\"), it MUST be paired with at least one bottom (\"bottom\") to form a complete outfit.\n")
+	builder.WriteString("- If \"top\" is present, \"bottom\" MUST be included, and vice versa.\n")
 	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
 	builder.WriteString("- Shoes, bags, and other accessories are independent and not restricted by the dress or top-and-bottom pairing rules.\n")
 
