@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
+	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
@@ -23,13 +24,14 @@ type AppWorkers struct {
 	RenewalWorker               subWorker.ISubscriptionRenewalWorker
 	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
 	WebhookInboxWorker          subWorker.IWebhookInboxWorker
-	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
+	AIUsageReconciliationWorker aiexecutorWorker.IAIUsageReconciliationWorker
 	LoyaltyPointExpiryWorker    brandWorker.ILoyaltyPointExpiryWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
 	FashionInitWorker           *fashionWorker.FashionInitWorker
 	FailedItemsCleanupWorker    fashionWorker.IFailedItemsCleanupWorker
 	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker
 	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
+	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
 }
 type App struct {
 	Config    *config.Config

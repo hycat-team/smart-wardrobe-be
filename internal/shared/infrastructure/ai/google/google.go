@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/httputils"
@@ -193,7 +192,6 @@ func CallTextStream(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
@@ -252,10 +250,6 @@ func CallTextStream(
 			return
 		}
 
-		var lastMetadata googleUsageMetadata
-		var lastFinishReason string
-		hasMetadata := false
-
 		err = parseSSEStream(resp.Body, func(data string) error {
 			var googleResp struct {
 				Candidates []struct {
@@ -284,21 +278,11 @@ func CallTextStream(
 					}
 				}
 			}
-			if googleResp.UsageMetadata.TotalTokenCount > 0 {
-				lastMetadata = googleResp.UsageMetadata
-				hasMetadata = true
-				if len(googleResp.Candidates) > 0 {
-					lastFinishReason = googleResp.Candidates[0].FinishReason
-				}
-			}
 			if len(googleResp.Candidates) > 0 && googleResp.Candidates[0].FinishReason == "MAX_TOKENS" {
 				return fmt.Errorf("Google text generation reached MAX_TOKENS")
 			}
 			return nil
 		})
-		if hasMetadata && costPolicy != nil {
-			_ = confirmGoogleUsage(context.WithoutCancel(ctx), costPolicy, options, provider, lastMetadata, lastFinishReason)
-		}
 		if err != nil && err != context.Canceled {
 			errChan <- err
 		}
@@ -314,7 +298,6 @@ func CallText(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (string, error) {
 	req := PreparedGeminiRequest{
@@ -391,9 +374,6 @@ func CallText(
 	}
 
 	finishReason := googleResp.Candidates[0].FinishReason
-	if costPolicy != nil {
-		_ = confirmGoogleUsage(context.WithoutCancel(ctx), costPolicy, options, provider, googleResp.UsageMetadata, finishReason)
-	}
 	if finishReason == "MAX_TOKENS" {
 		return "", fmt.Errorf("Google text generation reached MAX_TOKENS")
 	}
@@ -561,20 +541,12 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 
 func confirmGoogleUsage(
 	ctx context.Context,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 	provider config.APIProviderConfig,
 	u googleUsageMetadata,
 	finish string,
 ) error {
-	return costPolicy.Confirm(ctx, options.RequestID, contract.AIUsage{
-		PromptTokens:   u.PromptTokenCount,
-		OutputTokens:   u.CandidatesTokenCount,
-		ThinkingTokens: u.ThoughtsTokenCount,
-		FinishReason:   finish,
-		Provider:       provider.Provider,
-		Model:          provider.Model,
-	})
+	return nil
 }
 
 func parseSSEStream(r io.Reader, callback func(data string) error) error {

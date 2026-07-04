@@ -71,6 +71,13 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return err
 	}
 
+	// 5. Declare and Bind Subscription Plan Changed Queue
+	if err := r.DeclareAndBindQueue(QueueSubscriptionPlanChanged, RoutingKeySubscriptionPlanChanged); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
 
 	// 4. Register to listen to NotifyClose for auto-reconnection in the background upon disconnection

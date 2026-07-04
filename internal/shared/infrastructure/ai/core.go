@@ -2,13 +2,12 @@ package ai
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
@@ -37,12 +36,11 @@ type AIService struct {
 	visionLimiter             *rate.Limiter
 	embeddingLimiter          *rate.Limiter
 	freeTextLimiter           *rate.Limiter
-	costPolicy                contract.IAICostPolicyContract
 	estimator                 *LocalTokenEstimator
 	logger                    logger.Interface
 }
 
-func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contract.IAICostPolicyContract, estimator *LocalTokenEstimator) app_ai.IAIService {
+func NewAIService(cfg *config.Config, logger logger.Interface, estimator *LocalTokenEstimator) app_ai.IAIService {
 	return &AIService{
 		cfg: cfg,
 		chatTextClient: &http.Client{
@@ -63,7 +61,6 @@ func NewAIService(cfg *config.Config, logger logger.Interface, costPolicy contra
 		visionLimiter:             newRPMLimiter(cfg.AI.VisionRPMLimit, 5),
 		embeddingLimiter:          newRPMLimiter(cfg.AI.EmbeddingRPMLimit, 5),
 		freeTextLimiter:           newRPMLimiter(cfg.AI.FreeTextRPMLimit, 5),
-		costPolicy:                costPolicy,
 		estimator:                 estimator,
 		logger:                    logger,
 	}
@@ -116,10 +113,8 @@ func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, u
 		return "", err
 	}
 	if err = limiter.Wait(ctx); err != nil {
-		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
 		return "", err
 	}
-	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
 	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
 	if err != nil {
 		if s.cfg.AI.ChatTextFallback.Provider != "" {
@@ -144,10 +139,8 @@ func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt
 		return "", err
 	}
 	if err = limiter.Wait(ctx); err != nil {
-		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
 		return "", err
 	}
-	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
 	text, err := s.tryTextProvider(ctx, client, provider, systemPrompt, userPrompt, prepared)
 	if err != nil {
 		if s.cfg.AI.RecommendationTextFallback.Provider != "" {
@@ -183,7 +176,6 @@ func (s *AIService) GenerateChatTextStream(
 	}
 	s.logTextGeneration("GenerateChatTextStream", systemPrompt, userPrompt, prepared)
 	if err := limiter.Wait(ctx); err != nil {
-		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
 		outErrChan <- err
 		close(outTextChan)
 		close(outErrChan)
@@ -194,7 +186,6 @@ func (s *AIService) GenerateChatTextStream(
 		defer close(outTextChan)
 		defer close(outErrChan)
 
-		_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
 		produced, err := s.streamTextSingle(ctx, client, provider, systemPrompt, userPrompt, prepared, outTextChan)
 		if err != nil {
 			if !produced && s.cfg.AI.ChatTextFallback.Provider != "" {
@@ -206,7 +197,6 @@ func (s *AIService) GenerateChatTextStream(
 				if !produced && !s.isFreeProvider(provider) {
 					if fallback, prepErr := s.prepareFreeOptions(ctx, systemPrompt, userPrompt, prepared); prepErr == nil {
 						if waitErr := s.freeTextLimiter.Wait(ctx); waitErr == nil {
-							_ = s.costPolicy.MarkInFlight(ctx, fallback.RequestID)
 							_, fallbackErr := s.streamTextSingle(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, fallback, outTextChan)
 							if fallbackErr == nil {
 								return
@@ -233,35 +223,11 @@ func (s *AIService) finalizeProviderError(ctx context.Context, id uuid.UUID, err
 	text := strings.ToLower(err.Error())
 	definite := strings.Contains(text, "http 400") || strings.Contains(text, "http 401") || strings.Contains(text, "http 403") || strings.Contains(text, "http 404") || strings.Contains(text, "http 429") || strings.Contains(text, "chưa hỗ trợ") || strings.Contains(text, "not configured")
 	if definite {
-		_ = s.costPolicy.Release(ctx, id, "provider_rejected")
 		return
 	}
-	_ = s.costPolicy.MarkUnknown(ctx, id, "provider_error")
-}
-
-func mapCountTokensError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if errors.Is(err, google.ErrCountTokensUnavailable) {
-		return apperror.NewTooManyRequest("Dịch vụ phân tích dữ liệu AI đang tạm thời bận. Vui lòng thử lại sau.")
-	}
-	return apperror.NewInternalError("Không thể hoàn tất phân tích dữ liệu AI lúc này.")
 }
 
 func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConfig, systemPrompt, userPrompt string, options app_ai.TextGenerationOptions, defaultOperation string) (config.APIProviderConfig, *http.Client, *rate.Limiter, app_ai.TextGenerationOptions, error) {
-	operation := options.Operation
-	if operation == "" {
-		operation = defaultOperation
-	}
-	if options.UserID == uuid.Nil {
-		return paid, s.chatTextClient, s.chatTextLimiter, options, nil
-	}
-
-	var promptTokens int64
-	var countDuration time.Duration
-	var meta contract.AITokenEstimationMeta
-
 	var geminiReq google.PreparedGeminiRequest
 	isGemini := paid.Provider == ProviderGemini
 	if isGemini {
@@ -286,76 +252,8 @@ func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConf
 				},
 			}
 		}
-		promptTokens = s.estimator.EstimateFromRequest(geminiReq)
-	} else {
-		promptTokens = s.estimator.EstimateFromText(systemPrompt, userPrompt)
 	}
 
-	shouldCallCountTokens := (operation == contract.AIOperationOutfit || operation == contract.AIOperationChat) && isGemini
-
-	if shouldCallCountTokens {
-		const defaultMaxInputTokens = 12000
-		ratio := s.cfg.AI.TokenEstimation.CountTokensThresholdRatio
-		if ratio <= 0 {
-			ratio = 0.70
-		}
-		threshold := int64(float64(defaultMaxInputTokens) * ratio)
-
-		if promptTokens >= threshold {
-			var count int64
-			var err error
-			count, countDuration, err = google.CountGoogleTokensByRequest(ctx, s.chatTextClient, s.cfg, paid, geminiReq)
-			if err != nil {
-				if errors.Is(err, ctx.Err()) {
-					return paid, nil, nil, options, err
-				}
-				return paid, nil, nil, options, mapCountTokensError(err)
-			}
-
-			if count > defaultMaxInputTokens {
-				return paid, nil, nil, options, apperror.NewBadRequest("Kích thước dữ liệu đầu vào vượt quá giới hạn cấu hình.")
-			}
-
-			promptTokens = count
-			latencyMs := countDuration.Milliseconds()
-			meta = contract.AITokenEstimationMeta{
-				EstimatedPromptTokens: count,
-				TokenEstimationMethod: contract.TokenEstimationProviderCount,
-				TokenCountLatencyMs:   &latencyMs,
-			}
-		} else {
-			meta = contract.AITokenEstimationMeta{
-				EstimatedPromptTokens: promptTokens,
-				TokenEstimationMethod: contract.TokenEstimationLocal,
-				TokenCountLatencyMs:   nil,
-			}
-		}
-	} else {
-		meta = contract.AITokenEstimationMeta{
-			EstimatedPromptTokens: promptTokens,
-			TokenEstimationMethod: contract.TokenEstimationLocal,
-			TokenCountLatencyMs:   nil,
-		}
-	}
-
-	decision, err := s.costPolicy.Prepare(ctx, options.UserID, operation, meta)
-	if err != nil {
-		return paid, nil, nil, options, err
-	}
-	options.RequestID = decision.RequestID
-	if decision.MaxOutputTokens > 0 {
-		options.MaxOutputTokens = decision.MaxOutputTokens
-	}
-	if decision.MaxInputTokens > 0 && promptTokens > int64(decision.MaxInputTokens) {
-		_ = s.costPolicy.Release(ctx, decision.RequestID, "input_token_budget_exceeded")
-		return paid, nil, nil, options, apperror.NewBadRequest("Kích thước dữ liệu đầu vào vượt quá giới hạn cho phép của gói dịch vụ.")
-	}
-	if decision.Route == contract.AIRouteFree {
-		return s.cfg.AI.FreeTextPrimary, s.freeTextClient, s.freeTextLimiter, options, nil
-	}
-	if decision.Route == contract.AIRouteLocal {
-		return paid, nil, nil, options, apperror.NewInternalError("AI local fallback requested")
-	}
 	if defaultOperation == contract.AIOperationOutfit {
 		return paid, s.recommendationTextClient, s.recommendationTextLimiter, options, nil
 	}
@@ -403,10 +301,8 @@ func (s *AIService) tryFreeText(ctx context.Context, systemPrompt, userPrompt st
 		return "", err
 	}
 	if err := s.freeTextLimiter.Wait(ctx); err != nil {
-		_ = s.costPolicy.Release(context.WithoutCancel(ctx), prepared.RequestID, "rate_limiter_wait_failed")
 		return "", err
 	}
-	_ = s.costPolicy.MarkInFlight(ctx, prepared.RequestID)
 	text, err := s.tryTextProvider(ctx, s.freeTextClient, s.cfg.AI.FreeTextPrimary, systemPrompt, userPrompt, prepared)
 	if err != nil {
 		s.finalizeProviderError(context.WithoutCancel(ctx), prepared.RequestID, err)
@@ -419,19 +315,6 @@ func (s *AIService) prepareFreeOptions(ctx context.Context, systemPrompt, userPr
 		options.RequestID = uuid.Nil
 		return options, nil
 	}
-	operation := options.Operation
-	if operation == "" {
-		operation = contract.AIOperationChat
-	}
-	tokens := s.estimator.EstimateFromText(systemPrompt, userPrompt)
-	decision, err := s.costPolicy.PrepareFree(ctx, options.UserID, operation, tokens, options.MaxOutputTokens)
-	if err != nil {
-		return options, err
-	}
-	if decision.Route == contract.AIRouteLocal {
-		return options, apperror.NewInternalError("AI local fallback requested")
-	}
-	options.RequestID = decision.RequestID
 	return options, nil
 }
 
@@ -492,9 +375,9 @@ func (s *AIService) tryTextProviderStream(
 ) (<-chan string, <-chan error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return openai.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
+		return openai.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, options)
 	case ProviderGemini:
-		return google.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
+		return google.CallTextStream(ctx, client, provider, systemPrompt, userPrompt, options)
 	}
 
 	errChan := make(chan error, 1)
@@ -530,9 +413,9 @@ func (s *AIService) tryEmbeddingProviderBatch(ctx context.Context, provider conf
 func (s *AIService) tryTextProvider(ctx context.Context, client *http.Client, provider config.APIProviderConfig, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	switch provider.Provider {
 	case ProviderOpenAI:
-		return openai.CallText(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
+		return openai.CallText(ctx, client, provider, systemPrompt, userPrompt, options)
 	case ProviderGemini:
-		return google.CallText(ctx, client, provider, systemPrompt, userPrompt, s.costPolicy, options)
+		return google.CallText(ctx, client, provider, systemPrompt, userPrompt, options)
 	}
 
 	return "", apperror.NewInternalError("Hệ thống chưa hỗ trợ nhà cung cấp dịch vụ phản hồi văn bản này.")

@@ -5,7 +5,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"time"

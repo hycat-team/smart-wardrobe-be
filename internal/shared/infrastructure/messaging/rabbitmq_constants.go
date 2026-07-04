@@ -9,8 +9,12 @@ const (
 	QueueFashionInit       = "fashion_init_queue"
 	QueueFashionAnalyze    = "fashion_analyze_queue"
 
+	// Queues
+	QueueSubscriptionPlanChanged = "subscription_plan_changed_queue"
+
 	// Routing Keys
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
 	RoutingKeyFashionInit               = "fashion.event.init"
 	RoutingKeyFashionAnalyze            = "fashion.event.analyze"
+	RoutingKeySubscriptionPlanChanged   = "subscription.plan.changed"
 )

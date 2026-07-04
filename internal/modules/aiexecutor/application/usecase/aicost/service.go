@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -28,9 +28,9 @@ func NewService(repo repositories.IAICostRepository, cfg *config.Config) contrac
 }
 
 func (s *Service) rates() (decimal.Decimal, decimal.Decimal, decimal.Decimal) {
-	in, _ := decimal.NewFromString(s.cfg.AI.Pricing.Paid.InputUSDPerMillionTokens)
-	out, _ := decimal.NewFromString(s.cfg.AI.Pricing.Paid.OutputUSDPerMillionTokens)
-	fx, _ := decimal.NewFromString(s.cfg.AI.Pricing.USDToVND)
+	in, _ := decimal.NewFromString(s.cfg.AI.FallbackPricing.Paid.InputUSDPerMillionTokens)
+	out, _ := decimal.NewFromString(s.cfg.AI.FallbackPricing.Paid.OutputUSDPerMillionTokens)
+	fx, _ := decimal.NewFromString(s.cfg.AI.FallbackPricing.USDToVND)
 	return in, out, fx
 }
 

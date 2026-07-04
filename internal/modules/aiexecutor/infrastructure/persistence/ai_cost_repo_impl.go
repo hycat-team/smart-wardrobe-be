@@ -6,10 +6,10 @@ import (
 	"time"
 
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -156,6 +156,19 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 func (r *AICostRepository) Release(ctx context.Context, id uuid.UUID, reason string, at time.Time) error {
 	return r.finishWithoutCost(ctx, id, string(aiusageeventstatus.Released), reason, nil, at)
 }
+
+func (r *AICostRepository) ExpireGrantsByUserID(ctx context.Context, userID uuid.UUID, now time.Time) error {
+	return r.GetDB(ctx).
+		Model(&aiexecutor_entities.AIPolicyGrant{}).
+		Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).
+		Updates(map[string]any{"effective_to": now, "updated_at": now, "status": "closed"}).
+		Error
+}
+
+func (r *AICostRepository) CreateGrant(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant) error {
+	return r.GetDB(ctx).Create(grant).Error
+}
+
 func (r *AICostRepository) MarkUnknown(ctx context.Context, id uuid.UUID, reason string, expires time.Time) error {
 	updates := map[string]any{"status": aiusageeventstatus.UnknownUsage, "error_code": reason, "updated_at": time.Now()}
 	if !expires.IsZero() {

@@ -75,15 +75,15 @@ func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *aiexecutor_e
 	if policy.HardCostMicroVND == nil {
 		return fmt.Errorf("strict policy hard cost is required")
 	}
-	in, err := decimal.NewFromString(v.cfg.AI.Pricing.Paid.InputUSDPerMillionTokens)
+	in, err := decimal.NewFromString(v.cfg.AI.FallbackPricing.Paid.InputUSDPerMillionTokens)
 	if err != nil {
 		return err
 	}
-	out, err := decimal.NewFromString(v.cfg.AI.Pricing.Paid.OutputUSDPerMillionTokens)
+	out, err := decimal.NewFromString(v.cfg.AI.FallbackPricing.Paid.OutputUSDPerMillionTokens)
 	if err != nil {
 		return err
 	}
-	fx, err := decimal.NewFromString(v.cfg.AI.Pricing.USDToVND)
+	fx, err := decimal.NewFromString(v.cfg.AI.FallbackPricing.USDToVND)
 	if err != nil {
 		return err
 	}

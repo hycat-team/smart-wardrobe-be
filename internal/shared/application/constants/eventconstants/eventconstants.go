@@ -6,6 +6,8 @@ const (
 	TopicWardrobeUpdated     = "wardrobe.event.updated"
 	TopicWardrobeDeleted     = "wardrobe.event.deleted"
 
+	TopicSubscriptionPlanChanged = "subscription.plan.changed"
+
 	ActionCreated = "created"
 	ActionUpdated = "updated"
 	ActionDeleted = "deleted"

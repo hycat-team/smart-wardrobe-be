@@ -38,10 +38,10 @@ func validateConfig(cfg *Config) error {
 	if strings.TrimSpace(cfg.AI.UsageReconcileCron) == "" || cfg.AI.UsageReconcileBatchSize <= 0 {
 		return fmt.Errorf("ai usage reconciliation configuration is invalid")
 	}
-	if strings.TrimSpace(cfg.AI.Pricing.Version) == "" || strings.ToUpper(strings.TrimSpace(cfg.AI.Pricing.Currency)) != "VND" {
+	if strings.TrimSpace(cfg.AI.FallbackPricing.Version) == "" || strings.ToUpper(strings.TrimSpace(cfg.AI.FallbackPricing.Currency)) != "VND" {
 		return fmt.Errorf("ai pricing version and VND currency are required")
 	}
-	for label, raw := range map[string]string{"usd_to_vnd": cfg.AI.Pricing.USDToVND, "input_price": cfg.AI.Pricing.Paid.InputUSDPerMillionTokens, "output_price": cfg.AI.Pricing.Paid.OutputUSDPerMillionTokens} {
+	for label, raw := range map[string]string{"usd_to_vnd": cfg.AI.FallbackPricing.USDToVND, "input_price": cfg.AI.FallbackPricing.Paid.InputUSDPerMillionTokens, "output_price": cfg.AI.FallbackPricing.Paid.OutputUSDPerMillionTokens} {
 		value, err := decimal.NewFromString(raw)
 		if err != nil || !value.IsPositive() {
 			return fmt.Errorf("ai pricing %s must be a positive decimal", label)
