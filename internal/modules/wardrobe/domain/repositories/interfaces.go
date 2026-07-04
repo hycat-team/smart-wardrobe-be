@@ -80,13 +80,7 @@ type IWardrobeItemRepository interface {
 	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
-type ICategoryRepository interface {
-	shared_repos.IGenericRepository[fashion_entities.Category, uuid.UUID]
-	GetBySlug(ctx context.Context, slug string) (*fashion_entities.Category, error)
-	GetByName(ctx context.Context, name string) (*fashion_entities.Category, error)
-	CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
-	ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
-}
+
 
 type IOutfitRepository interface {
 	shared_repos.IGenericRepository[entities.Outfit, uuid.UUID]

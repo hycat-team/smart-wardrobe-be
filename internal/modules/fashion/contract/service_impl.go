@@ -11,13 +11,15 @@ import (
 )
 
 type FashionContract struct {
-	fashionItemRepo repositories.IFashionItemRepository
-	eventPublisher  event.IEventPublisher
+	fashionItemRepo  repositories.IFashionItemRepository
+	categoryRepo     repositories.ICategoryRepository
+	eventPublisher   event.IEventPublisher
 }
 
-func NewFashionContract(fashionItemRepo repositories.IFashionItemRepository, eventPublisher event.IEventPublisher) IFashionContract {
+func NewFashionContract(fashionItemRepo repositories.IFashionItemRepository, categoryRepo repositories.ICategoryRepository, eventPublisher event.IEventPublisher) IFashionContract {
 	return &FashionContract{
 		fashionItemRepo: fashionItemRepo,
+		categoryRepo:    categoryRepo,
 		eventPublisher:  eventPublisher,
 	}
 }
@@ -68,6 +70,38 @@ func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID)
 	res := make([]*FashionItemRes, len(items))
 	for i, item := range items {
 		res[i] = mapToFashionItemRes(item)
+	}
+	return res, nil
+}
+
+func mapToCategoryRes(cat *entities.Category) *CategoryRes {
+	if cat == nil {
+		return nil
+	}
+	return &CategoryRes{
+		ID:        cat.ID,
+		Name:      cat.Name,
+		Slug:      cat.Slug,
+		SortOrder: cat.SortOrder,
+	}
+}
+
+func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*CategoryRes, error) {
+	cat, err := c.categoryRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return mapToCategoryRes(cat), nil
+}
+
+func (c *FashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*CategoryRes, error) {
+	items, err := c.categoryRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*CategoryRes, len(items))
+	for i, item := range items {
+		res[i] = mapToCategoryRes(item)
 	}
 	return res, nil
 }

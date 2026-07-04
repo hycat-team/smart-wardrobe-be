@@ -8,6 +8,7 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -21,14 +22,14 @@ import (
 
 type WardrobeCatalogUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryRepo    repositories.ICategoryRepository
+	categoryRepo    fashion_repos.ICategoryRepository
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 }
 
 func NewWardrobeCatalogUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	categoryRepo repositories.ICategoryRepository,
+	categoryRepo fashion_repos.ICategoryRepository,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 ) uc_interfaces.IWardrobeCatalogUseCase {

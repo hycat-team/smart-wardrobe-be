@@ -18,7 +18,6 @@ import (
 
 var ProviderSet = wire.NewSet(
 	persistence.NewWardrobeItemRepository,
-	persistence.NewCategoryRepository,
 	persistence.NewOutfitRepository,
 	search.NewWardrobeSearchService,
 	search.NewWardrobeSearchIndexService,

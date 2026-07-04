@@ -102,7 +102,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
-	iCategoryRepository := persistence3.NewCategoryRepository(gormDB)
+	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
 	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
@@ -115,7 +115,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		return nil, nil, err
 	}
 	iFashionItemRepository := persistence4.NewFashionItemRepository(gormDB)
-	iFashionContract := contract.NewFashionContract(iFashionItemRepository, rabbitMQClient)
+	iFashionContract := contract.NewFashionContract(iFashionItemRepository, iCategoryRepository, rabbitMQClient)
 	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionContract)
 	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient)
 	wardrobeItemHandler := handler2.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase)

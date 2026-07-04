@@ -28,6 +28,13 @@ type FashionItemRes struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
 
+type CategoryRes struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	SortOrder int       `json:"sortOrder"`
+}
+
 type FashionAnalyzeJobDTO struct {
 	FashionItemID     *uuid.UUID `json:"fashionItemId,omitempty"`
 	ItemID            uuid.UUID  `json:"itemId"`
@@ -44,4 +51,6 @@ type FashionAnalyzeJobDTO struct {
 type IFashionContract interface {
 	GetFashionItem(ctx context.Context, id uuid.UUID) (*FashionItemRes, error)
 	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*FashionItemRes, error)
+	GetCategory(ctx context.Context, id uuid.UUID) (*CategoryRes, error)
+	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*CategoryRes, error)
 }

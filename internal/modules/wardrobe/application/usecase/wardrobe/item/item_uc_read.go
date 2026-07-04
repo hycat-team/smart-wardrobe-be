@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/config"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -31,7 +32,7 @@ type WardrobeItemUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryRepo    repositories.ICategoryRepository
+	categoryRepo    fashion_repos.ICategoryRepository
 	outfitRepo      repositories.IOutfitRepository
 	searchEngine    search.IWardrobeSearchService
 	mediaService    media.IMediaService
@@ -45,7 +46,7 @@ func NewWardrobeItemUseCase(
 	cfg *config.Config,
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	categoryRepo repositories.ICategoryRepository,
+	categoryRepo fashion_repos.ICategoryRepository,
 	outfitRepo repositories.IOutfitRepository,
 	searchEngine search.IWardrobeSearchService,
 	mediaService media.IMediaService,

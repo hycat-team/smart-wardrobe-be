@@ -9,9 +9,9 @@ import (
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -20,13 +20,13 @@ import (
 
 type CategoryUseCase struct {
 	logger       logger.Interface
-	categoryRepo repositories.ICategoryRepository
+	categoryRepo fashion_repos.ICategoryRepository
 	uow          shared_repos.IUnitOfWork
 }
 
 func NewCategoryUseCase(
 	l logger.Interface,
-	categoryRepo repositories.ICategoryRepository,
+	categoryRepo fashion_repos.ICategoryRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.ICategoryUseCase {
 	return &CategoryUseCase{

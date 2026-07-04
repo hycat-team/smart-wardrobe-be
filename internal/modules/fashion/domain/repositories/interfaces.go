@@ -6,6 +6,7 @@ import (
 
 	brand_repos "smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	wardrobe_repos "smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -14,8 +15,16 @@ import (
 )
 
 type IWardrobeItemRepository = wardrobe_repos.IWardrobeItemRepository
-type ICategoryRepository = wardrobe_repos.ICategoryRepository
 type IOutfitRepository = wardrobe_repos.IOutfitRepository
+
+type ICategoryRepository interface {
+	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Category, error)
+	GetBySlug(ctx context.Context, slug string) (*entities.Category, error)
+	GetByName(ctx context.Context, name string) (*entities.Category, error)
+	CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
+	ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
+}
 type IBrandItemRepository = brand_repos.IBrandItemRepository
 type RecommendationHardFilters = wardrobe_repos.RecommendationHardFilters
 type HybridCandidate = wardrobe_repos.HybridCandidate
