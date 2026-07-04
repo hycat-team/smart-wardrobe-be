@@ -1,0 +1,47 @@
+package entities
+
+import (
+	"time"
+
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitredemptionstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefittype"
+	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitunlocktype"
+
+	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
+
+	"github.com/google/uuid"
+)
+
+type BrandBenefit struct {
+	shared_entities.AuditableEntity
+	BrandID        uuid.UUID                              `gorm:"type:uuid;not null"`
+	Brand          *Brand                                 `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	Name           string                                 `gorm:"type:varchar(255);not null"`
+	Description    *string                                `gorm:"type:text"`
+	BenefitType    benefittype.BenefitType                `gorm:"type:varchar(50);not null"`
+	UnlockType     benefitunlocktype.BenefitUnlockType    `gorm:"type:varchar(50);not null"`
+	RequiredPoints *int                                   `gorm:"type:int"`
+	RequiredTierID *uuid.UUID                             `gorm:"type:uuid"`
+	RequiredTier   *LoyaltyTier                           `gorm:"foreignKey:RequiredTierID;constraint:OnDelete:SET NULL"`
+	FeatureCode    *benefitfeaturecode.BenefitFeatureCode `gorm:"type:varchar(100)"`
+	FeatureConfig  shared_entities.JSONDocument            `gorm:"type:jsonb"`
+	Status         benefitstatus.BenefitStatus            `gorm:"type:varchar(50);not null;default:ACTIVE"`
+}
+
+type BenefitRedemption struct {
+	shared_entities.AuditableEntity
+	BenefitID       uuid.UUID                                       `gorm:"type:uuid;not null"`
+	Benefit         *BrandBenefit                                   `gorm:"foreignKey:BenefitID;constraint:OnDelete:CASCADE"`
+	BrandID         uuid.UUID                                       `gorm:"type:uuid;not null"`
+	Brand           *Brand                                          `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	BrandCustomerID uuid.UUID                                       `gorm:"type:uuid;not null"`
+	BrandCustomer   *BrandCustomer                                  `gorm:"foreignKey:BrandCustomerID;constraint:OnDelete:CASCADE"`
+	UserID          *uuid.UUID                                      `gorm:"type:uuid"`
+	PointsSpent     int                                             `gorm:"type:int;not null;default:0"`
+	Status          benefitredemptionstatus.BenefitRedemptionStatus `gorm:"type:varchar(50);not null;default:REDEEMED"`
+	RedeemedAt      time.Time                                       `gorm:"type:timestamp with time zone;not null;default:now()"`
+	UsedAt          *time.Time                                      `gorm:"type:timestamp with time zone"`
+	ExpiresAt       *time.Time                                      `gorm:"type:timestamp with time zone"`
+}
