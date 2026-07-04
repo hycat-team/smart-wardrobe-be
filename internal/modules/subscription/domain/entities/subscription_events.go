@@ -5,23 +5,22 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/subscriptionrenewalstatus"
 
-	
 	"github.com/google/uuid"
 )
 
 type UserSubscriptionEvent struct {
 	AuditableEntity
-	EventKey                   string                    `gorm:"type:varchar(255);not null;uniqueIndex"`
-	UserID                     uuid.UUID                 `gorm:"type:uuid;not null"`
-	EventType                  string                    `gorm:"type:varchar(100);not null"`
-	FromPlanCode               *string                   `gorm:"type:varchar(100)"`
-	FromTierRank               *int                      `gorm:"type:int"`
-	ToPlanCode                 *string                   `gorm:"type:varchar(100)"`
-	ToTierRank                 *int                      `gorm:"type:int"`
-	SourceDepositTransactionID *uuid.UUID                `gorm:"type:uuid"`
-	ActorAdminID               *uuid.UUID                `gorm:"type:uuid"`
-	OccurredAt                 time.Time                 `gorm:"type:timestamp with time zone;not null"`
-	EffectiveAt                time.Time                 `gorm:"type:timestamp with time zone;not null"`
+	EventKey                   string       `gorm:"type:varchar(255);not null;uniqueIndex"`
+	UserID                     uuid.UUID    `gorm:"type:uuid;not null"`
+	EventType                  string       `gorm:"type:varchar(100);not null"`
+	FromPlanCode               *string      `gorm:"type:varchar(100)"`
+	FromTierRank               *int         `gorm:"type:int"`
+	ToPlanCode                 *string      `gorm:"type:varchar(100)"`
+	ToTierRank                 *int         `gorm:"type:int"`
+	SourceDepositTransactionID *uuid.UUID   `gorm:"type:uuid"`
+	ActorAdminID               *uuid.UUID   `gorm:"type:uuid"`
+	OccurredAt                 time.Time    `gorm:"type:timestamp with time zone;not null"`
+	EffectiveAt                time.Time    `gorm:"type:timestamp with time zone;not null"`
 	Metadata                   JSONDocument `gorm:"type:jsonb"`
 }
 

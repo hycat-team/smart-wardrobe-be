@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 
 	"github.com/google/uuid"
 )

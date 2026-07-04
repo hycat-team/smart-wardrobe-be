@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -66,6 +67,7 @@ func parseAliasIndex(alias string) (int, bool) {
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) []*dto.RecommendedItemGroup {
 	candidateMap := map[uuid.UUID]*wardrobe_entities.WardrobeItem{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
@@ -79,19 +81,21 @@ func MapLLMResponseToGroups(
 
 	for _, group := range llmRes.Items {
 		role := strings.ToLower(group.Role)
-		primary := resolvePrimaryCandidate(candidateMap, candidates, role, group.PrimaryID)
+		primary := resolvePrimaryCandidate(candidateMap, candidates, role, group.PrimaryID, fashionItemMap)
 		if primary == nil {
 			continue
 		}
 
 		actualRole := role
-		// TODO(Phase1): get via contract
+		if fi := fashionItemMap[*primary.FashionItemID]; fi != nil && fi.CategoryName != nil {
+			actualRole = CategorySlugToWearingRole(*fi.CategoryName)
+		}
 
 		if actualRole == "fullbody" {
 			hasFullbody = true
 		}
 
-		primaryDTO := wardrobe_mapper.MapToWardrobeItemRes(primary)
+		primaryDTO := wardrobe_mapper.MapToWardrobeItemRes(primary, fashionItemMap[*primary.FashionItemID])
 		if cand, found := promptCandidateMap[primary.ID]; found {
 			enrichWardrobeItemRes(primaryDTO, cand)
 		}
@@ -99,7 +103,7 @@ func MapLLMResponseToGroups(
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         actualRole,
 			Primary:      primaryDTO,
-			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, actualRole, primary.ID, group.AlternativeIDs),
+			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, actualRole, primary.ID, group.AlternativeIDs, fashionItemMap),
 		})
 	}
 
@@ -122,6 +126,7 @@ func resolvePrimaryCandidate(
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) *wardrobe_entities.WardrobeItem {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
@@ -135,9 +140,14 @@ func resolvePrimaryCandidate(
 		}
 	}
 
-	for range candidates {
-		// TODO(Phase1): get via contract
-		_ = CategorySlugToWearingRole
+	for _, c := range candidates {
+		if c.Item.FashionItemID != nil {
+			if fi := fashionItemMap[*c.Item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+				if CategorySlugToWearingRole(*fi.CategoryName) == role {
+					return c.Item
+				}
+			}
+		}
 	}
 
 	return nil
@@ -151,6 +161,7 @@ func resolveAlternativeCandidates(
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) []*wardrobeDto.WardrobeItemRes {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
@@ -170,12 +181,14 @@ func resolveAlternativeCandidates(
 		if altItem == nil {
 			continue
 		}
-		// TODO(Phase1): get via contract
 		if altItem.ID == primaryID {
 			continue
 		}
+		if !matchesRole(altItem, role, fashionItemMap) {
+			continue
+		}
 
-		altDTO := wardrobe_mapper.MapToWardrobeItemRes(altItem)
+		altDTO := wardrobe_mapper.MapToWardrobeItemRes(altItem, fashionItemMap[*altItem.FashionItemID])
 		if cand, found := promptCandidateMap[altItem.ID]; found {
 			enrichWardrobeItemRes(altDTO, cand)
 		}
@@ -187,8 +200,10 @@ func resolveAlternativeCandidates(
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		// TODO(Phase1): get via contract
 		if item.ID == primaryID {
+			continue
+		}
+		if !matchesRole(item, role, fashionItemMap) {
 			continue
 		}
 
@@ -203,7 +218,7 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		altDTO := wardrobe_mapper.MapToWardrobeItemRes(item)
+		altDTO := wardrobe_mapper.MapToWardrobeItemRes(item, fashionItemMap[*item.FashionItemID])
 		enrichWardrobeItemRes(altDTO, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
@@ -212,6 +227,15 @@ func resolveAlternativeCandidates(
 	}
 
 	return alternatives
+}
+
+func matchesRole(item *wardrobe_entities.WardrobeItem, role string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+	if item.FashionItemID != nil {
+		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+			return CategorySlugToWearingRole(*fi.CategoryName) == role
+		}
+	}
+	return true
 }
 
 func enrichWardrobeItemRes(res *wardrobeDto.WardrobeItemRes, cand types.CandidateForPrompt) {

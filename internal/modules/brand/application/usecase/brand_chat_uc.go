@@ -9,17 +9,20 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	identity_entities "smart-wardrobe-be/internal/modules/identity/domain/entities"
+	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -29,6 +32,7 @@ type BrandChatUseCase struct {
 	memberRepo   repositories.IBrandMemberRepository
 	customerRepo repositories.IBrandCustomerRepository
 	userRepo     identity_repos.IUserRepository
+	userContract identity_contract.IUserContract
 	convRepo     repositories.IBrandConversationRepository
 	msgRepo      repositories.IBrandConversationMessageRepository
 	uow          shared_repos.IUnitOfWork
@@ -39,6 +43,7 @@ func NewBrandChatUseCase(
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
 	userRepo identity_repos.IUserRepository,
+	userContract identity_contract.IUserContract,
 	convRepo repositories.IBrandConversationRepository,
 	msgRepo repositories.IBrandConversationMessageRepository,
 	uow shared_repos.IUnitOfWork,
@@ -48,6 +53,7 @@ func NewBrandChatUseCase(
 		memberRepo:   memberRepo,
 		customerRepo: customerRepo,
 		userRepo:     userRepo,
+		userContract: userContract,
 		convRepo:     convRepo,
 		msgRepo:      msgRepo,
 		uow:          uow,
@@ -189,11 +195,25 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 		}
 	}
 
+	userIDs := make([]uuid.UUID, 0, len(conversations))
+	for _, conv := range conversations {
+		if conv.UserID != uuid.Nil {
+			userIDs = append(userIDs, conv.UserID)
+		}
+	}
+	userMap := map[uuid.UUID]*identity_dto.UserRes{}
+	if len(userIDs) > 0 {
+		users, err := uc.userContract.GetByIDs(ctx, userIDs)
+		if err == nil {
+			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserRes) uuid.UUID { return u.ID })
+		}
+	}
+
 	var res []*dto.BrandConversationRes
 	for _, conv := range conversations {
 		customer := customerByUserID[conv.UserID]
-		// TODO(Phase1): fetch user by conv.UserID
-		userDisp := ""
+		user := userMap[conv.UserID]
+		userDisp := getUserDisplayNameFromDTO(user)
 		var custName *string
 		if customer != nil {
 			custName = customer.CustomerName
@@ -412,6 +432,24 @@ func getUserDisplayName(u *identity_entities.User) string {
 	}
 	if u.LastName != nil && *u.LastName != "" {
 		parts = append(parts, *u.LastName)
+	}
+	name := strings.TrimSpace(strings.Join(parts, " "))
+	if name == "" {
+		return u.Username
+	}
+	return name
+}
+
+func getUserDisplayNameFromDTO(u *identity_dto.UserRes) string {
+	if u == nil {
+		return ""
+	}
+	var parts []string
+	if u.FirstName != "" {
+		parts = append(parts, u.FirstName)
+	}
+	if u.LastName != "" {
+		parts = append(parts, u.LastName)
 	}
 	name := strings.TrimSpace(strings.Join(parts, " "))
 	if name == "" {

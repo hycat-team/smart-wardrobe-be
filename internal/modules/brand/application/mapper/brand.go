@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -104,21 +105,20 @@ func MapBrandMembers(members []*entities.BrandMember) []*dto.BrandMemberRes {
 	return res
 }
 
-func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
+func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserRes) *dto.BrandCustomerRes {
 	if customer == nil {
 		return nil
 	}
 
 	var customerUser *dto.BrandCustomerUserRes
-	// TODO(Phase1): fetch user by customer.UserID
-	if customer.UserID != nil {
+	if user != nil {
 		customerUser = &dto.BrandCustomerUserRes{
-			ID:        *customer.UserID,
-			Username:  "",
-			FirstName: "",
-			LastName:  "",
-			Gender:    0,
-			AvatarUrl: nil,
+			ID:        user.ID,
+			Username:  user.Username,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+			Gender:    user.Gender,
+			AvatarUrl: user.AvatarUrl,
 		}
 	}
 
@@ -161,7 +161,19 @@ func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
 func MapBrandCustomers(customers []*entities.BrandCustomer) []*dto.BrandCustomerRes {
 	res := make([]*dto.BrandCustomerRes, len(customers))
 	for idx, customer := range customers {
-		res[idx] = MapBrandCustomer(customer)
+		res[idx] = MapBrandCustomer(customer, nil)
+	}
+	return res
+}
+
+func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserRes) []*dto.BrandCustomerRes {
+	res := make([]*dto.BrandCustomerRes, 0, len(customers))
+	for _, customer := range customers {
+		var user *identity_dto.UserRes
+		if customer.UserID != nil {
+			user = userMap[*customer.UserID]
+		}
+		res = append(res, MapBrandCustomer(customer, user))
 	}
 	return res
 }

@@ -8,15 +8,16 @@ import (
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/fashion/domain/constants/messagesender"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/modules/fashion/domain/constants/messagesender"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -262,7 +263,18 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 		}
 	}
 
-	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, activeWardrobeItems, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters)}, nil
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	for _, item := range activeWardrobeItems {
+		if item.FashionItemID != nil {
+			if _, ok := fashionItemMap[*item.FashionItemID]; !ok {
+				fi, _ := uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+				if fi != nil {
+					fashionItemMap[*item.FashionItemID] = fi
+				}
+			}
+		}
+	}
+	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, activeWardrobeItems, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters, fashionItemMap)}, nil
 }
 
 func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {

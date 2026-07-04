@@ -15,14 +15,15 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -127,9 +128,28 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 	}
 	lockedMap := shared.BuildLockedMap(activeItems, subOverview.MaxWardrobeItems)
 
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for idx, item := range items {
-		res := mapper.MapToWardrobeItemRes(item)
+		var fi *fashion_contract.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		res := mapper.MapToWardrobeItemRes(item, fi)
 		res.IsLocked = lockedMap[item.ID]
 		resList[idx] = res
 	}
@@ -162,7 +182,11 @@ func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID u
 
 	isLocked := shared.IsItemLocked(items, id, subOverview.MaxWardrobeItems)
 
-	res := mapper.MapToWardrobeItemRes(item)
+	var fi *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	}
+	res := mapper.MapToWardrobeItemRes(item, fi)
 	res.IsLocked = isLocked
 	return res, nil
 }
@@ -211,9 +235,27 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			return nil, err
 		}
 
+		fashionIDs := make([]uuid.UUID, 0, len(dbItems))
+		for _, item := range dbItems {
+			if item.FashionItemID != nil {
+				fashionIDs = append(fashionIDs, *item.FashionItemID)
+			}
+		}
+		fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+		fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+		if len(fashionIDs) > 0 {
+			fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+			if err == nil {
+				fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+			}
+		}
 		results = make([]*dto.SearchWardrobeItemRes, len(dbItems))
 		for idx, item := range dbItems {
-			results[idx] = mapper.MapToSearchWardrobeItemRes(item)
+			var fi *fashion_contract.FashionItemRes
+			if item.FashionItemID != nil {
+				fi = fashionMap[*item.FashionItemID]
+			}
+			results[idx] = mapper.MapToSearchWardrobeItemRes(item, fi)
 		}
 	}
 

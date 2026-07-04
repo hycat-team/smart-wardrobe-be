@@ -23,7 +23,7 @@ type FashionItem struct {
 	Fit                     *string    `gorm:"type:varchar(50)"`
 	Seasonality             *string    `gorm:"type:varchar(100)"`
 	Description             *string    `gorm:"type:text"`
-	Embedding               Vector `gorm:"type:vector(768)"`
+	Embedding               Vector     `gorm:"type:vector(768)"`
 	ProcessingRetryCount    int        `gorm:"type:int;not null;default:0"`
 	ProcessingVersion       int        `gorm:"type:int;not null;default:0"`
 	ProcessingStartedAt     *time.Time `gorm:"type:timestamp with time zone"`

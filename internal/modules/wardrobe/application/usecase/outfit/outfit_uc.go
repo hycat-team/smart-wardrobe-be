@@ -6,20 +6,22 @@ import (
 
 	"smart-wardrobe-be/config"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfitstatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -31,6 +33,7 @@ type OutfitUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract contract.IUserSubscriptionContract
 	brandContract   brand_contract.IBrandContract
+	fashionContract fashion_contract.IFashionContract
 	mediaService    media.IMediaService
 }
 
@@ -41,6 +44,7 @@ func NewOutfitUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract contract.IUserSubscriptionContract,
 	brandContract brand_contract.IBrandContract,
+	fashionContract fashion_contract.IFashionContract,
 	mediaService media.IMediaService,
 ) uc_interfaces.IOutfitUseCase {
 	return &OutfitUseCase{
@@ -50,6 +54,7 @@ func NewOutfitUseCase(
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
 		brandContract:   brandContract,
+		fashionContract: fashionContract,
 		mediaService:    mediaService,
 	}
 }
@@ -129,11 +134,10 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 					Scale:         itemReq.Scale,
 					LayerOrder:    itemReq.LayerOrder,
 				}
-			// TODO(Phase1): link verifiedItem.FashionItem via contract
 			}
 		} else {
 			// Check brand item eligibility
-			isEligible, brandItem, fashionItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
 			if err != nil {
 				return nil, err
 			}
@@ -150,9 +154,6 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 				Scale:         itemReq.Scale,
 				LayerOrder:    itemReq.LayerOrder,
 			}
-			// TODO(Phase1): link fashionItem, brandItem via contract
-			_ = fashionItem
-			_ = brandItem
 		}
 	}
 
@@ -175,7 +176,20 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		uc.logger.Warn("Failed to update wardrobe last_used_at after saving outfit")
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems), nil
+	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
+	for _, oi := range outfitItems {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
@@ -241,11 +255,10 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 					Scale:         itemReq.Scale,
 					LayerOrder:    itemReq.LayerOrder,
 				}
-			// TODO(Phase1): link verifiedItem.FashionItem via contract
 			}
 		} else {
 			// Check brand item eligibility
-			isEligible, brandItem, fashionItem, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
 			if err != nil {
 				return nil, err
 			}
@@ -263,9 +276,6 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 				Scale:         itemReq.Scale,
 				LayerOrder:    itemReq.LayerOrder,
 			}
-			// TODO(Phase1): link fashionItem, brandItem via contract
-			_ = fashionItem
-			_ = brandItem
 		}
 	}
 
@@ -284,7 +294,20 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		uc.logger.Warn("Failed to update wardrobe last_used_at after updating outfit")
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems), nil
+	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
+	for _, oi := range outfitItems {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitRes], error) {
@@ -314,7 +337,7 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 
 	resList := make([]*dto.OutfitRes, len(outfits))
 	for idx, outfit := range outfits {
-		resList[idx] = mapper.MapToOutfitRes(outfit, nil)
+		resList[idx] = mapper.MapToOutfitRes(outfit, nil, nil)
 	}
 
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
@@ -332,7 +355,20 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
-	return mapper.MapToOutfitRes(outfit, items), nil
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, oi := range items {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, items, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID) error {

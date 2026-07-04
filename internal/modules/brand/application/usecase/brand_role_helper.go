@@ -4,11 +4,11 @@ import (
 	"context"
 	"slices"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 
 	"github.com/google/uuid"
 )

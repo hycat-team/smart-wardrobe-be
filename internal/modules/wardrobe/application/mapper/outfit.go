@@ -1,11 +1,14 @@
 package mapper
 
 import (
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+
+	"github.com/google/uuid"
 )
 
-func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem) *dto.OutfitRes {
+func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) *dto.OutfitRes {
 	if outfit == nil {
 		return nil
 	}
@@ -13,12 +16,12 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem) *dto.
 	var itemDTOs []*dto.OutfitItemRes
 	itemDTOs = make([]*dto.OutfitItemRes, len(items))
 	for idx, item := range items {
+		fi := fashionItemMap[item.FashionItemID]
 		itemDTOs[idx] = &dto.OutfitItemRes{
 			ID:            item.FashionItemID,
 			FashionItemID: item.FashionItemID,
 			ItemContext:   string(item.ItemContext),
-			WardrobeItem:  MapToWardrobeItemRes(item.WardrobeItem),
-			BrandItem:     nil, // TODO(Phase1): fetch brand item by item.FashionItemID
+			WardrobeItem:  MapToWardrobeItemRes(item.WardrobeItem, fi),
 			PositionX:     item.PositionX,
 			PositionY:     item.PositionY,
 			Scale:         item.Scale,

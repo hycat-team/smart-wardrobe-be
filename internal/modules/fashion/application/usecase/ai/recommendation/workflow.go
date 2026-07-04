@@ -42,12 +42,12 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 		return nil, err
 	}
 
-	candidates, err := uc.filterCandidates(ctx, userID, activeItems, input)
+	candidates, fashionItemMap, err := uc.filterCandidates(ctx, userID, activeItems, input)
 	if err != nil {
 		return nil, err
 	}
 
-	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input)
+	finalRes, err := uc.generateOutfitRecommendation(ctx, userID, candidates, input, fashionItemMap)
 	if err != nil {
 		failureKind, providerHint, promptLen, responsePreview := synthesis.ClassifyFallbackTrace(err)
 		uc.logger.Warn("Outfit recommendation AI fallback triggered",
@@ -59,7 +59,7 @@ func (uc *OutfitRecommendationUseCase) RecommendOutfit(
 			zap.Int("prompt_len", promptLen),
 			zap.String("response_preview", responsePreview),
 		)
-		finalRes = ranking.RunLocalHSLMatching(candidates, input)
+		finalRes = ranking.RunLocalHSLMatching(candidates, input, fashionItemMap)
 	}
 
 	if err := uc.updateQuotaAndConstructResponse(ctx, userID, finalRes, quotaDTO); err != nil {

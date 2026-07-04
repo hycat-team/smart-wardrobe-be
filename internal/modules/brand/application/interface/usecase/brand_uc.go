@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )

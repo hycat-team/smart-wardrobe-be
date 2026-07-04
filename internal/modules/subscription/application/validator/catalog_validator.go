@@ -7,9 +7,9 @@ import (
 	"github.com/shopspring/decimal"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 )
 
 const strictPolicyExposureWarnToleranceMicroVND int64 = 1_000_000_000 // 1,000 VND
@@ -37,7 +37,6 @@ func (v *SubscriptionCatalogValidator) Validate(ctx context.Context) error {
 		if p.IsActive && p.AICostPolicyID == uuid.Nil {
 			return fmt.Errorf("subscription plan %q has no AI cost policy", p.Slug)
 		}
-		// TODO(Phase1): fetch AICostPolicy from aiexecutor module for validation
 		if p.PlanKind == plankind.DefaultFree && p.IsActive {
 			activeDefaultFreeCount++
 		}

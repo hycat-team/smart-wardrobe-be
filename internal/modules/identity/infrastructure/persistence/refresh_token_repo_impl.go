@@ -3,8 +3,8 @@ package persistence
 import (
 	"context"
 	"errors"
-	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

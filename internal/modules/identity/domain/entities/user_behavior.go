@@ -3,7 +3,7 @@ package entities
 import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-		"time"
+	"time"
 )
 
 func (u *User) UpdateProfile(firstName string, lastName *string, dateOfBirth time.Time, gen gender.Gender) {

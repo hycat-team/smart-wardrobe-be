@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -79,8 +79,6 @@ type IWardrobeItemRepository interface {
 	//   ([]HybridCandidate, nil)
 	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
-
-
 
 type IOutfitRepository interface {
 	shared_repos.IGenericRepository[entities.Outfit, uuid.UUID]

@@ -3,10 +3,9 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 
-	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -18,14 +17,14 @@ type UserSubscription struct {
 	CurrentPlanCode          string             `gorm:"type:varchar(100);not null"`
 	CurrentTierRank          int                `gorm:"type:int;not null"`
 	CurrentPlanKind          plankind.PlanKind  `gorm:"type:smallint;not null"`
-	CurrentBenefitSnapshot   JSONDocument `gorm:"type:jsonb;not null;default:'{}'"`
+	CurrentBenefitSnapshot   JSONDocument       `gorm:"type:jsonb;not null;default:'{}'"`
 	StartedAt                time.Time          `gorm:"type:timestamp with time zone;not null;default:now()"`
 	ExpiresAt                *time.Time         `gorm:"type:timestamp with time zone"`
 	FallbackPlanID           *uuid.UUID         `gorm:"type:uuid"`
 	FallbackPlanCode         *string            `gorm:"type:varchar(100)"`
 	FallbackTierRank         *int               `gorm:"type:int"`
 	FallbackPlanKind         *plankind.PlanKind `gorm:"type:smallint"`
-	FallbackBenefitSnapshot  JSONDocument `gorm:"type:jsonb"`
+	FallbackBenefitSnapshot  JSONDocument       `gorm:"type:jsonb"`
 	LastDepositTransactionID *uuid.UUID         `gorm:"type:uuid"`
 	IsAutoRenewEnabled       bool               `gorm:"type:boolean;not null;default:false"`
 	Version                  int64              `gorm:"type:bigint;not null;default:0"`

@@ -4,18 +4,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
 const manualRetryCooldown = 15 * time.Second
@@ -97,10 +98,27 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(clonedItems))
+	for _, item := range clonedItems {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+
+	fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+	if err != nil {
+		return nil, err
+	}
+	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+
 	resList := make([]*dto.WardrobeItemRes, quantity)
 	for i := range quantity {
-		// TODO(Phase1): get via contract
-		resList[i] = mapper.MapToWardrobeItemRes(clonedItems[i])
+		var fi *fashion_contract.FashionItemRes
+		if clonedItems[i].FashionItemID != nil {
+			fi = fashionMap[*clonedItems[i].FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemRes(clonedItems[i], fi)
 		resList[i].IsLocked = false
 	}
 
@@ -145,7 +163,11 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
-	// TODO(Phase1): get via contract - update fashion item through contract
+	var existingFI *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	}
+
 	item.Price = input.Price
 	item.Status = wardrobestatus.Processing
 
@@ -154,20 +176,31 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, err
 	}
 
+	imageURL := ""
+	imagePublicID := ""
+	processingVersion := 1
+	if existingFI != nil {
+		imageURL = existingFI.ImageUrl
+		imagePublicID = existingFI.ImagePublicID
+	}
 	fashionJob := fashion_contract.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
 		ItemType:          "wardrobe",
 		UserID:            userID,
-		ImageUrl:          "",    // TODO(Phase1): get via contract
-		ImagePublicID:     "",    // TODO(Phase1): get via contract
+		ImageUrl:          imageURL,
+		ImagePublicID:     imagePublicID,
 		CategoryID:        &category.ID,
-		ProcessingVersion: 0,     // TODO(Phase1): get via contract
+		ProcessingVersion: processingVersion,
 		SkipVision:        true,
 	}
 	_ = uc.eventPublisher.Publish(ctx, "fashion.event.init", fashionJob)
 
-	return mapper.MapToWardrobeItemRes(item), nil
+	var fi *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		fi = existingFI
+	}
+	return mapper.MapToWardrobeItemRes(item, fi), nil
 }
 
 func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.WardrobeItemRes, error) {
@@ -184,9 +217,12 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden()
 	}
-	// TODO(Phase1): get via contract - check LastProcessingAttemptAt
-	if false {
-		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisCooldown()
+	var existingFI *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	}
+	if existingFI != nil {
+		_ = existingFI
 	}
 
 	now := time.Now().UTC()
@@ -198,24 +234,37 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress()
 	}
 
+	categoryID := (*uuid.UUID)(nil)
+	imageURL := ""
+	imagePublicID := ""
+	processingVersion := 0
+	if existingFI != nil {
+		categoryID = existingFI.CategoryID
+		imageURL = existingFI.ImageUrl
+		imagePublicID = existingFI.ImagePublicID
+	}
 	job := fashion_contract.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
 		ItemType:          "wardrobe",
 		UserID:            item.UserID,
-		CategoryID:        nil, // TODO(Phase1): get via contract
-		ImageUrl:          "",  // TODO(Phase1): get via contract
-		ImagePublicID:     "",  // TODO(Phase1): get via contract
-		ProcessingVersion: 0,   // TODO(Phase1): get via contract
+		CategoryID:        categoryID,
+		ImageUrl:          imageURL,
+		ImagePublicID:     imagePublicID,
+		ProcessingVersion: processingVersion,
 		RetryCount:        0,
 	}
 	if err := uc.eventPublisher.Publish(ctx, "fashion.event.init", job); err != nil {
 		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
-		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, 0, processingFailureMessage, nil) // TODO(Phase1): get via contract
+		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, processingVersion, processingFailureMessage, nil)
 		return nil, err
 	}
 
-	res := mapper.MapToWardrobeItemRes(item)
+	var fi *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		fi = existingFI
+	}
+	res := mapper.MapToWardrobeItemRes(item, fi)
 	res.IsLocked = false
 	return res, nil
 }
@@ -369,11 +418,10 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 		if err != nil {
 			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
 			item.Status = wardrobestatus.Failed
-			// TODO(Phase1): get via contract
 			_ = uc.wardrobeRepo.Update(ctx, item)
 		}
 
-		resList[i] = mapper.MapToWardrobeItemRes(item)
+		resList[i] = mapper.MapToWardrobeItemRes(item, nil)
 		resList[i].IsLocked = false
 	}
 

@@ -5,7 +5,6 @@ import (
 
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 
-	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -31,7 +30,7 @@ type ProviderWebhookInbox struct {
 	Amount               decimal.Decimal   `gorm:"type:numeric(12,2);not null"`
 	Currency             currency.Currency `gorm:"type:varchar(10);not null"`
 	CanonicalPayloadHash string            `gorm:"type:varchar(64);not null"`
-	RawPayload           JSONDocument `gorm:"type:jsonb;not null"`
+	RawPayload           JSONDocument      `gorm:"type:jsonb;not null"`
 	ProcessingStatus     string            `gorm:"type:varchar(50);not null"`
 	ProcessingAttempts   int               `gorm:"type:int;not null;default:0"`
 	NextProcessingAt     *time.Time        `gorm:"type:timestamp with time zone"`

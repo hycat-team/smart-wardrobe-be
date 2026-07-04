@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

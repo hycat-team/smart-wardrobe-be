@@ -9,7 +9,9 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+
+	"github.com/google/uuid"
 )
 
 type PromptLimits struct {
@@ -33,17 +35,17 @@ type PromptLimits struct {
 // Đầu ra mẫu:
 //
 //	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
-func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq) string {
-	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{})
+func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
+	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap)
 	return prompt
 }
 
-func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits) (string, error) {
+func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) (string, error) {
 	if limits.CandidateLimit > 0 && len(candidates) > limits.CandidateLimit {
 		candidates = candidates[:limits.CandidateLimit]
 	}
 	for len(candidates) > 0 {
-		prompt := buildRecommendationPrompt(candidates, input, limits)
+		prompt := buildRecommendationPrompt(candidates, input, limits, fashionItemMap)
 		if limits.PromptMaxCharacters <= 0 || len([]rune(prompt)) <= limits.PromptMaxCharacters {
 			return prompt, nil
 		}
@@ -52,7 +54,7 @@ func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, 
 	return "", fmt.Errorf("recommendation prompt exceeds configured character limit")
 }
 
-func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits) string {
+func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
@@ -97,14 +99,16 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("CANDIDATES=\n")
 
 	for candidateIndex, candidate := range candidates {
-		// TODO(Phase1): get via contract
-		fashion := (*entities.FashionItem)(nil)
+		fashion := (*fashion_contract.FashionItemRes)(nil)
+		if candidate.Item.FashionItemID != nil {
+			fashion = fashionItemMap[*candidate.Item.FashionItemID]
+		}
 		candidatePayload := map[string]any{
 			"id": fmt.Sprintf("A%d", candidateIndex+1),
 		}
 
-		if fashion != nil && fashion.Category != nil {
-			candidatePayload["category"] = fashion_mapper.CategorySlugToWearingRole(fashion.Category.Slug)
+		if fashion != nil && fashion.CategoryName != nil {
+			candidatePayload["category"] = fashion_mapper.CategorySlugToWearingRole(*fashion.CategoryName)
 		}
 		if fashion != nil && fashion.Color != nil {
 			candidatePayload["color"] = *fashion.Color

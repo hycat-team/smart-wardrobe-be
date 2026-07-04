@@ -10,18 +10,18 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"smart-wardrobe-be/pkg/utils/stringutils"
@@ -112,7 +112,7 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid
 	if customer == nil || customer.BrandID != brandID {
 		return nil, branderrors.ErrCustomerNotFound()
 	}
-	return mapper.MapBrandCustomer(customer), nil
+	return mapper.MapBrandCustomer(customer, nil), nil
 }
 
 func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, brandID uuid.UUID) (*dto.BrandCustomerRes, error) {
@@ -135,7 +135,7 @@ func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID
 		if err := uc.ensureLoyaltyAccount(ctx, existing); err != nil {
 			return nil, err
 		}
-		return mapper.MapBrandCustomer(existing), nil
+		return mapper.MapBrandCustomer(existing, nil), nil
 	}
 
 	customer := &entities.BrandCustomer{
@@ -153,7 +153,7 @@ func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID
 	}); err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandCustomer(customer), nil
+	return mapper.MapBrandCustomer(customer, nil), nil
 }
 
 func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.CreateOfflineBrandCustomerReq) (*dto.BrandCustomerRes, error) {
@@ -175,7 +175,7 @@ func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID
 		if err := uc.ensureLoyaltyAccount(ctx, existing); err != nil {
 			return nil, err
 		}
-		return mapper.MapBrandCustomer(existing), nil
+		return mapper.MapBrandCustomer(existing, nil), nil
 	}
 
 	customer := &entities.BrandCustomer{
@@ -197,7 +197,7 @@ func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID
 	}); err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandCustomer(customer), nil
+	return mapper.MapBrandCustomer(customer, nil), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.GrantLoyaltyPointsReq) (*dto.LoyaltyPointsTransactionRes, error) {

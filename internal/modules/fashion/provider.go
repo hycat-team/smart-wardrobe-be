@@ -14,6 +14,7 @@ import (
 
 var ProviderSet = wire.NewSet(
 	persistence.NewFashionItemRepository,
+	persistence.NewCategoryRepository,
 	persistence.NewConversationalContextRepository,
 	persistence.NewMessageRepository,
 

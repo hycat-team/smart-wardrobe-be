@@ -9,7 +9,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 
-	
 	"github.com/google/uuid"
 )
 
@@ -25,7 +24,7 @@ type BrandBenefit struct {
 	RequiredTierID *uuid.UUID                             `gorm:"type:uuid"`
 	RequiredTier   *LoyaltyTier                           `gorm:"foreignKey:RequiredTierID;constraint:OnDelete:SET NULL"`
 	FeatureCode    *benefitfeaturecode.BenefitFeatureCode `gorm:"type:varchar(100)"`
-	FeatureConfig  JSONDocument            `gorm:"type:jsonb"`
+	FeatureConfig  JSONDocument                           `gorm:"type:jsonb"`
 	Status         benefitstatus.BenefitStatus            `gorm:"type:varchar(50);not null;default:ACTIVE"`
 }
 

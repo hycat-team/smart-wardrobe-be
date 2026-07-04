@@ -3,9 +3,9 @@ package dto
 import (
 	"time"
 
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )

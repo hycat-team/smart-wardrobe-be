@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

@@ -8,7 +8,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
@@ -21,6 +20,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 
 	"github.com/google/uuid"
 )

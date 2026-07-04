@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
 func MapToCategoryRes(category *fashion_entities.Category) *dto.CategoryRes {

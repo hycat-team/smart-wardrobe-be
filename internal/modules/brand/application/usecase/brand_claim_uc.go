@@ -12,9 +12,9 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -237,5 +237,5 @@ func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	return mapper.MapBrandCustomer(updatedCustomer), nil
+	return mapper.MapBrandCustomer(updatedCustomer, nil), nil
 }

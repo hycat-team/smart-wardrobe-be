@@ -1,23 +1,19 @@
 package mapper
 
 import (
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
-func MapToFashionItemRes(fi *fashion_entities.FashionItem) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
-	}
-	var categoryName *string
-	if fi.Category != nil {
-		categoryName = &fi.Category.Name
 	}
 	return &dto.FashionItemRes{
 		ID:              fi.ID,
 		CategoryID:      fi.CategoryID,
-		CategoryName:    categoryName,
+		CategoryName:    fi.CategoryName,
 		ImageUrl:        fi.ImageUrl,
 		ImagePublicID:   fi.ImagePublicID,
 		Color:           fi.Color,
@@ -36,32 +32,48 @@ func MapToFashionItemRes(fi *fashion_entities.FashionItem) *dto.FashionItemRes {
 	}
 }
 
-func MapToWardrobeItemRes(item *entities.WardrobeItem) *dto.WardrobeItemRes {
+func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_contract.FashionItemRes) *dto.WardrobeItemRes {
 	if item == nil {
 		return nil
 	}
 
-	return &dto.WardrobeItemRes{
-		ID:          item.ID,
-		UserID:      item.UserID,
-		Category:    nil, // TODO(Phase1): fetch category via fashion item by item.FashionItemID
-		Price:       item.Price,
-		Status:      item.Status,
-		FashionItem: nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
-		CreatedAt:   item.CreatedAt,
+	res := &dto.WardrobeItemRes{
+		ID:        item.ID,
+		UserID:    item.UserID,
+		Price:     item.Price,
+		Status:    item.Status,
+		CreatedAt: item.CreatedAt,
 	}
+	if fi != nil {
+		res.FashionItem = MapToFashionItemRes(fi)
+		if fi.CategoryName != nil {
+			res.Category = &dto.CategoryRes{
+				ID:   *fi.CategoryID,
+				Name: *fi.CategoryName,
+			}
+		}
+	}
+	return res
 }
 
-func MapToSearchWardrobeItemRes(item *entities.WardrobeItem) *dto.SearchWardrobeItemRes {
+func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_contract.FashionItemRes) *dto.SearchWardrobeItemRes {
 	if item == nil {
 		return nil
 	}
 
-	return &dto.SearchWardrobeItemRes{
-		ID:          item.ID,
-		Category:    nil, // TODO(Phase1): fetch category via fashion item by item.FashionItemID
-		Price:       item.Price,
-		IsSystem:    item.ItemType == 1,
-		FashionItem: nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
+	res := &dto.SearchWardrobeItemRes{
+		ID:       item.ID,
+		Price:    item.Price,
+		IsSystem: item.ItemType == 1,
 	}
+	if fi != nil {
+		res.FashionItem = MapToFashionItemRes(fi)
+		if fi.CategoryName != nil {
+			res.Category = &dto.CategoryRes{
+				ID:   *fi.CategoryID,
+				Name: *fi.CategoryName,
+			}
+		}
+	}
+	return res
 }

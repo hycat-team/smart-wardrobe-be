@@ -3,11 +3,13 @@ package persistence
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
-	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 )
 
@@ -32,11 +34,10 @@ func (r *UserSubscriptionEventRepository) Create(ctx context.Context, event *ent
 
 func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, event *entities.UserSubscriptionEvent) error {
 	var sub entities.UserSubscription
-	if err := db.Preload("SubscriptionPlan.AICostPolicy.Operations").First(&sub, "user_id=?", event.UserID).Error; err != nil {
+	if err := db.Preload("SubscriptionPlan").First(&sub, "user_id=?", event.UserID).Error; err != nil {
 		return err
 	}
 	plan := sub.SubscriptionPlan
-	// TODO(Phase1): fetch AICostPolicy from aiexecutor module
 	if plan == nil {
 		return errors.New("subscription plan AI cost policy missing")
 	}
@@ -61,10 +62,11 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 			return err
 		}
 	}
-	// TODO(Phase1): fetch AICostPolicy from aiexecutor to build the grant
-	var snapshot []byte
-	grant := aiexecutor_entities.AIPolicyGrant{UserID: event.UserID, PlanID: plan.ID, PlanCode: plan.Slug, TierRank: plan.TierRank, EffectiveFrom: start, EffectiveTo: end, Status: status, SourceEventID: &event.ID, SourceDepositTransactionID: event.SourceDepositTransactionID}
-	_ = snapshot
+	var policyID uuid.UUID
+	if plan.AICostPolicyID != uuid.Nil {
+		policyID = plan.AICostPolicyID
+	}
+	grant := aiexecutor_entities.AIPolicyGrant{UserID: event.UserID, PlanID: plan.ID, PlanCode: plan.Slug, TierRank: plan.TierRank, PolicyID: policyID, EffectiveFrom: start, EffectiveTo: end, Status: status, SourceEventID: &event.ID, SourceDepositTransactionID: event.SourceDepositTransactionID}
 	return db.Create(&grant).Error
 }
 func (r *UserSubscriptionEventRepository) GetByKey(ctx context.Context, key string) (*entities.UserSubscriptionEvent, error) {

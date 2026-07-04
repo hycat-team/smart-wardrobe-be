@@ -10,8 +10,10 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -58,12 +60,13 @@ func ScoreCandidateItem(
 	retrievalQuery types.RecommendationRetrievalQuery,
 	recentlyWornDays,
 	longUnwornDays int,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) (float64, []string) {
 	score := 1.0
 	var reasonTags []string
 	styleMatched := false
 	matchedTerms := map[string]bool{}
-	fashion := fashionForItem(item)
+	fashion := fashionForItemFromMap(item, fashionItemMap)
 
 	if fashion != nil && fashion.Style != nil && len(intent.StyleTarget) > 0 {
 		itemStyle := strings.ToLower(*fashion.Style)
@@ -82,7 +85,7 @@ func ScoreCandidateItem(
 	if len(intent.Occasion) > 0 {
 		for _, occ := range intent.Occasion {
 			occasion := parser.NormalizeText(occ)
-			if CandidateMatchesAnyTerm(item, []string{occasion}) {
+			if CandidateMatchesAnyTerm(item, []string{occasion}, fashionItemMap) {
 				score += 0.2
 				reasonTags = append(reasonTags, "occasion-match:"+occasion)
 				matchedTerms[occasion] = true
@@ -92,7 +95,7 @@ func ScoreCandidateItem(
 				matchedExp := ""
 				for _, exp := range expanded {
 					expNorm := parser.NormalizeText(exp)
-					if CandidateMatchesAnyTerm(item, []string{expNorm}) {
+					if CandidateMatchesAnyTerm(item, []string{expNorm}, fashionItemMap) {
 						matchedExp = expNorm
 						break
 					}
@@ -169,13 +172,13 @@ func ScoreCandidateItem(
 		}
 	}
 
-	if isNeutral(item) {
+	if isNeutral(item, fashionItemMap) {
 		score += 0.1
 		reasonTags = append(reasonTags, "neutral-versatility")
 	}
 
 	weatherState := recommendationWeatherState(intent.PositiveConstraints)
-	if isOuterwearCategory(nil) { // TODO(Phase1): get via contract
+	if isOuterwearItem(item, fashionItemMap) {
 		switch weatherState {
 		case recommendationWeatherColdLike:
 			score += 0.4
@@ -185,12 +188,12 @@ func ScoreCandidateItem(
 			reasonTags = append(reasonTags, "weather-mismatch:heavy-outerwear")
 		}
 	}
-	if weatherState == recommendationWeatherRainy && CandidateMatchesRainySignal(item) {
+	if weatherState == recommendationWeatherRainy && CandidateMatchesRainySignal(item, fashionItemMap) {
 		score += 0.15
 		reasonTags = append(reasonTags, "weather-appropriate:rainy")
 	}
 
-	if penalty, tag := excludedWeatherPenalty(item, intent.ExcludedWeather); penalty > 0 {
+	if penalty, tag := excludedWeatherPenalty(item, intent.ExcludedWeather, fashionItemMap); penalty > 0 {
 		score -= penalty
 		reasonTags = append(reasonTags, tag)
 	}
@@ -201,7 +204,7 @@ func ScoreCandidateItem(
 		if termVal == "" || matchedTerms[termVal] {
 			continue
 		}
-		if CandidateMatchesAnyTerm(item, []string{termVal}) {
+		if CandidateMatchesAnyTerm(item, []string{termVal}, fashionItemMap) {
 			boost := 0.0
 			switch term.Source {
 			case types.RetrievalTermSourceDictionary:
@@ -256,12 +259,16 @@ func recommendationWeatherState(values []string) string {
 	return recommendationWeatherUnspecified
 }
 
-// isOuterwearCategory kiểm tra xem danh mục của món đồ có thuộc nhóm áo khoác/đồ mặc ngoài hay không.
-func isOuterwearCategory(category *entities.Category) bool {
-	if category == nil {
+// isOuterwearItem kiểm tra xem danh mục của món đồ có thuộc nhóm áo khoác/đồ mặc ngoài hay không.
+func isOuterwearItem(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+	if item == nil || item.FashionItemID == nil {
 		return false
 	}
-	text := parser.NormalizeText(category.Slug + " " + category.Name)
+	fi := fashionForItemFromMap(item, fashionItemMap)
+	if fi == nil || fi.CategoryName == nil {
+		return false
+	}
+	text := parser.NormalizeText(*fi.CategoryName)
 	for _, term := range retrieval.OuterwearCategoryTerms() {
 		if strings.Contains(text, parser.NormalizeText(term)) {
 			return true
@@ -271,11 +278,11 @@ func isOuterwearCategory(category *entities.Category) bool {
 }
 
 // CandidateMatchesAnyTerm kiểm tra xem tài liệu tìm kiếm của món đồ có chứa bất kỳ từ khóa nào trong danh sách hay không.
-func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []string) bool {
+func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
-	document := FallbackSearchDocument(item)
+	document := FallbackSearchDocument(item, fashionItemMap)
 	for _, term := range terms {
 		term = parser.NormalizeText(term)
 		if term != "" && strings.Contains(document, term) {
@@ -286,12 +293,12 @@ func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []strin
 }
 
 // CandidateMatchesRainySignal kiểm tra xem món đồ có chứa các thuộc tính phù hợp để đi mưa hay không.
-func CandidateMatchesRainySignal(item *wardrobe_entities.WardrobeItem) bool {
-	return CandidateMatchesAnyTerm(item, retrieval.RainyWeatherTerms())
+func CandidateMatchesRainySignal(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+	return CandidateMatchesAnyTerm(item, retrieval.RainyWeatherTerms(), fashionItemMap)
 }
 
 // excludedWeatherPenalty tính điểm phạt (penalty) và trả về nhãn lý do nếu món đồ không phù hợp với kiểu thời tiết người dùng muốn tránh.
-func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeather []string) (float64, string) {
+func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeather []string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) (float64, string) {
 	if item == nil {
 		return 0, ""
 	}
@@ -299,15 +306,15 @@ func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeathe
 		state := recommendationWeatherState([]string{excluded})
 		switch state {
 		case recommendationWeatherColdLike:
-			if isOuterwearCategory(nil) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms()) { // TODO(Phase1): get via contract
+			if isOuterwearItem(item, fashionItemMap) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms(), fashionItemMap) {
 				return 0.3, "avoid-weather:cold-like"
 			}
 		case recommendationWeatherHotLike:
-			if CandidateMatchesAnyTerm(item, retrieval.HotLikeWeatherTerms()) {
+			if CandidateMatchesAnyTerm(item, retrieval.HotLikeWeatherTerms(), fashionItemMap) {
 				return 0.2, "avoid-weather:hot-like"
 			}
 		case recommendationWeatherRainy:
-			if CandidateMatchesRainySignal(item) {
+			if CandidateMatchesRainySignal(item, fashionItemMap) {
 				return 0.25, "avoid-weather:rainy"
 			}
 		}

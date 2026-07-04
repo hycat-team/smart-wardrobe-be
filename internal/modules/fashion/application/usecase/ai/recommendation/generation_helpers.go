@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 
 	"github.com/google/uuid"
@@ -26,8 +27,9 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	userID uuid.UUID,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) (*dto.RecommendedOutfitRes, error) {
-	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg)
+	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg, fashionItemMap)
 }
 
 // updateQuotaAndConstructResponse thực hiện trừ đi 1 lượt sử dụng trong quota hàng ngày của người dùng,

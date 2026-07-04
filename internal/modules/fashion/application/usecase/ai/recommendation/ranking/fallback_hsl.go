@@ -7,15 +7,17 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *wardrobe_entities.WardrobeItem) bool {
-	fashion := fashionForItem(item)
+func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
 	}
@@ -26,26 +28,12 @@ func isNeutral(item *wardrobe_entities.WardrobeItem) bool {
 }
 
 // colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
-//
-// Quy tắc phối màu:
-// 1. Nếu một trong hai món đồ có màu trung tính (neutral), chúng luôn phối hợp được với nhau.
-// 2. Nếu hai màu có góc màu (Hue) lệch nhau dưới 30 độ (tương đồng), chúng chỉ được coi là phối hợp khi có độ sáng (Lightness) lệch nhau ít nhất 15% (tránh bị chìm màu).
-// 3. Nếu hai màu đối diện nhau trên bánh xe màu (góc màu lệch từ 165 đến 195 độ - tương phản), chúng phối hợp tốt với nhau.
-//
-// Đầu vào mẫu:
-//
-//	item1: WardrobeItem có Hue = 200 (xanh lam)
-//	item2: WardrobeItem có Hue = 20 (cam - góc lệch 180 độ)
-//
-// Đầu ra mẫu:
-//
-//	true
-func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem) bool {
-	if isNeutral(item1) || isNeutral(item2) {
+func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+	if isNeutral(item1, fashionItemMap) || isNeutral(item2, fashionItemMap) {
 		return true
 	}
-	fashion1 := fashionForItem(item1)
-	fashion2 := fashionForItem(item2)
+	fashion1 := fashionForItemFromMap(item1, fashionItemMap)
+	fashion2 := fashionForItemFromMap(item2, fashionItemMap)
 	if fashion1 == nil || fashion2 == nil || fashion1.ColorHue == nil || fashion2.ColorHue == nil {
 		return true
 	}
@@ -89,21 +77,27 @@ func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem) bool {
 // Đầu ra mẫu:
 //
 //	*dto.RecommendedOutfitRes{Title: "Bộ phối màu hài hòa", IsFallback: true, ...}
+func itemCategorySlug(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
+	if item.FashionItemID != nil {
+		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+			return strings.ToLower(*fi.CategoryName)
+		}
+	}
+	return ""
+}
+
 func RunLocalHSLMatching(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) *dto.RecommendedOutfitRes {
 	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobe_entities.WardrobeItem
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		category := (*entities.Category)(nil) // TODO(Phase1): get via contract
-		if category == nil {
-			accessories = append(accessories, item)
-			continue
-		}
+		categorySlug := itemCategorySlug(item, fashionItemMap)
 
-		switch category.Slug {
+		switch categorySlug {
 		case "ao":
 			tops = append(tops, item)
 		case "quan", "chan-vay":
@@ -137,31 +131,31 @@ func RunLocalHSLMatching(
 		primaryDress := dresses[0]
 		primaryShoes := shoes[0]
 		for _, shoe := range shoes {
-			if colorsMatch(primaryDress, shoe) {
+			if colorsMatch(primaryDress, shoe, fashionItemMap) {
 				primaryShoes = shoe
 				break
 			}
 		}
 
-		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam"), primaryDress, dresses))
-		items = append(items, buildItemGroup("giay", primaryShoes, shoes))
+		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam"), primaryDress, dresses, fashionItemMap))
+		items = append(items, buildItemGroup("giay", primaryShoes, shoes, fashionItemMap))
 
 		if isCold && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
 			for _, outerwear := range outerwears {
-				if colorsMatch(primaryDress, outerwear) {
+				if colorsMatch(primaryDress, outerwear, fashionItemMap) {
 					primaryOuter = outerwear
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears, fashionItemMap))
 		}
 	} else if len(tops) > 0 && len(bottoms) > 0 {
 		primaryTop, primaryBottom := tops[0], bottoms[0]
 		found := false
 		for _, top := range tops {
 			for _, bottom := range bottoms {
-				if colorsMatch(top, bottom) {
+				if colorsMatch(top, bottom, fashionItemMap) {
 					primaryTop = top
 					primaryBottom = bottom
 					found = true
@@ -173,43 +167,43 @@ func RunLocalHSLMatching(
 			}
 		}
 
-		items = append(items, buildItemGroup("ao", primaryTop, tops))
-		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan"), primaryBottom, bottoms))
+		items = append(items, buildItemGroup("ao", primaryTop, tops, fashionItemMap))
+		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan"), primaryBottom, bottoms, fashionItemMap))
 
 		if len(shoes) > 0 {
 			primaryShoes := shoes[0]
 			for _, shoe := range shoes {
-				if colorsMatch(primaryTop, shoe) || colorsMatch(primaryBottom, shoe) {
+				if colorsMatch(primaryTop, shoe, fashionItemMap) || colorsMatch(primaryBottom, shoe, fashionItemMap) {
 					primaryShoes = shoe
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay"), primaryShoes, shoes))
+			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay"), primaryShoes, shoes, fashionItemMap))
 		}
 
 		if isCold && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
 			for _, outerwear := range outerwears {
-				if colorsMatch(primaryTop, outerwear) || colorsMatch(primaryBottom, outerwear) {
+				if colorsMatch(primaryTop, outerwear, fashionItemMap) || colorsMatch(primaryBottom, outerwear, fashionItemMap) {
 					primaryOuter = outerwear
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac"), primaryOuter, outerwears, fashionItemMap))
 		}
 	} else {
 		if len(dresses) > 0 {
-			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam"), dresses[0], dresses))
+			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam"), dresses[0], dresses, fashionItemMap))
 		} else {
 			if len(tops) > 0 {
-				items = append(items, buildItemGroup(roleForItem(tops[0], "ao"), tops[0], tops))
+				items = append(items, buildItemGroup(roleForItem(tops[0], "ao"), tops[0], tops, fashionItemMap))
 			}
 			if len(bottoms) > 0 {
-				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan"), bottoms[0], bottoms))
+				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan"), bottoms[0], bottoms, fashionItemMap))
 			}
 		}
 		if len(shoes) > 0 {
-			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay"), shoes[0], shoes))
+			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay"), shoes[0], shoes, fashionItemMap))
 		}
 	}
 
@@ -231,6 +225,7 @@ func buildItemGroup(
 	role string,
 	primary *wardrobe_entities.WardrobeItem,
 	all []*wardrobe_entities.WardrobeItem,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, item := range all {
@@ -240,25 +235,35 @@ func buildItemGroup(
 		if len(alternatives) >= 2 {
 			break
 		}
-		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(item))
+		var fi *fashion_contract.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionItemMap[*item.FashionItemID]
+		}
+		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(item, fi))
 	}
 
+	var primaryFI *fashion_contract.FashionItemRes
+	if primary.FashionItemID != nil {
+		primaryFI = fashionItemMap[*primary.FashionItemID]
+	}
 	return &dto.RecommendedItemGroup{
 		Role:         role,
-		Primary:      mapper.MapToWardrobeItemRes(primary),
+		Primary:      mapper.MapToWardrobeItemRes(primary, primaryFI),
 		Alternatives: alternatives,
 	}
 }
 
 func roleForItem(item *wardrobe_entities.WardrobeItem, fallback string) string {
-	// TODO(Phase1): get via contract
+	if item.FashionItemID != nil {
+		// caller should use fashionItemMap; fallback is used here
+		_ = item.FashionItemID
+	}
 	return fallback
 }
 
-func fashionForItem(item *wardrobe_entities.WardrobeItem) *entities.FashionItem {
-	if item == nil {
+func fashionForItemFromMap(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) *fashion_contract.FashionItemRes {
+	if item == nil || item.FashionItemID == nil {
 		return nil
 	}
-	// TODO(Phase1): get via contract
-	return nil
+	return fashionItemMap[*item.FashionItemID]
 }

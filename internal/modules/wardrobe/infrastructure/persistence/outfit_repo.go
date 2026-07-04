@@ -5,12 +5,12 @@ import (
 	"errors"
 	"sort"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

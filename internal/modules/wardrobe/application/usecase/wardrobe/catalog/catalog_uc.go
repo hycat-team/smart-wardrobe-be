@@ -3,19 +3,21 @@ package catalog
 import (
 	"context"
 
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -25,6 +27,7 @@ type WardrobeCatalogUseCase struct {
 	categoryRepo    fashion_repos.ICategoryRepository
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
+	fashionContract fashion_contract.IFashionContract
 }
 
 func NewWardrobeCatalogUseCase(
@@ -32,12 +35,14 @@ func NewWardrobeCatalogUseCase(
 	categoryRepo fashion_repos.ICategoryRepository,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
+	fashionContract fashion_contract.IFashionContract,
 ) uc_interfaces.IWardrobeCatalogUseCase {
 	return &WardrobeCatalogUseCase{
 		wardrobeRepo:    wardrobeRepo,
 		categoryRepo:    categoryRepo,
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
+		fashionContract: fashionContract,
 	}
 }
 
@@ -66,9 +71,28 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		return nil, err
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for i, item := range items {
-		resList[i] = mapper.MapToWardrobeItemRes(item)
+		var fi *fashion_contract.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemRes(item, fi)
 		resList[i].IsLocked = false
 	}
 
@@ -125,11 +149,28 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		return nil, err
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(newItems))
+	for _, item := range newItems {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i := range newItems {
-		// TODO(Phase1): get via contract
-		_ = templates[i].FashionItemID
-		resList[i] = mapper.MapToWardrobeItemRes(newItems[i])
+		var fi *fashion_contract.FashionItemRes
+		if newItems[i].FashionItemID != nil {
+			fi = fashionMap[*newItems[i].FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemRes(newItems[i], fi)
 		resList[i].IsLocked = false
 	}
 
@@ -144,7 +185,6 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
 		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
-	// TODO(Phase1): get via contract - update fashion item fields through contract
 	if input.Price != nil {
 		item.Price = input.Price
 	}
@@ -166,7 +206,11 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 	}
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeUpdated, payload)
 
-	res := mapper.MapToWardrobeItemRes(item)
+	var fi *fashion_contract.FashionItemRes
+	if item.FashionItemID != nil {
+		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	}
+	res := mapper.MapToWardrobeItemRes(item, fi)
 	res.IsLocked = false
 	return res, nil
 }

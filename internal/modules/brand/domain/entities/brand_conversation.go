@@ -6,7 +6,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
 
-	
 	"github.com/google/uuid"
 )
 

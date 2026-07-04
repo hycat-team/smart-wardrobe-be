@@ -5,7 +5,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
 
-	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )

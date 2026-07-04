@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/shared/application/ai"
 )
 
@@ -40,8 +41,9 @@ func GenerateOutfitRecommendation(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 	cfg *config.Config,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) (*dto.RecommendedOutfitRes, error) {
-	userPrompt, err := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{CandidateLimit: cfg.AI.RecommendationPromptCandidateLimit, DescriptionMaxCharacters: cfg.AI.RecommendationDescriptionMaxCharacters, TagsLimit: cfg.AI.RecommendationTagsLimit, PromptMaxCharacters: cfg.AI.RecommendationPromptMaxCharacters})
+	userPrompt, err := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{CandidateLimit: cfg.AI.RecommendationPromptCandidateLimit, DescriptionMaxCharacters: cfg.AI.RecommendationDescriptionMaxCharacters, TagsLimit: cfg.AI.RecommendationTagsLimit, PromptMaxCharacters: cfg.AI.RecommendationPromptMaxCharacters}, fashionItemMap)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +82,7 @@ func GenerateOutfitRecommendation(
 	}
 	resolveOutfitAliases(&llmRes, candidates)
 
-	validGroups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
+	validGroups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes, fashionItemMap)
 	if len(validGroups) == 0 {
 		return nil, NewFallbackTraceError(
 			"invalid_outfit_structure",

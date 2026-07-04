@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
@@ -15,6 +13,8 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 
 	"github.com/google/uuid"
 )

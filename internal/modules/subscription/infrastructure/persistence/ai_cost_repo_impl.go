@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
-	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -38,15 +38,15 @@ func (r *AICostRepository) ResolvePolicy(ctx context.Context, userID uuid.UUID, 
 		err = gorm.ErrRecordNotFound
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// TODO(Phase1): fetch AICostPolicy from aiexecutor module instead of SubscriptionPlan.AICostPolicy
 		return nil, nil, nil, errors.New("subscription plan AI cost policy not yet migrated - need grant lookup")
 	} else if err != nil {
 		return nil, nil, nil, err
 	}
+
 	var policy aiexecutor_entities.AICostPolicy
-	// TODO(Phase1): fetch policy by grant.PolicyID from aiexecutor module
-	_ = policy
-	return nil, nil, nil, errors.New("AI policy lookup not yet migrated")
+	if err := r.GetDB(ctx).First(&policy, "id = ?", grant.PolicyID).Error; err != nil {
+		return nil, nil, nil, errors.New("AI policy lookup not yet migrated")
+	}
 	for _, op := range policy.Operations {
 		if op.Operation == operation && op.IsEnabled {
 			return &grant, &policy, op, nil

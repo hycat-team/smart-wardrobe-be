@@ -7,6 +7,9 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+
+	"github.com/google/uuid"
 )
 
 // RankCandidates tính toán điểm số, xếp hạng và đa dạng hóa bể ứng viên nhằm chọn ra các món đồ phù hợp nhất để gửi cho LLM/AI.
@@ -35,6 +38,7 @@ func RankCandidates(
 	recentlyWornPenaltyDays int,
 	longUnwornBonusDays int,
 	minimumPool int,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) ([]types.CandidateForPrompt, types.RerankStats) {
 	scored := make([]types.RankedCandidate, len(candidates))
 	for i, candidate := range candidates {
@@ -44,6 +48,7 @@ func RankCandidates(
 			retrievalQuery,
 			recentlyWornPenaltyDays,
 			longUnwornBonusDays,
+			fashionItemMap,
 		)
 		score += RetrievalScoreBonus(candidate)
 		tags = append(tags,
@@ -73,7 +78,7 @@ func RankCandidates(
 		limit = 15
 	}
 
-	diversified := DiversifyRankedCandidates(scored, limit)
+	diversified := DiversifyRankedCandidates(scored, limit, fashionItemMap)
 	stats.DiversifiedCount = len(diversified)
 	final := make([]types.CandidateForPrompt, 0, len(diversified))
 	for _, candidate := range diversified {
@@ -182,7 +187,7 @@ func RankedCandidateScoreStats(candidates []types.RankedCandidate) types.RerankS
 // Đầu ra mẫu:
 //
 //	[]types.RankedCandidate (chứa 3 cái áo, 2 cái quần - tối đa hóa sự đa dạng)
-func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int) []types.RankedCandidate {
+func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) []types.RankedCandidate {
 	if limit <= 0 || len(scored) <= limit {
 		return scored
 	}
@@ -194,7 +199,11 @@ func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int) []type
 
 	for _, candidate := range scored {
 		category := "uncategorized"
-		// TODO(Phase1): get via contract
+		if candidate.Item != nil && candidate.Item.FashionItemID != nil {
+			if fi := fashionItemMap[*candidate.Item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+				category = *fi.CategoryName
+			}
+		}
 		if categoryCounts[category] < categorySoftCap && len(selected) < limit {
 			selected = append(selected, candidate)
 			categoryCounts[category]++

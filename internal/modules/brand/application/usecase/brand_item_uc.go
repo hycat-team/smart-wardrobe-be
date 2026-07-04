@@ -10,12 +10,6 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/application/event"
-	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
@@ -23,9 +17,16 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/votetype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
+	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/event"
+	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -137,16 +138,40 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 				(item.ItemType == branditemtype.Sample && sampleAccessByBrandID[item.BrandID])
 
 			if canUseItem {
-				eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item))
 				eligibleItems = append(eligibleItems, item)
 			}
 		}
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(eligibleItems))
+	for _, item := range eligibleItems {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionContractItems, _ := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+	}
+
+	for _, item := range eligibleItems {
+		var fi *fashion_contract.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionItemMap[*item.FashionItemID]
+		}
+		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item, fi))
+	}
+
 	fashionItems := make([]*fashion_entities.FashionItem, len(eligibleItems))
 	for i := range eligibleItems {
-		// TODO(Phase1): fetch fashion item by eligibleItems[i].FashionItemID
-		fashionItems[i] = nil
+		if eligibleItems[i].FashionItemID != nil {
+			if fi := fashionItemMap[*eligibleItems[i].FashionItemID]; fi != nil {
+				fashionItems[i] = &fashion_entities.FashionItem{}
+				fashionItems[i].ID = fi.ID
+			}
+		}
 	}
 
 	return eligibleDTOS, fashionItems, nil
@@ -195,7 +220,13 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 		}
 	}
 
-	return true, mapper.MapToBrandItemRes(brandItem), nil, nil // TODO(Phase1): fetch fashion item by brandItem.FashionItemID
+	fi, _ := uc.fashionContract.GetFashionItem(ctx, *brandItem.FashionItemID)
+	fashionItem := (*fashion_entities.FashionItem)(nil)
+	if fi != nil {
+		fashionItem = &fashion_entities.FashionItem{}
+		fashionItem.ID = fi.ID
+	}
+	return true, mapper.MapToBrandItemRes(brandItem, fi), fashionItem, nil
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {
@@ -253,7 +284,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	}
 	_ = uc.eventPublisher.Publish(ctx, "fashion.event.init", job)
 
-	return mapper.MapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error) {
@@ -266,7 +297,7 @@ func (uc *BrandItemUseCase) GetBrandItemsForStaff(ctx context.Context, staffUser
 	}
 	res := make([]*dto.BrandItemRes, len(items))
 	for i, item := range items {
-		res[i] = mapper.MapToBrandItemRes(item)
+		res[i] = mapper.MapToBrandItemRes(item, nil)
 	}
 	return res, nil
 }
@@ -282,7 +313,7 @@ func (uc *BrandItemUseCase) GetBrandItemForStaff(ctx context.Context, staffUserI
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	return mapper.MapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error) {
@@ -312,7 +343,7 @@ func (uc *BrandItemUseCase) GetBrandItemForUser(ctx context.Context, userID uuid
 			return nil, branderrors.ErrBrandPortalForbidden()
 		}
 	}
-	return mapper.MapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error) {
@@ -336,7 +367,7 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 		return nil, err
 	}
 
-	return mapper.MapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status string) (*dto.BrandItemRes, error) {
@@ -359,7 +390,7 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err
 	}
-	return mapper.MapToBrandItemRes(item), nil
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error) {
@@ -392,7 +423,7 @@ func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, br
 	}
 	items := make([]*dto.BrandItemRes, len(result.Items))
 	for i, item := range result.Items {
-		items[i] = mapper.MapToBrandItemRes(item)
+		items[i] = mapper.MapToBrandItemRes(item, nil)
 	}
 	return &dto.BrandItemListRes{
 		Items:    items,
@@ -422,7 +453,7 @@ func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, use
 	}
 	items := make([]*dto.BrandItemRes, len(result.Items))
 	for i, item := range result.Items {
-		items[i] = mapper.MapToBrandItemRes(item)
+		items[i] = mapper.MapToBrandItemRes(item, nil)
 	}
 	return &dto.BrandItemListRes{
 		Items:    items,

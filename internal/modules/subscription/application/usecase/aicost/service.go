@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
-	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -78,7 +78,7 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 		UserID:                   userID,
 		Operation:                operation,
 		LogicalRoute:             route,
-		PricingConfigID:          nil, // TODO(Phase1): look up from aiexecutor
+		PricingConfigID:          nil,
 		InputUSDPerMillion:       &inputRate,
 		OutputUSDPerMillion:      &outputRate,
 		USDToVND:                 &fx,

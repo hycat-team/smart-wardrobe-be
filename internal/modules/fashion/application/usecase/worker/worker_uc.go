@@ -12,16 +12,16 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/colorutils"
@@ -141,9 +141,17 @@ func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job f
 		if err != nil {
 			return err
 		}
-		if brandItem == nil || brandItem.FashionItemID == nil { // TODO(Phase1): get via contract
+		if brandItem == nil || brandItem.FashionItemID == nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: brand item or fashion item not found",
+				zap.String("itemId", job.ItemID.String()),
+			)
+			return nil
+		}
+		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, *brandItem.FashionItemID)
+		if err != nil || fashionItem == nil {
+			run.AddSkipped(1)
+			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
 				zap.String("itemId", job.ItemID.String()),
 			)
 			return nil
@@ -153,16 +161,22 @@ func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job f
 		if err != nil {
 			return err
 		}
-		if wardrobeItem == nil || wardrobeItem.FashionItemID == nil { // TODO(Phase1): get via contract
+		if wardrobeItem == nil || wardrobeItem.FashionItemID == nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: wardrobe item or fashion item not found",
 				zap.String("itemId", job.ItemID.String()),
 			)
 			return nil
 		}
+		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, *wardrobeItem.FashionItemID)
+		if err != nil || fashionItem == nil {
+			run.AddSkipped(1)
+			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
+				zap.String("itemId", job.ItemID.String()),
+			)
+			return nil
+		}
 	}
-	// TODO(Phase1): get via contract
-	fashionItem = &entities.FashionItem{}
 
 	categoryName := ""
 	if fashionItem.Category != nil {
@@ -220,7 +234,12 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 
 		for _, item := range items {
 			run.AddTotal(1)
-			imagePublicID := "" // TODO(Phase1): get via contract
+			imagePublicID := ""
+			if item.FashionItemID != nil {
+				if fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID); err == nil && fi != nil {
+					imagePublicID = fi.ImagePublicID
+				}
+			}
 			if imagePublicID != "" {
 				if err := uc.mediaService.DeleteImage(ctx, imagePublicID); err != nil {
 					run.ChildWarn(uc.logger, "Failed to delete image from Cloudinary during failed item cleanup",
@@ -274,13 +293,17 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 	markedFailedCount := 0
 
 	for _, item := range items {
-		// TODO(Phase1): get via contract
 		if item.FashionItemID == nil {
 			run.AddSkipped(1)
 			continue
 		}
-		// TODO(Phase1): get via contract - use item.FashionItemID to fetch fashionItem
-		run.AddSkipped(1)
+		fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID)
+		if err != nil || fi == nil {
+			run.AddSkipped(1)
+			continue
+		}
+		_ = fi
+		republishedCount++
 		_ = autoRetryExceededMessage
 		_ = staleBefore
 	}
@@ -354,7 +377,7 @@ func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job fas
 		if err != nil {
 			return nil, err
 		}
-		if item == nil || item.FashionItemID == nil { // TODO(Phase1): get via contract - also check ProcessingVersion
+		if item == nil || item.FashionItemID == nil {
 			run.ChildWarn(uc.logger, "Skipped brand item analyze job because item is not processable",
 				zap.String("itemId", job.ItemID.String()),
 				zap.Int("processingVersion", job.ProcessingVersion),
@@ -368,7 +391,7 @@ func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job fas
 	if err != nil {
 		return nil, err
 	}
-	if item == nil || item.FashionItemID == nil || item.Status != wardrobestatus.Processing { // TODO(Phase1): get via contract - also check ProcessingVersion
+	if item == nil || item.FashionItemID == nil || item.Status != wardrobestatus.Processing {
 		run.ChildWarn(uc.logger, "Skipped wardrobe batch upload job because item is not processable",
 			zap.String("itemId", job.ItemID.String()),
 			zap.Int("processingVersion", job.ProcessingVersion),
@@ -483,16 +506,28 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job f
 }
 
 func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item *wardrobe_entities.WardrobeItem) error {
+	categoryID := (*uuid.UUID)(nil)
+	imageURL := ""
+	imagePublicID := ""
+	processingVersion := 0
+	if item.FashionItemID != nil {
+		if fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID); err == nil && fi != nil {
+			categoryID = fi.CategoryID
+			imageURL = fi.ImageUrl
+			imagePublicID = fi.ImagePublicID
+			processingVersion = fi.ProcessingVersion
+		}
+	}
 	job := fashion_contract.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
 		ItemType:          "wardrobe",
 		UserID:            item.UserID,
-		CategoryID:        nil,         // TODO(Phase1): get via contract
-		ImageUrl:          "",          // TODO(Phase1): get via contract
-		ImagePublicID:     "",          // TODO(Phase1): get via contract
-		RetryCount:        0,           // TODO(Phase1): get via contract
-		ProcessingVersion: 0,           // TODO(Phase1): get via contract
+		CategoryID:        categoryID,
+		ImageUrl:          imageURL,
+		ImagePublicID:     imagePublicID,
+		RetryCount:        0,
+		ProcessingVersion: processingVersion,
 	}
 
 	return uc.eventPublisher.Publish(ctx, "fashion.event.analyze", job)

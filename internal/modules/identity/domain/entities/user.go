@@ -8,7 +8,6 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 
-	
 	"github.com/google/uuid"
 )
 
@@ -49,11 +48,11 @@ func (u *User) GetEffectiveBodyProfile() *BodyProfile {
 }
 
 type UserStyleProfile struct {
-	UserID          uuid.UUID                          `gorm:"type:uuid;primaryKey"`
-	TasteEmbedding  Vector             `gorm:"type:vector(768)"`
-	PreferredColors *PreferredColors   `gorm:"type:jsonb"`
-	UpdatedAt       time.Time                          `gorm:"type:timestamp with time zone;not null;default:now()"`
-	User            *User                              `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	UserID          uuid.UUID        `gorm:"type:uuid;primaryKey"`
+	TasteEmbedding  Vector           `gorm:"type:vector(768)"`
+	PreferredColors *PreferredColors `gorm:"type:jsonb"`
+	UpdatedAt       time.Time        `gorm:"type:timestamp with time zone;not null;default:now()"`
+	User            *User            `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
 }
 
 type RefreshToken struct {

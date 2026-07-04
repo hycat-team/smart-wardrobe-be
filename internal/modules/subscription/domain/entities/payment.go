@@ -4,13 +4,12 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefitresolution"
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 
-	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -47,11 +46,11 @@ type DepositTransaction struct {
 	PlanKind                    *plankind.PlanKind                            `gorm:"type:smallint"`
 	PurchasedDurationDays       *int                                          `gorm:"type:int"`
 	ExpectedAmount              decimal.Decimal                               `gorm:"type:numeric(12,2);not null"`
-	BenefitSnapshot             JSONDocument                  `gorm:"type:jsonb"`
+	BenefitSnapshot             JSONDocument                                  `gorm:"type:jsonb"`
 	PricingVersion              *int64                                        `gorm:"type:bigint"`
 	BenefitResolution           *benefitresolution.BenefitResolution          `gorm:"type:varchar(100)"`
 	BenefitAppliedAt            *time.Time                                    `gorm:"type:timestamp with time zone"`
-	BenefitResultSnapshot       JSONDocument                  `gorm:"type:jsonb"`
+	BenefitResultSnapshot       JSONDocument                                  `gorm:"type:jsonb"`
 	WalletCreditAmount          *decimal.Decimal                              `gorm:"type:numeric(12,2)"`
 	SubscriptionVersionBefore   *int64                                        `gorm:"type:bigint"`
 	SubscriptionVersionAfter    *int64                                        `gorm:"type:bigint"`

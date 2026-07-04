@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/config"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/application/ai"
@@ -20,6 +21,7 @@ type WardrobeChatUseCase struct {
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	brandContract   brand_contract.IBrandContract
+	fashionContract fashion_contract.IFashionContract
 	uow             shared_repos.IUnitOfWork
 }
 
@@ -33,6 +35,7 @@ func NewWardrobeChatUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
+	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeChatUseCase {
 	return &WardrobeChatUseCase{
@@ -44,6 +47,7 @@ func NewWardrobeChatUseCase(
 		userSubContract: userSubContract,
 		userQuotaCtr:    userQuotaCtr,
 		brandContract:   brandContract,
+		fashionContract: fashionContract,
 		uow:             uow,
 	}
 }

@@ -9,18 +9,19 @@ import (
 	"go.uber.org/zap"
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
@@ -106,7 +107,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	userID uuid.UUID,
 	activeItems []*wardrobe_entities.WardrobeItem,
 	input dto.RecommendOutfitReq,
-) ([]types.CandidateForPrompt, error) {
+) ([]types.CandidateForPrompt, map[uuid.UUID]*fashion_contract.FashionItemRes, error) {
 	intent := uc.parseRecommendationIntent(input)
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
@@ -137,8 +138,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					},
 					FashionItemID: &brandItem.FashionItemID,
 				}
-				// TODO(Phase1): link fashionItem via contract
 				_ = fashionItem
+				if fashionItem != nil {
+					mockWardrobeItem.FashionItemID = &fashionItem.ID
+				}
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
 					Source:          types.CandidateSourceRetrieval,
@@ -148,10 +151,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					RetrievalRank:   brandCandidatesCount + 1,
 					RetrievalSource: types.CandidateSourceRetrieval,
 					ItemContext:     outfititemcontext.BrandItem,
-				BrandItem: &brand_entities.BrandItem{
-					AuditableEntity: brand_entities.AuditableEntity{
-						BaseEntity: brand_entities.BaseEntity{ID: brandItem.ID},
-					},
+					BrandItem: &brand_entities.BrandItem{
+						AuditableEntity: brand_entities.AuditableEntity{
+							BaseEntity: brand_entities.BaseEntity{ID: brandItem.ID},
+						},
 						BrandID:  brandItem.BrandID,
 						ItemType: branditemtype.BrandItemType(brandItem.ItemType),
 						Name:     brandItem.Name,
@@ -192,11 +195,27 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(rankingCandidates))
+	for _, c := range rankingCandidates {
+		if c.Item != nil && c.Item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *c.Item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionItemMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	rankingCandidates, _ = ranking.EnsureMinimumCandidatePool(
 		rankingCandidates,
 		activeItems,
 		retrievalQuery,
 		minimumPool,
+		fashionItemMap,
 	)
 
 	// Ensure all candidates have a context set (fallback candidates will be USER_WARDROBE)
@@ -213,9 +232,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		uc.cfg.RAG.RecentlyWornPenaltyDays,
 		uc.cfg.RAG.LongUnwornBonusDays,
 		minimumPool,
+		fashionItemMap,
 	)
 
-	return ranked, nil
+	return ranked, fashionItemMap, nil
 }
 
 // parseRecommendationIntent phân tích ý định từ văn bản tự do của người dùng và hợp nhất với các
@@ -447,7 +467,7 @@ func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []strin
 func missingEmbeddingCount(items []*wardrobe_entities.WardrobeItem) int {
 	count := 0
 	for _, item := range items {
-		if item == nil { // TODO(Phase1): get via contract
+		if item == nil {
 			count++
 		}
 	}

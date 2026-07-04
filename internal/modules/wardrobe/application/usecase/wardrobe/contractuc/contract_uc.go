@@ -3,16 +3,18 @@ package contractuc
 import (
 	"context"
 
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	subcontract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/contract"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -20,15 +22,18 @@ import (
 type WardrobeContractUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract subcontract.IUserSubscriptionContract
+	fashionContract fashion_contract.IFashionContract
 }
 
 func NewWardrobeContractUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract subcontract.IUserSubscriptionContract,
+	fashionContract fashion_contract.IFashionContract,
 ) contract.IWardrobeContract {
 	return &WardrobeContractUseCase{
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
+		fashionContract: fashionContract,
 	}
 }
 
@@ -57,8 +62,11 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 		return nil, err
 	}
 
-	_ = sourceItem.FashionItemID // TODO(Phase1): get via contract
-	return mapper.MapToWardrobeItemRes(cloned), nil
+	var fi *fashion_contract.FashionItemRes
+	if cloned.FashionItemID != nil {
+		fi, _ = uc.fashionContract.GetFashionItem(ctx, *cloned.FashionItemID)
+	}
+	return mapper.MapToWardrobeItemRes(cloned, fi), nil
 }
 
 func (uc *WardrobeContractUseCase) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
@@ -138,9 +146,28 @@ func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []
 		return nil, err
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	result := make([]*dto.WardrobeItemRes, 0, len(items))
 	for _, item := range items {
-		result = append(result, mapper.MapToWardrobeItemRes(item))
+		var fi *fashion_contract.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
 	}
 	return result, nil
 }

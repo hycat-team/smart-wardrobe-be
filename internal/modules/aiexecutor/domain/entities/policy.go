@@ -6,7 +6,6 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
 
-	
 	"github.com/google/uuid"
 )
 
@@ -49,7 +48,7 @@ type AIPolicyGrant struct {
 	PlanID                     uuid.UUID                               `gorm:"type:uuid;not null"`
 	PlanCode                   string                                  `gorm:"type:varchar(100);not null"`
 	TierRank                   int                                     `gorm:"type:int;not null"`
-	PolicySnapshot             JSONDocument            `gorm:"type:jsonb;not null"`
+	PolicySnapshot             JSONDocument                            `gorm:"type:jsonb;not null"`
 	EffectiveFrom              time.Time                               `gorm:"type:timestamp with time zone;not null"`
 	EffectiveTo                *time.Time                              `gorm:"type:timestamp with time zone"`
 	Status                     aipolicygrantstatus.AIPolicyGrantStatus `gorm:"type:varchar(20);not null"`

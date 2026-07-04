@@ -3,23 +3,19 @@ package mapper
 import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 
 	"github.com/google/uuid"
 )
 
-func MapToFashionItemRes(fi *fashion_entities.FashionItem) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
-	}
-	var categoryName *string
-	if fi.Category != nil {
-		categoryName = &fi.Category.Name
 	}
 	return &dto.FashionItemRes{
 		ID:              fi.ID,
 		CategoryID:      fi.CategoryID,
-		CategoryName:    categoryName,
+		CategoryName:    fi.CategoryName,
 		ImageUrl:        fi.ImageUrl,
 		ImagePublicID:   fi.ImagePublicID,
 		Color:           fi.Color,
@@ -38,7 +34,7 @@ func MapToFashionItemRes(fi *fashion_entities.FashionItem) *dto.FashionItemRes {
 	}
 }
 
-func MapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
+func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_contract.FashionItemRes) *dto.BrandItemRes {
 	if item == nil {
 		return nil
 	}
@@ -56,7 +52,7 @@ func MapToBrandItemRes(item *entities.BrandItem) *dto.BrandItemRes {
 		Price:         item.Price,
 		ItemType:      item.ItemType,
 		Status:        item.Status,
-		FashionItem:   nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
+		FashionItem:   MapToFashionItemRes(fi),
 		CreatedAt:     item.CreatedAt,
 		UpdatedAt:     item.UpdatedAt,
 	}
@@ -83,7 +79,7 @@ func MapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.Dig
 	}
 }
 
-func MapToBrandItemStylingDTO(item *entities.BrandItem) *dto.BrandItemStylingDTO {
+func MapToBrandItemStylingDTO(item *entities.BrandItem, fi *fashion_contract.FashionItemRes) *dto.BrandItemStylingDTO {
 	if item == nil {
 		return nil
 	}
@@ -104,6 +100,6 @@ func MapToBrandItemStylingDTO(item *entities.BrandItem) *dto.BrandItemStylingDTO
 		Name:          item.Name,
 		ItemType:      item.ItemType,
 		Status:        item.Status,
-		FashionItem:   nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
+		FashionItem:   MapToFashionItemRes(fi),
 	}
 }

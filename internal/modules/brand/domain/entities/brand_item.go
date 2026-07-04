@@ -7,7 +7,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/votetype"
 
-	
 	"github.com/google/uuid"
 )
 

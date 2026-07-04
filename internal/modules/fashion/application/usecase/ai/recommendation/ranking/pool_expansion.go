@@ -5,8 +5,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
@@ -57,6 +57,7 @@ func EnsureMinimumCandidatePool(
 	activeItems []*wardrobe_entities.WardrobeItem,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	minimumPool int,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) ([]types.CandidateForRanking, types.FallbackCandidateCounts) {
 	rankingCandidates := make([]types.CandidateForRanking, 0, max(len(candidates), minimumPool))
 	rankingCandidates = append(rankingCandidates, candidates...)
@@ -73,9 +74,9 @@ func EnsureMinimumCandidatePool(
 	}
 
 	counts := types.FallbackCandidateCounts{}
-	counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceStrictFallback, minimumPool)
-	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceRelaxedFallback, minimumPool)
-	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceGeneralFallback, minimumPool)
+	counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceStrictFallback, minimumPool, fashionItemMap)
+	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceRelaxedFallback, minimumPool, fashionItemMap)
+	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceGeneralFallback, minimumPool, fashionItemMap)
 
 	return rankingCandidates, counts
 }
@@ -88,6 +89,7 @@ func appendFallbackCandidates(
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
 	minimumPool int,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) int {
 	added := 0
 	for _, item := range activeItems {
@@ -97,7 +99,7 @@ func appendFallbackCandidates(
 		if item == nil || taken[item.ID] {
 			continue
 		}
-		if !FallbackCandidateEligible(item, retrievalQuery, source) {
+		if !FallbackCandidateEligible(item, retrievalQuery, source, fashionItemMap) {
 			continue
 		}
 
@@ -119,25 +121,26 @@ func FallbackCandidateEligible(
 	item *wardrobe_entities.WardrobeItem,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
+	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
 ) bool {
-	if !MatchesFallbackHardFilters(item, retrievalQuery.HardFilters) {
+	if !MatchesFallbackHardFilters(item, retrievalQuery.HardFilters, fashionItemMap) {
 		return false
 	}
-	if MatchesFallbackExcludedTerms(item, retrievalQuery.ExcludedTerms) {
+	if MatchesFallbackExcludedTerms(item, retrievalQuery.ExcludedTerms, fashionItemMap) {
 		return false
 	}
 	if source == candidateSourceStrictFallback && len(retrievalQuery.LexicalTerms) > 0 {
-		return MatchesFallbackLexicalTerms(item, retrievalQuery.LexicalTerms)
+		return MatchesFallbackLexicalTerms(item, retrievalQuery.LexicalTerms, fashionItemMap)
 	}
 	return true
 }
 
 // MatchesFallbackHardFilters xác định xem món đồ có vượt qua các bộ lọc cứng về mùa (seasonality) và danh mục (category slugs) hay không.
-func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters repositories.RecommendationHardFilters) bool {
+func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters repositories.RecommendationHardFilters, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
-	fashion := fashionForItem(item)
+	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if len(filters.Seasonality) > 0 {
 		seasonality := ""
 		if fashion != nil {
@@ -149,9 +152,8 @@ func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters re
 	}
 	if len(filters.CategorySlugs) > 0 {
 		categorySlug := ""
-		// TODO(Phase1): get via contract
-		if category := (*entities.Category)(nil); category != nil {
-			categorySlug = parser.NormalizeText(category.Slug)
+		if fashion != nil && fashion.CategoryName != nil {
+			categorySlug = parser.NormalizeText(*fashion.CategoryName)
 		}
 		matched := false
 		for _, slug := range filters.CategorySlugs {
@@ -194,11 +196,11 @@ func MatchesFallbackSeasonalityFilter(seasonality string, requestedSeasons []str
 }
 
 // MatchesFallbackExcludedTerms trả về true nếu mô tả hoặc thuộc tính của món đồ chứa các từ khóa nằm trong danh sách loại trừ nghiêm ngặt.
-func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excludedTerms []types.RetrievalTerm) bool {
+func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excludedTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
 	if len(excludedTerms) == 0 {
 		return false
 	}
-	document := FallbackSearchDocument(item)
+	document := FallbackSearchDocument(item, fashionItemMap)
 	for _, term := range excludedTerms {
 		normalized := parser.NormalizeText(term.Value)
 		if normalized != "" && strings.Contains(document, normalized) {
@@ -209,11 +211,11 @@ func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excluded
 }
 
 // MatchesFallbackLexicalTerms trả về true nếu mô tả hoặc thuộc tính của món đồ có chứa ít nhất một trong các từ khóa tìm kiếm.
-func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTerms []types.RetrievalTerm) bool {
+func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
 	if len(lexicalTerms) == 0 {
 		return true
 	}
-	document := FallbackSearchDocument(item)
+	document := FallbackSearchDocument(item, fashionItemMap)
 	for _, term := range lexicalTerms {
 		normalized := parser.NormalizeText(term.Value)
 		if normalized != "" && strings.Contains(document, normalized) {
@@ -224,11 +226,11 @@ func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTe
 }
 
 // FallbackSearchDocument nối tất cả các trường thông tin mô tả và thuộc tính của món đồ thành một chuỗi văn bản duy nhất để phục vụ cho việc quét từ khóa.
-func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem) string {
+func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
 	if item == nil {
 		return ""
 	}
-	fashion := fashionForItem(item)
+	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil {
 		return ""
 	}
@@ -240,9 +242,6 @@ func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem) string {
 		stringutils.GetString(fashion.Fit),
 		stringutils.GetString(fashion.Seasonality),
 		stringutils.GetString(fashion.Description),
-	}
-	if fashion.Category != nil {
-		parts = append(parts, fashion.Category.Slug, fashion.Category.Name)
 	}
 	return parser.NormalizeText(strings.Join(parts, " "))
 }
