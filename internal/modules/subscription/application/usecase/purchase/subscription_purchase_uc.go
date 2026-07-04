@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
@@ -29,15 +30,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-type planChangedPayload struct {
-	UserID         string    `json:"userId"`
-	EventType      string    `json:"eventType"`
-	ToPlanCode     string    `json:"toPlanCode"`
-	ToTierRank     int       `json:"toTierRank"`
-	AICostPolicyID string    `json:"aiCostPolicyId"`
-	OccurredAt     time.Time `json:"occurredAt"`
-}
 
 type SubscriptionPurchaseUseCase struct {
 	walletRepo     repositories.IUserWalletRepository
@@ -329,13 +321,13 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	}
 
 	if subEvent != nil {
-		payload := planChangedPayload{
+		payload := aiexecutor_dto.PlanChangedPayload{
 			UserID:         userID.String(),
 			EventType:      subEvent.EventType,
 			ToPlanCode:     plan.Slug,
 			ToTierRank:     plan.TierRank,
 			AICostPolicyID: plan.AICostPolicyID.String(),
-			OccurredAt:     now,
+			OccurredAt:     now.Format(time.RFC3339Nano),
 		}
 		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicSubscriptionPlanChanged, payload)
 	}

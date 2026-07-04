@@ -2,6 +2,7 @@ package recommendation
 
 import (
 	"smart-wardrobe-be/config"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
@@ -9,7 +10,6 @@ import (
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/shared/application/ai"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 )
@@ -19,7 +19,7 @@ type OutfitRecommendationUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	aiService       ai.IAIService
+	aiService       aiexecutor_contract.IAIOrchestrator
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	brandContract   brand_contract.IBrandContract
@@ -33,7 +33,7 @@ func NewOutfitRecommendationUseCase(
 	cfg *config.Config,
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	aiService ai.IAIService,
+	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
@@ -108,7 +107,7 @@ func (s *AIService) GenerateEmbeddings(ctx context.Context, chunks []string) ([]
 
 func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	s.logTextGeneration("GenerateChatText", systemPrompt, userPrompt, options)
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationChat)
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationChat)
 	if err != nil {
 		return "", err
 	}
@@ -134,7 +133,7 @@ func (s *AIService) GenerateChatText(ctx context.Context, systemPrompt string, u
 
 func (s *AIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
 	s.logTextGeneration("GenerateRecommendationText", systemPrompt, userPrompt, options)
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationOutfit)
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.RecommendationTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationOutfit)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +166,7 @@ func (s *AIService) GenerateChatTextStream(
 	outTextChan := make(chan string, 100)
 	outErrChan := make(chan error, 1)
 
-	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, contract.AIOperationChat)
+	provider, client, limiter, prepared, err := s.prepareText(ctx, s.cfg.AI.ChatTextPrimary, systemPrompt, userPrompt, options, app_ai.AIOperationChat)
 	if err != nil {
 		outErrChan <- err
 		close(outTextChan)
@@ -254,7 +253,7 @@ func (s *AIService) prepareText(ctx context.Context, paid config.APIProviderConf
 		}
 	}
 
-	if defaultOperation == contract.AIOperationOutfit {
+	if defaultOperation == app_ai.AIOperationOutfit {
 		return paid, s.recommendationTextClient, s.recommendationTextLimiter, options, nil
 	}
 	return paid, s.chatTextClient, s.chatTextLimiter, options, nil

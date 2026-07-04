@@ -18,7 +18,7 @@ import (
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 
-	"smart-wardrobe-be/internal/shared/application/ai"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -43,7 +43,7 @@ type FashionWorkerUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	categoryCache   *VisionCategoryCache
 	mediaService    media.IMediaService
-	aiService       ai.IAIService
+	aiService       aiexecutor_contract.IAIOrchestrator
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 	fashionItemRepo repositories.IFashionItemRepository
@@ -57,7 +57,7 @@ func NewFashionWorkerUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	categoryCache *VisionCategoryCache,
 	mediaService media.IMediaService,
-	aiService ai.IAIService,
+	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionItemRepo repositories.IFashionItemRepository,

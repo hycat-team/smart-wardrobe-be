@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	grant_uc "smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/grant"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
+	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
@@ -14,13 +15,13 @@ import (
 
 type PlanChangedWorker struct {
 	messageClient shared_msg.IRabbitMQClient
-	grantUseCase  *grant_uc.GrantUseCase
+	grantUseCase  uc_interfaces.IGrantUseCase
 	logger        logger.Interface
 }
 
 func NewPlanChangedWorker(
 	messageClient shared_msg.IRabbitMQClient,
-	grantUseCase *grant_uc.GrantUseCase,
+	grantUseCase uc_interfaces.IGrantUseCase,
 	l logger.Interface,
 ) *PlanChangedWorker {
 	w := &PlanChangedWorker{
@@ -42,7 +43,7 @@ func (w *PlanChangedWorker) startConsume() {
 
 	go func() {
 		for d := range deliveries {
-			var payload grant_uc.PlanChangedPayload
+			var payload aiexecutor_dto.PlanChangedPayload
 			if err := json.Unmarshal(d.Body, &payload); err != nil {
 				w.logger.Error("[PlanChangedWorker] Failed to unmarshal message body", zap.Error(err))
 				_ = d.Nack(false, false)

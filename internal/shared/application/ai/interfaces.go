@@ -6,6 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	AIOperationChat     = "chat"
+	AIOperationOutfit   = "outfit"
+	AIOperationSummary  = "summary"
+	AIOperationRewriter = "rewriter"
+)
+
 type TextGenerationOptions struct {
 	MaxOutputTokens  int
 	Temperature      float64

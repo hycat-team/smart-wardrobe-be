@@ -169,6 +169,10 @@ func (r *AICostRepository) CreateGrant(ctx context.Context, grant *aiexecutor_en
 	return r.GetDB(ctx).Create(grant).Error
 }
 
+func (r *AICostRepository) CreateEvent(ctx context.Context, event *aiexecutor_entities.AIUsageEvent) error {
+	return r.GetDB(ctx).Create(event).Error
+}
+
 func (r *AICostRepository) MarkUnknown(ctx context.Context, id uuid.UUID, reason string, expires time.Time) error {
 	updates := map[string]any{"status": aiusageeventstatus.UnknownUsage, "error_code": reason, "updated_at": time.Now()}
 	if !expires.IsZero() {

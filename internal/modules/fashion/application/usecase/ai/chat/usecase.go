@@ -2,12 +2,12 @@ package chat
 
 import (
 	"smart-wardrobe-be/config"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/shared/application/ai"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
 
@@ -17,7 +17,7 @@ type WardrobeChatUseCase struct {
 	contextRepo     repositories.IConversationalContextRepository
 	messageRepo     repositories.IMessageRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	aiService       ai.IAIService
+	aiService       aiexecutor_contract.IAIOrchestrator
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	brandContract   brand_contract.IBrandContract
@@ -31,7 +31,7 @@ func NewWardrobeChatUseCase(
 	contextRepo repositories.IConversationalContextRepository,
 	messageRepo repositories.IMessageRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	aiService ai.IAIService,
+	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,

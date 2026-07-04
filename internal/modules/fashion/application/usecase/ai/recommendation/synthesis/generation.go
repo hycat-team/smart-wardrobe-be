@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	"smart-wardrobe-be/internal/shared/application/ai"
 )
 
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.
@@ -36,7 +36,7 @@ import (
 //	(*dto.RecommendedOutfitRes{Title: "Bộ đồ thanh lịch", Explanation: "...", Items: [...]}, nil)
 func GenerateOutfitRecommendation(
 	ctx context.Context,
-	aiService ai.IAIService,
+	aiService aiexecutor_contract.IAIOrchestrator,
 	userID uuid.UUID,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
@@ -51,7 +51,7 @@ func GenerateOutfitRecommendation(
 		ctx,
 		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
 		userPrompt,
-		ai.TextGenerationOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
+		aiexecutor_contract.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)
 	if err != nil {
 		return nil, NewFallbackTraceError(

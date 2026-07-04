@@ -19,4 +19,5 @@ type IAICostRepository interface {
 	ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error)
 	ExpireGrantsByUserID(ctx context.Context, userID uuid.UUID, now time.Time) error
 	CreateGrant(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant) error
+	CreateEvent(ctx context.Context, event *aiexecutor_entities.AIUsageEvent) error
 }

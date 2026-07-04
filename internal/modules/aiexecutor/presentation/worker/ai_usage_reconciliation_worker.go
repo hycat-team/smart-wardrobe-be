@@ -5,7 +5,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 	"time"
@@ -16,14 +16,14 @@ type IAIUsageReconciliationWorker interface {
 	Stop()
 }
 type AIUsageReconciliationWorker struct {
-	policy contract.IAICostPolicyContract
+	costUC usecase.IAICostUseCase
 	cron   *cron.Cron
 	log    logger.Interface
 	cfg    *config.Config
 }
 
-func NewAIUsageReconciliationWorker(policy contract.IAICostPolicyContract, log logger.Interface, cfg *config.Config) IAIUsageReconciliationWorker {
-	return &AIUsageReconciliationWorker{policy: policy, cron: cron.New(cron.WithSeconds()), log: log, cfg: cfg}
+func NewAIUsageReconciliationWorker(costUC usecase.IAICostUseCase, log logger.Interface, cfg *config.Config) IAIUsageReconciliationWorker {
+	return &AIUsageReconciliationWorker{costUC: costUC, cron: cron.New(cron.WithSeconds()), log: log, cfg: cfg}
 }
 func (w *AIUsageReconciliationWorker) Start() {
 	if _, err := w.cron.AddFunc(w.cfg.AI.UsageReconcileCron, w.run); err != nil {
@@ -41,7 +41,7 @@ func (w *AIUsageReconciliationWorker) run() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	run := workerlog.New("ai_usage_reconciliation", workerlog.TriggerCron)
-	count, err := w.policy.ExpireUnknown(ctx, time.Now(), w.cfg.AI.UsageReconcileBatchSize)
+	count, err := w.costUC.ExpireUnknown(ctx, time.Now(), w.cfg.AI.UsageReconcileBatchSize)
 	if err != nil {
 		run.LogFailure(w.log, err, zap.Int64("expiredReservationCount", 0))
 		return

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"smart-wardrobe-be/internal/shared/application/ai"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 )
 
 // BuildRichTextContext formats a description prompt context of a wardrobe item for AI embedding generation.
@@ -23,8 +23,8 @@ func BuildRichTextContext(categoryName, color, style, material, pattern, fit, se
 }
 
 // GenerateItemEmbedding calls the AI service to generate a text embedding, validates the response, and returns the embedding.
-func GenerateItemEmbedding(ctx context.Context, aiService ai.IAIService, text string) ([]float32, error) {
-	embeddings, err := aiService.GenerateEmbeddings(ctx, []string{text})
+func GenerateItemEmbedding(ctx context.Context, svc aiexecutor_contract.IAIOrchestrator, text string) ([]float32, error) {
+	embeddings, err := svc.GenerateEmbeddings(ctx, []string{text})
 	if err != nil {
 		return nil, err
 	}

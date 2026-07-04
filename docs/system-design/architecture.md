@@ -6,7 +6,7 @@ The backend is implemented as a **pragmatic modular monolith** in Go with **clea
 
 - **Single deployable application:** all modules run inside one Gin-based HTTP service started from `cmd/server/main.go`.
 - **Shared infrastructure:** Postgres, Redis, RabbitMQ, Cloudinary, external AI providers, and Elasticsearch are initialized once and reused across modules through DI.
-- **Database-first relational model:** shared GORM entities live under `internal/shared/domain/entities` and represent the canonical relational model used across the system.
+- **Entity ownership per module:** each module owns its persistent models under `internal/modules/<name>/domain/entities/`. Cross-module navigation properties (struct pointers to entities in other modules) are **strictly prohibited**.
 - **No DDD aggregate/event model:** the codebase does not model aggregate roots, value objects, or domain events in a DDD sense. Cross-module integration is handled through contracts plus shared infrastructure.
 - **Module boundaries are real, but uneven:** every business domain lives in `internal/modules/<name>`. The exact provider wiring shape (layered vs flattened) may differ per module, but the folder convention is consistent.
 - **Archived modules:** a module removed from runtime keeps its source tree but is excluded from DI wiring, route registration, and Swagger generation. Git history is the authoritative record for what was removed and why.
@@ -83,15 +83,15 @@ ls internal/modules/
 
 ## III. SHARED DATA MODEL & INFRASTRUCTURE
 
-### Shared entities
+### Shared base types
 
-All persistent models are centralized under `internal/shared/domain/entities`. Every module contributes its entities to this shared pool rather than duplicating definitions. To see the current entity set:
+Only foundational types remain in `internal/shared/domain/entities/`:
 
-```bash
-ls internal/shared/domain/entities/
-```
+- `base.go` — `BaseEntity`, `AuditableEntity`, `SoftDeleteEntity` (embedded by all module entities)
+- `jsonb.go` — `JSONDocument`, `BodyProfile`, `PreferredColors`
+- `vector.go` — `Vector` (pgvector wrapper)
 
-Entity filenames follow the pattern `<domain>_entities.go` (e.g., `identity_entities.go`, `brand_entities.go`). This is the single source of truth for the relational model.
+Each business module owns its specific entities under `internal/modules/<name>/domain/entities/`. Cross-module entity references are forbidden — modules that need data from another module must call its contract (see §VI).
 
 ### Shared infrastructure
 
@@ -122,12 +122,14 @@ internal/modules/<name>
 |   |-- dto                     # Request/response structs
 |   |-- errors                  # Domain-specific error definitions
 |   |-- interface
-|   |   `-- usecase             # Use case interfaces (consumed by handlers)
+|   |   `-- usecase             # Use case interfaces (consumed by handlers, workers)
 |   |-- mapper                  # Entity/DTO ↔ response mappers
 |   `-- usecase                 # Use case implementations
 |
-|-- contract                    # Cross-module service interfaces & implementations
+|-- contract                    # Cross-module service interfaces & implementations (DTOs only)
 |-- domain
+|   |-- constants               # Module-specific enum constants
+|   |-- entities                # Persistent GORM models (owned by this module)
 |   `-- repositories            # Repository interfaces
 |-- infrastructure
 |   |-- persistence             # GORM repository implementations
@@ -156,6 +158,12 @@ The `presentation/provider.go` file is optional; some modules wire handlers and 
 ### Cross-module contracts
 
 Modules expose their public service interfaces via a `contract/` package at the module root (e.g., `internal/modules/identity/contract`). Contracts sit at module root, not under `application/`. A module that needs services from another module depends on its contract package, not on its internal use cases directly.
+
+**Rules:**
+- Contracts expose **only DTOs** (defined in the contract package or in `application/dto/`), never domain entities.
+- A module must **never import** another module's `domain/entities/`, `domain/repositories/`, or `infrastructure/persistence/`.
+- Workers call use cases through interfaces defined in `application/interface/usecase/`.
+- Repositories must not `.Preload()` or `.Joins()` entities from other modules.
 
 ### Workers are first-class presentation adapters
 
@@ -191,9 +199,11 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`.
 - Keep handlers thin and delegate execution to use cases.
 - Keep repositories inside module infrastructure or shared infrastructure packages.
 - Prefer contracts for cross-module interaction instead of importing another module's internal use case implementation directly.
+- **Cross-module data stitching** must use `sliceutils.IndexBy` / `sliceutils.GroupBy` for O(1) lookup instead of nested loops.
+- A module's entity files belong in `internal/modules/<name>/domain/entities/`, not in shared.
 - Reuse shared services for AI, media, messaging, caching, DB, and search instead of re-instantiating them inside modules.
 - Use `shared_pres.Success()`, `shared_pres.Created()`, and `shared_pres.WrapHandler()` for consistent HTTP responses.
 - Use `apperror` types for error propagation; let the global error middleware map them to HTTP responses.
 - Handler signature: `func (h *Handler) Method(c *gin.Context) error`.
-- A module's entity files belong in `internal/shared/domain/entities/`, not inside the module.
+- A module's entity files belong in `internal/modules/<name>/domain/entities/`.
 - A module that has been removed from the runtime (archived) should remain as a tree entry but be excluded from DI and route registration.

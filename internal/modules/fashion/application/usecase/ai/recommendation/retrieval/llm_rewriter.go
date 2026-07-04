@@ -11,15 +11,15 @@ import (
 
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/shared/application/ai"
 )
 
 // LLMRecommendationQueryRewriter thực hiện viết lại truy vấn gợi ý trang phục bằng cách ủy quyền cho dịch vụ LLM/AI.
 type LLMRecommendationQueryRewriter struct {
-	aiService ai.IAIService
+	aiService aiexecutor_contract.IAIOrchestrator
 	cfg       *config.Config
 	local     LocalRecommendationQueryRewriter
 	userID    uuid.UUID
@@ -31,7 +31,7 @@ func (r *LLMRecommendationQueryRewriter) WithUserID(userID uuid.UUID) *LLMRecomm
 }
 
 // NewLLMRecommendationQueryRewriter khởi tạo thực thể [LLMRecommendationQueryRewriter].
-func NewLLMRecommendationQueryRewriter(aiService ai.IAIService, cfg *config.Config) *LLMRecommendationQueryRewriter {
+func NewLLMRecommendationQueryRewriter(aiService aiexecutor_contract.IAIOrchestrator, cfg *config.Config) *LLMRecommendationQueryRewriter {
 	return &LLMRecommendationQueryRewriter{
 		aiService: aiService,
 		cfg:       cfg,
@@ -81,7 +81,7 @@ func (r LLMRecommendationQueryRewriter) Rewrite(ctx context.Context, intent dto.
 	if r.cfg.AI.RewriterPromptMaxCharacters > 0 && len([]rune(userPrompt)) > r.cfg.AI.RewriterPromptMaxCharacters {
 		return types.RecommendationRetrievalQuery{}, fmt.Errorf("recommendation rewriter prompt exceeds configured character limit")
 	}
-	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, ai.TextGenerationOptions{MaxOutputTokens: r.cfg.AI.RewriterMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: rewriterResponseSchema(), UserID: r.userID, Operation: "rewriter"})
+	response, err := r.aiService.GenerateChatText(ctx, systemPrompt, userPrompt, aiexecutor_contract.OrchestratorOptions{MaxOutputTokens: r.cfg.AI.RewriterMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: rewriterResponseSchema(), UserID: r.userID, Operation: "rewriter"})
 	if err != nil {
 		return types.RecommendationRetrievalQuery{}, err
 	}

@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
-	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -111,15 +111,15 @@ func (f fakeAIService) GenerateEmbeddings(ctx context.Context, chunks []string) 
 	return nil, nil
 }
 
-func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
+func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (string, error) {
+func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options app_ai.TextGenerationOptions) (<-chan string, <-chan error) {
+func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (<-chan string, <-chan error) {
 	return f.textChan, f.errChan
 }
 
