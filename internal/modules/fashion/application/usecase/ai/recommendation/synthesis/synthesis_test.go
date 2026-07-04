@@ -10,7 +10,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
@@ -21,22 +22,21 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 		Weather:  &weather,
 	}
 
-	itemID := uuid.New()
+	item, fi := newSynthItem()
 	desc := "cozy knit sweater"
+	fi.Description = &desc
+	catName := "Ao"
+	fi.CategoryName = &catName
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+
 	candidates := []types.CandidateForPrompt{
 		{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: itemID}},
-				FashionItem: &entities.FashionItem{
-					Description: &desc,
-					Category:    &entities.Category{Slug: "ao", Name: "Ao"},
-				},
-			},
+			Item: item,
 			Tags: []string{"winter-appropriate:outerwear"},
 		},
 	}
 
-	prompt := BuildRecommendationPrompt(candidates, req)
+	prompt := BuildRecommendationPrompt(candidates, req, fashionItemMap)
 	if !strings.Contains(prompt, `"occasion":"party"`) {
 		t.Fatalf("expected occasion party in context, got: %s", prompt)
 	}
@@ -51,21 +51,21 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.T) {
 	longDescription := strings.Repeat("á", 300)
 	candidates := make([]types.CandidateForPrompt, 4)
+	fashionItemMap := make(map[uuid.UUID]*fashion_contract.FashionItemRes)
 	for i := range candidates {
+		item, fi := newSynthItem()
+		fi.Description = &longDescription
+		catName := "ao"
+		fi.CategoryName = &catName
+		fashionItemMap[*item.FashionItemID] = fi
 		candidates[i] = types.CandidateForPrompt{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-				FashionItem: &entities.FashionItem{
-					Description: &longDescription,
-					Category:    &entities.Category{Slug: "ao"},
-				},
-			},
+			Item: item,
 			Tags: []string{"one", "two", "three"},
 		}
 	}
 	prompt, err := BuildRecommendationPromptWithLimits(candidates, dto.RecommendOutfitReq{}, PromptLimits{
 		CandidateLimit: 2, DescriptionMaxCharacters: 20, TagsLimit: 2, PromptMaxCharacters: 5000,
-	})
+	}, fashionItemMap)
 	if err != nil {
 		t.Fatalf("unexpected prompt error: %v", err)
 	}
@@ -109,12 +109,16 @@ func TestValidateOutfitRecommendationPayloadRejectsPlaceholders(t *testing.T) {
 
 func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 	itemID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
+	item, fi := newSynthItem()
+	catName := "Ao"
+	fi.CategoryName = &catName
+	item.ID = itemID
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+
 	candidates := []types.CandidateForPrompt{
 		{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: itemID}},
-				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "ao", Name: "Ao"}},
-			},
+			Item: item,
 		},
 	}
 
@@ -134,7 +138,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 		},
 	}
 
-	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
+	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes, fashionItemMap)
 	if len(groups) != 1 {
 		t.Fatalf("expected 1 mapped group, got %d", len(groups))
 	}
@@ -182,25 +186,28 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	fullbodyID := uuid.New()
 	accessoryID := uuid.New()
 
+	topItem, topFi := newSynthItem()
+	topFi.CategoryName = strPtr("ao")
+	topItem.ID = topID
+
+	fullbodyItem, fullbodyFi := newSynthItem()
+	fullbodyFi.CategoryName = strPtr("dam")
+	fullbodyItem.ID = fullbodyID
+
+	accessoryItem, accessoryFi := newSynthItem()
+	accessoryFi.CategoryName = strPtr("phu-kien")
+	accessoryItem.ID = accessoryID
+
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+		*topItem.FashionItemID:       topFi,
+		*fullbodyItem.FashionItemID:  fullbodyFi,
+		*accessoryItem.FashionItemID: accessoryFi,
+	}
+
 	candidates := []types.CandidateForPrompt{
-		{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: topID}},
-				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "ao", Name: "Ao"}},
-			},
-		},
-		{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: fullbodyID}},
-				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "dam", Name: "Đầm"}},
-			},
-		},
-		{
-			Item: &entities.WardrobeItem{
-				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: accessoryID}},
-				FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: "phu-kien", Name: "Phụ kiện"}},
-			},
-		},
+		{Item: topItem},
+		{Item: fullbodyItem},
+		{Item: accessoryItem},
 	}
 
 	llmRes := types.LlmOutfitResponse{
@@ -229,7 +236,7 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 		},
 	}
 
-	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes)
+	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes, fashionItemMap)
 
 	// Should have filtered out 'top', leaving only 'fullbody' and 'accessory'
 	if len(groups) != 2 {
@@ -241,3 +248,19 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 		}
 	}
 }
+
+func newSynthItem() (*wardrobe_entities.WardrobeItem, *fashion_contract.FashionItemRes) {
+	fashionID := uuid.New()
+	catID := uuid.New()
+	item := &wardrobe_entities.WardrobeItem{
+		AuditableEntity: wardrobe_entities.AuditableEntity{BaseEntity: wardrobe_entities.BaseEntity{ID: uuid.New()}},
+		FashionItemID:   &fashionID,
+	}
+	res := &fashion_contract.FashionItemRes{
+		ID:         fashionID,
+		CategoryID: &catID,
+	}
+	return item, res
+}
+
+func strPtr(s string) *string { return &s }

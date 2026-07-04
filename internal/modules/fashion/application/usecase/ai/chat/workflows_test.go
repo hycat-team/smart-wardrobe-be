@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -284,7 +285,7 @@ type fakeEmptyWardrobeRepo struct {
 	repositories.IWardrobeItemRepository
 }
 
-func (f fakeEmptyWardrobeRepo) GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error) {
+func (f fakeEmptyWardrobeRepo) GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*wardrobe_entities.WardrobeItem, error) {
 	return nil, nil
 }
 

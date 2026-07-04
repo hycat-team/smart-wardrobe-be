@@ -156,6 +156,36 @@ func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) 
 func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.FashionItemRes, error) {
 	return nil, nil
 }
+func (m *mockFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) CreateCategory(ctx context.Context, input fashion_contract.CreateCategoryInput) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_contract.UpdateCategoryInput) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+type mockEventPublisher struct{}
+
+func (m *mockEventPublisher) Publish(ctx context.Context, topic string, payload any) error {
+	return nil
+}
 
 type mockBenefitUC struct{}
 
@@ -224,6 +254,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 		feedbackRepo:    feedbackRepo,
 		fashionContract: fashionContract,
 		benefitUC:       &mockBenefitUC{},
+		eventPublisher:  &mockEventPublisher{},
 	}
 
 	// 1. Staff creates BrandItem

@@ -116,53 +116,6 @@ func (m *mockMsgRepo) CountUnread(ctx context.Context, conversationID uuid.UUID,
 	return count, nil
 }
 
-type mockUserRepo struct{}
-
-func (m *mockUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
-	return &entities.User{
-		Username:  "testuser",
-		FirstName: ptr("Test"),
-		LastName:  ptr("User"),
-	}, nil
-}
-func (m *mockUserRepo) GetAll(ctx context.Context) ([]*entities.User, error) { return nil, nil }
-func (m *mockUserRepo) Create(ctx context.Context, u *entities.User) error   { return nil }
-func (m *mockUserRepo) Update(ctx context.Context, u *entities.User) error   { return nil }
-func (m *mockUserRepo) Delete(ctx context.Context, id uuid.UUID) error       { return nil }
-func (m *mockUserRepo) GetByUsername(ctx context.Context, username string) (*entities.User, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.User, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) GetStyleProfile(ctx context.Context, id uuid.UUID) (*entities.UserStyleProfile, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) GetByIDWithBodyAndStyle(ctx context.Context, id uuid.UUID) (*entities.User, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) CreateStyleProfile(ctx context.Context, profile *entities.UserStyleProfile) error {
-	return nil
-}
-func (m *mockUserRepo) UpdateStyleProfile(ctx context.Context, profile *entities.UserStyleProfile) error {
-	return nil
-}
-func (m *mockUserRepo) CreateAIPolicyGrant(ctx context.Context, grant *entities.AIPolicyGrant) error {
-	return nil
-}
-func (m *mockUserRepo) GetAIPolicyGrantByUserID(ctx context.Context, userID uuid.UUID) (*entities.AIPolicyGrant, error) {
-	return nil, nil
-}
-func (m *mockUserRepo) UpdateAIPolicyGrant(ctx context.Context, grant *entities.AIPolicyGrant) error {
-	return nil
-}
-func (m *mockUserRepo) List(ctx context.Context, q string, page int, limit int) ([]*entities.User, int, error) {
-	return nil, 0, nil
-}
-
 func TestSendUserMessage_AutoCreateAndReopen(t *testing.T) {
 	brandID := uuid.New()
 	userID := uuid.New()

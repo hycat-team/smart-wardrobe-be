@@ -6,19 +6,26 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
-	top := wardrobeItem("ao")
-	skirt := wardrobeItem("chan-vay")
-	shoes := wardrobeItem("giay")
+	top, f1 := newHSLTestItem("ao")
+	skirt, f2 := newHSLTestItem("chan-vay")
+	shoes, f3 := newHSLTestItem("giay")
+
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+		*top.FashionItemID:    f1,
+		*skirt.FashionItemID:  f2,
+		*shoes.FashionItemID: f3,
+	}
 
 	res := RunLocalHSLMatching([]types.CandidateForPrompt{
 		{Item: top},
 		{Item: skirt},
 		{Item: shoes},
-	}, dto.RecommendOutfitReq{})
+	}, dto.RecommendOutfitReq{}, fashionItemMap)
 
 	if len(res.Items) < 2 {
 		t.Fatalf("expected at least top and bottom groups, got %+v", res.Items)
@@ -29,23 +36,36 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 }
 
 func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
-	dress := wardrobeItem("dam")
-	shoes := wardrobeItem("giay")
+	dress, f1 := newHSLTestItem("dam")
+	shoes, f2 := newHSLTestItem("giay")
+
+	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+		*dress.FashionItemID: f1,
+		*shoes.FashionItemID: f2,
+	}
 
 	res := RunLocalHSLMatching([]types.CandidateForPrompt{
 		{Item: dress},
 		{Item: shoes},
-	}, dto.RecommendOutfitReq{})
+	}, dto.RecommendOutfitReq{}, fashionItemMap)
 
 	if len(res.Items) == 0 || res.Items[0].Role != "dam" {
 		t.Fatalf("expected first role dam, got %+v", res.Items)
 	}
 }
 
-func wardrobeItem(slug string) *entities.WardrobeItem {
+func newHSLTestItem(slug string) (*wardrobe_entities.WardrobeItem, *fashion_contract.FashionItemRes) {
+	fashionID := uuid.New()
+	catID := uuid.New()
 	name := slug
-	return &entities.WardrobeItem{
-		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		FashionItem:     &entities.FashionItem{Category: &entities.Category{Slug: slug, Name: name}},
+	item := &wardrobe_entities.WardrobeItem{
+		AuditableEntity: wardrobe_entities.AuditableEntity{BaseEntity: wardrobe_entities.BaseEntity{ID: uuid.New()}},
+		FashionItemID:   &fashionID,
 	}
+	res := &fashion_contract.FashionItemRes{
+		ID:           fashionID,
+		CategoryID:   &catID,
+		CategoryName: &name,
+	}
+	return item, res
 }

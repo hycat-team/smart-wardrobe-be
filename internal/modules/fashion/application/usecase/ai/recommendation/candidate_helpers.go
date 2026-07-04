@@ -138,10 +138,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					},
 					FashionItemID: &brandItem.FashionItemID,
 				}
-				_ = fashionItem
-				if fashionItem != nil {
-					mockWardrobeItem.FashionItemID = &fashionItem.ID
-				}
+
+				mockWardrobeItem.FashionItemID = &fashionItem.ID
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
 					Source:          types.CandidateSourceRetrieval,
