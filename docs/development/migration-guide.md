@@ -30,3 +30,16 @@ To rollback the most recent migration:
 ```bash
 make migration-down
 ```
+
+To check migration status:
+
+```bash
+make migration-status
+```
+
+To view the current database migration version:
+
+```bash
+make migration-version
+```
+

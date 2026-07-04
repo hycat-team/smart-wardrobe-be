@@ -27,7 +27,9 @@ type GrantUseCase struct {
 	policyRepo repositories.IPricingConfigRepository
 }
 
-func NewGrantUseCase(aiCostRepo repositories.IAICostRepository, policyRepo repositories.IPricingConfigRepository) uc_interfaces.IGrantUseCase {
+func NewGrantUseCase(
+	aiCostRepo repositories.IAICostRepository, policyRepo repositories.IPricingConfigRepository,
+) uc_interfaces.IGrantUseCase {
 	return &GrantUseCase{aiCostRepo: aiCostRepo, policyRepo: policyRepo}
 }
 

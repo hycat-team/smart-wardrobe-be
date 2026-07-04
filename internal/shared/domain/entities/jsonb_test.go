@@ -31,4 +31,3 @@ func TestBodyProfileUnmarshalLegacyShape(t *testing.T) {
 		t.Fatalf("expected inferred body shape rectangle, got %+v", profile.InferredByAI)
 	}
 }
-

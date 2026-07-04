@@ -95,22 +95,9 @@ type AIServiceConfig struct {
 	FreeTextFallback                       APIProviderConfig     `mapstructure:"free_text_fallback"`
 	FreeTextTimeoutSeconds                 int                   `mapstructure:"free_text_timeout_seconds"`
 	FreeTextRPMLimit                       int                   `mapstructure:"free_text_rpm_limit"`
-	FallbackPricing                        AIPricingConfig       `mapstructure:"fallback_pricing"`
 	UsageReconcileCron                     string                `mapstructure:"usage_reconcile_cron"`
 	UsageReconcileBatchSize                int                   `mapstructure:"usage_reconcile_batch_size"`
 	TokenEstimation                        TokenEstimationConfig `mapstructure:"token_estimation"`
-}
-
-type AIPricingConfig struct {
-	Version  string               `mapstructure:"version"`
-	Currency string               `mapstructure:"currency"`
-	USDToVND string               `mapstructure:"usd_to_vnd"`
-	Paid     AIModelPricingConfig `mapstructure:"paid"`
-}
-
-type AIModelPricingConfig struct {
-	InputUSDPerMillionTokens  string `mapstructure:"input_usd_per_million_tokens"`
-	OutputUSDPerMillionTokens string `mapstructure:"output_usd_per_million_tokens"`
 }
 
 type RabbitMQ struct {

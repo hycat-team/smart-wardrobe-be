@@ -2,7 +2,7 @@ package aiexecutor
 
 import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/application"
-	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_infra_caching "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 
@@ -14,8 +14,7 @@ var ProviderSet = wire.NewSet(
 
 	persistence.NewAICostRepository,
 	persistence.NewPricingConfigRepository,
-
-	contract.NewPricingConfigService,
+	aiexecutor_infra_caching.NewRedisPricingCacheService,
 
 	worker.NewAIUsageReconciliationWorker,
 	worker.NewPlanChangedWorker,

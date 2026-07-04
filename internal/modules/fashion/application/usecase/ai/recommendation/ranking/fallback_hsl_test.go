@@ -16,8 +16,8 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 	shoes, f3 := newHSLTestItem("giay")
 
 	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
-		*top.FashionItemID:    f1,
-		*skirt.FashionItemID:  f2,
+		*top.FashionItemID:   f1,
+		*skirt.FashionItemID: f2,
 		*shoes.FashionItemID: f3,
 	}
 

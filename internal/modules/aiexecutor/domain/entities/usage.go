@@ -3,6 +3,8 @@ package entities
 import (
 	"time"
 
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 
 	"github.com/google/uuid"
@@ -32,8 +34,8 @@ type AIUsageEvent struct {
 	PricingConfigID          *uuid.UUID                            `gorm:"type:uuid"`
 	Operation                string                                `gorm:"type:varchar(30);not null"`
 	LogicalRoute             string                                `gorm:"type:varchar(50);not null"`
-	Provider                 *string                               `gorm:"type:varchar(50)"`
-	Model                    *string                               `gorm:"type:varchar(150)"`
+	Provider                 *aiprovider.Provider                  `gorm:"type:varchar(50)"`
+	Model                    *aimodel.Model                        `gorm:"type:varchar(150)"`
 	InputUSDPerMillion       *decimal.Decimal                      `gorm:"type:numeric(18,8)"`
 	OutputUSDPerMillion      *decimal.Decimal                      `gorm:"type:numeric(18,8)"`
 	USDToVND                 *decimal.Decimal                      `gorm:"type:numeric(18,4)"`

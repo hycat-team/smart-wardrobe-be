@@ -2,10 +2,13 @@ package persistence
 
 import (
 	"context"
+	"time"
+
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -27,7 +30,7 @@ func (r *PricingConfigRepository) GetByIDs(ctx context.Context, ids []uuid.UUID)
 	return items, err
 }
 
-func (r *PricingConfigRepository) GetActiveByProviderAndModel(ctx context.Context, provider string, model string) (*entities.AIPricingConfig, error) {
+func (r *PricingConfigRepository) GetActiveByProviderAndModel(ctx context.Context, provider aiprovider.Provider, model aimodel.Model) (*entities.AIPricingConfig, error) {
 	var item entities.AIPricingConfig
 	now := time.Now()
 	err := r.GetDB(ctx).

@@ -39,7 +39,7 @@ FMT_CMD := find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w {}
 FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)"
 endif
 
-.PHONY: help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create install-goose
+.PHONY: help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose
 
 help:
 	@echo PROJECT COMMANDS:
@@ -64,6 +64,7 @@ help:
 	@echo make migration-up     : Run Goose up migrations manually
 	@echo make migration-down   : Rollback Goose migrations manually
 	@echo make migration-create name=ten : Create a new SQL migration file
+	@echo make migration-version: View current Goose migration version
 
 install-tools:
 	@echo Installing pinned development tools...
@@ -164,3 +165,6 @@ migration-down:
 
 migration-create:
 	@goose -dir $(MIGRATION_DIR) create $(name) sql
+
+migration-version:
+	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) version

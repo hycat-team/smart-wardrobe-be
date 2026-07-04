@@ -131,7 +131,6 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 		}
 	})
 
-
 }
 
 func attachTestPolicies(plans []*entities.SubscriptionPlan) {
