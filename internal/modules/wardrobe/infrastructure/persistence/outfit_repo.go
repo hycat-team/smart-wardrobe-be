@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sort"
 
-	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -84,7 +83,6 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 				validItems = append(validItems, item)
 			}
 		} else if item.ItemContext == outfititemcontext.BrandItem {
-			// TODO(Phase1): fetch brand item by item.FashionItemID and validate status
 			validItems = append(validItems, item)
 		}
 	}
@@ -150,15 +148,6 @@ func (r *OutfitRepository) attachBrandItems(ctx context.Context, outfit *entitie
 		return nil
 	}
 
-	var brandItems []*brand_entities.BrandItem
-	if err := r.GetDB(ctx).
-		Preload("Brand").
-		Where("fashion_item_id IN ?", fashionIDs).
-		Find(&brandItems).Error; err != nil {
-		return err
-	}
-	// TODO(Phase1): attach BrandItem data to OutfitItem via separate lookup
-	_ = brandItems
 	return nil
 }
 

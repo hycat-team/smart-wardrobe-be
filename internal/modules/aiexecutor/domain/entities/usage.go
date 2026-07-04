@@ -3,7 +3,7 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"

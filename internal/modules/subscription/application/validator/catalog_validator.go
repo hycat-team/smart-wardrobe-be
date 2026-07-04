@@ -7,7 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/bootstrap"
-	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 )
@@ -52,7 +51,26 @@ func (v *SubscriptionCatalogValidator) Validate(ctx context.Context) error {
 	return nil
 }
 
-func validatePolicyOperations(policy *aiexecutor_entities.AICostPolicy) error {
+type validatedOperation struct {
+	Operation              string
+	NormalRoute            string
+	NormalMaxInputTokens   int
+	NormalMaxOutputTokens  int
+	ReducedMaxInputTokens  int
+	ReducedMaxOutputTokens int
+	MaxPaidAttemptsPerDay  int
+	IsEnabled              bool
+}
+
+type validatedPolicy struct {
+	Operations                   []*validatedOperation
+	HardCostMicroVND             *int64
+	PeriodDays                   int
+	FreeRouteThresholdBPS        int
+	MaxUnknownPaidRequestsPerDay int
+}
+
+func validatePolicyOperations(policy *validatedPolicy) error {
 	configured := map[string]bool{}
 	for _, op := range policy.Operations {
 		if !op.IsEnabled {
@@ -71,7 +89,7 @@ func validatePolicyOperations(policy *aiexecutor_entities.AICostPolicy) error {
 	return nil
 }
 
-func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *aiexecutor_entities.AICostPolicy) error {
+func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *validatedPolicy) error {
 	if policy.HardCostMicroVND == nil {
 		return fmt.Errorf("strict policy hard cost is required")
 	}

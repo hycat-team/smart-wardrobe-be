@@ -6,8 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aipolicygrantstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -51,14 +50,14 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 		}
 	}
 	if event.EventType != "EXTENDED" {
-		if err := db.Where("user_id=? AND status=?", event.UserID, string(aipolicygrantstatus.Future)).Delete(&aiexecutor_entities.AIPolicyGrant{}).Error; err != nil {
+		if err := db.Exec("DELETE FROM ai_policy_grants WHERE user_id=? AND status=?", event.UserID, string(aipolicygrantstatus.Future)).Error; err != nil {
 			return err
 		}
-		if err := db.Model(&aiexecutor_entities.AIPolicyGrant{}).Where("user_id=? AND status=? AND effective_from < ?", event.UserID, string(aipolicygrantstatus.Active), event.EffectiveAt).Updates(map[string]any{"status": aipolicygrantstatus.Closed, "effective_to": event.EffectiveAt, "updated_at": event.OccurredAt}).Error; err != nil {
+		if err := db.Exec("UPDATE ai_policy_grants SET status=?, effective_to=?, updated_at=? WHERE user_id=? AND status=? AND effective_from < ?", string(aipolicygrantstatus.Closed), event.EffectiveAt, event.OccurredAt, event.UserID, string(aipolicygrantstatus.Active), event.EffectiveAt).Error; err != nil {
 			return err
 		}
 	} else {
-		if err := db.Model(&aiexecutor_entities.AIPolicyGrant{}).Where("user_id=? AND effective_from < ? AND (effective_to IS NULL OR effective_to > ?)", event.UserID, start, start).Updates(map[string]any{"effective_to": start, "updated_at": event.OccurredAt}).Error; err != nil {
+		if err := db.Exec("UPDATE ai_policy_grants SET effective_to=?, updated_at=? WHERE user_id=? AND effective_from < ? AND (effective_to IS NULL OR effective_to > ?)", start, event.OccurredAt, event.UserID, start, start).Error; err != nil {
 			return err
 		}
 	}
@@ -66,8 +65,9 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 	if plan.AICostPolicyID != uuid.Nil {
 		policyID = plan.AICostPolicyID
 	}
-	grant := aiexecutor_entities.AIPolicyGrant{UserID: event.UserID, PlanID: plan.ID, PlanCode: plan.Slug, TierRank: plan.TierRank, PolicyID: policyID, EffectiveFrom: start, EffectiveTo: end, Status: status, SourceEventID: &event.ID, SourceDepositTransactionID: event.SourceDepositTransactionID}
-	return db.Create(&grant).Error
+	return db.Exec(`INSERT INTO ai_policy_grants (id, created_at, updated_at, user_id, policy_id, plan_id, plan_code, tier_rank, policy_snapshot, effective_from, effective_to, status, source_event_id, source_deposit_transaction_id)
+		VALUES (gen_random_uuid(), now(), now(), ?, ?, ?, ?, ?, '{}'::jsonb, ?, ?, ?, ?, ?)`,
+		event.UserID, policyID, plan.ID, plan.Slug, plan.TierRank, start, end, string(status), event.ID, event.SourceDepositTransactionID).Error
 }
 func (r *UserSubscriptionEventRepository) GetByKey(ctx context.Context, key string) (*entities.UserSubscriptionEvent, error) {
 	var event entities.UserSubscriptionEvent

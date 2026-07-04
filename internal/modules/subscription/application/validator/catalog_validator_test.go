@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 

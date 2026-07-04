@@ -4,36 +4,64 @@ import (
 	"context"
 	"testing"
 
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	sharedrepos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
-type fakeCategoryRepo struct{}
+type fakeFashionContract struct{}
 
-func (f fakeCategoryRepo) GetAll(ctx context.Context) ([]*entities.Category, error) { return nil, nil }
-func (f fakeCategoryRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.Category, error) {
+func (f fakeFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_contract.FashionItemRes, error) {
 	return nil, nil
 }
-func (f fakeCategoryRepo) GetByName(ctx context.Context, name string) (*entities.Category, error) {
+func (f fakeFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.FashionItemRes, error) {
 	return nil, nil
 }
-func (f fakeCategoryRepo) GetBySlug(ctx context.Context, slug string) (*entities.Category, error) {
+func (f fakeFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_contract.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeCategoryRepo) Create(ctx context.Context, entity *entities.Category) error { return nil }
-func (f fakeCategoryRepo) CreateInBatches(ctx context.Context, entities []*entities.Category, batchSize int) error {
-	return nil
+func (f fakeFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.CategoryRes, error) {
+	return nil, nil
 }
-func (f fakeCategoryRepo) Update(ctx context.Context, entity *entities.Category) error { return nil }
-func (f fakeCategoryRepo) Delete(ctx context.Context, id uuid.UUID) error              { return nil }
-func (f fakeCategoryRepo) CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, kind itemtype.ItemType) (int64, error) {
-	return 0, nil
+func (f fakeFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_contract.CategoryRes, error) {
+	return nil, nil
 }
-func (f fakeCategoryRepo) ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+func (f fakeFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (f fakeFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_contract.CategoryRes, error) {
+	return nil, nil
+}
+func (f fakeFashionContract) CreateCategory(ctx context.Context, input fashion_contract.CreateCategoryInput) (*fashion_contract.CategoryRes, error) {
+	return &fashion_contract.CategoryRes{
+		ID:        uuid.New(),
+		Name:      input.Name,
+		Slug:      input.Slug,
+		SortOrder: input.SortOrder,
+	}, nil
+}
+func (f fakeFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_contract.UpdateCategoryInput) (*fashion_contract.CategoryRes, error) {
+	var name, slug string
+	var sortOrder int
+	if input.Name != nil {
+		name = *input.Name
+	}
+	if input.Slug != nil {
+		slug = *input.Slug
+	}
+	if input.SortOrder != nil {
+		sortOrder = *input.SortOrder
+	}
+	return &fashion_contract.CategoryRes{
+		ID:        id,
+		Name:      name,
+		Slug:      slug,
+		SortOrder: sortOrder,
+	}, nil
+}
+func (f fakeFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
@@ -50,8 +78,8 @@ var _ sharedrepos.IUnitOfWork = fakeUnitOfWork{}
 
 func TestCreateCategoryRejectsLegacyVaySlug(t *testing.T) {
 	uc := &CategoryUseCase{
-		categoryRepo: fakeCategoryRepo{},
-		uow:          fakeUnitOfWork{},
+		fashionContract: fakeFashionContract{},
+		uow:             fakeUnitOfWork{},
 	}
 
 	_, err := uc.CreateCategory(context.Background(), dto.CreateCategoryReq{
@@ -64,16 +92,18 @@ func TestCreateCategoryRejectsLegacyVaySlug(t *testing.T) {
 }
 
 func TestUpdateCategoryKeepsSortOrderWhenOmitted(t *testing.T) {
-	current := &entities.Category{
-		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
-		Name:            "Áo",
-		Slug:            "ao",
-		SortOrder:       15,
+	current := &fashion_contract.CategoryRes{
+		ID:        uuid.New(),
+		Name:      "Áo",
+		Slug:      "ao",
+		SortOrder: 15,
 	}
 
+	fc := fakeFashionContractWithEntity{byID: current}
+
 	uc := &CategoryUseCase{
-		categoryRepo: fakeCategoryRepoWithEntity{byID: current},
-		uow:          fakeUnitOfWork{},
+		fashionContract: fc,
+		uow:             fakeUnitOfWork{},
 	}
 
 	res, err := uc.UpdateCategory(context.Background(), current.ID, dto.UpdateCategoryReq{
@@ -88,14 +118,44 @@ func TestUpdateCategoryKeepsSortOrderWhenOmitted(t *testing.T) {
 	}
 }
 
-type fakeCategoryRepoWithEntity struct {
-	fakeCategoryRepo
-	byID *entities.Category
+type fakeFashionContractWithEntity struct {
+	fakeFashionContract
+	byID *fashion_contract.CategoryRes
 }
 
-func (f fakeCategoryRepoWithEntity) GetByID(ctx context.Context, id uuid.UUID) (*entities.Category, error) {
+func (f fakeFashionContractWithEntity) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_contract.CategoryRes, error) {
 	if f.byID != nil && f.byID.ID == id {
 		return f.byID, nil
 	}
 	return nil, nil
+}
+
+func (f fakeFashionContractWithEntity) GetCategoryByName(ctx context.Context, name string) (*fashion_contract.CategoryRes, error) {
+	if f.byID != nil && f.byID.Name == name {
+		return f.byID, nil
+	}
+	return nil, nil
+}
+
+func (f fakeFashionContractWithEntity) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_contract.CategoryRes, error) {
+	if f.byID != nil && f.byID.Slug == slug {
+		return f.byID, nil
+	}
+	return nil, nil
+}
+
+func (f fakeFashionContractWithEntity) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_contract.UpdateCategoryInput) (*fashion_contract.CategoryRes, error) {
+	if f.byID == nil || f.byID.ID != id {
+		return f.fakeFashionContract.UpdateCategory(ctx, id, input)
+	}
+	if input.Name != nil {
+		f.byID.Name = *input.Name
+	}
+	if input.Slug != nil {
+		f.byID.Slug = *input.Slug
+	}
+	if input.SortOrder != nil {
+		f.byID.SortOrder = *input.SortOrder
+	}
+	return f.byID, nil
 }

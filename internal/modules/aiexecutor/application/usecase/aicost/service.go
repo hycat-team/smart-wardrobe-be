@@ -7,10 +7,10 @@ import (
 
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"

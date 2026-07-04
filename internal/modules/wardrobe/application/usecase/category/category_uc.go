@@ -5,13 +5,13 @@ import (
 	"regexp"
 	"strings"
 
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -19,25 +19,28 @@ import (
 )
 
 type CategoryUseCase struct {
-	logger       logger.Interface
-	categoryRepo fashion_repos.ICategoryRepository
-	uow          shared_repos.IUnitOfWork
+	logger          logger.Interface
+	fashionContract fashion_contract.IFashionContract
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewCategoryUseCase(
 	l logger.Interface,
-	categoryRepo fashion_repos.ICategoryRepository,
+	fashionContract fashion_contract.IFashionContract,
+	wardrobeRepo repositories.IWardrobeItemRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.ICategoryUseCase {
 	return &CategoryUseCase{
-		logger:       l,
-		categoryRepo: categoryRepo,
-		uow:          uow,
+		logger:          l,
+		fashionContract: fashionContract,
+		wardrobeRepo:    wardrobeRepo,
+		uow:             uow,
 	}
 }
 
 func (uc *CategoryUseCase) GetCategories(ctx context.Context) ([]*dto.CategoryRes, error) {
-	categories, err := uc.categoryRepo.GetAll(ctx)
+	categories, err := uc.fashionContract.GetAllCategories(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +49,7 @@ func (uc *CategoryUseCase) GetCategories(ctx context.Context) ([]*dto.CategoryRe
 }
 
 func (uc *CategoryUseCase) GetCategoryByID(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
-	category, err := uc.categoryRepo.GetByID(ctx, id)
+	category, err := uc.fashionContract.GetCategory(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +61,39 @@ func (uc *CategoryUseCase) GetCategoryByID(ctx context.Context, id uuid.UUID) (*
 }
 
 func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateCategoryReq) (*dto.CategoryRes, error) {
-	category, err := uc.prepareCategoryEntity(ctx, nil, input.Name, input.Slug, input.SortOrder)
+	normalizedName := strings.TrimSpace(input.Name)
+	normalizedSlug := normalizeCategorySlug(input.Slug)
+	if normalizedSlug == "vay" {
+		return nil, wardrobeerrors.ErrCategoryLegacySlugForbidden()
+	}
+
+	existingByName, err := uc.fashionContract.GetCategoryByName(ctx, normalizedName)
 	if err != nil {
 		return nil, err
 	}
+	if existingByName != nil {
+		return nil, wardrobeerrors.ErrCategoryNameAlreadyExists()
+	}
 
-	if err := uc.categoryRepo.Create(ctx, category); err != nil {
+	existingBySlug, err := uc.fashionContract.GetCategoryBySlug(ctx, normalizedSlug)
+	if err != nil {
+		return nil, err
+	}
+	if existingBySlug != nil {
+		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists()
+	}
+
+	normalizedSortOrder := 0
+	if input.SortOrder != nil {
+		normalizedSortOrder = *input.SortOrder
+	}
+
+	category, err := uc.fashionContract.CreateCategory(ctx, fashion_contract.CreateCategoryInput{
+		Name:      normalizedName,
+		Slug:      normalizedSlug,
+		SortOrder: normalizedSortOrder,
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -71,7 +101,7 @@ func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateC
 }
 
 func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryReq) (*dto.CategoryRes, error) {
-	current, err := uc.categoryRepo.GetByID(ctx, id)
+	current, err := uc.fashionContract.GetCategory(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +109,38 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
-	category, err := uc.prepareCategoryEntity(ctx, current, input.Name, input.Slug, input.SortOrder)
+	normalizedName := strings.TrimSpace(input.Name)
+	normalizedSlug := normalizeCategorySlug(input.Slug)
+	if normalizedSlug == "vay" {
+		return nil, wardrobeerrors.ErrCategoryLegacySlugForbidden()
+	}
+
+	existingByName, err := uc.fashionContract.GetCategoryByName(ctx, normalizedName)
 	if err != nil {
 		return nil, err
 	}
+	if existingByName != nil && existingByName.ID != id {
+		return nil, wardrobeerrors.ErrCategoryNameAlreadyExists()
+	}
 
-	if err := uc.categoryRepo.Update(ctx, category); err != nil {
+	existingBySlug, err := uc.fashionContract.GetCategoryBySlug(ctx, normalizedSlug)
+	if err != nil {
+		return nil, err
+	}
+	if existingBySlug != nil && existingBySlug.ID != id {
+		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists()
+	}
+
+	updateInput := fashion_contract.UpdateCategoryInput{
+		Name: &normalizedName,
+		Slug: &normalizedSlug,
+	}
+	if input.SortOrder != nil {
+		updateInput.SortOrder = input.SortOrder
+	}
+
+	category, err := uc.fashionContract.UpdateCategory(ctx, id, updateInput)
+	if err != nil {
 		return nil, err
 	}
 
@@ -93,7 +149,7 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 
 func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		category, err := uc.categoryRepo.GetByID(txCtx, id)
+		category, err := uc.fashionContract.GetCategory(txCtx, id)
 		if err != nil {
 			return err
 		}
@@ -104,7 +160,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return wardrobeerrors.ErrCategoryOtherImmutable()
 		}
 
-		userItemCount, err := uc.categoryRepo.CountWardrobeItemsByCategoryAndItemType(txCtx, category.ID, itemtype.UserItem)
+		userItemCount, err := uc.wardrobeRepo.CountByCategoryIDAndItemType(txCtx, category.ID, itemtype.UserItem)
 		if err != nil {
 			return err
 		}
@@ -112,68 +168,25 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return wardrobeerrors.ErrCategoryHasUserItems()
 		}
 
-		systemItemCount, err := uc.categoryRepo.CountWardrobeItemsByCategoryAndItemType(txCtx, category.ID, itemtype.SystemCatalogItem)
+		systemItemCount, err := uc.wardrobeRepo.CountByCategoryIDAndItemType(txCtx, category.ID, itemtype.SystemCatalogItem)
 		if err != nil {
 			return err
 		}
 		if systemItemCount > 0 {
-			fallbackCategory, err := uc.categoryRepo.GetBySlug(txCtx, "other")
+			fallbackCategory, err := uc.fashionContract.GetCategoryBySlug(txCtx, "other")
 			if err != nil {
 				return err
 			}
 			if fallbackCategory == nil {
 				return wardrobeerrors.ErrFallbackCategoryNotFound()
 			}
-			if err := uc.categoryRepo.ReassignSystemCatalogItemsToCategory(txCtx, category.ID, fallbackCategory.ID); err != nil {
+			if err := uc.wardrobeRepo.ReassignCategoryForCatalogItems(txCtx, category.ID, fallbackCategory.ID); err != nil {
 				return err
 			}
 		}
 
-		return uc.categoryRepo.Delete(txCtx, category.ID)
+		return uc.fashionContract.DeleteCategory(txCtx, category.ID)
 	})
-}
-
-func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *fashion_entities.Category, name string, slug string, sortOrder *int) (*fashion_entities.Category, error) {
-	normalizedName := strings.TrimSpace(name)
-	normalizedSlug := normalizeCategorySlug(slug)
-	if normalizedSlug == "vay" {
-		return nil, wardrobeerrors.ErrCategoryLegacySlugForbidden()
-	}
-
-	existingByName, err := uc.categoryRepo.GetByName(ctx, normalizedName)
-	if err != nil {
-		return nil, err
-	}
-	if existingByName != nil && (current == nil || existingByName.ID != current.ID) {
-		return nil, wardrobeerrors.ErrCategoryNameAlreadyExists()
-	}
-
-	existingBySlug, err := uc.categoryRepo.GetBySlug(ctx, normalizedSlug)
-	if err != nil {
-		return nil, err
-	}
-	if existingBySlug != nil && (current == nil || existingBySlug.ID != current.ID) {
-		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists()
-	}
-
-	if current == nil {
-		normalizedSortOrder := 0
-		if sortOrder != nil {
-			normalizedSortOrder = *sortOrder
-		}
-		return &fashion_entities.Category{
-			Name:      normalizedName,
-			Slug:      normalizedSlug,
-			SortOrder: normalizedSortOrder,
-		}, nil
-	}
-
-	current.Name = normalizedName
-	current.Slug = normalizedSlug
-	if sortOrder != nil {
-		current.SortOrder = *sortOrder
-	}
-	return current, nil
 }
 
 func normalizeCategorySlug(input string) string {

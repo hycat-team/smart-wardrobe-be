@@ -18,7 +18,7 @@ import (
 //
 // Hành vi:
 // 1. Khởi tạo câu lệnh SQL cơ sở lọc các wardrobe items đang hoạt động, thuộc sở hữu của userID và chưa bị xóa mềm.
-// 2. Joins bảng categories để lọc theo category slug nếu có trong hard filters.
+// 2. Sử dụng subquery để lọc theo category slug nếu có trong hard filters.
 // 3. Áp dụng bộ lọc seasonality (mùa vụ) cứng nếu có.
 // 4. Áp dụng lọc loại trừ các từ khóa thô/mở rộng trong [excludedTerms].
 // 5. Nếu có cả vector ngữ nghĩa và từ khóa:
@@ -41,42 +41,37 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 	rrfK int,
 ) ([]repositories.HybridCandidate, error) {
 	var records []hybridCandidateRecord
-	// Base query filtering active, non-deleted wardrobe items owned by the specified user
 	db := r.GetDB(ctx).Model(&entities.WardrobeItem{}).
 		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
 			userID, wardrobestatus.InWardrobe, false)
-	db = db.Joins("JOIN fashion_items recommendation_fashion_items ON recommendation_fashion_items.id = wardrobe_items.fashion_item_id")
-	db = db.Joins("LEFT JOIN categories recommendation_categories ON recommendation_categories.id = recommendation_fashion_items.category_id")
 
-	searchVectorSQL := recommendationSearchDocumentSQL(false)
 	if len(hardFilters.Seasonality) > 0 {
-		seasonSQL, seasonArgs := buildRecommendationSeasonalityCondition(hardFilters.Seasonality)
+		seasonSQL, seasonArgs := buildRecommendationSeasonalityConditionSubquery(hardFilters.Seasonality)
 		if seasonSQL != "" {
 			db = db.Where(seasonSQL, seasonArgs...)
 		}
 	}
 	if len(hardFilters.CategorySlugs) > 0 {
-		db = db.Where("recommendation_categories.slug IN ?", hardFilters.CategorySlugs)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug IN ?))", hardFilters.CategorySlugs)
 	}
-	excludedQuerySQL, excludedQueryArgs := buildRecommendationTSQueryOR(excludedTerms)
+	excludedQuerySQL, excludedQueryArgs := buildRecommendationTSQuerySubquery(excludedTerms)
 	if excludedQuerySQL != "" {
 		excludedArgs := append([]any{}, excludedQueryArgs...)
-		db = db.Where(gorm.Expr("("+searchVectorSQL+" @@ ("+excludedQuerySQL+")) = false", excludedArgs...))
+		db = db.Where(gorm.Expr("("+excludedQuerySQL+") = false", excludedArgs...))
 	}
 
 	hasVector := len(semanticVector) > 0
-	includeQuerySQL, includeQueryArgs := buildRecommendationTSQueryOR(lexicalTerms)
+	includeQuerySQL, includeQueryArgs := buildRecommendationTSQuerySubquery(lexicalTerms)
 	hasKeywords := includeQuerySQL != ""
 
-	// Case 1: Both vector and keyword search parameters are available (RRF hybrid search)
 	if hasVector && hasKeywords {
-		vectorScoreSQL := "(1.0 - (recommendation_fashion_items.embedding <=> ?))"
-		lexicalScoreSQL := "ts_rank_cd(" + searchVectorSQL + ", (" + includeQuerySQL + "))"
+		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
+		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSubquerySQL() + ", (" + includeQuerySQL + "))"
 		var vectorRecords []hybridCandidateRecord
 		if err := db.Session(&gorm.Session{}).
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score", semanticVector).
-			Where("recommendation_fashion_items.embedding IS NOT NULL").
-			Order(gorm.Expr("recommendation_fashion_items.embedding <=> ?", semanticVector)).
+			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
+			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", semanticVector)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&vectorRecords).Error; err != nil {
@@ -88,7 +83,7 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 		orderArgs := append([]any{}, includeQueryArgs...)
 		if err := db.Session(&gorm.Session{}).
 			Select("wardrobe_items.*, "+lexicalScoreSQL+" AS lexical_score", includeQueryArgs...).
-			Where(gorm.Expr(searchVectorSQL+" @@ ("+includeQuerySQL+")", whereArgs...)).
+			Where(gorm.Expr(recommendationSearchDocumentSubquerySQL()+" @@ ("+includeQuerySQL+")", whereArgs...)).
 			Order(gorm.Expr(lexicalScoreSQL+" DESC", orderArgs...)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
@@ -99,34 +94,31 @@ func (r *WardrobeItemRepository) GetHybridCandidates(
 		mergedRecords := mergeHybridCandidateRecordsByRRF(vectorRecords, lexicalRecords, rrfK, limit)
 		return r.buildHybridCandidates(ctx, mergedRecords, "", nil)
 	} else if hasVector {
-		// Case 2: Only vector search is available (pure semantic retrieval ordered by closest cosine distance)
-		vectorScoreSQL := "(1.0 - (recommendation_fashion_items.embedding <=> ?))"
+		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
 		err := db.
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score", semanticVector, semanticVector).
-			Where("recommendation_fashion_items.embedding IS NOT NULL").
-			Order(gorm.Expr("recommendation_fashion_items.embedding <=> ?", semanticVector)).
+			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
+			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", semanticVector)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&records).Error
 		return r.buildHybridCandidates(ctx, records, repositories.HybridCandidateSourceVector, err)
 	} else if hasKeywords {
-		// Case 3: Only keywords are available (pure lexical retrieval utilizing GIN index matching with @@)
-		lexicalScoreSQL := "ts_rank_cd(" + searchVectorSQL + ", (" + includeQuerySQL + "))"
+		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSubquerySQL() + ", (" + includeQuerySQL + "))"
 		whereArgs := append([]any{}, includeQueryArgs...)
 		selectArgs := append([]any{}, includeQueryArgs...)
 		selectArgs = append(selectArgs, includeQueryArgs...)
 		orderArgs := append([]any{}, includeQueryArgs...)
 		err := db.
 			Select("wardrobe_items.*, "+lexicalScoreSQL+" AS lexical_score, "+lexicalScoreSQL+" AS retrieval_score", selectArgs...).
-			Where(gorm.Expr(searchVectorSQL+" @@ ("+includeQuerySQL+")", whereArgs...)).
-			Order(gorm.Expr("ts_rank_cd("+searchVectorSQL+", ("+includeQuerySQL+")) DESC", orderArgs...)).
+			Where(gorm.Expr(recommendationSearchDocumentSubquerySQL()+" @@ ("+includeQuerySQL+")", whereArgs...)).
+			Order(gorm.Expr(lexicalScoreSQL+" DESC", orderArgs...)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&records).Error
 		return r.buildHybridCandidates(ctx, records, repositories.HybridCandidateSourceLexical, err)
 	}
 
-	// Case 4: Fallback retrieval (default to most recently created items)
 	err := db.Order("wardrobe_items.created_at DESC").
 		Order("wardrobe_items.id ASC").
 		Limit(limit).

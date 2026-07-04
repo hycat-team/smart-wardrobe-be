@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -22,7 +21,7 @@ type WardrobeItemRepository struct {
 }
 
 func NewWardrobeItemRepository(db *gorm.DB) repositories.IWardrobeItemRepository {
-	relations := []string{"User", "FashionItem", "FashionItem.Category"}
+	relations := []string{}
 	return &WardrobeItemRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.WardrobeItem, uuid.UUID](db, relations),
 	}
@@ -60,13 +59,11 @@ func (r *WardrobeItemRepository) CountByUserIDAndFilters(ctx context.Context, us
 
 func (r *WardrobeItemRepository) GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	query := r.GetQueryWithPreload(ctx).
+	query := r.GetDB(ctx).
 		Where("user_id = ? AND is_deleted = ? AND status = ?", userID, false, wardrobestatus.InWardrobe)
 	if categorySlug != nil && *categorySlug != "" {
 		query = query.
-			Joins("JOIN fashion_items fi_filter ON fi_filter.id = wardrobe_items.fashion_item_id").
-			Joins("JOIN categories ON categories.id = fi_filter.category_id").
-			Where("categories.slug = ?", *categorySlug)
+			Where("fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug = ?))", *categorySlug)
 	}
 	err := query.Order("wardrobe_items.created_at DESC").Find(&items).Error
 	if err != nil {
@@ -133,10 +130,7 @@ func (r *WardrobeItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*en
 
 func (r *WardrobeItemRepository) getByIDWithDB(db *gorm.DB, id uuid.UUID) (*entities.WardrobeItem, error) {
 	var item entities.WardrobeItem
-	err := db.Preload("User").
-		Preload("FashionItem").
-		Preload("FashionItem.Category").
-		Where("wardrobe_items.id = ?", id).
+	err := db.Where("wardrobe_items.id = ?", id).
 		First(&item).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -151,33 +145,22 @@ func (r *WardrobeItemRepository) Update(ctx context.Context, item *entities.Ward
 	if item == nil {
 		return nil
 	}
-	// TODO(Phase1): update related fashion item fields when FashionItem nav property is restored
 	return r.GetDB(ctx).Save(item).Error
 }
 
 func (r *WardrobeItemRepository) CountItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) (int64, error) {
 	var count int64
 	db := r.GetDB(ctx).Model(&entities.WardrobeItem{})
-	db = db.Joins("JOIN fashion_items fi_filter ON fi_filter.id = wardrobe_items.fashion_item_id")
 
 	db = db.Where("item_type = ? AND wardrobe_items.is_deleted = ?", itemType, false)
 	if categorySlug != nil && *categorySlug != "" {
-		db = db.Joins("JOIN categories ON categories.id = fi_filter.category_id").Where("categories.slug = ?", *categorySlug)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug = ?))", *categorySlug)
 	}
 
 	if query != nil && *query != "" {
 		queryStr := strings.ToLower(*query)
-
-		db = db.Where(r.GetDB(ctx).
-			Where("fi_filter.category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?)", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.color) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.style) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.material) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.pattern) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.fit) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.seasonality) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.description) LIKE ?", "%"+queryStr+"%"),
-		)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE LOWER(color) LIKE ? OR LOWER(style) LIKE ? OR LOWER(material) LIKE ? OR LOWER(pattern) LIKE ? OR LOWER(fit) LIKE ? OR LOWER(seasonality) LIKE ? OR LOWER(description) LIKE ? OR category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?))",
+			"%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%")
 	}
 
 	if err := db.Count(&count).Error; err != nil {
@@ -188,27 +171,17 @@ func (r *WardrobeItemRepository) CountItems(ctx context.Context, query *string, 
 
 func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	db := r.GetQueryWithPreload(ctx)
-	db = db.Joins("JOIN fashion_items fi_filter ON fi_filter.id = wardrobe_items.fashion_item_id")
+	db := r.GetDB(ctx)
 
 	db = db.Where("item_type = ? AND wardrobe_items.is_deleted = ?", itemType, false)
 	if categorySlug != nil && *categorySlug != "" {
-		db = db.Joins("JOIN categories ON categories.id = fi_filter.category_id").Where("categories.slug = ?", *categorySlug)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug = ?))", *categorySlug)
 	}
 
 	if query != nil && *query != "" {
 		queryStr := strings.ToLower(*query)
-
-		db = db.Where(r.GetDB(ctx).
-			Where("fi_filter.category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?)", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.color) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.style) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.material) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.pattern) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.fit) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.seasonality) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.description) LIKE ?", "%"+queryStr+"%"),
-		)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE LOWER(color) LIKE ? OR LOWER(style) LIKE ? OR LOWER(material) LIKE ? OR LOWER(pattern) LIKE ? OR LOWER(fit) LIKE ? OR LOWER(seasonality) LIKE ? OR LOWER(description) LIKE ? OR category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?))",
+			"%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%")
 	}
 
 	err := db.Find(&items).Error
@@ -220,27 +193,17 @@ func (r *WardrobeItemRepository) GetItems(ctx context.Context, query *string, ca
 
 func (r *WardrobeItemRepository) GetItemsPaginated(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	db := r.GetQueryWithPreload(ctx)
-	db = db.Joins("JOIN fashion_items fi_filter ON fi_filter.id = wardrobe_items.fashion_item_id")
+	db := r.GetDB(ctx)
 
 	db = db.Where("item_type = ? AND wardrobe_items.is_deleted = ?", itemType, false)
 	if categorySlug != nil && *categorySlug != "" {
-		db = db.Joins("JOIN categories ON categories.id = fi_filter.category_id").Where("categories.slug = ?", *categorySlug)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug = ?))", *categorySlug)
 	}
 
 	if query != nil && *query != "" {
 		queryStr := strings.ToLower(*query)
-
-		db = db.Where(r.GetDB(ctx).
-			Where("fi_filter.category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?)", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.color) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.style) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.material) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.pattern) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.fit) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.seasonality) LIKE ?", "%"+queryStr+"%").
-			Or("LOWER(fi_filter.description) LIKE ?", "%"+queryStr+"%"),
-		)
+		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE LOWER(color) LIKE ? OR LOWER(style) LIKE ? OR LOWER(material) LIKE ? OR LOWER(pattern) LIKE ? OR LOWER(fit) LIKE ? OR LOWER(seasonality) LIKE ? OR LOWER(description) LIKE ? OR category_id IN (SELECT id FROM categories WHERE LOWER(name) LIKE ?))",
+			"%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%")
 	}
 
 	db = shared_persist.ApplyPagination(db, pagination)
@@ -253,7 +216,7 @@ func (r *WardrobeItemRepository) GetItemsPaginated(ctx context.Context, query *s
 
 func (r *WardrobeItemRepository) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	err := r.GetQueryWithPreload(ctx).
+	err := r.GetDB(ctx).
 		Where("wardrobe_items.status = ? AND wardrobe_items.created_at < NOW() - INTERVAL '7 days'", wardrobestatus.Failed).
 		Limit(limit).
 		Find(&items).Error
@@ -265,9 +228,8 @@ func (r *WardrobeItemRepository) GetFailedItemsForCleanup(ctx context.Context, l
 
 func (r *WardrobeItemRepository) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	err := r.GetQueryWithPreload(ctx).
-		Joins("JOIN fashion_items fi_processing ON fi_processing.id = wardrobe_items.fashion_item_id").
-		Where("wardrobe_items.status = ? AND wardrobe_items.is_deleted = ? AND COALESCE(fi_processing.last_processing_attempt_at, fi_processing.processing_started_at, wardrobe_items.created_at) < ?", wardrobestatus.Processing, false, staleBefore).
+	err := r.GetDB(ctx).
+		Where("wardrobe_items.status = ? AND wardrobe_items.is_deleted = ? AND (SELECT COALESCE(last_processing_attempt_at, processing_started_at, ?::timestamp) FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) < ?", wardrobestatus.Processing, false, staleBefore, staleBefore).
 		Order("wardrobe_items.created_at ASC").
 		Limit(limit).
 		Find(&items).Error
@@ -300,17 +262,8 @@ func (r *WardrobeItemRepository) ClaimManualAnalysisRetry(ctx context.Context, u
 		if item.FashionItemID == nil {
 			item.FashionItemID = &item.ID
 		}
-		if err := tx.Model(&fashion_entities.FashionItem{}).
-			Where("id = ?", *item.FashionItemID).
-			Updates(map[string]any{
-				"review_reason":              nil,
-				"processing_error_reason":    nil,
-				"processing_retry_count":     0,
-				"processing_started_at":      now,
-				"last_processing_attempt_at": now,
-				"processing_version":         gorm.Expr("processing_version + 1"),
-				"updated_at":                 now,
-			}).Error; err != nil {
+		if err := tx.Exec(`UPDATE fashion_items SET review_reason = NULL, processing_error_reason = NULL, processing_retry_count = 0, processing_started_at = ?, last_processing_attempt_at = ?, processing_version = processing_version + 1, updated_at = ? WHERE id = ?`,
+			now, now, now, *item.FashionItemID).Error; err != nil {
 			return err
 		}
 		var err error
@@ -328,9 +281,8 @@ func (r *WardrobeItemRepository) ClaimStaleProcessingRetry(ctx context.Context, 
 	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var item entities.WardrobeItem
 		err := tx.
-			Joins("JOIN fashion_items fi_processing ON fi_processing.id = wardrobe_items.fashion_item_id").
-			Where("wardrobe_items.id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.status = ? AND fi_processing.processing_version = ? AND COALESCE(fi_processing.last_processing_attempt_at, fi_processing.processing_started_at, wardrobe_items.created_at) < ?",
-				itemID, false, wardrobestatus.Processing, processingVersion, staleBefore).
+			Where("wardrobe_items.id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.status = ? AND (SELECT processing_version FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) = ? AND (SELECT COALESCE(last_processing_attempt_at, processing_started_at, ?::timestamp) FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) < ?",
+				itemID, false, wardrobestatus.Processing, processingVersion, staleBefore, staleBefore).
 			First(&item).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -341,14 +293,8 @@ func (r *WardrobeItemRepository) ClaimStaleProcessingRetry(ctx context.Context, 
 		if item.FashionItemID == nil {
 			item.FashionItemID = &item.ID
 		}
-		result := tx.Model(&fashion_entities.FashionItem{}).
-			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
-			Updates(map[string]any{
-				"processing_retry_count":     gorm.Expr("processing_retry_count + 1"),
-				"last_processing_attempt_at": now,
-				"processing_version":         gorm.Expr("processing_version + 1"),
-				"updated_at":                 now,
-			})
+		result := tx.Exec(`UPDATE fashion_items SET processing_retry_count = processing_retry_count + 1, last_processing_attempt_at = ?, processing_version = processing_version + 1, updated_at = ? WHERE id = ? AND processing_version = ?`,
+			now, now, *item.FashionItemID, processingVersion)
 		if result.Error != nil || result.RowsAffected == 0 {
 			return result.Error
 		}
@@ -412,8 +358,7 @@ func (r *WardrobeItemRepository) updateProcessingState(ctx context.Context, item
 	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var item entities.WardrobeItem
 		err := tx.
-			Joins("JOIN fashion_items fi_processing ON fi_processing.id = wardrobe_items.fashion_item_id").
-			Where("wardrobe_items.id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.status = ? AND fi_processing.processing_version = ?",
+			Where("wardrobe_items.id = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.status = ? AND (SELECT processing_version FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) = ?",
 				itemID, false, wardrobestatus.Processing, processingVersion).
 			First(&item).Error
 		if err != nil {
@@ -449,13 +394,20 @@ func (r *WardrobeItemRepository) updateProcessingState(ctx context.Context, item
 			}
 			fashionUpdates[key] = value
 		}
-		result := tx.Model(&fashion_entities.FashionItem{}).
-			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
-			Updates(fashionUpdates)
-		if result.Error != nil {
-			return result.Error
+		if len(fashionUpdates) > 0 {
+			setClauses := make([]string, 0, len(fashionUpdates))
+			args := make([]any, 0, len(fashionUpdates)+2)
+			for k, v := range fashionUpdates {
+				setClauses = append(setClauses, k+" = ?")
+				args = append(args, v)
+			}
+			args = append(args, *item.FashionItemID, processingVersion)
+			result := tx.Exec("UPDATE fashion_items SET "+strings.Join(setClauses, ", ")+" WHERE id = ? AND processing_version = ?", args...)
+			if result.Error != nil {
+				return result.Error
+			}
+			returnValue = result.RowsAffected > 0
 		}
-		returnValue = result.RowsAffected > 0
 		return nil
 	})
 	return returnValue, err
@@ -483,9 +435,7 @@ func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Contex
 	query = query.Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ?", userID, false)
 	if categorySlug != nil && *categorySlug != "" {
 		query = query.
-			Joins("JOIN fashion_items fi_filter ON fi_filter.id = wardrobe_items.fashion_item_id").
-			Joins("JOIN categories ON categories.id = fi_filter.category_id").
-			Where("categories.slug = ?", *categorySlug)
+			Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug = ?))", *categorySlug)
 	}
 	if len(statuses) > 0 {
 		query = query.Where("wardrobe_items.status IN ?", statuses)
@@ -508,6 +458,20 @@ func (r *WardrobeItemRepository) ensureFashionItemBeforeCreateWithDB(db *gorm.DB
 	if item.FashionItemID == nil {
 		item.FashionItemID = &item.ID
 	}
-	// TODO(Phase1): ensure fashion item exists via separate create/call when nav property is restored
 	return nil
+}
+
+func (r *WardrobeItemRepository) CountByCategoryIDAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).
+		Model(&entities.WardrobeItem{}).
+		Where("fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id = ?) AND item_type = ? AND is_deleted = ?", categoryID, itemType, false).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *WardrobeItemRepository) ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Exec("UPDATE fashion_items SET category_id = ? WHERE id IN (SELECT fashion_item_id FROM wardrobe_items WHERE fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id = ?) AND item_type = ? AND is_deleted = ?)",
+			toCategoryID, fromCategoryID, itemtype.SystemCatalogItem, false).Error
 }

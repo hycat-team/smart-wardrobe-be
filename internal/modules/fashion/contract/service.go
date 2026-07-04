@@ -48,9 +48,27 @@ type FashionAnalyzeJobDTO struct {
 	SkipVision        bool       `json:"skipVision,omitempty"`
 }
 
+type CreateCategoryInput struct {
+	Name      string
+	Slug      string
+	SortOrder int
+}
+
+type UpdateCategoryInput struct {
+	Name      *string
+	Slug      *string
+	SortOrder *int
+}
+
 type IFashionContract interface {
 	GetFashionItem(ctx context.Context, id uuid.UUID) (*FashionItemRes, error)
 	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*FashionItemRes, error)
 	GetCategory(ctx context.Context, id uuid.UUID) (*CategoryRes, error)
 	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*CategoryRes, error)
+	GetAllCategories(ctx context.Context) ([]*CategoryRes, error)
+	GetCategoryBySlug(ctx context.Context, slug string) (*CategoryRes, error)
+	GetCategoryByName(ctx context.Context, name string) (*CategoryRes, error)
+	CreateCategory(ctx context.Context, input CreateCategoryInput) (*CategoryRes, error)
+	UpdateCategory(ctx context.Context, id uuid.UUID, input UpdateCategoryInput) (*CategoryRes, error)
+	DeleteCategory(ctx context.Context, id uuid.UUID) error
 }

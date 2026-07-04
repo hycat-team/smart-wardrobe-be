@@ -155,7 +155,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
 	}
 
-	category, err := uc.categoryRepo.GetByID(ctx, input.CategoryID)
+	category, err := uc.fashionContract.GetCategory(ctx, input.CategoryID)
 	if err != nil {
 		return nil, err
 	}

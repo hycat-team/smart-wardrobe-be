@@ -4,7 +4,6 @@ import (
 	"context"
 
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	fashion_repos "smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -24,7 +23,6 @@ import (
 
 type WardrobeCatalogUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryRepo    fashion_repos.ICategoryRepository
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 	fashionContract fashion_contract.IFashionContract
@@ -32,14 +30,12 @@ type WardrobeCatalogUseCase struct {
 
 func NewWardrobeCatalogUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
-	categoryRepo fashion_repos.ICategoryRepository,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
 ) uc_interfaces.IWardrobeCatalogUseCase {
 	return &WardrobeCatalogUseCase{
 		wardrobeRepo:    wardrobeRepo,
-		categoryRepo:    categoryRepo,
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
 		fashionContract: fashionContract,

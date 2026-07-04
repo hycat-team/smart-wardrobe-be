@@ -3,8 +3,8 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aipolicygrantstatus"
 
 	"github.com/google/uuid"
 )

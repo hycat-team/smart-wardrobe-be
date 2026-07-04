@@ -17,7 +17,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+
 	"smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -505,13 +505,13 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job f
 	return nil
 }
 
-func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item *wardrobe_entities.WardrobeItem) error {
+func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, itemID uuid.UUID, fashionItemID *uuid.UUID, userID uuid.UUID) error {
 	categoryID := (*uuid.UUID)(nil)
 	imageURL := ""
 	imagePublicID := ""
 	processingVersion := 0
-	if item.FashionItemID != nil {
-		if fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID); err == nil && fi != nil {
+	if fashionItemID != nil {
+		if fi, err := uc.fashionItemRepo.GetByID(ctx, *fashionItemID); err == nil && fi != nil {
 			categoryID = fi.CategoryID
 			imageURL = fi.ImageUrl
 			imagePublicID = fi.ImagePublicID
@@ -519,10 +519,10 @@ func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item
 		}
 	}
 	job := fashion_contract.FashionAnalyzeJobDTO{
-		FashionItemID:     item.FashionItemID,
-		ItemID:            item.ID,
+		FashionItemID:     fashionItemID,
+		ItemID:            itemID,
 		ItemType:          "wardrobe",
-		UserID:            item.UserID,
+		UserID:            userID,
 		CategoryID:        categoryID,
 		ImageUrl:          imageURL,
 		ImagePublicID:     imagePublicID,

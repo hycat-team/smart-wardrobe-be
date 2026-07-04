@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aipolicygrantstatus"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
 
 	"github.com/google/uuid"
 )

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -55,6 +54,8 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
+	CountByCategoryIDAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
+	ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 	// GetHybridCandidates truy vấn danh sách ứng viên gợi ý trang phục kết hợp (hybrid search) bằng cách thực hiện
 	// tìm kiếm ngữ nghĩa qua Vector Embedding (Cosine Similarity) và tìm kiếm từ khóa (Full-text Search tsquery).
 	// Danh sách kết quả được tổng hợp điểm và xếp hạng lại sử dụng thuật toán Reciprocal Rank Fusion (RRF).
@@ -89,22 +90,4 @@ type IOutfitRepository interface {
 	CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	UpdateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	DeleteOutfit(ctx context.Context, id uuid.UUID) error
-}
-
-type IConversationalContextRepository interface {
-	shared_repos.IGenericRepository[fashion_entities.ConversationalContext, uuid.UUID]
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*fashion_entities.ConversationalContext, error)
-}
-
-type IMessageRepository interface {
-	shared_repos.IGenericRepository[fashion_entities.Message, uuid.UUID]
-	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
-	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*fashion_entities.Message, error)
-	GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*fashion_entities.Message, error)
-	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
-	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
-	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
-	CountUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
-	GetOldestUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
-	MarkAsSummarized(ctx context.Context, ids []uuid.UUID) error
 }

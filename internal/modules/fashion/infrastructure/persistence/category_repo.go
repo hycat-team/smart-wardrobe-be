@@ -5,7 +5,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -70,22 +69,21 @@ func (r *CategoryRepository) GetAll(ctx context.Context) ([]*entities.Category, 
 func (r *CategoryRepository) CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, kind itemtype.ItemType) (int64, error) {
 	var count int64
 	err := r.GetDB(ctx).
-		Model(&wardrobe_entities.WardrobeItem{}).
-		Joins("JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
-		Where("fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", categoryID, kind, false).
-		Count(&count).Error
+		Raw(`SELECT COUNT(*) FROM wardrobe_items
+			JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id
+			WHERE fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?`,
+			categoryID, kind, false).
+		Scan(&count).Error
 	return count, err
 }
 
 func (r *CategoryRepository) ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
-	systemFashionItems := r.GetDB(ctx).
-		Model(&wardrobe_entities.WardrobeItem{}).
-		Select("wardrobe_items.fashion_item_id").
-		Joins("JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
-		Where("fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", fromCategoryID, itemtype.SystemCatalogItem, false)
-
-	return r.GetDB(ctx).
-		Model(&entities.FashionItem{}).
-		Where("id IN (?)", systemFashionItems).
-		Update("category_id", toCategoryID).Error
+	err := r.GetDB(ctx).
+		Exec(`UPDATE fashion_items SET category_id = ?
+			WHERE id IN (
+				SELECT wardrobe_items.fashion_item_id FROM wardrobe_items
+				JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id
+				WHERE fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?
+			)`, toCategoryID, fromCategoryID, itemtype.SystemCatalogItem, false).Error
+	return err
 }

@@ -117,10 +117,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	iFashionItemRepository := persistence4.NewFashionItemRepository(gormDB)
 	iFashionContract := contract.NewFashionContract(iFashionItemRepository, iCategoryRepository, rabbitMQClient)
-	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionContract)
-	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient, iFashionContract)
+	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient, iFashionContract)
+	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iSubscriptionUseCase, rabbitMQClient, iFashionContract)
 	wardrobeItemHandler := handler2.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase)
-	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository, iUnitOfWork)
+	iCategoryUseCase := category.NewCategoryUseCase(l, iFashionContract, iWardrobeItemRepository, iUnitOfWork)
 	categoryHandler := handler2.NewCategoryHandler(iCategoryUseCase)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
 	adminRouter := admin.NewRouter(adminHandler, wardrobeItemHandler, categoryHandler, authMiddleware)

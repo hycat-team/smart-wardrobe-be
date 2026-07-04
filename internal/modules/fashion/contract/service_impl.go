@@ -105,3 +105,70 @@ func (c *FashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) (
 	}
 	return res, nil
 }
+
+func (c *FashionContract) GetAllCategories(ctx context.Context) ([]*CategoryRes, error) {
+	items, err := c.categoryRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*CategoryRes, len(items))
+	for i, item := range items {
+		res[i] = mapToCategoryRes(item)
+	}
+	return res, nil
+}
+
+func (c *FashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*CategoryRes, error) {
+	cat, err := c.categoryRepo.GetBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return mapToCategoryRes(cat), nil
+}
+
+func (c *FashionContract) GetCategoryByName(ctx context.Context, name string) (*CategoryRes, error) {
+	cat, err := c.categoryRepo.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return mapToCategoryRes(cat), nil
+}
+
+func (c *FashionContract) CreateCategory(ctx context.Context, input CreateCategoryInput) (*CategoryRes, error) {
+	cat := &entities.Category{
+		Name:      input.Name,
+		Slug:      input.Slug,
+		SortOrder: input.SortOrder,
+	}
+	if err := c.categoryRepo.Create(ctx, cat); err != nil {
+		return nil, err
+	}
+	return mapToCategoryRes(cat), nil
+}
+
+func (c *FashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input UpdateCategoryInput) (*CategoryRes, error) {
+	cat, err := c.categoryRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if cat == nil {
+		return nil, nil
+	}
+	if input.Name != nil {
+		cat.Name = *input.Name
+	}
+	if input.Slug != nil {
+		cat.Slug = *input.Slug
+	}
+	if input.SortOrder != nil {
+		cat.SortOrder = *input.SortOrder
+	}
+	if err := c.categoryRepo.Update(ctx, cat); err != nil {
+		return nil, err
+	}
+	return mapToCategoryRes(cat), nil
+}
+
+func (c *FashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
+	return c.categoryRepo.Delete(ctx, id)
+}

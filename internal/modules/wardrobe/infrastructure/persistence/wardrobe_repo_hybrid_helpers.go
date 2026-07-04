@@ -236,3 +236,63 @@ func recommendationSearchDocumentSQL(includeCategory bool) string {
 
 	return "to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + ")))"
 }
+
+// recommendationSearchDocumentSubquerySQL returns a subquery-based tsvector expression that
+// does not require joins to the fashion_items or categories tables.
+func recommendationSearchDocumentSubquerySQL() string {
+	fields := []string{
+		"color", "style", "material", "pattern", "fit", "seasonality", "description",
+	}
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		parts = append(parts, "coalesce((SELECT "+field+" FROM fashion_items WHERE id = wardrobe_items.fashion_item_id), '')")
+	}
+	return "(SELECT to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + "))) FROM fashion_items WHERE id = wardrobe_items.fashion_item_id)"
+}
+
+// buildRecommendationTSQuerySubquery returns a subquery-based tsquery expression that
+// does not require joins to the fashion_items table.
+func buildRecommendationTSQuerySubquery(terms []string) (string, []any) {
+	var parts []string
+	args := make([]any, 0, len(terms))
+	seen := map[string]bool{}
+	for _, term := range terms {
+		term = strings.TrimSpace(strings.ToLower(term))
+		if term == "" || seen[term] {
+			continue
+		}
+		seen[term] = true
+		parts = append(parts, "plainto_tsquery('simple', immutable_unaccent(lower(?)))")
+		args = append(args, term)
+	}
+	if len(parts) == 0 {
+		return "", nil
+	}
+	return "(SELECT " + strings.Join(parts, " || ") + ")", args
+}
+
+// buildRecommendationSeasonalityConditionSubquery returns a subquery-based seasonality filter
+// that does not require joins to the fashion_items table.
+func buildRecommendationSeasonalityConditionSubquery(seasons []string) (string, []any) {
+	aliases := recommendationSeasonalityAliases(seasons)
+	if len(aliases) == 0 {
+		return "", nil
+	}
+
+	seasonalitySQL := "immutable_unaccent(lower(coalesce((SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id), '')))"
+	conditions := []string{
+		"(SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NULL",
+		"btrim((SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id)) = ''",
+	}
+	args := make([]any, 0, len(aliases)+len(constants.RecommendationAllSeasonAliases))
+	for _, alias := range aliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+	for _, alias := range constants.RecommendationAllSeasonAliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+
+	return "(" + strings.Join(conditions, " OR ") + ")", args
+}
