@@ -18,8 +18,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
-	identity_entities "smart-wardrobe-be/internal/modules/identity/domain/entities"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -31,7 +29,6 @@ type BrandChatUseCase struct {
 	brandRepo    repositories.IBrandRepository
 	memberRepo   repositories.IBrandMemberRepository
 	customerRepo repositories.IBrandCustomerRepository
-	userRepo     identity_repos.IUserRepository
 	userContract identity_contract.IUserContract
 	convRepo     repositories.IBrandConversationRepository
 	msgRepo      repositories.IBrandConversationMessageRepository
@@ -42,7 +39,6 @@ func NewBrandChatUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
-	userRepo identity_repos.IUserRepository,
 	userContract identity_contract.IUserContract,
 	convRepo repositories.IBrandConversationRepository,
 	msgRepo repositories.IBrandConversationMessageRepository,
@@ -52,7 +48,6 @@ func NewBrandChatUseCase(
 		brandRepo:    brandRepo,
 		memberRepo:   memberRepo,
 		customerRepo: customerRepo,
-		userRepo:     userRepo,
 		userContract: userContract,
 		convRepo:     convRepo,
 		msgRepo:      msgRepo,
@@ -85,7 +80,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	user, _ := uc.userRepo.GetByID(ctx, userID)
+	user, _ := uc.userContract.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
 	convRes, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, customer.CustomerName, &userDisp)
 	if err != nil {
@@ -324,7 +319,7 @@ func (uc *BrandChatUseCase) MarkUserConversationRead(ctx context.Context, userID
 		return nil, err
 	}
 	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
-	user, _ := uc.userRepo.GetByID(ctx, userID)
+	user, _ := uc.userContract.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
 	var custName *string
 	if customer != nil {
@@ -395,7 +390,7 @@ func (uc *BrandChatUseCase) ReopenBrandConversation(ctx context.Context, staffUs
 
 func (uc *BrandChatUseCase) mapStaffConversation(ctx context.Context, conv *entities.BrandConversation) (*dto.BrandConversationRes, error) {
 	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, conv.BrandID, conv.UserID)
-	user, _ := uc.userRepo.GetByID(ctx, conv.UserID)
+	user, _ := uc.userContract.GetByID(ctx, conv.UserID)
 	userDisp := getUserDisplayName(user)
 	var custName *string
 	if customer != nil {
@@ -422,16 +417,16 @@ func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, 
 	return res, nil
 }
 
-func getUserDisplayName(u *identity_entities.User) string {
+func getUserDisplayName(u *identity_dto.UserRes) string {
 	if u == nil {
 		return ""
 	}
 	var parts []string
-	if u.FirstName != nil && *u.FirstName != "" {
-		parts = append(parts, *u.FirstName)
+	if u.FirstName != "" {
+		parts = append(parts, u.FirstName)
 	}
-	if u.LastName != nil && *u.LastName != "" {
-		parts = append(parts, *u.LastName)
+	if u.LastName != "" {
+		parts = append(parts, u.LastName)
 	}
 	name := strings.TrimSpace(strings.Join(parts, " "))
 	if name == "" {

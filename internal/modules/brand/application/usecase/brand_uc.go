@@ -16,8 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -29,7 +28,7 @@ type BrandUseCase struct {
 	brandRepo    repositories.IBrandRepository
 	memberRepo   repositories.IBrandMemberRepository
 	customerRepo repositories.IBrandCustomerRepository
-	userRepo     identity_repos.IUserRepository
+	userContract identity_contract.IUserContract
 	mediaService media.IMediaService
 	uow          shared_repos.IUnitOfWork
 	cfg          *config.Config
@@ -39,7 +38,7 @@ func NewBrandUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
-	userRepo identity_repos.IUserRepository,
+	userContract identity_contract.IUserContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
@@ -48,7 +47,7 @@ func NewBrandUseCase(
 		brandRepo:    brandRepo,
 		memberRepo:   memberRepo,
 		customerRepo: customerRepo,
-		userRepo:     userRepo,
+		userContract: userContract,
 		mediaService: mediaService,
 		uow:          uow,
 		cfg:          cfg,
@@ -326,11 +325,11 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 			continue
 		}
 
-		user, err := uc.userRepo.GetByUsernameOrEmail(ctx, identifier)
+		user, err := uc.userContract.GetByUsername(ctx, identifier)
 		if err != nil {
 			return nil, err
 		}
-		if user == nil || user.Status != userstatus.Active {
+		if user == nil {
 			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
 				EmailOrUsername: identifier,
 				ReasonCode:      "user_not_found_or_inactive",

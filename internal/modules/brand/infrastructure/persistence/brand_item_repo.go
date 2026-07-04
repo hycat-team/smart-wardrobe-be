@@ -18,7 +18,7 @@ type BrandItemRepository struct {
 }
 
 func NewBrandItemRepository(db *gorm.DB) repositories.IBrandItemRepository {
-	relations := []string{"Brand", "FashionItem", "FashionItem.Category"}
+	relations := []string{"Brand"}
 	return &BrandItemRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandItem, uuid.UUID](db, relations),
 	}
@@ -26,7 +26,7 @@ func NewBrandItemRepository(db *gorm.DB) repositories.IBrandItemRepository {
 
 func (r *BrandItemRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandItem, error) {
 	var items []*entities.BrandItem
-	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ?", brandID).Find(&items).Error
+	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +39,6 @@ func (r *BrandItemRepository) GetByBrandIDs(ctx context.Context, brandIDs []uuid
 	}
 	var items []*entities.BrandItem
 	err := r.GetDB(ctx).
-		Preload("FashionItem").
-		Preload("FashionItem.Category").
 		Where("brand_id IN ?", brandIDs).
 		Find(&items).Error
 	if err != nil {
@@ -51,7 +49,7 @@ func (r *BrandItemRepository) GetByBrandIDs(ctx context.Context, brandIDs []uuid
 
 func (r *BrandItemRepository) GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error) {
 	var item entities.BrandItem
-	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error
+	err := r.GetDB(ctx).Where("brand_id = ? AND product_code = ?", brandID, code).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -63,7 +61,7 @@ func (r *BrandItemRepository) GetByProductCode(ctx context.Context, brandID uuid
 
 func (r *BrandItemRepository) GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error) {
 	var item entities.BrandItem
-	err := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Preload("Brand").Where("fashion_item_id = ?", fashionItemID).First(&item).Error
+	err := r.GetDB(ctx).Preload("Brand").Where("fashion_item_id = ?", fashionItemID).First(&item).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -78,14 +76,14 @@ type DigitalSampleResponseRepository struct {
 }
 
 func NewDigitalSampleResponseRepository(db *gorm.DB) repositories.IDigitalSampleResponseRepository {
-	relations := []string{"BrandItem", "User", "Outfit"}
+	relations := []string{"BrandItem"}
 	return &DigitalSampleResponseRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.DigitalSampleResponse, uuid.UUID](db, relations),
 	}
 }
 
 func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
-	db := r.GetDB(ctx).Preload("FashionItem").Preload("FashionItem.Category").Where("brand_id = ?", filter.BrandID)
+	db := r.GetDB(ctx).Where("brand_id = ?", filter.BrandID)
 
 	if filter.ItemType != nil && *filter.ItemType != "" {
 		db = db.Where("item_type = ?", *filter.ItemType)
@@ -118,7 +116,7 @@ func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter 
 
 func (r *DigitalSampleResponseRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.DigitalSampleResponse, error) {
 	var responses []*entities.DigitalSampleResponse
-	err := r.GetDB(ctx).Preload("BrandItem").Preload("BrandItem.FashionItem").Where("user_id = ?", userID).Find(&responses).Error
+	err := r.GetDB(ctx).Preload("BrandItem").Where("user_id = ?", userID).Find(&responses).Error
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +125,7 @@ func (r *DigitalSampleResponseRepository) GetByUserID(ctx context.Context, userI
 
 func (r *DigitalSampleResponseRepository) GetByBrandItemID(ctx context.Context, brandItemID uuid.UUID) ([]*entities.DigitalSampleResponse, error) {
 	var responses []*entities.DigitalSampleResponse
-	err := r.GetDB(ctx).Preload("User").Where("brand_item_id = ?", brandItemID).Find(&responses).Error
+	err := r.GetDB(ctx).Where("brand_item_id = ?", brandItemID).Find(&responses).Error
 	if err != nil {
 		return nil, err
 	}

@@ -20,9 +20,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -39,7 +37,7 @@ type BrandItemUseCase struct {
 	customerRepo    repositories.IBrandCustomerRepository
 	brandItemRepo   repositories.IBrandItemRepository
 	feedbackRepo    repositories.IDigitalSampleResponseRepository
-	userRepo        identity_repos.IUserRepository
+	userContract    identity_contract.IUserContract
 	fashionContract fashion_contract.IFashionContract
 	eventPublisher  event.IEventPublisher
 	mediaService    media.IMediaService
@@ -52,7 +50,7 @@ func NewBrandItemUseCase(
 	customerRepo repositories.IBrandCustomerRepository,
 	brandItemRepo repositories.IBrandItemRepository,
 	feedbackRepo repositories.IDigitalSampleResponseRepository,
-	userRepo identity_repos.IUserRepository,
+	userContract identity_contract.IUserContract,
 	fashionContract fashion_contract.IFashionContract,
 	eventPublisher event.IEventPublisher,
 	mediaService media.IMediaService,
@@ -64,7 +62,7 @@ func NewBrandItemUseCase(
 		customerRepo:    customerRepo,
 		brandItemRepo:   brandItemRepo,
 		feedbackRepo:    feedbackRepo,
-		userRepo:        userRepo,
+		userContract:    userContract,
 		fashionContract: fashionContract,
 		eventPublisher:  eventPublisher,
 		mediaService:    mediaService,
@@ -81,13 +79,13 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_entities.FashionItem, error) {
-	user, err := uc.userRepo.GetByID(ctx, userID)
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_contract.FashionItemRes, error) {
+	user, err := uc.userContract.GetByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
-	if user == nil || user.Status != userstatus.Active {
-		return []*dto.BrandItemStylingDTO{}, []*fashion_entities.FashionItem{}, nil
+	if user == nil {
+		return []*dto.BrandItemStylingDTO{}, []*fashion_contract.FashionItemRes{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
@@ -164,12 +162,11 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item, fi))
 	}
 
-	fashionItems := make([]*fashion_entities.FashionItem, len(eligibleItems))
+	fashionItems := make([]*fashion_contract.FashionItemRes, len(eligibleItems))
 	for i := range eligibleItems {
 		if eligibleItems[i].FashionItemID != nil {
 			if fi := fashionItemMap[*eligibleItems[i].FashionItemID]; fi != nil {
-				fashionItems[i] = &fashion_entities.FashionItem{}
-				fashionItems[i].ID = fi.ID
+				fashionItems[i] = fi
 			}
 		}
 	}
@@ -177,12 +174,12 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 	return eligibleDTOS, fashionItems, nil
 }
 
-func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_entities.FashionItem, error) {
-	user, err := uc.userRepo.GetByID(ctx, userID)
+func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_contract.FashionItemRes, error) {
+	user, err := uc.userContract.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, nil, err
 	}
-	if user == nil || user.Status != userstatus.Active {
+	if user == nil {
 		return false, nil, nil, nil
 	}
 
@@ -221,12 +218,7 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 	}
 
 	fi, _ := uc.fashionContract.GetFashionItem(ctx, *brandItem.FashionItemID)
-	fashionItem := (*fashion_entities.FashionItem)(nil)
-	if fi != nil {
-		fashionItem = &fashion_entities.FashionItem{}
-		fashionItem.ID = fi.ID
-	}
-	return true, mapper.MapToBrandItemRes(brandItem, fi), fashionItem, nil
+	return true, mapper.MapToBrandItemRes(brandItem, fi), fi, nil
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {

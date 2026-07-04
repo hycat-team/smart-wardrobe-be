@@ -19,7 +19,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
-	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -33,7 +33,7 @@ type BrandLoyaltyUseCase struct {
 	brandRepo    repositories.IBrandRepository
 	memberRepo   repositories.IBrandMemberRepository
 	customerRepo repositories.IBrandCustomerRepository
-	userRepo     identity_repos.IUserRepository
+	userContract identity_contract.IUserContract
 	programRepo  repositories.ILoyaltyProgramRepository
 	tierRepo     repositories.ILoyaltyTierRepository
 	accountRepo  repositories.ILoyaltyAccountRepository
@@ -47,7 +47,7 @@ func NewBrandLoyaltyUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
-	userRepo identity_repos.IUserRepository,
+	userContract identity_contract.IUserContract,
 	programRepo repositories.ILoyaltyProgramRepository,
 	tierRepo repositories.ILoyaltyTierRepository,
 	accountRepo repositories.ILoyaltyAccountRepository,
@@ -60,7 +60,7 @@ func NewBrandLoyaltyUseCase(
 		brandRepo:    brandRepo,
 		memberRepo:   memberRepo,
 		customerRepo: customerRepo,
-		userRepo:     userRepo,
+		userContract: userContract,
 		programRepo:  programRepo,
 		tierRepo:     tierRepo,
 		accountRepo:  accountRepo,

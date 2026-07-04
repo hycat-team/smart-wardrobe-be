@@ -12,7 +12,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
+
 	"smart-wardrobe-be/pkg/utils/stringutils"
 	"strings"
 	"time"
@@ -108,11 +108,11 @@ func (uc *BrandLoyaltyUseCase) ensureLoyaltyAccount(ctx context.Context, custome
 
 func (uc *BrandLoyaltyUseCase) resolveBrandCustomerForPoints(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.GrantLoyaltyPointsReq) (*entities.BrandCustomer, error) {
 	if input.UserID != nil {
-		user, err := uc.userRepo.GetByID(ctx, *input.UserID)
+		user, err := uc.userContract.GetByID(ctx, *input.UserID)
 		if err != nil {
 			return nil, err
 		}
-		if user == nil || user.IsDeleted || user.Status != userstatus.Active {
+		if user == nil {
 			return nil, branderrors.ErrUserNotFoundOrInactive()
 		}
 		existing, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, *input.UserID)

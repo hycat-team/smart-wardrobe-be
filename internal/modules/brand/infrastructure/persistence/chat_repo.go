@@ -19,7 +19,7 @@ type BrandConversationRepository struct {
 }
 
 func NewBrandConversationRepository(db *gorm.DB) repositories.IBrandConversationRepository {
-	relations := []string{"Brand", "User"}
+	relations := []string{"Brand"}
 	return &BrandConversationRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversation, uuid.UUID](db, relations),
 	}
@@ -39,7 +39,7 @@ func (r *BrandConversationRepository) GetByBrandAndUser(ctx context.Context, bra
 
 func (r *BrandConversationRepository) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandConversation, error) {
 	var list []*entities.BrandConversation
-	err := r.GetDB(ctx).Preload("User").Where("brand_id = ?", brandID).Order("last_message_at desc").Find(&list).Error
+	err := r.GetDB(ctx).Where("brand_id = ?", brandID).Order("last_message_at desc").Find(&list).Error
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ type BrandConversationMessageRepository struct {
 }
 
 func NewBrandConversationMessageRepository(db *gorm.DB) repositories.IBrandConversationMessageRepository {
-	relations := []string{"Conversation", "SenderUser"}
+	relations := []string{"Conversation"}
 	return &BrandConversationMessageRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandConversationMessage, uuid.UUID](db, relations),
 	}

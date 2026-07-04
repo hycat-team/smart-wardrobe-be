@@ -5,15 +5,15 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
-	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 
 	"github.com/google/uuid"
 )
 
 type IBrandContract interface {
 	CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode benefitfeaturecode.BenefitFeatureCode) (bool, error)
-	ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_entities.FashionItem, error)
-	CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_entities.FashionItem, error)
+	ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_contract.FashionItemRes, error)
+	CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_contract.FashionItemRes, error)
 	SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error
 	UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status string) error
 }
