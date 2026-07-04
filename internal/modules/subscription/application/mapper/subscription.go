@@ -2,7 +2,7 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 )
 
 // BuildUserSubscriptionDTO constructs a contract UserSubscriptionDTO from the database structures.

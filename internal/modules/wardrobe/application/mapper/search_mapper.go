@@ -1,9 +1,10 @@
 package mapper
 
 import (
+	"time"
+
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -11,23 +12,6 @@ import (
 func MapToSearchDocumentDTO(item *entities.WardrobeItem) *dto.SearchDocumentDTO {
 	if item == nil {
 		return nil
-	}
-	fashion := item.FashionItem
-	if fashion == nil {
-		fashion = &entities.FashionItem{}
-	}
-
-	var categoryIDStr string
-	if fashion.CategoryID != nil {
-		categoryIDStr = fashion.CategoryID.String()
-	}
-
-	categoryDTO := dto.SearchDocumentCategoryDTO{
-		ID: categoryIDStr,
-	}
-	if fashion.Category != nil {
-		categoryDTO.Name = fashion.Category.Name
-		categoryDTO.Slug = fashion.Category.Slug
 	}
 
 	var fashionItemID uuid.UUID
@@ -39,24 +23,24 @@ func MapToSearchDocumentDTO(item *entities.WardrobeItem) *dto.SearchDocumentDTO 
 		UserID:           item.UserID,
 		FashionItemID:    fashionItemID,
 		ItemType:         item.ItemType,
-		ImageUrl:         fashion.ImageUrl,
-		ImagePublicID:    fashion.ImagePublicID,
-		Color:            stringutils.GetString(fashion.Color),
-		Style:            stringutils.GetString(fashion.Style),
-		Material:         stringutils.GetString(fashion.Material),
-		Pattern:          stringutils.GetString(fashion.Pattern),
-		Fit:              stringutils.GetString(fashion.Fit),
-		Seasonality:      stringutils.GetString(fashion.Seasonality),
-		Description:      stringutils.GetString(fashion.Description),
+		ImageUrl:         "",
+		ImagePublicID:    "",
+		Color:            "",
+		Style:            "",
+		Material:         "",
+		Pattern:          "",
+		Fit:              "",
+		Seasonality:      "",
+		Description:      "",
 		Status:           item.Status,
 		CreatedAt:        item.CreatedAt,
-		FashionCreatedAt: fashion.CreatedAt,
-		FashionUpdatedAt: fashion.UpdatedAt,
-		Category:         categoryDTO,
+		FashionCreatedAt: time.Time{},
+		FashionUpdatedAt: time.Time{},
+		Category:         dto.SearchDocumentCategoryDTO{},
 		Price:            item.Price,
-		ColorHex:         fashion.ColorHex,
-		ColorHue:         fashion.ColorHue,
-		ColorSaturation:  fashion.ColorSaturation,
-		ColorLightness:   fashion.ColorLightness,
+		ColorHex:         nil,
+		ColorHue:         nil,
+		ColorSaturation:  nil,
+		ColorLightness:   nil,
 	}
 }

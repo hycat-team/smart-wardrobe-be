@@ -16,15 +16,16 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/votetype"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/votetype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -79,13 +80,13 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*entities.FashionItem, error) {
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_entities.FashionItem, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if user == nil || user.Status != userstatus.Active {
-		return []*dto.BrandItemStylingDTO{}, []*entities.FashionItem{}, nil
+		return []*dto.BrandItemStylingDTO{}, []*fashion_entities.FashionItem{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
@@ -142,15 +143,16 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		}
 	}
 
-	fashionItems := make([]*entities.FashionItem, len(eligibleItems))
-	for i, item := range eligibleItems {
-		fashionItems[i] = item.FashionItem
+	fashionItems := make([]*fashion_entities.FashionItem, len(eligibleItems))
+	for i := range eligibleItems {
+		// TODO(Phase1): fetch fashion item by eligibleItems[i].FashionItemID
+		fashionItems[i] = nil
 	}
 
 	return eligibleDTOS, fashionItems, nil
 }
 
-func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *entities.FashionItem, error) {
+func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_entities.FashionItem, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, nil, err
@@ -193,7 +195,7 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 		}
 	}
 
-	return true, mapper.MapToBrandItemRes(brandItem), brandItem.FashionItem, nil
+	return true, mapper.MapToBrandItemRes(brandItem), nil, nil // TODO(Phase1): fetch fashion item by brandItem.FashionItemID
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {

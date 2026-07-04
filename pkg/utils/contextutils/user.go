@@ -2,7 +2,7 @@ package contextutils
 
 import (
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

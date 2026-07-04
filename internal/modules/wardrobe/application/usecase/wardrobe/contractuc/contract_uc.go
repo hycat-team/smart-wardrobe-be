@@ -10,9 +10,9 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -57,7 +57,7 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 		return nil, err
 	}
 
-	cloned.FashionItem = sourceItem.FashionItem
+	_ = sourceItem.FashionItemID // TODO(Phase1): get via contract
 	return mapper.MapToWardrobeItemRes(cloned), nil
 }
 

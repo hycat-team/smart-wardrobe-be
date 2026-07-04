@@ -12,9 +12,9 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -126,7 +126,8 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i := range newItems {
-		newItems[i].FashionItem = templates[i].FashionItem
+		// TODO(Phase1): get via contract
+		_ = templates[i].FashionItemID
 		resList[i] = mapper.MapToWardrobeItemRes(newItems[i])
 		resList[i].IsLocked = false
 	}
@@ -142,40 +143,7 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 	if item == nil || item.ItemType != itemtype.SystemCatalogItem {
 		return nil, wardrobeerrors.ErrCatalogItemNotFound()
 	}
-	if item.FashionItem == nil {
-		item.FashionItem = &entities.FashionItem{}
-	}
-
-	if input.CategoryID != nil {
-		category, err := uc.categoryRepo.GetByID(ctx, *input.CategoryID)
-		if err != nil {
-			return nil, err
-		}
-		if category == nil {
-			return nil, wardrobeerrors.ErrCategoryNotFound()
-		}
-		item.FashionItem.CategoryID = input.CategoryID
-		item.FashionItem.Category = category
-	}
-
-	if input.Color != nil {
-		item.FashionItem.Color = input.Color
-	}
-	if input.Style != nil {
-		item.FashionItem.Style = input.Style
-	}
-	if input.Material != nil {
-		item.FashionItem.Material = input.Material
-	}
-	if input.Pattern != nil {
-		item.FashionItem.Pattern = input.Pattern
-	}
-	if input.Fit != nil {
-		item.FashionItem.Fit = input.Fit
-	}
-	if input.Seasonality != nil {
-		item.FashionItem.Seasonality = input.Seasonality
-	}
+	// TODO(Phase1): get via contract - update fashion item fields through contract
 	if input.Price != nil {
 		item.Price = input.Price
 	}

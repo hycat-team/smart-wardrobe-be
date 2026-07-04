@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"github.com/google/uuid"
 )

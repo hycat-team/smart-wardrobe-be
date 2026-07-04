@@ -4,7 +4,7 @@ import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	shared_search "smart-wardrobe-be/internal/shared/infrastructure/search"
 )
 

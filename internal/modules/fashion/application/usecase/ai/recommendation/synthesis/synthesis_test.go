@@ -10,7 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 )
 
 func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {

@@ -3,14 +3,13 @@ package entities
 import (
 	"time"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type AIPricingConfig struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	Provider            string          `gorm:"type:varchar(50);not null"`
 	Model               string          `gorm:"type:varchar(100);not null"`
 	InputUSDPerMillion  decimal.Decimal `gorm:"type:numeric(20,8);not null"`

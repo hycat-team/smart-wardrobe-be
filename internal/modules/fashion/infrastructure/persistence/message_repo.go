@@ -5,7 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

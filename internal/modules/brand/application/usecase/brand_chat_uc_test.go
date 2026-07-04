@@ -7,13 +7,13 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/conversationstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -150,13 +150,13 @@ func (m *mockUserRepo) CreateStyleProfile(ctx context.Context, profile *entities
 func (m *mockUserRepo) UpdateStyleProfile(ctx context.Context, profile *entities.UserStyleProfile) error {
 	return nil
 }
-func (m *mockUserRepo) CreateAIPolicyGrant(ctx context.Context, grant *entities.UserAIPolicyGrant) error {
+func (m *mockUserRepo) CreateAIPolicyGrant(ctx context.Context, grant *entities.AIPolicyGrant) error {
 	return nil
 }
-func (m *mockUserRepo) GetAIPolicyGrantByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserAIPolicyGrant, error) {
+func (m *mockUserRepo) GetAIPolicyGrantByUserID(ctx context.Context, userID uuid.UUID) (*entities.AIPolicyGrant, error) {
 	return nil, nil
 }
-func (m *mockUserRepo) UpdateAIPolicyGrant(ctx context.Context, grant *entities.UserAIPolicyGrant) error {
+func (m *mockUserRepo) UpdateAIPolicyGrant(ctx context.Context, grant *entities.AIPolicyGrant) error {
 	return nil
 }
 func (m *mockUserRepo) List(ctx context.Context, q string, page int, limit int) ([]*entities.User, int, error) {

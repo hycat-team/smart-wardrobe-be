@@ -10,7 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 

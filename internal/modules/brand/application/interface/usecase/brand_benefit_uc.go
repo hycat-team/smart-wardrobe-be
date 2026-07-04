@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefit/benefitfeaturecode"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 
 	"github.com/google/uuid"
 )

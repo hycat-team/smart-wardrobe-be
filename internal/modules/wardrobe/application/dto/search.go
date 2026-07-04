@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 )
 
 type SearchDocumentCategoryDTO struct {

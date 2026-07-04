@@ -2,12 +2,12 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"gorm.io/gorm"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aipolicygrantstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 )
 
@@ -36,7 +36,8 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 		return err
 	}
 	plan := sub.SubscriptionPlan
-	if plan == nil || plan.AICostPolicy == nil {
+	// TODO(Phase1): fetch AICostPolicy from aiexecutor module
+	if plan == nil {
 		return errors.New("subscription plan AI cost policy missing")
 	}
 	start := event.EffectiveAt
@@ -49,19 +50,21 @@ func (r *UserSubscriptionEventRepository) projectAIPolicyGrant(db *gorm.DB, even
 		}
 	}
 	if event.EventType != "EXTENDED" {
-		if err := db.Where("user_id=? AND status=?", event.UserID, string(aipolicygrantstatus.Future)).Delete(&entities.UserAIPolicyGrant{}).Error; err != nil {
+		if err := db.Where("user_id=? AND status=?", event.UserID, string(aipolicygrantstatus.Future)).Delete(&aiexecutor_entities.AIPolicyGrant{}).Error; err != nil {
 			return err
 		}
-		if err := db.Model(&entities.UserAIPolicyGrant{}).Where("user_id=? AND status=? AND effective_from < ?", event.UserID, string(aipolicygrantstatus.Active), event.EffectiveAt).Updates(map[string]any{"status": aipolicygrantstatus.Closed, "effective_to": event.EffectiveAt, "updated_at": event.OccurredAt}).Error; err != nil {
+		if err := db.Model(&aiexecutor_entities.AIPolicyGrant{}).Where("user_id=? AND status=? AND effective_from < ?", event.UserID, string(aipolicygrantstatus.Active), event.EffectiveAt).Updates(map[string]any{"status": aipolicygrantstatus.Closed, "effective_to": event.EffectiveAt, "updated_at": event.OccurredAt}).Error; err != nil {
 			return err
 		}
 	} else {
-		if err := db.Model(&entities.UserAIPolicyGrant{}).Where("user_id=? AND effective_from < ? AND (effective_to IS NULL OR effective_to > ?)", event.UserID, start, start).Updates(map[string]any{"effective_to": start, "updated_at": event.OccurredAt}).Error; err != nil {
+		if err := db.Model(&aiexecutor_entities.AIPolicyGrant{}).Where("user_id=? AND effective_from < ? AND (effective_to IS NULL OR effective_to > ?)", event.UserID, start, start).Updates(map[string]any{"effective_to": start, "updated_at": event.OccurredAt}).Error; err != nil {
 			return err
 		}
 	}
-	snapshot, _ := json.Marshal(plan.AICostPolicy)
-	grant := entities.UserAIPolicyGrant{UserID: event.UserID, PolicyID: plan.AICostPolicyID, PlanID: plan.ID, PlanCode: plan.Slug, TierRank: plan.TierRank, PolicySnapshot: entities.JSONDocument(snapshot), EffectiveFrom: start, EffectiveTo: end, Status: status, SourceEventID: &event.ID, SourceDepositTransactionID: event.SourceDepositTransactionID}
+	// TODO(Phase1): fetch AICostPolicy from aiexecutor to build the grant
+	var snapshot []byte
+	grant := aiexecutor_entities.AIPolicyGrant{UserID: event.UserID, PlanID: plan.ID, PlanCode: plan.Slug, TierRank: plan.TierRank, EffectiveFrom: start, EffectiveTo: end, Status: status, SourceEventID: &event.ID, SourceDepositTransactionID: event.SourceDepositTransactionID}
+	_ = snapshot
 	return db.Create(&grant).Error
 }
 func (r *UserSubscriptionEventRepository) GetByKey(ctx context.Context, key string) (*entities.UserSubscriptionEvent, error) {

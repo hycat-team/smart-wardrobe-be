@@ -4,8 +4,8 @@ import (
 	"time"
 
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 
 	"github.com/google/uuid"
 )

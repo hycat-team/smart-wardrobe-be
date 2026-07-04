@@ -15,11 +15,10 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfitstatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
@@ -123,7 +122,6 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 			if verifiedItem.FashionItemID != nil {
 				outfitItems[idx] = &entities.OutfitItem{
 					FashionItemID: *verifiedItem.FashionItemID,
-					FashionItem:   verifiedItem.FashionItem,
 					ItemContext:   outfititemcontext.UserWardrobe,
 					WardrobeItem:  verifiedItem,
 					PositionX:     itemReq.PositionX,
@@ -131,6 +129,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 					Scale:         itemReq.Scale,
 					LayerOrder:    itemReq.LayerOrder,
 				}
+			// TODO(Phase1): link verifiedItem.FashionItem via contract
 			}
 		} else {
 			// Check brand item eligibility
@@ -144,23 +143,16 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 
 			outfitItems[idx] = &entities.OutfitItem{
 				FashionItemID: itemReq.FashionItemID,
-				FashionItem:   fashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
-				BrandItem: &entities.BrandItem{
-					AuditableEntity: entities.AuditableEntity{
-						BaseEntity: entities.BaseEntity{ID: brandItem.ID},
-					},
-					BrandID:  brandItem.BrandID,
-					ItemType: branditemtype.BrandItemType(brandItem.ItemType),
-					Name:     brandItem.Name,
-					Price:    brandItem.Price,
-				},
-				PositionX:  itemReq.PositionX,
-				PositionY:  itemReq.PositionY,
-				Scale:      itemReq.Scale,
-				LayerOrder: itemReq.LayerOrder,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
 			}
+			// TODO(Phase1): link fashionItem, brandItem via contract
+			_ = fashionItem
+			_ = brandItem
 		}
 	}
 
@@ -242,7 +234,6 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 				outfitItems[idx] = &entities.OutfitItem{
 					OutfitID:      id,
 					FashionItemID: *verifiedItem.FashionItemID,
-					FashionItem:   verifiedItem.FashionItem,
 					ItemContext:   outfititemcontext.UserWardrobe,
 					WardrobeItem:  verifiedItem,
 					PositionX:     itemReq.PositionX,
@@ -250,6 +241,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 					Scale:         itemReq.Scale,
 					LayerOrder:    itemReq.LayerOrder,
 				}
+			// TODO(Phase1): link verifiedItem.FashionItem via contract
 			}
 		} else {
 			// Check brand item eligibility
@@ -264,23 +256,16 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 			outfitItems[idx] = &entities.OutfitItem{
 				OutfitID:      id,
 				FashionItemID: itemReq.FashionItemID,
-				FashionItem:   fashionItem,
 				ItemContext:   outfititemcontext.BrandItem,
 				WardrobeItem:  nil,
-				BrandItem: &entities.BrandItem{
-					AuditableEntity: entities.AuditableEntity{
-						BaseEntity: entities.BaseEntity{ID: brandItem.ID},
-					},
-					BrandID:  brandItem.BrandID,
-					ItemType: branditemtype.BrandItemType(brandItem.ItemType),
-					Name:     brandItem.Name,
-					Price:    brandItem.Price,
-				},
-				PositionX:  itemReq.PositionX,
-				PositionY:  itemReq.PositionY,
-				Scale:      itemReq.Scale,
-				LayerOrder: itemReq.LayerOrder,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
 			}
+			// TODO(Phase1): link fashionItem, brandItem via contract
+			_ = fashionItem
+			_ = brandItem
 		}
 	}
 

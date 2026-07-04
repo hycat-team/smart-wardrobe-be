@@ -5,10 +5,10 @@ import (
 	"slices"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"github.com/google/uuid"
 )

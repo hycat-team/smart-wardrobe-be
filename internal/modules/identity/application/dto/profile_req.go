@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 )
 

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 )
 
 func MapClaimToken(claim *entities.BrandCustomerClaim) *dto.ClaimTokenRes {

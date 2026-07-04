@@ -2,10 +2,11 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
-func MapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_entities.FashionItem) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
@@ -40,22 +41,13 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem) *dto.WardrobeItemRes {
 		return nil
 	}
 
-	var categoryRes *dto.CategoryRes
-	if item.FashionItem != nil && item.FashionItem.Category != nil {
-		categoryRes = &dto.CategoryRes{
-			ID:   item.FashionItem.Category.ID,
-			Name: item.FashionItem.Category.Name,
-			Slug: item.FashionItem.Category.Slug,
-		}
-	}
-
 	return &dto.WardrobeItemRes{
 		ID:          item.ID,
 		UserID:      item.UserID,
-		Category:    categoryRes,
+		Category:    nil, // TODO(Phase1): fetch category via fashion item by item.FashionItemID
 		Price:       item.Price,
 		Status:      item.Status,
-		FashionItem: MapToFashionItemRes(item.FashionItem),
+		FashionItem: nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
 		CreatedAt:   item.CreatedAt,
 	}
 }
@@ -65,20 +57,11 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem) *dto.SearchWardrobe
 		return nil
 	}
 
-	var categoryRes *dto.CategoryRes
-	if item.FashionItem != nil && item.FashionItem.Category != nil {
-		categoryRes = &dto.CategoryRes{
-			ID:   item.FashionItem.Category.ID,
-			Name: item.FashionItem.Category.Name,
-			Slug: item.FashionItem.Category.Slug,
-		}
-	}
-
 	return &dto.SearchWardrobeItemRes{
 		ID:          item.ID,
-		Category:    categoryRes,
+		Category:    nil, // TODO(Phase1): fetch category via fashion item by item.FashionItemID
 		Price:       item.Price,
 		IsSystem:    item.ItemType == 1,
-		FashionItem: MapToFashionItemRes(item.FashionItem),
+		FashionItem: nil, // TODO(Phase1): fetch fashion item by item.FashionItemID
 	}
 }

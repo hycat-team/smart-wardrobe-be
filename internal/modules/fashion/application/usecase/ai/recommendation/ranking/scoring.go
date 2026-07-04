@@ -10,7 +10,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 const (
@@ -45,14 +46,14 @@ const (
 //
 // Đầu vào mẫu:
 //
-//	item: entities.WardrobeItem{Style: pointer to "Minimalist", LastUsedAt: nil}
+//	item: wardrobe_entities.WardrobeItem{Style: pointer to "Minimalist", LastUsedAt: nil}
 //	intent: dto.ParsedIntent{StyleTarget: []string{"minimalist"}, Occasion: []string{"work"}}
 //
 // Đầu ra mẫu:
 //
 //	(1.65, []string{"style-match:minimalist", "new-item-bonus", ...})
 func ScoreCandidateItem(
-	item *entities.WardrobeItem,
+	item *wardrobe_entities.WardrobeItem,
 	intent dto.ParsedIntent,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	recentlyWornDays,
@@ -174,7 +175,7 @@ func ScoreCandidateItem(
 	}
 
 	weatherState := recommendationWeatherState(intent.PositiveConstraints)
-	if isOuterwearCategory(item.FashionCategory()) {
+	if isOuterwearCategory(nil) { // TODO(Phase1): get via contract
 		switch weatherState {
 		case recommendationWeatherColdLike:
 			score += 0.4
@@ -270,7 +271,7 @@ func isOuterwearCategory(category *entities.Category) bool {
 }
 
 // CandidateMatchesAnyTerm kiểm tra xem tài liệu tìm kiếm của món đồ có chứa bất kỳ từ khóa nào trong danh sách hay không.
-func CandidateMatchesAnyTerm(item *entities.WardrobeItem, terms []string) bool {
+func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []string) bool {
 	if item == nil {
 		return false
 	}
@@ -285,12 +286,12 @@ func CandidateMatchesAnyTerm(item *entities.WardrobeItem, terms []string) bool {
 }
 
 // CandidateMatchesRainySignal kiểm tra xem món đồ có chứa các thuộc tính phù hợp để đi mưa hay không.
-func CandidateMatchesRainySignal(item *entities.WardrobeItem) bool {
+func CandidateMatchesRainySignal(item *wardrobe_entities.WardrobeItem) bool {
 	return CandidateMatchesAnyTerm(item, retrieval.RainyWeatherTerms())
 }
 
 // excludedWeatherPenalty tính điểm phạt (penalty) và trả về nhãn lý do nếu món đồ không phù hợp với kiểu thời tiết người dùng muốn tránh.
-func excludedWeatherPenalty(item *entities.WardrobeItem, excludedWeather []string) (float64, string) {
+func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeather []string) (float64, string) {
 	if item == nil {
 		return 0, ""
 	}
@@ -298,7 +299,7 @@ func excludedWeatherPenalty(item *entities.WardrobeItem, excludedWeather []strin
 		state := recommendationWeatherState([]string{excluded})
 		switch state {
 		case recommendationWeatherColdLike:
-			if isOuterwearCategory(item.FashionCategory()) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms()) {
+			if isOuterwearCategory(nil) || CandidateMatchesAnyTerm(item, retrieval.ColdLikeWeatherTerms()) { // TODO(Phase1): get via contract
 				return 0.3, "avoid-weather:cold-like"
 			}
 		case recommendationWeatherHotLike:

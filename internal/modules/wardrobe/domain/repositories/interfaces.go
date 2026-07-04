@@ -5,9 +5,10 @@ import (
 	"time"
 
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -80,9 +81,9 @@ type IWardrobeItemRepository interface {
 }
 
 type ICategoryRepository interface {
-	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
-	GetBySlug(ctx context.Context, slug string) (*entities.Category, error)
-	GetByName(ctx context.Context, name string) (*entities.Category, error)
+	shared_repos.IGenericRepository[fashion_entities.Category, uuid.UUID]
+	GetBySlug(ctx context.Context, slug string) (*fashion_entities.Category, error)
+	GetByName(ctx context.Context, name string) (*fashion_entities.Category, error)
 	CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
 	ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 }
@@ -99,19 +100,19 @@ type IOutfitRepository interface {
 }
 
 type IConversationalContextRepository interface {
-	shared_repos.IGenericRepository[entities.ConversationalContext, uuid.UUID]
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.ConversationalContext, error)
+	shared_repos.IGenericRepository[fashion_entities.ConversationalContext, uuid.UUID]
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*fashion_entities.ConversationalContext, error)
 }
 
 type IMessageRepository interface {
-	shared_repos.IGenericRepository[entities.Message, uuid.UUID]
+	shared_repos.IGenericRepository[fashion_entities.Message, uuid.UUID]
 	CountByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
-	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*entities.Message, error)
-	GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Message, error)
-	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
-	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
+	GetByContextID(ctx context.Context, contextID uuid.UUID) ([]*fashion_entities.Message, error)
+	GetByContextIDPaginated(ctx context.Context, contextID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*fashion_entities.Message, error)
+	GetRecentByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
+	GetOldestByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
 	DeleteByIDs(ctx context.Context, ids []uuid.UUID) error
 	CountUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID) (int64, error)
-	GetOldestUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*entities.Message, error)
+	GetOldestUnsummarizedByContextID(ctx context.Context, contextID uuid.UUID, limit int) ([]*fashion_entities.Message, error)
 	MarkAsSummarized(ctx context.Context, ids []uuid.UUID) error
 }

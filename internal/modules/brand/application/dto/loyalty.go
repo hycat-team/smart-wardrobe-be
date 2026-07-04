@@ -3,9 +3,9 @@ package dto
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltyroundingmode"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 
 	"github.com/google/uuid"
 )

@@ -9,11 +9,12 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *entities.WardrobeItem) bool {
+func isNeutral(item *wardrobe_entities.WardrobeItem) bool {
 	fashion := fashionForItem(item)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
@@ -39,7 +40,7 @@ func isNeutral(item *entities.WardrobeItem) bool {
 // Đầu ra mẫu:
 //
 //	true
-func colorsMatch(item1, item2 *entities.WardrobeItem) bool {
+func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem) bool {
 	if isNeutral(item1) || isNeutral(item2) {
 		return true
 	}
@@ -92,11 +93,11 @@ func RunLocalHSLMatching(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 ) *dto.RecommendedOutfitRes {
-	var tops, bottoms, shoes, outerwears, dresses, accessories []*entities.WardrobeItem
+	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobe_entities.WardrobeItem
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		category := item.FashionCategory()
+		category := (*entities.Category)(nil) // TODO(Phase1): get via contract
 		if category == nil {
 			accessories = append(accessories, item)
 			continue
@@ -228,8 +229,8 @@ func RunLocalHSLMatching(
 // buildItemGroup xây dựng cấu trúc [RecommendedItemGroup] cho một vai trò phối đồ cụ thể, bao gồm món đồ chính và tối đa 2 món đồ thay thế từ danh sách.
 func buildItemGroup(
 	role string,
-	primary *entities.WardrobeItem,
-	all []*entities.WardrobeItem,
+	primary *wardrobe_entities.WardrobeItem,
+	all []*wardrobe_entities.WardrobeItem,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, item := range all {
@@ -249,16 +250,15 @@ func buildItemGroup(
 	}
 }
 
-func roleForItem(item *entities.WardrobeItem, fallback string) string {
-	if category := item.FashionCategory(); category != nil && category.Slug != "" {
-		return category.Slug
-	}
+func roleForItem(item *wardrobe_entities.WardrobeItem, fallback string) string {
+	// TODO(Phase1): get via contract
 	return fallback
 }
 
-func fashionForItem(item *entities.WardrobeItem) *entities.FashionItem {
+func fashionForItem(item *wardrobe_entities.WardrobeItem) *entities.FashionItem {
 	if item == nil {
 		return nil
 	}
-	return item.FashionItem
+	// TODO(Phase1): get via contract
+	return nil
 }

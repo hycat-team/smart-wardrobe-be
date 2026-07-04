@@ -13,8 +13,8 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"

@@ -3,9 +3,9 @@ package dto
 import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/walletstatementtype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
 	"time"
 
 	"github.com/google/uuid"

@@ -1,10 +1,10 @@
 package dto
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"time"
 
 	"github.com/google/uuid"

@@ -8,9 +8,9 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aiusageeventstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -71,15 +71,14 @@ func (s *Service) Prepare(ctx context.Context, userID uuid.UUID, operation strin
 		reserve = microCost(meta.EstimatedPromptTokens, int64(maxOut), inputRate, outputRate, fx)
 	}
 	requestID := uuid.New()
-	pricingVersion := s.cfg.AI.Pricing.Version
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
 
-	event := &entities.AIUsageEvent{
+	event := &aiexecutor_entities.AIUsageEvent{
 		RequestID:                requestID,
 		UserID:                   userID,
 		Operation:                operation,
 		LogicalRoute:             route,
-		PricingVersion:           &pricingVersion,
+		PricingConfigID:          nil, // TODO(Phase1): look up from aiexecutor
 		InputUSDPerMillion:       &inputRate,
 		OutputUSDPerMillion:      &outputRate,
 		USDToVND:                 &fx,
@@ -121,7 +120,7 @@ func (s *Service) PrepareFree(ctx context.Context, userID uuid.UUID, operation s
 	}
 	requestID := uuid.New()
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
-	event := &entities.AIUsageEvent{RequestID: requestID, UserID: userID, Operation: operation, LogicalRoute: contract.AIRouteFree, PromptTokens: promptTokens, Status: aiusageeventstatus.Reserved, UnknownExpiresAt: &unknownExpires}
+	event := &aiexecutor_entities.AIUsageEvent{RequestID: requestID, UserID: userID, Operation: operation, LogicalRoute: contract.AIRouteFree, PromptTokens: promptTokens, Status: aiusageeventstatus.Reserved, UnknownExpiresAt: &unknownExpires}
 	_, admitted, err := s.repo.Reserve(ctx, grant, policy, op, event, now)
 	if err != nil {
 		return nil, err

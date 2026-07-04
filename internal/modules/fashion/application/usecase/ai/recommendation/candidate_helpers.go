@@ -15,10 +15,12 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
@@ -41,11 +43,11 @@ import (
 //
 // Đầu ra mẫu:
 //
-//	([]*entities.WardrobeItem, *contract.UserSubscriptionDTO, nil)
+//	([]*wardrobe_entities.WardrobeItem, *contract.UserSubscriptionDTO, nil)
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]*entities.WardrobeItem, *contract.UserSubscriptionDTO, error) {
+) ([]*wardrobe_entities.WardrobeItem, *contract.UserSubscriptionDTO, error) {
 	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +68,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	}
 
 	items = shared.FilterActiveItems(items, subOverview.MaxWardrobeItems)
-	activeItems := make([]*entities.WardrobeItem, 0, len(items))
+	activeItems := make([]*wardrobe_entities.WardrobeItem, 0, len(items))
 	for _, item := range items {
 		if item.Status == wardrobestatus.InWardrobe && !item.IsDeleted {
 			activeItems = append(activeItems, item)
@@ -93,7 +95,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 // Đầu vào mẫu:
 //
 //	userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
-//	activeItems: []*entities.WardrobeItem{...}
+//	activeItems: []*wardrobe_entities.WardrobeItem{...}
 //	input: dto.RecommendOutfitReq{Occasion: pointer to "casual"}
 //
 // Đầu ra mẫu:
@@ -102,7 +104,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
-	activeItems []*entities.WardrobeItem,
+	activeItems []*wardrobe_entities.WardrobeItem,
 	input dto.RecommendOutfitReq,
 ) ([]types.CandidateForPrompt, error) {
 	intent := uc.parseRecommendationIntent(input)
@@ -127,15 +129,16 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 				if fashionItem == nil {
 					continue
 				}
-				mockWardrobeItem := &entities.WardrobeItem{
-					AuditableEntity: entities.AuditableEntity{
-						BaseEntity: entities.BaseEntity{
+				mockWardrobeItem := &wardrobe_entities.WardrobeItem{
+					AuditableEntity: wardrobe_entities.AuditableEntity{
+						BaseEntity: wardrobe_entities.BaseEntity{
 							ID: brandItem.FashionItemID,
 						},
 					},
 					FashionItemID: &brandItem.FashionItemID,
-					FashionItem:   fashionItem,
 				}
+				// TODO(Phase1): link fashionItem via contract
+				_ = fashionItem
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
 					Source:          types.CandidateSourceRetrieval,
@@ -145,10 +148,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					RetrievalRank:   brandCandidatesCount + 1,
 					RetrievalSource: types.CandidateSourceRetrieval,
 					ItemContext:     outfititemcontext.BrandItem,
-					BrandItem: &entities.BrandItem{
-						AuditableEntity: entities.AuditableEntity{
-							BaseEntity: entities.BaseEntity{ID: brandItem.ID},
-						},
+				BrandItem: &brand_entities.BrandItem{
+					AuditableEntity: brand_entities.AuditableEntity{
+						BaseEntity: brand_entities.BaseEntity{ID: brandItem.ID},
+					},
 						BrandID:  brandItem.BrandID,
 						ItemType: branditemtype.BrandItemType(brandItem.ItemType),
 						Name:     brandItem.Name,
@@ -436,15 +439,15 @@ func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []strin
 //
 // Đầu vào mẫu:
 //
-//	items: []*entities.WardrobeItem{{Embedding: []float32{...}}, {Embedding: nil}}
+//	items: []*wardrobe_entities.WardrobeItem{{Embedding: []float32{...}}, {Embedding: nil}}
 //
 // Đầu ra mẫu:
 //
 //	1
-func missingEmbeddingCount(items []*entities.WardrobeItem) int {
+func missingEmbeddingCount(items []*wardrobe_entities.WardrobeItem) int {
 	count := 0
 	for _, item := range items {
-		if item == nil || len(item.FashionEmbedding()) == 0 {
+		if item == nil { // TODO(Phase1): get via contract
 			count++
 		}
 	}

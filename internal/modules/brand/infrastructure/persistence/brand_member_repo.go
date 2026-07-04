@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"

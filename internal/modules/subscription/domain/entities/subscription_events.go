@@ -3,15 +3,14 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/subscriptionrenewalstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/subscriptionrenewalstatus"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 )
 
 type UserSubscriptionEvent struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	EventKey                   string                    `gorm:"type:varchar(255);not null;uniqueIndex"`
 	UserID                     uuid.UUID                 `gorm:"type:uuid;not null"`
 	EventType                  string                    `gorm:"type:varchar(100);not null"`
@@ -23,11 +22,11 @@ type UserSubscriptionEvent struct {
 	ActorAdminID               *uuid.UUID                `gorm:"type:uuid"`
 	OccurredAt                 time.Time                 `gorm:"type:timestamp with time zone;not null"`
 	EffectiveAt                time.Time                 `gorm:"type:timestamp with time zone;not null"`
-	Metadata                   shared_entities.JSONDocument `gorm:"type:jsonb"`
+	Metadata                   JSONDocument `gorm:"type:jsonb"`
 }
 
 type SubscriptionRenewalAttempt struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	RenewalAttemptKey           string                                              `gorm:"type:varchar(255);not null;uniqueIndex"`
 	UserID                      uuid.UUID                                           `gorm:"type:uuid;not null"`
 	ExpectedPlanID              uuid.UUID                                           `gorm:"type:uuid;not null"`

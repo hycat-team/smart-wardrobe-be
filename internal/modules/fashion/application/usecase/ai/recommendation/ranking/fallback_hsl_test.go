@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 )
 
 func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {

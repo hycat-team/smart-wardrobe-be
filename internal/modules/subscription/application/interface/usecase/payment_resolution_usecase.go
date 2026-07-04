@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 )
 
 type ManualPaymentResolutionInput struct {

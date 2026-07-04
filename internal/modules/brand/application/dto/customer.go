@@ -3,8 +3,8 @@ package dto
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 
 	"github.com/google/uuid"

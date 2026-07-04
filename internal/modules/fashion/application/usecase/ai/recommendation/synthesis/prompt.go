@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 )
 
 type PromptLimits struct {
@@ -96,8 +97,8 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("CANDIDATES=\n")
 
 	for candidateIndex, candidate := range candidates {
-		item := candidate.Item
-		fashion := item.FashionItem
+		// TODO(Phase1): get via contract
+		fashion := (*entities.FashionItem)(nil)
 		candidatePayload := map[string]any{
 			"id": fmt.Sprintf("A%d", candidateIndex+1),
 		}

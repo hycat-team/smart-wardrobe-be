@@ -2,7 +2,7 @@ package dto
 
 import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 )
 
 type UploadSignatureResult = shared_dto.UploadSignatureResult

@@ -4,7 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 )
 
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO

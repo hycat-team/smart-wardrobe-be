@@ -8,9 +8,8 @@ import (
 	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aienforcementmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 )
 
 const strictPolicyExposureWarnToleranceMicroVND int64 = 1_000_000_000 // 1,000 VND
@@ -35,21 +34,12 @@ func (v *SubscriptionCatalogValidator) Validate(ctx context.Context) error {
 
 	activeDefaultFreeCount := 0
 	for _, p := range plans {
-		if p.IsActive && (p.AICostPolicyID == uuid.Nil || p.AICostPolicy == nil) {
+		if p.IsActive && p.AICostPolicyID == uuid.Nil {
 			return fmt.Errorf("subscription plan %q has no AI cost policy", p.Slug)
 		}
-		if p.IsActive && p.AICostPolicy != nil {
-			if err := validatePolicyOperations(p.AICostPolicy); err != nil {
-				return fmt.Errorf("subscription plan %q AI policy invalid: %w", p.Slug, err)
-			}
-		}
+		// TODO(Phase1): fetch AICostPolicy from aiexecutor module for validation
 		if p.PlanKind == plankind.DefaultFree && p.IsActive {
 			activeDefaultFreeCount++
-		}
-		if p.IsActive && p.AICostPolicy != nil && p.AICostPolicy.EnforcementMode == aienforcementmode.Strict {
-			if err := v.validateStrictPolicy(p.AICostPolicy); err != nil {
-				return fmt.Errorf("subscription plan %q AI policy invalid: %w", p.Slug, err)
-			}
 		}
 	}
 
@@ -63,7 +53,7 @@ func (v *SubscriptionCatalogValidator) Validate(ctx context.Context) error {
 	return nil
 }
 
-func validatePolicyOperations(policy *entities.AICostPolicy) error {
+func validatePolicyOperations(policy *aiexecutor_entities.AICostPolicy) error {
 	configured := map[string]bool{}
 	for _, op := range policy.Operations {
 		if !op.IsEnabled {
@@ -82,7 +72,7 @@ func validatePolicyOperations(policy *entities.AICostPolicy) error {
 	return nil
 }
 
-func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *entities.AICostPolicy) error {
+func (v *SubscriptionCatalogValidator) validateStrictPolicy(policy *aiexecutor_entities.AICostPolicy) error {
 	if policy.HardCostMicroVND == nil {
 		return fmt.Errorf("strict policy hard cost is required")
 	}

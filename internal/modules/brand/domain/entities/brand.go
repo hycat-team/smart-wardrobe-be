@@ -3,19 +3,18 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerjoinedsource"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 )
 
 type Brand struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	Slug               string                  `gorm:"type:varchar(100);uniqueIndex;not null"`
 	Name               string                  `gorm:"type:varchar(255);not null"`
 	Description        *string                 `gorm:"type:text"`
@@ -32,7 +31,7 @@ type Brand struct {
 }
 
 type BrandMember struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID uuid.UUID                           `gorm:"type:uuid;not null;uniqueIndex:uq_brand_members_brand_user"`
 	Brand   *Brand                              `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	UserID  uuid.UUID                           `gorm:"type:uuid;not null;uniqueIndex:uq_brand_members_brand_user"`
@@ -41,7 +40,7 @@ type BrandMember struct {
 }
 
 type BrandCustomer struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID              uuid.UUID                                           `gorm:"type:uuid;not null"`
 	Brand                *Brand                                              `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	UserID               *uuid.UUID                                          `gorm:"type:uuid"`

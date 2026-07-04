@@ -2,8 +2,8 @@ package usecase
 
 import (
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 )
 
 func ensureUserEligibleForLogin(user *entities.User) error {

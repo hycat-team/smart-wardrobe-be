@@ -3,13 +3,11 @@ package entities
 import (
 	"time"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
 	"github.com/google/uuid"
 )
 
 type FashionItem struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	CategoryID              *uuid.UUID `gorm:"type:uuid"`
 	Category                *Category  `gorm:"foreignKey:CategoryID;constraint:OnDelete:RESTRICT"`
 	ImageUrl                string     `gorm:"type:varchar(500);not null"`
@@ -25,7 +23,7 @@ type FashionItem struct {
 	Fit                     *string    `gorm:"type:varchar(50)"`
 	Seasonality             *string    `gorm:"type:varchar(100)"`
 	Description             *string    `gorm:"type:text"`
-	Embedding               shared_entities.Vector `gorm:"type:vector(768)"`
+	Embedding               Vector `gorm:"type:vector(768)"`
 	ProcessingRetryCount    int        `gorm:"type:int;not null;default:0"`
 	ProcessingVersion       int        `gorm:"type:int;not null;default:0"`
 	ProcessingStartedAt     *time.Time `gorm:"type:timestamp with time zone"`

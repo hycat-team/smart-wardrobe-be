@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"math"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"time"
 
 	"github.com/google/uuid"

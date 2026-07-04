@@ -7,14 +7,15 @@ import (
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|giay|ao-khoac|ao khoac|do cua|mac|phoi|style|gu|mac gi|goi y|bo do|do)\b`)
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message) string {
+func buildChatSystemPrompt(summary string, wardrobeItems []*wardrobe_entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message) string {
 	return buildChatSystemPromptWithLimits(summary, wardrobeItems, brandItems, recent, 4000, 1500)
 }
 
@@ -26,7 +27,7 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message, summaryLimit, messageLimit int) string {
+func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*wardrobe_entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*entities.Message, summaryLimit, messageLimit int) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
@@ -52,9 +53,9 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*entities.W
 		builder.WriteString("Available wardrobe items:\n")
 
 		limit := min(len(wardrobeItems), 20)
-		for i := range limit {
-			item := wardrobeItems[i]
-			fashion := item.FashionItem
+		for range limit {
+			// TODO(Phase1): get via contract
+			fashion := (*entities.FashionItem)(nil)
 			if fashion == nil {
 				continue
 			}

@@ -15,10 +15,10 @@ import (
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 
 	"github.com/google/uuid"
 )

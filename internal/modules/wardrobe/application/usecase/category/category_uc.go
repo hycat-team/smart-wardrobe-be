@@ -10,8 +10,8 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 
@@ -133,7 +133,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 	})
 }
 
-func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *entities.Category, name string, slug string, sortOrder *int) (*entities.Category, error) {
+func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *fashion_entities.Category, name string, slug string, sortOrder *int) (*fashion_entities.Category, error) {
 	normalizedName := strings.TrimSpace(name)
 	normalizedSlug := normalizeCategorySlug(slug)
 	if normalizedSlug == "vay" {
@@ -161,7 +161,7 @@ func (uc *CategoryUseCase) prepareCategoryEntity(ctx context.Context, current *e
 		if sortOrder != nil {
 			normalizedSortOrder = *sortOrder
 		}
-		return &entities.Category{
+		return &fashion_entities.Category{
 			Name:      normalizedName,
 			Slug:      normalizedSlug,
 			SortOrder: normalizedSortOrder,

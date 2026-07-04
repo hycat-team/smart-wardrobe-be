@@ -14,8 +14,9 @@ import (
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/messagesender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/constants/messagesender"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -247,7 +248,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 
 	_ = content
 
-	var activeWardrobeItems []*entities.WardrobeItem
+	var activeWardrobeItems []*wardrobe_entities.WardrobeItem
 	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err

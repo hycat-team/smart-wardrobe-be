@@ -3,17 +3,15 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfitstatus"
-
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfitstatus"
 
 	"github.com/google/uuid"
 )
 
 type Outfit struct {
-	shared_entities.AuditableEntity
-	shared_entities.SoftDeleteEntity
+	AuditableEntity
+	SoftDeleteEntity
 	UserID        uuid.UUID                 `gorm:"type:uuid;not null"`
 	Name          string                    `gorm:"type:varchar(255);not null"`
 	Description   *string                   `gorm:"type:text"`

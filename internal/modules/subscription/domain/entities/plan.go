@@ -1,16 +1,15 @@
 package entities
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type SubscriptionPlan struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	Slug               string          `gorm:"type:varchar(100);uniqueIndex;not null"`
 	Name               string          `gorm:"type:varchar(100);not null"`
 	Price              decimal.Decimal `gorm:"type:numeric(12,2);not null;default:0.00"`

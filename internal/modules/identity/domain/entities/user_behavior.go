@@ -1,10 +1,9 @@
 package entities
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-	"time"
+		"time"
 )
 
 func (u *User) UpdateProfile(firstName string, lastName *string, dateOfBirth time.Time, gen gender.Gender) {
@@ -27,7 +26,7 @@ func (u *User) UpdateAvatar(avatarUrl string, avatarPublicID string) {
 	u.AvatarPublicID = &avatarPublicID
 }
 
-func (u *User) UpdateBodyProfile(profile *shared_entities.BodyProfile) {
+func (u *User) UpdateBodyProfile(profile *BodyProfile) {
 	u.BodyProfile = profile
 }
 

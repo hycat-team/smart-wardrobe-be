@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -111,29 +110,15 @@ func MapBrandCustomer(customer *entities.BrandCustomer) *dto.BrandCustomerRes {
 	}
 
 	var customerUser *dto.BrandCustomerUserRes
-	if customer.User != nil {
-		user := customer.User
-
-		var firstNameStr, lastNameStr string
-		var genderVal gender.Gender
-
-		if user.FirstName != nil {
-			firstNameStr = *user.FirstName
-		}
-		if user.LastName != nil {
-			lastNameStr = *user.LastName
-		}
-		if user.Gender != nil {
-			genderVal = *user.Gender
-		}
-
+	// TODO(Phase1): fetch user by customer.UserID
+	if customer.UserID != nil {
 		customerUser = &dto.BrandCustomerUserRes{
-			ID:        customer.User.ID,
-			Username:  customer.User.Username,
-			FirstName: firstNameStr,
-			LastName:  lastNameStr,
-			Gender:    genderVal,
-			AvatarUrl: user.AvatarUrl,
+			ID:        *customer.UserID,
+			Username:  "",
+			FirstName: "",
+			LastName:  "",
+			Gender:    0,
+			AvatarUrl: nil,
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 )
 
 func TestParseAndValidateSummaryDropsReasoningAndNormalizes(t *testing.T) {

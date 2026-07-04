@@ -11,7 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/shared/application/event"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 

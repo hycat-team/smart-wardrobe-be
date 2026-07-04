@@ -2,11 +2,11 @@ package entities
 
 import (
 	"fmt"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"time"
 )
 
-func (u *UserSubscription) Activate(plan *SubscriptionPlan, snapshot shared_entities.JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
+func (u *UserSubscription) Activate(plan *SubscriptionPlan, snapshot JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
 	if u.CurrentPlanKind != plankind.DefaultFree {
 		return nil, fmt.Errorf("cannot activate subscription: current plan is not default-free")
 	}
@@ -59,7 +59,7 @@ func (u *UserSubscription) Activate(plan *SubscriptionPlan, snapshot shared_enti
 	return event, nil
 }
 
-func (u *UserSubscription) Extend(plan *SubscriptionPlan, snapshot shared_entities.JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
+func (u *UserSubscription) Extend(plan *SubscriptionPlan, snapshot JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
 	if u.CurrentPlanKind != plankind.Finite {
 		return nil, fmt.Errorf("cannot extend subscription: current plan is not finite")
 	}
@@ -104,7 +104,7 @@ func (u *UserSubscription) Extend(plan *SubscriptionPlan, snapshot shared_entiti
 	return event, nil
 }
 
-func (u *UserSubscription) Upgrade(plan *SubscriptionPlan, snapshot shared_entities.JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
+func (u *UserSubscription) Upgrade(plan *SubscriptionPlan, snapshot JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
 	if u.CurrentPlanKind == plankind.DefaultFree {
 		return nil, fmt.Errorf("cannot upgrade subscription: use Activate for default-free plans")
 	}
@@ -161,7 +161,7 @@ func (u *UserSubscription) Upgrade(plan *SubscriptionPlan, snapshot shared_entit
 	return event, nil
 }
 
-func (u *UserSubscription) OverlayLifetime(plan *SubscriptionPlan, snapshot shared_entities.JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
+func (u *UserSubscription) OverlayLifetime(plan *SubscriptionPlan, snapshot JSONDocument, eventKey string, at time.Time) (*UserSubscriptionEvent, error) {
 	if u.CurrentPlanKind != plankind.Lifetime {
 		return nil, fmt.Errorf("cannot overlay subscription: current plan is not lifetime")
 	}
@@ -280,7 +280,7 @@ func (u *UserSubscription) DowngradeToFree(freePlan *SubscriptionPlan, eventKey 
 	u.CurrentPlanCode = freePlan.Slug
 	u.CurrentTierRank = freePlan.TierRank
 	u.CurrentPlanKind = freePlan.PlanKind
-	u.CurrentBenefitSnapshot = shared_entities.JSONDocument(`{}`)
+	u.CurrentBenefitSnapshot = JSONDocument(`{}`)
 	u.StartedAt = at
 	u.ExpiresAt = nil
 	u.IsAutoRenewEnabled = false

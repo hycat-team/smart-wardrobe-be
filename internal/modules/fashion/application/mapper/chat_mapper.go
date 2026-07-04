@@ -2,7 +2,7 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 )
 
 // MapChatSession maps a conversation entity into its response model.

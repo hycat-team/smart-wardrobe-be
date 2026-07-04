@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/identity/roleslug"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 
 	"github.com/google/uuid"
 )

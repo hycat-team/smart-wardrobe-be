@@ -9,8 +9,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 // CategorySlugToWearingRole maps database category slugs to wearing position roles.
@@ -67,7 +67,7 @@ func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
 ) []*dto.RecommendedItemGroup {
-	candidateMap := map[uuid.UUID]*entities.WardrobeItem{}
+	candidateMap := map[uuid.UUID]*wardrobe_entities.WardrobeItem{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
 	for _, candidate := range candidates {
 		candidateMap[candidate.Item.ID] = candidate.Item
@@ -85,9 +85,7 @@ func MapLLMResponseToGroups(
 		}
 
 		actualRole := role
-		if category := primary.FashionCategory(); category != nil {
-			actualRole = CategorySlugToWearingRole(category.Slug)
-		}
+		// TODO(Phase1): get via contract
 
 		if actualRole == "fullbody" {
 			hasFullbody = true
@@ -120,11 +118,11 @@ func MapLLMResponseToGroups(
 
 // resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI. Nếu ID không khớp hoặc không hợp lệ, hàm sẽ lấy món đồ đầu tiên trong danh sách ứng viên có danh mục (category slug) khớp với vai trò (role) yêu cầu.
 func resolvePrimaryCandidate(
-	candidateMap map[uuid.UUID]*entities.WardrobeItem,
+	candidateMap map[uuid.UUID]*wardrobe_entities.WardrobeItem,
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
-) *entities.WardrobeItem {
+) *wardrobe_entities.WardrobeItem {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
 			return candidates[idx].Item
@@ -137,10 +135,9 @@ func resolvePrimaryCandidate(
 		}
 	}
 
-	for _, candidate := range candidates {
-		if category := candidate.Item.FashionCategory(); category != nil && CategorySlugToWearingRole(category.Slug) == role {
-			return candidate.Item
-		}
+	for range candidates {
+		// TODO(Phase1): get via contract
+		_ = CategorySlugToWearingRole
 	}
 
 	return nil
@@ -148,7 +145,7 @@ func resolvePrimaryCandidate(
 
 // resolveAlternativeCandidates tìm kiếm tối đa 2 món đồ thay thế cho vai trò được đề xuất.
 func resolveAlternativeCandidates(
-	candidateMap map[uuid.UUID]*entities.WardrobeItem,
+	candidateMap map[uuid.UUID]*wardrobe_entities.WardrobeItem,
 	candidates []types.CandidateForPrompt,
 	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
 	role string,
@@ -157,7 +154,7 @@ func resolveAlternativeCandidates(
 ) []*wardrobeDto.WardrobeItemRes {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
-		var altItem *entities.WardrobeItem
+		var altItem *wardrobe_entities.WardrobeItem
 		if idx, ok := parseAliasIndex(altID); ok {
 			if idx >= 0 && idx < len(candidates) {
 				altItem = candidates[idx].Item
@@ -173,8 +170,8 @@ func resolveAlternativeCandidates(
 		if altItem == nil {
 			continue
 		}
-		category := altItem.FashionCategory()
-		if altItem.ID == primaryID || category == nil || CategorySlugToWearingRole(category.Slug) != role {
+		// TODO(Phase1): get via contract
+		if altItem.ID == primaryID {
 			continue
 		}
 
@@ -190,8 +187,8 @@ func resolveAlternativeCandidates(
 
 	for _, candidate := range candidates {
 		item := candidate.Item
-		category := item.FashionCategory()
-		if item.ID == primaryID || category == nil || CategorySlugToWearingRole(category.Slug) != role {
+		// TODO(Phase1): get via contract
+		if item.ID == primaryID {
 			continue
 		}
 

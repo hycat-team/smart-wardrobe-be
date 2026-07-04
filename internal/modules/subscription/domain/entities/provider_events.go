@@ -5,14 +5,13 @@ import (
 
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type ProviderPaymentEvent struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	Provider          string            `gorm:"type:varchar(50);not null;uniqueIndex:ux_provider_reference,priority:1"`
 	ProviderReference string            `gorm:"type:varchar(255);not null;uniqueIndex:ux_provider_reference,priority:2"`
 	EventCode         string            `gorm:"type:varchar(100);not null"`
@@ -23,7 +22,7 @@ type ProviderPaymentEvent struct {
 }
 
 type ProviderWebhookInbox struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	Provider             string            `gorm:"type:varchar(50);not null"`
 	ProviderReference    *string           `gorm:"type:varchar(255)"`
 	EventCode            string            `gorm:"type:varchar(100);not null"`
@@ -32,7 +31,7 @@ type ProviderWebhookInbox struct {
 	Amount               decimal.Decimal   `gorm:"type:numeric(12,2);not null"`
 	Currency             currency.Currency `gorm:"type:varchar(10);not null"`
 	CanonicalPayloadHash string            `gorm:"type:varchar(64);not null"`
-	RawPayload           shared_entities.JSONDocument `gorm:"type:jsonb;not null"`
+	RawPayload           JSONDocument `gorm:"type:jsonb;not null"`
 	ProcessingStatus     string            `gorm:"type:varchar(50);not null"`
 	ProcessingAttempts   int               `gorm:"type:int;not null;default:0"`
 	NextProcessingAt     *time.Time        `gorm:"type:timestamp with time zone"`

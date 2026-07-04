@@ -3,16 +3,15 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/aiusageeventstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/aiusageeventstatus"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type AIUsagePeriodLedger struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	GrantID              uuid.UUID `gorm:"type:uuid;not null"`
 	UserID               uuid.UUID `gorm:"type:uuid;not null"`
 	PeriodIndex          int       `gorm:"type:int;not null"`
@@ -27,7 +26,7 @@ type AIUsagePeriodLedger struct {
 }
 
 type AIUsageEvent struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	RequestID                uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex"`
 	LedgerID                 uuid.UUID                             `gorm:"type:uuid;not null"`
 	UserID                   uuid.UUID                             `gorm:"type:uuid;not null"`

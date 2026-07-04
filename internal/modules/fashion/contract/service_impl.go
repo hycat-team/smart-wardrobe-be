@@ -5,7 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/event"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 
 	"github.com/google/uuid"
 )

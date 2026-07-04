@@ -12,12 +12,13 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_repos "smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/conversationstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandmemberrole"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	identity_entities "smart-wardrobe-be/internal/modules/identity/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -191,7 +192,8 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 	var res []*dto.BrandConversationRes
 	for _, conv := range conversations {
 		customer := customerByUserID[conv.UserID]
-		userDisp := getUserDisplayName(conv.User)
+		// TODO(Phase1): fetch user by conv.UserID
+		userDisp := ""
 		var custName *string
 		if customer != nil {
 			custName = customer.CustomerName
@@ -400,7 +402,7 @@ func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, 
 	return res, nil
 }
 
-func getUserDisplayName(u *entities.User) string {
+func getUserDisplayName(u *identity_entities.User) string {
 	if u == nil {
 		return ""
 	}

@@ -3,17 +3,16 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltypointlotstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltyroundingmode"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/loyaltytransactiontype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltyroundingmode"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 )
 
 type LoyaltyProgram struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID         uuid.UUID                               `gorm:"type:uuid;not null"`
 	Brand           *Brand                                  `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	Name            string                                  `gorm:"type:varchar(255);not null"`
@@ -24,7 +23,7 @@ type LoyaltyProgram struct {
 }
 
 type LoyaltyTier struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_loyalty_tiers_brand_rank;uniqueIndex:uq_loyalty_tiers_brand_name"`
 	Brand         *Brand    `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	Name          string    `gorm:"type:varchar(255);not null;uniqueIndex:uq_loyalty_tiers_brand_name"`
@@ -34,7 +33,7 @@ type LoyaltyTier struct {
 }
 
 type LoyaltyAccount struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID         uuid.UUID      `gorm:"type:uuid;not null"`
 	Brand           *Brand         `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	BrandCustomerID uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex"`
@@ -70,7 +69,7 @@ type LoyaltyPointTransaction struct {
 }
 
 type LoyaltyPointLot struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	LoyaltyAccountID  uuid.UUID                                   `gorm:"type:uuid;not null"`
 	LoyaltyAccount    *LoyaltyAccount                             `gorm:"foreignKey:LoyaltyAccountID;constraint:OnDelete:CASCADE"`
 	BrandID           uuid.UUID                                   `gorm:"type:uuid;not null"`
@@ -87,7 +86,7 @@ type LoyaltyPointLot struct {
 }
 
 type BrandCustomerClaim struct {
-	shared_entities.BaseEntity
+	BaseEntity
 	BrandCustomerID uuid.UUID      `gorm:"type:uuid;not null"`
 	BrandCustomer   *BrandCustomer `gorm:"foreignKey:BrandCustomerID;constraint:OnDelete:CASCADE"`
 	ClaimTokenHash  string         `gorm:"type:varchar(255);not null;uniqueIndex"`

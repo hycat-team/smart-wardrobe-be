@@ -3,16 +3,15 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/conversationstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/brandchat/senderrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 )
 
 type BrandConversation struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	BrandID         uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`
 	Brand           *Brand                                `gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 	UserID          uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex:uq_brand_conversations_brand_user"`

@@ -7,10 +7,10 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/outfititemcontext"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -84,10 +84,8 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 				validItems = append(validItems, item)
 			}
 		} else if item.ItemContext == outfititemcontext.BrandItem {
-			if item.BrandItem != nil &&
-				item.BrandItem.Status == branditemstatus.Active {
-				validItems = append(validItems, item)
-			}
+			// TODO(Phase1): fetch brand item by item.FashionItemID and validate status
+			validItems = append(validItems, item)
 		}
 	}
 	outfit.Items = validItems
@@ -152,27 +150,15 @@ func (r *OutfitRepository) attachBrandItems(ctx context.Context, outfit *entitie
 		return nil
 	}
 
-	var brandItems []*entities.BrandItem
+	var brandItems []*brand_entities.BrandItem
 	if err := r.GetDB(ctx).
 		Preload("Brand").
-		Preload("FashionItem").
-		Preload("FashionItem.Category").
 		Where("fashion_item_id IN ?", fashionIDs).
 		Find(&brandItems).Error; err != nil {
 		return err
 	}
-
-	brandByFashionID := make(map[uuid.UUID]*entities.BrandItem, len(brandItems))
-	for _, brandItem := range brandItems {
-		if brandItem.FashionItemID != nil {
-			brandByFashionID[*brandItem.FashionItemID] = brandItem
-		}
-	}
-	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.BrandItem {
-			item.BrandItem = brandByFashionID[item.FashionItemID]
-		}
-	}
+	// TODO(Phase1): attach BrandItem data to OutfitItem via separate lookup
+	_ = brandItems
 	return nil
 }
 
@@ -187,7 +173,7 @@ func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem", "BrandItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "WardrobeItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}
@@ -212,7 +198,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "FashionItem", "WardrobeItem", "BrandItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit", "WardrobeItem").Create(&items).Error; err != nil {
 				return err
 			}
 		}

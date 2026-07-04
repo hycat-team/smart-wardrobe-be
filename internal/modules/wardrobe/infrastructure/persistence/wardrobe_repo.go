@@ -7,14 +7,14 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type WardrobeItemRepository struct {
@@ -151,16 +151,7 @@ func (r *WardrobeItemRepository) Update(ctx context.Context, item *entities.Ward
 	if item == nil {
 		return nil
 	}
-	if item.FashionItemID != nil {
-		if item.FashionItem != nil {
-			item.FashionItem.ID = *item.FashionItemID
-			if err := r.GetDB(ctx).Model(&entities.FashionItem{}).
-				Where("id = ?", *item.FashionItemID).
-				Updates(item.FashionItem).Error; err != nil {
-				return err
-			}
-		}
-	}
+	// TODO(Phase1): update related fashion item fields when FashionItem nav property is restored
 	return r.GetDB(ctx).Save(item).Error
 }
 
@@ -309,7 +300,7 @@ func (r *WardrobeItemRepository) ClaimManualAnalysisRetry(ctx context.Context, u
 		if item.FashionItemID == nil {
 			item.FashionItemID = &item.ID
 		}
-		if err := tx.Model(&entities.FashionItem{}).
+		if err := tx.Model(&fashion_entities.FashionItem{}).
 			Where("id = ?", *item.FashionItemID).
 			Updates(map[string]any{
 				"review_reason":              nil,
@@ -350,7 +341,7 @@ func (r *WardrobeItemRepository) ClaimStaleProcessingRetry(ctx context.Context, 
 		if item.FashionItemID == nil {
 			item.FashionItemID = &item.ID
 		}
-		result := tx.Model(&entities.FashionItem{}).
+		result := tx.Model(&fashion_entities.FashionItem{}).
 			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
 			Updates(map[string]any{
 				"processing_retry_count":     gorm.Expr("processing_retry_count + 1"),
@@ -458,7 +449,7 @@ func (r *WardrobeItemRepository) updateProcessingState(ctx context.Context, item
 			}
 			fashionUpdates[key] = value
 		}
-		result := tx.Model(&entities.FashionItem{}).
+		result := tx.Model(&fashion_entities.FashionItem{}).
 			Where("id = ? AND processing_version = ?", *item.FashionItemID, processingVersion).
 			Updates(fashionUpdates)
 		if result.Error != nil {
@@ -517,18 +508,6 @@ func (r *WardrobeItemRepository) ensureFashionItemBeforeCreateWithDB(db *gorm.DB
 	if item.FashionItemID == nil {
 		item.FashionItemID = &item.ID
 	}
-	if *item.FashionItemID != item.ID && item.FashionItem == nil {
-		return nil
-	}
-	if item.FashionItem == nil {
-		item.FashionItem = &entities.FashionItem{}
-	}
-	item.FashionItem.ID = *item.FashionItemID
-	if item.FashionItem.CreatedAt.IsZero() {
-		item.FashionItem.CreatedAt = item.CreatedAt
-	}
-	if item.FashionItem.UpdatedAt.IsZero() {
-		item.FashionItem.UpdatedAt = item.UpdatedAt
-	}
-	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(item.FashionItem).Error
+	// TODO(Phase1): ensure fashion item exists via separate create/call when nav property is restored
+	return nil
 }

@@ -3,21 +3,20 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/benefitresolution"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefitresolution"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/deposittransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/plankind"
-	"smart-wardrobe-be/internal/shared/domain/constants/subscription/walletstatementtype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
 
-	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
-
+	
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type DepositTransaction struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	UserID                      uuid.UUID                                     `gorm:"type:uuid;not null"`
 	Amount                      decimal.Decimal                               `gorm:"type:numeric(12,2);not null"`
 	Currency                    currency.Currency                             `gorm:"type:varchar(10);not null;default:'VND'"`
@@ -48,18 +47,18 @@ type DepositTransaction struct {
 	PlanKind                    *plankind.PlanKind                            `gorm:"type:smallint"`
 	PurchasedDurationDays       *int                                          `gorm:"type:int"`
 	ExpectedAmount              decimal.Decimal                               `gorm:"type:numeric(12,2);not null"`
-	BenefitSnapshot             shared_entities.JSONDocument                  `gorm:"type:jsonb"`
+	BenefitSnapshot             JSONDocument                  `gorm:"type:jsonb"`
 	PricingVersion              *int64                                        `gorm:"type:bigint"`
 	BenefitResolution           *benefitresolution.BenefitResolution          `gorm:"type:varchar(100)"`
 	BenefitAppliedAt            *time.Time                                    `gorm:"type:timestamp with time zone"`
-	BenefitResultSnapshot       shared_entities.JSONDocument                  `gorm:"type:jsonb"`
+	BenefitResultSnapshot       JSONDocument                  `gorm:"type:jsonb"`
 	WalletCreditAmount          *decimal.Decimal                              `gorm:"type:numeric(12,2)"`
 	SubscriptionVersionBefore   *int64                                        `gorm:"type:bigint"`
 	SubscriptionVersionAfter    *int64                                        `gorm:"type:bigint"`
 }
 
 type WalletStatement struct {
-	shared_entities.AuditableEntity
+	AuditableEntity
 	UserID                     uuid.UUID                               `gorm:"type:uuid;not null"`
 	Amount                     decimal.Decimal                         `gorm:"type:numeric(12,2);not null"`
 	TransactionType            walletstatementtype.WalletStatementType `gorm:"type:varchar(50);not null"`

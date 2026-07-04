@@ -3,9 +3,9 @@ package repositories
 import (
 	"context"
 
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/brand/branditem/branditemtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"

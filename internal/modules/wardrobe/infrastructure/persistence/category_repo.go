@@ -3,8 +3,9 @@ package persistence
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobe/itemtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -12,20 +13,20 @@ import (
 )
 
 type CategoryRepository struct {
-	shared_persist.GenericRepository[entities.Category, uuid.UUID]
+	shared_persist.GenericRepository[fashion_entities.Category, uuid.UUID]
 }
 
 func NewCategoryRepository(db *gorm.DB) repositories.ICategoryRepository {
 	relations := []string{}
 	return &CategoryRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.Category, uuid.UUID](
+		GenericRepository: *shared_persist.NewGenericRepository[fashion_entities.Category, uuid.UUID](
 			db, relations,
 		),
 	}
 }
 
-func (r *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*entities.Category, error) {
-	var category entities.Category
+func (r *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*fashion_entities.Category, error) {
+	var category fashion_entities.Category
 	err := r.GetDB(ctx).Where("slug = ?", slug).First(&category).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -36,8 +37,8 @@ func (r *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*entit
 	return &category, nil
 }
 
-func (r *CategoryRepository) GetByName(ctx context.Context, name string) (*entities.Category, error) {
-	var category entities.Category
+func (r *CategoryRepository) GetByName(ctx context.Context, name string) (*fashion_entities.Category, error) {
+	var category fashion_entities.Category
 	err := r.GetDB(ctx).Where("name = ?", name).First(&category).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -48,8 +49,8 @@ func (r *CategoryRepository) GetByName(ctx context.Context, name string) (*entit
 	return &category, nil
 }
 
-func (r *CategoryRepository) GetAll(ctx context.Context) ([]*entities.Category, error) {
-	var categories []*entities.Category
+func (r *CategoryRepository) GetAll(ctx context.Context) ([]*fashion_entities.Category, error) {
+	var categories []*fashion_entities.Category
 	err := r.GetDB(ctx).
 		Order("sort_order ASC").
 		Order("name ASC").
@@ -78,7 +79,7 @@ func (r *CategoryRepository) ReassignSystemCatalogItemsToCategory(ctx context.Co
 		Where("fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", fromCategoryID, itemtype.SystemCatalogItem, false)
 
 	return r.GetDB(ctx).
-		Model(&entities.FashionItem{}).
+		Model(&fashion_entities.FashionItem{}).
 		Where("id IN (?)", systemFashionItems).
 		Update("category_id", toCategoryID).Error
 }

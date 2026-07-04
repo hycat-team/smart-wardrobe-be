@@ -2,7 +2,7 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
