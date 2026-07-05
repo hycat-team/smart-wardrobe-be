@@ -15,7 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -43,11 +43,11 @@ import (
 //
 // Đầu ra mẫu:
 //
-//	([]*wardrobe_entities.WardrobeItem, *contract.UserSubscriptionDTO, nil)
+//	([]*wardrobe_entities.WardrobeItem, *sub_dto.UserSubscriptionDTO, nil)
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]*wardrobe_entities.WardrobeItem, *contract.UserSubscriptionDTO, error) {
+) ([]*wardrobe_entities.WardrobeItem, *sub_dto.UserSubscriptionDTO, error) {
 	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, nil, err

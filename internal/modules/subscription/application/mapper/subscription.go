@@ -1,12 +1,12 @@
 package mapper
 
 import (
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 )
 
 // BuildUserSubscriptionDTO constructs a contract UserSubscriptionDTO from the database structures.
-func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *contract.UserSubscriptionDTO {
+func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, quota *entities.UserDailyQuota) *dto.UserSubscriptionDTO {
 	if sub == nil || plan == nil || quota == nil {
 		return nil
 	}
@@ -15,7 +15,7 @@ func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 		expiresAt = nil
 		autoRenew = false
 	}
-	return &contract.UserSubscriptionDTO{
+	return &dto.UserSubscriptionDTO{
 		PlanID:               plan.ID,
 		PlanName:             plan.Name,
 		PlanSlug:             plan.Slug,
@@ -37,7 +37,7 @@ func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 }
 
 // BuildUserSubscriptionOverviewDTO constructs a contract UserSubscriptionOverviewDTO from the database structures.
-func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *contract.UserSubscriptionOverviewDTO {
+func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *dto.UserSubscriptionOverviewDTO {
 	if sub == nil || plan == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *enti
 		expiresAt = nil
 		autoRenew = false
 	}
-	return &contract.UserSubscriptionOverviewDTO{
+	return &dto.UserSubscriptionOverviewDTO{
 		PlanID:             plan.ID,
 		PlanName:           plan.Name,
 		PlanSlug:           plan.Slug,

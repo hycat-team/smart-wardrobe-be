@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -42,7 +42,7 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 // Đầu vào mẫu:
 //
 //	finalRes: &dto.RecommendedOutfitRes{}
-//	quotaDTO: &contract.UserSubscriptionDTO{AiOutfitDailyQuota: 10, OutfitRecommendCount: 2}
+//	quotaDTO: &sub_dto.UserSubscriptionDTO{AiOutfitDailyQuota: 10, OutfitRecommendCount: 2}
 //
 // Đầu ra mẫu:
 //
@@ -51,7 +51,7 @@ func (uc *OutfitRecommendationUseCase) updateQuotaAndConstructResponse(
 	ctx context.Context,
 	userID uuid.UUID,
 	finalRes *dto.RecommendedOutfitRes,
-	quotaDTO *contract.UserSubscriptionDTO,
+	quotaDTO *sub_dto.UserSubscriptionDTO,
 ) error {
 	if err := uc.userQuotaCtr.UpdateOutfitQuota(ctx, userID, 1); err != nil {
 		return err

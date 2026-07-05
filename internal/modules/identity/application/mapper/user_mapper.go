@@ -3,12 +3,12 @@ package mapper
 import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
-	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
+	subscription_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 )
 
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
-func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscriptionOverviewDTO) *dto.UserRes {
+func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionOverviewDTO) *dto.UserRes {
 	if user == nil {
 		return nil
 	}

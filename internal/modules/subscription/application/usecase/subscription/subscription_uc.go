@@ -69,7 +69,7 @@ func NewSubscriptionUseCase(
 	}
 }
 
-func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
 	return uc.quotaContract.GetAndResetDailyQuota(ctx, userID)
 }
 
@@ -128,7 +128,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 }
 
 // GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
-func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -161,8 +161,8 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 	return mapper.BuildUserSubscriptionOverviewDTO(sub, plan), nil
 }
 
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
-	result := make(map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, len(userIDs))
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error) {
+	result := make(map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, len(userIDs))
 	if len(userIDs) == 0 {
 		return result, nil
 	}

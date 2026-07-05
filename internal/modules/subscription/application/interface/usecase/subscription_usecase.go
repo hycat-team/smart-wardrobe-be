@@ -10,7 +10,7 @@ import (
 )
 
 type ISubscriptionUseCase interface {
-	GetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error)
+	GetDailyQuota(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error)
 	ProcessScheduledRenewals(ctx context.Context, run *workerlog.Run) error
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error)

@@ -1,13 +1,13 @@
-package contract
+package dto
 
 import (
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"time"
+
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 
 	"github.com/google/uuid"
 )
 
-// UserSubscriptionDTO aggregates plan details and daily quota metrics
 type UserSubscriptionDTO struct {
 	PlanID               uuid.UUID          `json:"planID"`
 	PlanName             string             `json:"planName"`
@@ -28,7 +28,6 @@ type UserSubscriptionDTO struct {
 	LastResetDate        time.Time          `json:"lastResetDate"`
 }
 
-// UserSubscriptionOverviewDTO aggregates only subscription plan limits without daily quota usage metrics
 type UserSubscriptionOverviewDTO struct {
 	PlanID             uuid.UUID          `json:"planID"`
 	PlanName           string             `json:"planName"`

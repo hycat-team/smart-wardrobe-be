@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
+	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -65,8 +66,8 @@ type fakeUserSubContract struct {
 	sub_contract.IUserSubscriptionContract
 }
 
-func (f fakeUserSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_contract.UserSubscriptionOverviewDTO, error) {
-	return &sub_contract.UserSubscriptionOverviewDTO{
+func (f fakeUserSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionOverviewDTO, error) {
+	return &sub_dto.UserSubscriptionOverviewDTO{
 		MaxWardrobeItems: 100,
 	}, nil
 }
@@ -77,8 +78,8 @@ type fakeUserQuotaContract struct {
 	chatQuotaUpdated bool
 }
 
-func (f *fakeUserQuotaContract) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*sub_contract.UserSubscriptionDTO, error) {
-	return &sub_contract.UserSubscriptionDTO{
+func (f *fakeUserQuotaContract) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionDTO, error) {
+	return &sub_dto.UserSubscriptionDTO{
 		AiChatDailyQuota: 10,
 		AiUsageCount:     2,
 	}, nil

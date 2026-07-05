@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 
@@ -62,7 +62,7 @@ func (uc *UserQuotaUseCase) checkAndResetDailyQuota(ctx context.Context, userID 
 }
 
 // GetAndResetDailyQuota evaluates daily resets lazily and retrieves the fresh resource counters
-func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+func (uc *UserQuotaUseCase) GetAndResetDailyQuota(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
