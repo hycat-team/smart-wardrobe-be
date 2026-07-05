@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
@@ -45,7 +45,7 @@ func (w *FashionAnalyzeWorker) startConsume() {
 
 	go func() {
 		for d := range deliveries {
-			var job fashion_contract.FashionAnalyzeJobDTO
+			var job dto.FashionAnalyzeJobDTO
 			if err := json.Unmarshal(d.Body, &job); err != nil {
 				w.logger.Error("[FashionAnalyzeWorker] Failed to unmarshal message body", zap.Error(err))
 				_ = d.Nack(false, false)

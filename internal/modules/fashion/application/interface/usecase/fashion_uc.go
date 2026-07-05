@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
@@ -26,11 +25,11 @@ type IWardrobeChatUseCase interface {
 }
 
 type IFashionInitUseCase interface {
-	ProcessInitJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error
+	ProcessInitJob(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error
 }
 
 type IFashionWorkerUseCase interface {
-	ProcessBackgroundBatchUploadJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error
+	ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error
 	CleanupFailedItems(ctx context.Context, run *workerlog.Run) error
 	RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error
 }

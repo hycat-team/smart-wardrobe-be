@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -131,17 +132,17 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 		}
 	}
 
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for idx, item := range items {
-		var fi *fashion_contract.FashionItemRes
+		var fi *fashion_dto.FashionItemRes
 		if item.FashionItemID != nil {
 			fi = fashionMap[*item.FashionItemID]
 		}
@@ -178,7 +179,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID u
 
 	isLocked := shared.IsItemLocked(items, id, subOverview.MaxWardrobeItems)
 
-	var fi *fashion_contract.FashionItemRes
+	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -238,16 +239,16 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			}
 		}
 		fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-		fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+		fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 		if len(fashionIDs) > 0 {
 			fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 			if err == nil {
-				fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+				fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 			}
 		}
 		results = make([]*dto.SearchWardrobeItemRes, len(dbItems))
 		for idx, item := range dbItems {
-			var fi *fashion_contract.FashionItemRes
+			var fi *fashion_dto.FashionItemRes
 			if item.FashionItemID != nil {
 				fi = fashionMap[*item.FashionItemID]
 			}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	sharedrepos "smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -13,36 +13,36 @@ import (
 
 type fakeFashionContract struct{}
 
-func (f fakeFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_contract.FashionItemRes, error) {
+func (f fakeFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.FashionItemRes, error) {
+func (f fakeFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
-func (f fakeFashionContract) CreateCategory(ctx context.Context, input fashion_contract.CreateCategoryInput) (*fashion_contract.CategoryRes, error) {
-	return &fashion_contract.CategoryRes{
+func (f fakeFashionContract) CreateCategory(ctx context.Context, input fashion_dto.CreateCategoryInput) (*fashion_dto.CategoryRes, error) {
+	return &fashion_dto.CategoryRes{
 		ID:        uuid.New(),
 		Name:      input.Name,
 		Slug:      input.Slug,
 		SortOrder: input.SortOrder,
 	}, nil
 }
-func (f fakeFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_contract.UpdateCategoryInput) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_dto.UpdateCategoryInput) (*fashion_dto.CategoryRes, error) {
 	var name, slug string
 	var sortOrder int
 	if input.Name != nil {
@@ -54,7 +54,7 @@ func (f fakeFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, i
 	if input.SortOrder != nil {
 		sortOrder = *input.SortOrder
 	}
-	return &fashion_contract.CategoryRes{
+	return &fashion_dto.CategoryRes{
 		ID:        id,
 		Name:      name,
 		Slug:      slug,
@@ -92,7 +92,7 @@ func TestCreateCategoryRejectsLegacyVaySlug(t *testing.T) {
 }
 
 func TestUpdateCategoryKeepsSortOrderWhenOmitted(t *testing.T) {
-	current := &fashion_contract.CategoryRes{
+	current := &fashion_dto.CategoryRes{
 		ID:        uuid.New(),
 		Name:      "Áo",
 		Slug:      "ao",
@@ -120,31 +120,31 @@ func TestUpdateCategoryKeepsSortOrderWhenOmitted(t *testing.T) {
 
 type fakeFashionContractWithEntity struct {
 	fakeFashionContract
-	byID *fashion_contract.CategoryRes
+	byID *fashion_dto.CategoryRes
 }
 
-func (f fakeFashionContractWithEntity) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContractWithEntity) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryRes, error) {
 	if f.byID != nil && f.byID.ID == id {
 		return f.byID, nil
 	}
 	return nil, nil
 }
 
-func (f fakeFashionContractWithEntity) GetCategoryByName(ctx context.Context, name string) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContractWithEntity) GetCategoryByName(ctx context.Context, name string) (*fashion_dto.CategoryRes, error) {
 	if f.byID != nil && f.byID.Name == name {
 		return f.byID, nil
 	}
 	return nil, nil
 }
 
-func (f fakeFashionContractWithEntity) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContractWithEntity) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_dto.CategoryRes, error) {
 	if f.byID != nil && f.byID.Slug == slug {
 		return f.byID, nil
 	}
 	return nil, nil
 }
 
-func (f fakeFashionContractWithEntity) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_contract.UpdateCategoryInput) (*fashion_contract.CategoryRes, error) {
+func (f fakeFashionContractWithEntity) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_dto.UpdateCategoryInput) (*fashion_dto.CategoryRes, error) {
 	if f.byID == nil || f.byID.ID != id {
 		return f.fakeFashionContract.UpdateCategory(ctx, id, input)
 	}

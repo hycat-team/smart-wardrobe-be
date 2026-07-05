@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -111,11 +111,11 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 	if err != nil {
 		return nil, err
 	}
-	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 
 	resList := make([]*dto.WardrobeItemRes, quantity)
 	for i := range quantity {
-		var fi *fashion_contract.FashionItemRes
+		var fi *fashion_dto.FashionItemRes
 		if clonedItems[i].FashionItemID != nil {
 			fi = fashionMap[*clonedItems[i].FashionItemID]
 		}
@@ -164,7 +164,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		return nil, wardrobeerrors.ErrCategoryNotFound()
 	}
 
-	var existingFI *fashion_contract.FashionItemRes
+	var existingFI *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
 		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -184,7 +184,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		imageURL = existingFI.ImageUrl
 		imagePublicID = existingFI.ImagePublicID
 	}
-	fashionJob := fashion_contract.FashionAnalyzeJobDTO{
+	fashionJob := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
 		ItemType:          "wardrobe",
@@ -197,7 +197,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	}
 	_ = uc.eventPublisher.Publish(ctx, "fashion.event.init", fashionJob)
 
-	var fi *fashion_contract.FashionItemRes
+	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
 		fi = existingFI
 	}
@@ -218,7 +218,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden()
 	}
-	var existingFI *fashion_contract.FashionItemRes
+	var existingFI *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
 		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -241,7 +241,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		imageURL = existingFI.ImageUrl
 		imagePublicID = existingFI.ImagePublicID
 	}
-	job := fashion_contract.FashionAnalyzeJobDTO{
+	job := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
 		ItemType:          "wardrobe",
@@ -258,7 +258,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, err
 	}
 
-	var fi *fashion_contract.FashionItemRes
+	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
 		fi = existingFI
 	}
@@ -401,7 +401,7 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i, item := range newItems {
-		job := fashion_contract.FashionAnalyzeJobDTO{
+		job := fashion_dto.FashionAnalyzeJobDTO{
 			FashionItemID:     nil,
 			ItemID:            item.ID,
 			ItemType:          "wardrobe",

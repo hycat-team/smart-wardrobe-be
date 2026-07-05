@@ -1,14 +1,14 @@
 package mapper
 
 import (
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
 
-func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) *dto.OutfitRes {
+func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) *dto.OutfitRes {
 	if outfit == nil {
 		return nil
 	}

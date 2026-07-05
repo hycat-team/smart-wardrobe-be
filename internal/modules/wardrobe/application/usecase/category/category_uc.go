@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
@@ -88,7 +89,7 @@ func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateC
 		normalizedSortOrder = *input.SortOrder
 	}
 
-	category, err := uc.fashionContract.CreateCategory(ctx, fashion_contract.CreateCategoryInput{
+	category, err := uc.fashionContract.CreateCategory(ctx, fashion_dto.CreateCategoryInput{
 		Name:      normalizedName,
 		Slug:      normalizedSlug,
 		SortOrder: normalizedSortOrder,
@@ -131,7 +132,7 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 		return nil, wardrobeerrors.ErrCategorySlugAlreadyExists()
 	}
 
-	updateInput := fashion_contract.UpdateCategoryInput{
+	updateInput := fashion_dto.UpdateCategoryInput{
 		Name: &normalizedName,
 		Slug: &normalizedSlug,
 	}

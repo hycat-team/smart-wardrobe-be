@@ -11,7 +11,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
@@ -78,7 +77,7 @@ func NewFashionWorkerUseCase(
 }
 
 // ProcessBackgroundBatchUploadJob analyzes a processing wardrobe item and finalizes its AI metadata.
-func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error {
+func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	run.AddTotal(1)
 
 	if job.SkipVision {
@@ -134,7 +133,7 @@ func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Cont
 	return nil
 }
 
-func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error {
+func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	var fashionItem *entities.FashionItem
 	if job.ItemType == "brand" {
 		brandItem, err := uc.brandRepo.GetByID(ctx, job.ItemID)
@@ -316,7 +315,7 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 	return nil
 }
 
-func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, err error, run *workerlog.Run) {
+func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.FashionAnalyzeJobDTO, err error, run *workerlog.Run) {
 	topic := "fashion.event.analyze"
 
 	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
@@ -371,7 +370,7 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job fashio
 	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 }
 
-func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) (any, error) {
+func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) (any, error) {
 	if job.ItemType == "brand" {
 		item, err := uc.brandRepo.GetByID(ctx, job.ItemID)
 		if err != nil {
@@ -403,7 +402,7 @@ func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job fas
 
 func (uc *FashionWorkerUseCase) analyzeWardrobeImage(
 	ctx context.Context,
-	job fashion_contract.FashionAnalyzeJobDTO,
+	job dto.FashionAnalyzeJobDTO,
 	snapshot *VisionCategorySnapshot,
 ) (*dto.FashionMetadataResult, error) {
 	responseText, err := uc.aiService.AnalyzeImage(ctx, job.ImageUrl, snapshot.Prompt)
@@ -426,7 +425,7 @@ func (uc *FashionWorkerUseCase) analyzeWardrobeImage(
 	return &result.FashionMetadataResult, nil
 }
 
-func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, reviewReason string) {
+func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.FashionAnalyzeJobDTO, reviewReason string) {
 	if reviewReason == "" {
 		reviewReason = "uncertain_category"
 	}
@@ -471,7 +470,7 @@ func (uc *FashionWorkerUseCase) buildCompletedItemUpdate(
 	return updateMap, nil
 }
 
-func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, updateMap map[string]any) error {
+func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job dto.FashionAnalyzeJobDTO, updateMap map[string]any) error {
 	if job.ItemType == "brand" && job.FashionItemID != nil {
 		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
 		if err != nil {
@@ -518,7 +517,7 @@ func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item
 			processingVersion = fi.ProcessingVersion
 		}
 	}
-	job := fashion_contract.FashionAnalyzeJobDTO{
+	job := dto.FashionAnalyzeJobDTO{
 		FashionItemID:     fashionItemID,
 		ItemID:            itemID,
 		ItemType:          "wardrobe",

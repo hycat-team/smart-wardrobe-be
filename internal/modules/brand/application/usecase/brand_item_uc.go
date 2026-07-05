@@ -20,6 +20,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -79,13 +80,13 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_contract.FashionItemRes, error) {
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_dto.FashionItemRes, error) {
 	user, err := uc.userContract.GetByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if user == nil {
-		return []*dto.BrandItemStylingDTO{}, []*fashion_contract.FashionItemRes{}, nil
+		return []*dto.BrandItemStylingDTO{}, []*fashion_dto.FashionItemRes{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
@@ -148,21 +149,21 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionContractItems, _ := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
-		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 	}
 
 	for _, item := range eligibleItems {
-		var fi *fashion_contract.FashionItemRes
+		var fi *fashion_dto.FashionItemRes
 		if item.FashionItemID != nil {
 			fi = fashionItemMap[*item.FashionItemID]
 		}
 		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item, fi))
 	}
 
-	fashionItems := make([]*fashion_contract.FashionItemRes, len(eligibleItems))
+	fashionItems := make([]*fashion_dto.FashionItemRes, len(eligibleItems))
 	for i := range eligibleItems {
 		if eligibleItems[i].FashionItemID != nil {
 			if fi := fashionItemMap[*eligibleItems[i].FashionItemID]; fi != nil {
@@ -174,7 +175,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 	return eligibleDTOS, fashionItems, nil
 }
 
-func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_contract.FashionItemRes, error) {
+func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_dto.FashionItemRes, error) {
 	user, err := uc.userContract.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, nil, err
@@ -264,7 +265,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	}
 
 	// Push async analysis event
-	job := fashion_contract.FashionAnalyzeJobDTO{
+	job := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     nil,
 		ItemID:            brandItemID,
 		ItemType:          "brand",

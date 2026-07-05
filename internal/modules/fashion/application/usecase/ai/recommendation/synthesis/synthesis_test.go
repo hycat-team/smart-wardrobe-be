@@ -10,7 +10,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
@@ -27,7 +26,7 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 	fi.Description = &desc
 	catName := "Ao"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -51,7 +50,7 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.T) {
 	longDescription := strings.Repeat("á", 300)
 	candidates := make([]types.CandidateForPrompt, 4)
-	fashionItemMap := make(map[uuid.UUID]*fashion_contract.FashionItemRes)
+	fashionItemMap := make(map[uuid.UUID]*dto.FashionItemRes)
 	for i := range candidates {
 		item, fi := newSynthItem()
 		fi.Description = &longDescription
@@ -114,7 +113,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 	catName := "Ao"
 	fi.CategoryName = &catName
 	item.ID = itemID
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -198,7 +197,7 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	accessoryFi.CategoryName = strPtr("phu-kien")
 	accessoryItem.ID = accessoryID
 
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*topItem.FashionItemID:       topFi,
 		*fullbodyItem.FashionItemID:  fullbodyFi,
 		*accessoryItem.FashionItemID: accessoryFi,
@@ -249,14 +248,14 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	}
 }
 
-func newSynthItem() (*wardrobe_entities.WardrobeItem, *fashion_contract.FashionItemRes) {
+func newSynthItem() (*wardrobe_entities.WardrobeItem, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	catID := uuid.New()
 	item := &wardrobe_entities.WardrobeItem{
 		AuditableEntity: wardrobe_entities.AuditableEntity{BaseEntity: wardrobe_entities.BaseEntity{ID: uuid.New()}},
 		FashionItemID:   &fashionID,
 	}
-	res := &fashion_contract.FashionItemRes{
+	res := &dto.FashionItemRes{
 		ID:         fashionID,
 		CategoryID: &catID,
 	}

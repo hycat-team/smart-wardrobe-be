@@ -3,6 +3,7 @@ package contract
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -24,7 +25,7 @@ func NewFashionContract(fashionItemRepo repositories.IFashionItemRepository, cat
 	}
 }
 
-func mapToFashionItemRes(fi *entities.FashionItem) *FashionItemRes {
+func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
@@ -32,7 +33,7 @@ func mapToFashionItemRes(fi *entities.FashionItem) *FashionItemRes {
 	if fi.Category != nil {
 		categoryName = &fi.Category.Name
 	}
-	return &FashionItemRes{
+	return &dto.FashionItemRes{
 		ID:              fi.ID,
 		CategoryID:      fi.CategoryID,
 		CategoryName:    categoryName,
@@ -54,7 +55,7 @@ func mapToFashionItemRes(fi *entities.FashionItem) *FashionItemRes {
 	}
 }
 
-func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*FashionItemRes, error) {
+func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemRes, error) {
 	item, err := c.fashionItemRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -62,23 +63,23 @@ func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*Fa
 	return mapToFashionItemRes(item), nil
 }
 
-func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*FashionItemRes, error) {
+func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error) {
 	items, err := c.fashionItemRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*FashionItemRes, len(items))
+	res := make([]*dto.FashionItemRes, len(items))
 	for i, item := range items {
 		res[i] = mapToFashionItemRes(item)
 	}
 	return res, nil
 }
 
-func mapToCategoryRes(cat *entities.Category) *CategoryRes {
+func mapToCategoryRes(cat *entities.Category) *dto.CategoryRes {
 	if cat == nil {
 		return nil
 	}
-	return &CategoryRes{
+	return &dto.CategoryRes{
 		ID:        cat.ID,
 		Name:      cat.Name,
 		Slug:      cat.Slug,
@@ -86,7 +87,7 @@ func mapToCategoryRes(cat *entities.Category) *CategoryRes {
 	}
 }
 
-func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*CategoryRes, error) {
+func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
 	cat, err := c.categoryRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -94,31 +95,31 @@ func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*Categ
 	return mapToCategoryRes(cat), nil
 }
 
-func (c *FashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*CategoryRes, error) {
+func (c *FashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error) {
 	items, err := c.categoryRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*CategoryRes, len(items))
+	res := make([]*dto.CategoryRes, len(items))
 	for i, item := range items {
 		res[i] = mapToCategoryRes(item)
 	}
 	return res, nil
 }
 
-func (c *FashionContract) GetAllCategories(ctx context.Context) ([]*CategoryRes, error) {
+func (c *FashionContract) GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error) {
 	items, err := c.categoryRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*CategoryRes, len(items))
+	res := make([]*dto.CategoryRes, len(items))
 	for i, item := range items {
 		res[i] = mapToCategoryRes(item)
 	}
 	return res, nil
 }
 
-func (c *FashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*CategoryRes, error) {
+func (c *FashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryRes, error) {
 	cat, err := c.categoryRepo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -126,7 +127,7 @@ func (c *FashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*
 	return mapToCategoryRes(cat), nil
 }
 
-func (c *FashionContract) GetCategoryByName(ctx context.Context, name string) (*CategoryRes, error) {
+func (c *FashionContract) GetCategoryByName(ctx context.Context, name string) (*dto.CategoryRes, error) {
 	cat, err := c.categoryRepo.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
@@ -134,7 +135,7 @@ func (c *FashionContract) GetCategoryByName(ctx context.Context, name string) (*
 	return mapToCategoryRes(cat), nil
 }
 
-func (c *FashionContract) CreateCategory(ctx context.Context, input CreateCategoryInput) (*CategoryRes, error) {
+func (c *FashionContract) CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error) {
 	cat := &entities.Category{
 		Name:      input.Name,
 		Slug:      input.Slug,
@@ -146,7 +147,7 @@ func (c *FashionContract) CreateCategory(ctx context.Context, input CreateCatego
 	return mapToCategoryRes(cat), nil
 }
 
-func (c *FashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input UpdateCategoryInput) (*CategoryRes, error) {
+func (c *FashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error) {
 	cat, err := c.categoryRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

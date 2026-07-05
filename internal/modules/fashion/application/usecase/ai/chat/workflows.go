@@ -9,7 +9,6 @@ import (
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/constants/messagesender"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
@@ -263,7 +262,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 		}
 	}
 
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
 	for _, item := range activeWardrobeItems {
 		if item.FashionItemID != nil {
 			if _, ok := fashionItemMap[*item.FashionItemID]; !ok {

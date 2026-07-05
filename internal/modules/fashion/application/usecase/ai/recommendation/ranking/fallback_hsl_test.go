@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
@@ -15,7 +14,7 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 	skirt, f2 := newHSLTestItem("chan-vay")
 	shoes, f3 := newHSLTestItem("giay")
 
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*top.FashionItemID:   f1,
 		*skirt.FashionItemID: f2,
 		*shoes.FashionItemID: f3,
@@ -39,7 +38,7 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 	dress, f1 := newHSLTestItem("dam")
 	shoes, f2 := newHSLTestItem("giay")
 
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*dress.FashionItemID: f1,
 		*shoes.FashionItemID: f2,
 	}
@@ -54,7 +53,7 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 	}
 }
 
-func newHSLTestItem(slug string) (*wardrobe_entities.WardrobeItem, *fashion_contract.FashionItemRes) {
+func newHSLTestItem(slug string) (*wardrobe_entities.WardrobeItem, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	catID := uuid.New()
 	name := slug
@@ -62,7 +61,7 @@ func newHSLTestItem(slug string) (*wardrobe_entities.WardrobeItem, *fashion_cont
 		AuditableEntity: wardrobe_entities.AuditableEntity{BaseEntity: wardrobe_entities.BaseEntity{ID: uuid.New()}},
 		FashionItemID:   &fashionID,
 	}
-	res := &fashion_contract.FashionItemRes{
+	res := &dto.FashionItemRes{
 		ID:           fashionID,
 		CategoryID:   &catID,
 		CategoryName: &name,

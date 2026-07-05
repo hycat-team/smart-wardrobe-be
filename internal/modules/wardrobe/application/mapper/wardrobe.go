@@ -1,12 +1,12 @@
 package mapper
 
 import (
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
-func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRe
 	}
 }
 
-func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_contract.FashionItemRes) *dto.WardrobeItemRes {
+func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemRes) *dto.WardrobeItemRes {
 	if item == nil {
 		return nil
 	}
@@ -56,7 +56,7 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_contract.Fash
 	return res
 }
 
-func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_contract.FashionItemRes) *dto.SearchWardrobeItemRes {
+func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemRes) *dto.SearchWardrobeItemRes {
 	if item == nil {
 		return nil
 	}

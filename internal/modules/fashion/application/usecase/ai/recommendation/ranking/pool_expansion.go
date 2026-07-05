@@ -3,9 +3,9 @@ package ranking
 import (
 	"strings"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/pkg/utils/stringutils"
@@ -57,7 +57,7 @@ func EnsureMinimumCandidatePool(
 	activeItems []*wardrobe_entities.WardrobeItem,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	minimumPool int,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) ([]types.CandidateForRanking, types.FallbackCandidateCounts) {
 	rankingCandidates := make([]types.CandidateForRanking, 0, max(len(candidates), minimumPool))
 	rankingCandidates = append(rankingCandidates, candidates...)
@@ -89,7 +89,7 @@ func appendFallbackCandidates(
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
 	minimumPool int,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) int {
 	added := 0
 	for _, item := range activeItems {
@@ -121,7 +121,7 @@ func FallbackCandidateEligible(
 	item *wardrobe_entities.WardrobeItem,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) bool {
 	if !MatchesFallbackHardFilters(item, retrievalQuery.HardFilters, fashionItemMap) {
 		return false
@@ -136,7 +136,7 @@ func FallbackCandidateEligible(
 }
 
 // MatchesFallbackHardFilters xác định xem món đồ có vượt qua các bộ lọc cứng về mùa (seasonality) và danh mục (category slugs) hay không.
-func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters repositories.RecommendationHardFilters, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters repositories.RecommendationHardFilters, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
@@ -196,7 +196,7 @@ func MatchesFallbackSeasonalityFilter(seasonality string, requestedSeasons []str
 }
 
 // MatchesFallbackExcludedTerms trả về true nếu mô tả hoặc thuộc tính của món đồ chứa các từ khóa nằm trong danh sách loại trừ nghiêm ngặt.
-func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excludedTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excludedTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if len(excludedTerms) == 0 {
 		return false
 	}
@@ -211,7 +211,7 @@ func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excluded
 }
 
 // MatchesFallbackLexicalTerms trả về true nếu mô tả hoặc thuộc tính của món đồ có chứa ít nhất một trong các từ khóa tìm kiếm.
-func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if len(lexicalTerms) == 0 {
 		return true
 	}
@@ -226,7 +226,7 @@ func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTe
 }
 
 // FallbackSearchDocument nối tất cả các trường thông tin mô tả và thuộc tính của món đồ thành một chuỗi văn bản duy nhất để phục vụ cho việc quét từ khóa.
-func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
+func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if item == nil {
 		return ""
 	}

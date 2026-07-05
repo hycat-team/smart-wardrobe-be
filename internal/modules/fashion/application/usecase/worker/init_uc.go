@@ -7,7 +7,7 @@ import (
 	"smart-wardrobe-be/config"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/contract"
@@ -46,7 +46,7 @@ func NewFashionInitUseCase(
 	}
 }
 
-func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job fashion_contract.FashionAnalyzeJobDTO, run *workerlog.Run) error {
+func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	run.AddTotal(1)
 
 	if job.FashionItemID != nil {

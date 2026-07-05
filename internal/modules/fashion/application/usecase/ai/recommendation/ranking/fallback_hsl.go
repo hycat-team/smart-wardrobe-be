@@ -7,7 +7,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -16,7 +15,7 @@ import (
 )
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
@@ -28,7 +27,7 @@ func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUI
 }
 
 // colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
-func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if isNeutral(item1, fashionItemMap) || isNeutral(item2, fashionItemMap) {
 		return true
 	}
@@ -77,7 +76,7 @@ func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap ma
 // Đầu ra mẫu:
 //
 //	*dto.RecommendedOutfitRes{Title: "Bộ phối màu hài hòa", IsFallback: true, ...}
-func itemCategorySlug(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) string {
+func itemCategorySlug(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if item.FashionItemID != nil {
 		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
 			return strings.ToLower(*fi.CategoryName)
@@ -89,7 +88,7 @@ func itemCategorySlug(item *wardrobe_entities.WardrobeItem, fashionItemMap map[u
 func RunLocalHSLMatching(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedOutfitRes {
 	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobe_entities.WardrobeItem
 
@@ -225,7 +224,7 @@ func buildItemGroup(
 	role string,
 	primary *wardrobe_entities.WardrobeItem,
 	all []*wardrobe_entities.WardrobeItem,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, item := range all {
@@ -235,14 +234,14 @@ func buildItemGroup(
 		if len(alternatives) >= 2 {
 			break
 		}
-		var fi *fashion_contract.FashionItemRes
+		var fi *dto.FashionItemRes
 		if item.FashionItemID != nil {
 			fi = fashionItemMap[*item.FashionItemID]
 		}
 		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(item, fi))
 	}
 
-	var primaryFI *fashion_contract.FashionItemRes
+	var primaryFI *dto.FashionItemRes
 	if primary.FashionItemID != nil {
 		primaryFI = fashionItemMap[*primary.FashionItemID]
 	}
@@ -261,7 +260,7 @@ func roleForItem(item *wardrobe_entities.WardrobeItem, fallback string) string {
 	return fallback
 }
 
-func fashionForItemFromMap(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) *fashion_contract.FashionItemRes {
+func fashionForItemFromMap(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
 	if item == nil || item.FashionItemID == nil {
 		return nil
 	}

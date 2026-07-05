@@ -5,7 +5,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
@@ -72,7 +71,7 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackHardFilteredItems(t *testing.T
 	item2, f2 := newTestItemWithFashion()
 	f2.Seasonality = &winter
 	activeItems := []*wardrobe_entities.WardrobeItem{item1, item2}
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 	}
@@ -117,7 +116,7 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackExcludedTerms(t *testing.T) {
 	item2, f2 := newTestItemWithFashion()
 	f2.Color = &white
 	activeItems := []*wardrobe_entities.WardrobeItem{item1, item2}
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 	}
@@ -145,7 +144,7 @@ func TestEnsureMinimumCandidatePoolUsesRelaxedFallbackWhenStrictLexicalDoesNotMa
 	item1, f1 := newTestItemWithFashion()
 	f1.Color = &white
 	activeItems := []*wardrobe_entities.WardrobeItem{item1}
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*item1.FashionItemID: f1,
 	}
 
@@ -218,7 +217,7 @@ func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *tes
 	item, fi := newTestItemWithFashion()
 	catName := "ao-khoac"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -234,7 +233,7 @@ func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	catName := "ao-khoac"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"winter"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -250,7 +249,7 @@ func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	catName := "ao-khoac"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"summer"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -266,7 +265,7 @@ func TestScoreCandidateItemDoesNotTreatRainyAsCold(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	catName := "ao-khoac"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -282,7 +281,7 @@ func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	desc := "waterproof rain jacket"
 	fi.Description = &desc
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -295,7 +294,7 @@ func TestScoreCandidateItemAppliesExcludedWeatherPenalty(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	catName := "ao-khoac"
 	fi.CategoryName = &catName
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{ExcludedWeather: []string{"cold"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -311,7 +310,7 @@ func TestScoreCandidateItemMatchesOccasionTaxonomy(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	style := "office"
 	fi.Style = &style
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{Occasion: []string{"work"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -360,7 +359,7 @@ func TestDiversifyRankedCandidates(t *testing.T) {
 	cn5 := "quan"
 	f5.CategoryName = &cn5
 
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 		*item3.FashionItemID: f3,
@@ -411,12 +410,12 @@ func newTestItem() *wardrobe_entities.WardrobeItem {
 	}
 }
 
-func newTestItemWithFashion() (*wardrobe_entities.WardrobeItem, *fashion_contract.FashionItemRes) {
+func newTestItemWithFashion() (*wardrobe_entities.WardrobeItem, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	item := &wardrobe_entities.WardrobeItem{
 		AuditableEntity: wardrobe_entities.AuditableEntity{BaseEntity: wardrobe_entities.BaseEntity{ID: uuid.New()}},
 		FashionItemID:   &fashionID,
 	}
-	res := &fashion_contract.FashionItemRes{ID: fashionID}
+	res := &dto.FashionItemRes{ID: fashionID}
 	return item, res
 }

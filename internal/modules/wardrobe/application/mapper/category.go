@@ -1,11 +1,11 @@
 package mapper
 
 import (
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 )
 
-func MapToCategoryRes(category *fashion_contract.CategoryRes) *dto.CategoryRes {
+func MapToCategoryRes(category *fashion_dto.CategoryRes) *dto.CategoryRes {
 	if category == nil {
 		return nil
 	}
@@ -18,7 +18,7 @@ func MapToCategoryRes(category *fashion_contract.CategoryRes) *dto.CategoryRes {
 	}
 }
 
-func MapToCategoryResList(categories []*fashion_contract.CategoryRes) []*dto.CategoryRes {
+func MapToCategoryResList(categories []*fashion_dto.CategoryRes) []*dto.CategoryRes {
 	resList := make([]*dto.CategoryRes, len(categories))
 	for i, category := range categories {
 		resList[i] = MapToCategoryRes(category)

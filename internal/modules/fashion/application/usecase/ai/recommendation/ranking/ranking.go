@@ -7,7 +7,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 
 	"github.com/google/uuid"
 )
@@ -38,7 +37,7 @@ func RankCandidates(
 	recentlyWornPenaltyDays int,
 	longUnwornBonusDays int,
 	minimumPool int,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) ([]types.CandidateForPrompt, types.RerankStats) {
 	scored := make([]types.RankedCandidate, len(candidates))
 	for i, candidate := range candidates {
@@ -187,7 +186,7 @@ func RankedCandidateScoreStats(candidates []types.RankedCandidate) types.RerankS
 // Đầu ra mẫu:
 //
 //	[]types.RankedCandidate (chứa 3 cái áo, 2 cái quần - tối đa hóa sự đa dạng)
-func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) []types.RankedCandidate {
+func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) []types.RankedCandidate {
 	if limit <= 0 || len(scored) <= limit {
 		return scored
 	}

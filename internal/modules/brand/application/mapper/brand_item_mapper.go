@@ -3,12 +3,12 @@ package mapper
 import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 
 	"github.com/google/uuid"
 )
 
-func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
@@ -34,7 +34,7 @@ func MapToFashionItemRes(fi *fashion_contract.FashionItemRes) *dto.FashionItemRe
 	}
 }
 
-func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_contract.FashionItemRes) *dto.BrandItemRes {
+func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes) *dto.BrandItemRes {
 	if item == nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func MapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.Dig
 	}
 }
 
-func MapToBrandItemStylingDTO(item *entities.BrandItem, fi *fashion_contract.FashionItemRes) *dto.BrandItemStylingDTO {
+func MapToBrandItemStylingDTO(item *entities.BrandItem, fi *fashion_dto.FashionItemRes) *dto.BrandItemStylingDTO {
 	if item == nil {
 		return nil
 	}

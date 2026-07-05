@@ -13,7 +13,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 )
 
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.
@@ -41,7 +40,7 @@ func GenerateOutfitRecommendation(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 	cfg *config.Config,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) (*dto.RecommendedOutfitRes, error) {
 	userPrompt, err := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{CandidateLimit: cfg.AI.RecommendationPromptCandidateLimit, DescriptionMaxCharacters: cfg.AI.RecommendationDescriptionMaxCharacters, TagsLimit: cfg.AI.RecommendationTagsLimit, PromptMaxCharacters: cfg.AI.RecommendationPromptMaxCharacters}, fashionItemMap)
 	if err != nil {

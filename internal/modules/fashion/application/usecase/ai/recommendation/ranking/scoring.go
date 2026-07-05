@@ -10,7 +10,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
@@ -60,7 +59,7 @@ func ScoreCandidateItem(
 	retrievalQuery types.RecommendationRetrievalQuery,
 	recentlyWornDays,
 	longUnwornDays int,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) (float64, []string) {
 	score := 1.0
 	var reasonTags []string
@@ -260,7 +259,7 @@ func recommendationWeatherState(values []string) string {
 }
 
 // isOuterwearItem kiểm tra xem danh mục của món đồ có thuộc nhóm áo khoác/đồ mặc ngoài hay không.
-func isOuterwearItem(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func isOuterwearItem(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item == nil || item.FashionItemID == nil {
 		return false
 	}
@@ -278,7 +277,7 @@ func isOuterwearItem(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uu
 }
 
 // CandidateMatchesAnyTerm kiểm tra xem tài liệu tìm kiếm của món đồ có chứa bất kỳ từ khóa nào trong danh sách hay không.
-func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
@@ -293,12 +292,12 @@ func CandidateMatchesAnyTerm(item *wardrobe_entities.WardrobeItem, terms []strin
 }
 
 // CandidateMatchesRainySignal kiểm tra xem món đồ có chứa các thuộc tính phù hợp để đi mưa hay không.
-func CandidateMatchesRainySignal(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func CandidateMatchesRainySignal(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	return CandidateMatchesAnyTerm(item, retrieval.RainyWeatherTerms(), fashionItemMap)
 }
 
 // excludedWeatherPenalty tính điểm phạt (penalty) và trả về nhãn lý do nếu món đồ không phù hợp với kiểu thời tiết người dùng muốn tránh.
-func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeather []string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) (float64, string) {
+func excludedWeatherPenalty(item *wardrobe_entities.WardrobeItem, excludedWeather []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) (float64, string) {
 	if item == nil {
 		return 0, ""
 	}

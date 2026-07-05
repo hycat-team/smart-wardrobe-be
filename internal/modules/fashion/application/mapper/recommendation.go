@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -67,7 +66,7 @@ func parseAliasIndex(alias string) (int, bool) {
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) []*dto.RecommendedItemGroup {
 	candidateMap := map[uuid.UUID]*wardrobe_entities.WardrobeItem{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
@@ -126,7 +125,7 @@ func resolvePrimaryCandidate(
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *wardrobe_entities.WardrobeItem {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
@@ -161,7 +160,7 @@ func resolveAlternativeCandidates(
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,
-	fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) []*wardrobeDto.WardrobeItemRes {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
@@ -229,7 +228,7 @@ func resolveAlternativeCandidates(
 	return alternatives
 }
 
-func matchesRole(item *wardrobe_entities.WardrobeItem, role string, fashionItemMap map[uuid.UUID]*fashion_contract.FashionItemRes) bool {
+func matchesRole(item *wardrobe_entities.WardrobeItem, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item.FashionItemID != nil {
 		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
 			return CategorySlugToWearingRole(*fi.CategoryName) == role

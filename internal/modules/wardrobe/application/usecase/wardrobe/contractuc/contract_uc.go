@@ -4,6 +4,7 @@ import (
 	"context"
 
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	subcontract "smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
@@ -62,7 +63,7 @@ func (uc *WardrobeContractUseCase) CopyItemToUser(ctx context.Context, sourceIte
 		return nil, err
 	}
 
-	var fi *fashion_contract.FashionItemRes
+	var fi *fashion_dto.FashionItemRes
 	if cloned.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *cloned.FashionItemID)
 	}
@@ -153,17 +154,17 @@ func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 		}
 	}
 
 	result := make([]*dto.WardrobeItemRes, 0, len(items))
 	for _, item := range items {
-		var fi *fashion_contract.FashionItemRes
+		var fi *fashion_dto.FashionItemRes
 		if item.FashionItemID != nil {
 			fi = fashionMap[*item.FashionItemID]
 		}

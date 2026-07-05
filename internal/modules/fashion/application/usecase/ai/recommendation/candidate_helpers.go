@@ -12,7 +12,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
@@ -107,7 +106,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	userID uuid.UUID,
 	activeItems []*wardrobe_entities.WardrobeItem,
 	input dto.RecommendOutfitReq,
-) ([]types.CandidateForPrompt, map[uuid.UUID]*fashion_contract.FashionItemRes, error) {
+) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemRes, error) {
 	intent := uc.parseRecommendationIntent(input)
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
@@ -200,11 +199,11 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionItemMap := map[uuid.UUID]*fashion_contract.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 		if err == nil {
-			fashionItemMap = sliceutils.IndexBy(fashionItems, func(f *fashion_contract.FashionItemRes) uuid.UUID { return f.ID })
+			fashionItemMap = sliceutils.IndexBy(fashionItems, func(f *dto.FashionItemRes) uuid.UUID { return f.ID })
 		}
 	}
 
