@@ -21,7 +21,7 @@ func NewBrandCustomerRepository(db *gorm.DB) repositories.IBrandCustomerReposito
 	return &BrandCustomerRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandCustomer, uuid.UUID](
 			db,
-			[]string{"User", "Brand", "LoyaltyAccount", "LoyaltyAccount.CurrentTier"},
+			[]string{"Brand", "LoyaltyAccount", "LoyaltyAccount.CurrentTier"},
 		),
 	}
 }

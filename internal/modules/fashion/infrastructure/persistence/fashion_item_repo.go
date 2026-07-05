@@ -26,7 +26,7 @@ func NewFashionItemRepository(db *gorm.DB) repositories.IFashionItemRepository {
 
 func (r *FashionItemRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
 	var items []*entities.FashionItem
-	err := r.GetDB(ctx).Where("id IN ?", ids).Find(&items).Error
+	err := r.GetQueryWithPreload(ctx).Where("id IN ?", ids).Find(&items).Error
 	if err != nil {
 		return nil, err
 	}

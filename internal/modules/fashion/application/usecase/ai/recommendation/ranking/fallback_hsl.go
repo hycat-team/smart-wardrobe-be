@@ -77,7 +77,26 @@ func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemRes, fashionItemMap map[u
 func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if item.FashionItem != nil {
 		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
-			return strings.ToLower(*fi.CategoryName)
+			name := strings.ToLower(strings.TrimSpace(*fi.CategoryName))
+			if strings.Contains(name, "áo khoác") || strings.Contains(name, "ao khoac") || name == "ao-khoac" {
+				return "ao-khoac"
+			}
+			if strings.Contains(name, "chân váy") || strings.Contains(name, "chan vay") || name == "chan-vay" {
+				return "chan-vay"
+			}
+			if strings.Contains(name, "áo") || strings.Contains(name, "ao") {
+				return "ao"
+			}
+			if strings.Contains(name, "quần") || strings.Contains(name, "quan") {
+				return "quan"
+			}
+			if strings.Contains(name, "giày") || strings.Contains(name, "giay") {
+				return "giay"
+			}
+			if strings.Contains(name, "đầm") || strings.Contains(name, "dam") {
+				return "dam"
+			}
+			return name
 		}
 	}
 	return ""

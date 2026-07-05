@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -60,6 +61,11 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	}
 
 	hasVector := len(semanticVector) > 0
+	var vec shared_entities.Vector
+	if hasVector {
+		vec = shared_entities.Vector(semanticVector)
+	}
+
 	includeQuerySQL, includeQueryArgs := buildRecommendationTSQuerySubquery(lexicalTerms)
 	hasKeywords := includeQuerySQL != ""
 
@@ -68,9 +74,9 @@ func (r *FashionItemRepository) GetHybridCandidates(
 		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSubquerySQL() + ", (" + includeQuerySQL + "))"
 
 		vectorQuery := db.Session(&gorm.Session{}).
-			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, 0.0 AS lexical_score", semanticVector).
+			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, 0.0 AS lexical_score", vec).
 			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
-			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", semanticVector)).
+			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", vec)).
 			Limit(limit)
 
 		lexicalQuery := db.Session(&gorm.Session{}).
@@ -94,9 +100,9 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	} else if hasVector {
 		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
 		err := db.
-			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", semanticVector).
+			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec).
 			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
-			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", semanticVector)).
+			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", vec)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&records).Error

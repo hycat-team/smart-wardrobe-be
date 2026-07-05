@@ -21,7 +21,9 @@ type AICostRepository struct {
 }
 
 func NewAICostRepository(db *gorm.DB) repositories.IAICostRepository {
-	return &AICostRepository{GenericRepository: shared_repos.NewGenericRepository[aiexecutor_entities.AICostPolicy, uuid.UUID](db, nil)}
+	relations := []string{"Operations"}
+	return &AICostRepository{GenericRepository: shared_repos.NewGenericRepository[aiexecutor_entities.AICostPolicy, uuid.UUID](
+		db, relations)}
 }
 
 func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
@@ -39,7 +41,7 @@ func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID
 	}
 
 	var policy aiexecutor_entities.AICostPolicy
-	if err := r.GetDB(ctx).First(&policy, "id = ?", grant.PolicyID).Error; err != nil {
+	if err := r.GetQueryWithPreload(ctx).First(&policy, "id = ?", grant.PolicyID).Error; err != nil {
 		return nil, nil, nil, errors.New("AI policy lookup not yet migrated")
 	}
 	for _, op := range policy.Operations {
@@ -100,7 +102,7 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entiti
 		if !admitted {
 			return nil
 		}
-		event.LedgerID = ledger.ID
+		event.LedgerID = &ledger.ID
 		if err = tx.Create(event).Error; err != nil {
 			return err
 		}
@@ -122,6 +124,9 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var e aiexecutor_entities.AIUsageEvent
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&e, "request_id=?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
 			return err
 		}
 		if e.Status == aiusageeventstatus.Confirmed || e.Status == aiusageeventstatus.Released || e.Status == aiusageeventstatus.ExpiredUnverified {
@@ -179,6 +184,9 @@ func (r *AICostRepository) finishWithoutCost(ctx context.Context, id uuid.UUID, 
 	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var e aiexecutor_entities.AIUsageEvent
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&e, "request_id=?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
 			return err
 		}
 		if e.Status == aiusageeventstatus.Confirmed || e.Status == aiusageeventstatus.Released || e.Status == aiusageeventstatus.ExpiredUnverified {

@@ -44,8 +44,13 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 
 	if freeOperations[plan.Operation] {
 		event := &aiexecutor_entities.AIUsageEvent{
-			RequestID:        plan.RequestID,
-			UserID:           plan.UserID,
+			RequestID: plan.RequestID,
+			UserID: func() *uuid.UUID {
+				if plan.UserID == uuid.Nil {
+					return nil
+				}
+				return &plan.UserID
+			}(),
 			Operation:        plan.Operation,
 			LogicalRoute:     aiexecutor_dto.AIRouteFree,
 			Provider:         &plan.Provider,
@@ -89,9 +94,14 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
 
 	event := &aiexecutor_entities.AIUsageEvent{
-		RequestID:                plan.RequestID,
-		LedgerID:                 uuid.Nil,
-		UserID:                   plan.UserID,
+		RequestID: plan.RequestID,
+		LedgerID:  nil,
+		UserID: func() *uuid.UUID {
+			if plan.UserID == uuid.Nil {
+				return nil
+			}
+			return &plan.UserID
+		}(),
 		Operation:                plan.Operation,
 		LogicalRoute:             route,
 		PricingConfigID:          &pricing.ID,
@@ -135,8 +145,13 @@ func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operat
 	}
 	requestID := uuid.New()
 	event := &aiexecutor_entities.AIUsageEvent{
-		RequestID:        requestID,
-		UserID:           userID,
+		RequestID: requestID,
+		UserID: func() *uuid.UUID {
+			if userID == uuid.Nil {
+				return nil
+			}
+			return &userID
+		}(),
 		Operation:        operation,
 		LogicalRoute:     aiexecutor_dto.AIRouteFree,
 		PromptTokens:     promptTokens,

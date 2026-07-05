@@ -29,8 +29,8 @@ type AIUsagePeriodLedger struct {
 type AIUsageEvent struct {
 	AuditableEntity
 	RequestID                uuid.UUID                             `gorm:"type:uuid;not null;uniqueIndex"`
-	LedgerID                 uuid.UUID                             `gorm:"type:uuid;not null"`
-	UserID                   uuid.UUID                             `gorm:"type:uuid;not null"`
+	LedgerID                 *uuid.UUID                            `gorm:"type:uuid"`
+	UserID                   *uuid.UUID                            `gorm:"type:uuid"`
 	PricingConfigID          *uuid.UUID                            `gorm:"type:uuid"`
 	Operation                string                                `gorm:"type:varchar(30);not null"`
 	LogicalRoute             string                                `gorm:"type:varchar(50);not null"`
