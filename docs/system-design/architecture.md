@@ -122,11 +122,10 @@ internal/modules/<name>
 |   |-- dto                     # Request/response structs
 |   |-- errors                  # Domain-specific error definitions
 |   |-- interface
-|   |   `-- usecase             # Use case interfaces (consumed by handlers, workers)
+|   |   `-- usecase             # Use case interfaces (consumed by handlers, contract, workers)
 |   |-- mapper                  # Entity/DTO ↔ response mappers
 |   `-- usecase                 # Use case implementations
 |
-|-- contract                    # Cross-module service interfaces & implementations (DTOs only)
 |-- domain
 |   |-- constants               # Module-specific enum constants
 |   |-- entities                # Persistent GORM models (owned by this module)
@@ -139,6 +138,7 @@ internal/modules/<name>
 |   |-- search                  # (optional) search adapter
 |   `-- security                # (optional) security adapter
 |-- presentation
+|   |-- contract                # Cross-module service interfaces & implementations (DTOs only)
 |   |-- handler                 # HTTP handlers (thin, delegate to use cases)
 |   `-- worker                  # Background workers (optional)
 `-- provider.go                 # Wire ProviderSet for the module
@@ -157,10 +157,12 @@ The `presentation/provider.go` file is optional; some modules wire handlers and 
 
 ### Cross-module contracts
 
-Modules expose their public service interfaces via a `contract/` package at the module root (e.g., `internal/modules/identity/contract`). Contracts sit at module root, not under `application/`. A module that needs services from another module depends on its contract package, not on its internal use cases directly.
+Modules expose their public service interfaces via a package under `presentation/contract/` (e.g., `internal/modules/identity/presentation/contract`). Contracts sit inside `presentation/contract/`, not at the module root or under `application/`. A module that needs services from another module depends on its contract package, not on its internal use cases directly.
 
 **Rules:**
-- Contracts expose **only DTOs** (defined in the contract package or in `application/dto/`), never domain entities.
+- Contracts expose **only DTOs** (defined in `application/dto/`), never domain entities.
+- Package `presentation/contract/` must define the contract interface and implement it.
+- The contract struct implementation must delegate execution to application use cases via usecase interfaces.
 - A module must **never import** another module's `domain/entities/`, `domain/repositories/`, or `infrastructure/persistence/`.
 - Workers call use cases through interfaces defined in `application/interface/usecase/`.
 - Repositories must not `.Preload()` or `.Joins()` entities from other modules.
