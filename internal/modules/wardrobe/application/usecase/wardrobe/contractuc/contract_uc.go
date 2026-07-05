@@ -141,6 +141,38 @@ func (uc *WardrobeContractUseCase) SetFashionItemID(ctx context.Context, itemID 
 	return uc.wardrobeRepo.Update(ctx, item)
 }
 
+func (uc *WardrobeContractUseCase) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	result := make([]*dto.WardrobeItemRes, 0, len(items))
+	for _, item := range items {
+		var fi *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
+	}
+	return result, nil
+}
+
 func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	items, err := uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
 	if err != nil {

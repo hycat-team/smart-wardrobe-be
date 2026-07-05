@@ -9,7 +9,6 @@ import (
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -18,8 +17,8 @@ var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|g
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, wardrobeItems []*wardrobe_entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
-	return buildChatSystemPromptWithLimits(summary, wardrobeItems, brandItems, recent, 4000, 1500, fashionItemMap)
+func buildChatSystemPrompt(summary string, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
+	return buildChatSystemPromptWithLimits(summary, brandItems, recent, 4000, 1500, fashionItemMap)
 }
 
 func truncateRunes(value string, limit int) string {
@@ -30,13 +29,13 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*wardrobe_entities.WardrobeItem, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
+func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")
 
 	builder.WriteString("CONSTRAINTS & RULES:\n")
-	if len(wardrobeItems) > 0 || len(brandItems) > 0 {
+	if len(brandItems) > 0 || len(fashionItemMap) > 0 {
 		builder.WriteString("- If the user asks for outfit coordination or clothing suggestions, answer directly using the available wardrobe items or brand items.\n")
 		builder.WriteString("- Whenever mentioning a wardrobe item, write its category name followed by its color inside Markdown bold, for example: **Áo sơ mi Trắng**. Do not output brackets or placeholder text.\n")
 		builder.WriteString("- Whenever mentioning a brand item, write its category name followed by its color and brand name inside Markdown bold, for example: **Áo sơ mi Trắng của Brand X**. Do not output brackets or placeholder text.\n")
@@ -52,15 +51,13 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*wardrobe_e
 		builder.WriteString("\n")
 	}
 
-	if len(wardrobeItems) > 0 {
+	if len(fashionItemMap) > 0 {
 		builder.WriteString("Available wardrobe items:\n")
 
-		limit := min(len(wardrobeItems), 20)
-		for i := range limit {
-			item := wardrobeItems[i]
-			fashion := fashionItemMap[*item.FashionItemID]
-			if fashion == nil {
-				continue
+		count := 0
+		for _, fashion := range fashionItemMap {
+			if count >= 20 {
+				break
 			}
 
 			hasCategory := fashion.CategoryName != nil &&
@@ -87,6 +84,7 @@ func buildChatSystemPromptWithLimits(summary string, wardrobeItems []*wardrobe_e
 			}
 
 			builder.WriteString("\n")
+			count++
 		}
 	}
 

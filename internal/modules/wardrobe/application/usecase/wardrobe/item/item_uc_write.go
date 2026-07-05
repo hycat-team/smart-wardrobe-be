@@ -5,7 +5,7 @@ import (
 	"time"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"

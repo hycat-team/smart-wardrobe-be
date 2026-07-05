@@ -9,9 +9,10 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	sub_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -281,12 +282,12 @@ func TestProcessChatMessageStream_FailurePath(t *testing.T) {
 }
 */
 
-// fakeEmptyWardrobeRepo implements IWardrobeItemRepository for testing
-type fakeEmptyWardrobeRepo struct {
-	repositories.IWardrobeItemRepository
+// fakeEmptyWardrobeContract implements IWardrobeContract for testing
+type fakeEmptyWardrobeContract struct {
+	wardrobe_contract.IWardrobeContract
 }
 
-func (f fakeEmptyWardrobeRepo) GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*wardrobe_entities.WardrobeItem, error) {
+func (f fakeEmptyWardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*wardrobe_dto.WardrobeItemRes, error) {
 	return nil, nil
 }
 
@@ -319,7 +320,7 @@ func TestProcessChatMessageStream_WardrobeKeyword(t *testing.T) {
 		cfg:             &config.Config{},
 		contextRepo:     contextRepo,
 		messageRepo:     messageRepo,
-		wardrobeRepo:    fakeEmptyWardrobeRepo{},
+		wardrobeContract: fakeEmptyWardrobeContract{},
 		aiService:       aiService,
 		userSubContract: fakeUserSubContract{},
 		userQuotaCtr:    quotaCtr,

@@ -10,23 +10,27 @@ import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 type CostUseCase struct {
-	repo      repositories.IAICostRepository
-	pricingUC uc_interfaces.IPricingUseCase
+	repo               repositories.IAICostRepository
+	pricingUC          uc_interfaces.IPricingUseCase
+	userSubContract    subscription_contract.IUserSubscriptionContract
 }
 
 func NewCostUseCase(
 	repo repositories.IAICostRepository,
 	pricingUC uc_interfaces.IPricingUseCase,
+	userSubContract subscription_contract.IUserSubscriptionContract,
 ) uc_interfaces.IAICostUseCase {
 	return &CostUseCase{
-		repo:      repo,
-		pricingUC: pricingUC,
+		repo:            repo,
+		pricingUC:       pricingUC,
+		userSubContract: userSubContract,
 	}
 }
 
@@ -61,7 +65,12 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 		}, nil
 	}
 
-	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, plan.UserID, plan.Operation, now)
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, plan.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, subOverview.PlanID, plan.UserID, plan.Operation, now)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +125,11 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 
 func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
 	now := time.Now()
-	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, userID, operation, now)
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return &aiexecutor_dto.AICostDecision{Route: aiexecutor_dto.AIRouteLocal}, nil
+	}
+	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, subOverview.PlanID, userID, operation, now)
 	if err != nil {
 		return &aiexecutor_dto.AICostDecision{Route: aiexecutor_dto.AIRouteLocal}, nil
 	}

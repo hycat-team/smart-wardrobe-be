@@ -35,7 +35,7 @@ func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID 
 		return plan, nil
 	}
 
-	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, userID, operation, time.Now())
+	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, uuid.Nil, userID, operation, time.Now())
 	if err != nil {
 		return nil, err
 	}

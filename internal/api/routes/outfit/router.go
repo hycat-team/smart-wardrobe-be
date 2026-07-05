@@ -2,7 +2,7 @@ package outfit
 
 import (
 	"smart-wardrobe-be/internal/api/middleware"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 

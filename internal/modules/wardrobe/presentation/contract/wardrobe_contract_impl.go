@@ -34,6 +34,10 @@ func (c *WardrobeContract) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUI
 	return c.wardrobeContractUC.GetItemsByIDs(ctx, itemIDs)
 }
 
+func (c *WardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+	return c.wardrobeContractUC.GetWardrobeItemsByUserID(ctx, userID)
+}
+
 func (c *WardrobeContract) SetFashionItemID(ctx context.Context, itemID uuid.UUID, fashionItemID uuid.UUID) error {
 	return c.wardrobeContractUC.SetFashionItemID(ctx, itemID, fashionItemID)
 }

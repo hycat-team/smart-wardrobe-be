@@ -8,13 +8,10 @@ import (
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/domain/constants/messagesender"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -66,7 +63,7 @@ func (uc *WardrobeChatUseCase) GetChatMessages(ctx context.Context, userID uuid.
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, wardrobeerrors.ErrChatNotFound()
+		return nil, fashioerrors.ErrChatNotFound()
 	}
 	page := query.Page
 	if page <= 0 {
@@ -105,7 +102,7 @@ func (uc *WardrobeChatUseCase) ArchiveChatSession(ctx context.Context, userID uu
 		return err
 	}
 	if session == nil || session.UserID != userID {
-		return wardrobeerrors.ErrChatNotFound()
+		return fashioerrors.ErrChatNotFound()
 	}
 	session.IsArchived = true
 	return uc.contextRepo.Update(ctx, session)
@@ -118,7 +115,7 @@ func (uc *WardrobeChatUseCase) DeleteChatSession(ctx context.Context, userID uui
 		return err
 	}
 	if session == nil || session.UserID != userID {
-		return wardrobeerrors.ErrChatNotFound()
+		return fashioerrors.ErrChatNotFound()
 	}
 	return uc.contextRepo.Delete(ctx, contextID)
 }
@@ -130,7 +127,7 @@ func (uc *WardrobeChatUseCase) UpdateChatSession(ctx context.Context, userID uui
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, wardrobeerrors.ErrChatNotFound()
+		return nil, fashioerrors.ErrChatNotFound()
 	}
 
 	if input.Title != nil {
@@ -221,7 +218,7 @@ func (uc *WardrobeChatUseCase) loadChatSessionContext(ctx context.Context, userI
 		return nil, err
 	}
 	if session == nil || session.UserID != userID {
-		return nil, wardrobeerrors.ErrChatNotFound()
+		return nil, fashioerrors.ErrChatNotFound()
 	}
 	recent, err := uc.messageRepo.GetRecentByContextID(ctx, contextID, 5)
 	if err != nil {
@@ -236,7 +233,7 @@ func (uc *WardrobeChatUseCase) ensureChatQuotaAvailable(ctx context.Context, use
 		return err
 	}
 	if quota.AiUsageCount >= quota.AiChatDailyQuota {
-		return subscriptionerrors.ErrAiChatQuotaExceeded()
+		return fashioerrors.ErrAiChatQuotaExceeded()
 	}
 	return nil
 }
@@ -249,12 +246,13 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 
 	_ = content
 
-	var activeWardrobeItems []*wardrobe_entities.WardrobeItem
-	wardrobeItems, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	wardrobeItemRes, err := uc.wardrobeContract.GetWardrobeItemsByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	activeWardrobeItems = shared.FilterActiveItems(wardrobeItems, subOverview.MaxWardrobeItems)
+
+	limit := min(len(wardrobeItemRes), subOverview.MaxWardrobeItems)
+	activeWardrobeItems := wardrobeItemRes[:limit]
 
 	var eligibleBrandItems []*brand_dto.BrandItemStylingDTO
 	if uc.brandContract != nil {
@@ -265,45 +263,38 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 
 	fashionIDs := make([]uuid.UUID, 0, len(activeWardrobeItems))
 	for _, item := range activeWardrobeItems {
-		if item.FashionItemID != nil {
-			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		if item.FashionItem != nil {
+			fashionIDs = append(fashionIDs, item.FashionItem.ID)
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
-	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
-		if err == nil {
-			for _, fi := range fashionItems {
-				var categoryName *string
-				if fi.Category != nil {
-					categoryName = &fi.Category.Name
-				}
-				fashionItemMap[fi.ID] = &dto.FashionItemRes{
-					ID:              fi.ID,
-					CategoryID:      fi.CategoryID,
-					CategoryName:    categoryName,
-					ImageUrl:        fi.ImageUrl,
-					ImagePublicID:   fi.ImagePublicID,
-					Color:           fi.Color,
-					ColorHex:        fi.ColorHex,
-					ColorHue:        fi.ColorHue,
-					ColorSaturation: fi.ColorSaturation,
-					ColorLightness:  fi.ColorLightness,
-					Style:           fi.Style,
-					Material:        fi.Material,
-					Pattern:         fi.Pattern,
-					Fit:             fi.Fit,
-					Seasonality:     fi.Seasonality,
-					Description:     fi.Description,
-					CreatedAt:       fi.CreatedAt,
-					UpdatedAt:       fi.UpdatedAt,
-				}
+	for _, item := range activeWardrobeItems {
+		if item.FashionItem != nil {
+			fashionItemMap[item.FashionItem.ID] = &dto.FashionItemRes{
+				ID:              item.FashionItem.ID,
+				CategoryID:      item.FashionItem.CategoryID,
+				CategoryName:    item.FashionItem.CategoryName,
+				ImageUrl:        item.FashionItem.ImageUrl,
+				ImagePublicID:   item.FashionItem.ImagePublicID,
+				Color:           item.FashionItem.Color,
+				ColorHex:        item.FashionItem.ColorHex,
+				ColorHue:        item.FashionItem.ColorHue,
+				ColorSaturation: item.FashionItem.ColorSaturation,
+				ColorLightness:  item.FashionItem.ColorLightness,
+				Style:           item.FashionItem.Style,
+				Material:        item.FashionItem.Material,
+				Pattern:         item.FashionItem.Pattern,
+				Fit:             item.FashionItem.Fit,
+				Seasonality:     item.FashionItem.Seasonality,
+				Description:     item.FashionItem.Description,
+				CreatedAt:       item.FashionItem.CreatedAt,
+				UpdatedAt:       item.FashionItem.UpdatedAt,
 			}
 		}
 	}
-	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, activeWardrobeItems, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters, fashionItemMap)}, nil
+	return &chatGenerationInput{systemPrompt: buildChatSystemPromptWithLimits(sessionCtx.session.ContextSummary, eligibleBrandItems, sessionCtx.recent, uc.cfg.AI.SummaryPreviousMaxCharacters, uc.cfg.AI.ChatHistoryMessageMaxCharacters, fashionItemMap)}, nil
 }
 
 func (uc *WardrobeChatUseCase) createAIStreamResponse(ctx context.Context, userID uuid.UUID, session *entities.ConversationalContext, aiTextChan <-chan string, aiErrChan <-chan error) (<-chan string, func(success bool) error, error) {

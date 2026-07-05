@@ -11,12 +11,11 @@ import (
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
+	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
-	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
@@ -54,7 +53,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	}
 
 	if quotaDTO.OutfitRecommendCount >= quotaDTO.AiOutfitDailyQuota {
-		return nil, nil, subscriptionerrors.ErrAiOutfitQuotaExceeded()
+		return nil, nil, fashioerrors.ErrAiOutfitQuotaExceeded()
 	}
 
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
@@ -76,7 +75,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	}
 
 	if len(activeItems) < 5 {
-		return nil, nil, wardrobeerrors.ErrMinimumWardrobeItemsRequired()
+		return nil, nil, fashioerrors.ErrMinimumWardrobeItemsRequired()
 	}
 
 	return activeItems, quotaDTO, nil

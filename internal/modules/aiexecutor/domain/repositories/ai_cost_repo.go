@@ -10,7 +10,7 @@ import (
 )
 
 type IAICostRepository interface {
-	ResolvePolicy(ctx context.Context, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error)
+	ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error)
 	Reserve(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant, policy *aiexecutor_entities.AICostPolicy, operation *aiexecutor_entities.AICostPolicyOperation, event *aiexecutor_entities.AIUsageEvent, now time.Time) (*aiexecutor_entities.AIUsagePeriodLedger, bool, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID, at time.Time) error
 	Confirm(ctx context.Context, requestID uuid.UUID, promptTokens, outputTokens, thinkingTokens, actualCost int64, provider, model, finishReason string, at time.Time) error

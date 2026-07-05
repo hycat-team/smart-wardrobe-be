@@ -14,7 +14,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
-	"smart-wardrobe-be/internal/modules/identity/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"

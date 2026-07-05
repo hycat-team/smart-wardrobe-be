@@ -9,7 +9,6 @@ import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
-	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -25,15 +24,11 @@ func NewAICostRepository(db *gorm.DB) repositories.IAICostRepository {
 	return &AICostRepository{GenericRepository: shared_repos.NewGenericRepository[aiexecutor_entities.AICostPolicy, uuid.UUID](db, nil)}
 }
 
-func (r *AICostRepository) ResolvePolicy(ctx context.Context, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
+func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
 	db := r.GetDB(ctx)
-	var sub entities.UserSubscription
-	if err := db.First(&sub, "user_id = ?", userID).Error; err != nil {
-		return nil, nil, nil, err
-	}
 	var grant aiexecutor_entities.AIPolicyGrant
 	err := db.Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).Order("effective_from DESC").First(&grant).Error
-	if err == nil && grant.PlanID != sub.SubscriptionPlanID {
+	if err == nil && subscriptionPlanID != uuid.Nil && grant.PlanID != subscriptionPlanID {
 		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": "closed", "updated_at": now}).Error
 		err = gorm.ErrRecordNotFound
 	}

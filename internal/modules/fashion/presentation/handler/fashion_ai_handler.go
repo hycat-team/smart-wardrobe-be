@@ -7,7 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -152,7 +152,7 @@ func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat()
+		return fashioerrors.ErrInvalidChatIDFormat()
 	}
 
 	var query dto.GetChatMessagesQueryReq
@@ -186,7 +186,7 @@ func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat()
+		return fashioerrors.ErrInvalidChatIDFormat()
 	}
 
 	if err := h.chatUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -214,7 +214,7 @@ func (h *WardrobeAIHandler) DeleteChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat()
+		return fashioerrors.ErrInvalidChatIDFormat()
 	}
 
 	if err := h.chatUseCase.DeleteChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -243,7 +243,7 @@ func (h *WardrobeAIHandler) UpdateChatSession(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat()
+		return fashioerrors.ErrInvalidChatIDFormat()
 	}
 
 	var input dto.UpdateChatSessionReq
@@ -282,7 +282,7 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 
 	contextID, err := uuid.Parse(c.Param("contextID"))
 	if err != nil {
-		return wardrobeerrors.ErrInvalidChatIDFormat()
+		return fashioerrors.ErrInvalidChatIDFormat()
 	}
 
 	var input dto.SendChatMessageReq
