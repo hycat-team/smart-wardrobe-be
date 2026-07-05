@@ -101,6 +101,15 @@ func CallTextStream(
 				return err
 			}
 
+			if openAIResp.Usage.TotalTokens > 0 && options.OnUsage != nil {
+				options.OnUsage(app_ai.TokenUsage{
+					PromptTokens:   openAIResp.Usage.PromptTokens,
+					OutputTokens:   openAIResp.Usage.CompletionTokens,
+					ThinkingTokens: 0,
+					FinishReason:   "",
+				})
+			}
+
 			if len(openAIResp.Choices) > 0 {
 				text := openAIResp.Choices[0].Delta.Content
 				if text != "" {
@@ -194,6 +203,14 @@ func CallText(
 
 	if len(openAIResp.Choices) == 0 {
 		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
+	}
+	if options.OnUsage != nil {
+		options.OnUsage(app_ai.TokenUsage{
+			PromptTokens:   openAIResp.Usage.PromptTokens,
+			OutputTokens:   openAIResp.Usage.CompletionTokens,
+			ThinkingTokens: 0,
+			FinishReason:   openAIResp.Choices[0].FinishReason,
+		})
 	}
 	if openAIResp.Choices[0].FinishReason == "length" {
 		return "", fmt.Errorf("OpenAI text generation reached MAX_TOKENS")

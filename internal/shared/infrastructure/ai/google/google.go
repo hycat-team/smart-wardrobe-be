@@ -250,6 +250,10 @@ func CallTextStream(
 			return
 		}
 
+		var lastMetadata googleUsageMetadata
+		var lastFinishReason string
+		hasMetadata := false
+
 		err = parseSSEStream(resp.Body, func(data string) error {
 			var googleResp struct {
 				Candidates []struct {
@@ -278,11 +282,26 @@ func CallTextStream(
 					}
 				}
 			}
+			if googleResp.UsageMetadata.TotalTokenCount > 0 {
+				lastMetadata = googleResp.UsageMetadata
+				hasMetadata = true
+				if len(googleResp.Candidates) > 0 {
+					lastFinishReason = googleResp.Candidates[0].FinishReason
+				}
+			}
 			if len(googleResp.Candidates) > 0 && googleResp.Candidates[0].FinishReason == "MAX_TOKENS" {
 				return fmt.Errorf("Google text generation reached MAX_TOKENS")
 			}
 			return nil
 		})
+		if hasMetadata && options.OnUsage != nil {
+			options.OnUsage(app_ai.TokenUsage{
+				PromptTokens:   lastMetadata.PromptTokenCount,
+				OutputTokens:   lastMetadata.CandidatesTokenCount,
+				ThinkingTokens: lastMetadata.ThoughtsTokenCount,
+				FinishReason:   lastFinishReason,
+			})
+		}
 		if err != nil && err != context.Canceled {
 			errChan <- err
 		}
@@ -374,6 +393,14 @@ func CallText(
 	}
 
 	finishReason := googleResp.Candidates[0].FinishReason
+	if options.OnUsage != nil {
+		options.OnUsage(app_ai.TokenUsage{
+			PromptTokens:   googleResp.UsageMetadata.PromptTokenCount,
+			OutputTokens:   googleResp.UsageMetadata.CandidatesTokenCount,
+			ThinkingTokens: googleResp.UsageMetadata.ThoughtsTokenCount,
+			FinishReason:   finishReason,
+		})
+	}
 	if finishReason == "MAX_TOKENS" {
 		return "", fmt.Errorf("Google text generation reached MAX_TOKENS")
 	}
@@ -537,16 +564,6 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 	}
 
 	return allEmbeddings, nil
-}
-
-func confirmGoogleUsage(
-	ctx context.Context,
-	options app_ai.TextGenerationOptions,
-	provider config.APIProviderConfig,
-	u googleUsageMetadata,
-	finish string,
-) error {
-	return nil
 }
 
 func parseSSEStream(r io.Reader, callback func(data string) error) error {

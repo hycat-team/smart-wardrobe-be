@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
+	"smart-wardrobe-be/internal/shared/domain/constants/tokenestimationmethod"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -49,7 +50,7 @@ type AIUsageEvent struct {
 	FinishReason             *string                               `gorm:"type:varchar(100)"`
 	ErrorCode                *string                               `gorm:"type:varchar(100)"`
 	EstimatedPromptTokens    *int64                                `gorm:"type:bigint"`
-	TokenEstimationMethod    *string                               `gorm:"type:varchar(30)"`
+	TokenEstimationMethod    *tokenestimationmethod.Method         `gorm:"type:varchar(30)"`
 	TokenCountLatencyMs      *int64                                `gorm:"type:bigint"`
 	SentAt                   *time.Time                            `gorm:"type:timestamp with time zone"`
 	CompletedAt              *time.Time                            `gorm:"type:timestamp with time zone"`

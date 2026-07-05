@@ -3,6 +3,7 @@ package dto
 import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
+	"smart-wardrobe-be/internal/shared/domain/constants/tokenestimationmethod"
 
 	"github.com/google/uuid"
 )
@@ -17,14 +18,11 @@ const (
 	AIRoutePaid          = "paid"
 	AIRouteFree          = "free"
 	AIRouteLocal         = "local"
-
-	TokenEstimationLocal         = "LOCAL"
-	TokenEstimationProviderCount = "PROVIDER_COUNT"
 )
 
 type AITokenEstimationMeta struct {
 	EstimatedPromptTokens int64
-	TokenEstimationMethod string
+	TokenEstimationMethod tokenestimationmethod.Method
 	TokenCountLatencyMs   *int64
 }
 
