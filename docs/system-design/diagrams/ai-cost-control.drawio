@@ -1,0 +1,165 @@
+<mxfile host="Electron">
+  <diagram name="AI Cost Control Lifecycle" id="0">
+    <mxGraphModel dx="1051" dy="522" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swim_orchestrator" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="AI Orchestrator" vertex="1">
+          <mxGeometry height="880" width="170" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="init_request" parent="swim_orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="AI Request Received&#xa;(Estimate Tokens)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="make_call" parent="swim_orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Execute Call&#xa;(Send LLM Payload)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="handle_response" parent="swim_orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Handle Response&#xa;&amp; Catch Errors" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="swim_cost" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Cost UseCase (Engine)" vertex="1">
+          <mxGeometry height="880" width="170" x="220" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="prepare_cost" parent="swim_cost" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Prepare()&#xa;(Check Limits/Quota)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_admitted" parent="swim_cost" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Is Admitted?" vertex="1">
+          <mxGeometry height="80" width="80" x="45" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="mark_inflight" parent="swim_cost" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="MarkInFlight()&#xa;(State Transition)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="eval_response" parent="swim_cost" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Is Success?" vertex="1">
+          <mxGeometry height="80" width="80" x="45" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_expected" parent="swim_cost" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Is Expected?" vertex="1">
+          <mxGeometry height="80" width="80" x="45" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="swim_db" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="DB Ledger (Repository)" vertex="1">
+          <mxGeometry height="880" width="170" x="400" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="db_lock" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Tx: FOR UPDATE&#xa;Lock User Ledger" vertex="1">
+          <mxGeometry height="50" width="140" x="15" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="db_reserve" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Reserve Cost&#xa;&amp; Create Event (RESERVED)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="db_update_inflight" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Update Status&#xa;(IN_FLIGHT)" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="db_confirm" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Confirm actual cost&#xa;&amp; Release excess (CONFIRMED)" vertex="1">
+          <mxGeometry height="50" width="140" x="15" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="db_release" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Release reserve&#xa;cost (RELEASED)" vertex="1">
+          <mxGeometry height="50" width="140" x="15" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="db_unknown" parent="swim_db" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mark cost unknown&#xa;(UNKNOWN_USAGE)" vertex="1">
+          <mxGeometry height="50" width="140" x="15" y="745" as="geometry" />
+        </mxCell>
+        <mxCell id="swim_api" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="AI Provider (Gemini API)" vertex="1">
+          <mxGeometry height="880" width="170" x="580" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="api_exec" parent="swim_api" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" value="Execute Text /&#xa;Recommendation Gen" vertex="1">
+          <mxGeometry height="60" width="140" x="15" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Legend" vertex="1">
+          <mxGeometry height="80" width="750" x="40" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="legend" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="10" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Application Logic" vertex="1">
+          <mxGeometry height="20" width="105" x="45" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="legend" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="160" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Locking Transaction" vertex="1">
+          <mxGeometry height="20" width="115" x="195" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="legend" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Success &amp; Commit" vertex="1">
+          <mxGeometry height="20" width="105" x="355" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="legend" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="470" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Release / Fallback" vertex="1">
+          <mxGeometry height="20" width="105" x="505" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="legend" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="610" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Risk / Hang State" vertex="1">
+          <mxGeometry height="20" width="60" x="645" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_init_prep" edge="1" parent="1" source="init_request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="prepare_cost" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="305" y="110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_prep_lock" edge="1" parent="1" source="prepare_cost" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_lock" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_lock_res" edge="1" parent="1" source="db_lock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_reserve" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_res_dec" edge="1" parent="1" source="db_reserve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="dec_admitted" value="admitted bool">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_dec_fallback" edge="1" parent="1" source="dec_admitted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=9;" target="init_request" value="No (Route Free/Local)">
+          <mxGeometry relative="1" x="0.7419" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_dec_proceed" edge="1" parent="1" source="dec_admitted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="make_call" value="Yes (Proceed)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_call_inflight" edge="1" parent="1" source="make_call" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="mark_inflight" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_inflight_db" edge="1" parent="1" source="mark_inflight" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_update_inflight" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_call_api" edge="1" parent="1" source="make_call" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="api_exec" value="Send Payload">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="125" y="495" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_api_response" edge="1" parent="1" source="api_exec" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="handle_response" value="Result / Error">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="125" y="525" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_handle_eval" edge="1" parent="1" source="handle_response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="eval_response" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_eval_confirm" edge="1" parent="1" source="eval_response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="db_confirm" value="Yes">
+          <mxGeometry relative="1" x="-0.5714" y="10" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_eval_dec_expected" edge="1" parent="1" source="eval_response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="dec_expected" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_expected_release" edge="1" parent="1" source="dec_expected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" target="db_release" value="Yes">
+          <mxGeometry relative="1" x="-0.2857" y="10" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_expected_unknown" edge="1" parent="1" source="dec_expected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=9;" target="db_unknown" value="No (Timeout/Disconnect)">
+          <mxGeometry relative="1" x="0.4375" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -40,47 +40,11 @@ The reasoning of choosing a message threshold mechanism instead of relying on th
 | Architectural Property      | Operational Benefit                                                                                                                                                                                                 | System Trade-off                                                                                                                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Keep context compact**       | Periodic compression helps the main prompt maintain a stable token size, reducing context drift and costs.                                                                                                      | Incurs additional background costs for summarization if the user chats for very long.                                                                                                                                        |
-| **Server-side determinism** | The trigger logic is completely on the server side, less dependent on client-side behavior.                                                                                                                               | If the summarization prompt is poor, old information may fade out after many compression cycles.                                                                                                                                |
+| **Server-side determinism** | The trigger logic is completely on the server side, less dependent on client-side behavior.                                                               | If the summarization prompt is poor, old information may fade out after many compression cycles.                                                                                                                                |
 
----
 
-## II. Global trend components of the community system
 
-The community feed uses gravity and time-decay concepts instead of just chronological sorting.
 
-### 1. Real-time interaction recording layer
-
-When a user likes or comments:
-
-- The `like_count` and `comment_count` counters are updated immediately.
-- This step is minimized to avoid slowing down interactions.
-
-### 2. Schedule-based analysis layer
-
-The old design describes a job running periodically to recalculate `global_hotness_score` based on the time-decay formula.
-
-$$\text{global\_hotness\_score} = \frac{(\text{Like\_Count} \times 1) + (\text{Comment\_Count} \times 2) - 1}{(\text{Age\_In\_Hours} + 2)^{G}}$$
-
-### 3. Current Version
-
-The current version already has:
-
-- Post score snapshot
-- Hot feed
-- Personalized hot feed
-- Mark dirty logic and repository layers serving score updates
-
-This shows that the global hotness idea still exists in the product, even though the job cycle or specific formula details might differ from the ideal implementation in the old docs.
-
-### 4. Meaning of parameters
-
-- **Like count** and **comment count** remain two important interaction signals.
-- **Age in hours** remains a reasonable basis to gradually reduce the advantage of old posts.
-- **Gravity coefficient** remains a moderation variable for time-based decay.
-
-### Target Design and Current Version
-
-This document keeps the old formula as a target specification to avoid losing the algorithmic idea, and when reading, it should be understood that the current code implements the same business spirit but might not use exactly all of these details verbatim.
 
 ---
 
@@ -149,7 +113,7 @@ This means:
 
 When reading this document, it is necessary to distinguish two layers:
 
-- **Target design:** threshold-based summary for chat, complete hotness formula, token-saving engines or deeper correlations.
+- **Target design:** threshold-based summary for chat, token-saving engines or deeper correlations.
 - **Current version:** renewal worker, batch upload worker, cleanup worker, retry, and `last_used_at` data.
 
 Thus, the document still retains all old descriptions, but no longer misleads readers into thinking everything has been implemented exactly as the initial specification.

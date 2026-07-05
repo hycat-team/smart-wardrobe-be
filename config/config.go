@@ -111,6 +111,7 @@ type Cloudinary struct {
 	CloudName    string `mapstructure:"-"`
 	ApiKey       string `mapstructure:"-"`
 	ApiSecret    string `mapstructure:"-"`
+	APIUrl       string `mapstructure:"-"`
 	AvatarFolder string `mapstructure:"avatar_folder"`
 	BrandsFolder string `mapstructure:"brands_folder"`
 	ItemFolder   string `mapstructure:"item_folder"`
@@ -122,6 +123,7 @@ type PayOS struct {
 	ClientID                   string `mapstructure:"-"`
 	ApiKey                     string `mapstructure:"-"`
 	ChecksumKey                string `mapstructure:"-"`
+	Endpoint                   string `mapstructure:"-"`
 	ReturnUrl                  string `mapstructure:"return_url"`
 	CancelUrl                  string `mapstructure:"cancel_url"`
 	ExpiredMinutes             int    `mapstructure:"expired_minutes"`

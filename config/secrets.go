@@ -29,11 +29,13 @@ func loadSecrets(cfg *Config) {
 	cfg.PayOS.ClientID = os.Getenv("PAYOS_CLIENT_ID")
 	cfg.PayOS.ApiKey = os.Getenv("PAYOS_API_KEY")
 	cfg.PayOS.ChecksumKey = os.Getenv("PAYOS_CHECKSUM_KEY")
+	cfg.PayOS.Endpoint = os.Getenv("PAYOS_ENDPOINT")
 
 	// Cloudinary
 	cfg.Cloudinary.CloudName = os.Getenv("CLOUDINARY_CLOUD_NAME")
 	cfg.Cloudinary.ApiKey = os.Getenv("CLOUDINARY_API_KEY")
 	cfg.Cloudinary.ApiSecret = os.Getenv("CLOUDINARY_API_SECRET")
+	cfg.Cloudinary.APIUrl = os.Getenv("CLOUDINARY_API_URL")
 
 	if value := os.Getenv("LOYALTY_EXPIRY_WORKER_ENABLED"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {

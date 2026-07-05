@@ -33,15 +33,22 @@ type PayOSService struct {
 	apiKey         string
 	checksumKey    string
 	expiredMinutes int
+	endpoint       string
 	httpClient     *http.Client
 }
 
 func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
+	endpoint := strings.TrimRight(cfg.PayOS.Endpoint, "/")
+	if endpoint == "" {
+		endpoint = "https://api-merchant.payos.vn"
+	}
+
 	return &PayOSService{
 		clientID:       cfg.PayOS.ClientID,
 		apiKey:         cfg.PayOS.ApiKey,
 		checksumKey:    cfg.PayOS.ChecksumKey,
 		expiredMinutes: cfg.PayOS.ExpiredMinutes,
+		endpoint:       endpoint,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
@@ -103,7 +110,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "SERIALIZATION_ERROR"}, fmt.Errorf("failed to serialize checkout payload: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api-merchant.payos.vn/v2/payment-requests", bytes.NewBuffer(reqBytes))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/v2/payment-requests", s.endpoint), bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "REQUEST_BUILD_ERROR"}, fmt.Errorf("failed to create http request: %w", err)
 	}
@@ -162,7 +169,7 @@ func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) 
 			CheckoutURL string          `json:"checkoutUrl"`
 		} `json:"data"`
 	}
-	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d", orderCode), nil, &response); err != nil {
+	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("%s/v2/payment-requests/%d", s.endpoint, orderCode), nil, &response); err != nil {
 		return nil, err
 	}
 	status := payment.ProviderUnknown
@@ -179,7 +186,7 @@ func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) 
 
 func (s *PayOSService) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {
 	body, _ := json.Marshal(map[string]string{"cancellationReason": reason})
-	return s.doJSON(ctx, http.MethodPost, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d/cancel", orderCode), body, nil)
+	return s.doJSON(ctx, http.MethodPost, fmt.Sprintf("%s/v2/payment-requests/%d/cancel", s.endpoint, orderCode), body, nil)
 }
 
 func (s *PayOSService) doJSON(ctx context.Context, method, url string, body []byte, out any) error {

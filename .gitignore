@@ -741,3 +741,5 @@ backups/
 .agentrules
 .agents/
 skills-lock.json
+
+*.drawio.bkp
