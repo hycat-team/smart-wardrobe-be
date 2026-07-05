@@ -9,7 +9,6 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
@@ -33,8 +32,8 @@ type SubscriptionUseCase struct {
 	log                logger.Interface
 	stateSupport       *SubscriptionStateSupport
 
-	planContract  contract.ISubscriptionPlanContract
-	quotaContract contract.IUserQuotaContract
+	planUseCase  uc_interfaces.ISubscriptionPlanUseCase
+	quotaUseCase uc_interfaces.IUserQuotaUseCase
 }
 
 // NewSubscriptionUseCase builds the subscription application service and its state helpers.
@@ -49,8 +48,8 @@ func NewSubscriptionUseCase(
 	eventRepo repositories.IUserSubscriptionEventRepository,
 	cfg *config.Config,
 	log logger.Interface,
-	planContract contract.ISubscriptionPlanContract,
-	quotaContract contract.IUserQuotaContract,
+	planUseCase uc_interfaces.ISubscriptionPlanUseCase,
+	quotaUseCase uc_interfaces.IUserQuotaUseCase,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:                uow,
@@ -64,13 +63,13 @@ func NewSubscriptionUseCase(
 		cfg:                cfg,
 		log:                log,
 		stateSupport:       NewSubscriptionStateSupport(userSubRepo, planRepo, quotaRepo),
-		planContract:       planContract,
-		quotaContract:      quotaContract,
+		planUseCase:        planUseCase,
+		quotaUseCase:       quotaUseCase,
 	}
 }
 
 func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
-	return uc.quotaContract.GetAndResetDailyQuota(ctx, userID)
+	return uc.quotaUseCase.GetAndResetDailyQuota(ctx, userID)
 }
 
 func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {

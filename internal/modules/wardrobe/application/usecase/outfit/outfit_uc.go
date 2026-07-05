@@ -6,8 +6,8 @@ import (
 
 	"smart-wardrobe-be/config"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"

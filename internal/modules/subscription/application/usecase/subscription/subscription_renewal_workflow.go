@@ -62,7 +62,7 @@ type RenewalBatchSummary struct {
 func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run *workerlog.Run) error {
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 
-	freePlanID, err := uc.planContract.GetDefaultSubscriptionPlanID(ctx)
+	freePlanID, err := uc.planUseCase.GetDefaultSubscriptionPlanID(ctx)
 	if err != nil {
 		return subscriptionerrors.ErrDefaultPlanLoadFailed()
 	}

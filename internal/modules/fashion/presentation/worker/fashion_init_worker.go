@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"

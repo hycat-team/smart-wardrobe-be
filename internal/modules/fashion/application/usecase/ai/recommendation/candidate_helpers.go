@@ -14,8 +14,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -201,9 +201,34 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
 		if err == nil {
-			fashionItemMap = sliceutils.IndexBy(fashionItems, func(f *dto.FashionItemRes) uuid.UUID { return f.ID })
+			for _, fi := range fashionItems {
+				var categoryName *string
+				if fi.Category != nil {
+					categoryName = &fi.Category.Name
+				}
+				fashionItemMap[fi.ID] = &dto.FashionItemRes{
+					ID:              fi.ID,
+					CategoryID:      fi.CategoryID,
+					CategoryName:    categoryName,
+					ImageUrl:        fi.ImageUrl,
+					ImagePublicID:   fi.ImagePublicID,
+					Color:           fi.Color,
+					ColorHex:        fi.ColorHex,
+					ColorHue:        fi.ColorHue,
+					ColorSaturation: fi.ColorSaturation,
+					ColorLightness:  fi.ColorLightness,
+					Style:           fi.Style,
+					Material:        fi.Material,
+					Pattern:         fi.Pattern,
+					Fit:             fi.Fit,
+					Seasonality:     fi.Seasonality,
+					Description:     fi.Description,
+					CreatedAt:       fi.CreatedAt,
+					UpdatedAt:       fi.UpdatedAt,
+				}
+			}
 		}
 	}
 

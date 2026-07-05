@@ -5,7 +5,6 @@ import (
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -17,11 +16,11 @@ type WardrobeChatUseCase struct {
 	contextRepo     repositories.IConversationalContextRepository
 	messageRepo     repositories.IMessageRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
+	fashionItemRepo repositories.IFashionItemRepository
 	aiService       aiexecutor_contract.IAIOrchestrator
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	brandContract   brand_contract.IBrandContract
-	fashionContract fashion_contract.IFashionContract
 	uow             shared_repos.IUnitOfWork
 }
 
@@ -31,11 +30,11 @@ func NewWardrobeChatUseCase(
 	contextRepo repositories.IConversationalContextRepository,
 	messageRepo repositories.IMessageRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
+	fashionItemRepo repositories.IFashionItemRepository,
 	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
-	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeChatUseCase {
 	return &WardrobeChatUseCase{
@@ -43,11 +42,11 @@ func NewWardrobeChatUseCase(
 		contextRepo:     contextRepo,
 		messageRepo:     messageRepo,
 		wardrobeRepo:    wardrobeRepo,
+		fashionItemRepo: fashionItemRepo,
 		aiService:       aiService,
 		userSubContract: userSubContract,
 		userQuotaCtr:    userQuotaCtr,
 		brandContract:   brandContract,
-		fashionContract: fashionContract,
 		uow:             uow,
 	}
 }

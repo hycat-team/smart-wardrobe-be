@@ -7,7 +7,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -19,11 +18,11 @@ type OutfitRecommendationUseCase struct {
 	cfg             *config.Config
 	logger          logger.Interface
 	wardrobeRepo    repositories.IWardrobeItemRepository
+	fashionItemRepo repositories.IFashionItemRepository
 	aiService       aiexecutor_contract.IAIOrchestrator
 	userSubContract contract.IUserSubscriptionContract
 	userQuotaCtr    contract.IUserQuotaContract
 	brandContract   brand_contract.IBrandContract
-	fashionContract fashion_contract.IFashionContract
 	uow             shared_repos.IUnitOfWork
 	nlpParser       *parser.LocalNLPParser
 }
@@ -33,11 +32,11 @@ func NewOutfitRecommendationUseCase(
 	cfg *config.Config,
 	l logger.Interface,
 	wardrobeRepo repositories.IWardrobeItemRepository,
+	fashionItemRepo repositories.IFashionItemRepository,
 	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	userQuotaCtr contract.IUserQuotaContract,
 	brandContract brand_contract.IBrandContract,
-	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IOutfitRecommendationUseCase {
 	_ = dto.ParsedIntent{} // import check
@@ -45,11 +44,11 @@ func NewOutfitRecommendationUseCase(
 		cfg:             cfg,
 		logger:          l,
 		wardrobeRepo:    wardrobeRepo,
+		fashionItemRepo: fashionItemRepo,
 		aiService:       aiService,
 		userSubContract: userSubContract,
 		userQuotaCtr:    userQuotaCtr,
 		brandContract:   brandContract,
-		fashionContract: fashionContract,
 		uow:             uow,
 		nlpParser:       parser.NewLocalNLPParser(),
 	}

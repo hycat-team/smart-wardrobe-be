@@ -17,6 +17,7 @@ import (
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -262,13 +263,42 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 		}
 	}
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
+	fashionIDs := make([]uuid.UUID, 0, len(activeWardrobeItems))
 	for _, item := range activeWardrobeItems {
 		if item.FashionItemID != nil {
-			if _, ok := fashionItemMap[*item.FashionItemID]; !ok {
-				fi, _ := uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
-				if fi != nil {
-					fashionItemMap[*item.FashionItemID] = fi
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, fi := range fashionItems {
+				var categoryName *string
+				if fi.Category != nil {
+					categoryName = &fi.Category.Name
+				}
+				fashionItemMap[fi.ID] = &dto.FashionItemRes{
+					ID:              fi.ID,
+					CategoryID:      fi.CategoryID,
+					CategoryName:    categoryName,
+					ImageUrl:        fi.ImageUrl,
+					ImagePublicID:   fi.ImagePublicID,
+					Color:           fi.Color,
+					ColorHex:        fi.ColorHex,
+					ColorHue:        fi.ColorHue,
+					ColorSaturation: fi.ColorSaturation,
+					ColorLightness:  fi.ColorLightness,
+					Style:           fi.Style,
+					Material:        fi.Material,
+					Pattern:         fi.Pattern,
+					Fit:             fi.Fit,
+					Seasonality:     fi.Seasonality,
+					Description:     fi.Description,
+					CreatedAt:       fi.CreatedAt,
+					UpdatedAt:       fi.UpdatedAt,
 				}
 			}
 		}

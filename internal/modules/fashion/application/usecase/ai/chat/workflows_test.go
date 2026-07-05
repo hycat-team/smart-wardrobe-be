@@ -9,8 +9,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	sub_contract "smart-wardrobe-be/internal/modules/subscription/contract"
 	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 

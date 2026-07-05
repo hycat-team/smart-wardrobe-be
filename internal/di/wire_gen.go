@@ -184,10 +184,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	brandChatHandler := handler4.NewBrandChatHandler(iBrandChatUseCase)
 	brandHandler := handler4.NewBrandHandler(brandPortalHandler, brandLoyaltyHandler, brandChatHandler)
 	brandRouter := brand.NewRouter(brandHandler, authMiddleware)
-	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeItemRepository, iaiOrchestrator, iSubscriptionUseCase, iUserQuotaUseCase, iBrandContract, iFashionContract, iUnitOfWork)
+	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeItemRepository, iFashionItemRepository, iaiOrchestrator, iSubscriptionUseCase, iUserQuotaUseCase, iBrandContract, iUnitOfWork)
 	iConversationalContextRepository := persistence5.NewConversationalContextRepository(gormDB)
 	iMessageRepository := persistence5.NewMessageRepository(gormDB)
-	iWardrobeChatUseCase := chat.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iaiOrchestrator, iSubscriptionUseCase, iUserQuotaUseCase, iBrandContract, iFashionContract, iUnitOfWork)
+	iWardrobeChatUseCase := chat.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iFashionItemRepository, iaiOrchestrator, iSubscriptionUseCase, iUserQuotaUseCase, iBrandContract, iUnitOfWork)
 	wardrobeAIHandler := handler5.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
 	fashionRouter := fashion.NewRouter(wardrobeAIHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
