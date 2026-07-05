@@ -4,37 +4,46 @@ import (
 	"context"
 	"time"
 
-	brand_repos "smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
-	wardrobe_repos "smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
-type IWardrobeItemRepository = wardrobe_repos.IWardrobeItemRepository
-type IOutfitRepository = wardrobe_repos.IOutfitRepository
-
 type ICategoryRepository interface {
 	shared_repos.IGenericRepository[entities.Category, uuid.UUID]
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Category, error)
 	GetBySlug(ctx context.Context, slug string) (*entities.Category, error)
 	GetByName(ctx context.Context, name string) (*entities.Category, error)
-	CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
-	ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 }
-type IBrandItemRepository = brand_repos.IBrandItemRepository
-type RecommendationHardFilters = wardrobe_repos.RecommendationHardFilters
-type HybridCandidate = wardrobe_repos.HybridCandidate
+
+type RecommendationHardFilters struct {
+	Seasonality   []string
+	CategorySlugs []string
+}
 
 const (
-	HybridCandidateSourceHybrid   = wardrobe_repos.HybridCandidateSourceHybrid
-	HybridCandidateSourceVector   = wardrobe_repos.HybridCandidateSourceVector
-	HybridCandidateSourceLexical  = wardrobe_repos.HybridCandidateSourceLexical
-	HybridCandidateSourceFallback = wardrobe_repos.HybridCandidateSourceFallback
+	HybridCandidateSourceHybrid   = "hybrid"
+	HybridCandidateSourceVector   = "vector"
+	HybridCandidateSourceLexical  = "lexical"
+	HybridCandidateSourceFallback = "fallback"
 )
+
+type HybridCandidate struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	FashionItemID   *uuid.UUID
+	Price           *float64
+	Status          int16
+	LastUsedAt      *time.Time
+	IsDeleted       bool
+	VectorScore     float64
+	LexicalScore    float64
+	RetrievalScore  float64
+	RetrievalRank   int
+	RetrievalSource string
+}
 
 type IFashionItemRepository interface {
 	shared_repos.IGenericRepository[entities.FashionItem, uuid.UUID]
@@ -46,6 +55,7 @@ type IFashionItemRepository interface {
 	MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error)
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
+	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector []float32, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
 type IConversationalContextRepository interface {

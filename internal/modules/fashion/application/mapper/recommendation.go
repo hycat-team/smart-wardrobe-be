@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	wardrobe_mapper "smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+
+	"github.com/google/uuid"
 )
 
 // CategorySlugToWearingRole maps database category slugs to wearing position roles.
@@ -46,29 +45,55 @@ func parseAliasIndex(alias string) (int, bool) {
 	return -1, false
 }
 
+func cloneWardrobeItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes) *wardrobeDto.WardrobeItemRes {
+	if item == nil {
+		return nil
+	}
+	var fRes *wardrobeDto.FashionItemRes
+	if fi != nil {
+		fRes = &wardrobeDto.FashionItemRes{
+			ID:              fi.ID,
+			CategoryID:      fi.CategoryID,
+			CategoryName:    fi.CategoryName,
+			ImageUrl:        fi.ImageUrl,
+			ImagePublicID:   fi.ImagePublicID,
+			Color:           fi.Color,
+			ColorHex:        fi.ColorHex,
+			ColorHue:        fi.ColorHue,
+			ColorSaturation: fi.ColorSaturation,
+			ColorLightness:  fi.ColorLightness,
+			Style:           fi.Style,
+			Material:        fi.Material,
+			Pattern:         fi.Pattern,
+			Fit:             fi.Fit,
+			Seasonality:     fi.Seasonality,
+			Description:     fi.Description,
+			CreatedAt:       fi.CreatedAt,
+			UpdatedAt:       fi.UpdatedAt,
+		}
+	} else if item.FashionItem != nil {
+		fRes = &wardrobeDto.FashionItemRes{
+			ID: item.FashionItem.ID,
+		}
+	}
+	return &wardrobeDto.WardrobeItemRes{
+		ID:          item.ID,
+		UserID:      item.UserID,
+		Price:       item.Price,
+		Status:      item.Status,
+		LastUsedAt:  item.LastUsedAt,
+		IsDeleted:   item.IsDeleted,
+		FashionItem: fRes,
+	}
+}
+
 // MapLLMResponseToGroups ánh xạ các gợi ý về ID và vai trò trang phục trong phản hồi của AI/LLM về lại các món đồ ứng viên thực tế trong tủ đồ của người dùng.
-//
-// Hành vi:
-// 1. Tạo một bảng ánh xạ [candidateMap] từ UUID sang thực thể [WardrobeItem] để tra cứu nhanh.
-// 2. Duyệt qua từng nhóm món đồ trong đề xuất của AI.
-// 3. Phân giải món đồ chính qua [resolvePrimaryCandidate] dựa trên ID hoặc vai trò (role/category slug) làm dự phòng. Nếu không tìm thấy, bỏ qua nhóm này.
-// 4. Phân giải tối đa 2 món đồ thay thế qua [resolveAlternativeCandidates].
-// 5. Trả về danh sách các nhóm món đồ gợi ý hợp lệ [RecommendedItemGroup].
-//
-// Đầu vào mẫu:
-//
-//	candidates: []types.CandidateForPrompt{...}
-//	llmRes: types.LlmOutfitResponse{Items: []LlmOutfitItem{ {Role: "ao", PrimaryID: "uuid-ao-1", AlternativeIDs: []string{"uuid-ao-2"}} }}
-//
-// Đầu ra mẫu:
-//
-//	[]*dto.RecommendedItemGroup{ {Role: "ao", Primary: ... (ao-1), Alternatives: [... (ao-2)]} }
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) []*dto.RecommendedItemGroup {
-	candidateMap := map[uuid.UUID]*wardrobe_entities.WardrobeItem{}
+	candidateMap := map[uuid.UUID]*wardrobeDto.WardrobeItemRes{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
 	for _, candidate := range candidates {
 		candidateMap[candidate.Item.ID] = candidate.Item
@@ -86,15 +111,21 @@ func MapLLMResponseToGroups(
 		}
 
 		actualRole := role
-		if fi := fashionItemMap[*primary.FashionItemID]; fi != nil && fi.CategoryName != nil {
-			actualRole = CategorySlugToWearingRole(*fi.CategoryName)
+		if primary.FashionItem != nil {
+			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
+				actualRole = CategorySlugToWearingRole(*fi.CategoryName)
+			}
 		}
 
 		if actualRole == "fullbody" {
 			hasFullbody = true
 		}
 
-		primaryDTO := wardrobe_mapper.MapToWardrobeItemRes(primary, fashionItemMap[*primary.FashionItemID])
+		var fashionItemRes *dto.FashionItemRes
+		if primary.FashionItem != nil {
+			fashionItemRes = fashionItemMap[primary.FashionItem.ID]
+		}
+		primaryDTO := cloneWardrobeItemRes(primary, fashionItemRes)
 		if cand, found := promptCandidateMap[primary.ID]; found {
 			enrichWardrobeItemRes(primaryDTO, cand)
 		}
@@ -119,14 +150,14 @@ func MapLLMResponseToGroups(
 	return valid
 }
 
-// resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI. Nếu ID không khớp hoặc không hợp lệ, hàm sẽ lấy món đồ đầu tiên trong danh sách ứng viên có danh mục (category slug) khớp với vai trò (role) yêu cầu.
+// resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI.
 func resolvePrimaryCandidate(
-	candidateMap map[uuid.UUID]*wardrobe_entities.WardrobeItem,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemRes,
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
-) *wardrobe_entities.WardrobeItem {
+) *wardrobeDto.WardrobeItemRes {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
 			return candidates[idx].Item
@@ -140,8 +171,8 @@ func resolvePrimaryCandidate(
 	}
 
 	for _, c := range candidates {
-		if c.Item.FashionItemID != nil {
-			if fi := fashionItemMap[*c.Item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+		if c.Item.FashionItem != nil {
+			if fi := fashionItemMap[c.Item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
 				if CategorySlugToWearingRole(*fi.CategoryName) == role {
 					return c.Item
 				}
@@ -154,7 +185,7 @@ func resolvePrimaryCandidate(
 
 // resolveAlternativeCandidates tìm kiếm tối đa 2 món đồ thay thế cho vai trò được đề xuất.
 func resolveAlternativeCandidates(
-	candidateMap map[uuid.UUID]*wardrobe_entities.WardrobeItem,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemRes,
 	candidates []types.CandidateForPrompt,
 	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
 	role string,
@@ -164,7 +195,7 @@ func resolveAlternativeCandidates(
 ) []*wardrobeDto.WardrobeItemRes {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
-		var altItem *wardrobe_entities.WardrobeItem
+		var altItem *wardrobeDto.WardrobeItemRes
 		if idx, ok := parseAliasIndex(altID); ok {
 			if idx >= 0 && idx < len(candidates) {
 				altItem = candidates[idx].Item
@@ -187,7 +218,11 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		altDTO := wardrobe_mapper.MapToWardrobeItemRes(altItem, fashionItemMap[*altItem.FashionItemID])
+		var fashionItemRes *dto.FashionItemRes
+		if altItem.FashionItem != nil {
+			fashionItemRes = fashionItemMap[altItem.FashionItem.ID]
+		}
+		altDTO := cloneWardrobeItemRes(altItem, fashionItemRes)
 		if cand, found := promptCandidateMap[altItem.ID]; found {
 			enrichWardrobeItemRes(altDTO, cand)
 		}
@@ -217,7 +252,11 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		altDTO := wardrobe_mapper.MapToWardrobeItemRes(item, fashionItemMap[*item.FashionItemID])
+		var fashionItemRes *dto.FashionItemRes
+		if item.FashionItem != nil {
+			fashionItemRes = fashionItemMap[item.FashionItem.ID]
+		}
+		altDTO := cloneWardrobeItemRes(item, fashionItemRes)
 		enrichWardrobeItemRes(altDTO, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
@@ -228,9 +267,9 @@ func resolveAlternativeCandidates(
 	return alternatives
 }
 
-func matchesRole(item *wardrobe_entities.WardrobeItem, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
-	if item.FashionItemID != nil {
-		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+func matchesRole(item *wardrobeDto.WardrobeItemRes, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+	if item.FashionItem != nil {
+		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
 			return CategorySlugToWearingRole(*fi.CategoryName) == role
 		}
 	}
@@ -246,14 +285,10 @@ func enrichWardrobeItemRes(res *wardrobeDto.WardrobeItemRes, cand types.Candidat
 		res.ItemContext = string(outfititemcontext.UserWardrobe)
 	}
 	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
-		brandName := ""
-		if cand.BrandItem.Brand != nil {
-			brandName = cand.BrandItem.Brand.Name
-		}
 		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
 			ID:        cand.BrandItem.ID,
 			BrandID:   cand.BrandItem.BrandID,
-			BrandName: brandName,
+			BrandName: cand.BrandItem.BrandName,
 			ItemType:  string(cand.BrandItem.ItemType),
 			Name:      cand.BrandItem.Name,
 			Price:     cand.BrandItem.Price,

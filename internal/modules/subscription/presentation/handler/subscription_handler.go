@@ -42,7 +42,7 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -72,7 +72,7 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

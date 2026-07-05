@@ -5,8 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 
 	"github.com/google/uuid"
 )
@@ -19,21 +18,21 @@ func TestMergeHybridCandidateRecordsByRRF(t *testing.T) {
 	merged := mergeHybridCandidateRecordsByRRF(
 		[]hybridCandidateRecord{
 			{
-				WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: sharedID}}},
-				VectorScore:  0.9,
+				ID:          sharedID,
+				VectorScore: 0.9,
 			},
 			{
-				WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: vectorOnlyID}}},
-				VectorScore:  0.8,
+				ID:          vectorOnlyID,
+				VectorScore: 0.8,
 			},
 		},
 		[]hybridCandidateRecord{
 			{
-				WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: lexicalOnlyID}}},
+				ID:           lexicalOnlyID,
 				LexicalScore: 1.2,
 			},
 			{
-				WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: sharedID}}},
+				ID:           sharedID,
 				LexicalScore: 0.7,
 			},
 		},
@@ -74,8 +73,8 @@ func TestMergeHybridCandidateRecordsByRRFTieBreaksByID(t *testing.T) {
 
 	merged := mergeHybridCandidateRecordsByRRF(
 		[]hybridCandidateRecord{
-			{WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: secondID}}}},
-			{WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: firstID}}}},
+			{ID: secondID},
+			{ID: firstID},
 		},
 		nil,
 		30,
@@ -91,10 +90,10 @@ func TestMergeHybridCandidateRecordsByRRFTieBreaksByID(t *testing.T) {
 
 	merged = mergeHybridCandidateRecordsByRRF(
 		[]hybridCandidateRecord{
-			{WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: secondID}}}},
+			{ID: secondID},
 		},
 		[]hybridCandidateRecord{
-			{WardrobeItem: entities.WardrobeItem{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: firstID}}}},
+			{ID: firstID},
 		},
 		30,
 		10,
@@ -120,7 +119,7 @@ func TestBuildRecommendationSeasonalityConditionAllowsAllSeasonAndMissingMetadat
 			t.Fatalf("expected SQL fragment %q in %s", fragment, sql)
 		}
 	}
-	for _, expected := range []any{"%winter%", "%dong%", "%mua dong%", "%lanh%", "%bon mua%", "%quanh nam%", "%all-season%"} {
+	for _, expected := range []any{"%winter%", "%bon mua%", "%quanh nam%", "%all-season%"} {
 		if !containsAnyArg(args, expected) {
 			t.Fatalf("expected arg %v in %v", expected, args)
 		}

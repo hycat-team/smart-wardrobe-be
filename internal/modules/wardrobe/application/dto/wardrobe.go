@@ -56,6 +56,8 @@ type WardrobeItemRes struct {
 	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
 	FashionItem *FashionItemRes                   `json:"fashionItem,omitempty"`
 	CreatedAt   time.Time                         `json:"createdAt"`
+	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
+	IsDeleted   bool                              `json:"isDeleted"`
 }
 
 type CloneWardrobeItemReq struct {

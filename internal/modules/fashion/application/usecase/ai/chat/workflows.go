@@ -254,7 +254,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	limit := min(len(wardrobeItemRes), subOverview.MaxWardrobeItems)
 	activeWardrobeItems := wardrobeItemRes[:limit]
 
-	var eligibleBrandItems []*brand_dto.BrandItemStylingDTO
+	var eligibleBrandItems []*brand_dto.BrandItemRes
 	if uc.brandContract != nil {
 		if items, _, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{}); err == nil {
 			eligibleBrandItems = items

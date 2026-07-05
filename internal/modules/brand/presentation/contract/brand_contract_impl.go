@@ -30,7 +30,7 @@ func (c *BrandContract) CheckBrandFeatureAccess(ctx context.Context, userID uuid
 	return c.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, featureCode)
 }
 
-func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_dto.FashionItemRes, error) {
+func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemRes, error) {
 	return c.itemUC.ListEligibleBrandItemsForStyling(ctx, userID, req)
 }
 
@@ -44,4 +44,8 @@ func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.U
 
 func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status string) error {
 	return c.itemUC.UpdateBrandItemStatusDirect(ctx, brandItemID, status)
+}
+
+func (c *BrandContract) GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {
+	return c.itemUC.GetBrandItemByIDDirect(ctx, brandItemID)
 }

@@ -1,216 +1,248 @@
-# PHASE 6: Tạo DTO đầy đủ cho Wardrobe & Brand phục vụ Fashion Ranking
+# PHASE 6: Thay thế Entity bằng DTO trong Fashion Ranking
 **Thời điểm thực hiện:** Sau khi Phase 5 hoàn thành và hệ thống ổn định với kiến trúc mới.
 
 ## Mục tiêu
 
-Tạo các DTO mới trong `wardrobe/application/dto/` và `brand/application/dto/` chứa đầy đủ field cần thiết cho các thuật toán ranking của module `fashion`, nhằm thay thế hoàn toàn việc import trực tiếp `domain/entities` của module khác (vi phạm Rule 1.1).
+Thay thế hoàn toàn việc import trực tiếp `wardrobe/domain/entities` và `brand/domain/entities` trong module `fashion` bằng DTO từ `wardrobe/application/dto/` và `brand/application/dto/`.
 
-## Lý do
-
-Module `fashion` hiện đang import trực tiếp:
-- `wardrobe/domain/entities` — dùng `WardrobeItem` trong các struct `CandidateForPrompt`, `CandidateForRanking`, `RankedCandidate` và các hàm scoring/ranking
-- `brand/domain/entities` — dùng `BrandItem` trong các struct trên và mapper
-
-Các entity này được dùng với số lượng field hạn chế, có thể thay thế bằng DTO.
+**Chiến lược:** Mở rộng DTO hiện có (`WardrobeItemRes`, `BrandItemRes`) thay vì tạo DTO mới.
 
 ---
 
-## Phân tích field sử dụng
+## Phân tích field usage (đã verify với code thực tế)
 
-### WardrobeItem — fields được dùng trong fashion ranking
+### WardrobeItem — tất cả fields được dùng trong fashion ranking
 
-| Field | Nguồn gốc | Dùng trong |
-|-------|-----------|------------|
-| `ID` | `AuditableEntity.BaseEntity` | `types.go`, `scoring.go`, `ranking.go`, test files |
-| `FashionItemID *uuid.UUID` | Trực tiếp | `ranking.go:202`, `scoring.go:264`, `mapper/recommendation.go:233` |
-| `LastUsedAt *time.Time` | Trực tiếp | `scoring.go:229` |
+| Field | Kiểu | Dùng trong | Ghi chú |
+|-------|------|------------|---------|
+| `ID` | `uuid.UUID` | Mọi file | Map key, so sánh, sort |
+| `FashionItemID` | `*uuid.UUID` | Mọi file | Lookup `fashionItemMap` để get `FashionItemRes` |
+| `LastUsedAt` | `*time.Time` | `scoring.go:228-241` | Tính điểm recency; `nil` = new-item-bonus |
+| `Status` | `WardrobeItemStatus` | `candidate_helpers.go:72` | Filter `== InWardrobe` |
+| `IsDeleted` | `bool` | `candidate_helpers.go:72` | Filter `!IsDeleted` |
+| `UserID`, `Price`, `ItemType` | — | **Không dùng** | |
 
-### BrandItem — fields được dùng trong fashion ranking
+### BrandItem — tất cả fields được dùng trong fashion ranking
 
-| Field | Nguồn gốc | Dùng trong |
-|-------|-----------|------------|
-| `ID` | `AuditableEntity.BaseEntity` | `mapper/recommendation.go:255` |
-| `BrandID uuid.UUID` | Trực tiếp | `mapper/recommendation.go:256` |
-| `Brand.Name` | Qua `*Brand` relation | `mapper/recommendation.go:251-252` |
-| `Name string` | Trực tiếp | `mapper/recommendation.go:259` |
-| `ItemType` | Trực tiếp | `mapper/recommendation.go:258` |
-| `Price *float64` | Trực tiếp | `mapper/recommendation.go:260` |
+| Field | Kiểu | Dùng trong | Ghi chú |
+|-------|------|------------|---------|
+| `ID` | `uuid.UUID` | `mapper/recommendation.go:254` | Map vào response DTO |
+| `BrandID` | `uuid.UUID` | `mapper/recommendation.go:255` | Map vào response DTO |
+| `Brand.Name` | `string` (qua relation) | `mapper/recommendation.go:251` | **Cần flatten** thành `BrandName` |
+| `Name` | `string` | `mapper/recommendation.go:258` | Map vào response DTO |
+| `ItemType` | `BrandItemType` | `mapper/recommendation.go:257` | Cast `string(...)` |
+| `Price` | `*float64` | `mapper/recommendation.go:259` | Map vào response DTO |
+| `FashionItemID`, `ProductCode`, `Description`, `Status` | — | **Không dùng** | |
 
 ---
 
 ## Kế hoạch thực hiện
 
-### Bước 6.1: Tạo DTO cho Wardrobe
+### Bước 6.1: Mở rộng `WardrobeItemRes` trong `wardrobe/application/dto/wardrobe.go`
 
-Tạo file `internal/modules/wardrobe/application/dto/ranking_dto.go`:
+Thêm 2 field vào struct `WardrobeItemRes`:
 
 ```go
-package dto
+type WardrobeItemRes struct {
+    // ... các field hiện tại (ID, UserID, Category, Price, Status, IsLocked,
+    //     ItemContext, BrandItem, FashionItem, CreatedAt) ...
 
-import (
-    "time"
-    "github.com/google/uuid"
-)
-
-// WardrobeItemRankingDTO contains fields needed by fashion ranking algorithms.
-// Derived from wardrobe/domain/entities.WardrobeItem.
-type WardrobeItemRankingDTO struct {
-    ID           uuid.UUID
-    FashionItemID *uuid.UUID
-    LastUsedAt   *time.Time
+    LastUsedAt *time.Time   `json:"lastUsedAt,omitempty"`  // THÊM
+    IsDeleted  bool         `json:"isDeleted"`              // THÊM
 }
 ```
 
-### Bước 6.2: Tạo DTO cho Brand
+**Lưu ý:** `Status` đã có trong `WardrobeItemRes` với type `wardrobestatus.WardrobeItemStatus`. Việc fashion module import `wardrobestatus` để so sánh `item.Status == wardrobestatus.InWardrobe` là **chấp nhận được** (constants cross-module import cho phép).
 
-Tạo file `internal/modules/brand/application/dto/ranking_dto.go`:
+**Lưu ý về `FashionItemID`:** Entity dùng `FashionItemID *uuid.UUID` (nullable), nhưng `WardrobeItemRes` có `FashionItem *FashionItemRes` với field `FashionItem.ID`. Pattern access mới:
+- Entity cũ: `item.FashionItemID != nil { id = *item.FashionItemID }`
+- DTO mới: `item.FashionItem != nil { id = item.FashionItem.ID }`
+
+### Bước 6.2: Mở rộng `BrandItemRes` trong `brand/application/dto/brand_item.go`
+
+Thêm 1 field vào struct `BrandItemRes`:
 
 ```go
-package dto
+type BrandItemRes struct {
+    // ... các field hiện tại (ID, BrandID, FashionItemID, ProductCode, Name,
+    //     Description, Price, ItemType, Status, FashionItem, CreatedAt, UpdatedAt) ...
 
-import (
-    "github.com/google/uuid"
-)
-
-// BrandItemRankingDTO contains fields needed by fashion ranking algorithms.
-// Derived from brand/domain/entities.BrandItem.
-type BrandItemRankingDTO struct {
-    ID        uuid.UUID
-    BrandID   uuid.UUID
-    BrandName string  // flattened from Brand.Name
-    Name      string
-    ItemType  string
-    Price     *float64
+    BrandName string `json:"brandName,omitempty"`  // THÊM — flatten từ Brand.Name
 }
 ```
+
+**Kiểm tra type của `ItemType`:** Nếu là `branditemtype.BrandItemType` (const), giữ nguyên; nếu là `string`, giữ nguyên. Fashion code dùng `string(cand.BrandItem.ItemType)` khi mapping.
 
 ### Bước 6.3: Cập nhật `types` package trong fashion
 
 Sửa file `internal/modules/fashion/application/usecase/ai/recommendation/types/types.go`:
 
-1. **Thay thế các import:**
+1. **Thay thế import:**
    - `wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"` → `wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"`
    - `brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"` → `brandDto "smart-wardrobe-be/internal/modules/brand/application/dto"`
 
-2. **Cập nhật các struct:**
-   ```go
-   type CandidateForPrompt struct {
-       Item        *wardrobeDto.WardrobeItemRankingDTO
-       Tags        []string
-       ItemContext outfititemcontext.OutfitItemContext
-       BrandItem   *brandDto.BrandItemRankingDTO
-   }
+2. **Cập nhật 3 struct:**
 
-   type CandidateForRanking struct {
-       Item            *wardrobeDto.WardrobeItemRankingDTO
-       Source          string
-       VectorScore     float64
-       LexicalScore    float64
-       RetrievalScore  float64
-       RetrievalRank   int
-       RetrievalSource string
-       ItemContext     outfititemcontext.OutfitItemContext
-       BrandItem       *brandDto.BrandItemRankingDTO
-   }
+```go
+type CandidateForPrompt struct {
+    Item        *wardrobeDto.WardrobeItemRes       // thay vì *wardrobe_entities.WardrobeItem
+    Tags        []string
+    ItemContext outfititemcontext.OutfitItemContext
+    BrandItem   *brandDto.BrandItemRes             // thay vì *brand_entities.BrandItem
+}
 
-   type RankedCandidate struct {
-       Item          *wardrobeDto.WardrobeItemRankingDTO
-       Score         float64
-       Tags          []string
-       Source        string
-       RetrievalRank int
-       ItemContext   outfititemcontext.OutfitItemContext
-       BrandItem     *brandDto.BrandItemRankingDTO
-   }
-   ```
+type CandidateForRanking struct {
+    Item            *wardrobeDto.WardrobeItemRes   // thay vì *wardrobe_entities.WardrobeItem
+    Source          string
+    VectorScore     float64
+    LexicalScore    float64
+    RetrievalScore  float64
+    RetrievalRank   int
+    RetrievalSource string
+    ItemContext     outfititemcontext.OutfitItemContext
+    BrandItem       *brandDto.BrandItemRes         // thay vì *brand_entities.BrandItem
+}
 
-### Bước 6.4: Cập nhật các file sử dụng `types` struct
+type RankedCandidate struct {
+    Item          *wardrobeDto.WardrobeItemRes     // thay vì *wardrobe_entities.WardrobeItem
+    Score         float64
+    Tags          []string
+    Source        string
+    RetrievalRank int
+    ItemContext   outfititemcontext.OutfitItemContext
+    BrandItem     *brandDto.BrandItemRes           // thay vì *brand_entities.BrandItem
+}
+```
 
-Sửa các file sau để sử dụng DTO mới thay vì entity:
+### Bước 6.4: Cập nhật các file xử lý ranking
 
-1. **`fashion/application/usecase/ai/recommendation/ranking/scoring.go`**
-   - Đổi tham số `item *wardrobe_entities.WardrobeItem` → `item *wardrobeDto.WardrobeItemRankingDTO`
-   - `item.LastUsedAt` → không đổi (field giống nhau)
-   - `item.FashionItemID` → không đổi (field giống nhau)
-   - Xóa import `wardrobe_entities`
+**Pattern chung cho tất cả:** `item.FashionItemID` → `item.FashionItem` (và `*item.FashionItemID` → `item.FashionItem.ID`)
 
-2. **`fashion/application/usecase/ai/recommendation/ranking/pool_expansion.go`**
-   - Cập nhật signature và body tương tự
-   - Xóa import `wardrobe_entities`
+#### 6.4.1 `ranking/scoring.go`
+- Đổi tham số `item *wardrobe_entities.WardrobeItem` → `item *wardrobeDto.WardrobeItemRes`
+- `item.LastUsedAt` — giữ nguyên
+- `item.FashionItemID` — đổi thành `item.FashionItem` trong `fashionForItemFromMap()`
+- Xóa import `wardrobe_entities`
+- Hàm `fashionForItemFromMap`: `item.FashionItemID != nil` → `item.FashionItem != nil`; `*item.FashionItemID` → `item.FashionItem.ID`
 
-3. **`fashion/application/usecase/ai/recommendation/ranking/fallback_hsl.go`**
-   - Cập nhật signature các hàm `isNeutral`, `colorsMatch`, `FallbackSearchDocument`
-   - Đổi `*wardrobe_entities.WardrobeItem` → `*wardrobeDto.WardrobeItemRankingDTO`
-   - Xóa import `wardrobe_entities`
+#### 6.4.2 `ranking/pool_expansion.go`
+- Đổi tất cả `*wardrobe_entities.WardrobeItem` → `*wardrobeDto.WardrobeItemRes`
+- `item.FashionItemID != nil` → `item.FashionItem != nil`
+- `*item.FashionItemID` → `item.FashionItem.ID`
+- `item.ID` — giữ nguyên
+- Xóa import `wardrobe_entities`
 
-4. **`fashion/application/usecase/ai/recommendation/ranking/ranking.go`**
-   - Cập nhật các hàm xử lý `candidate.Item`
-   - `candidate.Item.ID` → không đổi
-   - `candidate.Item.FashionItemID` → không đổi
+#### 6.4.3 `ranking/fallback_hsl.go`
+- Đổi tất cả `*wardrobe_entities.WardrobeItem` → `*wardrobeDto.WardrobeItemRes`
+- `item.FashionItemID != nil` → `item.FashionItem != nil`
+- `*item.FashionItemID` → `item.FashionItem.ID`
+- `item.ID` — giữ nguyên
+- Xóa import `wardrobe_entities`
 
-5. **`fashion/application/usecase/ai/recommendation/candidate_helpers.go`**
-   - Cập nhật các hàm tạo `CandidateForRanking`, `CandidateForPrompt`
-   - Mapping từ entity → DTO tại nơi tạo: dùng `mapper` để chuyển đổi
-   - Xóa import `wardrobe_entities`, `brand_entities`
-   - **Lưu ý:** `BrandItem.Brand` relation cần được resolve qua contract trước khi map vào DTO
+#### 6.4.4 `ranking/ranking.go`
+- `candidate.Item.FashionItemID` → `candidate.Item.FashionItem`
+- `*candidate.Item.FashionItemID` → `candidate.Item.FashionItem.ID`
+- `candidate.Item.ID` — giữ nguyên
+- Xóa import `wardrobe_entities` (nếu có)
 
-6. **`fashion/application/mapper/recommendation.go`**
-   - Cập nhật hàm `enrichWardrobeItemRes` để dùng `*brandDto.BrandItemRankingDTO`
-   - `cand.BrandItem.Brand.Name` → `cand.BrandItem.BrandName` (đã flatten trong DTO)
-   - Xóa import `wardrobe_entities`, `brand_entities`
+#### 6.4.5 `candidate_helpers.go`
+- `validateAndGetActiveItems`:
+  - Đổi `[]*wardrobe_entities.WardrobeItem` → `[]*wardrobeDto.WardrobeItemRes`
+  - `item.Status == wardrobestatus.InWardrobe` — giữ nguyên (`WardrobeItemRes.Status` là cùng type)
+  - `!item.IsDeleted` — giữ nguyên (đã thêm vào DTO)
+  - Import `wardrobestatus` — được phép
+- `filterCandidates`:
+  - Map entity → DTO khi tạo `CandidateForRanking`/`CandidateForPrompt`:
+    ```go
+    Item: &wardrobeDto.WardrobeItemRes{
+        ID:          wardrobeItem.ID,
+        Status:      wardrobeItem.Status,
+        IsDeleted:   wardrobeItem.IsDeleted,
+        LastUsedAt:  wardrobeItem.LastUsedAt,
+        FashionItem: &fashion_dto.FashionItemRes{ID: *wardrobeItem.FashionItemID},
+    }
+    ```
+  - `c.Item.FashionItemID` → `c.Item.FashionItem`
+  - `*c.Item.FashionItemID` → `c.Item.FashionItem.ID`
+  - Mock brand item:
+    ```go
+    BrandItem: &brandDto.BrandItemRes{
+        ID:        brandItem.ID,
+        BrandID:   brandItem.BrandID,
+        BrandName: brandItem.Brand.Name, // nil check trước
+        Name:      brandItem.Name,
+        ItemType:  string(brandItem.ItemType), // cast nếu ItemType là const
+        Price:     brandItem.Price,
+    }
+    ```
+  - Xóa import `wardrobe_entities`, `brand_entities`
 
-### Bước 6.5: Cập nhật các handler/usecase tạo dữ liệu ranking
+#### 6.4.6 `mapper/recommendation.go`
+- `enrichWardrobeItemRes`:
+  - `cand.BrandItem.Brand.Name` → `cand.BrandItem.BrandName`
+  - `cand.BrandItem.Brand != nil` → không cần (đã flatten)
+  - `string(cand.BrandItem.ItemType)` → `cand.BrandItem.ItemType` (nếu type là string)
+- `resolvePrimaryCandidate`, `resolveAlternativeCandidates`, `matchesRole`:
+  - `item.FashionItemID` → `item.FashionItem`
+  - `*item.FashionItemID` → `item.FashionItem.ID`
+- `MapLLMResponseToGroups`:
+  - `*primary.FashionItemID` → `primary.FashionItem.ID`
+- Xóa import `wardrobe_entities`, `brand_entities`
 
-Tại `candidate_helpers.go` và các nơi khác tạo `CandidateForRanking` / `CandidateForPrompt`:
-- Thay vì gán trực tiếp entity `Item: wardrobeItem`, cần map entity → DTO:
-  ```go
-  Item: &wardrobeDto.WardrobeItemRankingDTO{
-      ID:           wardrobeItem.ID,
-      FashionItemID: wardrobeItem.FashionItemID,
-      LastUsedAt:   wardrobeItem.LastUsedAt,
-  }
-  ```
-- Tương tự cho `BrandItemRankingDTO`:
-  ```go
-  BrandItem: &brandDto.BrandItemRankingDTO{
-      ID:        brandItem.ID,
-      BrandID:   brandItem.BrandID,
-      BrandName: brandItem.Brand.Name, // cần kiểm tra nil
-      Name:      brandItem.Name,
-      ItemType:  string(brandItem.ItemType),
-      Price:     brandItem.Price,
-  }
-  ```
+### Bước 6.5: Cập nhật test files
 
-### Bước 6.6: Cập nhật test files
+**Pattern chung:** Entity → DTO mapping trong test data:
 
-Sửa các file test trong `fashion/application/usecase/ai/recommendation/`:
+```go
+// Entity cũ:
+&wardrobe_entities.WardrobeItem{
+    AuditableEntity: wardrobe_entities.AuditableEntity{
+        BaseEntity: wardrobe_entities.BaseEntity{ID: itemID},
+    },
+    FashionItemID: &fashionID,
+}
 
-1. **`scoring_test.go`**, **`fallback_hsl_test.go`**, **`synthesis_test.go`**
-   - Tạo `WardrobeItemRankingDTO` thay vì `wardrobe_entities.WardrobeItem` trong test data
-   - Xóa import `wardrobe_entities`
+// DTO mới:
+&wardrobeDto.WardrobeItemRes{
+    ID: itemID,
+    FashionItem: &fashion_dto.FashionItemRes{ID: fashionID},
+}
+```
 
-2. **`ranking/*_test.go`**
-   - Cập nhật tương tự
+Các file cần sửa:
+- `ranking/scoring_test.go` — thay entity bằng DTO, xóa import `wardrobe_entities`
+- `ranking/fallback_hsl_test.go` — tương tự
+- `synthesis/synthesis_test.go` — tương tự
 
-### Bước 6.7: Xóa các import entity còn sót
+### Bước 6.6: Xóa các import entity còn sót
 
-Sau khi hoàn thành các bước trên, kiểm tra toàn bộ module `fashion` không còn import:
+Kiểm tra toàn bộ module `fashion` không còn import:
 - `smart-wardrobe-be/internal/modules/wardrobe/domain/entities`
 - `smart-wardrobe-be/internal/modules/brand/domain/entities`
 
-Nếu còn import nào, refactor tiếp.
+```bash
+go vet ./internal/modules/fashion/...
+```
 
-### Bước 6.8: Xác minh
+Nếu còn lỗi `undefined: wardrobe_entities` hoặc `undefined: brand_entities`, tìm và xử lý tiếp.
 
-1. Chạy `go vet ./internal/modules/fashion/...` — không còn lỗi import chéo
-2. Chạy `make test` — toàn bộ test pass
-3. Xác nhận không còn vi phạm Rule 1.1 trong `fashion` module
+### Bước 6.7: Xác minh
+
+1. `go vet ./internal/modules/fashion/...` — không lỗi
+2. `go test ./internal/modules/fashion/...` — test pass
+3. Kiểm tra không còn vi phạm Rule 1.1 (import entity/repository từ module khác)
 
 ---
 
-## Rủi ro & Lưu ý
+## Lưu ý quan trọng
 
-1. **Performance:** DTO mapping tạo thêm allocations nhỏ. Các ranking function được gọi nhiều lần, cần kiểm tra benchmark nếu nghi ngờ.
-2. **BrandItem.Brand relation:** Trong `mapper/recommendation.go:251`, code truy cập `cand.BrandItem.Brand.Name`. Đây là loaded relation. Với DTO approach, cần resolve Brand name trước khi tạo DTO (tức là brand name phải được load từ DB hoặc cache trước).
-3. **Test data:** Các test hiện tại tạo `WardrobeItem` chủ yếu với `ID` và `FashionItemID`. DTO cũng chỉ cần các field này, nên việc chuyển đổi đơn giản.
+1. **Pattern thay thế `FashionItemID`:** Entity dùng `*uuid.UUID`, DTO có `FashionItem *FashionItemRes`. Cần đổi:
+   - `if item.FashionItemID != nil { id := *item.FashionItemID }` → `if item.FashionItem != nil { id := item.FashionItem.ID }`
+
+2. **`Status` type:** `WardrobeItemRes.Status` là `wardrobestatus.WardrobeItemStatus`. Import `wardrobestatus` trong fashion module là **chấp nhận được**.
+
+3. **`BrandItemRes.ItemType`:** Kiểm tra type thực tế. Nếu là `string` thì dùng trực tiếp; nếu là `branditemtype.BrandItemType` thì cast `string(...)`.
+
+4. **Test data:** Các test hiện tại tạo entity với `ID` và `FashionItemID`. Mapping DTO tương ứng: `FashionItemID: &id` → `FashionItem: &FashionItemRes{ID: id}`.
+
+5. **Thứ tự thực hiện khuyến nghị:** Bước 6.1 (DTO) → 6.2 (DTO) → 6.3 (types) → 6.4.1-6.4.4 (ranking) → 6.4.5 (candidate_helpers) → 6.4.6 (mapper) → 6.5 (tests) → 6.6 (cleanup) → 6.7 (verify).

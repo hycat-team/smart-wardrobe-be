@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
@@ -16,6 +17,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
@@ -37,42 +39,42 @@ const (
 
 // FashionWorkerUseCase orchestrates asynchronous wardrobe item processing and recovery workflows.
 type FashionWorkerUseCase struct {
-	cfg             *config.Config
-	logger          logger.Interface
-	wardrobeRepo    repositories.IWardrobeItemRepository
-	categoryCache   *VisionCategoryCache
-	mediaService    media.IMediaService
-	aiService       aiexecutor_contract.IAIOrchestrator
-	userSubContract contract.IUserSubscriptionContract
-	eventPublisher  event.IEventPublisher
-	fashionItemRepo repositories.IFashionItemRepository
-	brandRepo       repositories.IBrandItemRepository
+	cfg              *config.Config
+	logger           logger.Interface
+	wardrobeContract wardrobe_contract.IWardrobeContract
+	categoryCache    *VisionCategoryCache
+	mediaService     media.IMediaService
+	aiService        aiexecutor_contract.IAIOrchestrator
+	userSubContract  contract.IUserSubscriptionContract
+	eventPublisher   event.IEventPublisher
+	fashionItemRepo  repositories.IFashionItemRepository
+	brandContract    brand_contract.IBrandContract
 }
 
 // NewFashionWorkerUseCase creates the worker use case responsible for AI item processing jobs.
 func NewFashionWorkerUseCase(
 	cfg *config.Config,
 	logger logger.Interface,
-	wardrobeRepo repositories.IWardrobeItemRepository,
+	wardrobeContract wardrobe_contract.IWardrobeContract,
 	categoryCache *VisionCategoryCache,
 	mediaService media.IMediaService,
 	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionItemRepo repositories.IFashionItemRepository,
-	brandRepo repositories.IBrandItemRepository,
+	brandContract brand_contract.IBrandContract,
 ) uc_interfaces.IFashionWorkerUseCase {
 	return &FashionWorkerUseCase{
-		cfg:             cfg,
-		logger:          logger,
-		wardrobeRepo:    wardrobeRepo,
-		categoryCache:   categoryCache,
-		mediaService:    mediaService,
-		aiService:       aiService,
-		userSubContract: userSubContract,
-		eventPublisher:  eventPublisher,
-		fashionItemRepo: fashionItemRepo,
-		brandRepo:       brandRepo,
+		cfg:              cfg,
+		logger:           logger,
+		wardrobeContract: wardrobeContract,
+		categoryCache:    categoryCache,
+		mediaService:     mediaService,
+		aiService:        aiService,
+		userSubContract:  userSubContract,
+		eventPublisher:   eventPublisher,
+		fashionItemRepo:  fashionItemRepo,
+		brandContract:    brandContract,
 	}
 }
 
@@ -136,18 +138,18 @@ func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Cont
 func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	var fashionItem *entities.FashionItem
 	if job.ItemType == "brand" {
-		brandItem, err := uc.brandRepo.GetByID(ctx, job.ItemID)
+		brandItem, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if err != nil {
 			return err
 		}
-		if brandItem == nil || brandItem.FashionItemID == nil {
+		if brandItem == nil || brandItem.FashionItemID == uuid.Nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: brand item or fashion item not found",
 				zap.String("itemId", job.ItemID.String()),
 			)
 			return nil
 		}
-		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, *brandItem.FashionItemID)
+		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, brandItem.FashionItemID)
 		if err != nil || fashionItem == nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
@@ -156,18 +158,22 @@ func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job d
 			return nil
 		}
 	} else {
-		wardrobeItem, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
+		items, err := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 		if err != nil {
 			return err
 		}
-		if wardrobeItem == nil || wardrobeItem.FashionItemID == nil {
+		var wardrobeItem *wardrobeDto.WardrobeItemRes
+		if len(items) > 0 {
+			wardrobeItem = items[0]
+		}
+		if wardrobeItem == nil || wardrobeItem.FashionItem == nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: wardrobe item or fashion item not found",
 				zap.String("itemId", job.ItemID.String()),
 			)
 			return nil
 		}
-		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, *wardrobeItem.FashionItemID)
+		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, wardrobeItem.FashionItem.ID)
 		if err != nil || fashionItem == nil {
 			run.AddSkipped(1)
 			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
@@ -222,7 +228,7 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 	publishedDeleteEventCount := 0
 
 	for {
-		items, err := uc.wardrobeRepo.GetFailedItemsForCleanup(ctx, limit)
+		items, err := uc.wardrobeContract.GetFailedItemsForCleanup(ctx, limit)
 		if err != nil {
 			return fmt.Errorf("failed to fetch items for cleanup: %w", err)
 		}
@@ -234,8 +240,8 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 		for _, item := range items {
 			run.AddTotal(1)
 			imagePublicID := ""
-			if item.FashionItemID != nil {
-				if fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID); err == nil && fi != nil {
+			if item.FashionItem != nil {
+				if fi, err := uc.fashionItemRepo.GetByID(ctx, item.FashionItem.ID); err == nil && fi != nil {
 					imagePublicID = fi.ImagePublicID
 				}
 			}
@@ -249,7 +255,7 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 				}
 			}
 
-			if err := uc.wardrobeRepo.Delete(ctx, item.ID); err != nil {
+			if err := uc.wardrobeContract.DeleteWardrobeItem(ctx, item.ID); err != nil {
 				run.ChildError(uc.logger, "Failed to delete item from database during failed item cleanup",
 					zap.String("itemId", item.ID.String()),
 					zap.Error(err),
@@ -283,7 +289,7 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 // RecoverStaleProcessingItems republishes stale processing items or marks them failed when retries are exhausted.
 func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error {
 	staleBefore := time.Now().UTC().Add(-time.Duration(uc.cfg.Wardrobe.StaleMinutes) * time.Minute)
-	items, err := uc.wardrobeRepo.GetStaleProcessingItems(ctx, staleBefore, 100)
+	items, err := uc.wardrobeContract.GetStaleProcessingItems(ctx, staleBefore, 100)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stale processing items: %w", err)
 	}
@@ -292,11 +298,11 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 	markedFailedCount := 0
 
 	for _, item := range items {
-		if item.FashionItemID == nil {
+		if item.FashionItem == nil {
 			run.AddSkipped(1)
 			continue
 		}
-		fi, err := uc.fashionItemRepo.GetByID(ctx, *item.FashionItemID)
+		fi, err := uc.fashionItemRepo.GetByID(ctx, item.FashionItem.ID)
 		if err != nil || fi == nil {
 			run.AddSkipped(1)
 			continue
@@ -360,23 +366,22 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 	)
 	if job.ItemType == "brand" && job.FashionItemID != nil {
 		_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
-		brandItem, _ := uc.brandRepo.GetByID(ctx, job.ItemID)
+		brandItem, _ := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if brandItem != nil {
-			brandItem.Status = "draft"
-			_ = uc.brandRepo.Update(ctx, brandItem)
+			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, "draft")
 		}
 		return
 	}
-	_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
+	_, _ = uc.wardrobeContract.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 }
 
 func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) (any, error) {
 	if job.ItemType == "brand" {
-		item, err := uc.brandRepo.GetByID(ctx, job.ItemID)
+		item, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if err != nil {
 			return nil, err
 		}
-		if item == nil || item.FashionItemID == nil {
+		if item == nil || item.FashionItemID == uuid.Nil {
 			run.ChildWarn(uc.logger, "Skipped brand item analyze job because item is not processable",
 				zap.String("itemId", job.ItemID.String()),
 				zap.Int("processingVersion", job.ProcessingVersion),
@@ -386,11 +391,15 @@ func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job dto
 		return item, nil
 	}
 
-	item, err := uc.wardrobeRepo.GetByID(ctx, job.ItemID)
+	items, err := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if err != nil {
 		return nil, err
 	}
-	if item == nil || item.FashionItemID == nil || item.Status != wardrobestatus.Processing {
+	var item *wardrobeDto.WardrobeItemRes
+	if len(items) > 0 {
+		item = items[0]
+	}
+	if item == nil || item.FashionItem == nil || item.Status != wardrobestatus.Processing {
 		run.ChildWarn(uc.logger, "Skipped wardrobe batch upload job because item is not processable",
 			zap.String("itemId", job.ItemID.String()),
 			zap.Int("processingVersion", job.ProcessingVersion),
@@ -431,14 +440,13 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 	}
 	if job.ItemType == "brand" && job.FashionItemID != nil {
 		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, *job.FashionItemID, job.ProcessingVersion, reviewReason)
-		brandItem, _ := uc.brandRepo.GetByID(ctx, job.ItemID)
+		brandItem, _ := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if brandItem != nil {
-			brandItem.Status = "draft"
-			_ = uc.brandRepo.Update(ctx, brandItem)
+			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, "draft")
 		}
 		return
 	}
-	_, _ = uc.wardrobeRepo.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reviewReason)
+	_, _ = uc.wardrobeContract.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reviewReason)
 }
 
 func (uc *FashionWorkerUseCase) buildCompletedItemUpdate(
@@ -479,15 +487,14 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		if !completed {
 			return nil
 		}
-		brandItem, err := uc.brandRepo.GetByID(ctx, job.ItemID)
+		brandItem, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if err == nil && brandItem != nil {
-			brandItem.Status = "active"
-			_ = uc.brandRepo.Update(ctx, brandItem)
+			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, "active")
 		}
 		return nil
 	}
 
-	completed, err := uc.wardrobeRepo.CompleteProcessingSuccess(ctx, job.ItemID, job.ProcessingVersion, updateMap)
+	completed, err := uc.wardrobeContract.CompleteProcessingSuccess(ctx, job.ItemID, job.ProcessingVersion, updateMap)
 	if err != nil {
 		return err
 	}

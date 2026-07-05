@@ -80,13 +80,13 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 	})
 }
 
-func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemStylingDTO, []*fashion_dto.FashionItemRes, error) {
+func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemRes, error) {
 	user, err := uc.userContract.GetByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if user == nil {
-		return []*dto.BrandItemStylingDTO{}, []*fashion_dto.FashionItemRes{}, nil
+		return []*dto.BrandItemRes{}, []*fashion_dto.FashionItemRes{}, nil
 	}
 
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
@@ -111,7 +111,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		brandItemsByBrandID[item.BrandID] = append(brandItemsByBrandID[item.BrandID], item)
 	}
 
-	eligibleDTOS := make([]*dto.BrandItemStylingDTO, 0, len(brandItems))
+	eligibleDTOS := make([]*dto.BrandItemRes, 0, len(brandItems))
 	eligibleItems := make([]*entities.BrandItem, 0, len(brandItems))
 	sampleAccessByBrandID := make(map[uuid.UUID]bool, len(activeBrandIDs))
 	sampleAccessChecked := make(map[uuid.UUID]struct{}, len(activeBrandIDs))
@@ -160,7 +160,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 		if item.FashionItemID != nil {
 			fi = fashionItemMap[*item.FashionItemID]
 		}
-		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemStylingDTO(item, fi))
+		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemRes(item, fi))
 	}
 
 	fashionItems := make([]*fashion_dto.FashionItemRes, len(eligibleItems))
@@ -518,6 +518,17 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatusDirect(ctx context.Context, bra
 	}
 	item.Status = branditemstatus.BrandItemStatus(status)
 	return uc.brandItemRepo.Update(ctx, item)
+}
+
+func (uc *BrandItemUseCase) GetBrandItemByIDDirect(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {
+	item, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, nil
+	}
+	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
 func isValidVoteType(vote votetype.VoteType) bool {

@@ -19,9 +19,9 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"smart-wardrobe-be/pkg/utils/stringutils"

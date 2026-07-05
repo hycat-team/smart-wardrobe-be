@@ -4,7 +4,6 @@ import (
 	"context"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -64,26 +63,4 @@ func (r *CategoryRepository) GetAll(ctx context.Context) ([]*entities.Category, 
 		return nil, err
 	}
 	return categories, nil
-}
-
-func (r *CategoryRepository) CountWardrobeItemsByCategoryAndItemType(ctx context.Context, categoryID uuid.UUID, kind itemtype.ItemType) (int64, error) {
-	var count int64
-	err := r.GetDB(ctx).
-		Raw(`SELECT COUNT(*) FROM wardrobe_items
-			JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id
-			WHERE fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?`,
-			categoryID, kind, false).
-		Scan(&count).Error
-	return count, err
-}
-
-func (r *CategoryRepository) ReassignSystemCatalogItemsToCategory(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
-	err := r.GetDB(ctx).
-		Exec(`UPDATE fashion_items SET category_id = ?
-			WHERE id IN (
-				SELECT wardrobe_items.fashion_item_id FROM wardrobe_items
-				JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id
-				WHERE fashion_items.category_id = ? AND wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?
-			)`, toCategoryID, fromCategoryID, itemtype.SystemCatalogItem, false).Error
-	return err
 }

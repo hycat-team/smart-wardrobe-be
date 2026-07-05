@@ -8,14 +8,12 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"github.com/google/uuid"
 )
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func isNeutral(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
@@ -27,7 +25,7 @@ func isNeutral(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUI
 }
 
 // colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
-func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if isNeutral(item1, fashionItemMap) || isNeutral(item2, fashionItemMap) {
 		return true
 	}
@@ -76,9 +74,9 @@ func colorsMatch(item1, item2 *wardrobe_entities.WardrobeItem, fashionItemMap ma
 // Đầu ra mẫu:
 //
 //	*dto.RecommendedOutfitRes{Title: "Bộ phối màu hài hòa", IsFallback: true, ...}
-func itemCategorySlug(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
-	if item.FashionItemID != nil {
-		if fi := fashionItemMap[*item.FashionItemID]; fi != nil && fi.CategoryName != nil {
+func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+	if item.FashionItem != nil {
+		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
 			return strings.ToLower(*fi.CategoryName)
 		}
 	}
@@ -90,7 +88,7 @@ func RunLocalHSLMatching(
 	input dto.RecommendOutfitReq,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedOutfitRes {
-	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobe_entities.WardrobeItem
+	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobeDto.WardrobeItemRes
 
 	for _, candidate := range candidates {
 		item := candidate.Item
@@ -222,8 +220,8 @@ func RunLocalHSLMatching(
 // buildItemGroup xây dựng cấu trúc [RecommendedItemGroup] cho một vai trò phối đồ cụ thể, bao gồm món đồ chính và tối đa 2 món đồ thay thế từ danh sách.
 func buildItemGroup(
 	role string,
-	primary *wardrobe_entities.WardrobeItem,
-	all []*wardrobe_entities.WardrobeItem,
+	primary *wardrobeDto.WardrobeItemRes,
+	all []*wardrobeDto.WardrobeItemRes,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
@@ -235,34 +233,70 @@ func buildItemGroup(
 			break
 		}
 		var fi *dto.FashionItemRes
-		if item.FashionItemID != nil {
-			fi = fashionItemMap[*item.FashionItemID]
+		if item.FashionItem != nil {
+			fi = fashionItemMap[item.FashionItem.ID]
 		}
-		alternatives = append(alternatives, mapper.MapToWardrobeItemRes(item, fi))
+		alternatives = append(alternatives, mapToWardrobeItemResWithFashion(item, fi))
 	}
 
 	var primaryFI *dto.FashionItemRes
-	if primary.FashionItemID != nil {
-		primaryFI = fashionItemMap[*primary.FashionItemID]
+	if primary.FashionItem != nil {
+		primaryFI = fashionItemMap[primary.FashionItem.ID]
 	}
 	return &dto.RecommendedItemGroup{
 		Role:         role,
-		Primary:      mapper.MapToWardrobeItemRes(primary, primaryFI),
+		Primary:      mapToWardrobeItemResWithFashion(primary, primaryFI),
 		Alternatives: alternatives,
 	}
 }
 
-func roleForItem(item *wardrobe_entities.WardrobeItem, fallback string) string {
-	if item.FashionItemID != nil {
+func roleForItem(item *wardrobeDto.WardrobeItemRes, fallback string) string {
+	if item.FashionItem != nil {
 		// caller should use fashionItemMap; fallback is used here
-		_ = item.FashionItemID
+		_ = item.FashionItem.ID
 	}
 	return fallback
 }
 
-func fashionForItemFromMap(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
-	if item == nil || item.FashionItemID == nil {
+func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+	if item == nil || item.FashionItem == nil {
 		return nil
 	}
-	return fashionItemMap[*item.FashionItemID]
+	return fashionItemMap[item.FashionItem.ID]
+}
+
+func mapToWardrobeItemResWithFashion(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes) *wardrobeDto.WardrobeItemRes {
+	if item == nil {
+		return nil
+	}
+	res := *item
+	if fi != nil {
+		res.FashionItem = &wardrobeDto.FashionItemRes{
+			ID:              fi.ID,
+			CategoryID:      fi.CategoryID,
+			CategoryName:    fi.CategoryName,
+			ImageUrl:        fi.ImageUrl,
+			ImagePublicID:   fi.ImagePublicID,
+			Color:           fi.Color,
+			ColorHex:        fi.ColorHex,
+			ColorHue:        fi.ColorHue,
+			ColorSaturation: fi.ColorSaturation,
+			ColorLightness:  fi.ColorLightness,
+			Style:           fi.Style,
+			Material:        fi.Material,
+			Pattern:         fi.Pattern,
+			Fit:             fi.Fit,
+			Seasonality:     fi.Seasonality,
+			Description:     fi.Description,
+			CreatedAt:       fi.CreatedAt,
+			UpdatedAt:       fi.UpdatedAt,
+		}
+		if fi.CategoryName != nil {
+			res.Category = &wardrobeDto.CategoryRes{
+				ID:   *fi.CategoryID,
+				Name: *fi.CategoryName,
+			}
+		}
+	}
+	return &res
 }

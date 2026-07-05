@@ -1,19 +1,24 @@
 package persistence
 
 import (
-	"context"
 	"sort"
 	"strings"
+	"time"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/constants"
+	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
 type hybridCandidateRecord struct {
-	entities.WardrobeItem
+	ID            uuid.UUID  `gorm:"column:id"`
+	UserID        uuid.UUID  `gorm:"column:user_id"`
+	FashionItemID *uuid.UUID `gorm:"column:fashion_item_id"`
+	Price         *float64   `gorm:"column:price"`
+	Status        int16      `gorm:"column:status"`
+	LastUsedAt    *time.Time `gorm:"column:last_used_at"`
+	IsDeleted     bool       `gorm:"column:is_deleted"`
+
 	VectorScore     float64 `gorm:"column:vector_score"`
 	LexicalScore    float64 `gorm:"column:lexical_score"`
 	RetrievalScore  float64 `gorm:"column:retrieval_score"`
@@ -89,9 +94,7 @@ func mergeHybridCandidateRecordsByRRF(
 	return merged
 }
 
-// buildHybridCandidates thực hiện truy vấn chi tiết các mối quan hệ (preload categories, v.v.) và chuyển đổi danh sách bản ghi thô [hybridCandidateRecord] thành thực thể hoàn chỉnh [HybridCandidate] phục vụ cho nghiệp vụ.
-func (r *WardrobeItemRepository) buildHybridCandidates(
-	ctx context.Context,
+func (r *FashionItemRepository) buildHybridCandidates(
 	records []hybridCandidateRecord,
 	source string,
 	queryErr error,
@@ -103,32 +106,20 @@ func (r *WardrobeItemRepository) buildHybridCandidates(
 		return nil, nil
 	}
 
-	ids := make([]uuid.UUID, 0, len(records))
-	for _, record := range records {
-		ids = append(ids, record.ID)
-	}
-
-	items, err := r.GetByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	itemByID := make(map[uuid.UUID]*entities.WardrobeItem, len(items))
-	for _, item := range items {
-		itemByID[item.ID] = item
-	}
-
 	candidates := make([]repositories.HybridCandidate, 0, len(records))
 	for index, record := range records {
-		item := itemByID[record.ID]
-		if item == nil {
-			item = &record.WardrobeItem
-		}
 		recordSource := source
 		if recordSource == "" {
 			recordSource = record.RetrievalSource
 		}
 		candidates = append(candidates, repositories.HybridCandidate{
-			Item:            item,
+			ID:              record.ID,
+			UserID:          record.UserID,
+			FashionItemID:   record.FashionItemID,
+			Price:           record.Price,
+			Status:          record.Status,
+			LastUsedAt:      record.LastUsedAt,
+			IsDeleted:       record.IsDeleted,
 			VectorScore:     record.VectorScore,
 			LexicalScore:    record.LexicalScore,
 			RetrievalScore:  record.RetrievalScore,
@@ -172,17 +163,33 @@ func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 		"recommendation_fashion_items.seasonality IS NULL",
 		"btrim(recommendation_fashion_items.seasonality) = ''",
 	}
-	args := make([]any, 0, len(aliases)+len(constants.RecommendationAllSeasonAliases))
+	args := make([]any, 0, len(aliases)+len(recommendationAllSeasonAliases))
 	for _, alias := range aliases {
 		conditions = append(conditions, seasonalitySQL+" LIKE ?")
 		args = append(args, "%"+alias+"%")
 	}
-	for _, alias := range constants.RecommendationAllSeasonAliases {
+	for _, alias := range recommendationAllSeasonAliases {
 		conditions = append(conditions, seasonalitySQL+" LIKE ?")
 		args = append(args, "%"+alias+"%")
 	}
 
 	return "(" + strings.Join(conditions, " OR ") + ")", args
+}
+
+var recommendationAllSeasonAliases = []string{
+	"quanh nam", "bon mua", "all-season", "all season", "multi-season", "multi season", "quanhnăm", "bốnmùa",
+}
+
+var recommendationSeasonAliases = map[string][]string{
+	"xuan":   {"xuan", "spring", "xuân"},
+	"ha":     {"ha", "summer", "he", "hè", "hạ"},
+	"thu":    {"thu", "autumn", "fall"},
+	"dong":   {"dong", "winter", "đông"},
+	"he":     {"he", "summer", "ha", "hè", "hạ"},
+	"xuân":   {"xuan", "spring", "xuân"},
+	"hè":     {"he", "summer", "ha", "hè", "hạ"},
+	"đông":   {"dong", "winter", "đông"},
+	"mùa he": {"he", "summer", "ha", "hè", "hạ"},
 }
 
 // recommendationSeasonalityAliases chuyển đổi danh sách các mùa thô thành tập hợp các từ khóa mùa tương đương/đồng nghĩa mở rộng (ví dụ: "he" -> "he", "summer", "mua he").
@@ -194,7 +201,7 @@ func recommendationSeasonalityAliases(seasons []string) []string {
 		if season == "" {
 			continue
 		}
-		values := constants.RecommendationSeasonAliases[season]
+		values := recommendationSeasonAliases[season]
 		if len(values) == 0 {
 			values = []string{season}
 		}
@@ -284,12 +291,12 @@ func buildRecommendationSeasonalityConditionSubquery(seasons []string) (string, 
 		"(SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NULL",
 		"btrim((SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id)) = ''",
 	}
-	args := make([]any, 0, len(aliases)+len(constants.RecommendationAllSeasonAliases))
+	args := make([]any, 0, len(aliases)+len(recommendationAllSeasonAliases))
 	for _, alias := range aliases {
 		conditions = append(conditions, seasonalitySQL+" LIKE ?")
 		args = append(args, "%"+alias+"%")
 	}
-	for _, alias := range constants.RecommendationAllSeasonAliases {
+	for _, alias := range recommendationAllSeasonAliases {
 		conditions = append(conditions, seasonalitySQL+" LIKE ?")
 		args = append(args, "%"+alias+"%")
 	}

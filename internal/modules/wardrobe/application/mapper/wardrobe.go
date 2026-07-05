@@ -38,11 +38,13 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionIt
 	}
 
 	res := &dto.WardrobeItemRes{
-		ID:        item.ID,
-		UserID:    item.UserID,
-		Price:     item.Price,
-		Status:    item.Status,
-		CreatedAt: item.CreatedAt,
+		ID:         item.ID,
+		UserID:     item.UserID,
+		Price:      item.Price,
+		Status:     item.Status,
+		CreatedAt:  item.CreatedAt,
+		LastUsedAt: item.LastUsedAt,
+		IsDeleted:  item.IsDeleted,
 	}
 	if fi != nil {
 		res.FashionItem = MapToFashionItemRes(fi)

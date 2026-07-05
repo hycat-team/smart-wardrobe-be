@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
-	usecase_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
+	usecase_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"

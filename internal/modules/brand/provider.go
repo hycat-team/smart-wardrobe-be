@@ -2,8 +2,8 @@ package brand
 
 import (
 	"smart-wardrobe-be/internal/modules/brand/application/usecase"
-	"smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
+	"smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/brand/presentation/handler"
 	"smart-wardrobe-be/internal/modules/brand/presentation/worker"
 

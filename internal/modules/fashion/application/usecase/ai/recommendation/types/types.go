@@ -4,11 +4,11 @@ package types
 import (
 	"context"
 
-	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
+	brandDto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
 const (
@@ -33,10 +33,10 @@ const (
 
 // CandidateForPrompt đại diện cho một món đồ ứng viên đã chuẩn bị đầy đủ thông tin (kèm tag thời trang) để đưa vào prompt gửi cho LLM.
 type CandidateForPrompt struct {
-	Item        *wardrobe_entities.WardrobeItem
+	Item        *wardrobeDto.WardrobeItemRes
 	Tags        []string
 	ItemContext outfititemcontext.OutfitItemContext
-	BrandItem   *brand_entities.BrandItem
+	BrandItem   *brandDto.BrandItemRes
 }
 
 // RerankStats lưu trữ các thông số thống kê phục vụ cho việc chấm điểm và đa dạng hóa danh sách ứng viên sau khi xếp hạng.
@@ -49,7 +49,7 @@ type RerankStats struct {
 
 // CandidateForRanking đại diện cho một món đồ ứng viên đang được xử lý trong pipeline chấm điểm và xếp hạng.
 type CandidateForRanking struct {
-	Item            *wardrobe_entities.WardrobeItem
+	Item            *wardrobeDto.WardrobeItemRes
 	Source          string
 	VectorScore     float64
 	LexicalScore    float64
@@ -57,18 +57,18 @@ type CandidateForRanking struct {
 	RetrievalRank   int
 	RetrievalSource string
 	ItemContext     outfititemcontext.OutfitItemContext
-	BrandItem       *brand_entities.BrandItem
+	BrandItem       *brandDto.BrandItemRes
 }
 
 // RankedCandidate đại diện cho một món đồ ứng viên đã được tính điểm và sắp xếp thứ hạng hoàn chỉnh.
 type RankedCandidate struct {
-	Item          *wardrobe_entities.WardrobeItem
+	Item          *wardrobeDto.WardrobeItemRes
 	Score         float64
 	Tags          []string
 	Source        string
 	RetrievalRank int
 	ItemContext   outfititemcontext.OutfitItemContext
-	BrandItem     *brand_entities.BrandItem
+	BrandItem     *brandDto.BrandItemRes
 }
 
 // FallbackCandidateCounts đếm số lượng ứng viên tìm được qua các tầng lọc dự phòng khác nhau (Strict, Relaxed, General).

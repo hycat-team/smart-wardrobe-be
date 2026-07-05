@@ -17,7 +17,7 @@ var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|g
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
 // buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
+func buildChatSystemPrompt(summary string, brandItems []*brand_dto.BrandItemRes, recent []*fashion_entities.Message, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
 	return buildChatSystemPromptWithLimits(summary, brandItems, recent, 4000, 1500, fashionItemMap)
 }
 
@@ -29,7 +29,7 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemStylingDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
+func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemRes, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")

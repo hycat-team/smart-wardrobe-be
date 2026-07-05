@@ -17,9 +17,9 @@ import (
 )
 
 type CostUseCase struct {
-	repo               repositories.IAICostRepository
-	pricingUC          uc_interfaces.IPricingUseCase
-	userSubContract    subscription_contract.IUserSubscriptionContract
+	repo            repositories.IAICostRepository
+	pricingUC       uc_interfaces.IPricingUseCase
+	userSubContract subscription_contract.IUserSubscriptionContract
 }
 
 func NewCostUseCase(

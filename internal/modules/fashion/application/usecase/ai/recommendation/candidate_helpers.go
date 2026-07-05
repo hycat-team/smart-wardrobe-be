@@ -9,17 +9,14 @@ import (
 	"go.uber.org/zap"
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
-	brand_entities "smart-wardrobe-be/internal/modules/brand/domain/entities"
-	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
@@ -42,11 +39,11 @@ import (
 //
 // Đầu ra mẫu:
 //
-//	([]*wardrobe_entities.WardrobeItem, *sub_dto.UserSubscriptionDTO, nil)
+//	([]*wardrobeDto.WardrobeItemRes, *sub_dto.UserSubscriptionDTO, nil)
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]*wardrobe_entities.WardrobeItem, *sub_dto.UserSubscriptionDTO, error) {
+) ([]*wardrobeDto.WardrobeItemRes, *sub_dto.UserSubscriptionDTO, error) {
 	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, nil, err
@@ -56,7 +53,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 		return nil, nil, fashioerrors.ErrAiOutfitQuotaExceeded()
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	items, err := uc.wardrobeContract.GetWardrobeItemsByUserID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,8 +63,10 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 		return nil, nil, err
 	}
 
-	items = shared.FilterActiveItems(items, subOverview.MaxWardrobeItems)
-	activeItems := make([]*wardrobe_entities.WardrobeItem, 0, len(items))
+	if len(items) > subOverview.MaxWardrobeItems {
+		items = items[:subOverview.MaxWardrobeItems]
+	}
+	activeItems := make([]*wardrobeDto.WardrobeItemRes, 0, len(items))
 	for _, item := range items {
 		if item.Status == wardrobestatus.InWardrobe && !item.IsDeleted {
 			activeItems = append(activeItems, item)
@@ -103,7 +102,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
-	activeItems []*wardrobe_entities.WardrobeItem,
+	activeItems []*wardrobeDto.WardrobeItemRes,
 	input dto.RecommendOutfitReq,
 ) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemRes, error) {
 	intent := uc.parseRecommendationIntent(input)
@@ -128,16 +127,13 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 				if fashionItem == nil {
 					continue
 				}
-				mockWardrobeItem := &wardrobe_entities.WardrobeItem{
-					AuditableEntity: wardrobe_entities.AuditableEntity{
-						BaseEntity: wardrobe_entities.BaseEntity{
-							ID: brandItem.FashionItemID,
-						},
+				mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
+					ID: brandItem.FashionItemID,
+					FashionItem: &wardrobeDto.FashionItemRes{
+						ID: fashionItem.ID,
 					},
-					FashionItemID: &brandItem.FashionItemID,
 				}
 
-				mockWardrobeItem.FashionItemID = &fashionItem.ID
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
 					Source:          types.CandidateSourceRetrieval,
@@ -147,14 +143,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					RetrievalRank:   brandCandidatesCount + 1,
 					RetrievalSource: types.CandidateSourceRetrieval,
 					ItemContext:     outfititemcontext.BrandItem,
-					BrandItem: &brand_entities.BrandItem{
-						AuditableEntity: brand_entities.AuditableEntity{
-							BaseEntity: brand_entities.BaseEntity{ID: brandItem.ID},
-						},
-						BrandID:  brandItem.BrandID,
-						ItemType: branditemtype.BrandItemType(brandItem.ItemType),
-						Name:     brandItem.Name,
-					},
+					BrandItem:       brandItem,
 				})
 				brandCandidatesCount++
 			}
@@ -163,7 +152,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	// Fetch Wardrobe items
 	wardrobeLimit := minimumPool - brandCandidatesCount
-	candidates, err := uc.wardrobeRepo.GetHybridCandidates(
+	candidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,
 		userID,
 		queryVector,
@@ -175,11 +164,23 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	)
 	if err == nil {
 		for _, candidate := range candidates {
-			if candidate.Item == nil {
-				continue
+			var fashionItemRes *wardrobeDto.FashionItemRes
+			if candidate.FashionItemID != nil {
+				fashionItemRes = &wardrobeDto.FashionItemRes{
+					ID: *candidate.FashionItemID,
+				}
+			}
+			dtoItem := &wardrobeDto.WardrobeItemRes{
+				ID:          candidate.ID,
+				UserID:      candidate.UserID,
+				Price:       candidate.Price,
+				Status:      wardrobestatus.WardrobeItemStatus(candidate.Status),
+				LastUsedAt:  candidate.LastUsedAt,
+				IsDeleted:   candidate.IsDeleted,
+				FashionItem: fashionItemRes,
 			}
 			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
-				Item:            candidate.Item,
+				Item:            dtoItem,
 				Source:          candidate.RetrievalSource,
 				VectorScore:     candidate.VectorScore,
 				LexicalScore:    candidate.LexicalScore,
@@ -193,8 +194,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	fashionIDs := make([]uuid.UUID, 0, len(rankingCandidates))
 	for _, c := range rankingCandidates {
-		if c.Item != nil && c.Item.FashionItemID != nil {
-			fashionIDs = append(fashionIDs, *c.Item.FashionItemID)
+		if c.Item != nil && c.Item.FashionItem != nil {
+			fashionIDs = append(fashionIDs, c.Item.FashionItem.ID)
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
@@ -485,7 +486,7 @@ func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []strin
 // Đầu ra mẫu:
 //
 //	1
-func missingEmbeddingCount(items []*wardrobe_entities.WardrobeItem) int {
+func missingEmbeddingCount(items []*wardrobeDto.WardrobeItemRes) int {
 	count := 0
 	for _, item := range items {
 		if item == nil {

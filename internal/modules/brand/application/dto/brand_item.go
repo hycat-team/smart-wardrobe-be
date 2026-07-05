@@ -58,6 +58,7 @@ type FashionItemRes struct {
 type BrandItemRes struct {
 	ID            uuid.UUID                       `json:"id"`
 	BrandID       uuid.UUID                       `json:"brandId"`
+	BrandName     string                          `json:"brandName,omitempty"`
 	FashionItemID uuid.UUID                       `json:"fashionItemId"`
 	ProductCode   *string                         `json:"productCode"`
 	Name          string                          `json:"name"`
@@ -68,18 +69,6 @@ type BrandItemRes struct {
 	FashionItem   *FashionItemRes                 `json:"fashionItem,omitempty"`
 	CreatedAt     time.Time                       `json:"createdAt"`
 	UpdatedAt     time.Time                       `json:"updatedAt"`
-}
-
-type BrandItemStylingDTO struct {
-	ID            uuid.UUID                       `json:"id"`
-	BrandID       uuid.UUID                       `json:"brandId"`
-	BrandName     string                          `json:"brandName,omitempty"`
-	FashionItemID uuid.UUID                       `json:"fashionItemId"`
-	ProductCode   *string                         `json:"productCode"`
-	Name          string                          `json:"name"`
-	ItemType      branditemtype.BrandItemType     `json:"itemType"`
-	Status        branditemstatus.BrandItemStatus `json:"status"`
-	FashionItem   *FashionItemRes                 `json:"fashionItem,omitempty"`
 }
 
 type SubmitSampleFeedbackReq struct {

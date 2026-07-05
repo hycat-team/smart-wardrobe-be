@@ -2,6 +2,7 @@ package contractuc
 
 import (
 	"context"
+	"time"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
@@ -203,4 +204,84 @@ func (uc *WardrobeContractUseCase) GetItemsByIDs(ctx context.Context, itemIDs []
 		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
 	}
 	return result, nil
+}
+
+func (uc *WardrobeContractUseCase) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetFailedItemsForCleanup(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	result := make([]*dto.WardrobeItemRes, 0, len(items))
+	for _, item := range items {
+		var fi *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
+	}
+	return result, nil
+}
+
+func (uc *WardrobeContractUseCase) DeleteWardrobeItem(ctx context.Context, itemID uuid.UUID) error {
+	return uc.wardrobeRepo.Delete(ctx, itemID)
+}
+
+func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetStaleProcessingItems(ctx, staleBefore, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	result := make([]*dto.WardrobeItemRes, 0, len(items))
+	for _, item := range items {
+		var fi *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
+	}
+	return result, nil
+}
+
+func (uc *WardrobeContractUseCase) MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error) {
+	return uc.wardrobeRepo.MarkProcessingFailed(ctx, itemID, processingVersion, reason, reviewReason)
+}
+
+func (uc *WardrobeContractUseCase) MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error) {
+	return uc.wardrobeRepo.MarkProcessingNeedsReview(ctx, itemID, processingVersion, reviewReason)
+}
+
+func (uc *WardrobeContractUseCase) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
+	return uc.wardrobeRepo.CompleteProcessingSuccess(ctx, itemID, processingVersion, updates)
 }

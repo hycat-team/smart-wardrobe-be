@@ -5,7 +5,6 @@ import (
 	"time"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -14,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"

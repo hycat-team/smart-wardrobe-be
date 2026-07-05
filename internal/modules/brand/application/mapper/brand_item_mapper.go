@@ -38,6 +38,10 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes)
 	if item == nil {
 		return nil
 	}
+	brandName := ""
+	if item.Brand != nil {
+		brandName = item.Brand.Name
+	}
 	var fashionItemID uuid.UUID
 	if item.FashionItemID != nil {
 		fashionItemID = *item.FashionItemID
@@ -45,6 +49,7 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes)
 	return &dto.BrandItemRes{
 		ID:            item.ID,
 		BrandID:       item.BrandID,
+		BrandName:     brandName,
 		FashionItemID: fashionItemID,
 		ProductCode:   item.ProductCode,
 		Name:          item.Name,
@@ -76,30 +81,5 @@ func MapToDigitalSampleResponseRes(res *entities.DigitalSampleResponse) *dto.Dig
 		Rating:       res.Rating,
 		FeedbackText: res.FeedbackText,
 		CreatedAt:    res.CreatedAt,
-	}
-}
-
-func MapToBrandItemStylingDTO(item *entities.BrandItem, fi *fashion_dto.FashionItemRes) *dto.BrandItemStylingDTO {
-	if item == nil {
-		return nil
-	}
-	brandName := ""
-	if item.Brand != nil {
-		brandName = item.Brand.Name
-	}
-	var fashionItemID uuid.UUID
-	if item.FashionItemID != nil {
-		fashionItemID = *item.FashionItemID
-	}
-	return &dto.BrandItemStylingDTO{
-		ID:            item.ID,
-		BrandID:       item.BrandID,
-		BrandName:     brandName,
-		FashionItemID: fashionItemID,
-		ProductCode:   item.ProductCode,
-		Name:          item.Name,
-		ItemType:      item.ItemType,
-		Status:        item.Status,
-		FashionItem:   MapToFashionItemRes(fi),
 	}
 }

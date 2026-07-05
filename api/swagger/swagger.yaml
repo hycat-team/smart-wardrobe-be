@@ -273,6 +273,8 @@ definitions:
     properties:
       brandId:
         type: string
+      brandName:
+        type: string
       createdAt:
         type: string
       description:
@@ -1390,7 +1392,7 @@ definitions:
       lastName:
         type: string
       roleSlug:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_domain_constants_roleslug.RoleSlug'
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug'
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_domain_constants_userstatus.UserStatus'
       subscription:
@@ -1417,14 +1419,6 @@ definitions:
       planSlug:
         type: string
     type: object
-  smart-wardrobe-be_internal_modules_identity_domain_constants_roleslug.RoleSlug:
-    enum:
-    - admin
-    - user
-    type: string
-    x-enum-varnames:
-    - Admin
-    - User
   smart-wardrobe-be_internal_modules_identity_domain_constants_userstatus.UserStatus:
     enum:
     - 0
@@ -1515,37 +1509,7 @@ definitions:
       tierRank:
         type: integer
     type: object
-  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO:
-    properties:
-      amount:
-        type: number
-      createdAt:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      newBalance:
-        type: number
-      previousBalance:
-        type: number
-      transactionType:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_domain_constants_walletstatementtype.WalletStatementType'
-      userID:
-        type: string
-    type: object
-  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq:
-    properties:
-      amount:
-        type: number
-      cancelUrl:
-        type: string
-      returnUrl:
-        type: string
-    required:
-    - amount
-    type: object
-  smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO:
+  smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionDTO:
     properties:
       aiChatDailyQuota:
         type: integer
@@ -1582,7 +1546,7 @@ definitions:
       tierRank:
         type: integer
     type: object
-  smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO:
+  smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionOverviewDTO:
     properties:
       aiChatDailyQuota:
         type: integer
@@ -1612,6 +1576,36 @@ definitions:
         type: string
       tierRank:
         type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      newBalance:
+        type: number
+      previousBalance:
+        type: number
+      transactionType:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_domain_constants_walletstatementtype.WalletStatementType'
+      userID:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletTopUpReq:
+    properties:
+      amount:
+        type: number
+      cancelUrl:
+        type: string
+      returnUrl:
+        type: string
+    required:
+    - amount
     type: object
   smart-wardrobe-be_internal_modules_subscription_domain_constants_depositstatus.DepositStatus:
     enum:
@@ -1971,9 +1965,13 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes'
       id:
         type: string
+      isDeleted:
+        type: boolean
       isLocked:
         type: boolean
       itemContext:
+        type: string
+      lastUsedAt:
         type: string
       price:
         type: number
@@ -2088,6 +2086,14 @@ definitions:
       timestamp:
         type: integer
     type: object
+  smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug:
+    enum:
+    - admin
+    - user
+    type: string
+    x-enum-varnames:
+    - Admin
+    - User
   smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender:
     enum:
     - 0
@@ -4957,7 +4963,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionOverviewDTO'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionOverviewDTO'
               type: object
       summary: Lấy thông tin gói hội viên hiện tại
       tags:
@@ -5008,7 +5014,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_contract.UserSubscriptionDTO'
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionDTO'
               type: object
       summary: Lấy hạn ngạch sử dụng hàng ngày
       tags:

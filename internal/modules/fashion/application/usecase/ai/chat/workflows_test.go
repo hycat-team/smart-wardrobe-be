@@ -9,8 +9,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	sub_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	sub_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	wardrobe_dto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -317,14 +317,14 @@ func TestProcessChatMessageStream_WardrobeKeyword(t *testing.T) {
 	aiService := fakeAIService{textChan: textChan, errChan: errChan}
 
 	uc := &WardrobeChatUseCase{
-		cfg:             &config.Config{},
-		contextRepo:     contextRepo,
-		messageRepo:     messageRepo,
+		cfg:              &config.Config{},
+		contextRepo:      contextRepo,
+		messageRepo:      messageRepo,
 		wardrobeContract: fakeEmptyWardrobeContract{},
-		aiService:       aiService,
-		userSubContract: fakeUserSubContract{},
-		userQuotaCtr:    quotaCtr,
-		uow:             uow,
+		aiService:        aiService,
+		userSubContract:  fakeUserSubContract{},
+		userQuotaCtr:     quotaCtr,
+		uow:              uow,
 	}
 
 	// User query contains keyword "tủ đồ" which triggers wardrobe retrieval

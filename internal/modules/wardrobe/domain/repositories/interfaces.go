@@ -13,27 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type RecommendationHardFilters struct {
-	Seasonality   []string
-	CategorySlugs []string
-}
-
-const (
-	HybridCandidateSourceHybrid   = "hybrid"
-	HybridCandidateSourceVector   = "vector"
-	HybridCandidateSourceLexical  = "lexical"
-	HybridCandidateSourceFallback = "fallback"
-)
-
-type HybridCandidate struct {
-	Item            *entities.WardrobeItem
-	VectorScore     float64
-	LexicalScore    float64
-	RetrievalScore  float64
-	RetrievalRank   int
-	RetrievalSource string
-}
-
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -56,29 +35,6 @@ type IWardrobeItemRepository interface {
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
 	CountByCategoryIDAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
 	ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
-	// GetHybridCandidates truy vấn danh sách ứng viên gợi ý trang phục kết hợp (hybrid search) bằng cách thực hiện
-	// tìm kiếm ngữ nghĩa qua Vector Embedding (Cosine Similarity) và tìm kiếm từ khóa (Full-text Search tsquery).
-	// Danh sách kết quả được tổng hợp điểm và xếp hạng lại sử dụng thuật toán Reciprocal Rank Fusion (RRF).
-	//
-	// Hành vi:
-	// 	- 1. Nếu [semanticVector] không rỗng, thực hiện tìm kiếm Vector.
-	// 	- 2. Nếu [lexicalTerms] không rỗng, thực hiện tìm kiếm Lexical thô và mở rộng (FTS).
-	// 	- 3. Loại trừ các món đồ khớp với [excludedTerms] hoặc không thỏa mãn [hardFilters] (như mùa vụ, danh mục).
-	// 	- 4. Kết hợp hai nguồn kết quả và tính điểm RRF dựa trên tham số [rrfK].
-	// 	- 5. Giới hạn số lượng kết quả tối đa bằng [limit].
-	//
-	// Đầu vào mẫu:
-	//   userID: "8e05c317-062e-4b47-ba21-12f5a04f21db"
-	//   semanticVector: entities.Vector{0.1, -0.2, ...}
-	//   lexicalTerms: []string{"ao", "khoac"}
-	//   excludedTerms: []string{"len"}
-	//   hardFilters: RecommendationHardFilters{Seasonality: []string{"winter"}}
-	//   limit: 20
-	//   rrfK: 60
-	//
-	// Đầu ra mẫu:
-	//   ([]HybridCandidate, nil)
-	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector entities.Vector, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
 type IOutfitRepository interface {

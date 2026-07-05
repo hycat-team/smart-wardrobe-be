@@ -7,7 +7,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	wardrobe_entities "smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
@@ -54,7 +54,7 @@ var fallbackSeasonAliases = map[string][]string{
 //	([]types.CandidateForRanking, types.FallbackCandidateCounts) chứa 5 ứng viên sau khi đã bổ sung 3 ứng viên dự phòng.
 func EnsureMinimumCandidatePool(
 	candidates []types.CandidateForRanking,
-	activeItems []*wardrobe_entities.WardrobeItem,
+	activeItems []*wardrobeDto.WardrobeItemRes,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	minimumPool int,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
@@ -84,7 +84,7 @@ func EnsureMinimumCandidatePool(
 // appendFallbackCandidates duyệt qua danh sách các món đồ hoạt động của người dùng để chọn lọc và đưa các món đồ đủ điều kiện vào bể ứng viên cho đến khi đạt đủ số lượng tối thiểu.
 func appendFallbackCandidates(
 	rankingCandidates *[]types.CandidateForRanking,
-	activeItems []*wardrobe_entities.WardrobeItem,
+	activeItems []*wardrobeDto.WardrobeItemRes,
 	taken map[uuid.UUID]bool,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
@@ -118,7 +118,7 @@ func appendFallbackCandidates(
 
 // FallbackCandidateEligible kiểm tra tính hợp lệ của một món đồ ứng viên dự phòng bằng cách kiểm tra các bộ lọc loại trừ nghiêm ngặt (hard filters, excluded terms và lexical terms tùy theo cấp độ).
 func FallbackCandidateEligible(
-	item *wardrobe_entities.WardrobeItem,
+	item *wardrobeDto.WardrobeItemRes,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	source string,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
@@ -136,7 +136,7 @@ func FallbackCandidateEligible(
 }
 
 // MatchesFallbackHardFilters xác định xem món đồ có vượt qua các bộ lọc cứng về mùa (seasonality) và danh mục (category slugs) hay không.
-func MatchesFallbackHardFilters(item *wardrobe_entities.WardrobeItem, filters repositories.RecommendationHardFilters, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func MatchesFallbackHardFilters(item *wardrobeDto.WardrobeItemRes, filters repositories.RecommendationHardFilters, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
@@ -196,7 +196,7 @@ func MatchesFallbackSeasonalityFilter(seasonality string, requestedSeasons []str
 }
 
 // MatchesFallbackExcludedTerms trả về true nếu mô tả hoặc thuộc tính của món đồ chứa các từ khóa nằm trong danh sách loại trừ nghiêm ngặt.
-func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excludedTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func MatchesFallbackExcludedTerms(item *wardrobeDto.WardrobeItemRes, excludedTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if len(excludedTerms) == 0 {
 		return false
 	}
@@ -210,8 +210,7 @@ func MatchesFallbackExcludedTerms(item *wardrobe_entities.WardrobeItem, excluded
 	return false
 }
 
-// MatchesFallbackLexicalTerms trả về true nếu mô tả hoặc thuộc tính của món đồ có chứa ít nhất một trong các từ khóa tìm kiếm.
-func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func MatchesFallbackLexicalTerms(item *wardrobeDto.WardrobeItemRes, lexicalTerms []types.RetrievalTerm, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if len(lexicalTerms) == 0 {
 		return true
 	}
@@ -226,7 +225,7 @@ func MatchesFallbackLexicalTerms(item *wardrobe_entities.WardrobeItem, lexicalTe
 }
 
 // FallbackSearchDocument nối tất cả các trường thông tin mô tả và thuộc tính của món đồ thành một chuỗi văn bản duy nhất để phục vụ cho việc quét từ khóa.
-func FallbackSearchDocument(item *wardrobe_entities.WardrobeItem, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func FallbackSearchDocument(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if item == nil {
 		return ""
 	}
