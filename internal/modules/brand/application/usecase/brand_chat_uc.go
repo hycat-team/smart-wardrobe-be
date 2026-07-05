@@ -17,7 +17,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
-	identity_contract "smart-wardrobe-be/internal/modules/identity/contract"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/sliceutils"

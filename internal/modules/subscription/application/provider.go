@@ -12,7 +12,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook_inbox"
 	"smart-wardrobe-be/internal/modules/subscription/application/validator"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 
 	"github.com/google/wire"
 )

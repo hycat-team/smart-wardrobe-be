@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"

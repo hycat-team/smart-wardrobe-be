@@ -3,7 +3,7 @@ package handler
 import (
 	_ "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
-	_ "smart-wardrobe-be/internal/modules/subscription/contract"
+	_ "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	req_dto "smart-wardrobe-be/internal/modules/subscription/presentation/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"

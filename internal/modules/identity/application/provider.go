@@ -3,7 +3,7 @@ package application
 import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
-	"smart-wardrobe-be/internal/modules/identity/contract"
+	"smart-wardrobe-be/internal/modules/identity/presentation/contract"
 
 	"github.com/google/wire"
 )

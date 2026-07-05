@@ -4,8 +4,8 @@ import (
 	"context"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"

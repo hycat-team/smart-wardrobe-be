@@ -3,9 +3,11 @@ package fashion
 import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/chat"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/category"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/fashion_item"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker"
-	"smart-wardrobe-be/internal/modules/fashion/contract"
 	"smart-wardrobe-be/internal/modules/fashion/infrastructure/persistence"
+	"smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/presentation/handler"
 	presentation_worker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 
@@ -24,6 +26,8 @@ var ProviderSet = wire.NewSet(
 	worker.NewFashionWorkerUseCase,
 	worker.NewFashionInitUseCase,
 
+	fashion_item.NewFashionItemUseCase,
+	category.NewCategoryUseCase,
 	contract.NewFashionContract,
 
 	handler.NewWardrobeAIHandler,

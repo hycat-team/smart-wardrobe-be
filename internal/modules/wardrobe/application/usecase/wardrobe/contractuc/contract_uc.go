@@ -4,13 +4,13 @@ import (
 	"context"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
-	fashion_contract "smart-wardrobe-be/internal/modules/fashion/contract"
-	subcontract "smart-wardrobe-be/internal/modules/subscription/contract"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	subcontract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
-	"smart-wardrobe-be/internal/modules/wardrobe/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -30,7 +30,7 @@ func NewWardrobeContractUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract subcontract.IUserSubscriptionContract,
 	fashionContract fashion_contract.IFashionContract,
-) contract.IWardrobeContract {
+) uc_interfaces.IWardrobeContractUseCase {
 	return &WardrobeContractUseCase{
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,

@@ -2,11 +2,11 @@ package chat
 
 import (
 	"smart-wardrobe-be/config"
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
-	brand_contract "smart-wardrobe-be/internal/modules/brand/contract"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
 

@@ -15,7 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
-	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
+	subscription_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"

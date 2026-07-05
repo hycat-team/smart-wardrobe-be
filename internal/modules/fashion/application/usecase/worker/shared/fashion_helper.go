@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 )
 
 // BuildRichTextContext formats a description prompt context of a wardrobe item for AI embedding generation.

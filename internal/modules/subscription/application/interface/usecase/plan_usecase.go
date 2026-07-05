@@ -2,12 +2,14 @@ package usecase
 
 import (
 	"context"
+
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+
+	"github.com/google/uuid"
 )
 
 type ISubscriptionPlanUseCase interface {
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error)
-
-	contract.ISubscriptionPlanContract
+	GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error)
+	IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error)
 }
