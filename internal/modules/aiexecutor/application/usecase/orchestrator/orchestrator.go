@@ -4,13 +4,12 @@ import (
 	"context"
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
-	"smart-wardrobe-be/internal/modules/aiexecutor/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 
 	"github.com/google/uuid"
 )
 
-func mapOptions(opt contract.OrchestratorOptions, requestID uuid.UUID) app_ai.TextGenerationOptions {
+func mapOptions(opt aiexecutor_dto.OrchestratorOptions, requestID uuid.UUID) app_ai.TextGenerationOptions {
 	return app_ai.TextGenerationOptions{
 		MaxOutputTokens:  opt.MaxOutputTokens,
 		Temperature:      opt.Temperature,
@@ -66,7 +65,7 @@ func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []
 	return result, nil
 }
 
-func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options contract.OrchestratorOptions) (string, error) {
+func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (string, error) {
 	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, options.Operation, aiexecutor_dto.AITokenEstimationMeta{})
 	if err != nil {
 		return "", err
@@ -93,7 +92,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 	return result, nil
 }
 
-func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options contract.OrchestratorOptions) (string, error) {
+func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (string, error) {
 	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, options.Operation, aiexecutor_dto.AITokenEstimationMeta{})
 	if err != nil {
 		return "", err
@@ -120,7 +119,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	return result, nil
 }
 
-func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options contract.OrchestratorOptions) (<-chan string, <-chan error) {
+func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
 	errChan := make(chan error, 1)
 

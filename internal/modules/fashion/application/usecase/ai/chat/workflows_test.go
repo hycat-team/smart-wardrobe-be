@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
@@ -113,15 +113,15 @@ func (f fakeAIService) GenerateEmbeddings(ctx context.Context, chunks []string) 
 	return nil, nil
 }
 
-func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (string, error) {
+func (f fakeAIService) GenerateChatText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (string, error) {
+func (f fakeAIService) GenerateRecommendationText(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (string, error) {
 	return "", nil
 }
 
-func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_contract.OrchestratorOptions) (<-chan string, <-chan error) {
+func (f fakeAIService) GenerateChatTextStream(ctx context.Context, systemPrompt string, userPrompt string, options aiexecutor_dto.OrchestratorOptions) (<-chan string, <-chan error) {
 	return f.textChan, f.errChan
 }
 

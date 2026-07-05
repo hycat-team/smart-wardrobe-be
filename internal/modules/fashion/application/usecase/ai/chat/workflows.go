@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
@@ -168,7 +168,7 @@ func (uc *WardrobeChatUseCase) ProcessChatMessageStream(ctx context.Context, use
 		return nil, nil, err
 	}
 	generationInput.userContent = content
-	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent, aiexecutor_contract.OrchestratorOptions{MaxOutputTokens: uc.cfg.AI.ChatMaxOutputTokens, UserID: userID, Operation: "chat"})
+	aiTextChan, aiErrChan := uc.aiService.GenerateChatTextStream(ctx, generationInput.systemPrompt, generationInput.userContent, aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: uc.cfg.AI.ChatMaxOutputTokens, UserID: userID, Operation: "chat"})
 	return uc.createAIStreamResponse(ctx, userID, sessionCtx.session, aiTextChan, aiErrChan)
 }
 
@@ -193,7 +193,7 @@ func (uc *WardrobeChatUseCase) compressChatContext(ctx context.Context, session 
 		builder.WriteString("\n")
 	}
 	summarySource := truncateRunes(builder.String(), uc.cfg.AI.SummarySourceMaxCharacters)
-	summary, err := uc.aiService.GenerateChatText(ctx, summarySystemPrompt, summarySource, aiexecutor_contract.OrchestratorOptions{MaxOutputTokens: uc.cfg.AI.SummaryMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: summaryResponseSchema(), UserID: session.UserID, Operation: "summary"})
+	summary, err := uc.aiService.GenerateChatText(ctx, summarySystemPrompt, summarySource, aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: uc.cfg.AI.SummaryMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: summaryResponseSchema(), UserID: session.UserID, Operation: "summary"})
 	if err != nil || strings.TrimSpace(summary) == "" {
 		return err
 	}

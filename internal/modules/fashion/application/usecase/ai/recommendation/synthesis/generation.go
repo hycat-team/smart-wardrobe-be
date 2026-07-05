@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"smart-wardrobe-be/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/contract"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
@@ -50,7 +51,7 @@ func GenerateOutfitRecommendation(
 		ctx,
 		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
 		userPrompt,
-		aiexecutor_contract.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
+		aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)
 	if err != nil {
 		return nil, NewFallbackTraceError(
