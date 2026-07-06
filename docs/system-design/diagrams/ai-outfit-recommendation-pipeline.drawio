@@ -1,229 +1,185 @@
 <mxfile host="Electron">
   <diagram name="AI Outfit Recommendation Pipeline" id="M7VqvFGk0TUc0hINF0cG">
-    <mxGraphModel dx="1327" dy="659" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1680" math="0" shadow="0">
+    <mxGraphModel dx="1051" dy="522" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1600" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="stage1" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 1: User Request &amp; Quota Check" vertex="1">
-          <mxGeometry height="120" width="720" x="40" y="40" as="geometry" />
+        <mxCell id="phase1" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 1: Query Understanding" vertex="1">
+          <mxGeometry height="150" width="720" x="40" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="user_input" parent="stage1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="User Query&#xa;(Free-text &amp; Context)" vertex="1">
-          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        <mxCell id="nlp_parser" parent="phase1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="nlpParser.Parse&#xa;(Extract Style, Weather, Color, Occasion)" vertex="1">
+          <mxGeometry height="60" width="240" x="60" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="api_quota" parent="stage1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="RecommendOutfit API&#xa;(Quota Validation)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        <mxCell id="query_rewriter" parent="phase1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="buildRecommendationRetrievalQuery&#xa;(LLM or Local Rules Query Expansion)" vertex="1">
+          <mxGeometry height="60" width="240" x="420" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="db_wardrobe" parent="stage1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Digital Wardrobe&#xa;(GORM Database)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        <mxCell id="phase2" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 2: Candidate Retrieval" vertex="1">
+          <mxGeometry height="180" width="720" x="40" y="210" as="geometry" />
         </mxCell>
-        <mxCell id="stage2" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 2: Intent Parsing &amp; Active Pre-Filtering" vertex="1">
-          <mxGeometry height="120" width="720" x="40" y="190" as="geometry" />
+        <mxCell id="embedding_gen" parent="phase2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Generate Query Embedding&#xa;(aiService.GenerateEmbeddings via buildRecommendationQueryVector)" vertex="1">
+          <mxGeometry height="60" width="240" x="60" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="nlp_parser" parent="stage2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="NLP Intent Parser&#xa;(Extract Occasion/Style)" vertex="1">
-          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        <mxCell id="hybrid_search" parent="phase2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="GetHybridCandidates&#xa;(Vector Search + Lexical Search + RRF)" vertex="1">
+          <mxGeometry height="60" width="240" x="420" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="pre_filter" parent="stage2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Active Item Filter&#xa;(Exclude Inactive/Deleted)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        <mxCell id="phase3" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 3: Candidate Pool Management" vertex="1">
+          <mxGeometry height="180" width="720" x="40" y="410" as="geometry" />
         </mxCell>
-        <mxCell id="filtered_items" parent="stage2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Filtered Candidates&#xa;(Available Items)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        <mxCell id="pool_expansion" parent="phase3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="EnsureMinimumCandidatePool" vertex="1">
+          <mxGeometry height="60" width="260" x="50" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="stage3" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 3: Hybrid Retrieval &amp; Candidate Pooling" vertex="1">
-          <mxGeometry height="240" width="720" x="40" y="340" as="geometry" />
+        <mxCell id="candidate_pool" parent="phase3" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontStyle=1;" value="Candidate Pool&lt;br&gt;(rankingCandidates)" vertex="1">
+          <mxGeometry height="80" width="220" x="430" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="vector_search" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Vector Search&#xa;(pgvector Cosine Similarity)" vertex="1">
-          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        <mxCell id="phase4" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 4: Heuristic Ranking &amp; Diversification" vertex="1">
+          <mxGeometry height="180" width="720" x="40" y="610" as="geometry" />
         </mxCell>
-        <mxCell id="fts_search" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Full-Text Search&#xa;(PostgreSQL FTS)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        <mxCell id="heuristic_ranking" parent="phase4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="RankCandidates / ScoreCandidateItem&#xa;(Heuristic Ranking: Retrieval Score, Style Bonus,&#xa;Weather Compatibility, Wearing Recency, Source Penalty)" vertex="1">
+          <mxGeometry height="80" width="260" x="50" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="rrf_merge" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Reciprocal Rank Fusion&#xa;(RRF Merging)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        <mxCell id="diversification" parent="phase4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="DiversifyRankedCandidates&#xa;(Category Soft Cap Diversification)" vertex="1">
+          <mxGeometry height="60" width="220" x="430" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="ensure_pool" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Ensure Minimum Pool&#xa;(Pad with Active Items)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="140" as="geometry" />
+        <mxCell id="phase5" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 5: Prompt Construction" vertex="1">
+          <mxGeometry height="150" width="720" x="40" y="810" as="geometry" />
         </mxCell>
-        <mxCell id="stage4" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 4: Multi-Factor Scoring &amp; Diversification" vertex="1">
-          <mxGeometry height="120" width="720" x="40" y="610" as="geometry" />
+        <mxCell id="prompt_builder" parent="phase5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="BuildRecommendationPromptWithLimits&#xa;(Augmented Prompt Builder: CONTEXT + CANDIDATES)" vertex="1">
+          <mxGeometry height="60" width="300" x="210" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="scorer" parent="stage4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Multi-Factor Scorer&#xa;(Style, Weather, Recency, HSL)" vertex="1">
-          <mxGeometry height="60" width="160" x="170" y="40" as="geometry" />
+        <mxCell id="phase6" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 6: LLM Synthesis" vertex="1">
+          <mxGeometry height="150" width="720" x="40" y="980" as="geometry" />
         </mxCell>
-        <mxCell id="diversifier" parent="stage4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Diversification Engine&#xa;(Reduce Redundancy)" vertex="1">
-          <mxGeometry height="60" width="160" x="390" y="40" as="geometry" />
+        <mxCell id="llm_synthesis" parent="phase6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" value="GenerateRecommendationText&#xa;(LLM Synthesis: Schema-Guided JSON Generation)" vertex="1">
+          <mxGeometry height="60" width="300" x="210" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="stage5" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 5: Synthesis Pathway Decision" vertex="1">
-          <mxGeometry height="140" width="720" x="40" y="760" as="geometry" />
+        <mxCell id="phase7" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Phase 7: Response Validation &amp; Fallback" vertex="1">
+          <mxGeometry height="260" width="720" x="40" y="1150" as="geometry" />
         </mxCell>
-        <mxCell id="decision_api" parent="stage5" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Is AI LLM API&#xa;Available?" vertex="1">
-          <mxGeometry height="80" width="160" x="280" y="30" as="geometry" />
+        <mxCell id="decision_synthesis" parent="phase7" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Is LLM API&#xa;Successful?" vertex="1">
+          <mxGeometry height="80" width="100" x="310" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="stage6" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 6: Synthesis &amp; Hallucination Guard / Fallback" vertex="1">
-          <mxGeometry height="220" width="720" x="40" y="930" as="geometry" />
+        <mxCell id="response_validation" parent="phase7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Response Validation &amp; ID Resolution&#xa;(Parse JSON, resolveOutfitAliases, MapLLMResponseToGroups)&#xa;[Prevents Hallucination]" vertex="1">
+          <mxGeometry height="80" width="240" x="50" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="prompt_build" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Augmented Prompt Builder&#xa;(Inject Candidate Context)" vertex="1">
-          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        <mxCell id="local_fallback" parent="phase7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="RunLocalHSLMatching&#xa;(Local Heuristic HSL Color Harmony Fallback)" vertex="1">
+          <mxGeometry height="80" width="240" x="430" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="llm_generation" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="LLM Generation&#xa;(Structured JSON Output)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="validator" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Hallucination Guard&#xa;(Validate IDs against DB)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="130" as="geometry" />
-        </mxCell>
-        <mxCell id="hsl_fallback" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Local Fallback&#xa;(HSL Color Harmony Algo)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="stage7" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 7: Output Formatting &amp; Response" vertex="1">
-          <mxGeometry height="120" width="720" x="40" y="1180" as="geometry" />
-        </mxCell>
-        <mxCell id="response_formatter" parent="stage7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Response Formatter&#xa;(Primary &amp; Alternatives)" vertex="1">
-          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="output_dto" parent="stage7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" value="Outfit Recommendation DTO&#xa;(title, explanation, items)" vertex="1">
-          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="stage8" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 8: Post-Processing &amp; Quota Save" vertex="1">
-          <mxGeometry height="120" width="720" x="40" y="1330" as="geometry" />
-        </mxCell>
-        <mxCell id="quota_deduction" parent="stage8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Quota Executor&#xa;(Deduct AI Quota)" vertex="1">
-          <mxGeometry height="60" width="160" x="170" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="update_usage" parent="stage8" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Database Sync&#xa;(Update last_used_at)" vertex="1">
-          <mxGeometry height="60" width="160" x="390" y="40" as="geometry" />
+        <mxCell id="final_recommendation" parent="phase7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="dto.RecommendedOutfitRes" vertex="1">
+          <mxGeometry height="40" width="220" x="250" y="210" as="geometry" />
         </mxCell>
         <mxCell id="legend" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Legend" vertex="1">
-          <mxGeometry height="80" width="720" x="40" y="1480" as="geometry" />
+          <mxGeometry height="80" width="720" x="40" y="1430" as="geometry" />
         </mxCell>
         <mxCell id="leg1" parent="legend" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
           <mxGeometry height="16" width="30" x="10" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="leg1_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Processing Step" vertex="1">
-          <mxGeometry height="20" width="95" x="45" y="38" as="geometry" />
+        <mxCell id="leg1_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Query &amp; Retrieval Step" vertex="1">
+          <mxGeometry height="20" width="130" x="45" y="38" as="geometry" />
         </mxCell>
-        <mxCell id="leg2" parent="legend" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
-          <mxGeometry height="16" width="30" x="150" y="40" as="geometry" />
+        <mxCell id="leg2" parent="legend" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="190" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="leg2_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Data Input/Output" vertex="1">
-          <mxGeometry height="20" width="95" x="185" y="38" as="geometry" />
+        <mxCell id="leg2_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Validation &amp; Prompt Step" vertex="1">
+          <mxGeometry height="20" width="140" x="225" y="38" as="geometry" />
         </mxCell>
-        <mxCell id="leg3" parent="legend" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
-          <mxGeometry height="16" width="30" x="290" y="40" as="geometry" />
+        <mxCell id="leg3" parent="legend" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="380" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="leg3_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Merging &amp; Validation" vertex="1">
-          <mxGeometry height="20" width="105" x="325" y="38" as="geometry" />
+        <mxCell id="leg3_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Data Artifact / Result" vertex="1">
+          <mxGeometry height="20" width="130" x="415" y="38" as="geometry" />
         </mxCell>
-        <mxCell id="leg4" parent="legend" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
-          <mxGeometry height="16" width="30" x="440" y="40" as="geometry" />
+        <mxCell id="leg4" parent="legend" style="rounded=0;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="550" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="leg4_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Decision/Fallback" vertex="1">
-          <mxGeometry height="20" width="95" x="475" y="38" as="geometry" />
+        <mxCell id="leg4_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="LLM Synthesis" vertex="1">
+          <mxGeometry height="20" width="95" x="585" y="38" as="geometry" />
         </mxCell>
-        <mxCell id="leg5" parent="legend" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
-          <mxGeometry height="16" width="30" x="580" y="40" as="geometry" />
-        </mxCell>
-        <mxCell id="leg5_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Quota &amp; Writeback" vertex="1">
-          <mxGeometry height="20" width="95" x="615" y="38" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_user_api" edge="1" parent="1" source="user_input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="api_quota" value="">
+        <mxCell id="edge_nlp_rewriter" edge="1" parent="1" source="nlp_parser" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="query_rewriter" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge_api_db" edge="1" parent="1" source="api_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_wardrobe" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_api_nlp" edge="1" parent="1" source="api_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="nlp_parser" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_db_pre" edge="1" parent="1" source="db_wardrobe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="pre_filter" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_nlp_pre" edge="1" parent="1" source="nlp_parser" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="pre_filter" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_pre_filt" edge="1" parent="1" source="pre_filter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="filtered_items" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_filt_vector" edge="1" parent="1" source="filtered_items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="vector_search" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_filt_fts" edge="1" parent="1" source="filtered_items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="fts_search" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_backup_pool" edge="1" parent="1" source="filtered_items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=10;strokeColor=#000000;" target="ensure_pool" value="Backup Pool (If candidates &lt; limit)">
-          <mxGeometry relative="1" x="0.5549" as="geometry">
-            <mxPoint y="1" as="offset" />
-            <Array as="points">
-              <mxPoint x="710" y="260" />
-              <mxPoint x="710" y="510" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_vector_rrf" edge="1" parent="1" source="vector_search" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;strokeColor=#000000;" target="rrf_merge" value="">
+        <mxCell id="edge_rewriter_embed" edge="1" parent="1" source="query_rewriter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="embedding_gen" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="180" y="450" />
-              <mxPoint x="580" y="450" />
+              <mxPoint x="475" y="160" />
+              <mxPoint x="180" y="160" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge_fts_rrf" edge="1" parent="1" source="fts_search" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" target="rrf_merge" value="">
+        <mxCell id="edge_rewriter_hybrid" edge="1" parent="1" source="query_rewriter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="hybrid_search" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge_rrf_ensure" edge="1" parent="1" source="rrf_merge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="ensure_pool" value="">
+        <mxCell id="edge_embed_hybrid" edge="1" parent="1" source="embedding_gen" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="hybrid_search" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge_ensure_scorer" edge="1" parent="1" source="ensure_pool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="scorer" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_scorer_div" edge="1" parent="1" source="scorer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="diversifier" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_div_decision" edge="1" parent="1" source="diversifier" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="decision_api" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_dec_prompt" edge="1" parent="1" source="decision_api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=11;strokeColor=#000000;" target="prompt_build" value="Yes (API Online)">
+        <mxCell id="edge_hybrid_pool" edge="1" parent="1" source="hybrid_search" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="pool_expansion" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="180" y="830" />
+              <mxPoint x="580" y="360" />
+              <mxPoint x="220" y="360" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge_dec_fallback" edge="1" parent="1" source="decision_api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=11;strokeColor=#000000;" target="hsl_fallback" value="No (API Offline)">
+        <mxCell id="edge_pool_expansion" edge="1" parent="1" source="pool_expansion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="candidate_pool" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_pool_ranking" edge="1" parent="1" source="candidate_pool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="heuristic_ranking" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="620" y="830" />
+              <mxPoint x="580" y="570" />
+              <mxPoint x="220" y="570" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge_prompt_llm" edge="1" parent="1" source="prompt_build" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="llm_generation" value="">
+        <mxCell id="edge_ranking_div" edge="1" parent="1" source="heuristic_ranking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="diversification" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge_llm_val" edge="1" parent="1" source="llm_generation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="validator" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_val_resp" edge="1" parent="1" source="validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=11;strokeColor=#000000;" target="response_formatter" value="Success">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge_hsl_resp" edge="1" parent="1" source="hsl_fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="response_formatter" value="">
+        <mxCell id="edge_div_prompt" edge="1" parent="1" source="diversification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="prompt_builder" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="620" y="1140" />
-              <mxPoint x="440" y="1140" />
+              <mxPoint x="580" y="760" />
+              <mxPoint x="475" y="760" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge_resp_dto" edge="1" parent="1" source="response_formatter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="output_dto" value="">
+        <mxCell id="edge_prompt_llm" edge="1" parent="1" source="prompt_builder" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="llm_synthesis" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge_dto_quota" edge="1" parent="1" source="output_dto" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="quota_deduction" value="">
+        <mxCell id="edge_llm_decision" edge="1" parent="1" source="llm_synthesis" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="decision_synthesis" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="620" y="1310" />
-              <mxPoint x="290" y="1310" />
+              <mxPoint x="400" y="1090" />
+              <mxPoint x="400" y="1180" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge_quota_update" edge="1" parent="1" source="quota_deduction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="update_usage" value="">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge_dec_validation" edge="1" parent="1" source="decision_synthesis" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=10;strokeColor=#000000;" target="response_validation" value="Yes">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="1220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_dec_fallback" edge="1" parent="1" source="decision_synthesis" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;fontSize=10;strokeColor=#000000;" target="local_fallback" value="No (Error / Timeout)">
+          <mxGeometry relative="1" x="-0.2633" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="590" y="1220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_val_res" edge="1" parent="1" source="response_validation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" target="final_recommendation" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="1380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_fallback_res" edge="1" parent="1" source="local_fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;" target="final_recommendation" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="1380" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
