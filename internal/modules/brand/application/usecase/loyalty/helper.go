@@ -1,8 +1,11 @@
-package usecase
+package loyalty
 
 import (
 	"context"
 	"math"
+	"strings"
+	"time"
+
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
@@ -12,10 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
-
 	"smart-wardrobe-be/pkg/utils/stringutils"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )

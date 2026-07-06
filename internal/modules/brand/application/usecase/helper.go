@@ -13,10 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// requireBrandRoleShared checks if the given user has the required active member roles for the brand.
+// RequireBrandRoleShared checks if the given user has the required active member roles for the brand.
 // It optimizes database calls by querying the member repository once, leveraging GORM's preloaded Brand relation.
 // If the Brand relation is nil (e.g., in unit tests or mock environments), it falls back to querying the brand repository.
-func requireBrandRoleShared(
+func RequireBrandRoleShared(
 	ctx context.Context,
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,

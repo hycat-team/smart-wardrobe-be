@@ -1,8 +1,8 @@
 package brand
 
 import (
-	"smart-wardrobe-be/internal/modules/brand/application/usecase"
-	"smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
+	"smart-wardrobe-be/internal/modules/brand/application"
+	"smart-wardrobe-be/internal/modules/brand/infrastructure"
 	"smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/brand/presentation/handler"
 	"smart-wardrobe-be/internal/modules/brand/presentation/worker"
@@ -11,27 +11,8 @@ import (
 )
 
 var ProviderSet = wire.NewSet(
-	persistence.NewBrandRepository,
-	persistence.NewBrandMemberRepository,
-	persistence.NewBrandCustomerRepository,
-	persistence.NewLoyaltyProgramRepository,
-	persistence.NewLoyaltyTierRepository,
-	persistence.NewLoyaltyAccountRepository,
-	persistence.NewLoyaltyPointTransactionRepository,
-	persistence.NewLoyaltyPointLotRepository,
-	persistence.NewBrandCustomerClaimRepository,
-	persistence.NewBrandBenefitRepository,
-	persistence.NewBenefitRedemptionRepository,
-	persistence.NewBrandConversationRepository,
-	persistence.NewBrandConversationMessageRepository,
-	persistence.NewBrandItemRepository,
-	persistence.NewDigitalSampleResponseRepository,
-	usecase.NewBrandUseCase,
-	usecase.NewBrandLoyaltyUseCase,
-	usecase.NewBrandBenefitUseCase,
-	usecase.NewBrandItemUseCase,
-	usecase.NewBrandChatUseCase,
-	usecase.NewBrandClaimUseCase,
+	infrastructure.ProviderSet,
+	application.ProviderSet,
 	contract.NewBrandContract,
 	handler.NewBrandPortalHandler,
 	handler.NewBrandLoyaltyHandler,

@@ -1,7 +1,8 @@
-package usecase
+package chat
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,138 @@ import (
 
 	"github.com/google/uuid"
 )
+
+type loyaltyLotsTestUOW struct{}
+
+func (u loyaltyLotsTestUOW) Execute(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
+type mockBrandRepo struct {
+	brands map[uuid.UUID]*entities.Brand
+}
+
+func (m *mockBrandRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.Brand, error) {
+	return m.brands[id], nil
+}
+func (m *mockBrandRepo) GetAll(ctx context.Context) ([]*entities.Brand, error)   { return nil, nil }
+func (m *mockBrandRepo) Create(ctx context.Context, brand *entities.Brand) error { return nil }
+func (m *mockBrandRepo) Update(ctx context.Context, brand *entities.Brand) error { return nil }
+func (m *mockBrandRepo) Delete(ctx context.Context, id uuid.UUID) error          { return nil }
+func (m *mockBrandRepo) GetBySlug(ctx context.Context, slug string) (*entities.Brand, error) {
+	return nil, nil
+}
+func (m *mockBrandRepo) GetActive(ctx context.Context) ([]*entities.Brand, error) { return nil, nil }
+func (m *mockBrandRepo) GetActiveFiltered(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	activeStatus := brandstatus.Active
+	filter.Status = &activeStatus
+	return m.GetBrandsForAdmin(ctx, filter)
+}
+func (m *mockBrandRepo) GetBrandsForAdmin(ctx context.Context, filter repositories.BrandFilter) (*repositories.BrandListResult, error) {
+	var list []*entities.Brand
+	for _, b := range m.brands {
+		if filter.Status != nil && b.Status != *filter.Status {
+			continue
+		}
+		if filter.Query != nil {
+			q := strings.ToLower(*filter.Query)
+			if !strings.Contains(strings.ToLower(b.Name), q) && !strings.Contains(strings.ToLower(b.Slug), q) {
+				continue
+			}
+		}
+		list = append(list, b)
+	}
+	return &repositories.BrandListResult{
+		Brands:     list,
+		TotalCount: int64(len(list)),
+	}, nil
+}
+
+type mockMemberRepo struct {
+	members map[string]*entities.BrandMember
+}
+
+func (m *mockMemberRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandMember, error) {
+	return nil, nil
+}
+func (m *mockMemberRepo) GetAll(ctx context.Context) ([]*entities.BrandMember, error) {
+	return nil, nil
+}
+func (m *mockMemberRepo) Create(ctx context.Context, member *entities.BrandMember) error { return nil }
+func (m *mockMemberRepo) Update(ctx context.Context, member *entities.BrandMember) error { return nil }
+func (m *mockMemberRepo) Delete(ctx context.Context, id uuid.UUID) error                 { return nil }
+func (m *mockMemberRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandMember, error) {
+	return m.members[brandID.String()+"_"+userID.String()], nil
+}
+func (m *mockMemberRepo) GetByBrandAndUserIDs(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	for _, userID := range userIDs {
+		if member := m.members[brandID.String()+"_"+userID.String()]; member != nil {
+			members = append(members, member)
+		}
+	}
+	return members, nil
+}
+func (m *mockMemberRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error) {
+	return nil, nil
+}
+func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error) {
+	var members []*entities.BrandMember
+	for _, member := range m.members {
+		if member.UserID == userID && member.Status == brandmemberstatus.Active {
+			members = append(members, member)
+		}
+	}
+	return members, nil
+}
+
+type mockCustomerRepo struct {
+	customers map[string]*entities.BrandCustomer
+}
+
+func (m *mockCustomerRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandCustomer, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) GetAll(ctx context.Context) ([]*entities.BrandCustomer, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) Create(ctx context.Context, customer *entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) Update(ctx context.Context, customer *entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) Delete(ctx context.Context, id uuid.UUID) error { return nil }
+func (m *mockCustomerRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.BrandCustomer, error) {
+	return m.customers[brandID.String()+"_"+userID.String()], nil
+}
+func (m *mockCustomerRepo) GetByBrandAndPhoneHash(ctx context.Context, brandID uuid.UUID, phoneHash string) (*entities.BrandCustomer, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) GetByBrandAndExternalCode(ctx context.Context, brandID uuid.UUID, externalCustomerCode string) (*entities.BrandCustomer, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandCustomer, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandCustomer, error) {
+	var list []*entities.BrandCustomer
+	for _, cust := range m.customers {
+		if cust.UserID != nil && *cust.UserID == userID {
+			list = append(list, cust)
+		}
+	}
+	return list, nil
+}
+func (m *mockCustomerRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandCustomerFilter) (*repositories.BrandCustomerListResult, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
+}
 
 type mockConvRepo struct {
 	conversations map[string]*entities.BrandConversation

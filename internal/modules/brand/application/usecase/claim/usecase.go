@@ -1,4 +1,4 @@
-package usecase
+package claim
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
@@ -55,7 +56,7 @@ func NewBrandClaimUseCase(
 }
 
 func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.CreateClaimTokenRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -97,7 +98,6 @@ func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staff
 		ClaimTokenHash:  hashStr,
 		ExpiresAt:       expiresAt,
 	}
-
 	if err := uc.claimRepo.Create(ctx, claim); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (uc *BrandClaimUseCase) CreateBrandCustomerClaim(ctx context.Context, staff
 }
 
 func (uc *BrandClaimUseCase) ListBrandCustomerClaims(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) ([]*dto.ClaimTokenRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
@@ -127,7 +127,7 @@ func (uc *BrandClaimUseCase) ListBrandCustomerClaims(ctx context.Context, staffU
 }
 
 func (uc *BrandClaimUseCase) RevokeBrandCustomerClaim(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID, claimID uuid.UUID, input dto.RevokeClaimTokenReq) (*dto.ClaimTokenRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)

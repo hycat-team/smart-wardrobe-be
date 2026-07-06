@@ -33,20 +33,6 @@ func NewGrantUseCase(
 	return &GrantUseCase{aiCostRepo: aiCostRepo, policyRepo: policyRepo}
 }
 
-func parsePlanChangedPayload(p aiexecutor_dto.PlanChangedPayload) PlanChangedEvent {
-	userID, _ := uuid.Parse(p.UserID)
-	policyID, _ := uuid.Parse(p.AICostPolicyID)
-	occurredAt, _ := time.Parse(time.RFC3339Nano, p.OccurredAt)
-	return PlanChangedEvent{
-		UserID:         userID,
-		EventType:      p.EventType,
-		ToPlanCode:     p.ToPlanCode,
-		ToTierRank:     p.ToTierRank,
-		AICostPolicyID: policyID,
-		OccurredAt:     occurredAt,
-	}
-}
-
 func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecutor_dto.PlanChangedPayload) error {
 	event := parsePlanChangedPayload(payload)
 	switch event.EventType {
@@ -63,6 +49,20 @@ func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecuto
 	}
 
 	return uc.createGrant(ctx, event)
+}
+
+func parsePlanChangedPayload(p aiexecutor_dto.PlanChangedPayload) PlanChangedEvent {
+	userID, _ := uuid.Parse(p.UserID)
+	policyID, _ := uuid.Parse(p.AICostPolicyID)
+	occurredAt, _ := time.Parse(time.RFC3339Nano, p.OccurredAt)
+	return PlanChangedEvent{
+		UserID:         userID,
+		EventType:      p.EventType,
+		ToPlanCode:     p.ToPlanCode,
+		ToTierRank:     p.ToTierRank,
+		AICostPolicyID: policyID,
+		OccurredAt:     occurredAt,
+	}
 }
 
 func (uc *GrantUseCase) expireCurrentGrants(ctx context.Context, userID uuid.UUID, now time.Time) error {

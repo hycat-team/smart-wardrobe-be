@@ -13,7 +13,6 @@ import (
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 
 	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 )
 
 type CostUseCase struct {
@@ -198,8 +197,4 @@ func (uc *CostUseCase) MarkUnknown(ctx context.Context, requestID uuid.UUID, rea
 
 func (uc *CostUseCase) ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error) {
 	return uc.repo.ExpireUnknown(ctx, now, limit)
-}
-
-func microCost(inputTokens, outputTokens int64, inputRate, outputRate, fx decimal.Decimal) int64 {
-	return decimal.NewFromInt(inputTokens).Mul(inputRate).Mul(fx).Add(decimal.NewFromInt(outputTokens).Mul(outputRate).Mul(fx)).Ceil().IntPart()
 }

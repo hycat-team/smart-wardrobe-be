@@ -1,4 +1,4 @@
-package usecase
+package benefit
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
@@ -65,7 +66,7 @@ func NewBrandBenefitUseCase(
 }
 
 func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -89,11 +90,12 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 		Status:      benefitstatus.Active,
 	}
 
-	if uType == benefitunlocktype.PointRedemption {
+	switch uType {
+	case benefitunlocktype.PointRedemption:
 		if input.RequiredPoints != nil && *input.RequiredPoints > 0 {
 			benefit.RequiredPoints = input.RequiredPoints
 		}
-	} else if uType == benefitunlocktype.TierPrivilege {
+	case benefitunlocktype.TierPrivilege:
 		if input.RequiredTierID == nil {
 			return nil, branderrors.ErrInvalidBrandMemberRole("Yeu cau phai co requiredTierId")
 		}
@@ -136,7 +138,7 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 }
 
 func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 	benefits, err := uc.benefitRepo.GetByBrandID(ctx, brandID)
@@ -216,7 +218,7 @@ func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context
 }
 
 func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
-	if err := requireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
 
@@ -339,7 +341,8 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 	now := time.Now().UTC()
 	var redemption *entities.BenefitRedemption
 
-	if benefit.UnlockType == benefitunlocktype.PointRedemption {
+	switch benefit.UnlockType {
+	case benefitunlocktype.PointRedemption:
 		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
 			var featStr string
 			if benefit.FeatureCode != nil {
@@ -399,7 +402,7 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 		if err != nil {
 			return nil, err
 		}
-	} else if benefit.UnlockType == benefitunlocktype.TierPrivilege {
+	case benefitunlocktype.TierPrivilege:
 		account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
 		if err != nil {
 			return nil, err
@@ -443,7 +446,7 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 		if err := uc.redemptionRepo.Create(ctx, redemption); err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, branderrors.ErrBenefitUnlockTypeNotSupported()
 	}
 
