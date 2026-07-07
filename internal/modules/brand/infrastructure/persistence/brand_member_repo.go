@@ -18,7 +18,9 @@ type BrandMemberRepository struct {
 
 func NewBrandMemberRepository(db *gorm.DB) repositories.IBrandMemberRepository {
 	return &BrandMemberRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandMember, uuid.UUID](db, []string{"User", "Brand"}),
+		GenericRepository: *shared_persist.NewGenericRepository[entities.BrandMember, uuid.UUID](db,
+			[]string{"Brand"},
+		),
 	}
 }
 
@@ -59,7 +61,6 @@ func (r *BrandMemberRepository) GetByBrandID(ctx context.Context, brandID uuid.U
 func (r *BrandMemberRepository) GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error) {
 	var members []*entities.BrandMember
 	err := r.GetQueryWithPreload(ctx).
-		Preload("Brand").
 		Where("user_id = ? AND status = ?", userID, brandmemberstatus.Active).
 		Order("created_at ASC").
 		Find(&members).Error

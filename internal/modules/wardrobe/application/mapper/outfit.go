@@ -18,14 +18,13 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 	for idx, item := range items {
 		fi := fashionItemMap[item.FashionItemID]
 		itemDTOs[idx] = &dto.OutfitItemRes{
-			ID:            item.FashionItemID,
-			FashionItemID: item.FashionItemID,
-			ItemContext:   string(item.ItemContext),
-			WardrobeItem:  MapToWardrobeItemRes(item.WardrobeItem, fi),
-			PositionX:     item.PositionX,
-			PositionY:     item.PositionY,
-			Scale:         item.Scale,
-			LayerOrder:    item.LayerOrder,
+			ID:          item.FashionItemID,
+			ItemContext: string(item.ItemContext),
+			FashionItem: MapToFashionItemRes(fi),
+			PositionX:   item.PositionX,
+			PositionY:   item.PositionY,
+			Scale:       item.Scale,
+			LayerOrder:  item.LayerOrder,
 		}
 	}
 

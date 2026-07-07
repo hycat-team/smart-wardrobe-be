@@ -20,7 +20,7 @@ type BrandRepository struct {
 }
 
 func NewBrandRepository(db *gorm.DB) repositories.IBrandRepository {
-	relations := []string{"CreatedByUser", "ApprovedByUser"}
+	relations := []string{}
 	return &BrandRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Brand, uuid.UUID](db, relations),
 	}

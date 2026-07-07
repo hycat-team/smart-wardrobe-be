@@ -1812,10 +1812,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes:
     properties:
-      brandItem:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes'
-      fashionItemId:
-        type: string
+      fashionItem:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes'
       id:
         type: string
       itemContext:
@@ -1828,8 +1826,6 @@ definitions:
         type: number
       scale:
         type: number
-      wardrobeItem:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes:
     properties:

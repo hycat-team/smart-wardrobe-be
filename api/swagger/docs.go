@@ -8109,11 +8109,8 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
             "type": "object",
             "properties": {
-                "brandItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
-                },
-                "fashionItemId": {
-                    "type": "string"
+                "fashionItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
                 },
                 "id": {
                     "type": "string"
@@ -8132,9 +8129,6 @@ const docTemplate = `{
                 },
                 "scale": {
                     "type": "number"
-                },
-                "wardrobeItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
                 }
             }
         },

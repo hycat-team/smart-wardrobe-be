@@ -129,7 +129,6 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 				outfitItems[idx] = &entities.OutfitItem{
 					FashionItemID: *verifiedItem.FashionItemID,
 					ItemContext:   outfititemcontext.UserWardrobe,
-					WardrobeItem:  verifiedItem,
 					PositionX:     itemReq.PositionX,
 					PositionY:     itemReq.PositionY,
 					Scale:         itemReq.Scale,
@@ -149,7 +148,6 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 			outfitItems[idx] = &entities.OutfitItem{
 				FashionItemID: itemReq.FashionItemID,
 				ItemContext:   outfititemcontext.BrandItem,
-				WardrobeItem:  nil,
 				PositionX:     itemReq.PositionX,
 				PositionY:     itemReq.PositionY,
 				Scale:         itemReq.Scale,
@@ -250,7 +248,6 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 					OutfitID:      id,
 					FashionItemID: *verifiedItem.FashionItemID,
 					ItemContext:   outfititemcontext.UserWardrobe,
-					WardrobeItem:  verifiedItem,
 					PositionX:     itemReq.PositionX,
 					PositionY:     itemReq.PositionY,
 					Scale:         itemReq.Scale,
@@ -271,7 +268,6 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 				OutfitID:      id,
 				FashionItemID: itemReq.FashionItemID,
 				ItemContext:   outfititemcontext.BrandItem,
-				WardrobeItem:  nil,
 				PositionX:     itemReq.PositionX,
 				PositionY:     itemReq.PositionY,
 				Scale:         itemReq.Scale,

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"sort"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -21,7 +19,7 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
-	relations := []string{"Items.FashionItem", "Items.FashionItem.Category"}
+	relations := []string{"Items"}
 	return &OutfitRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}
@@ -66,89 +64,11 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 		return nil, nil, err
 	}
 
-	if err := r.attachUserWardrobeItems(ctx, &outfit); err != nil {
-		return nil, nil, err
-	}
-	if err := r.attachBrandItems(ctx, &outfit); err != nil {
-		return nil, nil, err
-	}
-
-	var validItems []*entities.OutfitItem
-	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.UserWardrobe {
-			if item.WardrobeItem != nil &&
-				!item.WardrobeItem.IsDeleted &&
-				item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
-				item.WardrobeItem.UserID == outfit.UserID {
-				validItems = append(validItems, item)
-			}
-		} else if item.ItemContext == outfititemcontext.BrandItem {
-			validItems = append(validItems, item)
-		}
-	}
-	outfit.Items = validItems
-
 	sort.Slice(outfit.Items, func(i, j int) bool {
 		return outfit.Items[i].LayerOrder < outfit.Items[j].LayerOrder
 	})
 
 	return &outfit, outfit.Items, nil
-}
-
-func (r *OutfitRepository) attachUserWardrobeItems(ctx context.Context, outfit *entities.Outfit) error {
-	if outfit == nil || len(outfit.Items) == 0 {
-		return nil
-	}
-
-	fashionIDs := make([]uuid.UUID, 0, len(outfit.Items))
-	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.UserWardrobe {
-			fashionIDs = append(fashionIDs, item.FashionItemID)
-		}
-	}
-	if len(fashionIDs) == 0 {
-		return nil
-	}
-
-	var wardrobeItems []*entities.WardrobeItem
-	if err := r.GetDB(ctx).
-		Preload("FashionItem").
-		Preload("FashionItem.Category").
-		Where("user_id = ? AND fashion_item_id IN ?", outfit.UserID, fashionIDs).
-		Find(&wardrobeItems).Error; err != nil {
-		return err
-	}
-
-	wardrobeByFashionID := make(map[uuid.UUID]*entities.WardrobeItem, len(wardrobeItems))
-	for _, wardrobeItem := range wardrobeItems {
-		if wardrobeItem.FashionItemID != nil {
-			wardrobeByFashionID[*wardrobeItem.FashionItemID] = wardrobeItem
-		}
-	}
-	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.UserWardrobe {
-			item.WardrobeItem = wardrobeByFashionID[item.FashionItemID]
-		}
-	}
-	return nil
-}
-
-func (r *OutfitRepository) attachBrandItems(ctx context.Context, outfit *entities.Outfit) error {
-	if outfit == nil || len(outfit.Items) == 0 {
-		return nil
-	}
-
-	fashionIDs := make([]uuid.UUID, 0, len(outfit.Items))
-	for _, item := range outfit.Items {
-		if item.ItemContext == outfititemcontext.BrandItem {
-			fashionIDs = append(fashionIDs, item.FashionItemID)
-		}
-	}
-	if len(fashionIDs) == 0 {
-		return nil
-	}
-
-	return nil
 }
 
 func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error {
@@ -162,7 +82,7 @@ func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "WardrobeItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit").Create(&items).Error; err != nil {
 				return err
 			}
 		}
@@ -187,7 +107,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Omit("Outfit", "WardrobeItem").Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit").Create(&items).Error; err != nil {
 				return err
 			}
 		}
