@@ -11,21 +11,20 @@ import (
 )
 
 type UserRes struct {
-	ID             uuid.UUID             `json:"id"`
-	Username       string                `json:"username"`
-	Email          string                `json:"email"`
-	RoleSlug       roleslug.RoleSlug     `json:"roleSlug"`
-	FirstName      string                `json:"firstName"`
-	LastName       string                `json:"lastName,omitempty"`
-	DateOfBirth    *string               `json:"dateOfBirth,omitempty"`
-	Address        string                `json:"address,omitempty"`
-	Gender         gender.Gender         `json:"gender"`
-	Status         userstatus.UserStatus `json:"status"`
-	CreatedAt      time.Time             `json:"createdAt"`
-	Subscription   UserSubscriptionRes   `json:"subscription"`
-	BodyProfile    *UserBodyProfileRes   `json:"bodyProfile,omitempty"`
-	AvatarUrl      *string               `json:"avatarUrl,omitempty"`
-	AvatarPublicID *string               `json:"avatarPublicId,omitempty"`
+	ID           uuid.UUID             `json:"id"`
+	Username     string                `json:"username"`
+	Email        string                `json:"email"`
+	RoleSlug     roleslug.RoleSlug     `json:"roleSlug"`
+	FirstName    string                `json:"firstName"`
+	LastName     string                `json:"lastName,omitempty"`
+	DateOfBirth  *string               `json:"dateOfBirth,omitempty"`
+	Address      string                `json:"address,omitempty"`
+	Gender       gender.Gender         `json:"gender"`
+	Status       userstatus.UserStatus `json:"status"`
+	CreatedAt    time.Time             `json:"createdAt"`
+	Subscription UserSubscriptionRes   `json:"subscription"`
+	BodyProfile  *UserBodyProfileRes   `json:"bodyProfile,omitempty"`
+	AvatarUrl    *string               `json:"avatarUrl,omitempty"`
 }
 
 type UpdateAvatarReq struct {

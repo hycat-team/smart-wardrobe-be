@@ -294,8 +294,8 @@ func mapToWardrobeItemResWithFashion(item *wardrobeDto.WardrobeItemRes, fi *dto.
 			ID:              fi.ID,
 			CategoryID:      fi.CategoryID,
 			CategoryName:    fi.CategoryName,
+			CategorySlug:    fi.CategorySlug,
 			ImageUrl:        fi.ImageUrl,
-			ImagePublicID:   fi.ImagePublicID,
 			Color:           fi.Color,
 			ColorHex:        fi.ColorHex,
 			ColorHue:        fi.ColorHue,
@@ -310,10 +310,15 @@ func mapToWardrobeItemResWithFashion(item *wardrobeDto.WardrobeItemRes, fi *dto.
 			CreatedAt:       fi.CreatedAt,
 			UpdatedAt:       fi.UpdatedAt,
 		}
-		if fi.CategoryName != nil {
+		if fi.CategoryID != nil && fi.CategoryName != nil {
+			var slug string
+			if fi.CategorySlug != nil {
+				slug = *fi.CategorySlug
+			}
 			res.Category = &wardrobeDto.CategoryRes{
 				ID:   *fi.CategoryID,
 				Name: *fi.CategoryName,
+				Slug: slug,
 			}
 		}
 	}

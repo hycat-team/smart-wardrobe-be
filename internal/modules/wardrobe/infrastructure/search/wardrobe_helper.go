@@ -69,7 +69,6 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 		fashionItem := &dto.FashionItemRes{
 			ID:              fiID,
 			ImageUrl:        hit.Source.ImageUrl,
-			ImagePublicID:   hit.Source.ImagePublicID,
 			Color:           strPtr(hit.Source.Color),
 			ColorHex:        hit.Source.ColorHex,
 			ColorHue:        hit.Source.ColorHue,
@@ -82,6 +81,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			Seasonality:     strPtr(hit.Source.Seasonality),
 			Description:     strPtr(hit.Source.Description),
 			CategoryName:    &hit.Source.Category.Name,
+			CategorySlug:    &hit.Source.Category.Slug,
 			CreatedAt:       hit.Source.FashionCreatedAt,
 			UpdatedAt:       hit.Source.FashionUpdatedAt,
 		}

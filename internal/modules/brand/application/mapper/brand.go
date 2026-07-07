@@ -15,20 +15,18 @@ func MapBrand(brand *entities.Brand, totalCustomer int) *dto.BrandRes {
 		return nil
 	}
 	res := &dto.BrandRes{
-		ID:                 brand.ID,
-		Slug:               brand.Slug,
-		Name:               brand.Name,
-		Description:        brand.Description,
-		LogoURL:            brand.LogoURL,
-		LogoPublicID:       brand.LogoPublicID,
-		BackgroundURL:      brand.BackgroundURL,
-		BackgroundPublicID: brand.BackgroundPublicID,
-		Status:             brand.Status,
-		CreatedByUserID:    brand.CreatedByUserID,
-		ApprovedByUserID:   brand.ApprovedByUserID,
-		ApprovedAt:         brand.ApprovedAt,
-		CreatedAt:          brand.CreatedAt,
-		UpdatedAt:          brand.UpdatedAt,
+		ID:               brand.ID,
+		Slug:             brand.Slug,
+		Name:             brand.Name,
+		Description:      brand.Description,
+		LogoURL:          brand.LogoURL,
+		BackgroundURL:    brand.BackgroundURL,
+		Status:           brand.Status,
+		CreatedByUserID:  brand.CreatedByUserID,
+		ApprovedByUserID: brand.ApprovedByUserID,
+		ApprovedAt:       brand.ApprovedAt,
+		CreatedAt:        brand.CreatedAt,
+		UpdatedAt:        brand.UpdatedAt,
 	}
 	if totalCustomer >= 0 {
 		res.TotalCustomer = &totalCustomer

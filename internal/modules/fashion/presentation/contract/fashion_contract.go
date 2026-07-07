@@ -11,6 +11,7 @@ import (
 type IFashionContract interface {
 	GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemRes, error)
 	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error)
+	ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemBriefRes, error)
 	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error)
 	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error)
 	GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error)

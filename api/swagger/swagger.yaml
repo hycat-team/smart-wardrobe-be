@@ -342,8 +342,6 @@ definitions:
         type: string
       approvedByUserId:
         type: string
-      backgroundPublicId:
-        type: string
       backgroundUrl:
         type: string
       createdAt:
@@ -353,8 +351,6 @@ definitions:
       description:
         type: string
       id:
-        type: string
-      logoPublicId:
         type: string
       logoUrl:
         type: string
@@ -546,6 +542,8 @@ definitions:
         type: string
       categoryName:
         type: string
+      categorySlug:
+        type: string
       color:
         type: string
       colorHex:
@@ -563,8 +561,6 @@ definitions:
       fit:
         type: string
       id:
-        type: string
-      imagePublicId:
         type: string
       imageUrl:
         type: string
@@ -748,8 +744,6 @@ definitions:
         type: string
       approvedByUserId:
         type: string
-      backgroundPublicId:
-        type: string
       backgroundUrl:
         type: string
       createdAt:
@@ -759,8 +753,6 @@ definitions:
       description:
         type: string
       id:
-        type: string
-      logoPublicId:
         type: string
       logoUrl:
         type: string
@@ -1371,8 +1363,6 @@ definitions:
     properties:
       address:
         type: string
-      avatarPublicId:
-        type: string
       avatarUrl:
         type: string
       bodyProfile:
@@ -1734,11 +1724,26 @@ definitions:
     - name
     - slug
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes:
+    properties:
+      categoryName:
+        type: string
+      categorySlug:
+        type: string
+      colorHex:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes:
     properties:
       categoryId:
         type: string
       categoryName:
+        type: string
+      categorySlug:
         type: string
       color:
         type: string
@@ -1757,8 +1762,6 @@ definitions:
       fit:
         type: string
       id:
-        type: string
-      imagePublicId:
         type: string
       imageUrl:
         type: string
@@ -1813,7 +1816,7 @@ definitions:
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes:
     properties:
       fashionItem:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes'
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes'
       id:
         type: string
       itemContext:
@@ -1830,8 +1833,6 @@ definitions:
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitRes:
     properties:
       coverImageUrl:
-        type: string
-      coverPublicId:
         type: string
       createdAt:
         type: string

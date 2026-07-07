@@ -180,11 +180,11 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		fashionIDs = append(fashionIDs, oi.FashionItemID)
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
 		}
 	}
 
@@ -296,11 +296,11 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		fashionIDs = append(fashionIDs, oi.FashionItemID)
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
 		}
 	}
 
@@ -357,11 +357,11 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		fashionIDs = append(fashionIDs, oi.FashionItemID)
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
 		}
 	}
 

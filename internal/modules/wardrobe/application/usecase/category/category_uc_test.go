@@ -19,6 +19,9 @@ func (f fakeFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (
 func (f fakeFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemRes, error) {
 	return nil, nil
 }
+func (f fakeFashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemBriefRes, error) {
+	return nil, nil
+}
 func (f fakeFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }

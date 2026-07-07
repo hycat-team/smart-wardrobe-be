@@ -29,6 +29,24 @@ func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID)
 	return c.fashionItemUC.ListFashionItems(ctx, ids)
 }
 
+func (c *FashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemBriefRes, error) {
+	items, err := c.fashionItemUC.ListFashionItems(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*dto.FashionItemBriefRes, len(items))
+	for i, item := range items {
+		res[i] = &dto.FashionItemBriefRes{
+			ID:           item.ID,
+			ImageUrl:     item.ImageUrl,
+			ColorHex:     item.ColorHex,
+			CategoryName: item.CategoryName,
+			CategorySlug: item.CategorySlug,
+		}
+	}
+	return res, nil
+}
+
 func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
 	return c.categoryUC.GetCategory(ctx, id)
 }

@@ -5956,9 +5956,6 @@ const docTemplate = `{
                 "approvedByUserId": {
                     "type": "string"
                 },
-                "backgroundPublicId": {
-                    "type": "string"
-                },
                 "backgroundUrl": {
                     "type": "string"
                 },
@@ -5972,9 +5969,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "logoPublicId": {
                     "type": "string"
                 },
                 "logoUrl": {
@@ -6256,6 +6250,9 @@ const docTemplate = `{
                 "categoryName": {
                     "type": "string"
                 },
+                "categorySlug": {
+                    "type": "string"
+                },
                 "color": {
                     "type": "string"
                 },
@@ -6281,9 +6278,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
                     "type": "string"
                 },
                 "imageUrl": {
@@ -6560,9 +6554,6 @@ const docTemplate = `{
                 "approvedByUserId": {
                     "type": "string"
                 },
-                "backgroundPublicId": {
-                    "type": "string"
-                },
                 "backgroundUrl": {
                     "type": "string"
                 },
@@ -6576,9 +6567,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "logoPublicId": {
                     "type": "string"
                 },
                 "logoUrl": {
@@ -7462,9 +7450,6 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
-                "avatarPublicId": {
-                    "type": "string"
-                },
                 "avatarUrl": {
                     "type": "string"
                 },
@@ -7994,6 +7979,26 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes": {
+            "type": "object",
+            "properties": {
+                "categoryName": {
+                    "type": "string"
+                },
+                "categorySlug": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes": {
             "type": "object",
             "properties": {
@@ -8001,6 +8006,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "categoryName": {
+                    "type": "string"
+                },
+                "categorySlug": {
                     "type": "string"
                 },
                 "color": {
@@ -8028,9 +8036,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
                     "type": "string"
                 },
                 "imageUrl": {
@@ -8110,7 +8115,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "fashionItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
                 },
                 "id": {
                     "type": "string"
@@ -8136,9 +8141,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "coverImageUrl": {
-                    "type": "string"
-                },
-                "coverPublicId": {
                     "type": "string"
                 },
                 "createdAt": {

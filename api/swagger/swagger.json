@@ -5948,9 +5948,6 @@
                 "approvedByUserId": {
                     "type": "string"
                 },
-                "backgroundPublicId": {
-                    "type": "string"
-                },
                 "backgroundUrl": {
                     "type": "string"
                 },
@@ -5964,9 +5961,6 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "logoPublicId": {
                     "type": "string"
                 },
                 "logoUrl": {
@@ -6248,6 +6242,9 @@
                 "categoryName": {
                     "type": "string"
                 },
+                "categorySlug": {
+                    "type": "string"
+                },
                 "color": {
                     "type": "string"
                 },
@@ -6273,9 +6270,6 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
                     "type": "string"
                 },
                 "imageUrl": {
@@ -6552,9 +6546,6 @@
                 "approvedByUserId": {
                     "type": "string"
                 },
-                "backgroundPublicId": {
-                    "type": "string"
-                },
                 "backgroundUrl": {
                     "type": "string"
                 },
@@ -6568,9 +6559,6 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "logoPublicId": {
                     "type": "string"
                 },
                 "logoUrl": {
@@ -7454,9 +7442,6 @@
                 "address": {
                     "type": "string"
                 },
-                "avatarPublicId": {
-                    "type": "string"
-                },
                 "avatarUrl": {
                     "type": "string"
                 },
@@ -7986,6 +7971,26 @@
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes": {
+            "type": "object",
+            "properties": {
+                "categoryName": {
+                    "type": "string"
+                },
+                "categorySlug": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes": {
             "type": "object",
             "properties": {
@@ -7993,6 +7998,9 @@
                     "type": "string"
                 },
                 "categoryName": {
+                    "type": "string"
+                },
+                "categorySlug": {
                     "type": "string"
                 },
                 "color": {
@@ -8020,9 +8028,6 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "imagePublicId": {
                     "type": "string"
                 },
                 "imageUrl": {
@@ -8102,7 +8107,7 @@
             "type": "object",
             "properties": {
                 "fashionItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
                 },
                 "id": {
                     "type": "string"
@@ -8128,9 +8133,6 @@
             "type": "object",
             "properties": {
                 "coverImageUrl": {
-                    "type": "string"
-                },
-                "coverPublicId": {
                     "type": "string"
                 },
                 "createdAt": {

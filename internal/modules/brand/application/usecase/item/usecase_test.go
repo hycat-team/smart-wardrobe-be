@@ -312,6 +312,13 @@ func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.U
 	}
 	return list, nil
 }
+func (m *mockFashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemBriefRes, error) {
+	var list []*fashion_dto.FashionItemBriefRes
+	for _, id := range ids {
+		list = append(list, &fashion_dto.FashionItemBriefRes{ID: id, ImageUrl: "http://example.com/image.jpg"})
+	}
+	return list, nil
+}
 func (m *mockFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryRes, error) {
 	return nil, nil
 }
