@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"io"
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	"smart-wardrobe-be/internal/shared/application/sse"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -12,14 +15,20 @@ import (
 )
 
 type BrandPortalHandler struct {
-	brandUC usecase_interfaces.IBrandUseCase
-	itemUC  usecase_interfaces.IBrandItemUseCase
+	brandUC    usecase_interfaces.IBrandUseCase
+	itemUC     usecase_interfaces.IBrandItemUseCase
+	sseManager sse.ISSEManager
 }
 
-func NewBrandPortalHandler(brandUC usecase_interfaces.IBrandUseCase, itemUC usecase_interfaces.IBrandItemUseCase) *BrandPortalHandler {
+func NewBrandPortalHandler(
+	brandUC usecase_interfaces.IBrandUseCase,
+	itemUC usecase_interfaces.IBrandItemUseCase,
+	sseManager sse.ISSEManager,
+) *BrandPortalHandler {
 	return &BrandPortalHandler{
-		brandUC: brandUC,
-		itemUC:  itemUC,
+		brandUC:    brandUC,
+		itemUC:     itemUC,
+		sseManager: sseManager,
 	}
 }
 
@@ -265,7 +274,7 @@ func (h *BrandPortalHandler) GetBrandForPortal(c *gin.Context) error {
 // @Produce json
 // @Param brandId path string true "ID brand"
 // @Param body body dto.CreateBrandItemReq true "Thông tin sản phẩm"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
+// @Success 202 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/items [post]
 func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -284,7 +293,41 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Created(c, msgBrandItemCreateSuccess, res)
+	shared_pres.Accepted(c, msgBrandItemCreateSuccess, res)
+	return nil
+}
+
+// SubscribeBrandItemTaskSSE opens a Server-Sent Events stream for a specific brand item creation taskId
+// @Summary Đăng ký nhận thông báo realtime cho Brand Item Task ID qua SSE
+// @Description Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID
+// @Tags Brand Item
+// @Param brandId path string true "ID brand"
+// @Param taskId path string true "Mã Task ID"
+// @Router /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse [get]
+func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
+	taskId := c.Param("taskId")
+	if taskId == "" {
+		return apperror.NewBadRequest("Mã Task ID không được để trống")
+	}
+
+	shared_pres.InitSSE(c)
+
+	ch := h.sseManager.Subscribe(taskId)
+	defer h.sseManager.Unsubscribe(taskId, ch)
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-c.Request.Context().Done():
+			return false
+		case data, ok := <-ch:
+			if !ok {
+				return false
+			}
+			c.SSEvent("message", string(data))
+			return true
+		}
+	})
+
 	return nil
 }
 

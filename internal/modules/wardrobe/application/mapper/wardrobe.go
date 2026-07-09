@@ -45,6 +45,7 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionIt
 		CreatedAt:  item.CreatedAt,
 		LastUsedAt: item.LastUsedAt,
 		IsDeleted:  item.IsDeleted,
+		TaskID:     item.TaskID,
 	}
 	if fi != nil {
 		res.FashionItem = MapToFashionItemRes(fi)

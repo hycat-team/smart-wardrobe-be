@@ -295,6 +295,8 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus'
+      taskId:
+        type: string
       updatedAt:
         type: string
     type: object
@@ -855,7 +857,7 @@ definitions:
   smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBrandItemStatusReq:
     properties:
       status:
-        type: string
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus'
     required:
     - status
     type: object
@@ -1974,6 +1976,8 @@ definitions:
         type: number
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_domain_constants_wardrobestatus.WardrobeItemStatus'
+      taskId:
+        type: string
       userId:
         type: string
     type: object
@@ -3615,8 +3619,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "202":
+          description: Accepted
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -3756,6 +3760,52 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
               type: object
       summary: Cập nhật trạng thái sản phẩm brand
+      tags:
+      - Brand Item
+  /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}:
+    get:
+      description: Lấy thông tin chi tiết và trạng thái phân tích của các sản phẩm
+        thuộc cùng một Task ID
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Mã Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách sản phẩm
+          schema:
+            items:
+              $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
+            type: array
+      summary: Lấy danh sách sản phẩm thương hiệu theo Task ID
+      tags:
+      - Brand Item
+  /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse:
+    get:
+      description: Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh
+        của Brand Item Task ID
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: Mã Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      responses: {}
+      summary: Đăng ký nhận thông báo realtime cho Brand Item Task ID qua SSE
       tags:
       - Brand Item
   /api/v1/brand-portal/brands/{brandId}/items/upload-signature:
@@ -5378,8 +5428,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Danh sách trang phục đang được xử lý ngầm
+        "202":
+          description: Danh sách trang phục đang được xử lý ngầm với Task ID
           schema:
             allOf:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
@@ -5457,6 +5507,42 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Xóa toàn bộ trang phục bị khóa
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/tasks/{taskId}:
+    get:
+      description: Lấy thông tin chi tiết và trạng thái phân tích của các trang phục
+        thuộc cùng một Task ID
+      parameters:
+      - description: Mã Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Danh sách trang phục
+          schema:
+            items:
+              $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+            type: array
+      summary: Lấy danh sách trang phục theo Task ID
+      tags:
+      - Wardrobe
+  /api/v1/wardrobe-items/tasks/{taskId}/sse:
+    get:
+      description: Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh
+        của Task ID
+      parameters:
+      - description: Mã Task ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      responses: {}
+      summary: Đăng ký nhận thông báo realtime cho Task ID qua SSE
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/upload-signature:

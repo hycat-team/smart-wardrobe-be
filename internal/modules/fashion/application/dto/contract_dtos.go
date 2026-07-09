@@ -54,6 +54,9 @@ type FashionAnalyzeJobDTO struct {
 	ProcessingVersion int        `json:"processingVersion"`
 	RetryCount        int        `json:"retryCount,omitempty"`
 	SkipVision        bool       `json:"skipVision,omitempty"`
+	TaskID            string     `json:"taskId,omitempty"`
+	Total             int        `json:"total,omitempty"`
+	Index             int        `json:"index,omitempty"`
 }
 
 type CreateCategoryInput struct {
@@ -66,4 +69,13 @@ type UpdateCategoryInput struct {
 	Name      *string
 	Slug      *string
 	SortOrder *int
+}
+
+type SSEEventPayload struct {
+	ItemID uuid.UUID `json:"itemId"`
+	Status string    `json:"status"` // "completed" | "failed" | "needs_review"
+	Total  int       `json:"total"`
+	Index  int       `json:"index"`
+	Data   any       `json:"data,omitempty"`
+	Error  string    `json:"error,omitempty"`
 }

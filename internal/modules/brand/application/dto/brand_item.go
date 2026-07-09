@@ -31,7 +31,7 @@ type UpdateBrandItemReq struct {
 }
 
 type UpdateBrandItemStatusReq struct {
-	Status string `json:"status" binding:"required" label:"trạng thái sản phẩm"`
+	Status branditemstatus.BrandItemStatus `json:"status" binding:"required" label:"trạng thái sản phẩm"`
 }
 
 type FashionItemRes struct {
@@ -69,6 +69,7 @@ type BrandItemRes struct {
 	FashionItem   *FashionItemRes                 `json:"fashionItem,omitempty"`
 	CreatedAt     time.Time                       `json:"createdAt"`
 	UpdatedAt     time.Time                       `json:"updatedAt"`
+	TaskID        *uuid.UUID                      `json:"taskId,omitempty"`
 }
 
 type SubmitSampleFeedbackReq struct {

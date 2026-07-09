@@ -5,6 +5,7 @@ import (
 	"time"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/domain/constants/fashionitemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
@@ -187,7 +188,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	fashionJob := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
-		ItemType:          "wardrobe",
+		ItemType:          fashionitemtype.Wardrobe,
 		UserID:            userID,
 		ImageUrl:          imageURL,
 		ImagePublicID:     imagePublicID,
@@ -244,7 +245,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	job := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     item.FashionItemID,
 		ItemID:            item.ID,
-		ItemType:          "wardrobe",
+		ItemType:          fashionitemtype.Wardrobe,
 		UserID:            item.UserID,
 		CategoryID:        categoryID,
 		ImageUrl:          imageURL,
@@ -379,8 +380,9 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 		}
 	}
 
+	taskID := uuid.New()
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
-	for i, _ := range input.Items {
+	for i := range input.Items {
 		itemID := uuid.New()
 		newItems[i] = &entities.WardrobeItem{
 			AuditableEntity: entities.AuditableEntity{
@@ -392,6 +394,7 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			Status:        wardrobestatus.Processing,
 			ItemType:      itemType,
 			FashionItemID: nil,
+			TaskID:        &taskID,
 		}
 	}
 
@@ -404,12 +407,15 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 		job := fashion_dto.FashionAnalyzeJobDTO{
 			FashionItemID:     nil,
 			ItemID:            item.ID,
-			ItemType:          "wardrobe",
+			ItemType:          fashionitemtype.Wardrobe,
 			UserID:            userID,
 			CategoryID:        input.Items[i].CategoryID,
 			ImageUrl:          input.Items[i].ImageUrl,
 			ImagePublicID:     input.Items[i].ImagePublicID,
 			ProcessingVersion: 1,
+			TaskID:            taskID.String(),
+			Total:             len(newItems),
+			Index:             i,
 		}
 
 		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job)

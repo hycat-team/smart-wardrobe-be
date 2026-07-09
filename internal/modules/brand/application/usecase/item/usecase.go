@@ -21,6 +21,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/domain/constants/fashionitemtype"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
@@ -240,6 +241,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	}
 
 	brandItemID := uuid.New()
+	taskID := uuid.New()
 
 	item := &entities.BrandItem{
 		AuditableEntity: entities.AuditableEntity{
@@ -257,6 +259,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 		Price:         input.Price,
 		ItemType:      branditemtype.BrandItemType(input.ItemType),
 		Status:        branditemstatus.BrandItemStatus(input.Status),
+		TaskID:        &taskID,
 	}
 	if item.Status == "" {
 		item.Status = branditemstatus.Draft
@@ -270,12 +273,15 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 	job := fashion_dto.FashionAnalyzeJobDTO{
 		FashionItemID:     nil,
 		ItemID:            brandItemID,
-		ItemType:          "brand",
+		ItemType:          fashionitemtype.Brand,
 		UserID:            staffUserID,
 		ImageUrl:          input.ImageUrl,
 		ImagePublicID:     input.ImagePublicID,
 		CategoryID:        input.CategoryID,
 		ProcessingVersion: 1,
+		TaskID:            taskID.String(),
+		Total:             1,
+		Index:             0,
 	}
 	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job)
 
@@ -365,7 +371,7 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	return mapper.MapToBrandItemRes(item, nil), nil
 }
 
-func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status string) (*dto.BrandItemRes, error) {
+func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status branditemstatus.BrandItemStatus) (*dto.BrandItemRes, error) {
 	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
 		return nil, err
 	}
@@ -376,11 +382,10 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
-	nextStatus := branditemstatus.BrandItemStatus(strings.ToLower(strings.TrimSpace(status)))
-	if nextStatus != branditemstatus.Draft && nextStatus != branditemstatus.Active && nextStatus != branditemstatus.Archived {
+	if status != branditemstatus.Draft && status != branditemstatus.Active && status != branditemstatus.Archived {
 		return nil, branderrors.ErrBenefitInvalidStatus()
 	}
-	item.Status = nextStatus
+	item.Status = status
 	item.UpdatedAt = time.Now().UTC()
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
 		return nil, err
@@ -510,7 +515,7 @@ func (uc *BrandItemUseCase) SetFashionItemID(ctx context.Context, brandItemID uu
 	return uc.brandItemRepo.Update(ctx, item)
 }
 
-func (uc *BrandItemUseCase) UpdateBrandItemStatusDirect(ctx context.Context, brandItemID uuid.UUID, status string) error {
+func (uc *BrandItemUseCase) UpdateBrandItemStatusDirect(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error {
 	item, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
 	if err != nil {
 		return err
@@ -518,7 +523,7 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatusDirect(ctx context.Context, bra
 	if item == nil {
 		return nil
 	}
-	item.Status = branditemstatus.BrandItemStatus(status)
+	item.Status = status
 	return uc.brandItemRepo.Update(ctx, item)
 }
 

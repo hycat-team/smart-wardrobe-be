@@ -2457,8 +2457,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -2476,6 +2476,71 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}": {
+            "get": {
+                "description": "Lấy thông tin chi tiết và trạng thái phân tích của các sản phẩm thuộc cùng một Task ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Item"
+                ],
+                "summary": "Lấy danh sách sản phẩm thương hiệu theo Task ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mã Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Danh sách sản phẩm",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse": {
+            "get": {
+                "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID",
+                "tags": [
+                    "Brand Item"
+                ],
+                "summary": "Đăng ký nhận thông báo realtime cho Brand Item Task ID qua SSE",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mã Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/brand-portal/brands/{brandId}/items/upload-signature": {
@@ -5083,8 +5148,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Danh sách trang phục đang được xử lý ngầm",
+                    "202": {
+                        "description": "Danh sách trang phục đang được xử lý ngầm với Task ID",
                         "schema": {
                             "allOf": [
                                 {
@@ -5208,6 +5273,57 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/wardrobe-items/tasks/{taskId}": {
+            "get": {
+                "description": "Lấy thông tin chi tiết và trạng thái phân tích của các trang phục thuộc cùng một Task ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Lấy danh sách trang phục theo Task ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mã Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Danh sách trang phục",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wardrobe-items/tasks/{taskId}/sse": {
+            "get": {
+                "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Task ID",
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Đăng ký nhận thông báo realtime cho Task ID qua SSE",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mã Task ID",
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/wardrobe-items/upload-signature": {
@@ -5883,6 +5999,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+                },
+                "taskId": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -6721,7 +6840,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "status": {
-                    "type": "string"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
                 }
             }
         },
@@ -8350,6 +8469,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_domain_constants_wardrobestatus.WardrobeItemStatus"
+                },
+                "taskId": {
+                    "type": "string"
                 },
                 "userId": {
                     "type": "string"

@@ -58,6 +58,7 @@ type WardrobeItemRes struct {
 	CreatedAt   time.Time                         `json:"createdAt"`
 	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
 	IsDeleted   bool                              `json:"isDeleted"`
+	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
 type CloneWardrobeItemReq struct {

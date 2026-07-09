@@ -18,4 +18,5 @@ type WardrobeItem struct {
 	Status        wardrobestatus.WardrobeItemStatus `gorm:"type:smallint;not null;default:0"`
 	ItemType      itemtype.ItemType                 `gorm:"type:smallint;not null;default:0"`
 	LastUsedAt    *time.Time                        `gorm:"type:timestamp with time zone"`
+	TaskID        *uuid.UUID                        `gorm:"column:task_id;type:uuid"`
 }

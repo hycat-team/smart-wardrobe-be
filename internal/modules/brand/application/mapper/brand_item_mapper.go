@@ -60,6 +60,7 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes)
 		FashionItem:   MapToFashionItemRes(fi),
 		CreatedAt:     item.CreatedAt,
 		UpdatedAt:     item.UpdatedAt,
+		TaskID:        item.TaskID,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 
 	"github.com/google/uuid"
@@ -42,7 +43,7 @@ func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.U
 	return c.itemUC.SetFashionItemID(ctx, brandItemID, fashionItemID)
 }
 
-func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status string) error {
+func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error {
 	return c.itemUC.UpdateBrandItemStatusDirect(ctx, brandItemID, status)
 }
 

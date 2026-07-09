@@ -21,6 +21,7 @@ type BrandItem struct {
 	Price         *float64                        `gorm:"type:decimal(12,2)"`
 	ItemType      branditemtype.BrandItemType     `gorm:"type:varchar(50);not null"`
 	Status        branditemstatus.BrandItemStatus `gorm:"type:varchar(50);not null;default:DRAFT"`
+	TaskID        *uuid.UUID                      `gorm:"column:task_id;type:uuid"`
 }
 
 type DigitalSampleResponse struct {

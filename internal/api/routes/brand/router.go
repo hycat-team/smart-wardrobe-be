@@ -101,6 +101,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		portal.POST("/brands/:brandId/conversations/:conversationId/reopen", shared_pres.WrapHandler(r.brandHandler.ReopenConversation))
 		portal.POST("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.SendStaffMessage))
 		portal.POST("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.CreateBrandItem))
+		portal.GET("/brands/:brandId/items/tasks/:taskId/sse", shared_pres.WrapHandler(r.brandHandler.SubscribeBrandItemTaskSSE))
 		portal.GET("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.GetBrandItemsForStaff))
 		portal.GET("/brands/:brandId/items/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandItemUploadSignature))
 		portal.GET("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForStaff))
