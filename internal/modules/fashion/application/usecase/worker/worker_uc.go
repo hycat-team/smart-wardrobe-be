@@ -22,8 +22,8 @@ import (
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	"smart-wardrobe-be/internal/shared/application/constants/analyzetaskstatus"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
-	"smart-wardrobe-be/internal/shared/application/constants/sseconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/application/sse"
@@ -379,14 +379,14 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		if brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
 			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, sseconstants.StatusFailed, brandItem, err.Error())
+			uc.publishSSEEvent(job, analyzetaskstatus.Failed, brandItem, err.Error())
 		}
 		return
 	}
 	_, _ = uc.wardrobeContract.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, sseconstants.StatusFailed, items[0], err.Error())
+		uc.publishSSEEvent(job, analyzetaskstatus.Failed, items[0], err.Error())
 	}
 }
 
@@ -459,14 +459,14 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 		if brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
 			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, sseconstants.StatusNeedsReview, brandItem, "")
+			uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, brandItem, "")
 		}
 		return
 	}
 	_, _ = uc.wardrobeContract.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reviewReason)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, sseconstants.StatusNeedsReview, items[0], "")
+		uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, items[0], "")
 	}
 }
 
@@ -512,7 +512,7 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		if err == nil && brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Active)
 			brandItem.Status = branditemstatus.Active
-			uc.publishSSEEvent(job, sseconstants.StatusCompleted, brandItem, "")
+			uc.publishSSEEvent(job, analyzetaskstatus.Completed, brandItem, "")
 		}
 		return nil
 	}
@@ -534,7 +534,7 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, sseconstants.StatusCompleted, items[0], "")
+		uc.publishSSEEvent(job, analyzetaskstatus.Completed, items[0], "")
 	}
 	return nil
 }
@@ -607,7 +607,7 @@ func applyResolvedColor(updateMap map[string]any, aiMeta *dto.FashionMetadataRes
 	updateMap["color_lightness"] = nil
 }
 
-func (uc *FashionWorkerUseCase) publishSSEEvent(job dto.FashionAnalyzeJobDTO, status string, data any, errMsg string) {
+func (uc *FashionWorkerUseCase) publishSSEEvent(job dto.FashionAnalyzeJobDTO, status analyzetaskstatus.AnalyzeTaskStatus, data any, errMsg string) {
 	if job.TaskID == "" {
 		return
 	}

@@ -91,7 +91,24 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
     }
     ```
 *   **Response:**
-    *   `201 Created`: Trả về thông tin sản phẩm vừa tạo `BrandItemRes`.
+    *   `202 Accepted`: Trả về thông tin sản phẩm vừa tạo kèm theo `taskId` để client kết nối SSE theo dõi tiến trình phân tích ảnh.
+        ```json
+        {
+          "success": true,
+          "message": "Tạo sản phẩm thành công, đang tiến hành phân tích nền",
+          "data": {
+            "id": "e5b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
+            "brandId": "b7b6a0f1-15e7-4897-951f-52afc8a11111",
+            "name": "Áo khoác gió thu đông",
+            "imageUrl": "https://res.cloudinary.com/.../jacket.png",
+            "productCode": "JACKET-001",
+            "price": 590000,
+            "status": "draft",
+            "itemType": "product",
+            "taskId": "a2bc3d4e-5f6g-7h8i-9j0k-1l2m3n4o5p6q"
+          }
+        }
+        ```
 
 ### 3. Nhân viên lấy danh sách toàn bộ sản phẩm của thương hiệu
 *   **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/items`

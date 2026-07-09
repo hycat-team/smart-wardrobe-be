@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	"smart-wardrobe-be/internal/shared/application/constants/analyzetaskstatus"
+
 	"github.com/google/uuid"
 )
 
@@ -72,10 +74,10 @@ type UpdateCategoryInput struct {
 }
 
 type SSEEventPayload struct {
-	ItemID uuid.UUID `json:"itemId"`
-	Status string    `json:"status"` // "completed" | "failed" | "needs_review"
-	Total  int       `json:"total"`
-	Index  int       `json:"index"`
-	Data   any       `json:"data,omitempty"`
-	Error  string    `json:"error,omitempty"`
+	ItemID uuid.UUID                           `json:"itemId"`
+	Status analyzetaskstatus.AnalyzeTaskStatus `json:"status"` // "completed" | "failed" | "needs_review"
+	Total  int                                 `json:"total"`
+	Index  int                                 `json:"index"`
+	Data   any                                 `json:"data,omitempty"`
+	Error  string                              `json:"error,omitempty"`
 }

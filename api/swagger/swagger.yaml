@@ -3762,33 +3762,6 @@ paths:
       summary: Cập nhật trạng thái sản phẩm brand
       tags:
       - Brand Item
-  /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}:
-    get:
-      description: Lấy thông tin chi tiết và trạng thái phân tích của các sản phẩm
-        thuộc cùng một Task ID
-      parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
-      - description: Mã Task ID
-        in: path
-        name: taskId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Danh sách sản phẩm
-          schema:
-            items:
-              $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandItemRes'
-            type: array
-      summary: Lấy danh sách sản phẩm thương hiệu theo Task ID
-      tags:
-      - Brand Item
   /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse:
     get:
       description: Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh
@@ -5507,28 +5480,6 @@ paths:
           schema:
             $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
       summary: Xóa toàn bộ trang phục bị khóa
-      tags:
-      - Wardrobe
-  /api/v1/wardrobe-items/tasks/{taskId}:
-    get:
-      description: Lấy thông tin chi tiết và trạng thái phân tích của các trang phục
-        thuộc cùng một Task ID
-      parameters:
-      - description: Mã Task ID
-        in: path
-        name: taskId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Danh sách trang phục
-          schema:
-            items:
-              $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
-            type: array
-      summary: Lấy danh sách trang phục theo Task ID
       tags:
       - Wardrobe
   /api/v1/wardrobe-items/tasks/{taskId}/sse:
