@@ -322,7 +322,7 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 }
 
 func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.FashionAnalyzeJobDTO, err error, run *workerlog.Run) {
-	topic := "fashion.event.analyze"
+	topic := eventconstants.TopicFashionAnalyze
 
 	if isTransientError(err) && job.RetryCount < uc.cfg.Wardrobe.MaxRetryCount {
 		job.RetryCount++
@@ -536,7 +536,7 @@ func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item
 		ProcessingVersion: processingVersion,
 	}
 
-	return uc.eventPublisher.Publish(ctx, "fashion.event.analyze", job)
+	return uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionAnalyze, job)
 }
 
 func resolveDetectedCategory(categorySlug string, snapshot *VisionCategorySnapshot) (*uuid.UUID, string) {

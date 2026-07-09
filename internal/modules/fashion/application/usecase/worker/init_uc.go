@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
@@ -85,7 +86,7 @@ func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job dto.Fashio
 	// Publish to analyze queue for AI processing
 	analyzeJob := job
 	analyzeJob.FashionItemID = &fashionItemID
-	_ = uc.eventPublisher.Publish(ctx, "fashion.event.analyze", analyzeJob)
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionAnalyze, analyzeJob)
 
 	run.AddSuccess(1)
 	run.ChildInfo(uc.logger, "Fashion item created and forwarded to analyze queue",

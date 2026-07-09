@@ -23,6 +23,7 @@ import (
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -276,7 +277,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 		CategoryID:        input.CategoryID,
 		ProcessingVersion: 1,
 	}
-	_ = uc.eventPublisher.Publish(ctx, "fashion.event.init", job)
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job)
 
 	return mapper.MapToBrandItemRes(item, nil), nil
 }

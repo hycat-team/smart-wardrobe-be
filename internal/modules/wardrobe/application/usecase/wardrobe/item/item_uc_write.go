@@ -94,9 +94,9 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 			UserID:        cloned.UserID,
 			FashionItemID: fashionItemID,
 			ItemType:      int(cloned.ItemType),
-			Action:        "created",
+			Action:        eventconstants.ActionCreated,
 		}
-		_ = uc.eventPublisher.Publish(ctx, "wardrobe.event.created", payload)
+		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 	}
 
 	fashionIDs := make([]uuid.UUID, 0, len(clonedItems))
@@ -195,7 +195,7 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 		ProcessingVersion: processingVersion,
 		SkipVision:        true,
 	}
-	_ = uc.eventPublisher.Publish(ctx, "fashion.event.init", fashionJob)
+	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, fashionJob)
 
 	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
@@ -252,7 +252,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		ProcessingVersion: processingVersion,
 		RetryCount:        0,
 	}
-	if err := uc.eventPublisher.Publish(ctx, "fashion.event.init", job); err != nil {
+	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job); err != nil {
 		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
 		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, processingVersion, processingFailureMessage, nil)
 		return nil, err
@@ -412,7 +412,7 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			ProcessingVersion: 1,
 		}
 
-		err := uc.eventPublisher.Publish(ctx, "fashion.event.init", job)
+		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job)
 		if err != nil {
 			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
 			item.Status = wardrobestatus.Failed

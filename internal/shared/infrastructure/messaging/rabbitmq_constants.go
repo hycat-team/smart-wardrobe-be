@@ -1,5 +1,7 @@
 package messaging
 
+import "smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+
 const (
 	ExchangeName = "smart_wardrobe_exchange"
 	ExchangeType = "topic"
@@ -14,7 +16,7 @@ const (
 
 	// Routing Keys
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
-	RoutingKeyFashionInit               = "fashion.event.init"
-	RoutingKeyFashionAnalyze            = "fashion.event.analyze"
-	RoutingKeySubscriptionPlanChanged   = "subscription.plan.changed"
+	RoutingKeyFashionInit               = eventconstants.TopicFashionInit
+	RoutingKeyFashionAnalyze            = eventconstants.TopicFashionAnalyze
+	RoutingKeySubscriptionPlanChanged   = eventconstants.TopicSubscriptionPlanChanged
 )
