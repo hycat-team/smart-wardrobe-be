@@ -58,7 +58,7 @@ func (p *LocalNLPParser) detectMatches(text, category string, values map[string]
 						Keyword:  keyword,
 						Start:    loc[0],
 						End:      loc[1],
-						Source:   "local-dictionary",
+						Source:   types.RetrievalTermSourceDictionary,
 					})
 					break
 				}

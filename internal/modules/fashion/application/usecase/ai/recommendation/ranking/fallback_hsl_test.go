@@ -67,6 +67,7 @@ func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemRes, *dto.FashionItem
 		ID:           fashionID,
 		CategoryID:   &catID,
 		CategoryName: &name,
+		CategorySlug: &name,
 	}
 	return item, res
 }

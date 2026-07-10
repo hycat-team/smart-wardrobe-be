@@ -24,7 +24,7 @@ const (
 	CandidateSourceGeneralFallback = "general-fallback"
 
 	// RetrievalTermSourceDictionary chỉ ra từ khóa truy vấn được trích xuất từ các từ điển cục bộ.
-	RetrievalTermSourceDictionary = "dictionary"
+	RetrievalTermSourceDictionary = "local-dictionary"
 	// RetrievalTermSourceRaw chỉ ra từ khóa truy vấn thô được trích xuất trực tiếp từ câu truy vấn của người dùng.
 	RetrievalTermSourceRaw = "raw"
 	// RetrievalTermSourceTaxonomy chỉ ra từ khóa truy vấn được mở rộng từ hệ thống phân loại thời trang (taxonomy).

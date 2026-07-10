@@ -204,14 +204,16 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, fi := range fashionItems {
-				var categoryName *string
+				var categoryName, categorySlug *string
 				if fi.Category != nil {
 					categoryName = &fi.Category.Name
+					categorySlug = &fi.Category.Slug
 				}
 				fashionItemMap[fi.ID] = &dto.FashionItemRes{
 					ID:              fi.ID,
 					CategoryID:      fi.CategoryID,
 					CategoryName:    categoryName,
+					CategorySlug:    categorySlug,
 					ImageUrl:        fi.ImageUrl,
 					ImagePublicID:   fi.ImagePublicID,
 					Color:           fi.Color,
