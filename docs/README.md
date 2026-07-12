@@ -10,18 +10,14 @@
 
 ```text
 docs/
-├── project/             # Vision, scope, terminology, and changelog of Closy.
-├── business/            # B2B2C business model, revenue streams, and value propositions.
-├── product/             # Core MVP feature list, Personas, and product roadmap.
-├── domain/              # Detailed business logic for each domain (Wardrobe, AI Styling, Brand, Loyalty, Campaign, CS, Digital Sample Lab).
-├── flows/               # Application flows (User flow, Brand flow, Support flow, Sample flow...).
-├── system-design/       # System architecture, database, authorization, and AI Pipeline.
-├── api/                 # Hand-written API design standards.
-├── development/         # Local setup guide, conventions, git branch, and testing strategy.
-├── deployment/          # Docker, CI/CD, VPS deploy, and monitoring guides (IP/sensitive info removed).
-├── decisions/           # Architecture decision records (ADR) and major product decisions.
-├── research/            # Market research and user surveys.
-└── archive/             # Storage for old documents or deprecated directions.
+├── project/             # Tầm nhìn, quy mô (vision, scope, glossary) và lịch sử thay đổi (changelog).
+├── product/             # Danh sách tính năng cốt lõi (mvp-scope) và lộ trình phát triển (roadmap).
+├── system-design/       # Kiến trúc hệ thống (architecture), sơ đồ sequence UML và AI Pipeline.
+├── api/                 # Quy chuẩn thiết kế tài liệu API.
+├── development/         # Hướng dẫn thiết lập local, quy chuẩn viết code, testing và migrations (local-setup).
+├── decisions/           # Hồ sơ quyết định kiến trúc (ADR).
+├── deployment/          # Docker, CI/CD, deploy VPS và giám sát hệ thống.
+└── archive/             # Lưu trữ các tài liệu cũ và lịch sử refactor/rebuild.
 ```
 
 ## New Model Positioning: B2B2C

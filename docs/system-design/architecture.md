@@ -209,3 +209,58 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`.
 - Handler signature: `func (h *Handler) Method(c *gin.Context) error`.
 - A module's entity files belong in `internal/modules/<name>/domain/entities/`.
 - A module that has been removed from the runtime (archived) should remain as a tree entry but be excluded from DI and route registration.
+
+---
+
+## VII. DATABASE SCHEMA MAPPING
+
+The system uses a PostgreSQL relational database as the Single Source of Truth, integrating with GORM for entity management.
+
+### Core Tables
+
+- `users`: Stores B2C user account information.
+- `wardrobe_items`: Manages digitized clothing and image paths.
+- `outfits`: Stores saved outfits.
+- `brands`: Information about partner brands.
+- `brand_members`: Manages employee roles belonging to brands.
+- `loyalty_points`: Accumulated points of users at each brand.
+- `campaigns`: Marketing events and campaigns of brands.
+- `digital_samples`: Stores prototype designs in the Sample Lab.
+- `sample_votes`: User voting history for design prototypes.
+
+---
+
+## VIII. AUTHENTICATION & ROLE AUTHORIZATION
+
+The system delegates authorization according to the RBAC (Role-Based Access Control) model for both individual users and business employees.
+
+### 1. Individual Users (B2C Roles)
+
+- **Guest**: Not logged in, can only view the subscription plan list or public pages.
+- **Standard User**: Limited digital wardrobe (up to 50 items) and limited daily AI quota.
+- **Premium User**: Unlimited digital wardrobe and expanded quota for AI outfit styling.
+
+### 2. Business Users (B2B Roles)
+
+- **Brand Owner**: Full access to configure the Brand Portal and manage service billing.
+- **Brand Staff**: Employee of the brand.
+
+### 3. System Administrator (System Admin)
+
+- System administrators have full authority to review the status of brands, approve new partner registrations, and troubleshoot issues.
+
+---
+
+## IX. SECURITY & DATA PRIVACY POLICY
+
+Policy for protecting B2C user information when fashion brands extract data from Closy.
+
+### 1. Data Anonymization
+
+- All reports sent to the Brand Portal on the Insight Dashboard are aggregated data.
+- Do not share personally identifiable information (Full name, Email, Phone number, Detailed address) of users with third parties or brands.
+- Brands can only see overall statistics: e.g., "45% of female customers aged 18-24 love design dress A".
+
+### 2. Opt-In / Opt-Out
+
+- Users have the right to choose not to share their virtual digital wardrobe or anonymized survey information at any time through privacy settings on the app.

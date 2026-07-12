@@ -220,3 +220,119 @@ Prefer `Get...` over `Find...` for repository lookups when creating or refactori
 
 - Vietnamese: Swagger text and client-facing messages
 - English: internal comments and logger messages
+
+---
+
+## 9. Git branch strategy
+
+The project adopts a streamlined Git Flow workflow:
+
+- `main`: The branch containing the most stable source code running on production.
+- `dev`: The main integration branch for the staging environment and general development.
+- Feature branches: Created from `dev` with the prefix `feat/` (e.g., `feat/digital-sample-lab`).
+- Bugfix branches: Created from `dev` or `main` with the prefix `bugfix/` or `hotfix/`.
+
+Every Pull Request (PR) must be reviewed by at least 1 other member and must pass all CI checks (Lints, Tests, Build) before merging.
+
+---
+
+## 10. Code style & formatting conventions
+
+Ensure consistency and quality of the project's source code.
+
+- **Formatting:** Use the standard Go formatting command:
+  ```bash
+  make fmt
+  ```
+  Before committing code, run the format and structure check:
+  ```bash
+  make check
+  ```
+- **Error Handling:** Always return the error at the end of a function's return parameter list and check the error immediately. Use the predefined `apperror` structure to return clear error results to the front-end.
+- **Language Standards:**
+  * Swagger annotations: Vietnamese
+  * Client-facing messages: Vietnamese
+  * Logger messages: English
+  * Code comments: English
+  * Identifiers (function names, variables, structs, interfaces, packages, database tables, columns): English
+
+---
+
+## 11. Workflow & architectural principles
+
+### Before writing code:
+- Understand the existing implementation.
+- Read only the modules related to the current task.
+- Avoid loading unrelated packages or documents.
+
+### After implementation:
+- Verify formatting.
+- Run the appropriate Makefile commands when applicable.
+- Summarize modified files and important design decisions.
+
+### Coding Principles:
+- Preserve the existing project architecture.
+- Reuse existing patterns before introducing new abstractions.
+- Avoid unnecessary refactoring.
+- Keep changes as small and localized as possible.
+- Follow the project's existing coding style.
+- Prefer consistency over creativity.
+- Reuse existing code whenever possible.
+- Minimize changes outside the requested scope.
+- Preserve backward compatibility unless explicitly instructed otherwise.
+- Explain significant architectural trade-offs before implementing them.
+
+### Clarification Rules:
+If requirements are ambiguous, contradictory, incomplete, or inconsistent with project documentation, stop implementation immediately and ask for clarification. Do not guess.
+
+---
+
+## 12. Testing strategy
+
+Ensure the reliability of the source code when upgrading and maintaining the system.
+
+### Unit Testing
+- Write independent tests for each module at the `usecase` or `repository` level.
+- Mock external connections (Database, Cache, Third-party AI) using GoMock or Testify.
+
+### Running the Test Suite
+Run all automated tests on the local environment:
+```bash
+make test
+```
+Ensure all test cases pass before submitting a Pull Request.
+
+---
+
+## 13. Goose database migration guide
+
+The system uses **Goose** as the tool to manage database updates.
+
+### Core Principles
+- Absolutely do not directly edit the existing database scripts in the `/init-db` folder.
+- All database schema changes must be done through a new SQL migration file created using Goose.
+
+### Create a new migration file
+Run the following command in the terminal to generate a new migration file:
+```bash
+make migration-create name=migration_file_name
+```
+This operation will create a new `.sql` file in the `/migrations` folder with a timestamp format and the name you just entered.
+
+### Execute migration
+- Run all unexecuted migrations:
+  ```bash
+  make migration-up
+  ```
+- Rollback the most recent migration:
+  ```bash
+  make migration-down
+  ```
+- Check migration status:
+  ```bash
+  make migration-status
+  ```
+- View the current database migration version:
+  ```bash
+  make migration-version
+  ```

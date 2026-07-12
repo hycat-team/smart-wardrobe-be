@@ -19,11 +19,6 @@ General project scope
 - docs/project/
 - docs/product/
 
-Business rules
-
-- docs/domain/
-- docs/flows/
-
 Architecture
 
 - docs/system-design/
