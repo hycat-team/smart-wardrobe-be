@@ -16,33 +16,34 @@ Typical folders present in the current codebase:
 internal/modules/<module_name>
 |
 |-- application
-|   |-- dto
-|   |-- errors
+|   |-- dto                     # Request/response structs
+|   |-- errors                  # Domain-specific error definitions
 |   |-- interface
-|   |   `-- usecase
-|   |-- mapper
-|   `-- usecase
+|   |   `-- usecase             # Use case interfaces
+|   |-- mapper                  # Entity/DTO ↔ response mappers
+|   `-- usecase                 # Use case implementations
 |
-|-- contract                # Current cross-module contract location
 |-- domain
-|   `-- repositories
+|   |-- constants               # Module-specific enum constants
+|   |-- entities                # Persistent GORM models (owned by this module)
+|   `-- repositories            # Repository interfaces
 |-- infrastructure
-|   |-- persistence
-|   |-- caching             # Present where needed
-|   |-- communication       # Present where needed
-|   |-- messaging           # Present where needed
-|   |-- payment             # Present where needed
-|   |-- search              # Present where needed
-|   `-- security            # Present where needed
+|   |-- persistence             # GORM repository implementations
+|   |-- caching                 # (optional) module-specific caching
+|   |-- messaging               # (optional) module-specific messaging
+|   |-- payment                 # (optional) payment adapter
+|   |-- search                  # (optional) search adapter
+|   `-- security                # (optional) security adapter
 |-- presentation
-|   |-- handler
-|   `-- worker              # Present where needed
-`-- provider.go
+|   |-- contract                # Cross-module service interfaces & implementations (DTOs only)
+|   |-- handler                 # HTTP handlers (thin, delegate to use cases)
+|   `-- worker                  # Background workers (optional)
+`-- provider.go                 # Wire ProviderSet for the module
 ```
 
 Important notes:
 
-- `contract/` currently sits at module root, not under `application/contract/`.
+- `contract/` sits under `presentation/contract/`, not at the module root or under `application/`.
 - `presentation/provider.go` only exists in some modules. Other modules wire handlers/workers directly from module `provider.go`.
 - `worker/` is a normal presentation adapter in this codebase and should be documented that way.
 
@@ -200,7 +201,7 @@ Presentation code should depend on interfaces from `application/interface/usecas
 
 ### Module isolation
 
-Use module contracts for cross-module collaboration. Current contract packages are discoverable under `internal/modules/<name>/contract/`.
+Use module contracts for cross-module collaboration. Current contract packages are discoverable under `internal/modules/<name>/presentation/contract/`.
 
 ### Shared entities are allowed by design
 
