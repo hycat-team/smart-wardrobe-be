@@ -1,0 +1,455 @@
+package chat
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"smart-wardrobe-be/internal/modules/brand/application/dto"
+	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
+	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/brand/application/mapper"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/entities"
+	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
+
+	"github.com/google/uuid"
+)
+
+type BrandChatUseCase struct {
+	brandRepo    repositories.IBrandRepository
+	memberRepo   repositories.IBrandMemberRepository
+	customerRepo repositories.IBrandCustomerRepository
+	userContract identity_contract.IUserContract
+	convRepo     repositories.IBrandConversationRepository
+	msgRepo      repositories.IBrandConversationMessageRepository
+	uow          shared_repos.IUnitOfWork
+}
+
+func NewBrandChatUseCase(
+	brandRepo repositories.IBrandRepository,
+	memberRepo repositories.IBrandMemberRepository,
+	customerRepo repositories.IBrandCustomerRepository,
+	userContract identity_contract.IUserContract,
+	convRepo repositories.IBrandConversationRepository,
+	msgRepo repositories.IBrandConversationMessageRepository,
+	uow shared_repos.IUnitOfWork,
+) uc_interfaces.IBrandChatUseCase {
+	return &BrandChatUseCase{
+		brandRepo:    brandRepo,
+		memberRepo:   memberRepo,
+		customerRepo: customerRepo,
+		userContract: userContract,
+		convRepo:     convRepo,
+		msgRepo:      msgRepo,
+		uow:          uow,
+	}
+}
+
+func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationDetailRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrUserNotFoundOrInactive()
+	}
+
+	conv, err := uc.convRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	user, _ := uc.userContract.GetByID(ctx, userID)
+	userDisp := getUserDisplayName(user)
+	convRes, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, customer.CustomerName, &userDisp)
+	if err != nil {
+		return nil, err
+	}
+
+	msgResult, err := uc.msgRepo.GetByConversationIDPaginated(ctx, repositories.BrandConversationMessageFilter{
+		ConversationID: conv.ID,
+		Page:           query.Page,
+		Limit:          query.Limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.BrandConversationDetailRes{
+		BrandConversationRes: *convRes,
+		Messages:             mapper.MapBrandConversationMessages(msgResult.Messages),
+		Metadata:             shared_dto.BuildPaginationMetadata(query.PaginationQuery, msgResult.TotalCount),
+	}, nil
+}
+
+func (uc *BrandChatUseCase) SendUserMessage(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if customer == nil || customer.Status != brandcustomerstatus.Active {
+		return nil, branderrors.ErrUserNotFoundOrInactive()
+	}
+
+	var messageRes *dto.BrandConversationMessageRes
+	now := time.Now().UTC()
+
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		conv, err := uc.convRepo.GetByBrandAndUser(txCtx, brandID, userID)
+		if err != nil {
+			return err
+		}
+
+		if conv == nil {
+			conv = &entities.BrandConversation{
+				BrandID:       brandID,
+				UserID:        userID,
+				Status:        conversationstatus.Open,
+				LastMessageAt: &now,
+			}
+			if err := uc.convRepo.Create(txCtx, conv); err != nil {
+				return err
+			}
+		} else {
+			conv.Status = conversationstatus.Open
+			conv.LastMessageAt = &now
+			conv.ClosedAt = nil
+			conv.ClosedByUserID = nil
+			if err := uc.convRepo.Update(txCtx, conv); err != nil {
+				return err
+			}
+		}
+
+		msg := &entities.BrandConversationMessage{
+			ConversationID: conv.ID,
+			SenderUserID:   &userID,
+			SenderRole:     senderrole.Customer,
+			Message:        strings.TrimSpace(input.Message),
+			CreatedAt:      now,
+		}
+		if err := uc.msgRepo.Create(txCtx, msg); err != nil {
+			return err
+		}
+
+		messageRes = mapper.MapBrandConversationMessage(msg)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return messageRes, nil
+}
+
+func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandConversationRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+
+	conversations, err := uc.convRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	customers, err := uc.customerRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	customerByUserID := make(map[uuid.UUID]*entities.BrandCustomer, len(customers))
+	for _, customer := range customers {
+		if customer.UserID != nil {
+			customerByUserID[*customer.UserID] = customer
+		}
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(conversations))
+	for _, conv := range conversations {
+		if conv.UserID != uuid.Nil {
+			userIDs = append(userIDs, conv.UserID)
+		}
+	}
+	userMap := map[uuid.UUID]*identity_dto.UserRes{}
+	if len(userIDs) > 0 {
+		users, err := uc.userContract.GetByIDs(ctx, userIDs)
+		if err == nil {
+			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserRes) uuid.UUID { return u.ID })
+		}
+	}
+
+	var res []*dto.BrandConversationRes
+	for _, conv := range conversations {
+		customer := customerByUserID[conv.UserID]
+		user := userMap[conv.UserID]
+		userDisp := getUserDisplayNameFromDTO(user)
+		var custName *string
+		if customer != nil {
+			custName = customer.CustomerName
+		}
+		mapped, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, custName, &userDisp)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, mapped)
+	}
+
+	return res, nil
+}
+
+func (uc *BrandChatUseCase) ListConversationMessages(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationMessageListRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	result, err := uc.msgRepo.GetByConversationIDPaginated(ctx, repositories.BrandConversationMessageFilter{
+		ConversationID: conversationID,
+		Page:           query.Page,
+		Limit:          query.Limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.BrandConversationMessageListRes{
+		Items:    mapper.MapBrandConversationMessages(result.Messages),
+		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
+	}, nil
+}
+
+func (uc *BrandChatUseCase) SendStaffMessage(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	var messageRes *dto.BrandConversationMessageRes
+	now := time.Now().UTC()
+
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		lockedConv, err := uc.convRepo.GetByIDForUpdate(txCtx, conversationID)
+		if err != nil {
+			return err
+		}
+		if lockedConv == nil {
+			return branderrors.ErrBrandNotFound()
+		}
+
+		lockedConv.Status = conversationstatus.Open
+		lockedConv.LastMessageAt = &now
+		lockedConv.ClosedAt = nil
+		lockedConv.ClosedByUserID = nil
+		if err := uc.convRepo.Update(txCtx, lockedConv); err != nil {
+			return err
+		}
+
+		msg := &entities.BrandConversationMessage{
+			ConversationID: lockedConv.ID,
+			SenderUserID:   &staffUserID,
+			SenderRole:     senderrole.BrandStaff,
+			Message:        strings.TrimSpace(input.Message),
+			CreatedAt:      now,
+		}
+		if err := uc.msgRepo.Create(txCtx, msg); err != nil {
+			return err
+		}
+
+		messageRes = mapper.MapBrandConversationMessage(msg)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return messageRes, nil
+}
+
+func (uc *BrandChatUseCase) MarkUserConversationRead(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandConversationRes, error) {
+	conv, err := uc.convRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.UserLastReadAt = &now
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
+	user, _ := uc.userContract.GetByID(ctx, userID)
+	userDisp := getUserDisplayName(user)
+	var custName *string
+	if customer != nil {
+		custName = customer.CustomerName
+	}
+	return uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, custName, &userDisp)
+}
+
+func (uc *BrandChatUseCase) MarkStaffConversationRead(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.StaffLastReadAt = &now
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandChatUseCase) CloseBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	now := time.Now().UTC()
+	conv.Status = conversationstatus.Closed
+	conv.ClosedAt = &now
+	conv.ClosedByUserID = &staffUserID
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandChatUseCase) ReopenBrandConversation(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID) (*dto.BrandConversationRes, error) {
+	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
+		return nil, err
+	}
+	conv, err := uc.convRepo.GetByID(ctx, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	if conv == nil || conv.BrandID != brandID {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+	conv.Status = conversationstatus.Open
+	conv.ClosedAt = nil
+	conv.ClosedByUserID = nil
+	if err := uc.convRepo.Update(ctx, conv); err != nil {
+		return nil, err
+	}
+	return uc.mapStaffConversation(ctx, conv)
+}
+
+func (uc *BrandChatUseCase) mapStaffConversation(ctx context.Context, conv *entities.BrandConversation) (*dto.BrandConversationRes, error) {
+	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, conv.BrandID, conv.UserID)
+	user, _ := uc.userContract.GetByID(ctx, conv.UserID)
+	userDisp := getUserDisplayName(user)
+	var custName *string
+	if customer != nil {
+		custName = customer.CustomerName
+	}
+	return uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, custName, &userDisp)
+}
+
+func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, conv *entities.BrandConversation, customerID uuid.UUID, customerName *string, userDisplayName *string) (*dto.BrandConversationRes, error) {
+	res := mapper.MapBrandConversation(conv, customerID, customerName, userDisplayName)
+	if res == nil {
+		return nil, nil
+	}
+	userUnread, err := uc.msgRepo.CountUnread(ctx, conv.ID, string(senderrole.BrandStaff), conv.UserLastReadAt)
+	if err != nil {
+		return nil, err
+	}
+	staffUnread, err := uc.msgRepo.CountUnread(ctx, conv.ID, string(senderrole.Customer), conv.StaffLastReadAt)
+	if err != nil {
+		return nil, err
+	}
+	res.UserUnreadCount = userUnread
+	res.StaffUnreadCount = staffUnread
+	return res, nil
+}
+
+func getUserDisplayName(u *identity_dto.UserRes) string {
+	if u == nil {
+		return ""
+	}
+	var parts []string
+	if u.FirstName != "" {
+		parts = append(parts, u.FirstName)
+	}
+	if u.LastName != "" {
+		parts = append(parts, u.LastName)
+	}
+	name := strings.TrimSpace(strings.Join(parts, " "))
+	if name == "" {
+		return u.Username
+	}
+	return name
+}
+
+func getUserDisplayNameFromDTO(u *identity_dto.UserRes) string {
+	if u == nil {
+		return ""
+	}
+	var parts []string
+	if u.FirstName != "" {
+		parts = append(parts, u.FirstName)
+	}
+	if u.LastName != "" {
+		parts = append(parts, u.LastName)
+	}
+	name := strings.TrimSpace(strings.Join(parts, " "))
+	if name == "" {
+		return u.Username
+	}
+	return name
+}

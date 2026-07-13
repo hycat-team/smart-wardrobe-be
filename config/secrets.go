@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+	"time"
+)
 
 func loadSecrets(cfg *Config) {
 	// Server and authentication
@@ -25,11 +29,29 @@ func loadSecrets(cfg *Config) {
 	cfg.PayOS.ClientID = os.Getenv("PAYOS_CLIENT_ID")
 	cfg.PayOS.ApiKey = os.Getenv("PAYOS_API_KEY")
 	cfg.PayOS.ChecksumKey = os.Getenv("PAYOS_CHECKSUM_KEY")
+	cfg.PayOS.Endpoint = os.Getenv("PAYOS_ENDPOINT")
 
 	// Cloudinary
 	cfg.Cloudinary.CloudName = os.Getenv("CLOUDINARY_CLOUD_NAME")
 	cfg.Cloudinary.ApiKey = os.Getenv("CLOUDINARY_API_KEY")
 	cfg.Cloudinary.ApiSecret = os.Getenv("CLOUDINARY_API_SECRET")
+	cfg.Cloudinary.APIUrl = os.Getenv("CLOUDINARY_API_URL")
+
+	if value := os.Getenv("LOYALTY_EXPIRY_WORKER_ENABLED"); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			cfg.Loyalty.ExpiryWorkerEnabled = parsed
+		}
+	}
+	if value := os.Getenv("LOYALTY_EXPIRY_WORKER_INTERVAL"); value != "" {
+		if parsed, err := time.ParseDuration(value); err == nil {
+			cfg.Loyalty.ExpiryWorkerInterval = parsed
+		}
+	}
+	if value := os.Getenv("LOYALTY_EXPIRY_WORKER_BATCH_SIZE"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			cfg.Loyalty.ExpiryWorkerBatchSize = parsed
+		}
+	}
 
 	// AI providers
 	loadAIProvider("VISION_PRIMARY", &cfg.AI.VisionPrimary)

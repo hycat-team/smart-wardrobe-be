@@ -7,12 +7,14 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
-	"smart-wardrobe-be/internal/shared/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/pkg/logger"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -52,7 +54,8 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 			return nil
 		}
 
-		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
+		doc := mapper.MapToSearchDocumentDTO(item)
+		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index item in search index",
 				zap.String("itemId", item.ID.String()),
 				zap.Error(err),
@@ -66,9 +69,18 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 		run.AddSuccess(1)
 
 	case eventconstants.ActionDeleted:
-		if err := uc.searchIndex.DeleteItem(ctx, eventPayload.ItemID.String()); err != nil {
+		if eventPayload.ItemType != int(itemtype.SystemCatalogItem) {
+			run.AddSkipped(1)
+			return nil
+		}
+		documentID := eventPayload.FashionItemID
+		if documentID == uuid.Nil {
+			documentID = eventPayload.ItemID
+		}
+		if err := uc.searchIndex.DeleteItem(ctx, documentID.String()); err != nil {
 			run.ChildWarn(uc.logger, "Failed to delete item from search index",
 				zap.String("itemId", eventPayload.ItemID.String()),
+				zap.String("fashionItemId", documentID.String()),
 				zap.Error(err),
 			)
 			if !uc.searchIndex.IsHealthy() {
@@ -103,7 +115,8 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 
 	successCount := 0
 	for _, item := range items {
-		if err := uc.searchIndex.IndexItem(ctx, item); err != nil {
+		doc := mapper.MapToSearchDocumentDTO(item)
+		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index system catalog item during initial sync",
 				zap.Error(err),
 			)

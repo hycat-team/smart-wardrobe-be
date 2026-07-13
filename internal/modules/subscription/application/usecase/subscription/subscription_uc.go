@@ -9,10 +9,9 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
 	"smart-wardrobe-be/pkg/utils/timeutils"
@@ -33,8 +32,8 @@ type SubscriptionUseCase struct {
 	log                logger.Interface
 	stateSupport       *SubscriptionStateSupport
 
-	planContract  contract.ISubscriptionPlanContract
-	quotaContract contract.IUserQuotaContract
+	planUseCase  uc_interfaces.ISubscriptionPlanUseCase
+	quotaUseCase uc_interfaces.IUserQuotaUseCase
 }
 
 // NewSubscriptionUseCase builds the subscription application service and its state helpers.
@@ -49,8 +48,8 @@ func NewSubscriptionUseCase(
 	eventRepo repositories.IUserSubscriptionEventRepository,
 	cfg *config.Config,
 	log logger.Interface,
-	planContract contract.ISubscriptionPlanContract,
-	quotaContract contract.IUserQuotaContract,
+	planUseCase uc_interfaces.ISubscriptionPlanUseCase,
+	quotaUseCase uc_interfaces.IUserQuotaUseCase,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:                uow,
@@ -64,13 +63,13 @@ func NewSubscriptionUseCase(
 		cfg:                cfg,
 		log:                log,
 		stateSupport:       NewSubscriptionStateSupport(userSubRepo, planRepo, quotaRepo),
-		planContract:       planContract,
-		quotaContract:      quotaContract,
+		planUseCase:        planUseCase,
+		quotaUseCase:       quotaUseCase,
 	}
 }
 
-func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
-	return uc.quotaContract.GetAndResetDailyQuota(ctx, userID)
+func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
+	return uc.quotaUseCase.GetAndResetDailyQuota(ctx, userID)
 }
 
 func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
@@ -128,7 +127,7 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 }
 
 // GetUserSubscription loads subscription details and daily quotas aggregated from multiple tables
-func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionDTO, error) {
+func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -147,7 +146,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*contract.UserSubscriptionOverviewDTO, error) {
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -161,8 +160,8 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 	return mapper.BuildUserSubscriptionOverviewDTO(sub, plan), nil
 }
 
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, error) {
-	result := make(map[uuid.UUID]*contract.UserSubscriptionOverviewDTO, len(userIDs))
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error) {
+	result := make(map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, len(userIDs))
 	if len(userIDs) == 0 {
 		return result, nil
 	}

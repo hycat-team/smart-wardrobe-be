@@ -10,19 +10,19 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefitresolution"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/benefitresolution"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/logger"
@@ -192,7 +192,8 @@ func (uc *PaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, in
 
 // parseVerifiedWebhookPayload verifies the signature and decodes the callback body.
 func (uc *PaymentWebhookUseCase) parseVerifiedWebhookPayload(ctx context.Context, rawBody []byte, signature string) (*WebhookPayload, error) {
-	if _, err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
+	if err := uc.paymentGateway.VerifyWebhook(ctx, rawBody, signature); err != nil {
+		uc.log.Warn("Failed to verify PayOS webhook signature", zap.Error(err))
 		return nil, subscriptionerrors.ErrVerifySignatureFailed()
 	}
 
@@ -328,14 +329,12 @@ func (uc *PaymentWebhookUseCase) persistWebhookInbox(ctx context.Context, payloa
 		return nil, subscriptionerrors.ErrInvalidAmount()
 	}
 	ref, link := payload.Data.Reference, payload.Data.PaymentLinkId
-	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currencyFromText(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
+	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
 	if err := uc.inboxRepo.Create(ctx, inbox); err != nil {
 		return nil, err
 	}
 	return inbox, nil
 }
-
-func currencyFromText(value string) currency.Currency { return currency.Currency(value) }
 
 // markWebhookTransactionSuccess updates the deposit transaction status after a successful callback.
 func (uc *PaymentWebhookUseCase) markWebhookTransactionSuccess(

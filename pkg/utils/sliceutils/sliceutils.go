@@ -3,6 +3,8 @@ package sliceutils
 import (
 	"slices"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // AdjustVectorLength resizes a float32 vector to the target length by truncation or padding.
@@ -40,4 +42,40 @@ func AppendUniqueStringCaseInsensitive(slice []string, val string) []string {
 		}
 	}
 	return append(slice, val)
+}
+
+func UniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	result := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+
+	return result
+}
+
+func IndexBy[T any, K comparable](collection []T, keyExtractor func(T) K) map[K]T {
+	result := make(map[K]T, len(collection))
+	for _, item := range collection {
+		key := keyExtractor(item)
+		result[key] = item
+	}
+	return result
+}
+
+func GroupBy[T any, K comparable](collection []T, keyExtractor func(T) K) map[K][]T {
+	result := make(map[K][]T)
+	for _, item := range collection {
+		key := keyExtractor(item)
+		result[key] = append(result[key], item)
+	}
+	return result
 }

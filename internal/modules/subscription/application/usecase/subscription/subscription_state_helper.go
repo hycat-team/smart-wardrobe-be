@@ -5,9 +5,9 @@ import (
 	"time"
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
 )

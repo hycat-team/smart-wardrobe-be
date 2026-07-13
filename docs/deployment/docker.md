@@ -1,14 +1,14 @@
-# Hướng dẫn Dockerize ứng dụng (Docker Guide)
+# Docker Guide
 
-Hệ thống được đóng gói thông qua Dockerfile sử dụng mô hình Multi-stage build để tối ưu hóa dung lượng image đầu ra.
+The system is packaged via a Dockerfile using a Multi-stage build model to optimize the output image size.
 
-## 1. Build image nội bộ (Local Build)
-Chạy lệnh sau để build image production ở máy local:
+## 1. Local Build
+Run the following command to build the production image on your local machine:
 ```bash
 make docker-build
 ```
 
 ## 2. Docker Compose
-Hệ thống sử dụng các file docker-compose khác nhau tùy môi trường:
-*   `docker-compose.yml`: Môi trường development (bao gồm Postgres, Redis, RabbitMQ local).
-*   `docker-compose.prod.yml`: Môi trường production.
+The system uses different docker-compose files depending on the environment:
+*   `docker-compose.yml`: Development environment (includes local Postgres, Redis, RabbitMQ).
+*   `docker-compose.prod.yml`: Production environment.

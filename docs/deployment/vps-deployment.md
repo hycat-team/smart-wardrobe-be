@@ -1,28 +1,28 @@
-# Hướng dẫn Triển khai VPS (VPS Deployment Guide)
+# VPS Deployment Guide
 
-Tài liệu hướng dẫn triển khai ứng dụng Closy lên máy chủ VPS.
+Documentation for deploying the Closy application to a VPS server.
 
-## 1. Yêu cầu Hệ thống Máy chủ (Prerequisites)
-*   Hệ điều hành: Ubuntu 22.04 LTS hoặc mới hơn.
-*   Cài đặt sẵn: Docker Engine và Docker Compose.
-*   Cấu hình Domain trỏ về IP của VPS (ví dụ: `api.[DOMAIN].com`).
+## 1. Server Prerequisites
+*   Operating System: Ubuntu 22.04 LTS or newer.
+*   Pre-installed: Docker Engine and Docker Compose.
+*   Domain configuration pointing to the VPS IP (e.g., `api.[DOMAIN].com`).
 
-## 2. Thư mục cài đặt trên VPS
-Mã nguồn deployment và các file cấu hình được đặt tại thư mục:
+## 2. Installation Directory on VPS
+The deployment source code and configuration files are located in the directory:
 ```bash
 /opt/closy
 ```
 
-## 3. Khởi chạy ứng dụng
-Chạy lệnh compose trên máy chủ VPS:
+## 3. Run the Application
+Run the compose command on the VPS server:
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
-## 4. Cấu hình Nginx & Tự động Gia hạn SSL (Certbot)
-*   Sử dụng Certbot để xin cấp chứng chỉ SSL miễn phí từ Let's Encrypt.
-*   **SSL Auto-Renew**: Thiết lập cronjob định kỳ hàng tuần để gia hạn chứng chỉ tự động:
+## 4. Nginx Configuration & Auto-Renew SSL (Certbot)
+*   Use Certbot to request a free SSL certificate from Let's Encrypt.
+*   **SSL Auto-Renew**: Set up a weekly cronjob to automatically renew the certificate:
     ```bash
     0 0 * * * certbot renew --post-hook "docker exec nginx-container nginx -s reload"
     ```
-    *(Thay `nginx-container` bằng tên container Nginx thực tế của bạn).*
+    *(Replace `nginx-container` with your actual Nginx container name).*

@@ -12,28 +12,48 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/admin"
 	"smart-wardrobe-be/internal/api/routes/auth"
-	category2 "smart-wardrobe-be/internal/api/routes/category"
-	"smart-wardrobe-be/internal/api/routes/community"
+	brand2 "smart-wardrobe-be/internal/api/routes/brand"
+	category3 "smart-wardrobe-be/internal/api/routes/category"
+	"smart-wardrobe-be/internal/api/routes/fashion"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
 	subscription2 "smart-wardrobe-be/internal/api/routes/subscription"
 	"smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
-	"smart-wardrobe-be/internal/modules/community/application/usecase/admin_moderation"
-	"smart-wardrobe-be/internal/modules/community/application/usecase/item_transfer"
-	"smart-wardrobe-be/internal/modules/community/application/usecase/post"
-	"smart-wardrobe-be/internal/modules/community/application/usecase/post_hotness"
-	"smart-wardrobe-be/internal/modules/community/application/usecase/post_interaction"
-	persistence3 "smart-wardrobe-be/internal/modules/community/infrastructure/persistence"
-	handler2 "smart-wardrobe-be/internal/modules/community/presentation/handler"
-	worker3 "smart-wardrobe-be/internal/modules/community/presentation/worker"
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/cost"
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/grant"
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator"
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/pricing"
+	caching2 "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/caching"
+	persistence4 "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/persistence"
+	contract2 "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	worker2 "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/benefit"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/brand"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/chat"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/claim"
+	item2 "smart-wardrobe-be/internal/modules/brand/application/usecase/item"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/loyalty"
+	persistence6 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
+	contract5 "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	handler4 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
+	worker3 "smart-wardrobe-be/internal/modules/brand/presentation/worker"
+	chat2 "smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/chat"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/category"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/fashion_item"
+	worker5 "smart-wardrobe-be/internal/modules/fashion/application/usecase/worker"
+	persistence5 "smart-wardrobe-be/internal/modules/fashion/infrastructure/persistence"
+	contract3 "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	handler5 "smart-wardrobe-be/internal/modules/fashion/presentation/handler"
+	worker6 "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 	"smart-wardrobe-be/internal/modules/identity/application/usecase"
-	caching2 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
+	caching3 "smart-wardrobe-be/internal/modules/identity/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
+	contract4 "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
-	"smart-wardrobe-be/internal/modules/subscription/application/usecase/aicost"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
@@ -45,22 +65,22 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/validator"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
-	handler4 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
-	worker2 "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
+	handler3 "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
+	category2 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/chat"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/worker"
 	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
-	persistence4 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
+	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
-	handler3 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
+	contract6 "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
+	handler2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	worker4 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	"smart-wardrobe-be/internal/shared/application/sse"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -96,39 +116,41 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iSubscriptionPlanUseCase := plan.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
 	iUserQuotaUseCase := quota.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
 	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, iSubscriptionRenewalAttemptRepository, iUserSubscriptionEventRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase)
+	iUserSubscriptionContract := contract.NewUserSubscriptionContract(iSubscriptionUseCase)
 	iMediaService := media.NewCloudinaryService(cfg)
-	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iSubscriptionUseCase, iMediaService, cfg)
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iMediaService, cfg)
 	adminHandler := handler.NewAdminHandler(iUserUseCase)
-	iPostRepository := persistence3.NewPostRepository(gormDB)
-	iPostItemRepository := persistence3.NewPostItemRepository(gormDB)
-	iPostMediaRepository := persistence3.NewPostMediaRepository(gormDB)
-	iCommentRepository := persistence3.NewCommentRepository(gormDB)
-	iWardrobeItemRepository := persistence4.NewWardrobeItemRepository(gormDB)
-	iWardrobeContract := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository, iSubscriptionUseCase)
-	iAdminCommunityModerationUseCase := admin_moderation.NewAdminCommunityModerationUseCase(l, iPostRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iWardrobeContract, iUnitOfWork)
-	handlerAdminHandler := handler2.NewAdminHandler(iAdminCommunityModerationUseCase)
-	iCategoryRepository := persistence4.NewCategoryRepository(gormDB)
-	iOutfitRepository := persistence4.NewOutfitRepository(gormDB)
+	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
+	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
 	iWardrobeSearchService := search2.NewWardrobeSearchService(elasticsearchClient)
-	iaiCostRepository := persistence2.NewAICostRepository(gormDB)
-	iaiCostPolicyContract := aicost.NewService(iaiCostRepository, cfg)
 	localTokenEstimator := ai.NewLocalTokenEstimatorFromConfig(cfg)
-	iaiService := ai.NewAIService(cfg, l, iaiCostPolicyContract, localTokenEstimator)
+	iaiService := ai.NewAIService(cfg, l, localTokenEstimator)
+	iaiCostRepository := persistence4.NewAICostRepository(gormDB)
+	iPricingConfigRepository := persistence4.NewPricingConfigRepository(gormDB)
+	iPricingCacheService := caching2.NewRedisPricingCacheService(client)
+	iPricingUseCase := pricing.NewPricingUseCase(iPricingConfigRepository, iPricingCacheService)
+	iaiCostUseCase := cost.NewCostUseCase(iaiCostRepository, iPricingUseCase, iUserSubscriptionContract)
+	iaiOrchestratorUseCase := orchestrator.NewOrchestratorUseCase(iaiService, iaiCostRepository, cfg, iaiCostUseCase)
+	iaiOrchestrator := contract2.NewAIOrchestratorContract(iaiOrchestratorUseCase)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
-	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iCategoryRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
-	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iCategoryRepository, iSubscriptionUseCase, rabbitMQClient)
-	visionCategoryCache := worker.NewVisionCategoryCache(cfg, iCategoryRepository, l)
-	iWardrobeWorkerUseCase := worker.NewWardrobeWorkerUseCase(cfg, l, iWardrobeItemRepository, visionCategoryCache, iMediaService, iaiService, iSubscriptionUseCase, rabbitMQClient)
-	wardrobeItemHandler := handler3.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase, iWardrobeWorkerUseCase)
-	iCategoryUseCase := category.NewCategoryUseCase(l, iCategoryRepository, iUnitOfWork)
-	categoryHandler := handler3.NewCategoryHandler(iCategoryUseCase)
+	iFashionItemRepository := persistence5.NewFashionItemRepository(gormDB)
+	iFashionItemUseCase := fashion_item.NewFashionItemUseCase(iFashionItemRepository)
+	iCategoryRepository := persistence5.NewCategoryRepository(gormDB)
+	iCategoryUseCase := category.NewCategoryUseCase(iCategoryRepository)
+	iFashionContract := contract3.NewFashionContract(iFashionItemUseCase, iCategoryUseCase)
+	iWardrobeItemUseCase := item.NewWardrobeItemUseCase(cfg, l, iWardrobeItemRepository, iOutfitRepository, iWardrobeSearchService, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionContract)
+	iWardrobeCatalogUseCase := catalog.NewWardrobeCatalogUseCase(iWardrobeItemRepository, iUserSubscriptionContract, rabbitMQClient, iFashionContract)
+	sseManager := sse.NewSSEManager()
+	wardrobeItemHandler := handler2.NewWardrobeItemHandler(iWardrobeItemUseCase, iWardrobeCatalogUseCase, sseManager)
+	usecaseICategoryUseCase := category2.NewCategoryUseCase(l, iFashionContract, iWardrobeItemRepository, iUnitOfWork)
+	categoryHandler := handler2.NewCategoryHandler(usecaseICategoryUseCase)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)
-	adminRouter := admin.NewRouter(adminHandler, handlerAdminHandler, wardrobeItemHandler, categoryHandler, authMiddleware)
-	iOtpService := caching2.NewRedisOtpService(client, cfg)
+	adminRouter := admin.NewRouter(adminHandler, wardrobeItemHandler, categoryHandler, authMiddleware)
+	iOtpService := caching3.NewRedisOtpService(client, cfg)
 	iEmailService := communication.NewGmailSmtpService(cfg)
 	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iEmailService, iPasswordHasher, cfg)
 	iSessionUseCase := usecase.NewSessionUseCase(iUserRepository, iRefreshTokenRepository, iPasswordHasher, iTokenBlacklistService, cfg, iUnitOfWork)
@@ -137,36 +159,58 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	authRouter := auth.NewRouter(authHandler, authMiddleware)
 	meHandler := handler.NewMeHandler(iUserUseCase)
 	meRouter := me.NewRouter(meHandler, authMiddleware)
-	subscriptionHandler := handler4.NewSubscriptionHandler(iSubscriptionUseCase)
+	subscriptionHandler := handler3.NewSubscriptionHandler(iSubscriptionUseCase)
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
 	iWalletUseCase := wallet.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg)
-	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserSubscriptionEventRepository, iPaymentGatewayService, iUnitOfWork, cfg)
+	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserSubscriptionEventRepository, rabbitMQClient, iPaymentGatewayService, iUnitOfWork, cfg)
 	iPaymentEventRepository := persistence2.NewPaymentEventRepository(gormDB)
 	iWebhookInboxRepository := persistence2.NewWebhookInboxRepository(gormDB)
 	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, l)
-	billingHandler := handler4.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
+	billingHandler := handler3.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	subscriptionRouter := subscription2.NewRouter(cfg, subscriptionHandler, billingHandler, authMiddleware)
-	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
-	iConversationalContextRepository := persistence4.NewConversationalContextRepository(gormDB)
-	iMessageRepository := persistence4.NewMessageRepository(gormDB)
-	iWardrobeChatUseCase := chat.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iWardrobeItemRepository, iaiService, iSubscriptionUseCase, iUserQuotaUseCase, iUnitOfWork)
-	wardrobeAIHandler := handler3.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
-	wardrobeRouter := wardrobe.NewRouter(wardrobeItemHandler, wardrobeAIHandler, authMiddleware)
-	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iSubscriptionUseCase, iMediaService)
-	outfitHandler := handler3.NewOutfitHandler(iOutfitUseCase)
+	wardrobeRouter := wardrobe.NewRouter(wardrobeItemHandler, authMiddleware)
+	iBrandRepository := persistence6.NewBrandRepository(gormDB)
+	iBrandMemberRepository := persistence6.NewBrandMemberRepository(gormDB)
+	iBrandCustomerRepository := persistence6.NewBrandCustomerRepository(gormDB)
+	iLoyaltyAccountRepository := persistence6.NewLoyaltyAccountRepository(gormDB)
+	iLoyaltyPointTransactionRepository := persistence6.NewLoyaltyPointTransactionRepository(gormDB)
+	iLoyaltyPointLotRepository := persistence6.NewLoyaltyPointLotRepository(gormDB)
+	iBrandBenefitRepository := persistence6.NewBrandBenefitRepository(gormDB)
+	iBenefitRedemptionRepository := persistence6.NewBenefitRedemptionRepository(gormDB)
+	iLoyaltyTierRepository := persistence6.NewLoyaltyTierRepository(gormDB)
+	iBrandBenefitUseCase := benefit.NewBrandBenefitUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iLoyaltyTierRepository, iUnitOfWork)
+	iBrandItemRepository := persistence6.NewBrandItemRepository(gormDB)
+	iDigitalSampleResponseRepository := persistence6.NewDigitalSampleResponseRepository(gormDB)
+	iUserContract := contract4.NewUserContract(iUserUseCase)
+	iBrandItemUseCase := item2.NewBrandItemUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iBrandItemRepository, iDigitalSampleResponseRepository, iUserContract, iFashionContract, rabbitMQClient, iMediaService, iBrandBenefitUseCase)
+	iBrandContract := contract5.NewBrandContract(iBrandBenefitUseCase, iBrandItemUseCase)
+	iOutfitUseCase := outfit.NewOutfitUseCase(cfg, l, iOutfitRepository, iWardrobeItemRepository, iUserSubscriptionContract, iBrandContract, iFashionContract, iMediaService)
+	outfitHandler := handler2.NewOutfitHandler(iOutfitUseCase)
 	outfitRouter := outfit2.NewRouter(outfitHandler, authMiddleware)
-	categoryRouter := category2.NewRouter(categoryHandler)
-	iPostScoreRepository := persistence3.NewPostScoreRepository(gormDB)
-	iLikeRepository := persistence3.NewLikeRepository(gormDB)
-	iUserPostUseCase := post.NewUserPostUseCase(cfg, l, iPostRepository, iPostScoreRepository, iPostItemRepository, iPostMediaRepository, iCommentRepository, iLikeRepository, iUserUseCase, iWardrobeContract, iMediaService, iUnitOfWork)
-	postHandler := handler2.NewPostHandler(iUserPostUseCase)
-	iUserPostInteractionUseCase := post_interaction.NewPostInteractionUseCase(iPostRepository, iCommentRepository, iLikeRepository, iUnitOfWork)
-	postInteractionHandler := handler2.NewPostInteractionHandler(iUserPostInteractionUseCase)
-	iTransferRequestRepository := persistence3.NewTransferRequestRepository(gormDB)
-	iItemTransferUseCase := item_transfer.NewItemTransferUseCase(iPostRepository, iPostItemRepository, iTransferRequestRepository, iUserUseCase, iWardrobeContract, iUnitOfWork)
-	itemTransferHandler := handler2.NewItemTransferHandler(iItemTransferUseCase)
-	communityRouter := community.NewRouter(postHandler, postInteractionHandler, itemTransferHandler, authMiddleware)
+	categoryRouter := category3.NewRouter(categoryHandler)
+	iBrandUseCase := brand.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserContract, iMediaService, iUnitOfWork, cfg)
+	brandPortalHandler := handler4.NewBrandPortalHandler(iBrandUseCase, iBrandItemUseCase, sseManager)
+	iLoyaltyProgramRepository := persistence6.NewLoyaltyProgramRepository(gormDB)
+	iBrandLoyaltyUseCase := loyalty.NewBrandLoyaltyUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserContract, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iUnitOfWork, cfg)
+	iBrandCustomerClaimRepository := persistence6.NewBrandCustomerClaimRepository(gormDB)
+	iBrandClaimUseCase := claim.NewBrandClaimUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iBrandCustomerClaimRepository, client, iUnitOfWork, cfg)
+	brandLoyaltyHandler := handler4.NewBrandLoyaltyHandler(iBrandUseCase, iBrandLoyaltyUseCase, iBrandBenefitUseCase, iBrandClaimUseCase)
+	iBrandConversationRepository := persistence6.NewBrandConversationRepository(gormDB)
+	iBrandConversationMessageRepository := persistence6.NewBrandConversationMessageRepository(gormDB)
+	iBrandChatUseCase := chat.NewBrandChatUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserContract, iBrandConversationRepository, iBrandConversationMessageRepository, iUnitOfWork)
+	brandChatHandler := handler4.NewBrandChatHandler(iBrandChatUseCase)
+	brandHandler := handler4.NewBrandHandler(brandPortalHandler, brandLoyaltyHandler, brandChatHandler)
+	brandRouter := brand2.NewRouter(brandHandler, authMiddleware)
+	iWardrobeContractUseCase := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository, iUserSubscriptionContract, iFashionContract)
+	iWardrobeContract := contract6.NewWardrobeContract(iWardrobeContractUseCase)
+	iUserQuotaContract := contract.NewUserQuotaContract(iUserQuotaUseCase)
+	iOutfitRecommendationUseCase := recommendation.NewOutfitRecommendationUseCase(cfg, l, iWardrobeContract, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iUnitOfWork)
+	iConversationalContextRepository := persistence5.NewConversationalContextRepository(gormDB)
+	iMessageRepository := persistence5.NewMessageRepository(gormDB)
+	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
+	wardrobeAIHandler := handler5.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
+	fashionRouter := fashion.NewRouter(wardrobeAIHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AdminRouter:        adminRouter,
 		AuthRouter:         authRouter,
@@ -175,36 +219,43 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		WardrobeRouter:     wardrobeRouter,
 		OutfitRouter:       outfitRouter,
 		CategoryRouter:     categoryRouter,
-		CommunityRouter:    communityRouter,
+		BrandRouter:        brandRouter,
+		FashionRouter:      fashionRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
-	iSubscriptionRenewalWorker := worker2.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
+	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
-	iPaymentReconciliationWorker := worker2.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
+	iPaymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
 	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l)
-	iWebhookInboxWorker := worker2.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
-	iaiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostPolicyContract, l, cfg)
-	iPostHotnessUseCase := post_hotness.NewPostHotnessUseCase(iPostRepository, iPostScoreRepository, l)
-	iPostHotnessWorker := worker3.NewPostHotnessWorker(iPostHotnessUseCase, l)
-	iWardrobeBatchUploadJobConsumer := messaging2.NewWardrobeBatchUploadJobConsumer(rabbitMQClient, l)
-	wardrobeBatchUploadWorker := worker4.NewWardrobeBatchUploadWorker(iWardrobeBatchUploadJobConsumer, iWardrobeWorkerUseCase, l)
+	iWebhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
+	iaiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
+	iLoyaltyPointExpiryWorker := worker3.NewLoyaltyPointExpiryWorker(iBrandLoyaltyUseCase, l, cfg)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, l)
 	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
-	iFailedItemsCleanupWorker := worker4.NewFailedItemsCleanupWorker(iWardrobeWorkerUseCase, l)
-	iProcessingRecoveryWorker := worker4.NewProcessingRecoveryWorker(cfg, iWardrobeWorkerUseCase, l)
+	iFashionInitUseCase := worker5.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iWardrobeContract, iBrandContract)
+	fashionInitWorker := worker6.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
+	visionCategoryCache := worker5.NewVisionCategoryCache(cfg, iCategoryRepository, l)
+	iFashionWorkerUseCase := worker5.NewFashionWorkerUseCase(cfg, l, iWardrobeContract, visionCategoryCache, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionItemRepository, iBrandContract, sseManager)
+	iFailedItemsCleanupWorker := worker6.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
+	iProcessingRecoveryWorker := worker6.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
+	fashionAnalyzeWorker := worker6.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
+	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iPricingConfigRepository)
+	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,
 		WebhookInboxWorker:          iWebhookInboxWorker,
 		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
-		PostHotnessWorker:           iPostHotnessWorker,
-		WardrobeBatchUploadWorker:   wardrobeBatchUploadWorker,
+		LoyaltyPointExpiryWorker:    iLoyaltyPointExpiryWorker,
 		ESAsyncWorker:               searchSyncWorker,
+		FashionInitWorker:           fashionInitWorker,
 		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
 		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
+		FashionAnalyzeWorker:        fashionAnalyzeWorker,
+		PlanChangedWorker:           planChangedWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
 	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)

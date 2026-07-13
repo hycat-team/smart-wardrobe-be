@@ -50,15 +50,29 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return fmt.Errorf("could not declare RabbitMQ exchange: %w", err)
 	}
 
-	// 2. Declare and Bind Wardrobe Batch Upload Queue
-	if err := r.DeclareAndBindQueue(QueueWardrobeBatchUpload, RoutingKeyWardrobeBatchUpload); err != nil {
+	// 2. Declare and Bind Elasticsearch Sync Queue
+	if err := r.DeclareAndBindQueue(QueueElasticsearchSync, RoutingKeyElasticsearchSyncWildcard); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
 		return err
 	}
 
-	// 3. Declare and Bind Elasticsearch Sync Queue
-	if err := r.DeclareAndBindQueue(QueueElasticsearchSync, RoutingKeyElasticsearchSyncWildcard); err != nil {
+	// 3. Declare and Bind Fashion Init Queue
+	if err := r.DeclareAndBindQueue(QueueFashionInit, RoutingKeyFashionInit); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 4. Declare and Bind Fashion Analyze Queue
+	if err := r.DeclareAndBindQueue(QueueFashionAnalyze, RoutingKeyFashionAnalyze); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 5. Declare and Bind Subscription Plan Changed Queue
+	if err := r.DeclareAndBindQueue(QueueSubscriptionPlanChanged, RoutingKeySubscriptionPlanChanged); err != nil {
 		_ = r.ch.Close()
 		_ = r.conn.Close()
 		return err

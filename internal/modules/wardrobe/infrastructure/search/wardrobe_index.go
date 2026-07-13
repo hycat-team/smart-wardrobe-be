@@ -2,60 +2,53 @@ package search
 
 import (
 	"context"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	shared_search "smart-wardrobe-be/internal/shared/infrastructure/search"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
 func NewWardrobeSearchIndexService(searchEngine *shared_search.ElasticsearchClient) search.IWardrobeSearchIndexService {
 	return &WardrobeSearchService{searchEngine: searchEngine}
 }
 
-func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *entities.WardrobeItem) error {
+func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *dto.SearchDocumentDTO) error {
+	if item.ItemType != itemtype.SystemCatalogItem {
+		return nil
+	}
 	doc := buildItemDocument(item)
-	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.ID.String(), doc)
+	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.FashionItemID.String(), doc)
 }
 
 func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) error {
 	return s.searchEngine.DeleteDocument(ctx, "wardrobe_items", itemID)
 }
 
-func buildItemDocument(item *entities.WardrobeItem) map[string]any {
+func buildItemDocument(item *dto.SearchDocumentDTO) map[string]any {
 	doc := map[string]any{
-		"id":              item.ID.String(),
-		"user_id":         item.UserID.String(),
-		"item_type":       int(item.ItemType),
-		"image_url":       item.ImageUrl,
-		"image_public_id": item.ImagePublicID,
-		"color":           stringutils.GetString(item.Color),
-		"style":           stringutils.GetString(item.Style),
-		"material":        stringutils.GetString(item.Material),
-		"pattern":         stringutils.GetString(item.Pattern),
-		"fit":             stringutils.GetString(item.Fit),
-		"seasonality":     stringutils.GetString(item.Seasonality),
-		"description":     stringutils.GetString(item.Description),
-		"status":          item.Status,
-		"created_at":      item.CreatedAt,
+		"id":                 item.ID.String(),
+		"user_id":            item.UserID.String(),
+		"fashion_item_id":    item.FashionItemID.String(),
+		"item_type":          int(item.ItemType),
+		"image_url":          item.ImageUrl,
+		"image_public_id":    item.ImagePublicID,
+		"color":              item.Color,
+		"style":              item.Style,
+		"material":           item.Material,
+		"pattern":            item.Pattern,
+		"fit":                item.Fit,
+		"seasonality":        item.Seasonality,
+		"description":        item.Description,
+		"status":             item.Status,
+		"created_at":         item.CreatedAt,
+		"fashion_created_at": item.FashionCreatedAt,
+		"fashion_updated_at": item.FashionUpdatedAt,
 	}
 
-	var categoryIDStr string
-	if item.CategoryID != nil {
-		categoryIDStr = item.CategoryID.String()
-	}
-
-	if item.Category != nil {
-		doc["category"] = map[string]any{
-			"id":   categoryIDStr,
-			"name": item.Category.Name,
-			"slug": item.Category.Slug,
-		}
-	} else {
-		doc["category"] = map[string]any{
-			"id":   categoryIDStr,
-			"name": "",
-			"slug": "",
-		}
+	doc["category"] = map[string]any{
+		"id":   item.Category.ID,
+		"name": item.Category.Name,
+		"slug": item.Category.Slug,
 	}
 
 	if item.Price != nil {

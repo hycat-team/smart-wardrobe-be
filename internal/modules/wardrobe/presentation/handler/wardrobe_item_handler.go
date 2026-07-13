@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"io"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/application/sse"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
 	"smart-wardrobe-be/pkg/utils/validation"
@@ -18,6 +21,7 @@ const (
 	msgWardrobeGetUploadSignatureSuccess    = "Lấy chữ ký tải ảnh trang phục thành công"
 	msgWardrobeGetItemsSuccess              = "Lấy danh sách trang phục thành công"
 	msgWardrobeGetItemByIDSuccess           = "Lấy thông tin chi tiết trang phục thành công"
+	msgWardrobeGetStatsSuccess              = "Lấy số liệu thống kê tủ đồ thành công"
 	msgWardrobeCloneItemSuccess             = "Nhân bản trang phục thành công"
 	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
 	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
@@ -35,19 +39,19 @@ const (
 type WardrobeItemHandler struct {
 	itemUseCase    usecase_interfaces.IWardrobeItemUseCase
 	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase
-	workerUseCase  usecase_interfaces.IWardrobeWorkerUseCase
+	sseManager     sse.ISSEManager
 }
 
 // NewWardrobeItemHandler builds the wardrobe item presentation handler.
 func NewWardrobeItemHandler(
 	itemUseCase usecase_interfaces.IWardrobeItemUseCase,
 	catalogUseCase usecase_interfaces.IWardrobeCatalogUseCase,
-	workerUseCase usecase_interfaces.IWardrobeWorkerUseCase,
+	sseManager sse.ISSEManager,
 ) *WardrobeItemHandler {
 	return &WardrobeItemHandler{
 		itemUseCase:    itemUseCase,
 		catalogUseCase: catalogUseCase,
-		workerUseCase:  workerUseCase,
+		sseManager:     sseManager,
 	}
 }
 
@@ -195,7 +199,7 @@ func (h *WardrobeItemHandler) InitClosetFromCatalog(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.BatchUploadWardrobeItemsReq true "Danh sách ảnh trang phục"
-// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm"
+// @Success 202 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm với Task ID"
 // @Router /api/v1/wardrobe-items/batch-upload [post]
 func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -217,7 +221,40 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Created(c, msgWardrobeBatchUploadItemsSuccess, response)
+	shared_pres.Accepted(c, msgWardrobeBatchUploadItemsSuccess, response)
+	return nil
+}
+
+// SubscribeTaskSSE opens a Server-Sent Events stream for a specific batch upload taskId
+// @Summary Đăng ký nhận thông báo realtime cho Task ID qua SSE
+// @Description Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Task ID
+// @Tags Wardrobe
+// @Param taskId path string true "Mã Task ID"
+// @Router /api/v1/wardrobe-items/tasks/{taskId}/sse [get]
+func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
+	taskId := c.Param("taskId")
+	if taskId == "" {
+		return apperror.NewBadRequest("Mã Task ID không được để trống")
+	}
+
+	shared_pres.InitSSE(c)
+
+	ch := h.sseManager.Subscribe(taskId)
+	defer h.sseManager.Unsubscribe(taskId, ch)
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-c.Request.Context().Done():
+			return false
+		case data, ok := <-ch:
+			if !ok {
+				return false
+			}
+			c.SSEvent("message", string(data))
+			return true
+		}
+	})
+
 	return nil
 }
 
@@ -449,6 +486,6 @@ func (h *WardrobeItemHandler) GetWardrobeStats(c *gin.Context) error {
 		return err
 	}
 
-	shared_pres.Success(c, "Lấy số liệu thống kê tủ đồ thành công", stats)
+	shared_pres.Success(c, msgWardrobeGetStatsSuccess, stats)
 	return nil
 }

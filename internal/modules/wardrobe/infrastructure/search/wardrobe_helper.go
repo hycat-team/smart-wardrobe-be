@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -11,27 +12,30 @@ import (
 // parseSearchWardrobeItemRes parses raw JSON from Elasticsearch to a slice of SearchWardrobeItemRes and total hits
 func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]*dto.SearchWardrobeItemRes, int64, error) {
 	type esDocSource struct {
-		ID       string `json:"id"`
-		ItemType int    `json:"item_type"`
-		Category struct {
+		ID            string `json:"id"`
+		FashionItemID string `json:"fashion_item_id"`
+		ItemType      int    `json:"item_type"`
+		Category      struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"category"`
-		ImageUrl        string   `json:"image_url"`
-		ImagePublicID   string   `json:"image_public_id"`
-		Color           string   `json:"color"`
-		ColorHex        *string  `json:"color_hex,omitempty"`
-		ColorHue        *float64 `json:"color_hue,omitempty"`
-		ColorSaturation *float64 `json:"color_saturation,omitempty"`
-		ColorLightness  *float64 `json:"color_lightness,omitempty"`
-		Style           string   `json:"style"`
-		Material        string   `json:"material"`
-		Pattern         string   `json:"pattern"`
-		Fit             string   `json:"fit"`
-		Seasonality     string   `json:"seasonality"`
-		Description     string   `json:"description"`
-		Price           *float64 `json:"price,omitempty"`
+		ImageUrl         string    `json:"image_url"`
+		ImagePublicID    string    `json:"image_public_id"`
+		Color            string    `json:"color"`
+		ColorHex         *string   `json:"color_hex,omitempty"`
+		ColorHue         *float64  `json:"color_hue,omitempty"`
+		ColorSaturation  *float64  `json:"color_saturation,omitempty"`
+		ColorLightness   *float64  `json:"color_lightness,omitempty"`
+		Style            string    `json:"style"`
+		Material         string    `json:"material"`
+		Pattern          string    `json:"pattern"`
+		Fit              string    `json:"fit"`
+		Seasonality      string    `json:"seasonality"`
+		Description      string    `json:"description"`
+		Price            *float64  `json:"price,omitempty"`
+		FashionCreatedAt time.Time `json:"fashion_created_at"`
+		FashionUpdatedAt time.Time `json:"fashion_updated_at"`
 	}
 
 	var esResult struct {
@@ -53,10 +57,33 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 	for idx, hit := range esResult.Hits.Hits {
 		id, _ := uuid.Parse(hit.Source.ID)
 		catID, _ := uuid.Parse(hit.Source.Category.ID)
+		fiID, _ := uuid.Parse(hit.Source.FashionItemID)
 
-		var colorHex string
-		if hit.Source.ColorHex != nil {
-			colorHex = *hit.Source.ColorHex
+		strPtr := func(s string) *string {
+			if s == "" {
+				return nil
+			}
+			return &s
+		}
+
+		fashionItem := &dto.FashionItemRes{
+			ID:              fiID,
+			ImageUrl:        hit.Source.ImageUrl,
+			Color:           strPtr(hit.Source.Color),
+			ColorHex:        hit.Source.ColorHex,
+			ColorHue:        hit.Source.ColorHue,
+			ColorSaturation: hit.Source.ColorSaturation,
+			ColorLightness:  hit.Source.ColorLightness,
+			Style:           strPtr(hit.Source.Style),
+			Material:        strPtr(hit.Source.Material),
+			Pattern:         strPtr(hit.Source.Pattern),
+			Fit:             strPtr(hit.Source.Fit),
+			Seasonality:     strPtr(hit.Source.Seasonality),
+			Description:     strPtr(hit.Source.Description),
+			CategoryName:    &hit.Source.Category.Name,
+			CategorySlug:    &hit.Source.Category.Slug,
+			CreatedAt:       hit.Source.FashionCreatedAt,
+			UpdatedAt:       hit.Source.FashionUpdatedAt,
 		}
 
 		results[idx] = &dto.SearchWardrobeItemRes{
@@ -66,20 +93,9 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 				Name: hit.Source.Category.Name,
 				Slug: hit.Source.Category.Slug,
 			},
-			ImageUrl:        hit.Source.ImageUrl,
-			ImagePublicID:   hit.Source.ImagePublicID,
-			Color:           hit.Source.Color,
-			ColorHex:        colorHex,
-			ColorHue:        hit.Source.ColorHue,
-			ColorSaturation: hit.Source.ColorSaturation,
-			ColorLightness:  hit.Source.ColorLightness,
-			Style:           hit.Source.Style,
-			Material:        hit.Source.Material,
-			Pattern:         hit.Source.Pattern,
-			Fit:             hit.Source.Fit,
-			Seasonality:     hit.Source.Seasonality,
-			Price:           hit.Source.Price,
-			IsSystem:        hit.Source.ItemType == 1,
+			Price:       hit.Source.Price,
+			IsSystem:    hit.Source.ItemType == 1,
+			FashionItem: fashionItem,
 		}
 	}
 

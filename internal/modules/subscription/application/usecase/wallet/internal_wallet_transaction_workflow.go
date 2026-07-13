@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/google/uuid"

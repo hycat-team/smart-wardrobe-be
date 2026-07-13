@@ -5,10 +5,9 @@ import (
 	"errors"
 	"sort"
 
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -20,7 +19,7 @@ type OutfitRepository struct {
 }
 
 func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
-	relations := []string{"Items.WardrobeItem.Category"}
+	relations := []string{"Items"}
 	return &OutfitRepository{
 		GenericRepository: *shared_persist.NewGenericRepository[entities.Outfit, uuid.UUID](db, relations),
 	}
@@ -65,17 +64,6 @@ func (r *OutfitRepository) GetDetailByID(ctx context.Context, id uuid.UUID) (*en
 		return nil, nil, err
 	}
 
-	var validItems []*entities.OutfitItem
-	for _, item := range outfit.Items {
-		if item.WardrobeItem != nil &&
-			!item.WardrobeItem.IsDeleted &&
-			item.WardrobeItem.Status == wardrobestatus.InWardrobe &&
-			item.WardrobeItem.UserID == outfit.UserID {
-			validItems = append(validItems, item)
-		}
-	}
-	outfit.Items = validItems
-
 	sort.Slice(outfit.Items, func(i, j int) bool {
 		return outfit.Items[i].LayerOrder < outfit.Items[j].LayerOrder
 	})
@@ -94,7 +82,7 @@ func (r *OutfitRepository) CreateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit").Create(&items).Error; err != nil {
 				return err
 			}
 		}
@@ -119,7 +107,7 @@ func (r *OutfitRepository) UpdateWithItems(ctx context.Context, outfit *entities
 		}
 
 		if len(items) > 0 {
-			if err := tx.Create(&items).Error; err != nil {
+			if err := tx.Omit("Outfit").Create(&items).Error; err != nil {
 				return err
 			}
 		}

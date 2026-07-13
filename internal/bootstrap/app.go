@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/config"
-	communityWorker "smart-wardrobe-be/internal/modules/community/presentation/worker"
+	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
+	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
+	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -22,12 +24,14 @@ type AppWorkers struct {
 	RenewalWorker               subWorker.ISubscriptionRenewalWorker
 	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
 	WebhookInboxWorker          subWorker.IWebhookInboxWorker
-	AIUsageReconciliationWorker subWorker.IAIUsageReconciliationWorker
-	PostHotnessWorker           communityWorker.IPostHotnessWorker
-	WardrobeBatchUploadWorker   *wardrobeWorker.WardrobeBatchUploadWorker
+	AIUsageReconciliationWorker aiexecutorWorker.IAIUsageReconciliationWorker
+	LoyaltyPointExpiryWorker    brandWorker.ILoyaltyPointExpiryWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
-	FailedItemsCleanupWorker    wardrobeWorker.IFailedItemsCleanupWorker
-	ProcessingRecoveryWorker    wardrobeWorker.IProcessingRecoveryWorker
+	FashionInitWorker           *fashionWorker.FashionInitWorker
+	FailedItemsCleanupWorker    fashionWorker.IFailedItemsCleanupWorker
+	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker
+	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
+	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
 }
 type App struct {
 	Config    *config.Config
@@ -79,7 +83,7 @@ func (a *App) Run() error {
 	a.Workers.PaymentReconciliationWorker.Start()
 	a.Workers.WebhookInboxWorker.Start()
 	a.Workers.AIUsageReconciliationWorker.Start()
-	a.Workers.PostHotnessWorker.Start()
+	a.Workers.LoyaltyPointExpiryWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
 
@@ -99,7 +103,7 @@ func (a *App) Run() error {
 	a.Workers.PaymentReconciliationWorker.Stop()
 	a.Workers.WebhookInboxWorker.Stop()
 	a.Workers.AIUsageReconciliationWorker.Stop()
-	a.Workers.PostHotnessWorker.Stop()
+	a.Workers.LoyaltyPointExpiryWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()
 

@@ -45,6 +45,11 @@ func HashString(stringutils string, secret []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+func HashSHA256(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
 func GetString(in *string) string {
 	if in == nil {
 		return ""
@@ -73,6 +78,13 @@ func ToPtr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func TrimmedPtr(in *string) *string {
+	if in == nil {
+		return nil
+	}
+	return ToPtr(strings.TrimSpace(*in))
 }
 
 func SanitizeFileName(fileName string, salt *string) string {

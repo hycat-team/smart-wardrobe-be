@@ -3,7 +3,7 @@ package handler
 import (
 	_ "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
-	_ "smart-wardrobe-be/internal/modules/subscription/contract"
+	_ "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	req_dto "smart-wardrobe-be/internal/modules/subscription/presentation/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	"smart-wardrobe-be/pkg/utils/contextutils"
@@ -42,9 +42,8 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
-// @Security BearerAuth
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -73,9 +72,8 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=contract.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
-// @Security BearerAuth
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
@@ -100,7 +98,6 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 // @Param body body req_dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/auto-renew [put]
-// @Security BearerAuth
 func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

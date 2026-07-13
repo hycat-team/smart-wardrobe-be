@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 
 	"github.com/google/uuid"
 )
@@ -131,107 +131,10 @@ func TestSubscriptionCatalogValidator(t *testing.T) {
 		}
 	})
 
-	t.Run("strict policy overflow within 1000 VND tolerance warns and passes", func(t *testing.T) {
-		repo := &fakeSubscriptionPlanRepository{
-			plans: []*entities.SubscriptionPlan{
-				{
-					Slug:     "free",
-					PlanKind: plankind.DefaultFree,
-					IsActive: true,
-				},
-				{
-					Slug:     "premium-monthly",
-					PlanKind: plankind.Finite,
-					IsActive: true,
-				},
-			},
-		}
-
-		attachTestPolicies(repo.plans)
-		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
-		repo.plans[1].AICostPolicy.PeriodDays = 1
-		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
-		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)
-		repo.plans[1].AICostPolicy.MaxUnknownPaidRequestsPerDay = 1
-		for _, op := range repo.plans[1].AICostPolicy.Operations {
-			op.NormalRoute = "paid"
-			op.NormalMaxInputTokens = 444_440
-			op.NormalMaxOutputTokens = 1
-		}
-
-		validator := NewSubscriptionCatalogValidator(repo, &config.Config{
-			AI: config.AIServiceConfig{
-				Pricing: config.AIPricingConfig{
-					USDToVND: "27000",
-					Paid: config.AIModelPricingConfig{
-						InputUSDPerMillionTokens:  "0.10",
-						OutputUSDPerMillionTokens: "0.40",
-					},
-				},
-			},
-		})
-		err := validator.Validate(ctx)
-		if err != nil {
-			t.Fatalf("expected validation to pass within tolerance, got error: %v", err)
-		}
-	})
-
-	t.Run("strict policy overflow above 1000 VND tolerance fails", func(t *testing.T) {
-		repo := &fakeSubscriptionPlanRepository{
-			plans: []*entities.SubscriptionPlan{
-				{
-					Slug:     "free",
-					PlanKind: plankind.DefaultFree,
-					IsActive: true,
-				},
-				{
-					Slug:     "premium-monthly",
-					PlanKind: plankind.Finite,
-					IsActive: true,
-				},
-			},
-		}
-
-		attachTestPolicies(repo.plans)
-		repo.plans[1].AICostPolicy.EnforcementMode = "STRICT"
-		repo.plans[1].AICostPolicy.PeriodDays = 1
-		repo.plans[1].AICostPolicy.FreeRouteThresholdBPS = 9600
-		repo.plans[1].AICostPolicy.HardCostMicroVND = int64Ptr(25_000_000_000)
-		repo.plans[1].AICostPolicy.MaxUnknownPaidRequestsPerDay = 1
-		for _, op := range repo.plans[1].AICostPolicy.Operations {
-			op.NormalRoute = "paid"
-			op.NormalMaxInputTokens = 814_820
-			op.NormalMaxOutputTokens = 1
-		}
-
-		validator := NewSubscriptionCatalogValidator(repo, &config.Config{
-			AI: config.AIServiceConfig{
-				Pricing: config.AIPricingConfig{
-					USDToVND: "27000",
-					Paid: config.AIModelPricingConfig{
-						InputUSDPerMillionTokens:  "0.10",
-						OutputUSDPerMillionTokens: "0.40",
-					},
-				},
-			},
-		})
-		err := validator.Validate(ctx)
-		if err == nil {
-			t.Fatal("expected validation to fail when overflow exceeds tolerance, got nil")
-		}
-		if !strings.Contains(err.Error(), "tolerance") {
-			t.Fatalf("unexpected error message: %v", err)
-		}
-	})
 }
 
 func attachTestPolicies(plans []*entities.SubscriptionPlan) {
 	for _, p := range plans {
-		id := uuid.New()
-		p.AICostPolicyID = id
-		p.AICostPolicy = &entities.AICostPolicy{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: id}}}
-		for _, operation := range []string{"chat", "outfit", "summary", "rewriter"} {
-			p.AICostPolicy.Operations = append(p.AICostPolicy.Operations, &entities.AICostPolicyOperation{Operation: operation, IsEnabled: true, NormalMaxInputTokens: 1, NormalMaxOutputTokens: 1, ReducedMaxInputTokens: 1, ReducedMaxOutputTokens: 1, MaxPaidAttemptsPerDay: 1})
-		}
+		p.AICostPolicyID = uuid.New()
 	}
 }

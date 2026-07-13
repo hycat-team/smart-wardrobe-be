@@ -1,13 +1,10 @@
 package dto
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
 
 	"github.com/google/uuid"
 )
@@ -18,28 +15,50 @@ type CreateWardrobeItemReq struct {
 	ImagePublicID string    `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
+type FashionItemRes struct {
+	ID              uuid.UUID  `json:"id"`
+	CategoryID      *uuid.UUID `json:"categoryId,omitempty"`
+	CategoryName    *string    `json:"categoryName,omitempty"`
+	CategorySlug    *string    `json:"categorySlug,omitempty"`
+	ImageUrl        string     `json:"imageUrl"`
+	Color           *string    `json:"color,omitempty"`
+	ColorHex        *string    `json:"colorHex,omitempty"`
+	ColorHue        *float64   `json:"colorHue,omitempty"`
+	ColorSaturation *float64   `json:"colorSaturation,omitempty"`
+	ColorLightness  *float64   `json:"colorLightness,omitempty"`
+	Style           *string    `json:"style,omitempty"`
+	Material        *string    `json:"material,omitempty"`
+	Pattern         *string    `json:"pattern,omitempty"`
+	Fit             *string    `json:"fit,omitempty"`
+	Seasonality     *string    `json:"seasonality,omitempty"`
+	Description     *string    `json:"description,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+type BrandItemBriefRes struct {
+	ID        uuid.UUID `json:"id"`
+	BrandID   uuid.UUID `json:"brandId"`
+	BrandName string    `json:"brandName"`
+	ItemType  string    `json:"itemType"`
+	Name      string    `json:"name"`
+	Price     *float64  `json:"price,omitempty"`
+}
+
 type WardrobeItemRes struct {
-	ID                    uuid.UUID                         `json:"id"`
-	UserID                uuid.UUID                         `json:"userId"`
-	Category              *CategoryRes                      `json:"category,omitempty"`
-	ImageUrl              string                            `json:"imageUrl"`
-	ImagePublicID         string                            `json:"imagePublicId"`
-	Color                 string                            `json:"color"`
-	ColorHex              string                            `json:"colorHex"`
-	ColorHue              *float64                          `json:"colorHue,omitempty"`
-	ColorSaturation       *float64                          `json:"colorSaturation,omitempty"`
-	ColorLightness        *float64                          `json:"colorLightness,omitempty"`
-	Style                 string                            `json:"style"`
-	Material              string                            `json:"material"`
-	Pattern               string                            `json:"pattern"`
-	Fit                   string                            `json:"fit"`
-	Seasonality           string                            `json:"seasonality"`
-	Price                 *float64                          `json:"price,omitempty"`
-	Status                wardrobestatus.WardrobeItemStatus `json:"status"`
-	ReviewReason          *string                           `json:"reviewReason,omitempty"`
-	ProcessingErrorReason *string                           `json:"processingErrorReason,omitempty"`
-	IsLocked              bool                              `json:"isLocked"`
-	CreatedAt             time.Time                         `json:"createdAt"`
+	ID          uuid.UUID                         `json:"id"`
+	UserID      uuid.UUID                         `json:"userId"`
+	Category    *CategoryRes                      `json:"category,omitempty"`
+	Price       *float64                          `json:"price,omitempty"`
+	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked    bool                              `json:"isLocked"`
+	ItemContext string                            `json:"itemContext,omitempty"`
+	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	FashionItem *FashionItemRes                   `json:"fashionItem,omitempty"`
+	CreatedAt   time.Time                         `json:"createdAt"`
+	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
+	IsDeleted   bool                              `json:"isDeleted"`
+	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
 type CloneWardrobeItemReq struct {
@@ -60,90 +79,20 @@ type BatchUploadWardrobeItemsReq struct {
 	Items []WardrobeBatchUploadItemReq `json:"items" binding:"required,min=1" label:"danh sách trang phục"`
 }
 
-type WardrobeBatchUploadJobDTO struct {
-	ItemID            uuid.UUID  `json:"itemId"`
-	UserID            uuid.UUID  `json:"userId"`
-	CategoryID        *uuid.UUID `json:"categoryId,omitempty"`
-	ImageUrl          string     `json:"imageUrl"`
-	ImagePublicID     string     `json:"imagePublicId"`
-	RetryCount        int        `json:"retryCount,omitempty"`
-	ProcessingVersion int        `json:"processingVersion"`
-}
-
-type FashionMetadataResult struct {
-	CategorySlug string `json:"category_slug"`
-	Color        string `json:"color"`
-	ColorHex     string `json:"color_hex"`
-	Style        string `json:"style"`
-	Material     string `json:"material"`
-	Pattern      string `json:"pattern"`
-	Fit          string `json:"fit"`
-	Seasonality  string `json:"seasonality"`
-	Description  string `json:"description"`
-	IsSingleItem bool   `json:"is_single_item"`
-	ReviewReason string `json:"review_reason"`
-}
-
-func (f *FashionMetadataResult) UnmarshalJSON(data []byte) error {
-	type Alias FashionMetadataResult
-	aux := struct {
-		IsSingleItem any `json:"is_single_item"`
-		*Alias
-	}{
-		Alias: (*Alias)(f),
-	}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	switch v := aux.IsSingleItem.(type) {
-	case bool:
-		f.IsSingleItem = v
-	case string:
-		switch strings.ToLower(v) {
-		case "true", "1", "yes":
-			f.IsSingleItem = true
-		case "false", "0", "no", "":
-			f.IsSingleItem = false
-		default:
-			return fmt.Errorf("invalid boolean string for is_single_item: %s", v)
-		}
-	case nil:
-		f.IsSingleItem = false
-	default:
-		return fmt.Errorf("unexpected type for is_single_item: %T", v)
-	}
-	return nil
-}
-
-type AICategoryRef struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
-}
-
 type WardrobeEventPayload struct {
-	ItemID uuid.UUID `json:"item_id"`
-	UserID uuid.UUID `json:"user_id"`
-	Action string    `json:"action"` // "created", "updated", "deleted"
+	ItemID        uuid.UUID `json:"item_id"`
+	UserID        uuid.UUID `json:"user_id"`
+	FashionItemID uuid.UUID `json:"fashion_item_id,omitempty"`
+	ItemType      int       `json:"item_type,omitempty"`
+	Action        string    `json:"action"` // "created", "updated", "deleted"
 }
 
 type SearchWardrobeItemRes struct {
-	ID              uuid.UUID    `json:"id"`
-	Category        *CategoryRes `json:"category,omitempty"`
-	ImageUrl        string       `json:"imageUrl"`
-	ImagePublicID   string       `json:"imagePublicId"`
-	Color           string       `json:"color"`
-	ColorHex        string       `json:"colorHex"`
-	ColorHue        *float64     `json:"colorHue,omitempty"`
-	ColorSaturation *float64     `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64     `json:"colorLightness,omitempty"`
-	Style           string       `json:"style"`
-	Material        string       `json:"material"`
-	Pattern         string       `json:"pattern"`
-	Fit             string       `json:"fit"`
-	Seasonality     string       `json:"seasonality"`
-	Price           *float64     `json:"price,omitempty"`
-	IsSystem        bool         `json:"isSystem"`
+	ID          uuid.UUID       `json:"id"`
+	Category    *CategoryRes    `json:"category,omitempty"`
+	Price       *float64        `json:"price,omitempty"`
+	IsSystem    bool            `json:"isSystem"`
+	FashionItem *FashionItemRes `json:"fashionItem,omitempty"`
 }
 
 type GetWardrobeItemsQueryReq struct {

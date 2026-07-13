@@ -8,18 +8,21 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/walletstatementtype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/constants/walletstatementtype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/errorutils"
@@ -36,6 +39,7 @@ type SubscriptionPurchaseUseCase struct {
 	userSubRepo    repositories.IUserSubscriptionRepository
 	eventRepo      repositories.IUserSubscriptionEventRepository
 	paymentGateway payment.IPaymentGatewayService
+	eventPublisher event.IEventPublisher
 	uow            shared_repos.IUnitOfWork
 	cfg            *config.Config
 }
@@ -47,6 +51,7 @@ func NewSubscriptionPurchaseUseCase(
 	planRepo repositories.ISubscriptionPlanRepository,
 	userSubRepo repositories.IUserSubscriptionRepository,
 	eventRepo repositories.IUserSubscriptionEventRepository,
+	eventPublisher event.IEventPublisher,
 	paymentGateway payment.IPaymentGatewayService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
@@ -58,6 +63,7 @@ func NewSubscriptionPurchaseUseCase(
 		planRepo:       planRepo,
 		userSubRepo:    userSubRepo,
 		eventRepo:      eventRepo,
+		eventPublisher: eventPublisher,
 		paymentGateway: paymentGateway,
 		uow:            uow,
 		cfg:            cfg,
@@ -190,9 +196,10 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	}
 
 	// Execute the purchase using a database transaction.
-	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+	var subEvent *entities.UserSubscriptionEvent
 
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		// Fetch and lock the user's subscription record (FOR UPDATE) to prevent race conditions.
 		sub, isNewSub, err := uc.getOrInitLockedSubscriptionForPurchase(txCtx, userID, now)
 		if err != nil {
@@ -241,16 +248,16 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		transition := subscription.EvaluateSubscriptionTransition(subscription.CreateValidation, effective, paymentSnapshot)
 
 		// Determine domain method to call
-		var subEvent *entities.UserSubscriptionEvent
+		var innerSubEvent *entities.UserSubscriptionEvent
 		switch transition {
 		case subscription.ActivateFinite, subscription.ActivateLifetime:
-			subEvent, err = sub.Activate(plan, snapshot, "", now)
+			innerSubEvent, err = sub.Activate(plan, snapshot, "", now)
 		case subscription.ExtendFinite:
-			subEvent, err = sub.Extend(plan, snapshot, "", now)
+			innerSubEvent, err = sub.Extend(plan, snapshot, "", now)
 		case subscription.UpgradeFinite, subscription.UpgradeLifetime:
-			subEvent, err = sub.Upgrade(plan, snapshot, "", now)
+			innerSubEvent, err = sub.Upgrade(plan, snapshot, "", now)
 		case subscription.OverlayLifetimeWithFinite:
-			subEvent, err = sub.OverlayLifetime(plan, snapshot, "", now)
+			innerSubEvent, err = sub.OverlayLifetime(plan, snapshot, "", now)
 		default:
 			return subscriptionerrors.ErrSubscriptionStillActive()
 		}
@@ -301,14 +308,31 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		}
 
 		// Persist subEvent
-		if subEvent != nil {
-			if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
+		if innerSubEvent != nil {
+			if err := uc.eventRepo.Create(txCtx, innerSubEvent); err != nil {
 				return err
 			}
+			subEvent = innerSubEvent
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if subEvent != nil {
+		payload := aiexecutor_dto.PlanChangedPayload{
+			UserID:         userID.String(),
+			EventType:      subEvent.EventType,
+			ToPlanCode:     plan.Slug,
+			ToTierRank:     plan.TierRank,
+			AICostPolicyID: plan.AICostPolicyID.String(),
+			OccurredAt:     now.Format(time.RFC3339Nano),
+		}
+		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicSubscriptionPlanChanged, payload)
+	}
+
+	return nil
 }
 
 // getOrInitLockedSubscriptionForPurchase locks the user subscription row in the database.

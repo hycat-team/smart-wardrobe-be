@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,7 +20,7 @@ import (
 	"smart-wardrobe-be/config"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
-	"smart-wardrobe-be/internal/shared/domain/constants/currency"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 
 	"github.com/shopspring/decimal"
@@ -32,15 +33,22 @@ type PayOSService struct {
 	apiKey         string
 	checksumKey    string
 	expiredMinutes int
+	endpoint       string
 	httpClient     *http.Client
 }
 
 func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
+	endpoint := strings.TrimRight(cfg.PayOS.Endpoint, "/")
+	if endpoint == "" {
+		endpoint = "https://api-merchant.payos.vn"
+	}
+
 	return &PayOSService{
 		clientID:       cfg.PayOS.ClientID,
 		apiKey:         cfg.PayOS.ApiKey,
 		checksumKey:    cfg.PayOS.ChecksumKey,
 		expiredMinutes: cfg.PayOS.ExpiredMinutes,
+		endpoint:       endpoint,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
@@ -102,7 +110,7 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "SERIALIZATION_ERROR"}, fmt.Errorf("failed to serialize checkout payload: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api-merchant.payos.vn/v2/payment-requests", bytes.NewBuffer(reqBytes))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/v2/payment-requests", s.endpoint), bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: "REQUEST_BUILD_ERROR"}, fmt.Errorf("failed to create http request: %w", err)
 	}
@@ -161,24 +169,24 @@ func (s *PayOSService) GetPaymentLinkInfo(ctx context.Context, orderCode int64) 
 			CheckoutURL string          `json:"checkoutUrl"`
 		} `json:"data"`
 	}
-	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d", orderCode), nil, &response); err != nil {
+	if err := s.doJSON(ctx, http.MethodGet, fmt.Sprintf("%s/v2/payment-requests/%d", s.endpoint, orderCode), nil, &response); err != nil {
 		return nil, err
 	}
 	status := payment.ProviderUnknown
 	switch strings.ToUpper(response.Data.Status) {
-	case "PENDING":
+	case "pending":
 		status = payment.ProviderPending
 	case "PAID":
 		status = payment.ProviderPaid
-	case "CANCELLED":
+	case "cancelled":
 		status = payment.ProviderCancelled
 	}
-	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "VND", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
+	return &payment.PaymentLinkInfo{OrderCode: response.Data.OrderCode, PaymentLinkID: response.Data.ID, Amount: response.Data.Amount, AmountPaid: response.Data.AmountPaid, Currency: "vnd", Status: status, CheckoutURL: response.Data.CheckoutURL}, nil
 }
 
 func (s *PayOSService) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {
 	body, _ := json.Marshal(map[string]string{"cancellationReason": reason})
-	return s.doJSON(ctx, http.MethodPost, fmt.Sprintf("https://api-merchant.payos.vn/v2/payment-requests/%d/cancel", orderCode), body, nil)
+	return s.doJSON(ctx, http.MethodPost, fmt.Sprintf("%s/v2/payment-requests/%d/cancel", s.endpoint, orderCode), body, nil)
 }
 
 func (s *PayOSService) doJSON(ctx context.Context, method, url string, body []byte, out any) error {
@@ -207,7 +215,7 @@ func (s *PayOSService) doJSON(ctx context.Context, method, url string, body []by
 	return nil
 }
 
-func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) (map[string]any, error) {
+func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) error {
 	var payload struct {
 		Code      string         `json:"code"`
 		Desc      string         `json:"desc"`
@@ -215,7 +223,7 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signat
 		Data      map[string]any `json:"data"`
 	}
 	if err := json.Unmarshal(rawBody, &payload); err != nil {
-		return nil, fmt.Errorf("failed to parse webhook payload: %w", err)
+		return apperror.NewInternalError("Failed to parse PayOS webhook body")
 	}
 
 	sigToVerify := signatureHeader
@@ -224,19 +232,14 @@ func (s *PayOSService) VerifyWebhook(ctx context.Context, rawBody []byte, signat
 	}
 
 	if sigToVerify == "" {
-		return nil, errors.New("missing signature for webhook validation")
+		return apperror.NewUnauthorized("Missing payload checksum")
 	}
 
 	if !s.VerifyWebhookSignature(payload.Data, sigToVerify) {
-		return nil, errors.New("invalid payos signature")
+		return apperror.NewUnauthorized("Invalid PayOS webhook signature")
 	}
 
-	var fullMap map[string]any
-	if err := json.Unmarshal(rawBody, &fullMap); err != nil {
-		return nil, fmt.Errorf("failed to parse complete webhook map: %w", err)
-	}
-
-	return fullMap, nil
+	return nil
 }
 
 func (s *PayOSService) VerifyWebhookSignature(dataMap map[string]any, expectedSignature string) bool {

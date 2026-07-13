@@ -3,24 +3,32 @@ package config
 import "time"
 
 type Config struct {
-	Database      Database           `mapstructure:"database"`
-	Redis         Redis              `mapstructure:"redis"`
-	Server        Server             `mapstructure:"server"`
-	Startup       Startup            `mapstructure:"startup"`
-	Jwt           Jwt                `mapstructure:"jwt"`
-	Logger        Logger             `mapstructure:"logger"`
-	Quota         Quota              `mapstructure:"quota"`
-	Otp           Otp                `mapstructure:"otp"`
-	Email         Email              `mapstructure:"email"`
-	RateLimit     RateLimit          `mapstructure:"rate_limit"`
-	PayOS         PayOS              `mapstructure:"payos"`
-	Cloudinary    Cloudinary         `mapstructure:"cloudinary"`
-	AI            AIServiceConfig    `mapstructure:"ai"`
-	RabbitMQ      RabbitMQ           `mapstructure:"rabbitmq"`
-	Elasticsearch Elasticsearch      `mapstructure:"elasticsearch"`
-	Community     Community          `mapstructure:"community"`
-	RAG           RAG                `mapstructure:"rag"`
-	Wardrobe      WardrobeProcessing `mapstructure:"wardrobe"`
+	Database       Database           `mapstructure:"database"`
+	Redis          Redis              `mapstructure:"redis"`
+	Server         Server             `mapstructure:"server"`
+	Startup        Startup            `mapstructure:"startup"`
+	Jwt            Jwt                `mapstructure:"jwt"`
+	Logger         Logger             `mapstructure:"logger"`
+	Quota          Quota              `mapstructure:"quota"`
+	Otp            Otp                `mapstructure:"otp"`
+	Email          Email              `mapstructure:"email"`
+	RateLimit      RateLimit          `mapstructure:"rate_limit"`
+	ClaimRateLimit ClaimRateLimit     `mapstructure:"claim_rate_limit"`
+	PayOS          PayOS              `mapstructure:"payos"`
+	Cloudinary     Cloudinary         `mapstructure:"cloudinary"`
+	AI             AIServiceConfig    `mapstructure:"ai"`
+	RabbitMQ       RabbitMQ           `mapstructure:"rabbitmq"`
+	Elasticsearch  Elasticsearch      `mapstructure:"elasticsearch"`
+	Community      Community          `mapstructure:"community"`
+	Loyalty        Loyalty            `mapstructure:"loyalty"`
+	RAG            RAG                `mapstructure:"rag"`
+	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
+}
+
+type Loyalty struct {
+	ExpiryWorkerEnabled   bool          `mapstructure:"expiry_worker_enabled"`
+	ExpiryWorkerInterval  time.Duration `mapstructure:"expiry_worker_interval"`
+	ExpiryWorkerBatchSize int           `mapstructure:"expiry_worker_batch_size"`
 }
 
 type WardrobeProcessing struct {
@@ -87,22 +95,9 @@ type AIServiceConfig struct {
 	FreeTextFallback                       APIProviderConfig     `mapstructure:"free_text_fallback"`
 	FreeTextTimeoutSeconds                 int                   `mapstructure:"free_text_timeout_seconds"`
 	FreeTextRPMLimit                       int                   `mapstructure:"free_text_rpm_limit"`
-	Pricing                                AIPricingConfig       `mapstructure:"pricing"`
 	UsageReconcileCron                     string                `mapstructure:"usage_reconcile_cron"`
 	UsageReconcileBatchSize                int                   `mapstructure:"usage_reconcile_batch_size"`
 	TokenEstimation                        TokenEstimationConfig `mapstructure:"token_estimation"`
-}
-
-type AIPricingConfig struct {
-	Version  string               `mapstructure:"version"`
-	Currency string               `mapstructure:"currency"`
-	USDToVND string               `mapstructure:"usd_to_vnd"`
-	Paid     AIModelPricingConfig `mapstructure:"paid"`
-}
-
-type AIModelPricingConfig struct {
-	InputUSDPerMillionTokens  string `mapstructure:"input_usd_per_million_tokens"`
-	OutputUSDPerMillionTokens string `mapstructure:"output_usd_per_million_tokens"`
 }
 
 type RabbitMQ struct {
@@ -116,7 +111,9 @@ type Cloudinary struct {
 	CloudName    string `mapstructure:"-"`
 	ApiKey       string `mapstructure:"-"`
 	ApiSecret    string `mapstructure:"-"`
+	APIUrl       string `mapstructure:"-"`
 	AvatarFolder string `mapstructure:"avatar_folder"`
+	BrandsFolder string `mapstructure:"brands_folder"`
 	ItemFolder   string `mapstructure:"item_folder"`
 	OutfitFolder string `mapstructure:"outfit_folder"`
 	PostFolder   string `mapstructure:"post_folder"`
@@ -126,6 +123,7 @@ type PayOS struct {
 	ClientID                   string `mapstructure:"-"`
 	ApiKey                     string `mapstructure:"-"`
 	ChecksumKey                string `mapstructure:"-"`
+	Endpoint                   string `mapstructure:"-"`
 	ReturnUrl                  string `mapstructure:"return_url"`
 	CancelUrl                  string `mapstructure:"cancel_url"`
 	ExpiredMinutes             int    `mapstructure:"expired_minutes"`
@@ -200,6 +198,13 @@ type RateLimit struct {
 	TokenLimit           int `mapstructure:"token_limit"`
 	TokensPerPeriod      int `mapstructure:"tokens_per_period"`
 	ReplenishmentSeconds int `mapstructure:"replenishment_seconds"`
+}
+
+type ClaimRateLimit struct {
+	IPLimit       int `mapstructure:"ip_limit"`
+	UserLimit     int `mapstructure:"user_limit"`
+	TokenLimit    int `mapstructure:"token_limit"`
+	WindowSeconds int `mapstructure:"window_seconds"`
 }
 
 type Community struct {

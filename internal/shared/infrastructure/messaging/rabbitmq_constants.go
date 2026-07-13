@@ -1,14 +1,22 @@
 package messaging
 
+import "smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+
 const (
 	ExchangeName = "smart_wardrobe_exchange"
 	ExchangeType = "topic"
 
 	// Queues
-	QueueWardrobeBatchUpload = "wardrobe_batch_upload_queue"
-	QueueElasticsearchSync   = "elasticsearch_sync_queue"
+	QueueElasticsearchSync = "elasticsearch_sync_queue"
+	QueueFashionInit       = "fashion_init_queue"
+	QueueFashionAnalyze    = "fashion_analyze_queue"
+
+	// Queues
+	QueueSubscriptionPlanChanged = "subscription_plan_changed_queue"
 
 	// Routing Keys
-	RoutingKeyWardrobeBatchUpload       = "wardrobe.event.batch-upload"
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
+	RoutingKeyFashionInit               = eventconstants.TopicFashionInit
+	RoutingKeyFashionAnalyze            = eventconstants.TopicFashionAnalyze
+	RoutingKeySubscriptionPlanChanged   = eventconstants.TopicSubscriptionPlanChanged
 )

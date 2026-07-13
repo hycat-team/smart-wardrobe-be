@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/httputils"
@@ -48,14 +47,6 @@ type googleUsageMetadata struct {
 	TotalTokenCount      int64 `json:"totalTokenCount"`
 }
 
-// NormalizeGeminiModel ensures model name has "models/" prefix.
-func NormalizeGeminiModel(model string) string {
-	if strings.HasPrefix(model, "models/") {
-		return model
-	}
-	return "models/" + model
-}
-
 func isRetryableCountTokensError(err error) bool {
 	if err == nil {
 		return false
@@ -83,7 +74,7 @@ func CountGoogleTokensByRequest(
 	countCtx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
-	model := NormalizeGeminiModel(req.Model)
+	model := req.Model
 	body := geminiCountTokensRequest{
 		GenerateContentRequest: geminiCountGenerateContentRequest{
 			Model:                     model,
@@ -201,7 +192,6 @@ func CallTextStream(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
@@ -239,7 +229,7 @@ func CallTextStream(
 			return
 		}
 
-		url := fmt.Sprintf("%s/%s:streamGenerateContent?alt=sse&key=%s", provider.Endpoint, NormalizeGeminiModel(req.Model), provider.ApiKey)
+		url := fmt.Sprintf("%s/%s:streamGenerateContent?alt=sse&key=%s", provider.Endpoint, req.Model, provider.ApiKey)
 		httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
 		if err != nil {
 			errChan <- err
@@ -304,8 +294,13 @@ func CallTextStream(
 			}
 			return nil
 		})
-		if hasMetadata && costPolicy != nil {
-			_ = confirmGoogleUsage(context.WithoutCancel(ctx), costPolicy, options, provider, lastMetadata, lastFinishReason)
+		if hasMetadata && options.OnUsage != nil {
+			options.OnUsage(app_ai.TokenUsage{
+				PromptTokens:   lastMetadata.PromptTokenCount,
+				OutputTokens:   lastMetadata.CandidatesTokenCount,
+				ThinkingTokens: lastMetadata.ThoughtsTokenCount,
+				FinishReason:   lastFinishReason,
+			})
 		}
 		if err != nil && err != context.Canceled {
 			errChan <- err
@@ -322,7 +317,6 @@ func CallText(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (string, error) {
 	req := PreparedGeminiRequest{
@@ -352,7 +346,7 @@ func CallText(
 		return "", err
 	}
 
-	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, NormalizeGeminiModel(req.Model), provider.ApiKey)
+	url := fmt.Sprintf("%s/%s:generateContent?key=%s", provider.Endpoint, req.Model, provider.ApiKey)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", err
@@ -399,8 +393,13 @@ func CallText(
 	}
 
 	finishReason := googleResp.Candidates[0].FinishReason
-	if costPolicy != nil {
-		_ = confirmGoogleUsage(context.WithoutCancel(ctx), costPolicy, options, provider, googleResp.UsageMetadata, finishReason)
+	if options.OnUsage != nil {
+		options.OnUsage(app_ai.TokenUsage{
+			PromptTokens:   googleResp.UsageMetadata.PromptTokenCount,
+			OutputTokens:   googleResp.UsageMetadata.CandidatesTokenCount,
+			ThinkingTokens: googleResp.UsageMetadata.ThoughtsTokenCount,
+			FinishReason:   finishReason,
+		})
 	}
 	if finishReason == "MAX_TOKENS" {
 		return "", fmt.Errorf("Google text generation reached MAX_TOKENS")
@@ -565,24 +564,6 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 	}
 
 	return allEmbeddings, nil
-}
-
-func confirmGoogleUsage(
-	ctx context.Context,
-	costPolicy contract.IAICostPolicyContract,
-	options app_ai.TextGenerationOptions,
-	provider config.APIProviderConfig,
-	u googleUsageMetadata,
-	finish string,
-) error {
-	return costPolicy.Confirm(ctx, options.RequestID, contract.AIUsage{
-		PromptTokens:   u.PromptTokenCount,
-		OutputTokens:   u.CandidatesTokenCount,
-		ThinkingTokens: u.ThoughtsTokenCount,
-		FinishReason:   finish,
-		Provider:       provider.Provider,
-		Model:          provider.Model,
-	})
 }
 
 func parseSSEStream(r io.Reader, callback func(data string) error) error {

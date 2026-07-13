@@ -6,8 +6,8 @@ import (
 
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
 

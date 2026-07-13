@@ -5,19 +5,24 @@ import (
 	"time"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfitstatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/domain/constants/outfitstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/wardrobestatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +33,8 @@ type OutfitUseCase struct {
 	outfitRepo      repositories.IOutfitRepository
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract contract.IUserSubscriptionContract
+	brandContract   brand_contract.IBrandContract
+	fashionContract fashion_contract.IFashionContract
 	mediaService    media.IMediaService
 }
 
@@ -37,6 +44,8 @@ func NewOutfitUseCase(
 	outfitRepo repositories.IOutfitRepository,
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract contract.IUserSubscriptionContract,
+	brandContract brand_contract.IBrandContract,
+	fashionContract fashion_contract.IFashionContract,
 	mediaService media.IMediaService,
 ) uc_interfaces.IOutfitUseCase {
 	return &OutfitUseCase{
@@ -45,6 +54,8 @@ func NewOutfitUseCase(
 		outfitRepo:      outfitRepo,
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
+		brandContract:   brandContract,
+		fashionContract: fashionContract,
 		mediaService:    mediaService,
 	}
 }
@@ -76,24 +87,24 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		return nil, wardrobeerrors.ErrOutfitLimitReached(len(existingOutfits), subOverview.MaxOutfits)
 	}
 
-	// 2. Check if the provided wardrobe items exist and belong to the user
-	itemIDs := make([]uuid.UUID, len(input.Items))
+	// 2. Resolve requested fashion items to concrete user wardrobe items.
+	fashionItemIDs := make([]uuid.UUID, len(input.Items))
 	for idx, itemReq := range input.Items {
-		itemIDs[idx] = itemReq.WardrobeItemID
+		fashionItemIDs[idx] = itemReq.FashionItemID
 	}
 
-	verifiedItems, err := uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
+	verifiedItems, err := uc.wardrobeRepo.GetByUserIDAndFashionItemIDs(ctx, userID, fashionItemIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
 	for _, item := range verifiedItems {
-		if item.UserID == userID {
-			if item.Status == wardrobestatus.Sold {
-				return nil, wardrobeerrors.ErrOutfitItemSold(item.ID)
-			}
-			verifiedMap[item.ID] = item
+		if item.Status == wardrobestatus.Sold {
+			return nil, wardrobeerrors.ErrOutfitItemSold(item.FashionItemID)
+		}
+		if item.FashionItemID != nil {
+			verifiedMap[*item.FashionItemID] = item
 		}
 	}
 
@@ -105,23 +116,43 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 
 	// Verify that all items are valid
 	outfitItems := make([]*entities.OutfitItem, len(input.Items))
+	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
 	for idx, itemReq := range input.Items {
-		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
-		if !ok {
-			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
-		}
+		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
+		if ok && verifiedItem.FashionItemID != nil {
+			if lockedMap[verifiedItem.ID] {
+				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+			}
+			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
 
-		if lockedMap[itemReq.WardrobeItemID] {
-			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-		}
+			if verifiedItem.FashionItemID != nil {
+				outfitItems[idx] = &entities.OutfitItem{
+					FashionItemID: *verifiedItem.FashionItemID,
+					ItemContext:   outfititemcontext.UserWardrobe,
+					PositionX:     itemReq.PositionX,
+					PositionY:     itemReq.PositionY,
+					Scale:         itemReq.Scale,
+					LayerOrder:    itemReq.LayerOrder,
+				}
+			}
+		} else {
+			// Check brand item eligibility
+			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			if err != nil {
+				return nil, err
+			}
+			if !isEligible {
+				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
+			}
 
-		outfitItems[idx] = &entities.OutfitItem{
-			ItemID:       itemReq.WardrobeItemID,
-			WardrobeItem: verifiedItem,
-			PositionX:    itemReq.PositionX,
-			PositionY:    itemReq.PositionY,
-			Scale:        itemReq.Scale,
-			LayerOrder:   itemReq.LayerOrder,
+			outfitItems[idx] = &entities.OutfitItem{
+				FashionItemID: itemReq.FashionItemID,
+				ItemContext:   outfititemcontext.BrandItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
 		}
 	}
 
@@ -140,11 +171,24 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 
-	if err := uc.touchLastUsedAt(ctx, itemIDs); err != nil {
+	if err := uc.touchLastUsedAt(ctx, wardrobeItemIDs); err != nil {
 		uc.logger.Warn("Failed to update wardrobe last_used_at after saving outfit")
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems), nil
+	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
+	for _, oi := range outfitItems {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
@@ -162,24 +206,24 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
-	// 2. Check the provided wardrobe items
-	itemIDs := make([]uuid.UUID, len(input.Items))
+	// 2. Resolve requested fashion items to concrete user wardrobe items.
+	fashionItemIDs := make([]uuid.UUID, len(input.Items))
 	for idx, itemReq := range input.Items {
-		itemIDs[idx] = itemReq.WardrobeItemID
+		fashionItemIDs[idx] = itemReq.FashionItemID
 	}
 
-	verifiedItems, err := uc.wardrobeRepo.GetByIDs(ctx, itemIDs)
+	verifiedItems, err := uc.wardrobeRepo.GetByUserIDAndFashionItemIDs(ctx, userID, fashionItemIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	verifiedMap := make(map[uuid.UUID]*entities.WardrobeItem)
 	for _, item := range verifiedItems {
-		if item.UserID == userID {
-			if item.Status == wardrobestatus.Sold {
-				return nil, wardrobeerrors.ErrOutfitItemSold(item.ID)
-			}
-			verifiedMap[item.ID] = item
+		if item.Status == wardrobestatus.Sold {
+			return nil, wardrobeerrors.ErrOutfitItemSold(item.FashionItemID)
+		}
+		if item.FashionItemID != nil {
+			verifiedMap[*item.FashionItemID] = item
 		}
 	}
 
@@ -190,24 +234,45 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	lockedMap := shared.BuildLockedMap(userItems, subOverview.MaxWardrobeItems)
 
 	outfitItems := make([]*entities.OutfitItem, len(input.Items))
+	wardrobeItemIDs := make([]uuid.UUID, 0, len(input.Items))
 	for idx, itemReq := range input.Items {
-		verifiedItem, ok := verifiedMap[itemReq.WardrobeItemID]
-		if !ok {
-			return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.WardrobeItemID)
-		}
+		verifiedItem, ok := verifiedMap[itemReq.FashionItemID]
+		if ok && verifiedItem.FashionItemID != nil {
+			if lockedMap[verifiedItem.ID] {
+				return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
+			}
+			wardrobeItemIDs = append(wardrobeItemIDs, verifiedItem.ID)
 
-		if lockedMap[itemReq.WardrobeItemID] {
-			return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-		}
+			if verifiedItem.FashionItemID != nil {
+				outfitItems[idx] = &entities.OutfitItem{
+					OutfitID:      id,
+					FashionItemID: *verifiedItem.FashionItemID,
+					ItemContext:   outfititemcontext.UserWardrobe,
+					PositionX:     itemReq.PositionX,
+					PositionY:     itemReq.PositionY,
+					Scale:         itemReq.Scale,
+					LayerOrder:    itemReq.LayerOrder,
+				}
+			}
+		} else {
+			// Check brand item eligibility
+			isEligible, _, _, err := uc.brandContract.CheckBrandItemEligibility(ctx, userID, itemReq.FashionItemID)
+			if err != nil {
+				return nil, err
+			}
+			if !isEligible {
+				return nil, wardrobeerrors.ErrOutfitItemInvalidOrForbidden(itemReq.FashionItemID)
+			}
 
-		outfitItems[idx] = &entities.OutfitItem{
-			OutfitID:     id,
-			ItemID:       itemReq.WardrobeItemID,
-			WardrobeItem: verifiedItem,
-			PositionX:    itemReq.PositionX,
-			PositionY:    itemReq.PositionY,
-			Scale:        itemReq.Scale,
-			LayerOrder:   itemReq.LayerOrder,
+			outfitItems[idx] = &entities.OutfitItem{
+				OutfitID:      id,
+				FashionItemID: itemReq.FashionItemID,
+				ItemContext:   outfititemcontext.BrandItem,
+				PositionX:     itemReq.PositionX,
+				PositionY:     itemReq.PositionY,
+				Scale:         itemReq.Scale,
+				LayerOrder:    itemReq.LayerOrder,
+			}
 		}
 	}
 
@@ -222,11 +287,24 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		return nil, err
 	}
 
-	if err := uc.touchLastUsedAt(ctx, itemIDs); err != nil {
+	if err := uc.touchLastUsedAt(ctx, wardrobeItemIDs); err != nil {
 		uc.logger.Warn("Failed to update wardrobe last_used_at after updating outfit")
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems), nil
+	fashionIDs := make([]uuid.UUID, 0, len(outfitItems))
+	for _, oi := range outfitItems {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitRes], error) {
@@ -256,7 +334,7 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 
 	resList := make([]*dto.OutfitRes, len(outfits))
 	for idx, outfit := range outfits {
-		resList[idx] = mapper.MapToOutfitRes(outfit, nil)
+		resList[idx] = mapper.MapToOutfitRes(outfit, nil, nil)
 	}
 
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
@@ -274,7 +352,20 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		return nil, wardrobeerrors.ErrOutfitNotFound()
 	}
 
-	return mapper.MapToOutfitRes(outfit, items), nil
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, oi := range items {
+		fashionIDs = append(fashionIDs, oi.FashionItemID)
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemBriefRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, items, fashionMap), nil
 }
 
 func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID) error {

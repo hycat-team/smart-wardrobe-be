@@ -31,24 +31,3 @@ func TestBodyProfileUnmarshalLegacyShape(t *testing.T) {
 		t.Fatalf("expected inferred body shape rectangle, got %+v", profile.InferredByAI)
 	}
 }
-
-func TestUserGetEffectiveBodyProfileFallsBackToInference(t *testing.T) {
-	user := &User{
-		BodyProfile: &bodyProfile{
-			HeightCM:       170,
-			WeightKG:       60,
-			VerifiedByUser: false,
-			InferredByAI: &inferredBodyProfile{
-				BodyShape: "hourglass",
-			},
-		},
-	}
-
-	effective := user.GetEffectiveBodyProfile()
-	if effective == nil {
-		t.Fatal("expected effective body profile")
-	}
-	if effective.BodyShape != "hourglass" {
-		t.Fatalf("expected inferred body shape fallback, got %q", effective.BodyShape)
-	}
-}

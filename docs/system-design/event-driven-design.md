@@ -1,12 +1,29 @@
-# Kiến trúc Hướng Sự kiện (Event-Driven Design)
+# Event-Driven Design
 
-Kiến trúc hướng sự kiện giúp xử lý bất đồng bộ các tác vụ AI tiêu tốn nhiều thời gian và tài nguyên, đảm bảo API Gateway luôn phản hồi nhanh chóng.
+Event-driven architecture helps asynchronously process AI tasks that consume a lot of time and resources, ensuring the API Gateway always responds quickly.
 
-## 1. Cơ chế hoạt động với RabbitMQ
-*   Khi người dùng upload trang phục, API lưu thông tin tạm thời và đẩy một sự kiện `wardrobe.item.uploaded` vào hàng đợi RabbitMQ.
-*   Worker tiêu thụ sự kiện (Event Consumer) nhận job và gửi ảnh qua AI API để xử lý tách nền và trích xuất nhãn.
-*   Sau khi nhận kết quả từ AI, Worker cập nhật trạng thái Item thành `Active` và gửi thông báo qua WebSocket đến người dùng.
+## 1. Events
 
-## 2. Ưu điểm kiến trúc
-*   **Tránh timeout**: Client không phải chờ đợi phản hồi đồng bộ từ các mô hình AI chậm chạp.
-*   **Đảm bảo độ tin cậy**: Hỗ trợ cơ chế retry và dead-letter queue (DLQ) khi gọi dịch vụ AI ngoài bị lỗi kết nối tạm thời.
+| Event | Publisher | Consumer | Routing Key | Payload |
+|-------|-----------|----------|-------------|---------|
+| `wardrobe.event.created` | wardrobe module | elasticsearch sync | `wardrobe.event.*` | WardrobeEventPayload |
+| `wardrobe.event.updated` | wardrobe module | elasticsearch sync | `wardrobe.event.*` | WardrobeEventPayload |
+| `wardrobe.event.deleted` | wardrobe module | elasticsearch sync | `wardrobe.event.*` | WardrobeEventPayload |
+| `fashion.event.init` | wardrobe module | fashion init worker | `fashion.event.init` | FashionAnalyzeJobDTO |
+| `fashion.event.analyze` | fashion module | fashion analyze worker | `fashion.event.analyze` | FashionAnalyzeJobDTO |
+| `subscription.plan.changed` | subscription module | aiexecutor plan changed worker | `subscription.plan.changed` | PlanChangedPayload |
+
+## 2. Operating Mechanism with RabbitMQ
+
+- When a user uploads an item of clothing (`wardrobe.event.created`), the wardrobe module saves the item and pushes the event into RabbitMQ.
+- The elasticsearch sync worker consumes `wardrobe.event.*` events to keep the search index up to date.
+- The fashion.init worker consumes `fashion.event.init` to run AI analysis (background removal, label extraction) on new items.
+- The fashion.analyze worker consumes `fashion.event.analyze` for reprocessing or retry of failed analyses.
+- When a subscription plan changes (`subscription.plan.changed`), the aiexecutor plan changed worker creates/updates the user's AI policy grant.
+- The AI usage reconciliation worker (cron-based, not event-driven) periodically expires unknown/reserved usage events.
+
+## 3. Architectural Advantages
+
+- **Avoid timeouts**: The client does not have to wait for synchronous responses from slow AI models.
+- **Ensure reliability**: Supports retry and dead-letter queue (DLQ) mechanisms when calling external AI services encounters temporary connection errors.
+- **Modular boundaries**: Write operations across modules are pushed through events instead of direct function calls or GORM preloads.

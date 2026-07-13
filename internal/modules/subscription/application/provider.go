@@ -1,8 +1,6 @@
 package application
 
 import (
-	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/subscription/application/usecase/aicost"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
@@ -13,20 +11,20 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook_inbox"
 	"smart-wardrobe-be/internal/modules/subscription/application/validator"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 
 	"github.com/google/wire"
 )
 
 var ProviderSet = wire.NewSet(
 	subscription.NewSubscriptionUseCase,
-	wire.Bind(new(contract.IUserSubscriptionContract), new(uc_interfaces.ISubscriptionUseCase)),
+	contract.NewUserSubscriptionContract,
 
 	plan.NewSubscriptionPlanUseCase,
-	wire.Bind(new(contract.ISubscriptionPlanContract), new(uc_interfaces.ISubscriptionPlanUseCase)),
+	contract.NewSubscriptionPlanContract,
 
 	quota.NewUserQuotaUseCase,
-	wire.Bind(new(contract.IUserQuotaContract), new(uc_interfaces.IUserQuotaUseCase)),
+	contract.NewUserQuotaContract,
 
 	wallet.NewWalletUseCase,
 	purchase.NewSubscriptionPurchaseUseCase,
@@ -35,5 +33,4 @@ var ProviderSet = wire.NewSet(
 	reconciliation.NewPaymentReconciliationUseCase,
 	webhook_inbox.NewWebhookInboxUseCase,
 	validator.NewSubscriptionCatalogValidator,
-	aicost.NewService,
 )

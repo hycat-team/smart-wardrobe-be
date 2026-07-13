@@ -35,3 +35,10 @@ func Created(c *gin.Context, message string, data any) {
 		Data:    data,
 	})
 }
+
+func Accepted(c *gin.Context, message string, data any) {
+	c.JSON(http.StatusAccepted, APIResponse{
+		Message: message,
+		Data:    data,
+	})
+}

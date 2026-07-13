@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/internal/modules/subscription/contract"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/pkg/utils/sliceutils"
@@ -23,7 +22,6 @@ func CallTextStream(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (<-chan string, <-chan error) {
 	textChan := make(chan string, 100)
@@ -103,6 +101,15 @@ func CallTextStream(
 				return err
 			}
 
+			if openAIResp.Usage.TotalTokens > 0 && options.OnUsage != nil {
+				options.OnUsage(app_ai.TokenUsage{
+					PromptTokens:   openAIResp.Usage.PromptTokens,
+					OutputTokens:   openAIResp.Usage.CompletionTokens,
+					ThinkingTokens: 0,
+					FinishReason:   "",
+				})
+			}
+
 			if len(openAIResp.Choices) > 0 {
 				text := openAIResp.Choices[0].Delta.Content
 				if text != "" {
@@ -112,9 +119,6 @@ func CallTextStream(
 					case textChan <- text:
 					}
 				}
-			}
-			if openAIResp.Usage.TotalTokens > 0 && costPolicy != nil {
-				_ = costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
 			}
 			if len(openAIResp.Choices) > 0 && openAIResp.Choices[0].FinishReason == "length" {
 				return fmt.Errorf("OpenAI text generation reached MAX_TOKENS")
@@ -136,7 +140,6 @@ func CallText(
 	provider config.APIProviderConfig,
 	systemPrompt string,
 	userPrompt string,
-	costPolicy contract.IAICostPolicyContract,
 	options app_ai.TextGenerationOptions,
 ) (string, error) {
 	payload := map[string]any{
@@ -201,8 +204,13 @@ func CallText(
 	if len(openAIResp.Choices) == 0 {
 		return "", apperror.NewInternalError("Không thể nhận phản hồi từ hệ thống trí tuệ nhân tạo lúc này.")
 	}
-	if costPolicy != nil {
-		_ = costPolicy.Confirm(context.WithoutCancel(ctx), options.RequestID, contract.AIUsage{PromptTokens: openAIResp.Usage.PromptTokens, OutputTokens: openAIResp.Usage.CompletionTokens, Provider: provider.Provider, Model: provider.Model})
+	if options.OnUsage != nil {
+		options.OnUsage(app_ai.TokenUsage{
+			PromptTokens:   openAIResp.Usage.PromptTokens,
+			OutputTokens:   openAIResp.Usage.CompletionTokens,
+			ThinkingTokens: 0,
+			FinishReason:   openAIResp.Choices[0].FinishReason,
+		})
 	}
 	if openAIResp.Choices[0].FinishReason == "length" {
 		return "", fmt.Errorf("OpenAI text generation reached MAX_TOKENS")

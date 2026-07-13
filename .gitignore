@@ -738,6 +738,4 @@ backups/
 *.dump
 *.sql.gz
 
-.agentrules
-.agents/
-skills-lock.json
+*.drawio.bkp

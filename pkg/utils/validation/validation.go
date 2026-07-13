@@ -109,10 +109,14 @@ func init() {
 		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 			if name == "" {
-				return lowerCamelCase(fld.Name)
+				name = lowerCamelCase(fld.Name)
 			}
 			if name == "-" {
 				return ""
+			}
+			label := fld.Tag.Get("label")
+			if label != "" {
+				return name + "|" + label
 			}
 			return name
 		})
@@ -142,14 +146,22 @@ func humanizeFieldName(name string) string {
 }
 
 func fieldJSONName(fe validator.FieldError) string {
-	if field := strings.TrimSpace(fe.Field()); field != "" {
+	field := strings.TrimSpace(fe.Field())
+	if field != "" {
+		if idx := strings.Index(field, "|"); idx != -1 {
+			return field[:idx]
+		}
 		return field
 	}
 	return lowerCamelCase(fe.StructField())
 }
 
 func fieldLabel(fe validator.FieldError) string {
-	if field := strings.TrimSpace(fe.Field()); field != "" {
+	field := strings.TrimSpace(fe.Field())
+	if field != "" {
+		if idx := strings.Index(field, "|"); idx != -1 {
+			return field[idx+1:]
+		}
 		return humanizeFieldName(field)
 	}
 	return humanizeFieldName(fe.StructField())

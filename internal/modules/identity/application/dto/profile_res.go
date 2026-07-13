@@ -1,31 +1,30 @@
 package dto
 
 import (
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type UserRes struct {
-	ID             uuid.UUID             `json:"id"`
-	Username       string                `json:"username"`
-	Email          string                `json:"email"`
-	RoleSlug       roleslug.RoleSlug     `json:"roleSlug"`
-	FirstName      string                `json:"firstName"`
-	LastName       string                `json:"lastName,omitempty"`
-	DateOfBirth    *string               `json:"dateOfBirth,omitempty"`
-	Address        string                `json:"address,omitempty"`
-	Gender         gender.Gender         `json:"gender"`
-	Status         userstatus.UserStatus `json:"status"`
-	CreatedAt      time.Time             `json:"createdAt"`
-	Subscription   UserSubscriptionRes   `json:"subscription"`
-	BodyProfile    *UserBodyProfileRes   `json:"bodyProfile,omitempty"`
-	AvatarUrl      *string               `json:"avatarUrl,omitempty"`
-	AvatarPublicID *string               `json:"avatarPublicId,omitempty"`
+	ID           uuid.UUID             `json:"id"`
+	Username     string                `json:"username"`
+	Email        string                `json:"email"`
+	RoleSlug     roleslug.RoleSlug     `json:"roleSlug"`
+	FirstName    string                `json:"firstName"`
+	LastName     string                `json:"lastName,omitempty"`
+	DateOfBirth  *string               `json:"dateOfBirth,omitempty"`
+	Address      string                `json:"address,omitempty"`
+	Gender       gender.Gender         `json:"gender"`
+	Status       userstatus.UserStatus `json:"status"`
+	CreatedAt    time.Time             `json:"createdAt"`
+	Subscription UserSubscriptionRes   `json:"subscription"`
+	BodyProfile  *UserBodyProfileRes   `json:"bodyProfile,omitempty"`
+	AvatarUrl    *string               `json:"avatarUrl,omitempty"`
 }
 
 type UpdateAvatarReq struct {

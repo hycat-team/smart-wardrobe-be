@@ -3,10 +3,10 @@ package persistence
 import (
 	"context"
 	"errors"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/depositstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 	"time"
 

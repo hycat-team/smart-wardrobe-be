@@ -3,9 +3,9 @@ package persistence
 import (
 	"context"
 	"errors"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
-	"smart-wardrobe-be/internal/shared/domain/constants/plankind"
-	"smart-wardrobe-be/internal/shared/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -17,9 +17,9 @@ type SubscriptionPlanRepository struct {
 }
 
 func NewSubscriptionPlanRepository(db *gorm.DB) repositories.ISubscriptionPlanRepository {
-	relations := []string{"AICostPolicy", "AICostPolicy.Operations"}
+	// relations := []string{}
 	return &SubscriptionPlanRepository{
-		GenericRepository: shared_repos.NewGenericRepository[entities.SubscriptionPlan, uuid.UUID](db, relations),
+		GenericRepository: shared_repos.NewGenericRepository[entities.SubscriptionPlan, uuid.UUID](db, nil),
 	}
 }
 

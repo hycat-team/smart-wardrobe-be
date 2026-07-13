@@ -1,24 +1,24 @@
-# Hướng Dẫn Kỹ Thuật: Hệ Thống AI Cost Control & Structured Output
+# Technical Guide: AI Cost Control & Structured Output System
 
-Tài liệu này dành cho lập trình viên (Developer Guide) để hiểu cấu trúc, luồng xử lý và cách thức hoạt động của hệ thống quản lý chi phí AI (AI Cost Control) và đảm bảo định dạng đầu ra (Structured Output) trong dự án.
-
----
-
-## 1. Kiến Trúc Tổng Quan (High-Level Architecture)
-
-Hệ thống quản lý chi phí AI được thiết kế độc lập với mã định danh gói dịch vụ (không hard-code `plan_slug`). Nó hoạt động dựa trên cơ chế **Policy Engine** động:
-
-1. **Dynamic Policy Resolution**: Khi user gửi request AI, hệ thống sẽ xác định **Policy Grant** (quyền hạn chính sách) đang hoạt động của user đó để áp dụng các ràng buộc.
-2. **Reservation-First**: Mọi request AI sử dụng mô hình trả phí phải được đặt trước ngân sách (Reserved Cost) dựa trên số lượng Token đầu vào thực tế và Token đầu ra tối đa trước khi gửi yêu cầu đến nhà cung cấp AI.
-3. **Graceful Fallback**: Khi vượt quá hạn mức tài chính hoặc xảy ra sự cố kỹ thuật từ mô hình trả phí, hệ thống sẽ tự động hạ cấp xuống mô hình miễn phí (Gemma/local) hoặc chuyển sang thuật toán xử lý cục bộ (local algorithms).
+This document is for developers (Developer Guide) to understand the structure, processing flow, and operational methods of the AI cost management system (AI Cost Control) and how it ensures output formatting (Structured Output) in the project.
 
 ---
 
-## 2. Cơ Sở Dữ Liệu & GORM Entities
+## 1. High-Level Architecture
 
-Hệ thống sử dụng 5 bảng chính để lưu trữ chính sách và lịch sử sử dụng. Tất cả các Entity được khai báo trong tệp tin `internal/shared/domain/entities/subscription_entities.go`:
+The AI cost management system is designed independently of subscription plan identifiers (no hard-coded `plan_slug`). It operates based on a dynamic **Policy Engine** mechanism:
 
-### Sơ đồ quan hệ thực thể (ERD)
+1. **Dynamic Policy Resolution**: When a user sends an AI request, the system will determine the active **Policy Grant** of that user to apply constraints.
+2. **Reservation-First**: Every AI request using a paid model must reserve a budget (Reserved Cost) based on the actual input Tokens and maximum output Tokens before sending the request to the AI provider.
+3. **Graceful Fallback**: When financial limits are exceeded or technical issues occur from the paid model, the system automatically downgrades to a free model (Gemma/local) or switches to local processing algorithms (local algorithms).
+
+---
+
+## 2. Database & GORM Entities
+
+The system uses 5 main tables to store policies and usage history. All Entities are declared in the `internal/shared/domain/entities/subscription_entities.go` file:
+
+### Entity Relationship Diagram (ERD)
 
 ```mermaid
 erDiagram
@@ -29,112 +29,112 @@ erDiagram
     ai_usage_events ||--|| ai_usage_period_ledgers : records
 ```
 
-### Các bảng dữ liệu chính:
+### Main data tables:
 
-- **`ai_cost_policies`**: Định nghĩa chính sách tổng thể (Mode: `STRICT` hoặc `OBSERVE_ONLY`, chu kỳ `period_days`, trần ngân sách `hard_cost_micro_vnd`, và các ngưỡng chuyển đổi).
-- **`ai_cost_policy_operations`**: Cấu hình giới hạn Token (Normal/Reduced), Route (Normal/Free), và giới hạn lượt thử trả phí (`max_paid_attempts_per_day`) cho từng tác vụ (`chat`, `outfit`, `summary`, `rewriter`).
-- **`user_ai_policy_grants`**: Bản ghi quyền hạn chính sách của người dùng, được sinh ra tự động từ chính sách của gói đăng ký hiện tại khi người dùng thực hiện cuộc gọi AI đầu tiên.
-- **`ai_usage_period_ledgers`**: Sổ cái theo dõi chi phí tích lũy trong chu kỳ hiện tại (Period Index) của người dùng. Chu kỳ được tính tự động (rolling index) dựa trên công thức:
+- **`ai_cost_policies`**: Defines overall policies (Mode: `STRICT` or `OBSERVE_ONLY`, `period_days`, budget ceiling `hard_cost_micro_vnd`, and transition thresholds).
+- **`ai_cost_policy_operations`**: Configures Token limits (Normal/Reduced), Routes (Normal/Free), and max paid attempts (`max_paid_attempts_per_day`) for each operation (`chat`, `outfit`, `summary`, `rewriter`).
+- **`user_ai_policy_grants`**: User policy grant records, automatically generated from the current subscription plan's policy when the user makes their first AI call.
+- **`ai_usage_period_ledgers`**: Ledger tracking cumulative costs in the user's current period (Period Index). The cycle is calculated automatically (rolling index) based on the formula:
   $$\text{Period Index} = \text{int}\left( \frac{\text{Now} - \text{Effective From}}{\text{Period Days}} \right)$$
-- **`ai_usage_events`**: Nhật ký chi tiết của từng request AI để phục vụ kiểm toán (Audit Trail) và theo dõi trạng thái vòng đời.
+- **`ai_usage_events`**: Detailed log of each AI request for auditing (Audit Trail) and lifecycle tracking.
 
 ---
 
-## 3. Quy Trình Đặt Trước & Cắt Giảm Chi Phí (Reservation Lifecycle)
+## 3. Reservation Lifecycle
 
-Vòng đời của một cuộc gọi AI trải qua các trạng thái nghiêm ngặt để đảm bảo không bị rò rỉ ngân sách:
+The lifecycle of an AI call goes through strict states to ensure no budget leakage:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> RESERVED: 1. Prepare (Dự chi trên token tối đa)
-    RESERVED --> IN_FLIGHT: 2. MarkInFlight (Gửi API Google)
-    IN_FLIGHT --> CONFIRMED: 3. Confirm (API thành công - Cập nhật chi phí thực tế)
-    IN_FLIGHT --> RELEASED: 3. Release (Lỗi hệ thống xác định - Giải phóng dự chi)
-    IN_FLIGHT --> UNKNOWN_USAGE: 3. MarkUnknown (Mất kết nối/Lỗi lạ - Treo chi phí)
-    UNKNOWN_USAGE --> EXPIRED_UNVERIFIED: 4. ExpireUnknown (Cronjob dọn dẹp sau 24h)
+    [*] --> RESERVED: 1. Prepare (Reserve cost based on max tokens)
+    RESERVED --> IN_FLIGHT: 2. MarkInFlight (Send to Google API)
+    IN_FLIGHT --> CONFIRMED: 3. Confirm (API success - Update actual cost)
+    IN_FLIGHT --> RELEASED: 3. Release (Deterministic system error - Release reservation)
+    IN_FLIGHT --> UNKNOWN_USAGE: 3. MarkUnknown (Disconnected/Unknown error - Hang cost)
+    UNKNOWN_USAGE --> EXPIRED_UNVERIFIED: 4. ExpireUnknown (Cronjob cleanup after 24h)
 ```
 
-### Chi tiết các bước trong code:
+### Code Step Details:
 
-#### Bước 1: Prepare & Reserve Cost (Dự chi)
+#### Step 1: Prepare & Reserve Cost
 
-Trước khi gọi API Gemini, `AIService` gọi `Prepare(userID, operation, promptTokens)`.
+Before calling the Gemini API, `AIService` calls `Prepare(userID, operation, promptTokens)`.
 
-- Hàm kiểm tra chính sách của user. Nếu là gói **STRICT** (Premium):
-    - Tính toán chi phí dự kiến lớn nhất bằng Decimal:
+- The function checks the user's policy. If it's a **STRICT** plan (Premium):
+    - Calculate the maximum expected cost using Decimal:
       $$\text{Reserved Cost} = (\text{prompt\_tokens} \times \text{input\_rate} \times \text{fx}) + (\text{max\_output\_tokens} \times \text{output\_rate} \times \text{fx})$$
-    - Bắt đầu một database transaction và thực hiện **Row-level Lock (`FOR UPDATE`)** trên bảng `ai_usage_period_ledgers` để tránh race condition khi có nhiều request đồng thời:
+    - Start a database transaction and perform a **Row-level Lock (`FOR UPDATE`)** on the `ai_usage_period_ledgers` table to avoid race conditions when there are multiple concurrent requests:
         ```go
         tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("grant_id=? AND period_index=?", grant.ID, idx).First(&ledger)
         ```
-    - So sánh tổng chi phí thực tế + chi phí dự chi hiện tại với ngưỡng chặn (Free Route Threshold). Nếu vượt quá, hệ thống từ chối cho gọi mô hình trả phí và định tuyến sang mô hình free.
-    - Nếu chi phí chạm ngưỡng thu hẹp (Compact Threshold), hệ thống sẽ trả về chỉ thị giảm kích thước token tối đa (`ReducedMaxInputTokens` / `ReducedMaxOutputTokens`).
-    - Lưu sự kiện với trạng thái `RESERVED`.
-- Nếu chính sách là **OBSERVE_ONLY** (Free):
-    - Đếm số lượng event trả phí thành công trong ngày của user (`logical_route = 'paid_flash_lite'`).
-    - Nếu số lượt nhỏ hơn `MaxPaidAttemptsPerDay` (mặc định là 5), cho phép gọi mô hình trả phí (để user trải nghiệm thử).
-    - Nếu lớn hơn hoặc bằng 5 (Paid Attempt Guard), từ chối và định tuyến sang mô hình Gemma miễn phí.
+    - Compare the total actual cost + current reserved cost against the block threshold (Free Route Threshold). If exceeded, the system refuses to call the paid model and routes to the free model.
+    - If the cost hits the compact threshold (Compact Threshold), the system returns a directive to reduce the maximum token size (`ReducedMaxInputTokens` / `ReducedMaxOutputTokens`).
+    - Save the event with the state `RESERVED`.
+- If the policy is **OBSERVE_ONLY** (Free):
+    - Count the number of successful paid events of the user today (`logical_route = 'paid_flash_lite'`).
+    - If the count is less than `MaxPaidAttemptsPerDay` (default is 5), allow calling the paid model (so the user can trial it).
+    - If greater than or equal to 5 (Paid Attempt Guard), reject and route to the free Gemma model.
 
-#### Bước 2: MarkInFlight (Đang thực hiện)
+#### Step 2: MarkInFlight
 
-Khi chuẩn bị gửi payload đi, trạng thái được cập nhật thành `IN_FLIGHT`.
+When preparing to send the payload, the state is updated to `IN_FLIGHT`.
 
-#### Bước 3: Confirm (Xác nhận) / Release (Giải phóng)
+#### Step 3: Confirm / Release
 
-- **Khi API thành công**: Trả về số token thực tế (`prompt_tokens`, `output_tokens`, `thinking_tokens`). Hệ thống tính toán chi phí thực tế, trừ đi phần dự phòng đã cộng trước đó trong ledger, cộng dồn chi phí thực tế vào ledger, và cập nhật trạng thái event thành `CONFIRMED`.
-- **Khi API lỗi xác định** (ví dụ: HTTP 400, 401, 403, 429): Hệ thống gọi `Release()`, đưa dự chi về 0 và chuyển trạng thái thành `RELEASED`.
-- **Khi gặp lỗi bất ngờ hoặc đứt kết nối**: Hệ thống chuyển thành `UNKNOWN_USAGE`. Sau 24h, Worker dọn dẹp định kỳ (`AIUsageReconciliationWorker`) sẽ quét qua cronjob để hoàn tác các dự chi chưa được xác thực này về trạng thái `EXPIRED_UNVERIFIED`.
+- **When API succeeds**: Returns the actual token count (`prompt_tokens`, `output_tokens`, `thinking_tokens`). The system calculates the actual cost, subtracts the previously added reserved part in the ledger, accumulates the actual cost into the ledger, and updates the event state to `CONFIRMED`.
+- **When deterministic API error occurs** (e.g., HTTP 400, 401, 403, 429): The system calls `Release()`, reverting the reserved cost to 0 and changes the state to `RELEASED`.
+- **When an unexpected error or disconnection occurs**: The system changes it to `UNKNOWN_USAGE`. After 24h, the periodic cleanup Worker (`AIUsageReconciliationWorker`) will scan via cronjob to revert these unverified reserved costs to the `EXPIRED_UNVERIFIED` state.
 
 ---
 
-## 4. Startup Validation (Bộ Kiểm Tra Khởi Động)
+## 4. Startup Validation
 
-Để tránh trường hợp cấu hình sai dẫn đến rò rỉ tiền tệ (ví dụ: đặt hạn mức tối đa quá lớn hoặc hard cost quá nhỏ), hệ thống thực hiện kiểm toán tĩnh thông qua `SubscriptionCatalogValidator` trong `internal/modules/subscription/application/validator/catalog_validator.go` ngay khi bật server.
+To avoid misconfigurations leading to currency leakage (e.g., setting the maximum limit too high or hard cost too low), the system performs static auditing via `SubscriptionCatalogValidator` in `internal/modules/subscription/application/validator/catalog_validator.go` immediately when the server boots.
 
-**Quy tắc kiểm tra STRICT Policy:**
-$$\text{Ngưỡng chuyển đổi Free (VND)} + (\text{Số ngày chu kỳ} \times \text{Số request Unknown tối đa/ngày} \times \text{Chi phí dự chi tối đa của 1 request}) \le \text{Hard Cost (VND)}$$
+**STRICT Policy check rule:**
+$$\text{Free Transition Threshold (VND)} + (\text{Period Days} \times \text{Max Unknown requests/day} \times \text{Max reserved cost of 1 request}) \le \text{Hard Cost (VND)}$$
 
-Nếu bất kỳ cấu hình gói cước nào vi phạm công thức trên (tức là trong trường hợp xấu nhất, số tiền treo lơ lửng cộng với ngưỡng chặn vượt quá Hard Cost thực tế), server sẽ **từ chối khởi động** và báo lỗi chi tiết để dev điều chỉnh cấu hình.
+If any subscription plan configuration violates the above formula (i.e., in the worst-case scenario, the hanging amount plus the block threshold exceeds the actual Hard Cost), the server will **refuse to start** and report a detailed error for devs to adjust the configuration.
 
 ---
 
 ## 5. Structured Output & Prompt Budgeting
 
-Để đảm bảo AI luôn phản hồi đúng cấu hình JSON và không bị tràn token, mã nguồn triển khai các kỹ thuật tối ưu hóa sau:
+To ensure AI always responds with the correct JSON structure and avoids token overflow, the source code implements the following optimization techniques:
 
-### 1. Prompt Budgeting (Cắt tỉa dữ liệu đầu vào)
+### 1. Prompt Budgeting (Trimming input data)
 
-Trong dịch vụ gợi ý trang phục ([prompt.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/prompt.go)):
+In the outfit recommendation service ([prompt.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/prompt.go)):
 
-- Khi bể ứng viên trang phục quá lớn, `BuildRecommendationPromptWithLimits` sẽ tự động tính toán chiều dài ký tự.
-- Nếu vượt quá giới hạn cấu hình (`recommendation_prompt_max_characters`), hệ thống sẽ cắt tỉa bớt mô tả chi tiết, nhãn tags thời trang phụ, và loại bỏ dần các candidate có điểm số thấp ở cuối danh sách cho đến khi prompt nằm trong giới hạn an toàn.
+- When the outfit candidate pool is too large, `BuildRecommendationPromptWithLimits` will automatically calculate the character length.
+- If it exceeds the configured limit (`recommendation_prompt_max_characters`), the system trims detailed descriptions, secondary fashion tags, and gradually removes low-scoring candidates at the bottom of the list until the prompt is within a safe limit.
 
-### 2. Ép định dạng JSON (Gemini Response Schema)
+### 2. Force JSON format (Gemini Response Schema)
 
-Các cấu hình cuộc gọi AI được đính kèm tham số cấu hình hệ thống của Gemini:
+AI call configurations are attached with Gemini system configuration parameters:
 
 - `ResponseMIMEType: "application/json"`
-- `ResponseSchema`: Định nghĩa cấu trúc JSON bắt buộc (ví dụ: `title`, `explanation`, `items` đối với Outfit). Điều này giúp Google Gemini trả về JSON chuẩn xác 100%.
+- `ResponseSchema`: Defines the required JSON structure (e.g., `title`, `explanation`, `items` for Outfit). This helps Google Gemini return a 100% standard JSON.
 
-### 3. Khử trùng đầu ra & Chống SQL Injection/Placeholder
+### 3. Output Sanitization & Anti-SQL Injection/Placeholder
 
-Tại [json.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/json.go):
+In [json.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/json.go):
 
-- **Làm sạch Markdown**: Loại bỏ các thẻ bao bọc `json ... `.
-- **Balanced Bracket Scanning**: Sử dụng hàm `ExtractFirstJSONObject` để đếm ngoặc nhọn `{}` lồng nhau. Kỹ thuật này giúp cắt chính xác chuỗi JSON đầu tiên ngay cả khi AI viết thêm lời dẫn ở trước hoặc sau JSON.
-- **Kiểm tra Placeholder**: Từ chối các phản hồi chứa giá trị giả lập như `"string"`, `"uuid"`, `"primary_id"`.
-- **Chống SQL Injection / Unsafe tsquery**: Quét các cụm từ nguy hiểm như `@@`, `to_tsquery`, `;`, `--`, `select` để loại bỏ nguy cơ tấn công gián tiếp.
+- **Clean Markdown**: Remove wrapping tags like `json ... `.
+- **Balanced Bracket Scanning**: Use the `ExtractFirstJSONObject` function to count nested curly braces `{}`. This technique helps accurately extract the first JSON string even if the AI writes extra introductory text before or after the JSON.
+- **Check Placeholders**: Reject responses containing placeholder values like `"string"`, `"uuid"`, `"primary_id"`.
+- **Anti-SQL Injection / Unsafe tsquery**: Scan dangerous phrases like `@@`, `to_tsquery`, `;`, `--`, `select` to eliminate the risk of indirect attacks.
 
 ---
 
-## 6. Cơ Chế Fallback Cục Bộ (Local Fallbacks)
+## 6. Local Fallbacks
 
-Khi AI bị lỗi phân tích cú pháp hoặc hết hạn ngạch gọi dịch vụ, hệ thống sẽ thực hiện fallback:
+When AI has parsing errors or runs out of service quotas, the system performs a fallback:
 
 1. **Outfit Recommendation Fallback**:
-    - Khi gọi Gemini bị lỗi, hệ thống kích hoạt [RunLocalHSLMatching](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/ranking/hsl.go).
-    - Thuật toán này sử dụng thư viện xử lý màu sắc HSL cục bộ, so khớp độ hài hòa của bánh xe màu sắc (Complementary, Analogous, Triadic, Monochromatic) để phối ra bộ đồ tối ưu nhất từ danh sách đồ hiện có của người dùng, trả về kết quả ngay lập tức với cờ `IsFallback = true`.
+    - When calling Gemini fails, the system triggers [RunLocalHSLMatching](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/ranking/hsl.go).
+    - This algorithm uses a local HSL color processing library, matching the harmony of the color wheel (Complementary, Analogous, Triadic, Monochromatic) to coordinate the most optimal outfit from the user's existing clothing list, returning results immediately with the flag `IsFallback = true`.
 2. **Chat History Summary Fallback**:
-    - Nếu việc nén đoạn hội thoại gặp lỗi, hệ thống sẽ bỏ qua và giữ nguyên nội dung tóm tắt cũ (`ContextSummary`), không chặn luồng chat của người dùng.
+    - If compressing the conversation encounters an error, the system skips and keeps the old summary (`ContextSummary`), without blocking the user's chat flow.
 3. **Query Rewriter Fallback**:
-    - Nếu LLM Rewriter gặp lỗi, hệ thống tự động sử dụng `LocalRecommendationQueryRewriter` để bóc tách từ khóa dựa trên tập luật Regex tĩnh và Taxonomy cục bộ để thực hiện tìm kiếm lai (hybrid search) trên Elasticsearch/Database.
+    - If the LLM Rewriter encounters an error, the system automatically uses `LocalRecommendationQueryRewriter` to extract keywords based on a static Regex rule set and local Taxonomy to perform a hybrid search on Elasticsearch/Database.

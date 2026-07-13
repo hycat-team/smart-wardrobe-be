@@ -42,6 +42,11 @@ rate_limit:
     token_limit: 100
     tokens_per_period: 20
     replenishment_seconds: 10
+claim_rate_limit:
+    ip_limit: 20
+    user_limit: 10
+    token_limit: 5
+    window_seconds: 600
 payos:
     return_url: http://localhost:3000
     cancel_url: http://localhost:3000
@@ -53,6 +58,7 @@ payos:
     reconciliation_max_age_hours: 168
 cloudinary:
     avatar_folder: smart_wardrobe/avatars
+    brands_folder: smart_wardrobe/brands
     item_folder: smart_wardrobe/items
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts
@@ -88,13 +94,6 @@ ai:
         local_safety_multiplier: 1.25
         count_tokens_threshold_ratio: 0.70
         count_tokens_timeout: 1500ms
-    pricing:
-        version: gemini-2.5-flash-lite-2026-06
-        currency: VND
-        usd_to_vnd: "27000"
-        paid:
-            input_usd_per_million_tokens: "0.10"
-            output_usd_per_million_tokens: "0.40"
 rabbitmq:
     host: localhost
     port: 5672
@@ -102,6 +101,10 @@ elasticsearch:
     addresses: [http://localhost:9200]
 community:
     max_personalized_window: 100
+loyalty:
+    expiry_worker_enabled: true
+    expiry_worker_interval: 1h
+    expiry_worker_batch_size: 100
 rag:
     recently_worn_penalty_days: 3
     long_unworn_bonus_days: 14
@@ -110,7 +113,7 @@ rag:
     recommendation_minimum_candidate_pool: 20
     recommendation_embedding_dimension: 768
     recommendation_embedding_timeout_seconds: 2
-    recommendation_llm_rewriter_enabled: true
+    recommendation_llm_rewriter_enabled: false
     recommendation_llm_rewriter_timeout_seconds: 2
     recommendation_rewriter_max_semantic_length: 512
     recommendation_rewriter_max_lexical_terms: 24

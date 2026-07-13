@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"github.com/google/uuid"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"time"
 )
 

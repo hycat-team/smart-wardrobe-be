@@ -85,7 +85,11 @@ func (s *CloudinaryService) DeleteImage(ctx context.Context, publicID string) er
 	formData.Set("api_key", s.cfg.Cloudinary.ApiKey)
 	formData.Set("signature", signature)
 
-	destroyURL := fmt.Sprintf("https://api.cloudinary.com/v1_1/%s/image/destroy", s.cfg.Cloudinary.CloudName)
+	apiURL := strings.TrimRight(s.cfg.Cloudinary.APIUrl, "/")
+	if apiURL == "" {
+		apiURL = "https://api.cloudinary.com"
+	}
+	destroyURL := fmt.Sprintf("%s/v1_1/%s/image/destroy", apiURL, s.cfg.Cloudinary.CloudName)
 	req, err := http.NewRequestWithContext(ctx, "POST", destroyURL, strings.NewReader(formData.Encode()))
 	if err != nil {
 		return fmt.Errorf("failed to create destroy request: %w", err)

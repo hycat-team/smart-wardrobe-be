@@ -1,81 +1,82 @@
 package mapper
 
 import (
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/shared/domain/entities"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
-func MapToWardrobeItemRes(item *entities.WardrobeItem) *dto.WardrobeItemRes {
-	if item == nil {
+func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
+	if fi == nil {
 		return nil
 	}
-
-	var categoryRes *dto.CategoryRes
-	if item.Category != nil {
-		categoryRes = &dto.CategoryRes{
-			ID:   item.Category.ID,
-			Name: item.Category.Name,
-			Slug: item.Category.Slug,
-		}
-	}
-
-	return &dto.WardrobeItemRes{
-		ID:                    item.ID,
-		UserID:                item.UserID,
-		Category:              categoryRes,
-		ImageUrl:              item.ImageUrl,
-		ImagePublicID:         item.ImagePublicID,
-		Color:                 stringutils.GetString(item.Color),
-		ColorHex:              stringutils.GetString(item.ColorHex),
-		ColorHue:              item.ColorHue,
-		ColorSaturation:       item.ColorSaturation,
-		ColorLightness:        item.ColorLightness,
-		Style:                 stringutils.GetString(item.Style),
-		Material:              stringutils.GetString(item.Material),
-		Pattern:               stringutils.GetString(item.Pattern),
-		Fit:                   stringutils.GetString(item.Fit),
-		Seasonality:           stringutils.GetString(item.Seasonality),
-		Price:                 item.Price,
-		Status:                item.Status,
-		ReviewReason:          item.ReviewReason,
-		ProcessingErrorReason: item.ProcessingErrorReason,
-		CreatedAt:             item.CreatedAt,
-		// Description:   stringutils.GetString(item.Description),
+	return &dto.FashionItemRes{
+		ID:              fi.ID,
+		CategoryID:      fi.CategoryID,
+		CategoryName:    fi.CategoryName,
+		CategorySlug:    fi.CategorySlug,
+		ImageUrl:        fi.ImageUrl,
+		Color:           fi.Color,
+		ColorHex:        fi.ColorHex,
+		ColorHue:        fi.ColorHue,
+		ColorSaturation: fi.ColorSaturation,
+		ColorLightness:  fi.ColorLightness,
+		Style:           fi.Style,
+		Material:        fi.Material,
+		Pattern:         fi.Pattern,
+		Fit:             fi.Fit,
+		Seasonality:     fi.Seasonality,
+		Description:     fi.Description,
+		CreatedAt:       fi.CreatedAt,
+		UpdatedAt:       fi.UpdatedAt,
 	}
 }
 
-func MapToSearchWardrobeItemRes(item *entities.WardrobeItem) *dto.SearchWardrobeItemRes {
+func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemRes) *dto.WardrobeItemRes {
 	if item == nil {
 		return nil
 	}
 
-	var categoryRes *dto.CategoryRes
-	if item.Category != nil {
-		categoryRes = &dto.CategoryRes{
-			ID:   item.Category.ID,
-			Name: item.Category.Name,
-			Slug: item.Category.Slug,
+	res := &dto.WardrobeItemRes{
+		ID:         item.ID,
+		UserID:     item.UserID,
+		Price:      item.Price,
+		Status:     item.Status,
+		CreatedAt:  item.CreatedAt,
+		LastUsedAt: item.LastUsedAt,
+		IsDeleted:  item.IsDeleted,
+		TaskID:     item.TaskID,
+	}
+	if fi != nil {
+		res.FashionItem = MapToFashionItemRes(fi)
+		if fi.CategoryName != nil {
+			res.Category = &dto.CategoryRes{
+				ID:   *fi.CategoryID,
+				Name: *fi.CategoryName,
+			}
 		}
 	}
+	return res
+}
 
-	return &dto.SearchWardrobeItemRes{
-		ID:              item.ID,
-		Category:        categoryRes,
-		ImageUrl:        item.ImageUrl,
-		ImagePublicID:   item.ImagePublicID,
-		Color:           stringutils.GetString(item.Color),
-		ColorHex:        stringutils.GetString(item.ColorHex),
-		ColorHue:        item.ColorHue,
-		ColorSaturation: item.ColorSaturation,
-		ColorLightness:  item.ColorLightness,
-		Style:           stringutils.GetString(item.Style),
-		Material:        stringutils.GetString(item.Material),
-		Pattern:         stringutils.GetString(item.Pattern),
-		Fit:             stringutils.GetString(item.Fit),
-		Seasonality:     stringutils.GetString(item.Seasonality),
-		Price:           item.Price,
-		IsSystem:        item.ItemType == 1,
-		// Description:   stringutils.GetString(item.Description),
+func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemRes) *dto.SearchWardrobeItemRes {
+	if item == nil {
+		return nil
 	}
+
+	res := &dto.SearchWardrobeItemRes{
+		ID:       item.ID,
+		Price:    item.Price,
+		IsSystem: item.ItemType == 1,
+	}
+	if fi != nil {
+		res.FashionItem = MapToFashionItemRes(fi)
+		if fi.CategoryName != nil {
+			res.Category = &dto.CategoryRes{
+				ID:   *fi.CategoryID,
+				Name: *fi.CategoryName,
+			}
+		}
+	}
+	return res
 }

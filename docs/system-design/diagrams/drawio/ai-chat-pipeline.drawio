@@ -1,0 +1,193 @@
+<mxfile host="Electron">
+  <diagram name="AI Chat Pipeline" id="C7VqvFGk0TUc0hINF0cG">
+    <mxGraphModel dx="1097" dy="544" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="stage1" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 1: Session Loading &amp; Quota Check" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="user_query" parent="stage1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="User Message&#xa;(Stream Start Request)" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="session_loader" parent="stage1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Load Session Context&#xa;&amp;amp; 5 Recent Messages" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="quota_check" parent="stage1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Check Daily Quota&#xa;(Limit vs Usage)" vertex="1">
+          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage2" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 2: User Message Persistence" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="persist_user_msg" parent="stage2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Tx: Save User Message&#xa;&amp; Update Session Time" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="db_store_user" parent="stage2" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Messages Table" vertex="1">
+          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage3" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 3: Context Retrieval &amp; Subscription Limits" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_limits" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Fetch Subscription Limits&#xa;(MaxWardrobeItems)" vertex="1">
+          <mxGeometry height="60" width="160" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="wardrobe_items" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Retrieve Wardrobe Items&#xa;(Filter Active Limit)" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="brand_items" parent="stage3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Retrieve Eligible&#xa;Brand Items for Styling" vertex="1">
+          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage4" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 4: Prompt Construction" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="prompt_builder" parent="stage4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="Build System Prompt&#xa;(Inject Wardrobe, Brand,&#xa;History &amp;amp; Summary)" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage5" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 5: Stream Generation" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="gemini_stream" parent="stage5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" value="Gemini Stream API&#xa;(GenerateChatTextStream)" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage6" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 6: Output Filtering &amp; Client Streaming" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="think_filter" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Filter Think Tags&#xa;(Strip internal thoughts)" vertex="1">
+          <mxGeometry height="60" width="160" x="170" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="client_stream" parent="stage6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Stream Chunks&#xa;to Client" vertex="1">
+          <mxGeometry height="60" width="160" x="390" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage7" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 7: Response Persistence &amp; Quota Consumption" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="commit_callback" parent="stage7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Tx: Save AI Reply &amp;amp; Deduct Daily Quota" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="db_store_ai" parent="stage7" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Update Ledgers / Messages" vertex="1">
+          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="stage8" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Stage 8: Asynchronous Context Compression (Background)" vertex="1">
+          <mxGeometry height="120" width="720" x="40" y="1090" as="geometry" />
+        </mxCell>
+        <mxCell id="trigger_compress" parent="stage8" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="Unsummarized&#xa;Msg &gt;= 15?" vertex="1">
+          <mxGeometry height="80" width="120" x="80" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_summarizer" parent="stage8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" value="AI Summary Generation&#xa;(GenerateChatText)" vertex="1">
+          <mxGeometry height="60" width="160" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="db_compress" parent="stage8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="Tx: Save Summary &amp;amp; Mark Messages Summarized" vertex="1">
+          <mxGeometry height="60" width="160" x="500" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" parent="1" style="swimlane;startSize=25;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;align=left;pointerEvents=0;" value="Legend" vertex="1">
+          <mxGeometry height="80" width="720" x="40" y="1240" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="legend" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="10" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Processing Step" vertex="1">
+          <mxGeometry height="20" width="95" x="45" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="legend" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="150" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Data Input/Output" vertex="1">
+          <mxGeometry height="20" width="95" x="185" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="legend" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="290" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Database / Tx Save" vertex="1">
+          <mxGeometry height="20" width="105" x="325" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="legend" style="rounded=0;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="AI Generation" vertex="1">
+          <mxGeometry height="20" width="95" x="475" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="legend" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="16" width="30" x="580" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5_label" parent="legend" style="text;html=1;align=left;verticalAlign=middle;" value="Condition/Trigger" vertex="1">
+          <mxGeometry height="20" width="95" x="615" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_user_session" edge="1" parent="1" source="user_query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="session_loader" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_session_quota" edge="1" parent="1" source="session_loader" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="quota_check" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_quota_persist" edge="1" parent="1" source="quota_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="persist_user_msg" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="160" />
+              <mxPoint x="360" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_persist_db" edge="1" parent="1" source="persist_user_msg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_store_user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_persist_sub" edge="1" parent="1" source="persist_user_msg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="sub_limits" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_sub_wardrobe" edge="1" parent="1" source="sub_limits" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="wardrobe_items" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_wardrobe_brand" edge="1" parent="1" source="wardrobe_items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="brand_items" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_brand_prompt" edge="1" parent="1" source="brand_items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="prompt_builder" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="450" />
+              <mxPoint x="400" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_prompt_gemini" edge="1" parent="1" source="prompt_builder" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="gemini_stream" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_gemini_filter" edge="1" parent="1" source="gemini_stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="think_filter" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="710" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_filter_client" edge="1" parent="1" source="think_filter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="client_stream" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_client_commit" edge="1" parent="1" source="client_stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="commit_callback" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="900" />
+              <mxPoint x="400" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_commit_db" edge="1" parent="1" source="commit_callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_store_ai" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_commit_compress" edge="1" parent="1" source="commit_callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;" target="trigger_compress" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="1010" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_trigger_sum" edge="1" parent="1" source="trigger_compress" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="ai_summarizer" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_sum_db" edge="1" parent="1" source="ai_summarizer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;" target="db_compress" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

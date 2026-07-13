@@ -13,10 +13,10 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
+	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
-	"smart-wardrobe-be/internal/shared/domain/constants/userstatus"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/pkg/utils/jwtutils"
 

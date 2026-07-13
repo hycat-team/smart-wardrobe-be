@@ -2,13 +2,13 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
-	subscription_contract "smart-wardrobe-be/internal/modules/subscription/contract"
-	"smart-wardrobe-be/internal/shared/domain/constants/gender"
-	"smart-wardrobe-be/internal/shared/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/entities"
+	subscription_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 )
 
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
-func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscriptionOverviewDTO) *dto.UserRes {
+func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionOverviewDTO) *dto.UserRes {
 	if user == nil {
 		return nil
 	}
@@ -36,19 +36,18 @@ func MapToUserRes(user *entities.User, sub *subscription_contract.UserSubscripti
 	}
 
 	res := &dto.UserRes{
-		ID:             user.ID,
-		Username:       user.Username,
-		Email:          user.Email,
-		RoleSlug:       user.RoleSlug,
-		FirstName:      firstNameStr,
-		LastName:       lastNameStr,
-		DateOfBirth:    dobStr,
-		Address:        addressStr,
-		Gender:         genderVal,
-		Status:         user.Status,
-		CreatedAt:      user.CreatedAt,
-		AvatarUrl:      user.AvatarUrl,
-		AvatarPublicID: user.AvatarPublicID,
+		ID:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		RoleSlug:    user.RoleSlug,
+		FirstName:   firstNameStr,
+		LastName:    lastNameStr,
+		DateOfBirth: dobStr,
+		Address:     addressStr,
+		Gender:      genderVal,
+		Status:      user.Status,
+		CreatedAt:   user.CreatedAt,
+		AvatarUrl:   user.AvatarUrl,
 	}
 
 	if sub != nil {

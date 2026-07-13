@@ -1,6 +1,6 @@
 package dto
 
-import "smart-wardrobe-be/internal/shared/domain/constants/gender"
+import "smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 
 type RegisterReq struct {
 	Username        string         `json:"username" binding:"required,username" label:"tên đăng nhập"`
