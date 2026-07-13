@@ -14,7 +14,7 @@ docs/
 ├── product/             # Danh sách tính năng cốt lõi (mvp-scope) và lộ trình phát triển (roadmap).
 ├── system-design/       # Kiến trúc hệ thống (architecture), sơ đồ sequence UML và AI Pipeline.
 ├── api/                 # Quy chuẩn thiết kế tài liệu API.
-├── development/         # Hướng dẫn thiết lập local, quy chuẩn viết code, testing và migrations (local-setup).
+├── development/         # Thiết lập local (local-setup) và quy trình làm việc với Agent & Spec-kit (agent-workflow).
 ├── decisions/           # Hồ sơ quyết định kiến trúc (ADR).
 ├── deployment/          # Docker, CI/CD, deploy VPS và giám sát hệ thống.
 └── archive/             # Lưu trữ các tài liệu cũ và lịch sử refactor/rebuild.

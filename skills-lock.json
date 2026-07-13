@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "fullstack-dev": {
+      "source": "MiniMax-AI/skills",
+      "sourceType": "github",
+      "skillPath": "skills/fullstack-dev/SKILL.md",
+      "computedHash": "e901a7302603fbc1c3f2a520feaaf8fead3c25dba8b77411f2f9593353b89959"
+    },
+    "html-diagram": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html-diagram/SKILL.md",
+      "computedHash": "9c8d93eff59806658246458ae2a79336cc00a3b6c0fbb6c47ea09ed348bfeb8a"
+    }
+  }
+}
