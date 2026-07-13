@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )
@@ -117,7 +118,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 		}
 		descStr := ""
 		if fashion != nil && fashion.Description != nil {
-			descStr = truncateRunes(*fashion.Description, limits.DescriptionMaxCharacters)
+			descStr = stringutils.TruncateRunes(*fashion.Description, limits.DescriptionMaxCharacters)
 		}
 		tags := candidate.Tags
 		if limits.TagsLimit > 0 && len(tags) > limits.TagsLimit {
@@ -141,13 +142,3 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	return builder.String()
 }
 
-func truncateRunes(value string, limit int) string {
-	if limit <= 0 {
-		return value
-	}
-	runes := []rune(value)
-	if len(runes) <= limit {
-		return value
-	}
-	return string(runes[:limit])
-}

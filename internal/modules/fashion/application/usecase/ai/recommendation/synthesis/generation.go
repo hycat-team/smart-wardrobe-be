@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	"smart-wardrobe-be/pkg/utils/stringutils"
 )
 
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.
@@ -151,7 +152,7 @@ func NewFallbackTraceError(kind string, cause error, prompt, response string) er
 		kind:            kind,
 		cause:           cause,
 		prompt:          prompt,
-		responsePreview: truncateLogText(response, 600),
+		responsePreview: stringutils.TruncateLogText(response, 600),
 	}
 }
 
@@ -195,13 +196,4 @@ func ClassifyFallbackTrace(err error) (kind string, providerHint string, promptL
 	}
 
 	return kind, providerHint, promptLen, responsePreview
-}
-
-// truncateLogText cắt ngắn chuỗi nhật ký văn bản theo giới hạn ký tự tối đa để tránh ghi đè bộ nhớ hoặc file log quá lớn.
-func truncateLogText(value string, limit int) string {
-	value = strings.TrimSpace(value)
-	if limit <= 0 || len(value) <= limit {
-		return value
-	}
-	return value[:limit] + "...(truncated)"
 }

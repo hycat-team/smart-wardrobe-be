@@ -51,7 +51,7 @@ func RankCandidates(
 		)
 		score += RetrievalScoreBonus(candidate)
 		tags = append(tags,
-			"candidate-source:"+candidate.Source,
+			"candidate-source:"+string(candidate.Source),
 			fmt.Sprintf("retrieval-rank:%d", candidate.RetrievalRank),
 			fmt.Sprintf("retrieval-score:%.3f", candidate.RetrievalScore),
 		)
@@ -66,8 +66,6 @@ func RankCandidates(
 			BrandItem:     candidate.BrandItem,
 		}
 	}
-	stats := RankedCandidateScoreStats(scored)
-
 	sort.Slice(scored, func(i, j int) bool {
 		return RankedCandidateLess(scored[i], scored[j])
 	})
@@ -77,6 +75,7 @@ func RankCandidates(
 		limit = 15
 	}
 
+	stats := RankedCandidateScoreStats(scored)
 	diversified := DiversifyRankedCandidates(scored, limit, fashionItemMap)
 	stats.DiversifiedCount = len(diversified)
 	final := make([]types.CandidateForPrompt, 0, len(diversified))
@@ -106,13 +105,13 @@ func RetrievalScoreBonus(candidate types.CandidateForRanking) float64 {
 }
 
 // FallbackSourcePenalty áp dụng điểm phạt xếp hạng đối với các ứng viên từ nguồn dự phòng, tùy thuộc vào mức độ nới lỏng của nguồn đó (General bị phạt nặng nhất).
-func FallbackSourcePenalty(source string) float64 {
+func FallbackSourcePenalty(source types.CandidateSource) float64 {
 	switch source {
-	case candidateSourceFallback, candidateSourceStrictFallback:
+	case types.CandidateSourceFallback, types.CandidateSourceStrictFallback:
 		return 0.1
-	case candidateSourceRelaxedFallback:
+	case types.CandidateSourceRelaxedFallback:
 		return 0.2
-	case candidateSourceGeneralFallback:
+	case types.CandidateSourceGeneralFallback:
 		return 0.35
 	default:
 		return 0

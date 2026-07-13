@@ -88,18 +88,3 @@ func NormalizeTermSet(terms []string) []string {
 	return normalized
 }
 
-// AppendWithoutDuplicate thêm một chuỗi vào lát cắt chuỗi hiện tại nếu nó chưa tồn tại (không phân biệt chữ hoa chữ thường) và sắp xếp lại lát cắt.
-func AppendWithoutDuplicate(values []string, value string) []string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return values
-	}
-	for _, existing := range values {
-		if strings.EqualFold(existing, value) {
-			return values
-		}
-	}
-	values = append(values, value)
-	sort.Strings(values)
-	return values
-}

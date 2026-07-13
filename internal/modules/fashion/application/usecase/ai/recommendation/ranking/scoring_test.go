@@ -33,8 +33,8 @@ func TestEnsureMinimumCandidatePoolTracksSource(t *testing.T) {
 		t.Fatalf("expected two fallback candidates, got %d", fallbackCounts.Total())
 	}
 	if rankingCandidates[0].Source != "lexical" ||
-		rankingCandidates[1].Source != candidateSourceStrictFallback ||
-		rankingCandidates[2].Source != candidateSourceStrictFallback {
+		rankingCandidates[1].Source != types.CandidateSourceStrictFallback ||
+		rankingCandidates[2].Source != types.CandidateSourceStrictFallback {
 		t.Fatalf("unexpected candidate sources: %+v", rankingCandidates)
 	}
 	if rankingCandidates[0].RetrievalScore != 0.8 || rankingCandidates[0].RetrievalRank != 1 {
@@ -50,7 +50,7 @@ func TestRankCandidatesAddsSourceTags(t *testing.T) {
 	candidates := []types.CandidateForRanking{
 		{
 			Item:   &wardrobeDto.WardrobeItemRes{ID: itemID},
-			Source: candidateSourceStrictFallback,
+			Source: types.CandidateSourceStrictFallback,
 		},
 	}
 
@@ -161,19 +161,19 @@ func TestEnsureMinimumCandidatePoolUsesRelaxedFallbackWhenStrictLexicalDoesNotMa
 	if fallbackCounts.Strict != 0 || fallbackCounts.Relaxed != 1 {
 		t.Fatalf("expected relaxed fallback only, got %+v", fallbackCounts)
 	}
-	if rankingCandidates[0].Source != candidateSourceRelaxedFallback {
+	if rankingCandidates[0].Source != types.CandidateSourceRelaxedFallback {
 		t.Fatalf("expected relaxed fallback source, got %q", rankingCandidates[0].Source)
 	}
 }
 
 func TestFallbackSourcePenaltyIsFixedBySource(t *testing.T) {
-	if FallbackSourcePenalty(candidateSourceStrictFallback) <= 0 {
+	if FallbackSourcePenalty(types.CandidateSourceStrictFallback) <= 0 {
 		t.Fatal("expected strict fallback penalty")
 	}
-	if FallbackSourcePenalty(candidateSourceRelaxedFallback) <= FallbackSourcePenalty(candidateSourceStrictFallback) {
+	if FallbackSourcePenalty(types.CandidateSourceRelaxedFallback) <= FallbackSourcePenalty(types.CandidateSourceStrictFallback) {
 		t.Fatal("expected relaxed fallback penalty to exceed strict fallback")
 	}
-	if FallbackSourcePenalty(candidateSourceGeneralFallback) <= FallbackSourcePenalty(candidateSourceRelaxedFallback) {
+	if FallbackSourcePenalty(types.CandidateSourceGeneralFallback) <= FallbackSourcePenalty(types.CandidateSourceRelaxedFallback) {
 		t.Fatal("expected general fallback penalty to exceed relaxed fallback")
 	}
 	if FallbackSourcePenalty("lexical") != 0 {

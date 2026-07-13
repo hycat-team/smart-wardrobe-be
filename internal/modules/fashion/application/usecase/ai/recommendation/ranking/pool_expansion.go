@@ -74,9 +74,9 @@ func EnsureMinimumCandidatePool(
 	}
 
 	counts := types.FallbackCandidateCounts{}
-	counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceStrictFallback, minimumPool, fashionItemMap)
-	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceRelaxedFallback, minimumPool, fashionItemMap)
-	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, candidateSourceGeneralFallback, minimumPool, fashionItemMap)
+	counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceStrictFallback, minimumPool, fashionItemMap)
+	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceRelaxedFallback, minimumPool, fashionItemMap)
+	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceGeneralFallback, minimumPool, fashionItemMap)
 
 	return rankingCandidates, counts
 }
@@ -87,7 +87,7 @@ func appendFallbackCandidates(
 	activeItems []*wardrobeDto.WardrobeItemRes,
 	taken map[uuid.UUID]bool,
 	retrievalQuery types.RecommendationRetrievalQuery,
-	source string,
+	source types.CandidateSource,
 	minimumPool int,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) int {
@@ -108,7 +108,7 @@ func appendFallbackCandidates(
 			Source:          source,
 			RetrievalScore:  0,
 			RetrievalRank:   len(*rankingCandidates) + 1,
-			RetrievalSource: source,
+			RetrievalSource: string(source),
 		})
 		taken[item.ID] = true
 		added++
@@ -120,7 +120,7 @@ func appendFallbackCandidates(
 func FallbackCandidateEligible(
 	item *wardrobeDto.WardrobeItemRes,
 	retrievalQuery types.RecommendationRetrievalQuery,
-	source string,
+	source types.CandidateSource,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) bool {
 	if !MatchesFallbackHardFilters(item, retrievalQuery.HardFilters, fashionItemMap) {
@@ -129,7 +129,7 @@ func FallbackCandidateEligible(
 	if MatchesFallbackExcludedTerms(item, retrievalQuery.ExcludedTerms, fashionItemMap) {
 		return false
 	}
-	if source == candidateSourceStrictFallback && len(retrievalQuery.LexicalTerms) > 0 {
+	if source == types.CandidateSourceStrictFallback && len(retrievalQuery.LexicalTerms) > 0 {
 		return MatchesFallbackLexicalTerms(item, retrievalQuery.LexicalTerms, fashionItemMap)
 	}
 	return true

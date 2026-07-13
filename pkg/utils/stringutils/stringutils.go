@@ -136,3 +136,24 @@ func ToNormalizedSet(values []string) map[string]bool {
 	}
 	return set
 }
+
+// TruncateLogText cắt ngắn chuỗi nhật ký văn bản theo giới hạn ký tự tối đa để tránh ghi đè bộ nhớ hoặc file log quá lớn.
+func TruncateLogText(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	return value[:limit] + "...(truncated)"
+}
+
+// TruncateRunes cắt ngắn chuỗi theo giới hạn số lượng rune.
+func TruncateRunes(value string, limit int) string {
+	if limit <= 0 {
+		return value
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit])
+}

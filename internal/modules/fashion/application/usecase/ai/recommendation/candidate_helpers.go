@@ -12,7 +12,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -141,7 +140,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					LexicalScore:    0.95,
 					RetrievalScore:  0.95,
 					RetrievalRank:   brandCandidatesCount + 1,
-					RetrievalSource: types.CandidateSourceRetrieval,
+					RetrievalSource: string(types.CandidateSourceRetrieval),
 					ItemContext:     outfititemcontext.BrandItem,
 					BrandItem:       brandItem,
 				})
@@ -181,7 +180,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 			}
 			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 				Item:            dtoItem,
-				Source:          candidate.RetrievalSource,
+				Source:          types.CandidateSource(candidate.RetrievalSource),
 				VectorScore:     candidate.VectorScore,
 				LexicalScore:    candidate.LexicalScore,
 				RetrievalScore:  candidate.RetrievalScore,
@@ -434,66 +433,3 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 	return query
 }
 
-// retrievalSourceCount đếm số lượng ứng viên trong danh sách được trả về từ một nguồn tìm kiếm cụ thể (vector hoặc lexical).
-//
-// Đầu vào mẫu:
-//
-//	candidates: []repositories.HybridCandidate{{RetrievalSource: "vector"}, {RetrievalSource: "lexical"}}
-//	source: "vector"
-//
-// Đầu ra mẫu:
-//
-//	1
-func retrievalSourceCount(candidates []repositories.HybridCandidate, source string) int {
-	count := 0
-	for _, candidate := range candidates {
-		if candidate.RetrievalSource == source {
-			count++
-		}
-	}
-	return count
-}
-
-// recommendationLexicalQueryMode xác định chế độ tìm kiếm được áp dụng dựa trên sự hiện diện của vector truy vấn và từ khóa lexical.
-//
-// Đầu vào mẫu:
-//
-//	vector: entities.Vector{0.1, 0.2}
-//	lexicalTerms: []string{"ao", "quan"}
-//
-// Đầu ra mẫu:
-//
-//	"hybrid" (nếu có cả hai), "vector" (chỉ có vector), "lexical" (chỉ có từ khóa), hoặc "fallback" (không có cả hai).
-func recommendationLexicalQueryMode(vector entities.Vector, lexicalTerms []string) string {
-	hasVector := len(vector) > 0
-	hasLexical := len(lexicalTerms) > 0
-	switch {
-	case hasVector && hasLexical:
-		return "hybrid"
-	case hasVector:
-		return "vector"
-	case hasLexical:
-		return "lexical"
-	default:
-		return "fallback"
-	}
-}
-
-// missingEmbeddingCount thống kê số lượng món đồ trong danh sách chưa được tạo vector nhúng (embedding).
-//
-// Đầu vào mẫu:
-//
-//	items: []*wardrobe_entities.WardrobeItem{{Embedding: []float32{...}}, {Embedding: nil}}
-//
-// Đầu ra mẫu:
-//
-//	1
-func missingEmbeddingCount(items []*wardrobeDto.WardrobeItemRes) int {
-	count := 0
-	for _, item := range items {
-		if item == nil {
-			count++
-		}
-	}
-	return count
-}

@@ -137,15 +137,6 @@ func NormalizeRetrievalTerms(terms []types.RetrievalTerm) []types.RetrievalTerm 
 	return normalized
 }
 
-// ExpandRecommendationLexicalTerms mở rộng ý định đã phân tích thành một tập các từ khóa dạng lát cắt chuỗi đã chuẩn hóa.
-func ExpandRecommendationLexicalTerms(intent dto.ParsedIntent) []string {
-	terms := ExpandRecommendationLexicalRetrievalTerms(intent)
-	values := make([]string, 0, len(terms))
-	for _, term := range terms {
-		values = append(values, term.Value)
-	}
-	return NormalizeTermSet(values)
-}
 
 // ExpandRecommendationLexicalRetrievalTerms thực hiện mở rộng phân loại (taxonomy expansion) cho tất cả các khía cạnh ý định (như dịp, phong cách, thời tiết, mùa, tông màu) và trả về danh sách [RetrievalTerm].
 func ExpandRecommendationLexicalRetrievalTerms(intent dto.ParsedIntent) []types.RetrievalTerm {
@@ -183,7 +174,7 @@ func ExtractAvoidTerms(negativeConstraints []string) []string {
 }
 
 // retrievalTermSourcePriority định nghĩa mức độ ưu tiên của nguồn từ khóa (Dictionary là cao nhất = 0, Taxonomy là thấp nhất = 2).
-func retrievalTermSourcePriority(source string) int {
+func retrievalTermSourcePriority(source types.RetrievalTermSource) int {
 	switch source {
 	case types.RetrievalTermSourceDictionary:
 		return 0

@@ -1,34 +1,10 @@
-// Package types defines shared data structures, interfaces, and constants for the outfit recommendation workflow.
 package types
 
 import (
-	"context"
-
 	brandDto "smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
-)
-
-const (
-	// CandidateSourceRetrieval chỉ ra ứng viên được lấy thông qua tìm kiếm hỗn hợp (hybrid search).
-	CandidateSourceRetrieval = repositories.HybridCandidateSourceHybrid
-	// CandidateSourceFallback chỉ ra ứng viên được lấy thông qua tìm kiếm dự phòng (fallback search).
-	CandidateSourceFallback = repositories.HybridCandidateSourceFallback
-	// CandidateSourceStrictFallback đại diện cho mức độ lọc dự phòng nghiêm ngặt (strict fallback).
-	CandidateSourceStrictFallback = "strict-fallback"
-	// CandidateSourceRelaxedFallback đại diện cho mức độ lọc dự phòng nới lỏng vừa phải (relaxed fallback).
-	CandidateSourceRelaxedFallback = "relaxed-fallback"
-	// CandidateSourceGeneralFallback đại diện cho mức độ lọc dự phòng tổng quan/rộng nhất (general fallback).
-	CandidateSourceGeneralFallback = "general-fallback"
-
-	// RetrievalTermSourceDictionary chỉ ra từ khóa truy vấn được trích xuất từ các từ điển cục bộ.
-	RetrievalTermSourceDictionary = "local-dictionary"
-	// RetrievalTermSourceRaw chỉ ra từ khóa truy vấn thô được trích xuất trực tiếp từ câu truy vấn của người dùng.
-	RetrievalTermSourceRaw = "raw"
-	// RetrievalTermSourceTaxonomy chỉ ra từ khóa truy vấn được mở rộng từ hệ thống phân loại thời trang (taxonomy).
-	RetrievalTermSourceTaxonomy = "taxonomy"
 )
 
 // CandidateForPrompt đại diện cho một món đồ ứng viên đã chuẩn bị đầy đủ thông tin (kèm tag thời trang) để đưa vào prompt gửi cho LLM.
@@ -50,12 +26,12 @@ type RerankStats struct {
 // CandidateForRanking đại diện cho một món đồ ứng viên đang được xử lý trong pipeline chấm điểm và xếp hạng.
 type CandidateForRanking struct {
 	Item            *wardrobeDto.WardrobeItemRes
-	Source          string
+	Source          CandidateSource
 	VectorScore     float64
 	LexicalScore    float64
 	RetrievalScore  float64
 	RetrievalRank   int
-	RetrievalSource string
+	RetrievalSource string // Đây là nguồn từ DB (vector, lexical, hybrid), giữ kiểu string để tương thích với repositories.HybridCandidate.RetrievalSource
 	ItemContext     outfititemcontext.OutfitItemContext
 	BrandItem       *brandDto.BrandItemRes
 }
@@ -65,7 +41,7 @@ type RankedCandidate struct {
 	Item          *wardrobeDto.WardrobeItemRes
 	Score         float64
 	Tags          []string
-	Source        string
+	Source        CandidateSource
 	RetrievalRank int
 	ItemContext   outfititemcontext.OutfitItemContext
 	BrandItem     *brandDto.BrandItemRes
@@ -95,7 +71,7 @@ type RecommendationRetrievalQuery struct {
 // RetrievalTerm đại diện cho một từ khóa riêng lẻ dùng cho việc so khớp tìm kiếm văn bản (lexical search).
 type RetrievalTerm struct {
 	Value        string
-	Source       string
+	Source       RetrievalTermSource
 	TargetFields []string
 	SourceReason string
 }
@@ -107,13 +83,7 @@ type KeywordMatch struct {
 	Keyword  string
 	Start    int
 	End      int
-	Source   string
-}
-
-// RecommendationQueryRewriter định nghĩa giao diện (contract) cho các bộ viết lại truy vấn (query rewriter) trong kiến trúc RAG.
-type RecommendationQueryRewriter interface {
-	// Rewrite viết lại hoặc làm phong phú thêm ý định của người dùng thành cấu trúc truy vấn nâng cao [RecommendationRetrievalQuery].
-	Rewrite(ctx context.Context, intent dto.ParsedIntent) (RecommendationRetrievalQuery, error)
+	Source   RetrievalTermSource
 }
 
 // LlmOutfitResponse đại diện cho cấu trúc JSON của bộ trang phục gợi ý do mô hình AI trả về.

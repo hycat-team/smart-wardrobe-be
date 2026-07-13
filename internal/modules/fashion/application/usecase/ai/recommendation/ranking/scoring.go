@@ -20,11 +20,6 @@ const (
 	recommendationWeatherColdLike    = "cold-like"
 	recommendationWeatherHotLike     = "hot-like"
 	recommendationWeatherRainy       = "rainy"
-
-	candidateSourceFallback        = "fallback"
-	candidateSourceStrictFallback  = "strict-fallback"
-	candidateSourceRelaxedFallback = "relaxed-fallback"
-	candidateSourceGeneralFallback = "general-fallback"
 )
 
 // ScoreCandidateItem chấm điểm một món đồ ứng viên dựa trên mức độ phù hợp của nó với phong cách, dịp, tông màu và thời tiết yêu cầu.
