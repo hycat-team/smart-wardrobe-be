@@ -137,7 +137,6 @@ func NormalizeRetrievalTerms(terms []types.RetrievalTerm) []types.RetrievalTerm 
 	return normalized
 }
 
-
 // ExpandRecommendationLexicalRetrievalTerms thực hiện mở rộng phân loại (taxonomy expansion) cho tất cả các khía cạnh ý định (như dịp, phong cách, thời tiết, mùa, tông màu) và trả về danh sách [RetrievalTerm].
 func ExpandRecommendationLexicalRetrievalTerms(intent dto.ParsedIntent) []types.RetrievalTerm {
 	terms := make([]types.RetrievalTerm, 0)

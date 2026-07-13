@@ -141,4 +141,3 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 
 	return builder.String()
 }
-

@@ -87,4 +87,3 @@ func NormalizeTermSet(terms []string) []string {
 	sort.Strings(normalized)
 	return normalized
 }
-
