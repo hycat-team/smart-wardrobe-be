@@ -10,9 +10,9 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/mapper"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

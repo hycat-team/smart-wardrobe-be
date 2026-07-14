@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"slices"
+	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/pkg/utils/contextutils"
 
 	"github.com/gin-gonic/gin"
 )

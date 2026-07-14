@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/logger"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/tokenestimationmethod"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/openai"
-	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

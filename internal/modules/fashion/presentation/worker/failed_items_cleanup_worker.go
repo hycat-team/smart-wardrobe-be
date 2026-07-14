@@ -3,8 +3,8 @@ package worker
 import (
 	"context"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"smart-wardrobe-be/pkg/logger"
 	"time"
 
 	"github.com/robfig/cron/v3"

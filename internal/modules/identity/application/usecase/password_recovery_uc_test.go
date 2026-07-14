@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 )

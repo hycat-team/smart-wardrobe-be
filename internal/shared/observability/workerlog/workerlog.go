@@ -3,7 +3,7 @@ package workerlog
 import (
 	"time"
 
-	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/logger"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

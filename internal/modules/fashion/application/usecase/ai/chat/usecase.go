@@ -1,7 +1,7 @@
 package chat
 
 import (
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"

@@ -1,7 +1,7 @@
 package recommendation
 
 import (
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
@@ -10,8 +10,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/logger"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/logger"
 )
 
 // OutfitRecommendationUseCase điều phối các luồng nghiệp vụ gợi ý trang phục bằng AI.

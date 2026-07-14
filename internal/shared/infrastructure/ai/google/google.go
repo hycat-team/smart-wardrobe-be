@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/utils/httputils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/pkg/utils/httputils"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
 )
 
 var (

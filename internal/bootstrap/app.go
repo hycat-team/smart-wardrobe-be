@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"

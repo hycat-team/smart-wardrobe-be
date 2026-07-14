@@ -3,7 +3,7 @@ package ai
 import (
 	"math"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
 )
 

@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 	"fmt"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
+	pkglogger "smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/infrastructure/resilience"
-	pkglogger "smart-wardrobe-be/pkg/logger"
 	"time"
 
 	"gorm.io/driver/postgres"

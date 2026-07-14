@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )

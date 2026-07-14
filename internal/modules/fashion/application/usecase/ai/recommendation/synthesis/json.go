@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 )
 
 // ParseOutfitRecommendationJSON phân tích cú pháp chuỗi JSON phản hồi của mô hình AI, tự động làm sạch các thẻ markdown block (ví dụ: ```json) và xử lý văn bản thừa xung quanh.

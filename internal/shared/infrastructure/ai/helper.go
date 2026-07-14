@@ -3,8 +3,8 @@ package ai
 import (
 	"bufio"
 	"io"
-	"smart-wardrobe-be/config"
-	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"strings"
 
 	"go.uber.org/zap"

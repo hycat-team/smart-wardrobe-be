@@ -7,7 +7,6 @@
 package di
 
 import (
-	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/api/routes/admin"
@@ -20,6 +19,7 @@ import (
 	subscription2 "smart-wardrobe-be/internal/api/routes/subscription"
 	"smart-wardrobe-be/internal/api/routes/wardrobe"
 	"smart-wardrobe-be/internal/bootstrap"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/cost"
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/grant"
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator"
@@ -80,6 +80,7 @@ import (
 	contract6 "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	handler2 "smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
 	worker4 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/sse"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
@@ -87,7 +88,6 @@ import (
 	"smart-wardrobe-be/internal/shared/infrastructure/media"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/infrastructure/search"
-	"smart-wardrobe-be/pkg/logger"
 )
 
 // Injectors from wire.go:

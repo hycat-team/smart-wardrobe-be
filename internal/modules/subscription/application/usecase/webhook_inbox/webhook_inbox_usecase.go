@@ -7,8 +7,8 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
 )

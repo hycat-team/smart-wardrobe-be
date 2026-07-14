@@ -13,7 +13,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 )
 
 // parseRecommendationIntent phân tích ý định từ văn bản tự do của người dùng và hợp nhất với các

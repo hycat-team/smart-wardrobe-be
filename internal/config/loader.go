@@ -20,7 +20,7 @@ func LoadConfig() *Config {
 }
 
 func loadConfig() (*Config, error) {
-	configPath := envOrDefault("CONFIG_FILE", filepath.Join("config", "config.yaml"))
+	configPath := envOrDefault("CONFIG_FILE", filepath.Join("configs", "config.yaml"))
 	if err := loadLocalDotEnv(configPath); err != nil {
 		return nil, err
 	}

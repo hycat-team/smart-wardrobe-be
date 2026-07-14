@@ -4,7 +4,7 @@ This document describes the core design patterns, conventions, and utility packa
 
 ---
 
-## Utility Packages (`pkg/utils/`)
+## Utility Packages (`internal/pkg/utils/`)
 
 ### `contextutils` — Request-scoped context values
 
@@ -507,7 +507,7 @@ All operations inside `fn` share the same database transaction. If any returns a
 - Mapper functions converting between entity/domain models and DTOs/responses must be placed in the `application/mapper` folder of the respective module. Do not place mappers in the use case file.
 - Within `application/mapper`, it is allowed to split into multiple mapper files by business group to avoid a single file becoming too long.
 - Helpers serving only one use case/use case file must be extracted into a separate file in the same package, and the filename must have the `_helper.go` suffix.
-- Do not create a helper if the function only wraps a simple expression and does not clarify the business meaning. Prefer inlining or reusing utilities in `pkg/utils`.
+- Do not create a helper if the function only wraps a simple expression and does not clarify the business meaning. Prefer inlining or reusing utilities in `internal/pkg/utils`.
 - Return messages in the presentation handler must be declared as variables/constants at the top of the handler file following the existing pattern, rather than hard-coding directly in each response.
 
 ### Layer responsibilities

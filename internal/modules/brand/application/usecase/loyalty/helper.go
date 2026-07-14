@@ -15,7 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltyroundingmode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )

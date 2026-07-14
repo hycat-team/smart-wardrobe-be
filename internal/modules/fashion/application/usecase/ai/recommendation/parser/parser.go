@@ -7,8 +7,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 )
 
 // LocalNLPParser xử lý phân tích cú pháp truy vấn ngôn ngữ tự nhiên và trích xuất ý định (intent) sử dụng các từ điển nội bộ.

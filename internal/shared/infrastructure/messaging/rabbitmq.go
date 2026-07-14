@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/infrastructure/resilience"
-	"smart-wardrobe-be/pkg/logger"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )

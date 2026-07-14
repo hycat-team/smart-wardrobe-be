@@ -8,7 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )

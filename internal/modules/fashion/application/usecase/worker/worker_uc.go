@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
@@ -22,15 +22,15 @@ import (
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/utils/colorutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/analyzetaskstatus"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/application/sse"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"smart-wardrobe-be/pkg/logger"
-	"smart-wardrobe-be/pkg/utils/colorutils"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

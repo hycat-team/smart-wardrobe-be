@@ -24,11 +24,11 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/constants/fashionitemtype"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )

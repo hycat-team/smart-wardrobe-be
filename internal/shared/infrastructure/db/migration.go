@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
-	"smart-wardrobe-be/migrations"
+	"smart-wardrobe-be/database/migrations"
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"

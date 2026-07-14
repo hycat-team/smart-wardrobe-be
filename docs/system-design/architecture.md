@@ -60,17 +60,19 @@ root/smart-wardrobe-be
 |   |   |-- presentation          # Shared HTTP helpers, SSE
 |   |   `-- provider.go           # Wire ProviderSet for shared services
 |
-|-- pkg
-|   |-- logger
-|   `-- utils
+|   |-- pkg/                      # Shared package helpers (Moved to internal/pkg/)
 |
-|-- migrations/                   # Goose SQL migrations
+|-- configs/                      # YAML configuration files
+|-- database/                     # DB initialization scripts and migrations
+|   |-- init/                     # Initial database state SQL files
+|   `-- migrations/               # Goose SQL migrations
+|-- deployments/                  # Support service deployment configs
+|   |-- nginx/                    # Nginx config templates
+|   |-- rabbitmq/                 # RabbitMQ config
+|   |-- docker-compose.yml        # Compose config for local dev
+|   `-- docker-compose.prod.yml   # Compose config for VPS production
 |-- api/swagger/                  # Generated Swagger specs
-|-- init-db/                      # DB initialization scripts
-|-- nginx/                        # Nginx config
-|-- rabbitmq/                     # RabbitMQ config
 |-- Dockerfile
-|-- docker-compose.yml
 |-- Makefile
 ```
 

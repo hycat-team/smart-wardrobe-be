@@ -9,7 +9,7 @@ import (
 
 func prepareConfigTest(t *testing.T, mutate func(string) string) string {
 	t.Helper()
-	source, err := os.ReadFile("config.yaml")
+	source, err := os.ReadFile("../../configs/config.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestLoadConfigRejectsProductionWildcardOrigin(t *testing.T) {
 }
 
 func TestProductionConfigIsValid(t *testing.T) {
-	path, err := filepath.Abs("config.production.yaml")
+	path, err := filepath.Abs("../../configs/config.production.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
