@@ -45,15 +45,17 @@ specs/002-project-layout-restructure/
 ```text
 Cấu trúc mới sau khi tái cấu trúc:
 smart-wardrobe-be/
-├── configs/                          # [NEW] Chứa các file YAML cấu hình
+├── configs/                          # [NEW] Chứa các tệp YAML cấu hình
 │   ├── config.yaml
 │   └── config.production.yaml
 ├── database/                         # [NEW] Chứa tài nguyên database
 │   ├── init/                         # (Di chuyển từ init-db/)
 │   └── migrations/                   # (Di chuyển từ migrations/)
-├── deployments/                      # [NEW] Chứa cấu hình dịch vụ phụ trợ
+├── deployments/                      # [NEW] Chứa cấu hình dịch vụ phụ trợ & docker-compose
 │   ├── nginx/                        # (Di chuyển từ nginx/)
-│   └── rabbitmq/                     # (Di chuyển từ rabbitmq/)
+│   ├── rabbitmq/                     # (Di chuyển từ rabbitmq/)
+│   ├── docker-compose.yml            # (Di chuyển từ root)
+│   └── docker-compose.prod.yml       # (Di chuyển từ root)
 ├── internal/
 │   ├── config/                       # [NEW] (Di chuyển parser code từ config/)
 │   ├── pkg/                          # [NEW] (Di chuyển từ pkg/)
@@ -63,9 +65,7 @@ smart-wardrobe-be/
 ├── docs/                             # Tài liệu dự án (Cập nhật tham chiếu đường dẫn)
 ├── .github/                          # Github Actions CI/CD workflows (Cập nhật tham chiếu)
 ├── Dockerfile                        # Cập nhật đường dẫn copy config
-├── docker-compose.yml                # Cập nhật volume mount database/init
-├── docker-compose.prod.yml           # Cập nhật volume mount database/init, deployments/rabbitmq
-└── Makefile                          # Cập nhật đường dẫn các lệnh migration và check
+└── Makefile                          # Cập nhật đường dẫn các lệnh docker-compose, migration và check
 ```
 
 ## Proposed Changes
@@ -79,8 +79,6 @@ smart-wardrobe-be/
 #### [NEW] [internal/pkg/](../../internal/pkg/)
 
 #### [MODIFY] [Dockerfile](../../Dockerfile)
-#### [MODIFY] [docker-compose.yml](../../docker-compose.yml)
-#### [MODIFY] [docker-compose.prod.yml](../../docker-compose.prod.yml)
 #### [MODIFY] [Makefile](../../Makefile)
 #### [MODIFY] [.github/workflows/deploy-production.yml](../../.github/workflows/deploy-production.yml)
 #### [MODIFY] [docs/development/local-setup.md](../../docs/development/local-setup.md)
@@ -93,6 +91,8 @@ smart-wardrobe-be/
 #### [DELETE] [rabbitmq/](../../rabbitmq/)
 #### [DELETE] [migrations/](../../migrations/)
 #### [DELETE] [init-db/](../../init-db/)
+#### [DELETE] [docker-compose.yml](../../docker-compose.yml)
+#### [DELETE] [docker-compose.prod.yml](../../docker-compose.prod.yml)
 
 ---
 
@@ -104,6 +104,6 @@ smart-wardrobe-be/
 - Chạy các bước xác thực tĩnh của dự án: `make check`
 
 ### Manual Verification
-- Chạy ứng dụng locally bằng Docker Compose: `docker compose up -d`
+- Chạy ứng dụng locally bằng docker-compose thông qua Makefile: `make dev-up` (hoặc `docker compose -f deployments/docker-compose.yml up -d`)
 - Kiểm tra kết nối cơ sở dữ liệu và các migrations chạy tự động khi start.
 - Xác nhận các file cấu hình YAML được đọc chính xác từ thư mục mới `configs/`.
