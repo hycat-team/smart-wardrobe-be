@@ -23,11 +23,11 @@ func NewLocalRecommendationQueryRewriter() *LocalRecommendationQueryRewriter {
 // Rewrite xây dựng một truy vấn tìm kiếm nâng cao [RecommendationRetrievalQuery] từ ý định phân tích ngôn ngữ tự nhiên cục bộ.
 //
 // Hành vi:
-// 1. Biên dịch danh sách từ khóa tìm kiếm qua [BuildSourceAwareRetrievalTerms].
-// 2. Biên dịch danh sách từ khóa loại trừ qua [BuildSourceAwareExcludedTerms].
-// 3. Chuẩn hóa và lọc trùng cả 2 danh sách từ khóa bằng [NormalizeRetrievalTerms].
-// 4. Xây dựng các bộ lọc cứng (hard filters) như mùa vụ qua [BuildSeasonalityHardFilters].
-// 5. Trả về cấu trúc [RecommendationRetrievalQuery] hoàn chỉnh làm tham số đầu vào cho tìm kiếm Elasticsearch.
+//   - 1. Biên dịch danh sách từ khóa tìm kiếm qua [BuildSourceAwareRetrievalTerms].
+//   - 2. Biên dịch danh sách từ khóa loại trừ qua [BuildSourceAwareExcludedTerms].
+//   - 3. Chuẩn hóa và lọc trùng cả 2 danh sách từ khóa bằng [NormalizeRetrievalTerms].
+//   - 4. Xây dựng các bộ lọc cứng (hard filters) như mùa vụ qua [BuildSeasonalityHardFilters].
+//   - 5. Trả về cấu trúc [RecommendationRetrievalQuery] hoàn chỉnh làm tham số đầu vào cho tìm kiếm Elasticsearch.
 //
 // Đầu vào mẫu:
 //

@@ -163,10 +163,15 @@ func (uc *OutfitRecommendationUseCase) buildRecommendationRetrievalQuery(
 		return query
 	}
 
-	rewriteCtx, cancel := context.WithTimeout(ctx, time.Duration(uc.cfg.RAG.RecommendationLLMRewriterTimeoutSeconds)*time.Second)
+	rewriteCtx, cancel := context.WithTimeout(ctx,
+		time.Duration(uc.cfg.RAG.RecommendationLLMRewriterTimeoutSeconds)*time.Second,
+	)
 	defer cancel()
 
-	query, err := retrieval.NewLLMRecommendationQueryRewriter(uc.aiService, uc.cfg).WithUserID(userID).Rewrite(rewriteCtx, intent)
+	query, err := retrieval.
+		NewLLMRecommendationQueryRewriter(uc.aiService, uc.cfg).
+		WithUserID(userID).
+		Rewrite(rewriteCtx, intent)
 	if err == nil {
 		if uc.logger != nil {
 			uc.logger.Info("Outfit recommendation query rewriter completed",
