@@ -112,8 +112,8 @@ func MapLLMResponseToGroups(
 
 		actualRole := role
 		if primary.FashionItem != nil {
-			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
-				actualRole = CategorySlugToWearingRole(*fi.CategoryName)
+			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.CategorySlug != nil {
+				actualRole = CategorySlugToWearingRole(*fi.CategorySlug)
 			}
 		}
 
