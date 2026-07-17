@@ -127,9 +127,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	localTokenEstimator := ai.NewLocalTokenEstimatorFromConfig(cfg)
 	iaiService := ai.NewAIService(cfg, l, localTokenEstimator)
 	iaiCostRepository := persistence4.NewAICostRepository(gormDB)
-	iPricingConfigRepository := persistence4.NewPricingConfigRepository(gormDB)
+	iaiModelConfigRepository := persistence4.NewPricingConfigRepository(gormDB)
 	iPricingCacheService := caching2.NewRedisPricingCacheService(client)
-	iPricingUseCase := pricing.NewPricingUseCase(iPricingConfigRepository, iPricingCacheService)
+	iPricingUseCase := pricing.NewPricingUseCase(iaiModelConfigRepository, iPricingCacheService)
 	iaiCostUseCase := cost.NewCostUseCase(iaiCostRepository, iPricingUseCase, iUserSubscriptionContract)
 	iaiOrchestratorUseCase := orchestrator.NewOrchestratorUseCase(iaiService, iaiCostRepository, cfg, iaiCostUseCase)
 	iaiOrchestrator := contract2.NewAIOrchestratorContract(iaiOrchestratorUseCase)
@@ -242,7 +242,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iFailedItemsCleanupWorker := worker6.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
 	iProcessingRecoveryWorker := worker6.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker6.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
-	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iPricingConfigRepository)
+	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iaiModelConfigRepository)
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
