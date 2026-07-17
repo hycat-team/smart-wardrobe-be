@@ -16,7 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/synthesis"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 
-	"smart-wardrobe-be/pkg/utils/sliceutils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )

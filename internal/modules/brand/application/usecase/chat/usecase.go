@@ -19,9 +19,9 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )

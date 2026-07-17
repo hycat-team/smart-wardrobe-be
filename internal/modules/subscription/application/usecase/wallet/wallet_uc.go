@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
@@ -15,12 +15,12 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/pkg/utils/errorutils"
+	"smart-wardrobe-be/internal/pkg/utils/timeutils"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/utils/errorutils"
-	"smart-wardrobe-be/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 )

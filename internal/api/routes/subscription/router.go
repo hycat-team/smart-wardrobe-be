@@ -1,8 +1,8 @@
 package subscription
 
 import (
-	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/api/middleware"
+	"smart-wardrobe-be/internal/config"
 	subscription_handler "smart-wardrobe-be/internal/modules/subscription/presentation/handler"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"

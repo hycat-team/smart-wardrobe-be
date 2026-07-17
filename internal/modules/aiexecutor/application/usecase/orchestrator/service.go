@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"

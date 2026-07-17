@@ -10,13 +10,13 @@ import (
 var ignoredStackPaths = []string{
 	"smart-wardrobe-be/internal/shared/application/constants/apperror/",
 	"/internal/shared/application/constants/apperror/",
-	"smart-wardrobe-be/pkg/utils/errorutils/",
+	"smart-wardrobe-be/internal/pkg/utils/errorutils/",
 	"/pkg/utils/errorutils/",
 	"/application/errors/",
 }
 
 var ignoredStackFunctions = []string{
-	"smart-wardrobe-be/pkg/utils/validation.TranslateValidationError",
+	"smart-wardrobe-be/internal/pkg/utils/validation.TranslateValidationError",
 }
 
 var noiseCandidateFunctions = []string{

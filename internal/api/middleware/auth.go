@@ -3,13 +3,13 @@ package middleware
 import (
 	"strings"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	identity_security "smart-wardrobe-be/internal/modules/identity/application/interface/security"
+	"smart-wardrobe-be/internal/pkg/utils/contextutils"
+	"smart-wardrobe-be/internal/pkg/utils/jwtutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
-	"smart-wardrobe-be/pkg/utils/contextutils"
-	"smart-wardrobe-be/pkg/utils/jwtutils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

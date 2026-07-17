@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"smart-wardrobe-be/pkg/logger"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"

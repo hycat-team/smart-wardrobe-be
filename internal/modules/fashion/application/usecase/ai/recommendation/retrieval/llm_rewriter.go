@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"

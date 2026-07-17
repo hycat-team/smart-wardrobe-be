@@ -2,10 +2,10 @@ package routes
 
 import (
 	"net/http"
-	"smart-wardrobe-be/config"
 	"smart-wardrobe-be/internal/api/middleware"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/pkg/logger"
 	"time"
 
 	"github.com/gin-gonic/gin"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
@@ -20,11 +20,11 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )

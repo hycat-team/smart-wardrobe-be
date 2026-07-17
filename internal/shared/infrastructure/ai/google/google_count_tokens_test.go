@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 )
 
 func TestCountGoogleTokensByRequest(t *testing.T) {

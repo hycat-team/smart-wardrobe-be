@@ -99,9 +99,9 @@ func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid
 
 func roleForItem(item *wardrobeDto.WardrobeItemRes, fallback string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if slug := itemCategorySlug(item, fashionItemMap); slug != "" {
-		return slug
+		return mapper.CategorySlugToWearingRole(slug)
 	}
-	return fallback
+	return mapper.CategorySlugToWearingRole(fallback)
 }
 
 // ============================================================================

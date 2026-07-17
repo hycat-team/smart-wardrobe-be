@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"net/http"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"strings"
 
 	"github.com/gin-gonic/gin"

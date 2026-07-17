@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"

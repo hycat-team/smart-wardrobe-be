@@ -310,7 +310,7 @@ Ensure all test cases pass before submitting a Pull Request.
 The system uses **Goose** as the tool to manage database updates.
 
 ### Core Principles
-- Absolutely do not directly edit the existing database scripts in the `/init-db` folder.
+- Absolutely do not directly edit the existing database scripts in the `/database/init` folder.
 - All database schema changes must be done through a new SQL migration file created using Goose.
 
 ### Create a new migration file

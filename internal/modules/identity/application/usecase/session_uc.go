@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/pkg/utils/jwtutils"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"smart-wardrobe-be/pkg/utils/jwtutils"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"

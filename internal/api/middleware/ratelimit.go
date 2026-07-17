@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"sync"
 	"time"

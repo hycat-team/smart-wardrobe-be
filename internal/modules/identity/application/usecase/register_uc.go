@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
@@ -17,10 +17,10 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
-	"smart-wardrobe-be/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )

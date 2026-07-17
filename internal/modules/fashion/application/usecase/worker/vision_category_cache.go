@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/logger"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

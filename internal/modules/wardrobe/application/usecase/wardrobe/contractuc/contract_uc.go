@@ -16,7 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 )

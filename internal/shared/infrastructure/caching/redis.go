@@ -3,9 +3,9 @@ package caching
 import (
 	"context"
 	"fmt"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/infrastructure/resilience"
-	"smart-wardrobe-be/pkg/logger"
 	"time"
 
 	"github.com/redis/go-redis/v9"

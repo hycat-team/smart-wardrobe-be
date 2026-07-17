@@ -18,7 +18,7 @@ DB_NAME ?= smart_wardrobe_db
 DB_PORT ?= 5432
 DB_SSLMODE ?= disable
 DB_TIMEZONE ?= Asia/Ho_Chi_Minh
-MIGRATION_DIR := ./migrations
+MIGRATION_DIR := ./database/migrations
 MIGRATION_DSN := "host=$(DB_HOST) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) port=$(DB_PORT) sslmode=$(DB_SSLMODE) TimeZone=$(DB_TIMEZONE)"
 
 ifeq ($(OS),Windows_NT)
@@ -39,32 +39,63 @@ FMT_CMD := find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w {}
 FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)"
 endif
 
-.PHONY: help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose
+.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
 help:
-	@echo PROJECT COMMANDS:
-	@echo make wire             : Generate dependency injection code
-	@echo make swagger          : Generate Swagger specifications
-	@echo make generate         : Generate Wire and Swagger files
-	@echo make fmt              : Format Go source files
-	@echo make fmt-check        : Check Go source formatting
-	@echo make tidy             : Tidy Go modules
-	@echo make tidy-check       : Verify go.mod and go.sum
-	@echo make vet              : Run go vet
-	@echo make test             : Run Go tests
-	@echo make build            : Build the Go executable
-	@echo make run              : Build and run the executable
-	@echo make dev              : Generate and run the application
-	@echo make check            : Run all CI quality checks
-	@echo make clean            : Remove generated binaries
-	@echo make install-tools    : Install pinned Wire and Swag versions
-	@echo make install-goose    : Install Goose CLI tool locally
-	@echo make docker-build     : Build the production Docker image locally
-	@echo make migration-status : Check Goose migration status
-	@echo make migration-up     : Run Goose up migrations manually
-	@echo make migration-down   : Rollback Goose migrations manually
-	@echo make migration-create name=ten : Create a new SQL migration file
-	@echo make migration-version: View current Goose migration version
+	@echo "========================================================================"
+	@echo "SMART WARDROBE BUILD SYSTEM - HELP INDEX"
+	@echo "========================================================================"
+	@echo "Run one of the following commands to list specific targets:"
+	@echo "  make dev-help       : Local development workflow targets"
+	@echo "  make quality-help   : CI quality checks, tests, and compilation"
+	@echo "  make docker-help    : Docker Compose development & production targets"
+	@echo "  make migration-help : Database migration (Goose) commands"
+	@echo "  make tools-help     : Local development tools installation helper"
+	@echo "========================================================================"
+
+dev-help:
+	@echo "DEVELOPMENT WORKFLOW COMMANDS:"
+	@echo "  make wire             : Generate dependency injection code (Google Wire)"
+	@echo "  make swagger          : Generate Swagger API specifications"
+	@echo "  make generate         : Run both Wire and Swagger code generation"
+	@echo "  make fmt              : Format all Go source files"
+	@echo "  make tidy             : Tidy Go modules"
+	@echo "  make run              : Build and run the Go backend locally"
+	@echo "  make dev              : Run code generation and start backend locally"
+	@echo "  make clean            : Remove generated binaries and swagger docs"
+
+quality-help:
+	@echo "QUALITY ASSURANCE & TESTING COMMANDS:"
+	@echo "  make fmt-check        : Verify Go source formatting without making edits"
+	@echo "  make tidy-check       : Verify go.mod and go.sum files are clean"
+	@echo "  make generate-check   : Verify generated Wire and Swagger files are up-to-date"
+	@echo "  make vet              : Run static analysis using 'go vet'"
+	@echo "  make test             : Run all Go unit and integration tests"
+	@echo "  make build            : Compile Go backend binary"
+	@echo "  make check            : Run all checks sequentially (CI check suite)"
+
+docker-help:
+	@echo "DOCKER COMPOSE COMMANDS:"
+	@echo "  make docker-build     : Build local production Docker image"
+	@echo "  make docker-dev-up    : Start local development stack in background"
+	@echo "  make docker-dev-stop  : Stop local development stack without removing volumes"
+	@echo "  make docker-dev-down  : Stop local development stack and remove volumes"
+	@echo "  make docker-prod-up   : Start production Docker stack in background"
+	@echo "  make docker-prod-stop : Stop production Docker stack without removing volumes"
+	@echo "  make docker-prod-down : Stop production Docker stack and remove volumes"
+
+migration-help:
+	@echo "DATABASE MIGRATION COMMANDS (GOOSE):"
+	@echo "  make migration-status : Check database migration status"
+	@echo "  make migration-up     : Run pending database migrations"
+	@echo "  make migration-down   : Rollback last database migration step"
+	@echo "  make migration-create name=xxx : Create a new SQL migration file"
+	@echo "  make migration-version: View current database migration version"
+
+tools-help:
+	@echo "DEVELOPMENT TOOLS INSTALLATION HELPERS:"
+	@echo "  make install-tools    : Install pinned Wire and Swag tool binaries"
+	@echo "  make install-goose    : Install Goose migration CLI binary"
 
 install-tools:
 	@echo Installing pinned development tools...
@@ -168,3 +199,21 @@ migration-create:
 
 migration-version:
 	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) version
+
+docker-dev-up:
+	@docker compose -f deployments/docker-compose.yml --env-file .env up -d
+
+docker-dev-stop:
+	@docker compose -f deployments/docker-compose.yml --env-file .env stop
+
+docker-dev-down:
+	@docker compose -f deployments/docker-compose.yml --env-file .env down -v
+
+docker-prod-up:
+	@docker compose -f deployments/docker-compose.prod.yml --env-file .env.production up -d
+
+docker-prod-stop:
+	@docker compose -f deployments/docker-compose.prod.yml --env-file .env.production stop
+
+docker-prod-down:
+	@docker compose -f deployments/docker-compose.prod.yml --env-file .env.production down -v

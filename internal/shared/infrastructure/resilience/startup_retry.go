@@ -2,10 +2,10 @@ package resilience
 
 import (
 	"fmt"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"time"
 
-	"smart-wardrobe-be/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/logger"
 
 	"go.uber.org/zap"
 )

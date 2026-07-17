@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
-	"smart-wardrobe-be/pkg/utils/stringutils"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 )
 
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.

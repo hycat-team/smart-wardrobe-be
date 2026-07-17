@@ -146,7 +146,7 @@ jobs:
 
             - name: Create deployment archive
               shell: bash
-              run: tar -czf /tmp/closy-deploy.tar.gz docker-compose.prod.yml nginx rabbitmq init-db
+              run: tar -czf /tmp/closy-deploy.tar.gz deployments/docker-compose.prod.yml deployments/nginx deployments/rabbitmq database/init
 
             - name: Upload deployment archive
               shell: bash
@@ -168,10 +168,10 @@ jobs:
                     if [ -f .env.deploy ]; then cp .env.deploy .env.deploy.previous; fi
                     printf 'BACKEND_IMAGE=%s@%s\n' '${{ needs.build.outputs.image_name }}' '${{ needs.build.outputs.image_digest }}' > .env.deploy
                     chmod 600 .env.deploy
-                    docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml config >/dev/null
-                    docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml pull
-                    docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml up -d --remove-orphans
-                    docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml ps
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml config >/dev/null
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d --remove-orphans
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
                   "
 
             - name: Verify production health
@@ -186,8 +186,8 @@ jobs:
                     cd /opt/closy
                     if [ -f .env.deploy.previous ]; then
                       mv .env.deploy.previous .env.deploy
-                      docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml pull backend
-                      docker compose --env-file .env.production --env-file .env.deploy -f docker-compose.prod.yml up -d --remove-orphans
+                      docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull backend
+                      docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d --remove-orphans
                     fi
                   "
 

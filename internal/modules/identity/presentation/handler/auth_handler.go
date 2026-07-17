@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
+	"smart-wardrobe-be/internal/pkg/utils/contextutils"
+	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
-	"smart-wardrobe-be/pkg/utils/contextutils"
-	"smart-wardrobe-be/pkg/utils/validation"
 
 	"github.com/gin-gonic/gin"
 )

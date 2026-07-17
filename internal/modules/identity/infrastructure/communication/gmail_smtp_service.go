@@ -8,7 +8,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"smart-wardrobe-be/config"
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication/templates"
 )

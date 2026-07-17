@@ -3,9 +3,9 @@ package middleware
 import (
 	"net/http"
 	"runtime/debug"
+	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/utils/errorutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	"smart-wardrobe-be/pkg/logger"
-	"smart-wardrobe-be/pkg/utils/errorutils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

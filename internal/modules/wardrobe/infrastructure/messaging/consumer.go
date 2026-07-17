@@ -8,8 +8,8 @@ import (
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
+	"smart-wardrobe-be/internal/pkg/logger"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
-	"smart-wardrobe-be/pkg/logger"
 
 	"go.uber.org/zap"
 )

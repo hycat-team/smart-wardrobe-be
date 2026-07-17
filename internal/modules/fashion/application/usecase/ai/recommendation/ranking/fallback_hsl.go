@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 
@@ -81,7 +82,7 @@ func RunLocalHSLMatching(
 		}
 
 		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam", fashionItemMap), primaryDress, dresses, fashionItemMap))
-		items = append(items, buildItemGroup("giay", primaryShoes, shoes, fashionItemMap))
+		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("giay"), primaryShoes, shoes, fashionItemMap))
 
 		if isCold && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
@@ -110,7 +111,7 @@ func RunLocalHSLMatching(
 			}
 		}
 
-		items = append(items, buildItemGroup("ao", primaryTop, tops, fashionItemMap))
+		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("ao"), primaryTop, tops, fashionItemMap))
 		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan", fashionItemMap), primaryBottom, bottoms, fashionItemMap))
 
 		if len(shoes) > 0 {

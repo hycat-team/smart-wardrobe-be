@@ -13,9 +13,9 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
-	"smart-wardrobe-be/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

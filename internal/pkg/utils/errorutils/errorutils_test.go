@@ -34,12 +34,12 @@ func TestMapErrorToProblemMapsSentinel(t *testing.T) {
 }
 
 func TestFilterStackTraceArrayKeepsProjectFrames(t *testing.T) {
-	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/otherutils/otherutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
+	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/internal/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/otherutils/otherutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
 
 	filtered := FilterStackTraceArray(stack)
 	joined := strings.Join(filtered, "\n")
 
-	if !strings.Contains(joined, "smart-wardrobe-be/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames") {
+	if !strings.Contains(joined, "smart-wardrobe-be/internal/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames") {
 		t.Fatalf("expected project frame to be kept, got %v", filtered)
 	}
 	if strings.Contains(joined, "\n\t/work/pkg/utils/otherutils/otherutils_test.go:1") {
@@ -82,9 +82,9 @@ func TestFilterStackTraceArrayDropsAppErrorAndDuplicateFrames(t *testing.T) {
 func TestFilterStackTraceArrayKeepsPublicValidationEntryPoint(t *testing.T) {
 	stack := strings.Join([]string{
 		"goroutine 86 [running]:",
-		"smart-wardrobe-be/pkg/utils/validation.TranslateValidationError({0x18f2ba0, 0xc000535908})",
+		"smart-wardrobe-be/internal/pkg/utils/validation.TranslateValidationError({0x18f2ba0, 0xc000535908})",
 		"\t/app/pkg/utils/validation/validation.go:102 +0xda5",
-		"smart-wardrobe-be/pkg/utils/validation.BindJSON(0xc0003fe300?, {0x1435760?, 0xc0005ab980?})",
+		"smart-wardrobe-be/internal/pkg/utils/validation.BindJSON(0xc0003fe300?, {0x1435760?, 0xc0005ab980?})",
 		"\t/app/pkg/utils/validation/validation.go:118 +0x65",
 		"smart-wardrobe-be/internal/modules/subscription/presentation/handler.(*BillingHandler).CreateWalletTopUp(0xc000408080, 0xc0003fe300)",
 		"\t/app/internal/modules/subscription/presentation/handler/billing_handler.go:101 +0x79",
