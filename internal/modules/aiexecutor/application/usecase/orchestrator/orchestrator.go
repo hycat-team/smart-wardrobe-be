@@ -2,10 +2,12 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 
 	"github.com/google/uuid"
@@ -85,6 +87,18 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 	if err != nil {
 		return "", err
 	}
+
+	if decision.Route == airoute.Local {
+		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
+		return "", errors.New("ai route resolved to local fallback: bypassing remote api call")
+	}
+
+	if decision.Route == airoute.Free {
+		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
+		plan.Provider = prov
+		plan.Model = mod
+	}
+
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {
 		return "", err
 	}
@@ -131,6 +145,18 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	if err != nil {
 		return "", err
 	}
+
+	if decision.Route == airoute.Local {
+		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
+		return "", errors.New("ai route resolved to local fallback: bypassing remote api call")
+	}
+
+	if decision.Route == airoute.Free {
+		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
+		plan.Provider = prov
+		plan.Model = mod
+	}
+
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {
 		return "", err
 	}
@@ -188,6 +214,20 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		close(textChan)
 		close(errChan)
 		return textChan, errChan
+	}
+
+	if decision.Route == airoute.Local {
+		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
+		errChan <- errors.New("ai route resolved to local fallback: bypassing remote api call")
+		close(textChan)
+		close(errChan)
+		return textChan, errChan
+	}
+
+	if decision.Route == airoute.Free {
+		prov, mod := uc.resolveProviderModel(plan.Operation, decision.Route)
+		plan.Provider = prov
+		plan.Model = mod
 	}
 
 	if err = uc.costUC.MarkInFlight(ctx, decision.RequestID); err != nil {

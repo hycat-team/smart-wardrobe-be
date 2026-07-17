@@ -122,7 +122,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 		return nil, err
 	}
 	if !admitted {
-		return uc.PrepareFree(ctx, plan.UserID, plan.Operation, 0, maxOut)
+		return uc.PrepareFree(ctx, plan.RequestID, plan.UserID, plan.Operation, 0, maxOut)
 	}
 	_ = ledger
 	return &aiexecutor_dto.AICostDecision{
@@ -134,17 +134,16 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 	}, nil
 }
 
-func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
+func (uc *CostUseCase) PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
 	now := time.Now()
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{Route: airoute.Local}, nil
+		return &aiexecutor_dto.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
 	}
 	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, subOverview.PlanID, userID, operation, now)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{Route: airoute.Local}, nil
+		return &aiexecutor_dto.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
 	}
-	requestID := uuid.New()
 	event := &aiexecutor_entities.AIUsageEvent{
 		RequestID: requestID,
 		UserID: func() *uuid.UUID {

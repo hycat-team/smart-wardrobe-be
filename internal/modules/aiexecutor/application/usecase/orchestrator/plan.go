@@ -16,7 +16,7 @@ import (
 // ----- Execution Plan -----
 
 func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, meta aiexecutor_dto.AITokenEstimationMeta) (*aiexecutor_dto.ExecutionPlan, error) {
-	provider, model := uc.resolveProviderModel(operation)
+	provider, model := uc.resolveProviderModel(operation, airoute.Paid)
 	if model == "" {
 		return nil, fmt.Errorf("unsupported operation: %s", operation)
 	}
@@ -49,12 +49,19 @@ func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID 
 		plan.Route = op.FreeRoute
 		plan.MaxInputTokens = op.ReducedMaxInputTokens
 		plan.MaxOutputTokens = op.ReducedMaxOutputTokens
+
+		prov, mod := uc.resolveProviderModel(operation, plan.Route)
+		plan.Provider = prov
+		plan.Model = mod
 	}
 
 	return plan, nil
 }
 
-func (uc *OrchestratorUseCase) resolveProviderModel(operation aioperation.AIOperation) (string, string) {
+func (uc *OrchestratorUseCase) resolveProviderModel(operation aioperation.AIOperation, route airoute.AIRoute) (string, string) {
+	if route == airoute.Free || route == airoute.Local {
+		return uc.cfg.AI.FreeTextPrimary.Provider, uc.cfg.AI.FreeTextPrimary.Model
+	}
 	switch operation {
 	case aioperation.Chat:
 		return uc.cfg.AI.ChatTextPrimary.Provider, uc.cfg.AI.ChatTextPrimary.Model

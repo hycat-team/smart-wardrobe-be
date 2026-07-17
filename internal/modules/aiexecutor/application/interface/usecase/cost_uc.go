@@ -12,7 +12,7 @@ import (
 
 type IAICostUseCase interface {
 	Prepare(ctx context.Context, plan *dto.ExecutionPlan) (*dto.AICostDecision, error)
-	PrepareFree(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*dto.AICostDecision, error)
+	PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*dto.AICostDecision, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID) error
 	Confirm(ctx context.Context, requestID uuid.UUID, usage dto.AIUsage) error
 	Release(ctx context.Context, requestID uuid.UUID, reason string) error
