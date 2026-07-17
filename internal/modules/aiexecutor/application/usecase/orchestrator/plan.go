@@ -7,15 +7,15 @@ import (
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 
 	"github.com/google/uuid"
 )
 
 // ----- Execution Plan -----
 
-func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID uuid.UUID, operation string, meta aiexecutor_dto.AITokenEstimationMeta) (*aiexecutor_dto.ExecutionPlan, error) {
+func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, meta aiexecutor_dto.AITokenEstimationMeta) (*aiexecutor_dto.ExecutionPlan, error) {
 	provider, model := uc.resolveProviderModel(operation)
 	if model == "" {
 		return nil, fmt.Errorf("unsupported operation: %s", operation)
@@ -27,7 +27,7 @@ func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID 
 		Operation:             operation,
 		Provider:              provider,
 		Model:                 model,
-		Route:                 aiexecutor_dto.AIRouteFree,
+		Route:                 airoute.Free,
 		EstimatedPromptTokens: meta.EstimatedPromptTokens,
 	}
 
@@ -54,20 +54,20 @@ func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID 
 	return plan, nil
 }
 
-func (uc *OrchestratorUseCase) resolveProviderModel(operation string) (aiprovider.Provider, aimodel.Model) {
+func (uc *OrchestratorUseCase) resolveProviderModel(operation aioperation.AIOperation) (string, string) {
 	switch operation {
-	case aiexecutor_dto.AIOperationChat:
-		return aiprovider.Provider(uc.cfg.AI.ChatTextPrimary.Provider), aimodel.Model(uc.cfg.AI.ChatTextPrimary.Model)
-	case aiexecutor_dto.AIOperationOutfit:
-		return aiprovider.Provider(uc.cfg.AI.RecommendationTextPrimary.Provider), aimodel.Model(uc.cfg.AI.RecommendationTextPrimary.Model)
-	case aiexecutor_dto.AIOperationSummary:
-		return aiprovider.Provider(uc.cfg.AI.ChatTextPrimary.Provider), aimodel.Model(uc.cfg.AI.ChatTextPrimary.Model)
-	case aiexecutor_dto.AIOperationRewriter:
-		return aiprovider.Provider(uc.cfg.AI.ChatTextPrimary.Provider), aimodel.Model(uc.cfg.AI.ChatTextPrimary.Model)
-	case aiexecutor_dto.AIOperationVision:
-		return aiprovider.Provider(uc.cfg.AI.VisionPrimary.Provider), aimodel.Model(uc.cfg.AI.VisionPrimary.Model)
-	case aiexecutor_dto.AIOperationEmbedding:
-		return aiprovider.Provider(uc.cfg.AI.EmbeddingPrimary.Provider), aimodel.Model(uc.cfg.AI.EmbeddingPrimary.Model)
+	case aioperation.Chat:
+		return uc.cfg.AI.ChatTextPrimary.Provider, uc.cfg.AI.ChatTextPrimary.Model
+	case aioperation.Outfit:
+		return uc.cfg.AI.RecommendationTextPrimary.Provider, uc.cfg.AI.RecommendationTextPrimary.Model
+	case aioperation.Summary:
+		return uc.cfg.AI.ChatTextPrimary.Provider, uc.cfg.AI.ChatTextPrimary.Model
+	case aioperation.Rewriter:
+		return uc.cfg.AI.ChatTextPrimary.Provider, uc.cfg.AI.ChatTextPrimary.Model
+	case aioperation.Vision:
+		return uc.cfg.AI.VisionPrimary.Provider, uc.cfg.AI.VisionPrimary.Model
+	case aioperation.Embedding:
+		return uc.cfg.AI.EmbeddingPrimary.Provider, uc.cfg.AI.EmbeddingPrimary.Model
 	default:
 		return "", ""
 	}

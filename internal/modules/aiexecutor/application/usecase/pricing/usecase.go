@@ -8,8 +8,6 @@ import (
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_caching "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 )
@@ -31,7 +29,7 @@ func NewPricingUseCase(
 	}
 }
 
-func (uc *PricingUseCase) GetActivePricingConfig(ctx context.Context, provider aiprovider.Provider, model aimodel.Model) (*aiexecutor_dto.PricingConfigDTO, error) {
+func (uc *PricingUseCase) GetActivePricingConfig(ctx context.Context, provider string, model string) (*aiexecutor_dto.PricingConfigDTO, error) {
 	cached, err := uc.cacheService.Get(ctx, provider, model)
 	if err == nil && cached != nil {
 		return cached, nil
@@ -52,7 +50,7 @@ func (uc *PricingUseCase) GetActivePricingConfig(ctx context.Context, provider a
 	return dto, nil
 }
 
-func mapToDTO(cfg *entities.AIPricingConfig) *aiexecutor_dto.PricingConfigDTO {
+func mapToDTO(cfg *entities.AIModelConfig) *aiexecutor_dto.PricingConfigDTO {
 	if cfg == nil {
 		return nil
 	}

@@ -7,6 +7,8 @@ import (
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
@@ -33,9 +35,9 @@ func NewCostUseCase(
 	}
 }
 
-var freeOperations = map[string]bool{
-	aiexecutor_dto.AIOperationVision:    true,
-	aiexecutor_dto.AIOperationEmbedding: true,
+var freeOperations = map[aioperation.AIOperation]bool{
+	aioperation.Vision:    true,
+	aioperation.Embedding: true,
 }
 
 func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.ExecutionPlan) (*aiexecutor_dto.AICostDecision, error) {
@@ -51,7 +53,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 				return &plan.UserID
 			}(),
 			Operation:        plan.Operation,
-			LogicalRoute:     aiexecutor_dto.AIRouteFree,
+			LogicalRoute:     airoute.Free,
 			Provider:         &plan.Provider,
 			Model:            &plan.Model,
 			Status:           aiusageeventstatus.Reserved,
@@ -62,7 +64,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 		}
 		return &aiexecutor_dto.AICostDecision{
 			RequestID:       plan.RequestID,
-			Route:           aiexecutor_dto.AIRouteFree,
+			Route:           airoute.Free,
 			MaxInputTokens:  plan.MaxInputTokens,
 			MaxOutputTokens: plan.MaxOutputTokens,
 			Tracked:         true,
@@ -87,7 +89,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 	}
 
 	reserve := int64(0)
-	if route == aiexecutor_dto.AIRoutePaid {
+	if route == airoute.Paid {
 		reserve = microCost(plan.EstimatedPromptTokens, int64(maxOut), pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
 	}
 	unknownExpires := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute)
@@ -132,15 +134,15 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 	}, nil
 }
 
-func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
+func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
 	now := time.Now()
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{Route: aiexecutor_dto.AIRouteLocal}, nil
+		return &aiexecutor_dto.AICostDecision{Route: airoute.Local}, nil
 	}
 	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, subOverview.PlanID, userID, operation, now)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{Route: aiexecutor_dto.AIRouteLocal}, nil
+		return &aiexecutor_dto.AICostDecision{Route: airoute.Local}, nil
 	}
 	requestID := uuid.New()
 	event := &aiexecutor_entities.AIUsageEvent{
@@ -152,7 +154,7 @@ func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operat
 			return &userID
 		}(),
 		Operation:        operation,
-		LogicalRoute:     aiexecutor_dto.AIRouteFree,
+		LogicalRoute:     airoute.Free,
 		PromptTokens:     promptTokens,
 		Status:           aiusageeventstatus.Reserved,
 		UnknownExpiresAt: func() *time.Time { t := now.Add(time.Duration(policy.UnknownHoldMinutes) * time.Minute); return &t }(),
@@ -161,7 +163,7 @@ func (uc *CostUseCase) PrepareFree(ctx context.Context, userID uuid.UUID, operat
 	_ = uc.repo.CreateEvent(ctx, event)
 	return &aiexecutor_dto.AICostDecision{
 		RequestID:       requestID,
-		Route:           aiexecutor_dto.AIRouteFree,
+		Route:           airoute.Free,
 		MaxInputTokens:  op.NormalMaxInputTokens,
 		MaxOutputTokens: maxOutputTokens,
 		Tracked:         true,
@@ -184,7 +186,7 @@ func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage a
 	}
 
 	cost := microCost(usage.PromptTokens, usage.OutputTokens+usage.ThinkingTokens, pricing.InputUSDPerMillion, pricing.OutputUSDPerMillion, pricing.USDToVND)
-	return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, cost, string(usage.Provider), string(usage.Model), usage.FinishReason, time.Now())
+	return uc.repo.Confirm(ctx, requestID, usage.PromptTokens, usage.OutputTokens, usage.ThinkingTokens, cost, usage.Provider, usage.Model, usage.FinishReason, time.Now())
 }
 
 func (uc *CostUseCase) Release(ctx context.Context, requestID uuid.UUID, reason string) error {

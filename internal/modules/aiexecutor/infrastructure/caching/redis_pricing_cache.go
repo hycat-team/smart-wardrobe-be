@@ -7,8 +7,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_caching "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/caching"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -23,7 +21,7 @@ func NewRedisPricingCacheService(client *redis.Client) aiexecutor_caching.IPrici
 	}
 }
 
-func (s *RedisPricingCacheService) Get(ctx context.Context, provider aiprovider.Provider, model aimodel.Model) (*dto.PricingConfigDTO, error) {
+func (s *RedisPricingCacheService) Get(ctx context.Context, provider string, model string) (*dto.PricingConfigDTO, error) {
 	if s.redisClient == nil {
 		return nil, nil
 	}
@@ -39,7 +37,7 @@ func (s *RedisPricingCacheService) Get(ctx context.Context, provider aiprovider.
 	return &res, nil
 }
 
-func (s *RedisPricingCacheService) Set(ctx context.Context, provider aiprovider.Provider, model aimodel.Model, pricing *dto.PricingConfigDTO, expiry time.Duration) error {
+func (s *RedisPricingCacheService) Set(ctx context.Context, provider string, model string, pricing *dto.PricingConfigDTO, expiry time.Duration) error {
 	if s.redisClient == nil {
 		return nil
 	}
@@ -51,6 +49,6 @@ func (s *RedisPricingCacheService) Set(ctx context.Context, provider aiprovider.
 	return s.redisClient.Set(ctx, key, data, expiry).Err()
 }
 
-func pricingCacheKey(provider aiprovider.Provider, model aimodel.Model) string {
-	return "ai:pricing:" + string(provider) + ":" + string(model)
+func pricingCacheKey(provider string, model string) string {
+	return "ai:pricing:" + provider + ":" + model
 }

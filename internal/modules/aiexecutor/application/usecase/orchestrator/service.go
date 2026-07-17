@@ -2,17 +2,17 @@ package orchestrator
 
 import (
 	"smart-wardrobe-be/internal/config"
-	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 )
 
 const microVNDPerVND int64 = 1_000_000
 
-var freeOperations = map[string]bool{
-	aiexecutor_dto.AIOperationVision:    true,
-	aiexecutor_dto.AIOperationEmbedding: true,
+var freeOperations = map[aioperation.AIOperation]bool{
+	aioperation.Vision:    true,
+	aioperation.Embedding: true,
 }
 
 type OrchestratorUseCase struct {

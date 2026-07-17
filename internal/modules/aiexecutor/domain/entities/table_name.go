@@ -5,4 +5,4 @@ func (AICostPolicyOperation) TableName() string { return "ai_cost_policy_operati
 func (AIPolicyGrant) TableName() string         { return "ai_policy_grants" }
 func (AIUsagePeriodLedger) TableName() string   { return "ai_usage_period_ledgers" }
 func (AIUsageEvent) TableName() string          { return "ai_usage_events" }
-func (AIPricingConfig) TableName() string       { return "ai_pricing_configs" }
+func (AIModelConfig) TableName() string         { return "ai_model_configs" }

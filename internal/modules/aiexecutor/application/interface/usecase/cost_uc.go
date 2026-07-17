@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 
 	"github.com/google/uuid"
 )
 
 type IAICostUseCase interface {
 	Prepare(ctx context.Context, plan *dto.ExecutionPlan) (*dto.AICostDecision, error)
-	PrepareFree(ctx context.Context, userID uuid.UUID, operation string, promptTokens int64, maxOutputTokens int) (*dto.AICostDecision, error)
+	PrepareFree(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*dto.AICostDecision, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID) error
 	Confirm(ctx context.Context, requestID uuid.UUID, usage dto.AIUsage) error
 	Release(ctx context.Context, requestID uuid.UUID, reason string) error

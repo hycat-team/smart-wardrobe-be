@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
@@ -26,7 +28,7 @@ func NewAICostRepository(db *gorm.DB) repositories.IAICostRepository {
 		db, relations)}
 }
 
-func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation string, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
+func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, now time.Time) (*aiexecutor_entities.AIPolicyGrant, *aiexecutor_entities.AICostPolicy, *aiexecutor_entities.AICostPolicyOperation, error) {
 	db := r.GetDB(ctx)
 	var grant aiexecutor_entities.AIPolicyGrant
 	err := db.Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).Order("effective_from DESC").First(&grant).Error
@@ -81,12 +83,12 @@ func (r *AICostRepository) Reserve(ctx context.Context, grant *aiexecutor_entiti
 		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("grant_id=? AND period_index=?", grant.ID, idx).First(&ledger).Error; err != nil {
 			return err
 		}
-		if event.LogicalRoute != "paid" {
+		if event.LogicalRoute != airoute.Paid {
 			admitted = true
 		} else if policy.EnforcementMode == aienforcementmode.ObserveOnly {
 			var attempts int64
 			day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-			if err = tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", grant.UserID, operation.Operation, day, "paid").Count(&attempts).Error; err != nil {
+			if err = tx.Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id=? AND operation=? AND created_at>=? AND logical_route=?", grant.UserID, operation.Operation, day, airoute.Paid).Count(&attempts).Error; err != nil {
 				return err
 			}
 			admitted = attempts < int64(operation.MaxPaidAttemptsPerDay)
@@ -132,7 +134,7 @@ func (r *AICostRepository) Confirm(ctx context.Context, id uuid.UUID, prompt, ou
 		if e.Status == aiusageeventstatus.Confirmed || e.Status == aiusageeventstatus.Released || e.Status == aiusageeventstatus.ExpiredUnverified {
 			return nil
 		}
-		paid := e.LogicalRoute == "paid"
+		paid := e.LogicalRoute == airoute.Paid
 		if !paid {
 			cost = 0
 		}

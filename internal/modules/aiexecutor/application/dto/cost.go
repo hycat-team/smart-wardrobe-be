@@ -1,23 +1,11 @@
 package dto
 
 import (
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 	"smart-wardrobe-be/internal/shared/domain/constants/tokenestimationmethod"
 
 	"github.com/google/uuid"
-)
-
-const (
-	AIOperationChat      = "chat"
-	AIOperationOutfit    = "outfit"
-	AIOperationSummary   = "summary"
-	AIOperationRewriter  = "rewriter"
-	AIOperationVision    = "vision"
-	AIOperationEmbedding = "embedding"
-	AIRoutePaid          = "paid"
-	AIRouteFree          = "free"
-	AIRouteLocal         = "local"
 )
 
 type AITokenEstimationMeta struct {
@@ -29,10 +17,10 @@ type AITokenEstimationMeta struct {
 type ExecutionPlan struct {
 	RequestID             uuid.UUID
 	UserID                uuid.UUID
-	Operation             string
-	Provider              aiprovider.Provider
-	Model                 aimodel.Model
-	Route                 string
+	Operation             aioperation.AIOperation
+	Provider              string
+	Model                 string
+	Route                 airoute.AIRoute
 	MaxInputTokens        int
 	MaxOutputTokens       int
 	EstimatedPromptTokens int64
@@ -40,7 +28,7 @@ type ExecutionPlan struct {
 
 type AICostDecision struct {
 	RequestID       uuid.UUID
-	Route           string
+	Route           airoute.AIRoute
 	MaxInputTokens  int
 	MaxOutputTokens int
 	Tracked         bool
@@ -51,6 +39,6 @@ type AIUsage struct {
 	OutputTokens   int64
 	ThinkingTokens int64
 	FinishReason   string
-	Provider       aiprovider.Provider
-	Model          aimodel.Model
+	Provider       string
+	Model          string
 }

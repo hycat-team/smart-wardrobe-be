@@ -1,6 +1,6 @@
 -- +goose Up
-
-CREATE TABLE ai_pricing_configs (
+-- +goose StatementBegin
+CREATE TABLE ai_model_configs (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider                 VARCHAR(50)  NOT NULL,
     model                    VARCHAR(100) NOT NULL,
@@ -19,20 +19,39 @@ CREATE TABLE ai_pricing_configs (
 ALTER TABLE user_ai_policy_grants RENAME TO ai_policy_grants;
 
 ALTER TABLE ai_usage_events
-    ADD COLUMN pricing_config_id UUID REFERENCES ai_pricing_configs(id),
+    ADD COLUMN pricing_config_id UUID REFERENCES ai_model_configs(id),
     DROP COLUMN pricing_version;
 
-INSERT INTO ai_pricing_configs (provider, model, input_usd_per_million, output_usd_per_million, usd_to_vnd)
+ALTER TABLE ai_usage_events ALTER COLUMN ledger_id DROP NOT NULL;
+ALTER TABLE ai_usage_events ALTER COLUMN user_id DROP NOT NULL;
+
+ALTER TABLE wardrobe_items ADD COLUMN task_id UUID;
+CREATE INDEX idx_wardrobe_items_task_id ON wardrobe_items(task_id);
+
+ALTER TABLE brand_items ADD COLUMN task_id UUID;
+CREATE INDEX idx_brand_items_task_id ON brand_items(task_id);
+
+INSERT INTO ai_model_configs (provider, model, input_usd_per_million, output_usd_per_million, usd_to_vnd)
 VALUES ('google', 'gemini-3.1-flash-lite', 0.25, 1.50, 27500),
        ('google', 'gemini-2.5-flash-lite', 0.10, 0.40, 27500),
        ('google', 'gemini-embedding-2', 0.20, 0.20, 27500),
        ('google', 'gemini-embedding-001', 0.15, 0.15, 27500),
        ('google', 'gemma-4-31b-it', 0, 0, 27500),
        ('google', 'gemma-4-26b-a4b-it', 0, 0, 27500);
+-- +goose StatementEnd
 
 -- +goose Down
+-- +goose StatementBegin
+DROP INDEX IF EXISTS idx_brand_items_task_id;
+ALTER TABLE brand_items DROP COLUMN IF EXISTS task_id;
 
-DELETE FROM ai_pricing_configs WHERE provider = 'google' AND model IN (
+DROP INDEX IF EXISTS idx_wardrobe_items_task_id;
+ALTER TABLE wardrobe_items DROP COLUMN IF EXISTS task_id;
+
+ALTER TABLE ai_usage_events ALTER COLUMN ledger_id SET NOT NULL;
+ALTER TABLE ai_usage_events ALTER COLUMN user_id SET NOT NULL;
+
+DELETE FROM ai_model_configs WHERE provider = 'google' AND model IN (
   'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite',
   'gemini-embedding-2', 'gemini-embedding-001',
   'gemma-4-31b-it', 'gemma-4-26b-a4b-it'
@@ -44,4 +63,5 @@ ALTER TABLE ai_usage_events
 
 ALTER TABLE ai_policy_grants RENAME TO user_ai_policy_grants;
 
-DROP TABLE IF EXISTS ai_pricing_configs;
+DROP TABLE IF EXISTS ai_model_configs;
+-- +goose StatementEnd

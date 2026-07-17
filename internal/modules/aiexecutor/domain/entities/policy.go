@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aipolicygrantstatus"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 
 	"github.com/google/uuid"
 )
@@ -27,18 +29,18 @@ type AICostPolicy struct {
 
 type AICostPolicyOperation struct {
 	AuditableEntity
-	PolicyID               uuid.UUID `gorm:"type:uuid;not null"`
-	Operation              string    `gorm:"type:varchar(30);not null"`
-	NormalRoute            string    `gorm:"type:varchar(50);not null"`
-	ReducedRoute           string    `gorm:"type:varchar(50);not null"`
-	FreeRoute              string    `gorm:"type:varchar(50);not null"`
-	NormalMaxInputTokens   int       `gorm:"type:int;not null"`
-	NormalMaxOutputTokens  int       `gorm:"type:int;not null"`
-	ReducedMaxInputTokens  int       `gorm:"type:int;not null"`
-	ReducedMaxOutputTokens int       `gorm:"type:int;not null"`
-	MaxPaidAttemptsPerDay  int       `gorm:"type:int;not null"`
-	PaidFallbackEnabled    bool      `gorm:"type:boolean;not null"`
-	IsEnabled              bool      `gorm:"type:boolean;not null"`
+	PolicyID               uuid.UUID               `gorm:"type:uuid;not null"`
+	Operation              aioperation.AIOperation `gorm:"type:varchar(30);not null"`
+	NormalRoute            airoute.AIRoute         `gorm:"type:varchar(50);not null"`
+	ReducedRoute           airoute.AIRoute         `gorm:"type:varchar(50);not null"`
+	FreeRoute              airoute.AIRoute         `gorm:"type:varchar(50);not null"`
+	NormalMaxInputTokens   int                     `gorm:"type:int;not null"`
+	NormalMaxOutputTokens  int                     `gorm:"type:int;not null"`
+	ReducedMaxInputTokens  int                     `gorm:"type:int;not null"`
+	ReducedMaxOutputTokens int                     `gorm:"type:int;not null"`
+	MaxPaidAttemptsPerDay  int                     `gorm:"type:int;not null"`
+	PaidFallbackEnabled    bool                    `gorm:"type:boolean;not null"`
+	IsEnabled              bool                    `gorm:"type:boolean;not null"`
 }
 
 type AIPolicyGrant struct {

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	app_ai "smart-wardrobe-be/internal/shared/application/ai"
 
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ func mapOptions(opt aiexecutor_dto.OrchestratorOptions, requestID uuid.UUID, onU
 // ----- IAIOrchestrator -----
 
 func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string, prompt string) (string, error) {
-	plan, err := uc.resolveExecutionPlan(ctx, uuid.Nil, aiexecutor_dto.AIOperationVision, aiexecutor_dto.AITokenEstimationMeta{})
+	plan, err := uc.resolveExecutionPlan(ctx, uuid.Nil, aioperation.Vision, aiexecutor_dto.AITokenEstimationMeta{})
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +48,7 @@ func (uc *OrchestratorUseCase) AnalyzeImage(ctx context.Context, imageUrl string
 }
 
 func (uc *OrchestratorUseCase) GenerateEmbeddings(ctx context.Context, chunks []string) ([][]float32, error) {
-	plan, err := uc.resolveExecutionPlan(ctx, uuid.Nil, aiexecutor_dto.AIOperationEmbedding, aiexecutor_dto.AITokenEstimationMeta{})
+	plan, err := uc.resolveExecutionPlan(ctx, uuid.Nil, aioperation.Embedding, aiexecutor_dto.AITokenEstimationMeta{})
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 	if err != nil {
 		return "", err
 	}
-	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, options.Operation, aiexecutor_dto.AITokenEstimationMeta{
+	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, aioperation.AIOperation(options.Operation), aiexecutor_dto.AITokenEstimationMeta{
 		EstimatedPromptTokens: est.EstimatedPromptTokens,
 		TokenEstimationMethod: est.TokenEstimationMethod,
 		TokenCountLatencyMs:   est.TokenCountLatencyMs,
@@ -118,7 +119,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 	if err != nil {
 		return "", err
 	}
-	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, options.Operation, aiexecutor_dto.AITokenEstimationMeta{
+	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, aioperation.AIOperation(options.Operation), aiexecutor_dto.AITokenEstimationMeta{
 		EstimatedPromptTokens: est.EstimatedPromptTokens,
 		TokenEstimationMethod: est.TokenEstimationMethod,
 		TokenCountLatencyMs:   est.TokenCountLatencyMs,
@@ -170,7 +171,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 		close(errChan)
 		return textChan, errChan
 	}
-	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, options.Operation, aiexecutor_dto.AITokenEstimationMeta{
+	plan, err := uc.resolveExecutionPlan(ctx, options.UserID, aioperation.AIOperation(options.Operation), aiexecutor_dto.AITokenEstimationMeta{
 		EstimatedPromptTokens: est.EstimatedPromptTokens,
 		TokenEstimationMethod: est.TokenEstimationMethod,
 		TokenCountLatencyMs:   est.TokenCountLatencyMs,

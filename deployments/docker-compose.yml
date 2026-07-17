@@ -1,3 +1,5 @@
+name: closy-dev
+
 services:
     postgres:
         image: pgvector/pgvector:pg17

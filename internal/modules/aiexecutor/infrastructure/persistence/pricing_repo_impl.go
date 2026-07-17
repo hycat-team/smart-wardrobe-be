@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aimodel"
-	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiprovider"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -14,24 +12,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type PricingConfigRepository struct {
-	shared_persist.GenericRepository[entities.AIPricingConfig, uuid.UUID]
+type ModelConfigRepository struct {
+	shared_persist.GenericRepository[entities.AIModelConfig, uuid.UUID]
 }
 
+type PricingConfigRepository = ModelConfigRepository
+
 func NewPricingConfigRepository(db *gorm.DB) repositories.IPricingConfigRepository {
-	return &PricingConfigRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.AIPricingConfig, uuid.UUID](db, nil),
+	return &ModelConfigRepository{
+		GenericRepository: *shared_persist.NewGenericRepository[entities.AIModelConfig, uuid.UUID](db, nil),
 	}
 }
 
-func (r *PricingConfigRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.AIPricingConfig, error) {
-	var items []*entities.AIPricingConfig
+func (r *ModelConfigRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.AIModelConfig, error) {
+	var items []*entities.AIModelConfig
 	err := r.GetDB(ctx).Where("id IN ?", ids).Find(&items).Error
 	return items, err
 }
 
-func (r *PricingConfigRepository) GetActiveByProviderAndModel(ctx context.Context, provider aiprovider.Provider, model aimodel.Model) (*entities.AIPricingConfig, error) {
-	var item entities.AIPricingConfig
+func (r *ModelConfigRepository) GetActiveByProviderAndModel(ctx context.Context, provider string, model string) (*entities.AIModelConfig, error) {
+	var item entities.AIModelConfig
 	now := time.Now()
 	err := r.GetDB(ctx).
 		Where("provider = ? AND model = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", provider, model, now, now).
