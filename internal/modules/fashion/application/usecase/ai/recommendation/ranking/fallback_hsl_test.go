@@ -29,7 +29,7 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 	if len(res.Items) < 2 {
 		t.Fatalf("expected at least top and bottom groups, got %+v", res.Items)
 	}
-	if res.Items[0].Role != "ao" || res.Items[1].Role != "quan" && res.Items[1].Role != "chan-vay" {
+	if res.Items[0].Role != "top" || res.Items[1].Role != "bottom" {
 		t.Fatalf("unexpected roles returned: %+v", res.Items)
 	}
 }
@@ -48,8 +48,8 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 		{Item: shoes},
 	}, dto.RecommendOutfitReq{}, fashionItemMap)
 
-	if len(res.Items) == 0 || res.Items[0].Role != "dam" {
-		t.Fatalf("expected first role dam, got %+v", res.Items)
+	if len(res.Items) == 0 || res.Items[0].Role != "fullbody" {
+		t.Fatalf("expected first role fullbody, got %+v", res.Items)
 	}
 }
 
