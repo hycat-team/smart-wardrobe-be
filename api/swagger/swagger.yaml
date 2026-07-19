@@ -280,7 +280,7 @@ definitions:
       description:
         type: string
       fashionItem:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes'
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes'
       fashionItemId:
         type: string
       id:
@@ -536,45 +536,6 @@ definitions:
       userId:
         type: string
       voteType:
-        type: string
-    type: object
-  smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes:
-    properties:
-      categoryId:
-        type: string
-      categoryName:
-        type: string
-      categorySlug:
-        type: string
-      color:
-        type: string
-      colorHex:
-        type: string
-      colorHue:
-        type: number
-      colorLightness:
-        type: number
-      colorSaturation:
-        type: number
-      createdAt:
-        type: string
-      description:
-        type: string
-      fit:
-        type: string
-      id:
-        type: string
-      imageUrl:
-        type: string
-      material:
-        type: string
-      pattern:
-        type: string
-      seasonality:
-        type: string
-      style:
-        type: string
-      updatedAt:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.GrantLoyaltyPointsReq:
@@ -1011,6 +972,15 @@ definitions:
     - Adjust
     - Expire
     - Refund
+  smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_fashion_application_dto.ChatMessageRes:
     properties:
       content:
@@ -1040,6 +1010,41 @@ definitions:
   smart-wardrobe-be_internal_modules_fashion_application_dto.CreateChatSessionReq:
     properties:
       title:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes:
+    properties:
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes'
+      color:
+        type: string
+      colorHex:
+        type: string
+      colorHue:
+        type: number
+      colorLightness:
+        type: number
+      colorSaturation:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      fit:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      seasonality:
+        type: string
+      style:
+        type: string
+      updatedAt:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendOutfitReq:
@@ -1691,6 +1696,15 @@ definitions:
     required:
     - ids
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes:
     properties:
       id:
@@ -1728,10 +1742,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes:
     properties:
-      categoryName:
-        type: string
-      categorySlug:
-        type: string
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes'
       colorHex:
         type: string
       id:
@@ -1741,12 +1753,8 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes:
     properties:
-      categoryId:
-        type: string
-      categoryName:
-        type: string
-      categorySlug:
-        type: string
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes'
       color:
         type: string
       colorHex:
@@ -1895,8 +1903,6 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes:
     properties:
-      category:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes'
       fashionItem:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes'
       id:
@@ -1956,8 +1962,6 @@ definitions:
     properties:
       brandItem:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes'
-      category:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes'
       createdAt:
         type: string
       fashionItem:

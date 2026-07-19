@@ -5906,7 +5906,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fashionItem": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes"
                 },
                 "fashionItemId": {
                     "type": "string"
@@ -6285,65 +6285,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "voteType": {
-                    "type": "string"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_brand_application_dto.FashionItemRes": {
-            "type": "object",
-            "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "categoryName": {
-                    "type": "string"
-                },
-                "categorySlug": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "colorHex": {
-                    "type": "string"
-                },
-                "colorHue": {
-                    "type": "number"
-                },
-                "colorLightness": {
-                    "type": "number"
-                },
-                "colorSaturation": {
-                    "type": "number"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "fit": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "imageUrl": {
-                    "type": "string"
-                },
-                "material": {
-                    "type": "string"
-                },
-                "pattern": {
-                    "type": "string"
-                },
-                "seasonality": {
-                    "type": "string"
-                },
-                "style": {
-                    "type": "string"
-                },
-                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -6979,6 +6920,20 @@ const docTemplate = `{
                 "Refund"
             ]
         },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_fashion_application_dto.ChatMessageRes": {
             "type": "object",
             "properties": {
@@ -7023,6 +6978,59 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "colorHue": {
+                    "type": "number"
+                },
+                "colorLightness": {
+                    "type": "number"
+                },
+                "colorSaturation": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "seasonality": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -7976,6 +7984,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
             "type": "object",
             "properties": {
@@ -8030,11 +8052,8 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes": {
             "type": "object",
             "properties": {
-                "categoryName": {
-                    "type": "string"
-                },
-                "categorySlug": {
-                    "type": "string"
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
                 },
                 "colorHex": {
                     "type": "string"
@@ -8050,14 +8069,8 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes": {
             "type": "object",
             "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "categoryName": {
-                    "type": "string"
-                },
-                "categorySlug": {
-                    "type": "string"
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
                 },
                 "color": {
                     "type": "string"
@@ -8278,9 +8291,6 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes": {
             "type": "object",
             "properties": {
-                "category": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
-                },
                 "fashionItem": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
                 },
@@ -8368,9 +8378,6 @@ const docTemplate = `{
             "properties": {
                 "brandItem": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
-                },
-                "category": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                 },
                 "createdAt": {
                     "type": "string"
