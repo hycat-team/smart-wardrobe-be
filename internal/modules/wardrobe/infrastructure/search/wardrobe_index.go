@@ -17,7 +17,7 @@ func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *dto.SearchD
 		return nil
 	}
 	doc := buildItemDocument(item)
-	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.FashionItemID.String(), doc)
+	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.ID.String(), doc)
 }
 
 func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) error {
