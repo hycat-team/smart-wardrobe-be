@@ -238,7 +238,9 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	imagePublicID := ""
 	processingVersion := 0
 	if existingFI != nil {
-		categoryID = existingFI.CategoryID
+		if existingFI.Category != nil {
+			categoryID = &existingFI.Category.ID
+		}
 		imageURL = existingFI.ImageUrl
 		imagePublicID = existingFI.ImagePublicID
 	}

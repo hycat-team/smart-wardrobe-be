@@ -66,8 +66,18 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			return &s
 		}
 
+		var category *dto.CategoryBriefRes
+		if hit.Source.Category.ID != "" && hit.Source.Category.ID != uuid.Nil.String() {
+			category = &dto.CategoryBriefRes{
+				ID:   catID,
+				Name: hit.Source.Category.Name,
+				Slug: hit.Source.Category.Slug,
+			}
+		}
+
 		fashionItem := &dto.FashionItemRes{
 			ID:              fiID,
+			Category:        category,
 			ImageUrl:        hit.Source.ImageUrl,
 			Color:           strPtr(hit.Source.Color),
 			ColorHex:        hit.Source.ColorHex,
@@ -80,19 +90,12 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			Fit:             strPtr(hit.Source.Fit),
 			Seasonality:     strPtr(hit.Source.Seasonality),
 			Description:     strPtr(hit.Source.Description),
-			CategoryName:    &hit.Source.Category.Name,
-			CategorySlug:    &hit.Source.Category.Slug,
 			CreatedAt:       hit.Source.FashionCreatedAt,
 			UpdatedAt:       hit.Source.FashionUpdatedAt,
 		}
 
 		results[idx] = &dto.SearchWardrobeItemRes{
-			ID: id,
-			Category: &dto.CategoryRes{
-				ID:   catID,
-				Name: hit.Source.Category.Name,
-				Slug: hit.Source.Category.Slug,
-			},
+			ID:          id,
 			Price:       hit.Source.Price,
 			IsSystem:    hit.Source.ItemType == 1,
 			FashionItem: fashionItem,

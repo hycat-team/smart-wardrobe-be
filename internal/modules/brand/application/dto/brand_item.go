@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
@@ -34,27 +35,6 @@ type UpdateBrandItemStatusReq struct {
 	Status branditemstatus.BrandItemStatus `json:"status" binding:"required" label:"trạng thái sản phẩm"`
 }
 
-type FashionItemRes struct {
-	ID              uuid.UUID  `json:"id"`
-	CategoryID      *uuid.UUID `json:"categoryId,omitempty"`
-	CategoryName    *string    `json:"categoryName,omitempty"`
-	CategorySlug    *string    `json:"categorySlug,omitempty"`
-	ImageUrl        string     `json:"imageUrl"`
-	Color           *string    `json:"color,omitempty"`
-	ColorHex        *string    `json:"colorHex,omitempty"`
-	ColorHue        *float64   `json:"colorHue,omitempty"`
-	ColorSaturation *float64   `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64   `json:"colorLightness,omitempty"`
-	Style           *string    `json:"style,omitempty"`
-	Material        *string    `json:"material,omitempty"`
-	Pattern         *string    `json:"pattern,omitempty"`
-	Fit             *string    `json:"fit,omitempty"`
-	Seasonality     *string    `json:"seasonality,omitempty"`
-	Description     *string    `json:"description,omitempty"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
-}
-
 type BrandItemRes struct {
 	ID            uuid.UUID                       `json:"id"`
 	BrandID       uuid.UUID                       `json:"brandId"`
@@ -66,7 +46,7 @@ type BrandItemRes struct {
 	Price         *float64                        `json:"price"`
 	ItemType      branditemtype.BrandItemType     `json:"itemType"`
 	Status        branditemstatus.BrandItemStatus `json:"status"`
-	FashionItem   *FashionItemRes                 `json:"fashionItem,omitempty"`
+	FashionItem   *fashion_dto.FashionItemRes     `json:"fashionItem,omitempty"`
 	CreatedAt     time.Time                       `json:"createdAt"`
 	UpdatedAt     time.Time                       `json:"updatedAt"`
 	TaskID        *uuid.UUID                      `json:"taskId,omitempty"`

@@ -64,10 +64,12 @@ func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemRes, *dto.FashionItem
 		},
 	}
 	res := &dto.FashionItemRes{
-		ID:           fashionID,
-		CategoryID:   &catID,
-		CategoryName: &name,
-		CategorySlug: &name,
+		ID: fashionID,
+		Category: &dto.CategoryBriefRes{
+			ID:   catID,
+			Name: name,
+			Slug: name,
+		},
 	}
 	return item, res
 }

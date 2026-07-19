@@ -8,32 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
-	if fi == nil {
-		return nil
-	}
-	return &dto.FashionItemRes{
-		ID:              fi.ID,
-		CategoryID:      fi.CategoryID,
-		CategoryName:    fi.CategoryName,
-		CategorySlug:    fi.CategorySlug,
-		ImageUrl:        fi.ImageUrl,
-		Color:           fi.Color,
-		ColorHex:        fi.ColorHex,
-		ColorHue:        fi.ColorHue,
-		ColorSaturation: fi.ColorSaturation,
-		ColorLightness:  fi.ColorLightness,
-		Style:           fi.Style,
-		Material:        fi.Material,
-		Pattern:         fi.Pattern,
-		Fit:             fi.Fit,
-		Seasonality:     fi.Seasonality,
-		Description:     fi.Description,
-		CreatedAt:       fi.CreatedAt,
-		UpdatedAt:       fi.UpdatedAt,
-	}
-}
-
 func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes) *dto.BrandItemRes {
 	if item == nil {
 		return nil
@@ -57,7 +31,7 @@ func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes)
 		Price:         item.Price,
 		ItemType:      item.ItemType,
 		Status:        item.Status,
-		FashionItem:   MapToFashionItemRes(fi),
+		FashionItem:   fi,
 		CreatedAt:     item.CreatedAt,
 		UpdatedAt:     item.UpdatedAt,
 		TaskID:        item.TaskID,

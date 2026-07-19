@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/search"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
@@ -11,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
@@ -19,20 +22,23 @@ import (
 )
 
 type SearchSyncUseCase struct {
-	searchIndex  search.IWardrobeSearchIndexService
-	wardrobeRepo repositories.IWardrobeItemRepository
-	logger       logger.Interface
+	searchIndex     search.IWardrobeSearchIndexService
+	wardrobeRepo    repositories.IWardrobeItemRepository
+	fashionContract fashion_contract.IFashionContract
+	logger          logger.Interface
 }
 
 func NewSearchSyncUseCase(
 	searchIndex search.IWardrobeSearchIndexService,
 	wardrobeRepo repositories.IWardrobeItemRepository,
+	fashionContract fashion_contract.IFashionContract,
 	l logger.Interface,
 ) usecase_interfaces.ISearchSyncUseCase {
 	return &SearchSyncUseCase{
-		searchIndex:  searchIndex,
-		wardrobeRepo: wardrobeRepo,
-		logger:       l,
+		searchIndex:     searchIndex,
+		wardrobeRepo:    wardrobeRepo,
+		fashionContract: fashionContract,
+		logger:          l,
 	}
 }
 
@@ -49,12 +55,17 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 		}
 
 		// Only sync system wardrobe items (SystemCatalogItem = 1) to the Search Index
-		if item.ItemType != 1 {
+		if item.ItemType != itemtype.SystemCatalogItem {
 			run.AddSkipped(1)
 			return nil
 		}
 
-		doc := mapper.MapToSearchDocumentDTO(item)
+		var fashionItem *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fashionItem, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+		}
+
+		doc := mapper.MapToSearchDocumentDTO(item, fashionItem)
 		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index item in search index",
 				zap.String("itemId", item.ID.String()),
@@ -113,9 +124,28 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 		return true, nil
 	}
 
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
 	successCount := 0
 	for _, item := range items {
-		doc := mapper.MapToSearchDocumentDTO(item)
+		var fashionItem *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fashionItem = fashionMap[*item.FashionItemID]
+		}
+		doc := mapper.MapToSearchDocumentDTO(item, fashionItem)
 		if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
 			run.ChildWarn(uc.logger, "Failed to index system catalog item during initial sync",
 				zap.Error(err),

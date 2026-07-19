@@ -259,10 +259,10 @@ func isOuterwearItem(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.
 		return false
 	}
 	fi := fashionForItemFromMap(item, fashionItemMap)
-	if fi == nil || fi.CategoryName == nil {
+	if fi == nil || fi.Category == nil {
 		return false
 	}
-	text := parser.NormalizeText(*fi.CategoryName)
+	text := parser.NormalizeText(fi.Category.Slug)
 	for _, term := range retrieval.OuterwearCategoryTerms() {
 		if strings.Contains(text, parser.NormalizeText(term)) {
 			return true

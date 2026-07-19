@@ -8,34 +8,37 @@ import (
 	"github.com/google/uuid"
 )
 
+type CategoryBriefRes struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Slug string    `json:"slug"`
+}
+
 type FashionItemRes struct {
-	ID              uuid.UUID  `json:"id"`
-	CategoryID      *uuid.UUID `json:"categoryId,omitempty"`
-	CategoryName    *string    `json:"categoryName,omitempty"`
-	CategorySlug    *string    `json:"categorySlug,omitempty"`
-	ImageUrl        string     `json:"imageUrl"`
-	ImagePublicID   string     `json:"-"`
-	Color           *string    `json:"color,omitempty"`
-	ColorHex        *string    `json:"colorHex,omitempty"`
-	ColorHue        *float64   `json:"colorHue,omitempty"`
-	ColorSaturation *float64   `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64   `json:"colorLightness,omitempty"`
-	Style           *string    `json:"style,omitempty"`
-	Material        *string    `json:"material,omitempty"`
-	Pattern         *string    `json:"pattern,omitempty"`
-	Fit             *string    `json:"fit,omitempty"`
-	Seasonality     *string    `json:"seasonality,omitempty"`
-	Description     *string    `json:"description,omitempty"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	ID              uuid.UUID         `json:"id"`
+	Category        *CategoryBriefRes `json:"category,omitempty"`
+	ImageUrl        string            `json:"imageUrl"`
+	ImagePublicID   string            `json:"-"`
+	Color           *string           `json:"color,omitempty"`
+	ColorHex        *string           `json:"colorHex,omitempty"`
+	ColorHue        *float64          `json:"colorHue,omitempty"`
+	ColorSaturation *float64          `json:"colorSaturation,omitempty"`
+	ColorLightness  *float64          `json:"colorLightness,omitempty"`
+	Style           *string           `json:"style,omitempty"`
+	Material        *string           `json:"material,omitempty"`
+	Pattern         *string           `json:"pattern,omitempty"`
+	Fit             *string           `json:"fit,omitempty"`
+	Seasonality     *string           `json:"seasonality,omitempty"`
+	Description     *string           `json:"description,omitempty"`
+	CreatedAt       time.Time         `json:"createdAt"`
+	UpdatedAt       time.Time         `json:"updatedAt"`
 }
 
 type FashionItemBriefRes struct {
-	ID           uuid.UUID `json:"id"`
-	ImageUrl     string    `json:"imageUrl"`
-	ColorHex     *string   `json:"colorHex,omitempty"`
-	CategoryName *string   `json:"categoryName,omitempty"`
-	CategorySlug *string   `json:"categorySlug,omitempty"`
+	ID       uuid.UUID         `json:"id"`
+	ImageUrl string            `json:"imageUrl"`
+	ColorHex *string           `json:"colorHex,omitempty"`
+	Category *CategoryBriefRes `json:"category,omitempty"`
 }
 
 type CategoryRes struct {

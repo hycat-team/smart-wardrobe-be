@@ -215,8 +215,7 @@ func TestRankCandidatesUsesRetrievalRelevanceWhenRuleScoresAreClose(t *testing.T
 
 func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *testing.T) {
 	item, fi := newTestItemWithFashion()
-	catName := "ao-khoac"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
@@ -231,8 +230,7 @@ func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *tes
 
 func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
-	catName := "ao-khoac"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"winter"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
@@ -247,8 +245,7 @@ func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 
 func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
-	catName := "ao-khoac"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"summer"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
@@ -263,8 +260,7 @@ func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 
 func TestScoreCandidateItemDoesNotTreatRainyAsCold(t *testing.T) {
 	item, fi := newTestItemWithFashion()
-	catName := "ao-khoac"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
@@ -292,8 +288,7 @@ func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 
 func TestScoreCandidateItemAppliesExcludedWeatherPenalty(t *testing.T) {
 	item, fi := newTestItemWithFashion()
-	catName := "ao-khoac"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{ExcludedWeather: []string{"cold"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
@@ -344,20 +339,15 @@ func TestRankedCandidateLessUsesRetrievalRankAndIDTieBreakers(t *testing.T) {
 
 func TestDiversifyRankedCandidates(t *testing.T) {
 	item1, f1 := newTestItemWithFashion()
-	cn1 := "ao"
-	f1.CategoryName = &cn1
+	f1.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao", Slug: "ao"}
 	item2, f2 := newTestItemWithFashion()
-	cn2 := "ao"
-	f2.CategoryName = &cn2
+	f2.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao", Slug: "ao"}
 	item3, f3 := newTestItemWithFashion()
-	cn3 := "ao"
-	f3.CategoryName = &cn3
+	f3.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao", Slug: "ao"}
 	item4, f4 := newTestItemWithFashion()
-	cn4 := "ao"
-	f4.CategoryName = &cn4
+	f4.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao", Slug: "ao"}
 	item5, f5 := newTestItemWithFashion()
-	cn5 := "quan"
-	f5.CategoryName = &cn5
+	f5.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "quan", Slug: "quan"}
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
 		item1.FashionItem.ID: f1,
@@ -384,8 +374,8 @@ func TestDiversifyRankedCandidates(t *testing.T) {
 	for _, cand := range diversified {
 		cat := "?"
 		if cand.Item.FashionItem != nil {
-			if fi := fashionItemMap[cand.Item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
-				cat = *fi.CategoryName
+			if fi := fashionItemMap[cand.Item.FashionItem.ID]; fi != nil && fi.Category != nil {
+				cat = fi.Category.Name
 			}
 		}
 		categoryCounts[cat]++

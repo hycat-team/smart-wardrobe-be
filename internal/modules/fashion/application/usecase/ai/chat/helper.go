@@ -60,8 +60,8 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 				break
 			}
 
-			hasCategory := fashion.CategoryName != nil &&
-				strings.TrimSpace(*fashion.CategoryName) != ""
+			hasCategory := fashion.Category != nil &&
+				strings.TrimSpace(fashion.Category.Name) != ""
 			hasColor := fashion.Color != nil &&
 				strings.TrimSpace(*fashion.Color) != ""
 			hasStyle := fashion.Style != nil &&
@@ -74,7 +74,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 			builder.WriteString("- ")
 
 			if hasCategory {
-				fmt.Fprintf(&builder, "Category: %s; ", *fashion.CategoryName)
+				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
 			}
 			if hasColor {
 				fmt.Fprintf(&builder, "Color: %s; ", *fashion.Color)
@@ -99,8 +99,8 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 				continue
 			}
 
-			hasCategory := fashion.CategoryName != nil &&
-				strings.TrimSpace(*fashion.CategoryName) != ""
+			hasCategory := fashion.Category != nil &&
+				strings.TrimSpace(fashion.Category.Name) != ""
 			hasColor := fashion.Color != nil &&
 				strings.TrimSpace(*fashion.Color) != ""
 			hasStyle := fashion.Style != nil &&
@@ -117,7 +117,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 				fmt.Fprintf(&builder, "Brand: %s; ", brandName)
 			}
 			if hasCategory {
-				fmt.Fprintf(&builder, "Category: %s; ", *fashion.CategoryName)
+				fmt.Fprintf(&builder, "Category: %s; ", fashion.Category.Name)
 			}
 			if hasColor {
 				fmt.Fprintf(&builder, "Color: %s; ", *fashion.Color)

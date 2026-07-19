@@ -51,11 +51,17 @@ func cloneWardrobeItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItem
 	}
 	var fRes *wardrobeDto.FashionItemRes
 	if fi != nil {
+		var category *wardrobeDto.CategoryBriefRes
+		if fi.Category != nil {
+			category = &wardrobeDto.CategoryBriefRes{
+				ID:   fi.Category.ID,
+				Name: fi.Category.Name,
+				Slug: fi.Category.Slug,
+			}
+		}
 		fRes = &wardrobeDto.FashionItemRes{
 			ID:              fi.ID,
-			CategoryID:      fi.CategoryID,
-			CategoryName:    fi.CategoryName,
-			CategorySlug:    fi.CategorySlug,
+			Category:        category,
 			ImageUrl:        fi.ImageUrl,
 			Color:           fi.Color,
 			ColorHex:        fi.ColorHex,
@@ -112,8 +118,8 @@ func MapLLMResponseToGroups(
 
 		actualRole := role
 		if primary.FashionItem != nil {
-			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.CategorySlug != nil {
-				actualRole = CategorySlugToWearingRole(*fi.CategorySlug)
+			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.Category != nil {
+				actualRole = CategorySlugToWearingRole(fi.Category.Slug)
 			}
 		}
 
@@ -172,8 +178,8 @@ func resolvePrimaryCandidate(
 
 	for _, c := range candidates {
 		if c.Item.FashionItem != nil {
-			if fi := fashionItemMap[c.Item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
-				if CategorySlugToWearingRole(*fi.CategoryName) == role {
+			if fi := fashionItemMap[c.Item.FashionItem.ID]; fi != nil && fi.Category != nil {
+				if CategorySlugToWearingRole(fi.Category.Slug) == role {
 					return c.Item
 				}
 			}
@@ -269,8 +275,8 @@ func resolveAlternativeCandidates(
 
 func matchesRole(item *wardrobeDto.WardrobeItemRes, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item.FashionItem != nil {
-		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.CategoryName != nil {
-			return CategorySlugToWearingRole(*fi.CategoryName) == role
+		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.Category != nil {
+			return CategorySlugToWearingRole(fi.Category.Slug) == role
 		}
 	}
 	return true

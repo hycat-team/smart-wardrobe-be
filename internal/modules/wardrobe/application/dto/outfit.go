@@ -36,6 +36,13 @@ type OutfitRes struct {
 	Items         []*OutfitItemRes          `json:"items,omitempty"`
 }
 
+type FashionItemBriefRes struct {
+	ID       uuid.UUID         `json:"id"`
+	ImageUrl string            `json:"imageUrl"`
+	ColorHex *string           `json:"colorHex,omitempty"`
+	Category *CategoryBriefRes `json:"category,omitempty"`
+}
+
 type OutfitItemRes struct {
 	ID          uuid.UUID            `json:"id"`
 	ItemContext string               `json:"itemContext"`
@@ -44,12 +51,4 @@ type OutfitItemRes struct {
 	PositionY   float64              `json:"positionY"`
 	Scale       float64              `json:"scale"`
 	LayerOrder  int16                `json:"layerOrder"`
-}
-
-type FashionItemBriefRes struct {
-	ID           uuid.UUID `json:"id"`
-	ImageUrl     string    `json:"imageUrl"`
-	ColorHex     *string   `json:"colorHex,omitempty"`
-	CategoryName *string   `json:"categoryName,omitempty"`
-	CategorySlug *string   `json:"categorySlug,omitempty"`
 }

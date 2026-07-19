@@ -107,8 +107,8 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 			"id": fmt.Sprintf("A%d", candidateIndex+1),
 		}
 
-		if fashion != nil && fashion.CategoryName != nil {
-			candidatePayload["category"] = fashion_mapper.CategorySlugToWearingRole(*fashion.CategoryName)
+		if fashion != nil && fashion.Category != nil {
+			candidatePayload["category"] = fashion_mapper.CategorySlugToWearingRole(fashion.Category.Slug)
 		}
 		if fashion != nil && fashion.Color != nil {
 			candidatePayload["color"] = *fashion.Color

@@ -10,11 +10,17 @@ func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
+	var category *dto.CategoryBriefRes
+	if fi.Category != nil {
+		category = &dto.CategoryBriefRes{
+			ID:   fi.Category.ID,
+			Name: fi.Category.Name,
+			Slug: fi.Category.Slug,
+		}
+	}
 	return &dto.FashionItemRes{
 		ID:              fi.ID,
-		CategoryID:      fi.CategoryID,
-		CategoryName:    fi.CategoryName,
-		CategorySlug:    fi.CategorySlug,
+		Category:        category,
 		ImageUrl:        fi.ImageUrl,
 		Color:           fi.Color,
 		ColorHex:        fi.ColorHex,
@@ -38,23 +44,15 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionIt
 	}
 
 	res := &dto.WardrobeItemRes{
-		ID:         item.ID,
-		UserID:     item.UserID,
-		Price:      item.Price,
-		Status:     item.Status,
-		CreatedAt:  item.CreatedAt,
-		LastUsedAt: item.LastUsedAt,
-		IsDeleted:  item.IsDeleted,
-		TaskID:     item.TaskID,
-	}
-	if fi != nil {
-		res.FashionItem = MapToFashionItemRes(fi)
-		if fi.CategoryName != nil {
-			res.Category = &dto.CategoryRes{
-				ID:   *fi.CategoryID,
-				Name: *fi.CategoryName,
-			}
-		}
+		ID:          item.ID,
+		UserID:      item.UserID,
+		Price:       item.Price,
+		Status:      item.Status,
+		CreatedAt:   item.CreatedAt,
+		LastUsedAt:  item.LastUsedAt,
+		IsDeleted:   item.IsDeleted,
+		TaskID:      item.TaskID,
+		FashionItem: MapToFashionItemRes(fi),
 	}
 	return res
 }
@@ -65,18 +63,10 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.Fas
 	}
 
 	res := &dto.SearchWardrobeItemRes{
-		ID:       item.ID,
-		Price:    item.Price,
-		IsSystem: item.ItemType == 1,
-	}
-	if fi != nil {
-		res.FashionItem = MapToFashionItemRes(fi)
-		if fi.CategoryName != nil {
-			res.Category = &dto.CategoryRes{
-				ID:   *fi.CategoryID,
-				Name: *fi.CategoryName,
-			}
-		}
+		ID:          item.ID,
+		Price:       item.Price,
+		IsSystem:    item.ItemType == 1,
+		FashionItem: MapToFashionItemRes(fi),
 	}
 	return res
 }

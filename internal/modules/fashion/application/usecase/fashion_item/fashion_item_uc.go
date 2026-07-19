@@ -23,17 +23,17 @@ func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
-	var categoryName *string
-	var categorySlug *string
+	var category *dto.CategoryBriefRes
 	if fi.Category != nil {
-		categoryName = &fi.Category.Name
-		categorySlug = &fi.Category.Slug
+		category = &dto.CategoryBriefRes{
+			ID:   fi.Category.ID,
+			Name: fi.Category.Name,
+			Slug: fi.Category.Slug,
+		}
 	}
 	return &dto.FashionItemRes{
 		ID:              fi.ID,
-		CategoryID:      fi.CategoryID,
-		CategoryName:    categoryName,
-		CategorySlug:    categorySlug,
+		Category:        category,
 		ImageUrl:        fi.ImageUrl,
 		ImagePublicID:   fi.ImagePublicID,
 		Color:           fi.Color,

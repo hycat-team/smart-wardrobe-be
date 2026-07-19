@@ -37,11 +37,10 @@ func (c *FashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.
 	res := make([]*dto.FashionItemBriefRes, len(items))
 	for i, item := range items {
 		res[i] = &dto.FashionItemBriefRes{
-			ID:           item.ID,
-			ImageUrl:     item.ImageUrl,
-			ColorHex:     item.ColorHex,
-			CategoryName: item.CategoryName,
-			CategorySlug: item.CategorySlug,
+			ID:       item.ID,
+			ImageUrl: item.ImageUrl,
+			ColorHex: item.ColorHex,
+			Category: item.Category,
 		}
 	}
 	return res, nil

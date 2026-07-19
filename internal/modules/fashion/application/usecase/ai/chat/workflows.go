@@ -272,11 +272,17 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
 	for _, item := range activeWardrobeItems {
 		if item.FashionItem != nil {
+			var category *dto.CategoryBriefRes
+			if item.FashionItem.Category != nil {
+				category = &dto.CategoryBriefRes{
+					ID:   item.FashionItem.Category.ID,
+					Name: item.FashionItem.Category.Name,
+					Slug: item.FashionItem.Category.Slug,
+				}
+			}
 			fashionItemMap[item.FashionItem.ID] = &dto.FashionItemRes{
 				ID:              item.FashionItem.ID,
-				CategoryID:      item.FashionItem.CategoryID,
-				CategoryName:    item.FashionItem.CategoryName,
-				CategorySlug:    item.FashionItem.CategorySlug,
+				Category:        category,
 				ImageUrl:        item.FashionItem.ImageUrl,
 				Color:           item.FashionItem.Color,
 				ColorHex:        item.FashionItem.ColorHex,

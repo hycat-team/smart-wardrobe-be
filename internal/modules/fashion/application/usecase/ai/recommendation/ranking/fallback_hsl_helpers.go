@@ -71,8 +71,8 @@ func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map
 
 func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if item.FashionItem != nil {
-		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.CategorySlug != nil {
-			slug := strings.ToLower(strings.TrimSpace(*fi.CategorySlug))
+		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.Category != nil {
+			slug := strings.ToLower(strings.TrimSpace(fi.Category.Slug))
 			if strings.Contains(slug, "ao-khoac") {
 				return "ao-khoac"
 			}

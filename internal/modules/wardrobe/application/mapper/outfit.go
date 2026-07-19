@@ -19,12 +19,19 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 		fi := fashionItemMap[item.FashionItemID]
 		var briefDTO *dto.FashionItemBriefRes
 		if fi != nil {
+			var category *dto.CategoryBriefRes
+			if fi.Category != nil {
+				category = &dto.CategoryBriefRes{
+					ID:   fi.Category.ID,
+					Name: fi.Category.Name,
+					Slug: fi.Category.Slug,
+				}
+			}
 			briefDTO = &dto.FashionItemBriefRes{
-				ID:           fi.ID,
-				ImageUrl:     fi.ImageUrl,
-				ColorHex:     fi.ColorHex,
-				CategoryName: fi.CategoryName,
-				CategorySlug: fi.CategorySlug,
+				ID:       fi.ID,
+				ImageUrl: fi.ImageUrl,
+				ColorHex: fi.ColorHex,
+				Category: category,
 			}
 		}
 		itemDTOs[idx] = &dto.OutfitItemRes{

@@ -152,12 +152,12 @@ func MatchesFallbackHardFilters(item *wardrobeDto.WardrobeItemRes, filters repos
 	}
 	if len(filters.CategorySlugs) > 0 {
 		categorySlug := ""
-		if fashion != nil && fashion.CategoryName != nil {
-			categorySlug = parser.NormalizeText(*fashion.CategoryName)
+		if fashion != nil && fashion.Category != nil {
+			categorySlug = fashion.Category.Slug
 		}
 		matched := false
 		for _, slug := range filters.CategorySlugs {
-			if slug != "" && categorySlug == parser.NormalizeText(slug) {
+			if slug != "" && categorySlug == slug {
 				matched = true
 				break
 			}

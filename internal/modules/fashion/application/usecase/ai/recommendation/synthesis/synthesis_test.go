@@ -24,8 +24,11 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 	item, fi := newSynthItem()
 	desc := "cozy knit sweater"
 	fi.Description = &desc
-	catName := "Ao"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{
+		ID:   uuid.New(),
+		Name: "Ao",
+		Slug: "ao",
+	}
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
 	candidates := []types.CandidateForPrompt{
@@ -54,8 +57,11 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 	for i := range candidates {
 		item, fi := newSynthItem()
 		fi.Description = &longDescription
-		catName := "ao"
-		fi.CategoryName = &catName
+		fi.Category = &dto.CategoryBriefRes{
+			ID:   uuid.New(),
+			Name: "ao",
+			Slug: "ao",
+		}
 		fashionItemMap[item.FashionItem.ID] = fi
 		candidates[i] = types.CandidateForPrompt{
 			Item: item,
@@ -110,8 +116,11 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 	itemID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 
 	item, fi := newSynthItem()
-	catName := "Ao"
-	fi.CategoryName = &catName
+	fi.Category = &dto.CategoryBriefRes{
+		ID:   uuid.New(),
+		Name: "Ao",
+		Slug: "ao",
+	}
 	item.ID = itemID
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
 
@@ -186,15 +195,15 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	accessoryID := uuid.New()
 
 	topItem, topFi := newSynthItem()
-	topFi.CategoryName = strPtr("ao")
+	topFi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao", Slug: "ao"}
 	topItem.ID = topID
 
 	fullbodyItem, fullbodyFi := newSynthItem()
-	fullbodyFi.CategoryName = strPtr("dam")
+	fullbodyFi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "dam", Slug: "dam"}
 	fullbodyItem.ID = fullbodyID
 
 	accessoryItem, accessoryFi := newSynthItem()
-	accessoryFi.CategoryName = strPtr("phu-kien")
+	accessoryFi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "phu-kien", Slug: "phu-kien"}
 	accessoryItem.ID = accessoryID
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
@@ -258,8 +267,8 @@ func newSynthItem() (*wardrobeDto.WardrobeItemRes, *dto.FashionItemRes) {
 		},
 	}
 	res := &dto.FashionItemRes{
-		ID:         fashionID,
-		CategoryID: &catID,
+		ID:       fashionID,
+		Category: &dto.CategoryBriefRes{ID: catID},
 	}
 	return item, res
 }
