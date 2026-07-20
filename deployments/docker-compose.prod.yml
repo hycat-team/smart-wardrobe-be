@@ -6,6 +6,8 @@ services:
         restart: always
         mem_limit: 768m
         shm_size: 256m
+        env_file:
+            - ../.env.production
         environment:
             POSTGRES_USER: ${DB_USER:?DB_USER is required}
             POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
@@ -35,6 +37,8 @@ services:
         image: redis:7-alpine
         restart: always
         mem_limit: 384m
+        env_file:
+            - ../.env.production
         environment:
             REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
@@ -68,6 +72,8 @@ services:
         image: rabbitmq:3-management-alpine
         restart: always
         mem_limit: 512m
+        env_file:
+            - ../.env.production
         environment:
             RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
             RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
@@ -95,6 +101,8 @@ services:
         mem_limit: 1280m
         memswap_limit: 1280m
         mem_swappiness: 0
+        env_file:
+            - ../.env.production
         environment:
             discovery.type: single-node
             xpack.security.enabled: "false"
@@ -170,6 +178,8 @@ services:
         image: nginx:alpine
         restart: always
         mem_limit: 128m
+        env_file:
+            - ../.env.production
         environment:
             API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
             NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-20m}

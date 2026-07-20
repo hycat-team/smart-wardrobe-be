@@ -1,22 +1,28 @@
 database:
     host: localhost
     port: 5432
+    user: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    db_name: "${DB_NAME}"
     ssl_mode: disable
     time_zone: Asia/Ho_Chi_Minh
 redis:
     host: localhost
     port: 6379
+    password: "${REDIS_PASSWORD}"
     db: 0
 server:
     port: "8080"
     front_end_origin: http://localhost:3000,http://localhost:8081
     timeout_seconds: 30
     env: development
+    swagger_access_code: "${SWAGGER_ACCESS_CODE}"
 startup:
     retry_attempt_1_seconds: 5
     retry_attempt_2_seconds: 15
     retry_attempt_3_seconds: 30
 jwt:
+    secret: "${JWT_SECRET}"
     issuer: SmartWardrobe
     audience: SmartWardrobeUsers
     access_expiration_minutes: 60
@@ -38,6 +44,8 @@ email:
     host: smtp.gmail.com
     port: 587
     sender_name: SmartWardrobe
+    sender_email: "${EMAIL_SENDER_EMAIL}"
+    app_password: "${EMAIL_APP_PASSWORD}"
 rate_limit:
     token_limit: 100
     tokens_per_period: 20
@@ -48,6 +56,10 @@ claim_rate_limit:
     token_limit: 5
     window_seconds: 600
 payos:
+    client_id: "${PAYOS_CLIENT_ID}"
+    api_key: "${PAYOS_API_KEY}"
+    checksum_key: "${PAYOS_CHECKSUM_KEY}"
+    endpoint: "${PAYOS_ENDPOINT}"
     return_url: http://localhost:3000
     cancel_url: http://localhost:3000
     expired_minutes: 15
@@ -57,12 +69,66 @@ payos:
     reconciliation_max_attempts: 20
     reconciliation_max_age_hours: 168
 cloudinary:
+    cloud_name: "${CLOUDINARY_CLOUD_NAME}"
+    api_key: "${CLOUDINARY_API_KEY}"
+    api_secret: "${CLOUDINARY_API_SECRET}"
+    api_url: "${CLOUDINARY_API_URL}"
     avatar_folder: smart_wardrobe/avatars
     brands_folder: smart_wardrobe/brands
     item_folder: smart_wardrobe/items
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts
 ai:
+    vision_primary:
+        provider: "${VISION_PRIMARY_PROVIDER}"
+        api_key: "${VISION_PRIMARY_API_KEY}"
+        endpoint: "${VISION_PRIMARY_ENDPOINT}"
+        model: "${VISION_PRIMARY_MODEL}"
+    vision_fallback:
+        provider: "${VISION_FALLBACK_PROVIDER}"
+        api_key: "${VISION_FALLBACK_API_KEY}"
+        endpoint: "${VISION_FALLBACK_ENDPOINT}"
+        model: "${VISION_FALLBACK_MODEL}"
+    embedding_primary:
+        provider: "${EMBEDDING_PRIMARY_PROVIDER}"
+        api_key: "${EMBEDDING_PRIMARY_API_KEY}"
+        endpoint: "${EMBEDDING_PRIMARY_ENDPOINT}"
+        model: "${EMBEDDING_PRIMARY_MODEL}"
+    embedding_fallback:
+        provider: "${EMBEDDING_FALLBACK_PROVIDER}"
+        api_key: "${EMBEDDING_FALLBACK_API_KEY}"
+        endpoint: "${EMBEDDING_FALLBACK_ENDPOINT}"
+        model: "${EMBEDDING_FALLBACK_MODEL}"
+    chat_text_primary:
+        provider: "${CHAT_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${CHAT_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${CHAT_TEXT_PRIMARY_ENDPOINT}"
+        model: "${CHAT_TEXT_PRIMARY_MODEL}"
+    chat_text_fallback:
+        provider: "${CHAT_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${CHAT_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${CHAT_TEXT_FALLBACK_ENDPOINT}"
+        model: "${CHAT_TEXT_FALLBACK_MODEL}"
+    recommendation_text_primary:
+        provider: "${RECOMMENDATION_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${RECOMMENDATION_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${RECOMMENDATION_TEXT_PRIMARY_ENDPOINT}"
+        model: "${RECOMMENDATION_TEXT_PRIMARY_MODEL}"
+    recommendation_text_fallback:
+        provider: "${RECOMMENDATION_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${RECOMMENDATION_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${RECOMMENDATION_TEXT_FALLBACK_ENDPOINT}"
+        model: "${RECOMMENDATION_TEXT_FALLBACK_MODEL}"
+    free_text_primary:
+        provider: "${FREE_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${FREE_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${FREE_TEXT_PRIMARY_ENDPOINT}"
+        model: "${FREE_TEXT_PRIMARY_MODEL}"
+    free_text_fallback:
+        provider: "${FREE_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${FREE_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${FREE_TEXT_FALLBACK_ENDPOINT}"
+        model: "${FREE_TEXT_FALLBACK_MODEL}"
     chat_text_timeout_seconds: 30
     recommendation_text_timeout_seconds: 30
     vision_timeout_seconds: 20
@@ -97,8 +163,12 @@ ai:
 rabbitmq:
     host: localhost
     port: 5672
+    user: "${RABBITMQ_USER}"
+    password: "${RABBITMQ_PASSWORD}"
 elasticsearch:
     addresses: [http://localhost:9200]
+    user: "${ELASTICSEARCH_USER}"
+    password: "${ELASTICSEARCH_PASSWORD}"
 community:
     max_personalized_window: 100
 loyalty:

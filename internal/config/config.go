@@ -49,15 +49,15 @@ type Startup struct {
 
 type Elasticsearch struct {
 	Addresses []string `mapstructure:"addresses"`
-	User      string   `mapstructure:"-"`
-	Password  string   `mapstructure:"-"`
+	User      string   `mapstructure:"user"`
+	Password  string   `mapstructure:"password"`
 }
 
 type APIProviderConfig struct {
-	Provider string `mapstructure:"-"`
-	ApiKey   string `mapstructure:"-"`
-	Endpoint string `mapstructure:"-"`
-	Model    string `mapstructure:"-"`
+	Provider string `mapstructure:"provider"`
+	ApiKey   string `mapstructure:"api_key"`
+	Endpoint string `mapstructure:"endpoint"`
+	Model    string `mapstructure:"model"`
 }
 
 type AIServiceConfig struct {
@@ -103,15 +103,15 @@ type AIServiceConfig struct {
 type RabbitMQ struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"-"`
-	Password string `mapstructure:"-"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
 }
 
 type Cloudinary struct {
-	CloudName    string `mapstructure:"-"`
-	ApiKey       string `mapstructure:"-"`
-	ApiSecret    string `mapstructure:"-"`
-	APIUrl       string `mapstructure:"-"`
+	CloudName    string `mapstructure:"cloud_name"`
+	ApiKey       string `mapstructure:"api_key"`
+	ApiSecret    string `mapstructure:"api_secret"`
+	APIUrl       string `mapstructure:"api_url"`
 	AvatarFolder string `mapstructure:"avatar_folder"`
 	BrandsFolder string `mapstructure:"brands_folder"`
 	ItemFolder   string `mapstructure:"item_folder"`
@@ -120,10 +120,10 @@ type Cloudinary struct {
 }
 
 type PayOS struct {
-	ClientID                   string `mapstructure:"-"`
-	ApiKey                     string `mapstructure:"-"`
-	ChecksumKey                string `mapstructure:"-"`
-	Endpoint                   string `mapstructure:"-"`
+	ClientID                   string `mapstructure:"client_id"`
+	ApiKey                     string `mapstructure:"api_key"`
+	ChecksumKey                string `mapstructure:"checksum_key"`
+	Endpoint                   string `mapstructure:"endpoint"`
 	ReturnUrl                  string `mapstructure:"return_url"`
 	CancelUrl                  string `mapstructure:"cancel_url"`
 	ExpiredMinutes             int    `mapstructure:"expired_minutes"`
@@ -137,9 +137,9 @@ type PayOS struct {
 type Database struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"-"`
-	Password string `mapstructure:"-"`
-	DbName   string `mapstructure:"-"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DbName   string `mapstructure:"db_name"`
 	SslMode  string `mapstructure:"ssl_mode"`
 	TimeZone string `mapstructure:"time_zone"`
 }
@@ -147,7 +147,7 @@ type Database struct {
 type Redis struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"-"`
+	Password string `mapstructure:"password"`
 	Db       int    `mapstructure:"db"`
 }
 
@@ -156,11 +156,11 @@ type Server struct {
 	FrontEndOrigin    string `mapstructure:"front_end_origin"`
 	TimeoutSeconds    int    `mapstructure:"timeout_seconds"`
 	Env               string `mapstructure:"env"`
-	SwaggerAccessCode string `mapstructure:"-"`
+	SwaggerAccessCode string `mapstructure:"swagger_access_code"`
 }
 
 type Jwt struct {
-	Secret                          string `mapstructure:"-"`
+	Secret                          string `mapstructure:"secret"`
 	Issuer                          string `mapstructure:"issuer"`
 	Audience                        string `mapstructure:"audience"`
 	AccessExpirationMinutes         int    `mapstructure:"access_expiration_minutes"`
@@ -190,8 +190,8 @@ type Email struct {
 	Host        string `mapstructure:"host"`
 	Port        int    `mapstructure:"port"`
 	SenderName  string `mapstructure:"sender_name"`
-	SenderEmail string `mapstructure:"-"`
-	AppPassword string `mapstructure:"-"`
+	SenderEmail string `mapstructure:"sender_email"`
+	AppPassword string `mapstructure:"app_password"`
 }
 
 type RateLimit struct {

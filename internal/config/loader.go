@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -25,10 +26,16 @@ func loadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	rawBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("read config file %q: %w", configPath, err)
+	}
+
+	expanded := os.ExpandEnv(string(rawBytes))
+
 	v := viper.New()
-	v.SetConfigFile(configPath)
 	v.SetConfigType("yaml")
-	if err := v.ReadInConfig(); err != nil {
+	if err := v.ReadConfig(bytes.NewBufferString(expanded)); err != nil {
 		return nil, fmt.Errorf("read config file %q: %w", configPath, err)
 	}
 
@@ -36,7 +43,6 @@ func loadConfig() (*Config, error) {
 	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("decode config file %q: %w", configPath, err)
 	}
-	loadSecrets(&cfg)
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}

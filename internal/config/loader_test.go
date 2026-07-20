@@ -58,12 +58,15 @@ func TestLoadConfigRejectsUnknownKey(t *testing.T) {
 	}
 }
 
-func TestLoadConfigRejectsSecretInYAML(t *testing.T) {
-	prepareConfigTest(t, func(value string) string {
-		return strings.Replace(value, "    host: localhost", "    host: localhost\n    password: \"forbidden\"", 1)
-	})
-	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "password") {
-		t.Fatalf("expected secret key error, got %v", err)
+func TestLoadConfigExpandsEnvironmentPlaceholders(t *testing.T) {
+	prepareConfigTest(t, nil)
+	t.Setenv("DB_PASSWORD", "secret-pass")
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.Password != "secret-pass" {
+		t.Fatalf("expected DB_PASSWORD to expand to secret-pass, got %q", cfg.Database.Password)
 	}
 }
 
