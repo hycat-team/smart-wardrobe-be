@@ -358,8 +358,12 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
             "itemType": "product",
             "fashionItem": {
               "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-              "categoryId": "c2b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
-              "categoryName": "Áo Khoác",
+              "category": {
+                "id": "c2b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
+                "name": "Áo Khoác",
+                "slug": "ao-khoac"
+              },
+              "imageUrl": "https://res.cloudinary.com/closy/image/upload/v12345/jacket.png",
               "color": "Màu xanh rêu",
               "colorHex": "#4B5320",
               "..."

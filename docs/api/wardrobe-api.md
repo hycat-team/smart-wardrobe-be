@@ -123,8 +123,12 @@ Tài liệu này bổ sung đặc tả các API liên quan đến tủ đồ (wa
             "isLocked": false,
             "fashionItem": {
               "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-              "categoryId": "c2b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
-              "categoryName": "Áo Thun",
+              "category": {
+                "id": "c2b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
+                "name": "Áo Thun",
+                "slug": "ao-thun"
+              },
+              "imageUrl": "https://res.cloudinary.com/closy/image/upload/v12345/shirt.jpg",
               "color": "Màu đen",
               "colorHex": "#000000",
               "..."

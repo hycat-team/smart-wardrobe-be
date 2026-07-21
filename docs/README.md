@@ -16,7 +16,6 @@ docs/
 ├── api/                 # Quy chuẩn thiết kế tài liệu API.
 ├── development/         # Thiết lập local (local-setup) và quy trình làm việc với Agent & Spec-kit (agent-workflow).
 ├── decisions/           # Hồ sơ quyết định kiến trúc (ADR).
-├── deployment/          # Docker, CI/CD, deploy VPS và giám sát hệ thống.
 └── archive/             # Lưu trữ các tài liệu cũ và lịch sử refactor/rebuild.
 ```
 
