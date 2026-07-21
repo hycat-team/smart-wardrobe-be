@@ -135,13 +135,16 @@ type PayOS struct {
 }
 
 type Database struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DbName   string `mapstructure:"db_name"`
-	SslMode  string `mapstructure:"ssl_mode"`
-	TimeZone string `mapstructure:"time_zone"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	User            string        `mapstructure:"user"`
+	Password        string        `mapstructure:"password"`
+	DbName          string        `mapstructure:"db_name"`
+	SslMode         string        `mapstructure:"ssl_mode"`
+	TimeZone        string        `mapstructure:"time_zone"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	MaxOpenConns    int           `mapstructure:"max_open_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 }
 
 type Redis struct {

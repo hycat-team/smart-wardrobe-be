@@ -55,9 +55,9 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 			return fmt.Errorf("failed to ping database: %w", err)
 		}
 
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(time.Hour)
+		sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+		sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+		sqlDB.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
 		db = openedDB
 		return nil
 	})

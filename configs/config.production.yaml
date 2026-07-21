@@ -6,6 +6,9 @@ database:
     db_name: "${DB_NAME}"
     ssl_mode: disable
     time_zone: Asia/Ho_Chi_Minh
+    max_idle_conns: 10
+    max_open_conns: 90
+    conn_max_lifetime: 1h
 redis:
     host: redis
     port: 6379

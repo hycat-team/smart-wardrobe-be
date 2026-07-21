@@ -4,7 +4,7 @@ services:
     postgres:
         image: pgvector/pgvector:pg17
         restart: always
-        mem_limit: 768m
+        mem_limit: 1280m
         shm_size: 256m
         env_file:
             - ../.env.production

@@ -12,6 +12,9 @@ func validateConfig(cfg *Config) error {
 			return fmt.Errorf("%s is required", label)
 		}
 	}
+	if cfg.Database.MaxIdleConns <= 0 || cfg.Database.MaxOpenConns <= 0 || cfg.Database.ConnMaxLifetime <= 0 {
+		return fmt.Errorf("database connection pool configuration is invalid")
+	}
 	if cfg.Server.Env == "production" && strings.Contains(cfg.Server.FrontEndOrigin, "*") {
 		return fmt.Errorf("wildcard FRONTEND_ORIGIN is not allowed in production")
 	}
