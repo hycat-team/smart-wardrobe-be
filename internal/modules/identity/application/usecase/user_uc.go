@@ -249,6 +249,42 @@ func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto
 	return mapper.MapToUserRes(user, sub), nil
 }
 
+func (uc *UserUseCase) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserRes, error) {
+	if len(identifiers) == 0 {
+		return nil, nil
+	}
+
+	users, err := uc.userRepo.GetByUsernamesOrEmails(ctx, identifiers)
+	if err != nil {
+		return nil, err
+	}
+	if len(users) == 0 {
+		return nil, nil
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(users))
+	for _, u := range users {
+		if u != nil && !u.IsDeleted {
+			userIDs = append(userIDs, u.ID)
+		}
+	}
+
+	subscriptionsByUserID, err := uc.subscriptionContract.GetUserSubscriptionOverviews(ctx, userIDs)
+	if err != nil {
+		subscriptionsByUserID = nil
+	}
+
+	result := make([]*dto.UserRes, 0, len(users))
+	for _, user := range users {
+		if user == nil || user.IsDeleted {
+			continue
+		}
+		result = append(result, mapper.MapToUserRes(user, subscriptionsByUserID[user.ID]))
+	}
+
+	return result, nil
+}
+
 func (uc *UserUseCase) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
 	return uc.userRepo.GetStyleProfile(ctx, userID)
 }

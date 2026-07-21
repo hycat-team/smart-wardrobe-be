@@ -384,8 +384,11 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 
 	taskID := uuid.New()
 	newItems := make([]*entities.WardrobeItem, len(input.Items))
-	for i := range input.Items {
+	fashionInputs := make([]fashion_dto.CreateFashionItemInput, len(input.Items))
+
+	for i, reqItem := range input.Items {
 		itemID := uuid.New()
+		fashionItemID := uuid.New()
 		newItems[i] = &entities.WardrobeItem{
 			AuditableEntity: entities.AuditableEntity{
 				BaseEntity: entities.BaseEntity{
@@ -395,38 +398,52 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 			UserID:        userID,
 			Status:        wardrobestatus.Processing,
 			ItemType:      itemType,
-			FashionItemID: nil,
+			FashionItemID: &fashionItemID,
 			TaskID:        &taskID,
+		}
+		fashionInputs[i] = fashion_dto.CreateFashionItemInput{
+			ID:                fashionItemID,
+			ImageUrl:          reqItem.ImageUrl,
+			ImagePublicID:     reqItem.ImagePublicID,
+			CategoryID:        reqItem.CategoryID,
+			ProcessingVersion: 1,
 		}
 	}
 
-	if err := uc.wardrobeRepo.BulkCreate(ctx, newItems); err != nil {
+	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.fashionContract.BulkCreateFashionItems(txCtx, fashionInputs); err != nil {
+			return err
+		}
+		if err := uc.wardrobeRepo.BulkCreate(txCtx, newItems); err != nil {
+			return err
+		}
+		for i, item := range newItems {
+			job := fashion_dto.FashionAnalyzeJobDTO{
+				FashionItemID:     item.FashionItemID,
+				ItemID:            item.ID,
+				ItemType:          fashionitemtype.Wardrobe,
+				UserID:            userID,
+				CategoryID:        input.Items[i].CategoryID,
+				ImageUrl:          input.Items[i].ImageUrl,
+				ImagePublicID:     input.Items[i].ImagePublicID,
+				ProcessingVersion: 1,
+				TaskID:            taskID.String(),
+				Total:             len(newItems),
+				Index:             i,
+			}
+			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyze, job); err != nil {
+				uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
 	resList := make([]*dto.WardrobeItemRes, len(newItems))
 	for i, item := range newItems {
-		job := fashion_dto.FashionAnalyzeJobDTO{
-			FashionItemID:     nil,
-			ItemID:            item.ID,
-			ItemType:          fashionitemtype.Wardrobe,
-			UserID:            userID,
-			CategoryID:        input.Items[i].CategoryID,
-			ImageUrl:          input.Items[i].ImageUrl,
-			ImagePublicID:     input.Items[i].ImagePublicID,
-			ProcessingVersion: 1,
-			TaskID:            taskID.String(),
-			Total:             len(newItems),
-			Index:             i,
-		}
-
-		err := uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job)
-		if err != nil {
-			uc.logger.Error("[WardrobeBatchUploadUseCase] Event publishing failed", zap.Error(err))
-			item.Status = wardrobestatus.Failed
-			_ = uc.wardrobeRepo.Update(ctx, item)
-		}
-
 		resList[i] = mapper.MapToWardrobeItemRes(item, nil)
 		resList[i].IsLocked = false
 	}

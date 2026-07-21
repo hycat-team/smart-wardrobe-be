@@ -16,6 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/media"
@@ -296,6 +297,38 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		Updated: []dto.AddBrandMemberItemResult{},
 		Failed:  []dto.AddBrandMemberItemResult{},
 	}
+
+	identifiersToFetch := make([]string, 0, len(input.Members))
+	seenIdentifiers := make(map[string]struct{})
+	for _, m := range input.Members {
+		idStr := strings.TrimSpace(m.EmailOrUsername)
+		norm := strings.ToLower(idStr)
+		if norm != "" {
+			if _, exists := seenIdentifiers[norm]; !exists {
+				seenIdentifiers[norm] = struct{}{}
+				identifiersToFetch = append(identifiersToFetch, idStr)
+			}
+		}
+	}
+
+	fetchedUsers, err := uc.userContract.GetByUsernamesOrEmails(ctx, identifiersToFetch)
+	if err != nil {
+		return nil, err
+	}
+
+	userByIdentifier := make(map[string]*identity_dto.UserRes, len(fetchedUsers)*2)
+	for _, u := range fetchedUsers {
+		if u == nil {
+			continue
+		}
+		if u.Username != "" {
+			userByIdentifier[strings.ToLower(u.Username)] = u
+		}
+		if u.Email != "" {
+			userByIdentifier[strings.ToLower(u.Email)] = u
+		}
+	}
+
 	resolvedUsersByID := make(map[uuid.UUID]struct {
 		emailOrUsername string
 		role            brandmemberrole.BrandMemberRole
@@ -325,10 +358,7 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 			continue
 		}
 
-		user, err := uc.userContract.GetByUsername(ctx, identifier)
-		if err != nil {
-			return nil, err
-		}
+		user := userByIdentifier[normalizedIdentifier]
 		if user == nil {
 			result.Failed = append(result.Failed, dto.AddBrandMemberItemResult{
 				EmailOrUsername: identifier,
@@ -361,33 +391,57 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		existingByUserID[existing.UserID] = existing
 	}
 
+	type pendingResultItem struct {
+		emailOrUsername string
+		member          *entities.BrandMember
+	}
+	var toUpdate []*entities.BrandMember
+	var pendingUpdates []pendingResultItem
+	var toCreate []*entities.BrandMember
+	var pendingCreates []pendingResultItem
+
 	for _, resolvedUserID := range resolvedUserOrder {
 		resolved := resolvedUsersByID[resolvedUserID]
 		if existing := existingByUserID[resolvedUserID]; existing != nil {
 			existing.Role = resolved.role
 			existing.Status = brandmemberstatus.Active
-			if err := uc.memberRepo.Update(ctx, existing); err != nil {
-				return nil, err
-			}
-			result.Updated = append(result.Updated, dto.AddBrandMemberItemResult{
-				EmailOrUsername: resolved.emailOrUsername,
-				Member:          mapper.MapBrandMember(existing),
+			toUpdate = append(toUpdate, existing)
+			pendingUpdates = append(pendingUpdates, pendingResultItem{
+				emailOrUsername: resolved.emailOrUsername,
+				member:          existing,
 			})
-			continue
+		} else {
+			member := &entities.BrandMember{
+				BrandID: brandID,
+				UserID:  resolvedUserID,
+				Role:    resolved.role,
+				Status:  brandmemberstatus.Active,
+			}
+			toCreate = append(toCreate, member)
+			pendingCreates = append(pendingCreates, pendingResultItem{
+				emailOrUsername: resolved.emailOrUsername,
+				member:          member,
+			})
 		}
+	}
 
-		member := &entities.BrandMember{
-			BrandID: brandID,
-			UserID:  resolvedUserID,
-			Role:    resolved.role,
-			Status:  brandmemberstatus.Active,
-		}
-		if err := uc.memberRepo.Create(ctx, member); err != nil {
-			return nil, err
-		}
+	if err := uc.memberRepo.BulkUpdate(ctx, toUpdate); err != nil {
+		return nil, err
+	}
+	for _, item := range pendingUpdates {
+		result.Updated = append(result.Updated, dto.AddBrandMemberItemResult{
+			EmailOrUsername: item.emailOrUsername,
+			Member:          mapper.MapBrandMember(item.member),
+		})
+	}
+
+	if err := uc.memberRepo.BulkCreate(ctx, toCreate); err != nil {
+		return nil, err
+	}
+	for _, item := range pendingCreates {
 		result.Created = append(result.Created, dto.AddBrandMemberItemResult{
-			EmailOrUsername: resolved.emailOrUsername,
-			Member:          mapper.MapBrandMember(member),
+			EmailOrUsername: item.emailOrUsername,
+			Member:          mapper.MapBrandMember(item.member),
 		})
 	}
 

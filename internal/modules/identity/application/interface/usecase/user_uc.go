@@ -15,6 +15,7 @@ type IUserUseCase interface {
 	GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error)
 	GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserRes, error)
 	GetByUsername(ctx context.Context, username string) (*dto.UserRes, error)
+	GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserRes, error)
 	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error)
 	GetAvatarSignature(ctx context.Context, userID uuid.UUID) (*shared_dto.UploadSignatureResult, error)
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserRes, error)

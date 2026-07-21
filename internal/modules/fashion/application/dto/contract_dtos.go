@@ -64,6 +64,14 @@ type FashionAnalyzeJobDTO struct {
 	Index             int        `json:"index,omitempty"`
 }
 
+type CreateFashionItemInput struct {
+	ID                uuid.UUID
+	ImageUrl          string
+	ImagePublicID     string
+	CategoryID        *uuid.UUID
+	ProcessingVersion int
+}
+
 type CreateCategoryInput struct {
 	Name      string
 	Slug      string

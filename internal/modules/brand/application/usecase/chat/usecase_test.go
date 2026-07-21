@@ -102,6 +102,12 @@ func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID
 	}
 	return members, nil
 }
+func (m *mockMemberRepo) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
+func (m *mockMemberRepo) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
 
 type mockCustomerRepo struct {
 	customers map[string]*entities.BrandCustomer

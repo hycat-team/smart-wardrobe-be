@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
 
 type WardrobeItemUseCase struct {
@@ -40,6 +41,7 @@ type WardrobeItemUseCase struct {
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 	fashionContract fashion_contract.IFashionContract
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewWardrobeItemUseCase(
@@ -53,6 +55,7 @@ func NewWardrobeItemUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeItemUseCase {
 	return &WardrobeItemUseCase{
 		cfg:             cfg,
@@ -65,6 +68,7 @@ func NewWardrobeItemUseCase(
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
 		fashionContract: fashionContract,
+		uow:             uow,
 	}
 }
 

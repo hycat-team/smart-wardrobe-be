@@ -24,6 +24,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
 		publicBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandProducts))
+		publicBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
 	}
 
 	userBrands := group.Group("/brands")
@@ -31,7 +32,6 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	{
 		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
-		userBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
 		userBrands.GET("/:brandId/conversation", shared_pres.WrapHandler(r.brandHandler.GetUserConversation))
 		userBrands.POST("/:brandId/conversation/read", shared_pres.WrapHandler(r.brandHandler.MarkUserConversationRead))
 		userBrands.POST("/:brandId/conversation/messages", shared_pres.WrapHandler(r.brandHandler.SendUserMessage))

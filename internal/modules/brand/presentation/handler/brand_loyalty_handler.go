@@ -581,7 +581,7 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 }
 
 // ListActiveBenefitsForUser lists active benefits for a user.
-// @Summary Lấy danh sách quyền lợi đang hoạt động của brand (User)
+// @Summary Lấy danh sách quyền lợi đang hoạt động của brand (Public)
 // @Tags Brand Benefit
 // @Accept json
 // @Produce json
@@ -589,15 +589,11 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandBenefitRes}
 // @Router /api/v1/brands/{brandId}/benefits [get]
 func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
-	userID, err := contextutils.GetUserId(c)
-	if err != nil {
-		return err
-	}
 	brandID, err := uuid.Parse(c.Param("brandId"))
 	if err != nil {
 		return err
 	}
-	res, err := h.benefitUC.ListActiveBenefitsForUser(c.Request.Context(), userID, brandID)
+	res, err := h.benefitUC.ListActiveBenefitsForUser(c.Request.Context(), brandID)
 	if err != nil {
 		return err
 	}

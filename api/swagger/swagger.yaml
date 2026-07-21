@@ -4267,7 +4267,7 @@ paths:
                     $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
                   type: array
               type: object
-      summary: Lấy danh sách quyền lợi đang hoạt động của brand (User)
+      summary: Lấy danh sách quyền lợi đang hoạt động của brand (Public)
       tags:
       - Brand Benefit
   /api/v1/brands/{brandId}/conversation:

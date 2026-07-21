@@ -148,20 +148,12 @@ func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, st
 	return mapper.MapBrandBenefits(benefits), nil
 }
 
-func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 	if brand == nil || brand.Status != brandstatus.Active {
-		return nil, branderrors.ErrBrandNotActive()
-	}
-
-	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil {
-		return nil, err
-	}
-	if customer == nil || customer.Status != brandcustomerstatus.Active {
 		return nil, branderrors.ErrBrandNotActive()
 	}
 

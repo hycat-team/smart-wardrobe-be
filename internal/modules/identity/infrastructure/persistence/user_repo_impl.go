@@ -102,6 +102,28 @@ func (r *UserRepository) GetByUsernameOrEmail(ctx context.Context, loginName str
 	return &user, nil
 }
 
+func (r *UserRepository) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*entities.User, error) {
+	if len(identifiers) == 0 {
+		return []*entities.User{}, nil
+	}
+	lowers := make([]string, 0, len(identifiers))
+	for _, iden := range identifiers {
+		trimmed := strings.TrimSpace(iden)
+		if trimmed != "" {
+			lowers = append(lowers, strings.ToLower(trimmed))
+		}
+	}
+	if len(lowers) == 0 {
+		return []*entities.User{}, nil
+	}
+
+	var users []*entities.User
+	err := r.GetQueryWithPreload(ctx).
+		Where("(LOWER(username) IN ? OR LOWER(email) IN ?) AND is_deleted = ?", lowers, lowers, false).
+		Find(&users).Error
+	return users, err
+}
+
 func (r *UserRepository) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
 	var profile entities.UserStyleProfile
 	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&profile).Error

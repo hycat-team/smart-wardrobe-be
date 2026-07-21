@@ -66,3 +66,22 @@ func (r *BrandMemberRepository) GetActiveByUserID(ctx context.Context, userID uu
 		Find(&members).Error
 	return members, err
 }
+
+func (r *BrandMemberRepository) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
+	if len(members) == 0 {
+		return nil
+	}
+	return r.GetDB(ctx).Create(&members).Error
+}
+
+func (r *BrandMemberRepository) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	if len(members) == 0 {
+		return nil
+	}
+	for _, m := range members {
+		if err := r.Update(ctx, m); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -36,4 +36,6 @@ type IBrandMemberRepository interface {
 	GetByBrandAndUserIDs(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) ([]*entities.BrandMember, error)
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandMember, error)
 	GetActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.BrandMember, error)
+	BulkCreate(ctx context.Context, members []*entities.BrandMember) error
+	BulkUpdate(ctx context.Context, members []*entities.BrandMember) error
 }

@@ -106,6 +106,12 @@ func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID
 	}
 	return members, nil
 }
+func (m *mockMemberRepo) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
+func (m *mockMemberRepo) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
 
 type mockCustomerRepo struct {
 	customers map[string]*entities.BrandCustomer
@@ -290,15 +296,21 @@ func (m *mockUserContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*id
 func (m *mockUserContract) GetByUsername(ctx context.Context, username string) (*identity_dto.UserRes, error) {
 	return nil, nil
 }
+func (m *mockUserContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserRes, error) {
+	return nil, nil
+}
 func (m *mockUserContract) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*identity_dto.UserStyleProfileRes, error) {
 	return nil, nil
 }
 
+type fakeUnitOfWork struct{}
+
+func (f fakeUnitOfWork) Execute(ctx context.Context, fn func(txCtx context.Context) error) error {
+	return fn(ctx)
+}
+
 type mockFashionContract struct{}
 
-func (m *mockFashionContract) CreateFashionItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, itemType string, categoryID *uuid.UUID, imageUrl string, imagePublicID string) (uuid.UUID, error) {
-	return uuid.New(), nil
-}
 func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
 	return &fashion_dto.FashionItemRes{
 		ID:       id,
@@ -352,6 +364,12 @@ func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Conte
 func (m *mockFashionContract) CreateFashionItemDirect(ctx context.Context, item interface{}) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
+func (m *mockFashionContract) CreateFashionItem(ctx context.Context, input fashion_dto.CreateFashionItemInput) error {
+	return nil
+}
+func (m *mockFashionContract) BulkCreateFashionItems(ctx context.Context, inputs []fashion_dto.CreateFashionItemInput) error {
+	return nil
+}
 
 type mockEventPublisher struct{}
 
@@ -384,7 +402,7 @@ func (m *mockBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID
 func (m *mockBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
 	return nil, nil
 }
 func (m *mockBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
@@ -531,6 +549,7 @@ func TestBrandItemAndFeedbackFlow(t *testing.T) {
 		fashionContract: fashionContract,
 		benefitUC:       &mockBenefitUseCase{hasAccess: true},
 		eventPublisher:  &mockEventPublisher{},
+		uow:             fakeUnitOfWork{},
 	}
 
 	// 1. Staff creates BrandItem

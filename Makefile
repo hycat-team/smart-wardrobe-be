@@ -180,11 +180,6 @@ clean: clean-swagger
 	@$(CLEAN_BIN_CMD)
 	@echo Clean finished.
 
-docker-build:
-	@echo Building production Docker image...
-	@docker build --pull --target production -t backend-smartwardrobe:local .
-	@echo Docker image build finished.
-
 migration-status:
 	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) status
 
@@ -199,6 +194,11 @@ migration-create:
 
 migration-version:
 	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) version
+
+docker-build:
+	@echo Building production Docker image...
+	@docker build --pull --target production -t backend-smartwardrobe:local .
+	@echo Docker image build finished.
 
 docker-dev-up:
 	@docker compose -f deployments/docker-compose.yml --env-file .env up -d

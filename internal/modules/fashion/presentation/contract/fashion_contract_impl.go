@@ -46,6 +46,14 @@ func (c *FashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.
 	return res, nil
 }
 
+func (c *FashionContract) CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error {
+	return c.fashionItemUC.CreateFashionItem(ctx, input)
+}
+
+func (c *FashionContract) BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error {
+	return c.fashionItemUC.BulkCreateFashionItems(ctx, inputs)
+}
+
 func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
 	return c.categoryUC.GetCategory(ctx, id)
 }

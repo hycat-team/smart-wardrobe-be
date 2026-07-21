@@ -3515,7 +3515,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand Benefit"
                 ],
-                "summary": "Lấy danh sách quyền lợi đang hoạt động của brand (User)",
+                "summary": "Lấy danh sách quyền lợi đang hoạt động của brand (Public)",
                 "parameters": [
                     {
                         "type": "string",

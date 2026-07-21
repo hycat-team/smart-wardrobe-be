@@ -71,3 +71,28 @@ func (uc *FashionItemUseCase) ListFashionItems(ctx context.Context, ids []uuid.U
 	}
 	return res, nil
 }
+
+func (uc *FashionItemUseCase) CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error {
+	fi := &entities.FashionItem{
+		AuditableEntity: entities.AuditableEntity{
+			BaseEntity: entities.BaseEntity{ID: input.ID},
+		},
+		ImageUrl:          input.ImageUrl,
+		ImagePublicID:     input.ImagePublicID,
+		CategoryID:        input.CategoryID,
+		ProcessingVersion: input.ProcessingVersion,
+	}
+	return uc.fashionItemRepo.Create(ctx, fi)
+}
+
+func (uc *FashionItemUseCase) BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error {
+	if len(inputs) == 0 {
+		return nil
+	}
+	for _, input := range inputs {
+		if err := uc.CreateFashionItem(ctx, input); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -29,6 +29,10 @@ func (c *UserContract) GetByUsername(ctx context.Context, username string) (*dto
 	return c.userUC.GetByUsername(ctx, username)
 }
 
+func (c *UserContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserRes, error) {
+	return c.userUC.GetByUsernamesOrEmails(ctx, identifiers)
+}
+
 func (c *UserContract) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
 	return c.userUC.GetStyleProfile(ctx, userID)
 }
