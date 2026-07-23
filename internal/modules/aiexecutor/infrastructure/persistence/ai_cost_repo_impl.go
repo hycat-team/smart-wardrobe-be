@@ -251,3 +251,53 @@ func (r *AICostRepository) GetAdminAIUsageStats(ctx context.Context, snapshotDat
 		AIActualCostMicroVND: actualCost,
 	}, nil
 }
+
+func (r *AICostRepository) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error) {
+	db := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{})
+
+	if status != "" {
+		db = db.Where("status = ?", status)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	var events []aiexecutor_entities.AIUsageEvent
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]dto.AIEventDrillDownDTO, 0, len(events))
+	for _, e := range events {
+		providerStr := ""
+		if e.Provider != nil {
+			providerStr = *e.Provider
+		}
+		modelStr := ""
+		if e.Model != nil {
+			modelStr = *e.Model
+		}
+
+		items = append(items, dto.AIEventDrillDownDTO{
+			RequestID:    e.RequestID.String(),
+			Provider:     providerStr,
+			Model:        modelStr,
+			StatusCode:   200,
+			ErrorMessage: "",
+			CreatedAt:    e.CreatedAt,
+		})
+	}
+
+	return items, total, nil
+}

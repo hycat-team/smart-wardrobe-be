@@ -13,7 +13,10 @@ var ProviderSet = wire.NewSet(
 	usecase.NewAdminDashboardUseCase,
 	usecase.NewBrandDashboardUseCase,
 	usecase.NewUserDashboardUseCase,
+	usecase.NewDynamicQueryUseCase,
+	usecase.NewDrillDownUseCase,
 	handler.NewAdminDashboardHandler,
 	handler.NewBrandDashboardHandler,
 	handler.NewUserDashboardHandler,
+	handler.NewAnalyticsHandler,
 )

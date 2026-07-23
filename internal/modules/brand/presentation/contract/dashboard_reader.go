@@ -15,6 +15,7 @@ type IBrandDashboardReader interface {
 	GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error)
 	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error)
 	GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error)
+	GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error)
 }
 
 type BrandDashboardReader struct {
@@ -35,4 +36,8 @@ func (r *BrandDashboardReader) GetBrandAnalyticsStats(ctx context.Context, brand
 
 func (r *BrandDashboardReader) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
 	return r.brandUC.GetUserBrandRole(ctx, userID, brandID)
+}
+
+func (r *BrandDashboardReader) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return r.brandUC.GetSampleLabFeedbacksDrillDown(ctx, itemID, page, limit)
 }

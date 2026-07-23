@@ -3,6 +3,7 @@ package entities
 import (
 	"time"
 
+	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
 	sharedEntities "smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -16,7 +17,6 @@ type DashboardAdminDailySnapshot struct {
 	ActiveUsersDau         int       `gorm:"not null;default:0"`
 	TotalBrands            int       `gorm:"not null;default:0"`
 	PendingReviewBrands    int       `gorm:"not null;default:0"`
-	ActiveCampaigns        int       `gorm:"not null;default:0"`
 	AIRequestsCount        int       `gorm:"not null;default:0"`
 	AIErrorCount           int       `gorm:"not null;default:0"`
 	AIPaidTokens           int64     `gorm:"not null;default:0"`
@@ -54,13 +54,13 @@ func (DashboardBrandDailySnapshot) TableName() string {
 
 type DashboardBrandItemDailySnapshot struct {
 	sharedEntities.AuditableEntity
-	BrandID             uuid.UUID                   `gorm:"type:uuid;not null;index"`
-	ItemID              uuid.UUID                   `gorm:"type:uuid;not null;index"`
-	SnapshotDate        time.Time                   `gorm:"type:date;not null"`
-	VotesCount          int                         `gorm:"not null;default:0"`
-	AvgRating           float64                     `gorm:"type:numeric(3,2);not null;default:0"`
-	FeedbackSentiment   string                      `gorm:"type:varchar(20);not null;default:'POSITIVE'"`
-	TopPairedCategories sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'[]'"`
+	BrandID             uuid.UUID                           `gorm:"type:uuid;not null;index"`
+	ItemID              uuid.UUID                           `gorm:"type:uuid;not null;index"`
+	SnapshotDate        time.Time                           `gorm:"type:date;not null"`
+	VotesCount          int                                 `gorm:"not null;default:0"`
+	AvgRating           float64                             `gorm:"type:numeric(3,2);not null;default:0"`
+	FeedbackSentiment   feedbacksentiment.FeedbackSentiment `gorm:"type:varchar(20);not null;default:'POSITIVE'"`
+	TopPairedCategories sharedEntities.JSONDocument         `gorm:"type:jsonb;not null;default:'[]'"`
 }
 
 func (DashboardBrandItemDailySnapshot) TableName() string {

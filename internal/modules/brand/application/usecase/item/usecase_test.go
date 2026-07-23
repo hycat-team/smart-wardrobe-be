@@ -74,6 +74,9 @@ func (m *mockBrandRepo) GetAdminBrandStats(ctx context.Context, snapshotDate tim
 func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
 	return nil, nil
 }
+func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return nil, 0, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -364,10 +367,10 @@ func (m *mockFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) 
 func (m *mockFashionContract) GetFashionItemDirect(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Context, job *fashion_dto.FashionAnalyzeJobDTO) (interface{}, error) {
+func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Context, job *fashion_dto.FashionAnalyzeJobDTO) (any, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) CreateFashionItemDirect(ctx context.Context, item interface{}) (uuid.UUID, error) {
+func (m *mockFashionContract) CreateFashionItemDirect(ctx context.Context, item any) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 func (m *mockFashionContract) CreateFashionItem(ctx context.Context, input fashion_dto.CreateFashionItemInput) error {
@@ -379,7 +382,7 @@ func (m *mockFashionContract) BulkCreateFashionItems(ctx context.Context, inputs
 
 type mockEventPublisher struct{}
 
-func (m *mockEventPublisher) Publish(ctx context.Context, topic string, event interface{}) error {
+func (m *mockEventPublisher) Publish(ctx context.Context, topic string, event any) error {
 	return nil
 }
 

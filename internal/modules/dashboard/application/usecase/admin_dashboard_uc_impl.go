@@ -7,6 +7,7 @@ import (
 	aiContract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
+	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
@@ -41,9 +42,22 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 
 	if latest == nil {
 		now := time.Now()
-		userStats, _ := uc.userReader.GetAdminUserStats(ctx, now)
-		brandStats, _ := uc.brandReader.GetAdminBrandStats(ctx, now)
-		aiStats, _ := uc.aiCostReader.GetAdminAIUsageStats(ctx, now)
+		userStats, err := uc.userReader.GetAdminUserStats(ctx, now)
+		if err != nil {
+			return nil, err
+		}
+		brandStats, err := uc.brandReader.GetAdminBrandStats(ctx, now)
+		if err != nil {
+			return nil, err
+		}
+		aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctx, now)
+		if err != nil {
+			return nil, err
+		}
+
+		if userStats == nil && brandStats == nil && aiStats == nil {
+			return nil, dashboarderrors.ErrDashboardDataNotFound()
+		}
 
 		res := &dto.AdminKPICardsRes{
 			UpdatedAt: now,
@@ -88,22 +102,51 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		return nil, err
 	}
 
-	var totalRev, totalMargin float64
+	if len(snapshots) == 0 {
+		// Fallback to live AI reader
+		aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctx, toDate)
+		if err != nil {
+			return nil, err
+		}
+		if aiStats == nil || (aiStats.AIRequestsCount == 0 && aiStats.AIActualCostMicroVND == 0) {
+			return nil, dashboarderrors.ErrDashboardDataNotFound()
+		}
+
+		actualCostVND := float64(aiStats.AIActualCostMicroVND) / 1000000.0
+		netMargin := -actualCostVND
+
+		return &dto.AIMarginAnalyticsRes{
+			FromDate:                fromDate,
+			ToDate:                  toDate,
+			TotalSubscriptionRevVND: 0,
+			TotalAIActualCostVND:    actualCostVND,
+			NetAIMarginVND:          netMargin,
+			MarginPercentage:        0.0,
+			TotalAIPaidTokens:       aiStats.AIPaidTokens,
+			AIRequestsCount:         aiStats.AIRequestsCount,
+			AIErrorCount:            aiStats.AIErrorCount,
+		}, nil
+	}
+
+	totalRev := 0.0
+	totalMargin := 0.0
 	var totalTokens int64
-	var aiReqs, aiErrs int
+	totalRequests := 0
+	totalErrors := 0
 
 	for _, s := range snapshots {
 		totalRev += s.SubscriptionRevenueVND
 		totalMargin += s.NetAIMarginVND
 		totalTokens += s.AIPaidTokens
-		aiReqs += s.AIRequestsCount
-		aiErrs += s.AIErrorCount
+		totalRequests += s.AIRequestsCount
+		totalErrors += s.AIErrorCount
 	}
 
 	actualCostVND := totalRev - totalMargin
-	var marginPct float64
+
+	marginPct := 0.0
 	if totalRev > 0 {
-		marginPct = (totalMargin / totalRev) * 100.0
+		marginPct = (totalMargin / totalRev) * 100
 	}
 
 	return &dto.AIMarginAnalyticsRes{
@@ -114,8 +157,8 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		NetAIMarginVND:          totalMargin,
 		MarginPercentage:        marginPct,
 		TotalAIPaidTokens:       totalTokens,
-		AIRequestsCount:         aiReqs,
-		AIErrorCount:            aiErrs,
+		AIRequestsCount:         totalRequests,
+		AIErrorCount:            totalErrors,
 	}, nil
 }
 
@@ -125,8 +168,8 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 		return nil, err
 	}
 
-	if latest == nil {
-		return &dto.PayOSReconciliationRes{}, nil
+	if latest == nil || latest.PayOSTransactionCount == 0 {
+		return nil, dashboarderrors.ErrDashboardDataNotFound()
 	}
 
 	failed := max(latest.PayOSTransactionCount-latest.PayOSSuccessCount, 0)
@@ -145,14 +188,15 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 		return nil, err
 	}
 
-	aiMargin, err := uc.GetAIMarginAnalytics(ctx, time.Now().AddDate(0, 0, -30), time.Now())
+	now := time.Now()
+	aiMargin, err := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -30), now)
 	if err != nil {
-		return nil, err
+		aiMargin = nil
 	}
 
 	payos, err := uc.GetPayOSReconciliation(ctx)
 	if err != nil {
-		return nil, err
+		payos = nil
 	}
 
 	return &dto.AdminOverviewRes{

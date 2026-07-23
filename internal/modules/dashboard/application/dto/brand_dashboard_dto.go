@@ -8,6 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type GetBrandDashboardQueryReq struct {
+	BrandID string `form:"brandId" json:"brandId" binding:"required"`
+}
+
 type BrandKPICardsRes struct {
 	BrandID          uuid.UUID `json:"brandId"`
 	TotalMembers     int       `json:"totalMembers"`

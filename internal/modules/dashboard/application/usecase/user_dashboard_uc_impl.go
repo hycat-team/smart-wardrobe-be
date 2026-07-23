@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
+	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
@@ -50,6 +51,41 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 		}
 		if len(summary.UnderutilizedItems) > 0 {
 			_ = json.Unmarshal([]byte(summary.UnderutilizedItems), &underutilizedItems)
+		}
+	} else {
+		stats, err := uc.wardrobeReader.GetUserWardrobeSummaryStats(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if stats != nil {
+			totalItems = stats.TotalItems
+			totalValue = stats.TotalWardrobeValueVND
+			avgCPW = stats.AverageCostPerWearVND
+			underutilizedCount = stats.UnderutilizedItemsCount
+		}
+
+		realItems, err := uc.wardrobeReader.GetUnderutilizedItems(ctx, userID, 10)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range realItems {
+			underutilizedItems = append(underutilizedItems, dto.UnderutilizedItemDTO{
+				ItemID:           item.ItemID,
+				Name:             item.Name,
+				CategoryName:     item.CategoryName,
+				PurchasePriceVND: item.PurchasePriceVND,
+				WearCount:        item.WearCount,
+				CostPerWearVND:   item.CostPerWearVND,
+				LastWornDaysAgo:  item.LastWornDaysAgo,
+				ImageURL:         item.ImageURL,
+			})
+			if item.CategoryName != "" {
+				categoryDist[item.CategoryName]++
+			}
+		}
+
+		if (stats == nil || stats.TotalItems == 0) && len(realItems) == 0 {
+			return nil, dashboarderrors.ErrDashboardDataNotFound()
 		}
 	}
 

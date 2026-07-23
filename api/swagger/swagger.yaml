@@ -1047,6 +1047,18 @@ definitions:
       pointsLiabilityValueVnd:
         type: number
     type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO:
+    properties:
+      metricDeltaPercentages:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+      previousPeriodFrom:
+        type: string
+      previousPeriodTo:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes:
     properties:
       avgRating:
@@ -1061,6 +1073,103 @@ definitions:
         type: array
       votesCount:
         type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventDTO:
+    properties:
+      createdAt:
+        type: string
+      errorMessage:
+        type: string
+      model:
+        type: string
+      provider:
+        type: string
+      requestId:
+        type: string
+      statusCode:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventDTO'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO:
+    properties:
+      comment:
+        type: string
+      createdAt:
+        type: string
+      feedbackId:
+        type: string
+      itemId:
+        type: string
+      rating:
+        type: number
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryReq:
+    properties:
+      brandId:
+        type: string
+      compareWithPrevious:
+        type: boolean
+      filters:
+        additionalProperties:
+          type: string
+        type: object
+      granularity:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity'
+        description: '"hour" | "day" | "week" | "month"'
+      groupBy:
+        items:
+          type: string
+        type: array
+      metrics:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey'
+        type: array
+      targetDashboard:
+        allOf:
+        - $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard'
+        description: '"admin" | "brand" | "user"'
+      timeframe:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryRes:
+    properties:
+      comparison:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO'
+      granularity:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity'
+      series:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO'
+        type: array
+      targetDashboard:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO:
+    properties:
+      fromDate:
+        type: string
+      toDate:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.PairedCategoryStat:
     properties:
@@ -1079,6 +1188,16 @@ definitions:
         type: number
       totalTransactions:
         type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO:
+    properties:
+      metrics:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+      timestamp:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.UnderutilizedItemDTO:
     properties:
@@ -1120,14 +1239,62 @@ definitions:
     type: object
   smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment:
     enum:
-    - POSITIVE
-    - NEUTRAL
-    - NEGATIVE
+    - positive
+    - neutral
+    - negative
     type: string
     x-enum-varnames:
     - Positive
     - Neutral
     - Negative
+  smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity:
+    enum:
+    - hour
+    - day
+    - week
+    - month
+    type: string
+    x-enum-varnames:
+    - Hour
+    - Day
+    - Week
+    - Month
+  smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey:
+    enum:
+    - total_users
+    - active_users_dau
+    - total_brands
+    - pending_review_brands
+    - ai_requests_count
+    - subscription_revenue_vnd
+    - net_ai_margin_vnd
+    - total_members
+    - points_issued
+    - points_redeemed
+    - active_vouchers
+    type: string
+    x-enum-varnames:
+    - TotalUsers
+    - ActiveUsersDau
+    - TotalBrands
+    - PendingReviewBrands
+    - AIRequestsCount
+    - SubscriptionRevenueVND
+    - NetAIMarginVND
+    - TotalMembers
+    - PointsIssued
+    - PointsRedeemed
+    - ActiveVouchers
+  smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard:
+    enum:
+    - admin
+    - brand
+    - user
+    type: string
+    x-enum-varnames:
+    - Admin
+    - Brand
+    - User
   smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes:
     properties:
       id:
@@ -2510,11 +2677,11 @@ paths:
       parameters:
       - description: Ngày bắt đầu (định dạng YYYY-MM-DD)
         in: query
-        name: from_date
+        name: fromDate
         type: string
       - description: Ngày kết thúc (định dạng YYYY-MM-DD)
         in: query
-        name: to_date
+        name: toDate
         type: string
       produces:
       - application/json
@@ -2529,6 +2696,40 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes'
               type: object
       summary: Phân tích biên lợi nhuận AI Token
+      tags:
+      - Admin Dashboard
+  /api/v1/admin/dashboard/drilldown/ai-events:
+    get:
+      description: Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin
+        provider, model, status code.
+      parameters:
+      - description: 'Trạng thái lỗi (ví dụ: FAILED)'
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: Số trang
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Số lượng phần tử mỗi trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy chi tiết sự kiện AI thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventListRes'
+              type: object
+      summary: Truy vết chi tiết các sự kiện lỗi AI (Drill-down Admin)
       tags:
       - Admin Dashboard
   /api/v1/admin/dashboard/kpi-cards:
@@ -4435,6 +4636,41 @@ paths:
       summary: Lấy danh sách brand của staff hiện tại
       tags:
       - Brand Portal
+  /api/v1/brand/dashboard/drilldown/sample-lab-feedbacks:
+    get:
+      description: Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn
+        của mẫu thử sản phẩm.
+      parameters:
+      - description: ID Sản phẩm mẫu thử
+        in: query
+        name: itemId
+        required: true
+        type: string
+      - default: 1
+        description: Số trang
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Số lượng phần tử mỗi trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy chi tiết đánh giá mẫu thử thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes'
+              type: object
+      summary: Truy vết chi tiết đánh giá mẫu thử 3D (Drill-down Brand)
+      tags:
+      - Brand Dashboard
   /api/v1/brand/dashboard/financials/points-liability:
     get:
       description: Thống kê số điểm hết hạn trong 30 ngày tới & giá trị quy đổi VND
@@ -4442,7 +4678,7 @@ paths:
       parameters:
       - description: ID Nhãn hàng
         in: query
-        name: brand_id
+        name: brandId
         required: true
         type: string
       produces:
@@ -4467,7 +4703,7 @@ paths:
       parameters:
       - description: ID Nhãn hàng
         in: query
-        name: brand_id
+        name: brandId
         required: true
         type: string
       produces:
@@ -4492,7 +4728,7 @@ paths:
       parameters:
       - description: ID Nhãn hàng
         in: query
-        name: brand_id
+        name: brandId
         required: true
         type: string
       - description: ID Sản phẩm mẫu thử
@@ -4823,6 +5059,35 @@ paths:
       summary: Lấy tất cả danh mục trang phục
       tags:
       - Category
+  /api/v1/dashboard/analytics/query:
+    post:
+      consumes:
+      - application/json
+      description: Gửi các chỉ số (metrics), khoảng thời gian (timeframe), độ mịn
+        (granularity) và bộ lọc để nhận dữ liệu Time-Series linh hoạt. Kiểm tra quyền
+        truy cập theo TargetDashboard.
+      parameters:
+      - description: Thông số truy vấn động
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Truy vấn dữ liệu tổng hợp thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryRes'
+              type: object
+      summary: Truy vấn tổng hợp linh hoạt đa chiều (Dynamic Query Engine)
+      tags:
+      - Dashboard Analytics
   /api/v1/me:
     get:
       consumes:

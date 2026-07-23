@@ -391,13 +391,13 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
-                        "name": "from_date",
+                        "name": "fromDate",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
-                        "name": "to_date",
+                        "name": "toDate",
                         "in": "query"
                     }
                 ],
@@ -414,6 +414,60 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/dashboard/drilldown/ai-events": {
+            "get": {
+                "description": "Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin provider, model, status code.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Dashboard"
+                ],
+                "summary": "Truy vết chi tiết các sự kiện lỗi AI (Drill-down Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trạng thái lỗi (ví dụ: FAILED)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Số lượng phần tử mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy chi tiết sự kiện AI thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventListRes"
                                         }
                                     }
                                 }
@@ -3511,6 +3565,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand/dashboard/drilldown/sample-lab-feedbacks": {
+            "get": {
+                "description": "Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn của mẫu thử sản phẩm.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Dashboard"
+                ],
+                "summary": "Truy vết chi tiết đánh giá mẫu thử 3D (Drill-down Brand)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Sản phẩm mẫu thử",
+                        "name": "itemId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Số lượng phần tử mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy chi tiết đánh giá mẫu thử thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand/dashboard/financials/points-liability": {
             "get": {
                 "description": "Thống kê số điểm hết hạn trong 30 ngày tới \u0026 giá trị quy đổi VND tương ứng. Giá trị VND sẽ bị ẩn (redacted) đối với tài khoản cấp Staff.",
@@ -3525,7 +3634,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "ID Nhãn hàng",
-                        "name": "brand_id",
+                        "name": "brandId",
                         "in": "query",
                         "required": true
                     }
@@ -3566,7 +3675,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "ID Nhãn hàng",
-                        "name": "brand_id",
+                        "name": "brandId",
                         "in": "query",
                         "required": true
                     }
@@ -3607,7 +3716,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "ID Nhãn hàng",
-                        "name": "brand_id",
+                        "name": "brandId",
                         "in": "query",
                         "required": true
                     },
@@ -4152,6 +4261,52 @@ const docTemplate = `{
                                             "items": {
                                                 "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/analytics/query": {
+            "post": {
+                "description": "Gửi các chỉ số (metrics), khoảng thời gian (timeframe), độ mịn (granularity) và bộ lọc để nhận dữ liệu Time-Series linh hoạt. Kiểm tra quyền truy cập theo TargetDashboard.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Analytics"
+                ],
+                "summary": "Truy vấn tổng hợp linh hoạt đa chiều (Dynamic Query Engine)",
+                "parameters": [
+                    {
+                        "description": "Thông số truy vấn động",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Truy vấn dữ liệu tổng hợp thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryRes"
                                         }
                                     }
                                 }
@@ -7339,6 +7494,24 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO": {
+            "type": "object",
+            "properties": {
+                "metricDeltaPercentages": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                },
+                "previousPeriodFrom": {
+                    "type": "string"
+                },
+                "previousPeriodTo": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes": {
             "type": "object",
             "properties": {
@@ -7359,6 +7532,159 @@ const docTemplate = `{
                 },
                 "votesCount": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownAIEventDTO"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "feedbackId": {
+                    "type": "string"
+                },
+                "itemId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryReq": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "compareWithPrevious": {
+                    "type": "boolean"
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "granularity": {
+                    "description": "\"hour\" | \"day\" | \"week\" | \"month\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity"
+                        }
+                    ]
+                },
+                "groupBy": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey"
+                    }
+                },
+                "targetDashboard": {
+                    "description": "\"admin\" | \"brand\" | \"user\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard"
+                        }
+                    ]
+                },
+                "timeframe": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryRes": {
+            "type": "object",
+            "properties": {
+                "comparison": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO"
+                },
+                "granularity": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity"
+                },
+                "series": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO"
+                    }
+                },
+                "targetDashboard": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO": {
+            "type": "object",
+            "properties": {
+                "fromDate": {
+                    "type": "string"
+                },
+                "toDate": {
+                    "type": "string"
                 }
             }
         },
@@ -7387,6 +7713,21 @@ const docTemplate = `{
                 },
                 "totalTransactions": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO": {
+            "type": "object",
+            "properties": {
+                "metrics": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
                 }
             }
         },
@@ -7451,14 +7792,71 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment": {
             "type": "string",
             "enum": [
-                "POSITIVE",
-                "NEUTRAL",
-                "NEGATIVE"
+                "positive",
+                "neutral",
+                "negative"
             ],
             "x-enum-varnames": [
                 "Positive",
                 "Neutral",
                 "Negative"
+            ]
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity": {
+            "type": "string",
+            "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+            ],
+            "x-enum-varnames": [
+                "Hour",
+                "Day",
+                "Week",
+                "Month"
+            ]
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey": {
+            "type": "string",
+            "enum": [
+                "total_users",
+                "active_users_dau",
+                "total_brands",
+                "pending_review_brands",
+                "ai_requests_count",
+                "subscription_revenue_vnd",
+                "net_ai_margin_vnd",
+                "total_members",
+                "points_issued",
+                "points_redeemed",
+                "active_vouchers"
+            ],
+            "x-enum-varnames": [
+                "TotalUsers",
+                "ActiveUsersDau",
+                "TotalBrands",
+                "PendingReviewBrands",
+                "AIRequestsCount",
+                "SubscriptionRevenueVND",
+                "NetAIMarginVND",
+                "TotalMembers",
+                "PointsIssued",
+                "PointsRedeemed",
+                "ActiveVouchers"
+            ]
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard": {
+            "type": "string",
+            "enum": [
+                "admin",
+                "brand",
+                "user"
+            ],
+            "x-enum-varnames": [
+                "Admin",
+                "Brand",
+                "User"
             ]
         },
         "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes": {

@@ -474,3 +474,7 @@ func (uc *BrandUseCase) GetUserBrandRole(ctx context.Context, userID uuid.UUID, 
 	}
 	return member.Role, nil
 }
+
+func (uc *BrandUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return uc.brandRepo.GetSampleLabFeedbacksDrillDown(ctx, itemID, page, limit)
+}

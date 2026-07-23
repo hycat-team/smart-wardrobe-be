@@ -10,7 +10,6 @@ type BrandAdminStatsDTO struct {
 	SnapshotDate        time.Time `json:"snapshotDate"`
 	TotalBrands         int       `json:"totalBrands"`
 	PendingReviewBrands int       `json:"pendingReviewBrands"`
-	ActiveCampaigns     int       `json:"activeCampaigns"`
 }
 
 type BrandAnalyticsStatsDTO struct {
@@ -27,4 +26,13 @@ type BrandAnalyticsStatsDTO struct {
 	DigitalSampleAvgRating    float64   `json:"digitalSampleAvgRating"`
 	OpenCSTickets             int       `json:"openCsTickets"`
 	CSFirstResponseAvgSeconds int       `json:"csFirstResponseAvgSeconds"`
+}
+
+type SampleFeedbackDrillDownDTO struct {
+	FeedbackID string    `json:"feedbackId"`
+	ItemID     uuid.UUID `json:"itemId"`
+	UserID     uuid.UUID `json:"userId"`
+	Rating     float64   `json:"rating"`
+	Comment    string    `json:"comment"`
+	CreatedAt  time.Time `json:"createdAt"`
 }

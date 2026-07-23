@@ -3,8 +3,9 @@ package handler
 import (
 	"time"
 
-	_ "smart-wardrobe-be/internal/modules/dashboard/application/dto"
+	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
+	"smart-wardrobe-be/internal/pkg/utils/validation"
 	_ "smart-wardrobe-be/internal/shared/presentation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
@@ -40,17 +41,22 @@ func (h *AdminDashboardHandler) GetKPICards(c *gin.Context) error {
 // @Description Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận.
 // @Tags Admin Dashboard
 // @Produce json
-// @Param from_date query string false "Ngày bắt đầu (định dạng YYYY-MM-DD)"
-// @Param to_date query string false "Ngày kết thúc (định dạng YYYY-MM-DD)"
+// @Param fromDate query string false "Ngày bắt đầu (định dạng YYYY-MM-DD)"
+// @Param toDate query string false "Ngày kết thúc (định dạng YYYY-MM-DD)"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AIMarginAnalyticsRes} "Lấy thông tin biên lợi nhuận AI thành công"
 // @Router /api/v1/admin/dashboard/ai-margin [get]
 func (h *AdminDashboardHandler) GetAIMargin(c *gin.Context) error {
-	var fromDate, toDate time.Time
-	if fromStr := c.Query("from_date"); fromStr != "" {
-		fromDate, _ = time.Parse("2006-01-02", fromStr)
+	var req dto.GetAIMarginAnalyticsQueryReq
+	if err := validation.BindQuery(c, &req); err != nil {
+		return err
 	}
-	if toStr := c.Query("to_date"); toStr != "" {
-		toDate, _ = time.Parse("2006-01-02", toStr)
+
+	var fromDate, toDate time.Time
+	if req.FromDate != "" {
+		fromDate, _ = time.Parse("2006-01-02", req.FromDate)
+	}
+	if req.ToDate != "" {
+		toDate, _ = time.Parse("2006-01-02", req.ToDate)
 	}
 
 	res, err := h.adminUC.GetAIMarginAnalytics(c.Request.Context(), fromDate, toDate)

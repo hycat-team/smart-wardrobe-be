@@ -10,6 +10,7 @@ import (
 
 type IAICostDashboardReader interface {
 	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
+	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
 }
 
 type AICostDashboardReader struct {
@@ -22,4 +23,8 @@ func NewAICostDashboardReader(costUC uc_interfaces.IAICostUseCase) IAICostDashbo
 
 func (r *AICostDashboardReader) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error) {
 	return r.costUC.GetAdminAIUsageStats(ctx, snapshotDate)
+}
+
+func (r *AICostDashboardReader) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error) {
+	return r.costUC.GetAIEventsDrillDown(ctx, status, page, limit)
 }

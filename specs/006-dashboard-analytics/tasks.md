@@ -102,10 +102,10 @@
 
 **Independent Test**: Gửi HTTP POST request tới `/api/v1/dashboard/analytics/query` với bộ lọc đa chiều và kiểm tra dữ liệu Time-Series trả về dưới 150ms.
 
-- [ ] T022 [P] Tạo Dynamic Query DTOs & Request Builder tại `internal/modules/dashboard/application/dto/dynamic_query_dto.go`.
-- [ ] T023 Triển khai Dynamic Aggregator Query Engine trong `internal/modules/dashboard/application/usecase/dynamic_query_uc.go`.
-- [ ] T024 Triển khai Drill-Down Traceability UseCases cho Admin & Brand tại `internal/modules/dashboard/application/usecase/drilldown_uc.go`.
-- [ ] T025 Triển khai Handlers cho Dynamic Query & Drill-down tại `internal/modules/dashboard/presentation/handler/analytics_handler.go`.
+- [x] T022 [P] Tạo Dynamic Query DTOs & Request Builder tại `internal/modules/dashboard/application/dto/dynamic_query_dto.go`.
+- [x] T023 Triển khai Dynamic Aggregator Query Engine trong `internal/modules/dashboard/application/usecase/dynamic_query_uc.go`.
+- [x] T024 Triển khai Drill-Down Traceability UseCases cho Admin & Brand tại `internal/modules/dashboard/application/usecase/drilldown_uc.go`.
+- [x] T025 Triển khai Handlers cho Dynamic Query & Drill-down tại `internal/modules/dashboard/presentation/handler/analytics_handler.go`.
 
 🛑 **CHECKPOINT PHASE 6**: Dừng lại, báo cáo kết quả Dynamic Query Engine & Drill-down và chờ User verify trước khi sang Phase 7.
 

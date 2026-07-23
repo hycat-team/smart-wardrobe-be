@@ -7,6 +7,7 @@ import (
 
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
+	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
@@ -37,7 +38,10 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 	}
 
 	if latest == nil {
-		stats, _ := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		if err != nil {
+			return nil, err
+		}
 		if stats != nil {
 			return &dto.BrandKPICardsRes{
 				BrandID:          brandID,
@@ -49,7 +53,7 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 				UpdatedAt:        time.Now(),
 			}, nil
 		}
-		return &dto.BrandKPICardsRes{BrandID: brandID, UpdatedAt: time.Now()}, nil
+		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 	}
 
 	return &dto.BrandKPICardsRes{
@@ -81,11 +85,15 @@ func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID 
 		expiring30d = latest.PointsExpiring30d
 		valVND = latest.PointsLiabilityValueVND
 	} else {
-		stats, _ := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
-		if stats != nil {
-			expiring30d = stats.PointsExpiring30d
-			valVND = stats.PointsLiabilityValueVND
+		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		if err != nil {
+			return nil, err
 		}
+		if stats == nil {
+			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		}
+		expiring30d = stats.PointsExpiring30d
+		valVND = stats.PointsLiabilityValueVND
 	}
 
 	res := &dto.BrandPointsLiabilityRes{
@@ -114,6 +122,15 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 		sentiment = feedbacksentiment.FeedbackSentiment(itemSnapshot.FeedbackSentiment)
 		if len(itemSnapshot.TopPairedCategories) > 0 {
 			_ = json.Unmarshal([]byte(itemSnapshot.TopPairedCategories), &pairedCategories)
+		}
+	} else {
+		// Fallback to brand reader stats if available
+		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		if stats == nil {
+			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 		}
 	}
 

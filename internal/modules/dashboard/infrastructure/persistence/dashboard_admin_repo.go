@@ -16,7 +16,7 @@ func (r *DashboardRepository) UpsertAdminSnapshot(ctx context.Context, snapshot 
 		Columns: []clause.Column{{Name: "snapshot_date"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"total_users", "new_users", "active_users_dau", "total_brands",
-			"pending_review_brands", "active_campaigns", "ai_requests_count",
+			"pending_review_brands", "ai_requests_count",
 			"ai_error_count", "ai_paid_tokens", "ai_actual_cost_micro_vnd",
 			"subscription_revenue_vnd", "net_ai_margin_vnd", "payos_transaction_count",
 			"payos_success_count", "updated_at",

@@ -111,7 +111,6 @@ func (r *BrandRepository) GetAdminBrandStats(ctx context.Context, snapshotDate t
 		SnapshotDate:        snapshotDate,
 		TotalBrands:         int(totalBrands),
 		PendingReviewBrands: int(pendingBrands),
-		ActiveCampaigns:     0,
 	}, nil
 }
 
@@ -121,10 +120,28 @@ func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uu
 	var totalMembers int64
 	_ = db.Table("brand_customers").Where("brand_id = ? AND status = ?", brandID, "ACTIVE").Count(&totalMembers).Error
 
+	var pointsIssued int64
+	_ = db.Table("loyalty_point_transactions").
+		Where("brand_id = ? AND transaction_type IN ?", brandID, []string{"EARN", "CREDIT", "ISSUED"}).
+		Select("COALESCE(SUM(points), 0)").Scan(&pointsIssued).Error
+
+	var pointsRedeemed int64
+	_ = db.Table("loyalty_point_transactions").
+		Where("brand_id = ? AND transaction_type IN ?", brandID, []string{"REDEEM", "DEBIT", "REDEEMED"}).
+		Select("COALESCE(SUM(points), 0)").Scan(&pointsRedeemed).Error
+
 	var expiringPoints int64
 	_ = db.Table("loyalty_point_lots").
 		Where("brand_id = ? AND status = ? AND expires_at >= ? AND expires_at <= ?", brandID, "ACTIVE", snapshotDate, snapshotDate.AddDate(0, 0, 30)).
 		Select("COALESCE(SUM(remaining_points), 0)").Scan(&expiringPoints).Error
+
+	var activeVouchers int64
+	_ = db.Table("brand_benefits").
+		Where("brand_id = ? AND status IN ?", brandID, []string{"ACTIVE", "active"}).Count(&activeVouchers).Error
+
+	var vouchersRedeemed int64
+	_ = db.Table("benefit_redemptions").
+		Where("brand_id = ?", brandID).Count(&vouchersRedeemed).Error
 
 	var sampleVotesCount int64
 	_ = db.Table("digital_sample_responses").
@@ -141,19 +158,70 @@ func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uu
 	_ = db.Table("brand_conversations").
 		Where("brand_id = ? AND status = ?", brandID, "OPEN").Count(&openTickets).Error
 
+	var avgCsSeconds float64
+	_ = db.Table("brand_conversations").
+		Where("brand_id = ? AND first_response_seconds IS NOT NULL", brandID).
+		Select("COALESCE(AVG(first_response_seconds), 0)").Scan(&avgCsSeconds).Error
+
 	return &dto.BrandAnalyticsStatsDTO{
 		BrandID:                   brandID,
 		SnapshotDate:              snapshotDate,
 		TotalMembers:              int(totalMembers),
-		PointsIssued:              0,
-		PointsRedeemed:            0,
+		PointsIssued:              int(pointsIssued),
+		PointsRedeemed:            int(pointsRedeemed),
 		PointsExpiring30d:         int(expiringPoints),
-		PointsLiabilityValueVND:   float64(expiringPoints) * 1000,
-		ActiveVouchers:            0,
-		VouchersRedeemed:          0,
+		PointsLiabilityValueVND:   float64(expiringPoints) * 1000.0,
+		ActiveVouchers:            int(activeVouchers),
+		VouchersRedeemed:          int(vouchersRedeemed),
 		DigitalSampleVotesCount:   int(sampleVotesCount),
 		DigitalSampleAvgRating:    sampleAvgRating,
 		OpenCSTickets:             int(openTickets),
-		CSFirstResponseAvgSeconds: 0,
+		CSFirstResponseAvgSeconds: int(avgCsSeconds),
 	}, nil
+}
+
+func (r *BrandRepository) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	db := r.GetDB(ctx).Table("digital_sample_responses").Where("brand_item_id = ?", itemID)
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	type SampleResponseRow struct {
+		ID          uuid.UUID `gorm:"column:id"`
+		BrandItemID uuid.UUID `gorm:"column:brand_item_id"`
+		UserID      uuid.UUID `gorm:"column:user_id"`
+		Rating      float64   `gorm:"column:rating"`
+		Comment     string    `gorm:"column:comment"`
+		CreatedAt   time.Time `gorm:"column:created_at"`
+	}
+
+	var rows []SampleResponseRow
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]dto.SampleFeedbackDrillDownDTO, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, dto.SampleFeedbackDrillDownDTO{
+			FeedbackID: row.ID.String(),
+			ItemID:     row.BrandItemID,
+			UserID:     row.UserID,
+			Rating:     row.Rating,
+			Comment:    row.Comment,
+			CreatedAt:  row.CreatedAt,
+		})
+	}
+
+	return items, total, nil
 }

@@ -70,6 +70,9 @@ func (m *mockBrandRepo) GetAdminBrandStats(ctx context.Context, snapshotDate tim
 func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
 	return nil, nil
 }
+func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return nil, 0, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember

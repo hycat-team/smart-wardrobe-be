@@ -2,6 +2,11 @@ package dto
 
 import "time"
 
+type GetAIMarginAnalyticsQueryReq struct {
+	FromDate string `form:"fromDate" json:"fromDate"`
+	ToDate   string `form:"toDate" json:"toDate"`
+}
+
 type AdminKPICardsRes struct {
 	TotalUsers             int       `json:"totalUsers"`
 	ActiveUsersDAU         int       `json:"activeUsersDau"`

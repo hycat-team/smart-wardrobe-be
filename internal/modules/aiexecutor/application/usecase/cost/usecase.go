@@ -203,3 +203,7 @@ func (uc *CostUseCase) ExpireUnknown(ctx context.Context, now time.Time, limit i
 func (uc *CostUseCase) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*aiexecutor_dto.AIUsageAdminStatsDTO, error) {
 	return uc.repo.GetAdminAIUsageStats(ctx, snapshotDate)
 }
+
+func (uc *CostUseCase) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]aiexecutor_dto.AIEventDrillDownDTO, int64, error) {
+	return uc.repo.GetAIEventsDrillDown(ctx, status, page, limit)
+}
