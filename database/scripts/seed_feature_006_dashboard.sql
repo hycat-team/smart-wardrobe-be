@@ -13,9 +13,9 @@ BEGIN;
 INSERT INTO users (id, username, email, password_hash, role_slug, status, is_deleted, created_at, updated_at)
 VALUES
     ('e7b20001-0000-0000-0000-000000000001', 'owner_branda', 'owner@branda.com',
-     '$2a$11$kXWLREY8wu6wEQlONWcLveV2jeE/Tx9MS4vOlQqXmcQ9VASP0NMhu', 'user', 0, false, NOW(), NOW()),
+     '$2a$11$JRjPd2o.2UQAMqDwPoM9c.V.IFR9aifX6sZbzXZYcPiRlGhqjVPca', 'user', 0, false, NOW(), NOW()),
     ('e7b20002-0000-0000-0000-000000000002', 'staff_branda', 'staff@branda.com',
-     '$2a$11$kXWLREY8wu6wEQlONWcLveV2jeE/Tx9MS4vOlQqXmcQ9VASP0NMhu', 'user', 0, false, NOW(), NOW())
+     '$2a$11$JRjPd2o.2UQAMqDwPoM9c.V.IFR9aifX6sZbzXZYcPiRlGhqjVPca', 'user', 0, false, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Brands
