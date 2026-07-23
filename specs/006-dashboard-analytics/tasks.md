@@ -41,11 +41,11 @@
 
 **Independent Test**: Unit test từng Read Contract trả về đúng DTO aggregate từ domain database tương ứng.
 
-- [ ] T005 [P] Tạo Contract Interface `UserDashboardReader` và DTOs tại `internal/modules/identity/presentation/contract/dashboard_reader.go`.
-- [ ] T006 [P] Tạo Contract Interface `BrandDashboardReader` và DTOs tại `internal/modules/brand/presentation/contract/dashboard_reader.go`.
-- [ ] T007 [P] Tạo Contract Interface `WardrobeDashboardReader` và DTOs tại `internal/modules/wardrobe/presentation/contract/dashboard_reader.go`.
-- [ ] T008 [P] Tạo Contract Interface `AICostDashboardReader` và DTOs tại `internal/modules/aiexecutor/presentation/contract/dashboard_reader.go`.
-- [ ] T009 Triển khai implementations cho các Dashboard Read Contracts trên tại từng module tương ứng.
+- [x] T005 [P] Tạo Contract Interface `UserDashboardReader` và DTOs tại `internal/modules/identity/presentation/contract/dashboard_reader.go`.
+- [x] T006 [P] Tạo Contract Interface `BrandDashboardReader` và DTOs tại `internal/modules/brand/presentation/contract/dashboard_reader.go`.
+- [x] T007 [P] Tạo Contract Interface `WardrobeDashboardReader` và DTOs tại `internal/modules/wardrobe/presentation/contract/dashboard_reader.go`.
+- [x] T008 [P] Tạo Contract Interface `AICostDashboardReader` và DTOs tại `internal/modules/aiexecutor/presentation/contract/dashboard_reader.go`.
+- [x] T009 Triển khai implementations cho các Dashboard Read Contracts trên tại từng module tương ứng.
 
 🛑 **CHECKPOINT PHASE 2**: Dừng lại, báo cáo kết quả thử nghiệm Read Contracts và chờ User verify trước khi sang Phase 3.
 

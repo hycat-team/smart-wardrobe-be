@@ -64,6 +64,12 @@ func (m *mockBrandRepo) GetBrandsForAdmin(ctx context.Context, filter repositori
 		TotalCount: int64(len(list)),
 	}, nil
 }
+func (m *mockBrandRepo) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {
+	return nil, nil
+}
+func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
+	return nil, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember

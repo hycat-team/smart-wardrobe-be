@@ -14,6 +14,7 @@ var ProviderSet = wire.NewSet(
 	infrastructure.ProviderSet,
 	application.ProviderSet,
 	contract.NewBrandContract,
+	contract.NewBrandDashboardReader,
 	handler.NewBrandPortalHandler,
 	handler.NewBrandLoyaltyHandler,
 	handler.NewBrandChatHandler,

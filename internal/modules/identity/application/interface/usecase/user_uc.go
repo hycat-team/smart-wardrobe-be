@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"time"
+
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
@@ -21,4 +23,5 @@ type IUserUseCase interface {
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserRes, error)
 	UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error)
 	GetUsersForAdmin(ctx context.Context, query dto.GetUsersQueryReq) (*dto.AdminUserListRes, error)
+	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error)
 }

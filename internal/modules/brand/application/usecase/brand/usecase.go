@@ -458,3 +458,11 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 	}
 	return mapper.MapBrandMembers(members), nil
 }
+
+func (uc *BrandUseCase) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {
+	return uc.brandRepo.GetAdminBrandStats(ctx, snapshotDate)
+}
+
+func (uc *BrandUseCase) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
+	return uc.brandRepo.GetBrandAnalyticsStats(ctx, brandID, snapshotDate)
+}

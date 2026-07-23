@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
@@ -89,5 +91,69 @@ func (r *BrandRepository) getBrands(ctx context.Context, filter repositories.Bra
 	return &repositories.BrandListResult{
 		Brands:     brands,
 		TotalCount: totalCount,
+	}, nil
+}
+
+func (r *BrandRepository) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {
+	db := r.GetDB(ctx)
+
+	var totalBrands int64
+	if err := db.Model(&entities.Brand{}).Count(&totalBrands).Error; err != nil {
+		return nil, err
+	}
+
+	var pendingBrands int64
+	if err := db.Model(&entities.Brand{}).Where("status = ?", "PENDING_REVIEW").Count(&pendingBrands).Error; err != nil {
+		return nil, err
+	}
+
+	return &dto.BrandAdminStatsDTO{
+		SnapshotDate:        snapshotDate,
+		TotalBrands:         int(totalBrands),
+		PendingReviewBrands: int(pendingBrands),
+		ActiveCampaigns:     0,
+	}, nil
+}
+
+func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
+	db := r.GetDB(ctx)
+
+	var totalMembers int64
+	_ = db.Table("brand_customers").Where("brand_id = ? AND status = ?", brandID, "ACTIVE").Count(&totalMembers).Error
+
+	var expiringPoints int64
+	_ = db.Table("loyalty_point_lots").
+		Where("brand_id = ? AND status = ? AND expires_at >= ? AND expires_at <= ?", brandID, "ACTIVE", snapshotDate, snapshotDate.AddDate(0, 0, 30)).
+		Select("COALESCE(SUM(remaining_points), 0)").Scan(&expiringPoints).Error
+
+	var sampleVotesCount int64
+	_ = db.Table("digital_sample_responses").
+		Joins("JOIN brand_items ON brand_items.id = digital_sample_responses.brand_item_id").
+		Where("brand_items.brand_id = ?", brandID).Count(&sampleVotesCount).Error
+
+	var sampleAvgRating float64
+	_ = db.Table("digital_sample_responses").
+		Joins("JOIN brand_items ON brand_items.id = digital_sample_responses.brand_item_id").
+		Where("brand_items.brand_id = ? AND rating IS NOT NULL", brandID).
+		Select("COALESCE(AVG(rating), 0)").Scan(&sampleAvgRating).Error
+
+	var openTickets int64
+	_ = db.Table("brand_conversations").
+		Where("brand_id = ? AND status = ?", brandID, "OPEN").Count(&openTickets).Error
+
+	return &dto.BrandAnalyticsStatsDTO{
+		BrandID:                   brandID,
+		SnapshotDate:              snapshotDate,
+		TotalMembers:              int(totalMembers),
+		PointsIssued:              0,
+		PointsRedeemed:            0,
+		PointsExpiring30d:         int(expiringPoints),
+		PointsLiabilityValueVND:    float64(expiringPoints) * 1000,
+		ActiveVouchers:            0,
+		VouchersRedeemed:          0,
+		DigitalSampleVotesCount:   int(sampleVotesCount),
+		DigitalSampleAvgRating:    sampleAvgRating,
+		OpenCSTickets:             int(openTickets),
+		CSFirstResponseAvgSeconds: 0,
 	}, nil
 }

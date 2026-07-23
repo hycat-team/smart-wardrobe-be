@@ -314,3 +314,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeStats(ctx context.Context, userID uuid
 		OutfitsCount:     int(outfitsCount),
 	}, nil
 }
+
+func (uc *WardrobeItemUseCase) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error) {
+	return uc.wardrobeRepo.GetUserWardrobeSummaryStats(ctx, userID)
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
@@ -214,4 +215,39 @@ func (r *AICostRepository) ExpireUnknown(ctx context.Context, now time.Time, lim
 		n++
 	}
 	return n, nil
+}
+
+func (r *AICostRepository) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error) {
+	db := r.GetDB(ctx)
+
+	startOfDay := time.Date(snapshotDate.Year(), snapshotDate.Month(), snapshotDate.Day(), 0, 0, 0, 0, snapshotDate.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	var reqCount int64
+	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).
+		Count(&reqCount).Error
+
+	var errCount int64
+	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("created_at >= ? AND created_at < ? AND status IN ?", startOfDay, endOfDay, []string{"FAILED", "RELEASED", "EXPIRED"}).
+		Count(&errCount).Error
+
+	var paidTokens int64
+	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).
+		Select("COALESCE(SUM(total_tokens), 0)").Scan(&paidTokens).Error
+
+	var actualCost int64
+	_ = db.Model(&aiexecutor_entities.AIUsagePeriodLedger{}).
+		Where("period_start >= ? AND period_start < ?", startOfDay, endOfDay).
+		Select("COALESCE(SUM(actual_cost_micro_vnd), 0)").Scan(&actualCost).Error
+
+	return &dto.AIUsageAdminStatsDTO{
+		SnapshotDate:         snapshotDate,
+		AIRequestsCount:      int(reqCount),
+		AIErrorCount:         int(errCount),
+		AIPaidTokens:         paidTokens,
+		AIActualCostMicroVND: actualCost,
+	}, nil
 }

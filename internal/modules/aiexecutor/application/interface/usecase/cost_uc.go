@@ -18,4 +18,5 @@ type IAICostUseCase interface {
 	Release(ctx context.Context, requestID uuid.UUID, reason string) error
 	MarkUnknown(ctx context.Context, requestID uuid.UUID, reason string) error
 	ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error)
+	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
 }
