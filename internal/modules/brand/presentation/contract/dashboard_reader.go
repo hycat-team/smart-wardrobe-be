@@ -16,6 +16,7 @@ type IBrandDashboardReader interface {
 	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error)
 	GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error)
 	GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error)
+	GetActiveBrandIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 type BrandDashboardReader struct {
@@ -40,4 +41,16 @@ func (r *BrandDashboardReader) GetUserBrandRole(ctx context.Context, userID uuid
 
 func (r *BrandDashboardReader) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
 	return r.brandUC.GetSampleLabFeedbacksDrillDown(ctx, itemID, page, limit)
+}
+
+func (r *BrandDashboardReader) GetActiveBrandIDs(ctx context.Context) ([]uuid.UUID, error) {
+	res, err := r.brandUC.GetActiveBrands(ctx, dto.GetActiveBrandsQueryReq{})
+	if err != nil || res == nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, 0, len(res.Items))
+	for _, b := range res.Items {
+		ids = append(ids, b.ID)
+	}
+	return ids, nil
 }

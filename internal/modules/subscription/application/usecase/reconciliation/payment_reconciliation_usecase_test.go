@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
@@ -63,6 +64,9 @@ func (f *fakeDepositTransactionRepository) UpdateWithToken(ctx context.Context, 
 		return f.updateWithTokenFunc(ctx, orderCode, token, updates)
 	}
 	return 1, nil
+}
+func (f *fakeDepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+	return nil, nil
 }
 
 type fakePaymentGatewayService struct {

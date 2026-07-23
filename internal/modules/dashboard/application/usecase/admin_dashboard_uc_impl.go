@@ -6,12 +6,15 @@ import (
 
 	aiContract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 )
+
+const microVNDDivisor = 1000000.0
 
 type AdminDashboardUseCase struct {
 	dashboardRepo dashboardRepos.IDashboardRepository
@@ -71,10 +74,13 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			res.PendingReviewBrands = brandStats.PendingReviewBrands
 		}
 		if aiStats != nil {
-			actualCostVND := float64(aiStats.AIActualCostMicroVND) / 1000000.0
+			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
 			res.NetAIMarginVND = -actualCostVND
 		}
-		return res, nil
+		if userStats != nil || brandStats != nil || aiStats != nil {
+			return res, nil
+		}
+		return nil, dashboarderrors.ErrDashboardDataNotFound()
 	}
 
 	return &dto.AdminKPICardsRes{
@@ -108,11 +114,11 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		if err != nil {
 			return nil, err
 		}
-		if aiStats == nil || (aiStats.AIRequestsCount == 0 && aiStats.AIActualCostMicroVND == 0) {
+		if aiStats == nil {
 			return nil, dashboarderrors.ErrDashboardDataNotFound()
 		}
 
-		actualCostVND := float64(aiStats.AIActualCostMicroVND) / 1000000.0
+		actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
 		netMargin := -actualCostVND
 
 		return &dto.AIMarginAnalyticsRes{
@@ -123,23 +129,23 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 			NetAIMarginVND:          netMargin,
 			MarginPercentage:        0.0,
 			TotalAIPaidTokens:       aiStats.AIPaidTokens,
-			AIRequestsCount:         aiStats.AIRequestsCount,
-			AIErrorCount:            aiStats.AIErrorCount,
+			AIRequestsCount:         int64(aiStats.AIRequestsCount),
+			AIErrorCount:            int64(aiStats.AIErrorCount),
 		}, nil
 	}
 
 	totalRev := 0.0
 	totalMargin := 0.0
 	var totalTokens int64
-	totalRequests := 0
-	totalErrors := 0
+	var totalRequests int64
+	var totalErrors int64
 
 	for _, s := range snapshots {
 		totalRev += s.SubscriptionRevenueVND
 		totalMargin += s.NetAIMarginVND
 		totalTokens += s.AIPaidTokens
-		totalRequests += s.AIRequestsCount
-		totalErrors += s.AIErrorCount
+		totalRequests += int64(s.AIRequestsCount)
+		totalErrors += int64(s.AIErrorCount)
 	}
 
 	actualCostVND := totalRev - totalMargin
@@ -168,7 +174,7 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 		return nil, err
 	}
 
-	if latest == nil || latest.PayOSTransactionCount == 0 {
+	if latest == nil {
 		return nil, dashboarderrors.ErrDashboardDataNotFound()
 	}
 
@@ -189,7 +195,7 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 	}
 
 	now := time.Now()
-	aiMargin, err := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -30), now)
+	aiMargin, err := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
 	if err != nil {
 		aiMargin = nil
 	}

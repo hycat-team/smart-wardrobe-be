@@ -2,10 +2,12 @@ package repositories
 
 import (
 	"context"
+	"time"
+
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -25,4 +27,5 @@ type IDepositTransactionRepository interface {
 	GetActiveDirectPurchase(ctx context.Context, userID uuid.UUID) (*entities.DepositTransaction, error)
 	ClaimReconciliationCandidates(ctx context.Context, limit int, lease time.Duration) ([]*ClaimedDepositTransaction, error)
 	UpdateWithToken(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error)
+	GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error)
 }

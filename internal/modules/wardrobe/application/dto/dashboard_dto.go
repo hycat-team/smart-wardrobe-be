@@ -1,8 +1,6 @@
 package dto
 
 import (
-	sharedEntities "smart-wardrobe-be/internal/shared/domain/entities"
-
 	"github.com/google/uuid"
 )
 
@@ -18,11 +16,9 @@ type UnderutilizedItemInfoDTO struct {
 }
 
 type UserWardrobeSummaryStatsDTO struct {
-	UserID                  uuid.UUID                   `json:"userId"`
-	TotalItems              int                         `json:"totalItems"`
-	TotalWardrobeValueVND   float64                     `json:"totalWardrobeValueVnd"`
-	AverageCostPerWearVND   float64                     `json:"averageCostPerWearVnd"`
-	UnderutilizedItemsCount int                         `json:"underutilizedItemsCount"`
-	CategoryDistribution    sharedEntities.JSONDocument `json:"categoryDistribution"`
-	ColorDistribution       sharedEntities.JSONDocument `json:"colorDistribution"`
+	UserID                  uuid.UUID `json:"userId"`
+	TotalItems              int       `json:"totalItems"`
+	TotalWardrobeValueVND   float64   `json:"totalWardrobeValueVnd"`
+	AverageCostPerWearVND   float64   `json:"averageCostPerWearVnd"`
+	UnderutilizedItemsCount int       `json:"underutilizedItemsCount"`
 }

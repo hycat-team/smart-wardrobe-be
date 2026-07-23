@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/config"
 	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
+	dashboardWorker "smart-wardrobe-be/internal/modules/dashboard/presentation/worker"
 	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
@@ -32,6 +33,7 @@ type AppWorkers struct {
 	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker
 	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
 	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
+	DashboardAggregatorWorker   *dashboardWorker.DashboardAggregatorWorker
 }
 type App struct {
 	Config    *config.Config
@@ -79,6 +81,8 @@ func (a *App) Run() error {
 	fmt.Printf("Swagger UI is available at: http://localhost:%s/swagger\n", port)
 	fmt.Println("==========================================================")
 
+	ctxWorker := context.Background()
+
 	a.Workers.RenewalWorker.Start()
 	a.Workers.PaymentReconciliationWorker.Start()
 	a.Workers.WebhookInboxWorker.Start()
@@ -86,6 +90,9 @@ func (a *App) Run() error {
 	a.Workers.LoyaltyPointExpiryWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
+	if a.Workers.DashboardAggregatorWorker != nil {
+		a.Workers.DashboardAggregatorWorker.Start(ctxWorker)
+	}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -106,6 +113,9 @@ func (a *App) Run() error {
 	a.Workers.LoyaltyPointExpiryWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()
+	if a.Workers.DashboardAggregatorWorker != nil {
+		a.Workers.DashboardAggregatorWorker.Stop()
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

@@ -23,7 +23,7 @@ func NewBrandDashboardHandler(brandUC uc_interfaces.IBrandDashboardUseCase) *Bra
 // GetKPICards lấy thẻ chỉ số KPI cho Brand Portal
 // @Summary Lấy thẻ KPI tổng quan B2B Brand Portal
 // @Description Lấy thống kê số hội viên, điểm phát hành, điểm quy đổi, số voucher active/quy đổi của nhãn hàng.
-// @Tags Brand Dashboard
+// @Tags Dashboard Brand
 // @Produce json
 // @Param brandId query string true "ID Nhãn hàng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandKPICardsRes} "Lấy thẻ KPI nhãn hàng thành công"
@@ -49,7 +49,7 @@ func (h *BrandDashboardHandler) GetKPICards(c *gin.Context) error {
 // GetPointsLiability phân tích rủi ro nghĩa vụ tài chính nợ điểm quy đổi (Column-Level RBAC)
 // @Summary Phân tích nợ điểm hết hạn trong 30 ngày (Column-Level RBAC)
 // @Description Thống kê số điểm hết hạn trong 30 ngày tới & giá trị quy đổi VND tương ứng. Giá trị VND sẽ bị ẩn (redacted) đối với tài khoản cấp Staff.
-// @Tags Brand Dashboard
+// @Tags Dashboard Brand
 // @Produce json
 // @Param brandId query string true "ID Nhãn hàng"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandPointsLiabilityRes} "Lấy báo cáo nghĩa vụ điểm quy đổi thành công"
@@ -79,7 +79,7 @@ func (h *BrandDashboardHandler) GetPointsLiability(c *gin.Context) error {
 // GetDigitalSampleLabAnalytics phân tích phản hồi sản phẩm mẫu thử Digital Sample Lab
 // @Summary Phân tích đánh giá mẫu thử Digital Sample Lab
 // @Description Thống kê số lượt bình chọn, rating trung bình, sentiment phản hồi và danh sách danh mục trang phục thường phối kèm nhiều nhất.
-// @Tags Brand Dashboard
+// @Tags Dashboard Brand
 // @Produce json
 // @Param brandId query string true "ID Nhãn hàng"
 // @Param itemId path string true "ID Sản phẩm mẫu thử"

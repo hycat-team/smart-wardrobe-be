@@ -44,26 +44,34 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 		}
 		if stats != nil {
 			return &dto.BrandKPICardsRes{
-				BrandID:          brandID,
-				TotalMembers:     stats.TotalMembers,
-				PointsIssued:     stats.PointsIssued,
-				PointsRedeemed:   stats.PointsRedeemed,
-				ActiveVouchers:   stats.ActiveVouchers,
-				VouchersRedeemed: stats.VouchersRedeemed,
-				UpdatedAt:        time.Now(),
+				BrandID:                   brandID,
+				TotalMembers:              stats.TotalMembers,
+				PointsIssued:              stats.PointsIssued,
+				PointsRedeemed:            stats.PointsRedeemed,
+				ActiveVouchers:            stats.ActiveVouchers,
+				VouchersRedeemed:          stats.VouchersRedeemed,
+				DigitalSampleVotesCount:   stats.DigitalSampleVotesCount,
+				DigitalSampleAvgRating:    stats.DigitalSampleAvgRating,
+				OpenCSTickets:             stats.OpenCSTickets,
+				CSFirstResponseAvgSeconds: stats.CSFirstResponseAvgSeconds,
+				UpdatedAt:                 time.Now(),
 			}, nil
 		}
 		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 	}
 
 	return &dto.BrandKPICardsRes{
-		BrandID:          latest.BrandID,
-		TotalMembers:     latest.TotalMembers,
-		PointsIssued:     latest.PointsIssued,
-		PointsRedeemed:   latest.PointsRedeemed,
-		ActiveVouchers:   latest.ActiveVouchers,
-		VouchersRedeemed: latest.VouchersRedeemed,
-		UpdatedAt:        latest.UpdatedAt,
+		BrandID:                   latest.BrandID,
+		TotalMembers:              latest.TotalMembers,
+		PointsIssued:              latest.PointsIssued,
+		PointsRedeemed:            latest.PointsRedeemed,
+		ActiveVouchers:            latest.ActiveVouchers,
+		VouchersRedeemed:          latest.VouchersRedeemed,
+		DigitalSampleVotesCount:   latest.DigitalSampleVotesCount,
+		DigitalSampleAvgRating:    latest.DigitalSampleAvgRating,
+		OpenCSTickets:             latest.OpenCSTickets,
+		CSFirstResponseAvgSeconds: latest.CSFirstResponseAvgSeconds,
+		UpdatedAt:                 latest.UpdatedAt,
 	}, nil
 }
 
@@ -111,34 +119,35 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 		return nil, err
 	}
 
-	votes := 0
-	rating := 0.0
-	sentiment := feedbacksentiment.Positive
-	pairedCategories := make([]dto.PairedCategoryStat, 0)
-
 	if itemSnapshot != nil {
-		votes = itemSnapshot.VotesCount
-		rating = itemSnapshot.AvgRating
-		sentiment = feedbacksentiment.FeedbackSentiment(itemSnapshot.FeedbackSentiment)
+		votes := itemSnapshot.VotesCount
+		rating := itemSnapshot.AvgRating
+		sentiment := feedbacksentiment.FeedbackSentiment(itemSnapshot.FeedbackSentiment)
+		pairedCategories := make([]dto.PairedCategoryStat, 0)
 		if len(itemSnapshot.TopPairedCategories) > 0 {
 			_ = json.Unmarshal([]byte(itemSnapshot.TopPairedCategories), &pairedCategories)
 		}
-	} else {
-		// Fallback to brand reader stats if available
-		stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
-		if err != nil {
-			return nil, err
-		}
-		if stats == nil {
-			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
-		}
+		return &dto.DigitalSampleLabAnalyticsRes{
+			ItemID:              itemID,
+			VotesCount:          votes,
+			AvgRating:           rating,
+			FeedbackSentiment:   sentiment,
+			TopPairedCategories: pairedCategories,
+		}, nil
+	}
+
+	// Fallback to brand reader stats if available
+	stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	if stats == nil {
+		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 	}
 
 	return &dto.DigitalSampleLabAnalyticsRes{
-		ItemID:              itemID,
-		VotesCount:          votes,
-		AvgRating:           rating,
-		FeedbackSentiment:   sentiment,
-		TopPairedCategories: pairedCategories,
+		ItemID:     itemID,
+		VotesCount: stats.DigitalSampleVotesCount,
+		AvgRating:  stats.DigitalSampleAvgRating,
 	}, nil
 }

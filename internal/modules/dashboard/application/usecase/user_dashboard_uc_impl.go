@@ -3,10 +3,13 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"time"
 
+	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
@@ -34,67 +37,95 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 		return nil, err
 	}
 
+	// 1. Cache Hit: Read from snapshot table if fresh (TTL = 1 hour)
+	if summary != nil && time.Since(summary.UpdatedAt) < dashboard_app.DashboardCacheTTL {
+		underutilizedItems := make([]dto.UnderutilizedItemDTO, 0)
+		if len(summary.UnderutilizedItems) > 0 {
+			_ = json.Unmarshal([]byte(summary.UnderutilizedItems), &underutilizedItems)
+		}
+		return &dto.UserWardrobeInsightsRes{
+			TotalItems:              summary.TotalItems,
+			TotalWardrobeValueVND:   summary.TotalWardrobeValueVND,
+			AverageItemValueVND:     summary.AverageCostPerWearVND,
+			UnderutilizedItemsCount: summary.UnderutilizedItemsCount,
+			UnderutilizedItems:      underutilizedItems,
+			AIQuotaRemaining:        summary.AIQuotaRemaining,
+			ExpiringVouchersCount:   summary.ExpiringVouchersCount,
+		}, nil
+	}
+
+	// 2. Cache Miss / Stale: Calculate on-demand via wardrobeReader
+	stats, err := uc.wardrobeReader.GetUserWardrobeSummaryStats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	realItems, err := uc.wardrobeReader.GetUnderutilizedItems(ctx, userID, dashboard_app.UnderutilizedItemsLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	if (stats == nil || stats.TotalItems == 0) && len(realItems) == 0 {
+		return nil, dashboarderrors.ErrDashboardDataNotFound()
+	}
+
 	totalItems := 0
 	totalValue := 0.0
 	avgCPW := 0.0
 	underutilizedCount := 0
-	categoryDist := map[string]int{}
-	underutilizedItems := make([]dto.UnderutilizedItemDTO, 0)
-
-	if summary != nil {
-		totalItems = summary.TotalItems
-		totalValue = summary.TotalWardrobeValueVND
-		avgCPW = summary.AverageCostPerWearVND
-		underutilizedCount = summary.UnderutilizedItemsCount
-		if len(summary.CategoryDistribution) > 0 {
-			_ = json.Unmarshal([]byte(summary.CategoryDistribution), &categoryDist)
-		}
-		if len(summary.UnderutilizedItems) > 0 {
-			_ = json.Unmarshal([]byte(summary.UnderutilizedItems), &underutilizedItems)
-		}
-	} else {
-		stats, err := uc.wardrobeReader.GetUserWardrobeSummaryStats(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-		if stats != nil {
-			totalItems = stats.TotalItems
-			totalValue = stats.TotalWardrobeValueVND
-			avgCPW = stats.AverageCostPerWearVND
-			underutilizedCount = stats.UnderutilizedItemsCount
-		}
-
-		realItems, err := uc.wardrobeReader.GetUnderutilizedItems(ctx, userID, 10)
-		if err != nil {
-			return nil, err
-		}
-		for _, item := range realItems {
-			underutilizedItems = append(underutilizedItems, dto.UnderutilizedItemDTO{
-				ItemID:           item.ItemID,
-				Name:             item.Name,
-				CategoryName:     item.CategoryName,
-				PurchasePriceVND: item.PurchasePriceVND,
-				WearCount:        item.WearCount,
-				CostPerWearVND:   item.CostPerWearVND,
-				LastWornDaysAgo:  item.LastWornDaysAgo,
-				ImageURL:         item.ImageURL,
-			})
-			if item.CategoryName != "" {
-				categoryDist[item.CategoryName]++
-			}
-		}
-
-		if (stats == nil || stats.TotalItems == 0) && len(realItems) == 0 {
-			return nil, dashboarderrors.ErrDashboardDataNotFound()
-		}
+	if stats != nil {
+		totalItems = stats.TotalItems
+		totalValue = stats.TotalWardrobeValueVND
+		avgCPW = stats.AverageCostPerWearVND
+		underutilizedCount = stats.UnderutilizedItemsCount
 	}
 
-	return &dto.UserWardrobeInsightsRes{
+	underutilizedItems := make([]dto.UnderutilizedItemDTO, 0, len(realItems))
+	for _, item := range realItems {
+		underutilizedItems = append(underutilizedItems, dto.UnderutilizedItemDTO{
+			ItemID:           item.ItemID,
+			Name:             item.Name,
+			CategoryName:     item.CategoryName,
+			PurchasePriceVND: item.PurchasePriceVND,
+			LastWornDaysAgo:  item.LastWornDaysAgo,
+			ImageURL:         item.ImageURL,
+		})
+	}
+
+	// 3. Write-Back: Upsert fresh snapshot to database for future fast reads
+	underutilizedJSON, err := json.Marshal(underutilizedItems)
+	if err != nil {
+		underutilizedJSON = []byte("[]")
+	}
+
+	// Read existing AI quota & voucher counts from stale snapshot if available
+	aiQuota := 0
+	expiringVouchers := 0
+	if summary != nil {
+		aiQuota = summary.AIQuotaRemaining
+		expiringVouchers = summary.ExpiringVouchersCount
+	}
+
+	newSummary := &entities.DashboardUserWardrobeSummary{
+		UserID:                  userID,
 		TotalItems:              totalItems,
 		TotalWardrobeValueVND:   totalValue,
 		AverageCostPerWearVND:   avgCPW,
 		UnderutilizedItemsCount: underutilizedCount,
-		CategoryDistribution:    categoryDist,
+		UnderutilizedItems:      underutilizedJSON,
+		AIQuotaRemaining:        aiQuota,
+		ExpiringVouchersCount:   expiringVouchers,
+		UpdatedAt:               time.Now(),
+	}
+	_ = uc.dashboardRepo.UpsertUserWardrobeSummary(ctx, newSummary)
+
+	return &dto.UserWardrobeInsightsRes{
+		TotalItems:              totalItems,
+		TotalWardrobeValueVND:   totalValue,
+		AverageItemValueVND:     avgCPW,
+		UnderutilizedItemsCount: underutilizedCount,
 		UnderutilizedItems:      underutilizedItems,
+		AIQuotaRemaining:        aiQuota,
+		ExpiringVouchersCount:   expiringVouchers,
 	}, nil
 }

@@ -13,13 +13,17 @@ type GetBrandDashboardQueryReq struct {
 }
 
 type BrandKPICardsRes struct {
-	BrandID          uuid.UUID `json:"brandId"`
-	TotalMembers     int       `json:"totalMembers"`
-	PointsIssued     int       `json:"pointsIssued"`
-	PointsRedeemed   int       `json:"pointsRedeemed"`
-	ActiveVouchers   int       `json:"activeVouchers"`
-	VouchersRedeemed int       `json:"vouchersRedeemed"`
-	UpdatedAt        time.Time `json:"updatedAt"`
+	BrandID                   uuid.UUID `json:"brandId"`
+	TotalMembers              int       `json:"totalMembers"`
+	PointsIssued              int       `json:"pointsIssued"`
+	PointsRedeemed            int       `json:"pointsRedeemed"`
+	ActiveVouchers            int       `json:"activeVouchers"`
+	VouchersRedeemed          int       `json:"vouchersRedeemed"`
+	DigitalSampleVotesCount   int       `json:"digitalSampleVotesCount"`
+	DigitalSampleAvgRating    float64   `json:"digitalSampleAvgRating"`
+	OpenCSTickets             int       `json:"openCsTickets"`
+	CSFirstResponseAvgSeconds int       `json:"csFirstResponseAvgSeconds"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
 }
 
 type BrandPointsLiabilityRes struct {

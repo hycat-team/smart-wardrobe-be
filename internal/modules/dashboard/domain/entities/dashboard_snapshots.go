@@ -17,8 +17,8 @@ type DashboardAdminDailySnapshot struct {
 	ActiveUsersDau         int       `gorm:"not null;default:0"`
 	TotalBrands            int       `gorm:"not null;default:0"`
 	PendingReviewBrands    int       `gorm:"not null;default:0"`
-	AIRequestsCount        int       `gorm:"not null;default:0"`
-	AIErrorCount           int       `gorm:"not null;default:0"`
+	AIRequestsCount        int64     `gorm:"not null;default:0"`
+	AIErrorCount           int64     `gorm:"not null;default:0"`
 	AIPaidTokens           int64     `gorm:"not null;default:0"`
 	AIActualCostMicroVND   int64     `gorm:"not null;default:0"`
 	SubscriptionRevenueVND float64   `gorm:"type:numeric(12,2);not null;default:0"`
@@ -59,7 +59,7 @@ type DashboardBrandItemDailySnapshot struct {
 	SnapshotDate        time.Time                           `gorm:"type:date;not null"`
 	VotesCount          int                                 `gorm:"not null;default:0"`
 	AvgRating           float64                             `gorm:"type:numeric(3,2);not null;default:0"`
-	FeedbackSentiment   feedbacksentiment.FeedbackSentiment `gorm:"type:varchar(20);not null;default:'POSITIVE'"`
+	FeedbackSentiment   feedbacksentiment.FeedbackSentiment `gorm:"type:varchar(20);not null;default:'positive'"`
 	TopPairedCategories sharedEntities.JSONDocument         `gorm:"type:jsonb;not null;default:'[]'"`
 }
 
@@ -69,13 +69,12 @@ func (DashboardBrandItemDailySnapshot) TableName() string {
 
 type DashboardUserWardrobeSummary struct {
 	UserID                  uuid.UUID                   `gorm:"type:uuid;primaryKey"`
+	CreatedAt               time.Time                   `gorm:"type:timestamp with time zone;not null;default:now()"`
 	TotalItems              int                         `gorm:"not null;default:0"`
 	TotalWardrobeValueVND   float64                     `gorm:"type:numeric(12,2);not null;default:0"`
 	AverageCostPerWearVND   float64                     `gorm:"type:numeric(12,2);not null;default:0"`
 	UnderutilizedItemsCount int                         `gorm:"not null;default:0"`
 	UnderutilizedItems      sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'[]'"`
-	CategoryDistribution    sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'{}'"`
-	ColorDistribution       sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'{}'"`
 	AIQuotaRemaining        int                         `gorm:"not null;default:0"`
 	ExpiringVouchersCount   int                         `gorm:"not null;default:0"`
 	UpdatedAt               time.Time                   `gorm:"type:timestamp with time zone;not null;default:now()"`

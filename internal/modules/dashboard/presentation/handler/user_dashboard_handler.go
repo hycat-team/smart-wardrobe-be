@@ -19,12 +19,12 @@ func NewUserDashboardHandler(userUC uc_interfaces.IUserDashboardUseCase) *UserDa
 }
 
 // GetWardrobeInsights lấy thống kê phân tích tủ đồ thông minh cho End User
-// @Summary Thống kê phân tích tủ đồ cá nhân & chỉ số Cost Per Wear (CPW)
-// @Description Lấy tổng giá trị tài chính tủ đồ, chỉ số trung bình giá mỗi lần mặc (CPW = giá mua / số lần mặc), tổng số đồ lãng phí chưa mặc > 30 ngày và danh sách đề xuất.
-// @Tags User Dashboard
+// @Summary Thống kê phân tích tủ đồ cá nhân
+// @Description Lấy tổng giá trị tài chính tủ đồ, giá trị trung bình mỗi món đồ (tổng giá trị / số món), tổng số đồ lãng phí chưa mặc > 30 ngày và danh sách đề xuất.
+// @Tags Dashboard User
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.UserWardrobeInsightsRes} "Lấy phân tích tủ đồ cá nhân thành công"
-// @Router /api/v1/user/dashboard/wardrobe-insights [get]
+// @Router /api/v1/me/dashboard/wardrobe-insights [get]
 func (h *UserDashboardHandler) GetWardrobeInsights(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {

@@ -63,7 +63,7 @@ func (uc *DrillDownUseCase) GetAIEventsDrillDown(ctx context.Context, req *dto.D
 func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, req *dto.DrillDownSampleFeedbackQueryReq) (*dto.DrillDownSampleFeedbackListRes, error) {
 	normQuery := req.PaginationQuery.Normalize()
 	itemID, err := uuid.Parse(req.ItemID)
-	if err != nil || req.ItemID == "" {
+	if err != nil {
 		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 	}
 

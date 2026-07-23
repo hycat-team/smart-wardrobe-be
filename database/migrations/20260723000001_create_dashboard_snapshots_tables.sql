@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS public.dashboard_admin_daily_snapshots (
     active_users_dau INT NOT NULL DEFAULT 0,
     total_brands INT NOT NULL DEFAULT 0,
     pending_review_brands INT NOT NULL DEFAULT 0,
-    ai_requests_count INT NOT NULL DEFAULT 0,
-    ai_error_count INT NOT NULL DEFAULT 0,
+    ai_requests_count BIGINT NOT NULL DEFAULT 0,
+    ai_error_count BIGINT NOT NULL DEFAULT 0,
     ai_paid_tokens BIGINT NOT NULL DEFAULT 0,
     ai_actual_cost_micro_vnd BIGINT NOT NULL DEFAULT 0,
     subscription_revenue_vnd NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
@@ -67,10 +67,9 @@ CREATE TABLE IF NOT EXISTS public.dashboard_user_wardrobe_summaries (
     average_cost_per_wear_vnd NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     underutilized_items_count INT NOT NULL DEFAULT 0,
     underutilized_items JSONB NOT NULL DEFAULT '[]'::jsonb,
-    category_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
-    color_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
     ai_quota_remaining INT NOT NULL DEFAULT 0,
     expiring_vouchers_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

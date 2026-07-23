@@ -8,6 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type contextKey string
+
+const ctxTxKey contextKey = "dashboard_tx"
+
 type DashboardRepository struct {
 	db *gorm.DB
 }
@@ -20,7 +24,7 @@ func (r *DashboardRepository) getDB(ctx context.Context) *gorm.DB {
 	if ctx == nil {
 		return r.db
 	}
-	if tx, ok := ctx.Value("TxKey").(*gorm.DB); ok && tx != nil {
+	if tx, ok := ctx.Value(ctxTxKey).(*gorm.DB); ok && tx != nil {
 		return tx.WithContext(ctx)
 	}
 	return r.db.WithContext(ctx)

@@ -37,7 +37,7 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	privateApi := group.Group("")
 	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
 
-	userDashboard := privateApi.Group("/user/dashboard")
+	userDashboard := privateApi.Group("/me/dashboard")
 	{
 		userDashboard.GET("/wardrobe-insights", shared_pres.WrapHandler(r.userDashboardHandler.GetWardrobeInsights))
 	}

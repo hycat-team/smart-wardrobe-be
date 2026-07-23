@@ -384,7 +384,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Dashboard"
+                    "Dashboard Admin"
                 ],
                 "summary": "Phân tích biên lợi nhuận AI Token",
                 "parameters": [
@@ -430,7 +430,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Dashboard"
+                    "Dashboard Admin"
                 ],
                 "summary": "Truy vết chi tiết các sự kiện lỗi AI (Drill-down Admin)",
                 "parameters": [
@@ -484,7 +484,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Dashboard"
+                    "Dashboard Admin"
                 ],
                 "summary": "Lấy các thẻ chỉ số KPI tổng quan Admin",
                 "responses": {
@@ -516,7 +516,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Dashboard"
+                    "Dashboard Admin"
                 ],
                 "summary": "Báo cáo tổng quan Admin Dashboard",
                 "responses": {
@@ -548,7 +548,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Dashboard"
+                    "Dashboard Admin"
                 ],
                 "summary": "Thống kê đối soát giao dịch PayOS",
                 "responses": {
@@ -3572,7 +3572,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brand Dashboard"
+                    "Dashboard Brand"
                 ],
                 "summary": "Truy vết chi tiết đánh giá mẫu thử 3D (Drill-down Brand)",
                 "parameters": [
@@ -3627,7 +3627,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brand Dashboard"
+                    "Dashboard Brand"
                 ],
                 "summary": "Phân tích nợ điểm hết hạn trong 30 ngày (Column-Level RBAC)",
                 "parameters": [
@@ -3668,7 +3668,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brand Dashboard"
+                    "Dashboard Brand"
                 ],
                 "summary": "Lấy thẻ KPI tổng quan B2B Brand Portal",
                 "parameters": [
@@ -3709,7 +3709,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brand Dashboard"
+                    "Dashboard Brand"
                 ],
                 "summary": "Phân tích đánh giá mẫu thử Digital Sample Lab",
                 "parameters": [
@@ -4771,6 +4771,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/dashboard/wardrobe-insights": {
+            "get": {
+                "description": "Lấy tổng giá trị tài chính tủ đồ, giá trị trung bình mỗi món đồ (tổng giá trị / số món), tổng số đồ lãng phí chưa mặc \u003e 30 ngày và danh sách đề xuất.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard User"
+                ],
+                "summary": "Thống kê phân tích tủ đồ cá nhân",
+                "responses": {
+                    "200": {
+                        "description": "Lấy phân tích tủ đồ cá nhân thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/outfits": {
             "get": {
                 "description": "Trả về danh sách tất cả các bộ phối đồ do tôi thiết kế.",
@@ -5502,38 +5534,6 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/user/dashboard/wardrobe-insights": {
-            "get": {
-                "description": "Lấy tổng giá trị tài chính tủ đồ, chỉ số trung bình giá mỗi lần mặc (CPW = giá mua / số lần mặc), tổng số đồ lãng phí chưa mặc \u003e 30 ngày và danh sách đề xuất.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User Dashboard"
-                ],
-                "summary": "Thống kê phân tích tủ đồ cá nhân \u0026 chỉ số Cost Per Wear (CPW)",
-                "responses": {
-                    "200": {
-                        "description": "Lấy phân tích tủ đồ cá nhân thành công",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes"
                                         }
                                     }
                                 }
@@ -7420,7 +7420,7 @@ const docTemplate = `{
                 "netAiMarginVnd": {
                     "type": "number"
                 },
-                "payosSuccessCount": {
+                "payOSSuccessCount": {
                     "type": "integer"
                 },
                 "pendingReviewBrands": {
@@ -7462,6 +7462,18 @@ const docTemplate = `{
                 },
                 "brandId": {
                     "type": "string"
+                },
+                "csFirstResponseAvgSeconds": {
+                    "type": "integer"
+                },
+                "digitalSampleAvgRating": {
+                    "type": "number"
+                },
+                "digitalSampleVotesCount": {
+                    "type": "integer"
+                },
+                "openCsTickets": {
+                    "type": "integer"
                 },
                 "pointsIssued": {
                     "type": "integer"
@@ -7737,9 +7749,6 @@ const docTemplate = `{
                 "categoryName": {
                     "type": "string"
                 },
-                "costPerWearVnd": {
-                    "type": "number"
-                },
                 "imageUrl": {
                     "type": "string"
                 },
@@ -7754,23 +7763,20 @@ const docTemplate = `{
                 },
                 "purchasePriceVnd": {
                     "type": "number"
-                },
-                "wearCount": {
-                    "type": "integer"
                 }
             }
         },
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes": {
             "type": "object",
             "properties": {
-                "averageCostPerWearVnd": {
+                "aiQuotaRemaining": {
+                    "type": "integer"
+                },
+                "averageItemValueVnd": {
                     "type": "number"
                 },
-                "categoryDistribution": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer"
-                    }
+                "expiringVouchersCount": {
+                    "type": "integer"
                 },
                 "totalItems": {
                     "type": "integer"
@@ -7830,7 +7836,10 @@ const docTemplate = `{
                 "total_members",
                 "points_issued",
                 "points_redeemed",
-                "active_vouchers"
+                "active_vouchers",
+                "total_wardrobe_items",
+                "total_wardrobe_value_vnd",
+                "average_cost_per_wear_vnd"
             ],
             "x-enum-varnames": [
                 "TotalUsers",
@@ -7843,7 +7852,10 @@ const docTemplate = `{
                 "TotalMembers",
                 "PointsIssued",
                 "PointsRedeemed",
-                "ActiveVouchers"
+                "ActiveVouchers",
+                "TotalWardrobeItems",
+                "TotalWardrobeValueVND",
+                "AverageCostPerWearVND"
             ]
         },
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard": {

@@ -62,7 +62,7 @@ func (h *AnalyticsHandler) ExecuteDynamicQuery(c *gin.Context) error {
 // GetAIEventsDrillDown xem danh sách chi tiết các sự kiện/lỗi AI (Admin)
 // @Summary Truy vết chi tiết các sự kiện lỗi AI (Drill-down Admin)
 // @Description Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin provider, model, status code.
-// @Tags Admin Dashboard
+// @Tags Dashboard Admin
 // @Produce json
 // @Param status query string false "Trạng thái lỗi (ví dụ: FAILED)"
 // @Param page query int false "Số trang" default(1)
@@ -86,7 +86,7 @@ func (h *AnalyticsHandler) GetAIEventsDrillDown(c *gin.Context) error {
 // GetSampleLabFeedbacksDrillDown xem chi tiết đánh giá mẫu thử Digital Sample Lab (Brand)
 // @Summary Truy vết chi tiết đánh giá mẫu thử 3D (Drill-down Brand)
 // @Description Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn của mẫu thử sản phẩm.
-// @Tags Brand Dashboard
+// @Tags Dashboard Brand
 // @Produce json
 // @Param itemId query string true "ID Sản phẩm mẫu thử"
 // @Param page query int false "Số trang" default(1)

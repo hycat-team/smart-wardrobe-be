@@ -9,8 +9,6 @@ type UnderutilizedItemDTO struct {
 	Name             string    `json:"name"`
 	CategoryName     string    `json:"categoryName"`
 	PurchasePriceVND float64   `json:"purchasePriceVnd"`
-	WearCount        int       `json:"wearCount"`
-	CostPerWearVND   float64   `json:"costPerWearVnd"`
 	LastWornDaysAgo  int       `json:"lastWornDaysAgo"`
 	ImageURL         string    `json:"imageUrl"`
 }
@@ -18,8 +16,9 @@ type UnderutilizedItemDTO struct {
 type UserWardrobeInsightsRes struct {
 	TotalItems              int                    `json:"totalItems"`
 	TotalWardrobeValueVND   float64                `json:"totalWardrobeValueVnd"`
-	AverageCostPerWearVND   float64                `json:"averageCostPerWearVnd"`
+	AverageItemValueVND     float64                `json:"averageItemValueVnd"`
 	UnderutilizedItemsCount int                    `json:"underutilizedItemsCount"`
-	CategoryDistribution    map[string]int         `json:"categoryDistribution"`
 	UnderutilizedItems      []UnderutilizedItemDTO `json:"underutilizedItems"`
+	AIQuotaRemaining        int                    `json:"aiQuotaRemaining"`
+	ExpiringVouchersCount   int                    `json:"expiringVouchersCount"`
 }

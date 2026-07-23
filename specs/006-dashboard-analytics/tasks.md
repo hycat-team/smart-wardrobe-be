@@ -117,12 +117,105 @@
 
 **Independent Test**: Chạy `make dev`, kiểm tra Worker tự động log snapshot dữ liệu, tất cả API phản hồi 200 OK trên Swagger UI (`/swagger/index.html`).
 
-- [ ] T026 Triển khai Aggregation Ticker Worker tại `internal/modules/dashboard/presentation/worker/dashboard_aggregator_worker.go`.
-- [ ] T027 Cấu hình Wire ProviderSet tại `internal/modules/dashboard/provider.go` và đăng ký wire injector trong `internal/di/wire.go` (`make wire`).
-- [ ] T028 Đăng ký Route Group `/api/v1/admin/dashboard`, `/api/v1/brand/dashboard`, `/api/v1/user/dashboard`, `/api/v1/dashboard/analytics` tại `internal/api/routes/dashboard_routes.go`.
-- [ ] T029 Cập nhật Swagger Annotations cho tất cả Handlers và chạy `make swag` tạo OpenAPI spec.
+- [x] T026 Triển khai Aggregation UseCase & Ticker Worker chuẩn Clean Architecture.
+  - **Application Layer** (`internal/modules/dashboard/application/`):
+    - Interface `IDashboardAggregatorUseCase` tại `application/interface/usecase/aggregator_uc.go`.
+    - Implementation `DashboardAggregatorUseCase` tại `application/usecase/aggregator_uc_impl.go`.
+    - **Hàm UseCase**:
+      - `AggregateAdminSnapshots(ctx context.Context) error`: Thu thập số liệu từ Reader Contracts (`userReader`, `brandReader`, `aiCostReader`) và lưu DB qua `dashboardRepo.UpsertAdminSnapshot`.
+      - `AggregateBrandSnapshots(ctx context.Context) error`: Duyệt qua các nhãn hàng active, thu thập chỉ số và lưu DB qua `dashboardRepo.UpsertBrandSnapshot`.
+      - `AggregateUserWardrobeSummaries(ctx context.Context) error`: Thu thập tổng quan tủ đồ cá nhân từ `wardrobeReader` và lưu DB qua `dashboardRepo.UpsertUserWardrobeSummary`.
+  - **Presentation Layer** (`internal/modules/dashboard/presentation/worker/`):
+    - Struct `DashboardAggregatorWorker` tại `presentation/worker/dashboard_aggregator_worker.go`.
+    - **Hàm Worker**:
+      - `NewDashboardAggregatorWorker(logger logger.Interface, aggregatorUC uc_interfaces.IDashboardAggregatorUseCase) *DashboardAggregatorWorker`
+      - `(w *DashboardAggregatorWorker) Start(ctx context.Context)`: Khởi chạy `time.NewTicker(15 * time.Minute)` trong goroutine riêng biệt và gọi `w.aggregatorUC`.
+      - `(w *DashboardAggregatorWorker) Stop()`: Hủy context và đóng ticker khi ứng dụng graceful shutdown.
+- [x] T027 Cấu hình Wire ProviderSet tại `internal/modules/dashboard/provider.go` và đăng ký wire injector trong `internal/di/wire.go`.
+  - **Layer**: Infrastructure DI Layer
+  - **Hàm/Set cần triển khai**:
+    - Khai báo `DashboardProviderSet`: Đăng ký `NewDashboardRepository`, `NewDashboardAggregatorUseCase`, `NewAdminDashboardUseCase`, `NewBrandDashboardUseCase`, `NewUserDashboardUseCase`, `NewDynamicQueryUseCase`, `NewDrillDownUseCase`, `NewAdminDashboardHandler`, `NewBrandDashboardHandler`, `NewUserDashboardHandler`, `NewAnalyticsHandler`, `NewDashboardAggregatorWorker`.
+    - Đăng ký `dashboard.DashboardProviderSet` vào `wire.Build(...)` tại `internal/di/wire.go`.
+    - Chạy command `make wire` sinh mã DI tự động tại `internal/di/wire_gen.go`.
+- [x] T028 Đăng ký Route Groups cho tất cả 11 Dashboard APIs tại `internal/api/routes/dashboard_routes.go`.
+  - **Layer**: Presentation Router Layer
+  - **Hàm cần triển khai**:
+    - `RegisterDashboardRoutes(r *gin.RouterGroup, adminHandler *handler.AdminDashboardHandler, brandHandler *handler.BrandDashboardHandler, userHandler *handler.UserDashboardHandler, analyticsHandler *handler.AnalyticsHandler, authMiddleware gin.HandlerFunc, rbacMiddleware func(roles ...string) gin.HandlerFunc)`
+    - Đăng ký routes:
+      - Admin Group: `/api/v1/admin/dashboard/kpi-cards` $\rightarrow$ `adminHandler.GetKPICards`, `/api/v1/admin/dashboard/ai-margin` $\rightarrow$ `adminHandler.GetAIMargin`, `/api/v1/admin/dashboard/payos-reconciliation` $\rightarrow$ `adminHandler.GetPayOSReconciliation`, `/api/v1/admin/dashboard/overview` $\rightarrow$ `adminHandler.GetOverview`, `/api/v1/admin/dashboard/drilldown/ai-events` $\rightarrow$ `analyticsHandler.GetAIEventsDrillDown`
+      - Brand Group: `/api/v1/brand/dashboard/kpi-cards` $\rightarrow$ `brandHandler.GetKPICards`, `/api/v1/brand/dashboard/financials/points-liability` $\rightarrow$ `brandHandler.GetPointsLiability`, `/api/v1/brand/dashboard/operations/digital-sample-lab/:itemId` $\rightarrow$ `brandHandler.GetDigitalSampleLabAnalytics`, `/api/v1/brand/dashboard/drilldown/sample-lab-feedbacks` $\rightarrow$ `analyticsHandler.GetSampleLabFeedbacksDrillDown`
+      - User Group: `/api/v1/user/dashboard/wardrobe-insights` $\rightarrow$ `userHandler.GetWardrobeInsights`
+      - Analytics Group: `/api/v1/dashboard/analytics/query` $\rightarrow$ `analyticsHandler.ExecuteDynamicQuery`
+- [x] T029 Cập nhật Swagger Annotations cho tất cả Handlers và sinh Swagger Spec.
+  - **Layer**: Presentation Documentation Layer
+  - **Thao tác & Command**:
+    - Rà soát các `@Summary`, `@Description`, `@Tags`, `@Accept`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router` annotations trên 11 handler methods trong `internal/modules/dashboard/presentation/handler/`.
+    - Chạy command `make swag` tạo tài liệu OpenAPI tại `docs/swagger/`.
 
 🛑 **CHECKPOINT PHASE 7**: TỔNG HOÀN THÀNH. Báo cáo nghiệm thu toàn bộ tính năng Dashboard & Analytics System.
+
+---
+
+## Phase 8: Convergence — Bug Fixes, Missing Fields & Edge Cases
+
+**Goal**: Sửa các khoảng trống còn lại sau khi review toàn bộ codebase: fix bug `compare_with_previous`, bổ sung missing fields trong DTO response, xử lý edge case large date range, và thêm unit tests cho dashboard module.
+
+**Independent Test**: Chạy `go build ./...` thành công, gọi từng API endpoint kiểm tra response chứa đủ các field theo spec, gọi Dynamic Query với `compare_with_previous=true` kiểm tra delta % chính xác, chạy `go test ./internal/modules/dashboard/...` pass.
+
+---
+
+- [x] T030 [FIX] Sửa `compare_with_previous` trong `internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go` để query dữ liệu kỳ trước từ DB thay vì hardcode `prevVal = 0.0`.
+  - **Hướng giải quyết**:
+    1. Tính window kỳ trước: `prevFromDate`, `prevToDate` (đã có sẵn).
+    2. Gọi `uc.dashboardRepo.GetAdminSnapshots` (hoặc `GetBrandSnapshots` tuỳ `target`) với khoảng kỳ trước.
+    3. Sum các metric từ snapshots kỳ trước → `prevVal` thực tế.
+    4. Tính delta % = `((currVal - prevVal) / prevVal) * 100`, xử lý division by zero.
+  - **Source**: `spec.md:97` (FR-002), `plan.md:17` (Dynamic Aggregation Engine), `tasks.md:T023`.
+  - **Test**: Gửi `POST /api/v1/dashboard/analytics/query` với `compareWithPrevious=true`, kiểm tra `comparison.previousPeriodFrom`/`previousPeriodTo` khớp và `metricDeltaPercentages` ra số hợp lý.
+  - **Gap type**: `partial`
+
+- [x] T031 [US3] Bổ sung field `aiQuotaRemaining` và `expiringVouchersCount` vào `UserWardrobeInsightsRes` DTO tại `internal/modules/dashboard/application/dto/user_dashboard_dto.go` và populate chúng trong `GetWardrobeInsights` tại `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Thêm 2 field vào struct `UserWardrobeInsightsRes` với JSON tags `aiQuotaRemaining` và `expiringVouchersCount`.
+    2. Trong `GetWardrobeInsights`, khi cache hit từ snapshot: gán `summary.AIQuotaRemaining` và `summary.ExpiringVouchersCount`.
+    3. Khi cache miss (on-demand compute): query thêm AI quota còn lại từ Contract `subscription` hoặc `aiexecutor`, query voucher sắp hết hạn từ `brand` reader → gán vào response và lưu vào snapshot.
+  - **Source**: `spec.md:78` (US3/AC1: "AI Stylist Quota & Loyalty Alert"), `data-model.md`: entity `dashboard_user_wardrobe_summaries` đã có 2 cột này.
+  - **Test**: Gọi `GET /api/v1/user/dashboard/wardrobe-insights` kiểm tra response có chứa `aiQuotaRemaining` và `expiringVouchersCount` khác `null`.
+  - **Gap type**: `partial`
+
+- [x] T032 [US2] Bổ sung CS SLA stats (`openCsTickets`, `csFirstResponseAvgSeconds`) và Digital Sample stats (`digitalSampleVotesCount`, `digitalSampleAvgRating`) vào `BrandKPICardsRes` DTO tại `internal/modules/dashboard/application/dto/brand_dashboard_dto.go` và populate trong `GetBrandKPICards` tại `internal/modules/dashboard/application/usecase/brand_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Thêm 4 field vào `BrandKPICardsRes`.
+    2. Trong `GetBrandKPICards`, gán từ `latest.DigitalSampleVotesCount`, `latest.DigitalSampleAvgRating`, `latest.OpenCSTickets`, `latest.CSFirstResponseAvgSeconds` (snapshot entity đã có sẵn).
+    3. Fallback từ `stats` (live reader) cũng gán tương tự.
+  - **Source**: `spec.md:61` (US2/AC1: "CS SLA Analytics", "Digital Sample Lab Style Context").
+  - **Test**: Gọi `GET /api/v1/brand/dashboard/kpi-cards` kiểm tra response có 4 field mới.
+  - **Gap type**: `partial`
+
+- [x] T033 [FR-002] Triển khai xử lý edge case large date range trong `ExecuteDynamicQuery` tại `internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Sau khi parse `fromDate`, `toDate`, tính số ngày chênh lệch: `days := toDate.Sub(fromDate).Hours() / 24`.
+    2. Nếu `days > 365 && gran == granularity.Hour`: tự động set `gran = granularity.Day` (hoặc `Month`).
+    3. Nếu `days > 730 && (gran == granularity.Hour || gran == granularity.Day)`: set `gran = granularity.Month`.
+    4. Log warning khi granularity bị auto-downgrade.
+  - **Source**: `spec.md:84` (Edge Cases: "Dynamic Query Abuse / Large Date Range").
+  - **Test**: Gửi POST request với date range 400 ngày + `granularity=hour`, kiểm tra response `granularity` trả về `day` hoặc `month`.
+  - **Gap type**: `missing`
+
+- [x] T034 Viết unit tests cho dashboard module tại `internal/modules/dashboard/`.
+  - **Hướng giải quyết**:
+    1. Tạo file `internal/modules/dashboard/application/usecase/admin_dashboard_uc_test.go`: test `GetAdminKPICards` (mock repository + readers), test `GetAIMarginAnalytics` với snapshot có sẵn và fallback live reader.
+    2. Tạo file `internal/modules/dashboard/application/usecase/brand_dashboard_uc_test.go`: test `GetBrandKPICards`, `GetPointsLiability` (kiểm tra redaction Staff vs Owner).
+    3. Tạo file `internal/modules/dashboard/application/usecase/user_dashboard_uc_test.go`: test `GetWardrobeInsights` với cache hit (snapshot <1h) và cache miss.
+    4. Tạo file `internal/modules/dashboard/application/usecase/dynamic_query_uc_test.go`: test `ExecuteDynamicQuery` với các target khác nhau, test `compareWithPrevious=true`.
+    5. Tạo file `internal/modules/dashboard/application/usecase/drilldown_uc_test.go`: test `GetAIEventsDrillDown`, `GetSampleLabFeedbacksDrillDown`.
+    6. Sử dụng `golang/mock` hoặc interface mock thủ công cho Repository và Reader interfaces.
+    7. Chạy `go test ./internal/modules/dashboard/... -v -count=1` để verify.
+  - **Source**: `plan.md:28` (Testing: Go standard `testing` package), thiếu test coverage cho toàn bộ module dashboard.
+  - **Test**: `go test ./internal/modules/dashboard/... -v -count=1` pass ít nhất 80% coverage.
+  - **Gap type**: `missing`
+
+**Lưu ý**: Sau khi hoàn thành Phase 8, chạy `go build ./...` và `go test ./internal/modules/dashboard/...` để nghiệm thu. Sau đó chạy `/speckit-converge` để kiểm tra lại không còn gap.
 
 ---
 
@@ -148,4 +241,154 @@ Phase 6 (Dynamic Query & Drill-down)
        │
        ▼
 Phase 7 (Aggregator Worker & Wire DI)
+       │
+       ▼
+Phase 8 (Convergence — Bug Fixes & Tests)
+       │
+       ▼
+Phase 9 (Convergence — Zero Values, Boundaries & Hardcoded Values)
 ```
+
+---
+
+## Phase 9: Convergence — Zero Values, Boundaries & Hardcoded Values
+
+**Goal**: Xử lý triệt để các vấn đề zero value, error handling sai, hardcoded magic numbers, và boundary issues trong toàn bộ dashboard module.
+
+**Independent Test**: `go build ./...` + `go test ./internal/modules/dashboard/... -count=1` pass, đồng thời review code từng task đảm bảo không còn zero value sai ngữ cảnh.
+
+---
+
+### 🔴 CRITICAL — Zero Values & Core Logic
+
+- [x] T035 [FIX] Populate `SubscriptionRevenueVND`, `PayOSTransactionCount`, `PayOSSuccessCount` trong `AggregateAdminSnapshots` tại `internal/modules/dashboard/application/usecase/aggregator_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Thêm dependency `subscriptionContract` hoặc reader mới để đọc doanh thu subscription và thống kê PayOS.
+    2. Trong `AggregateAdminSnapshots`, query dữ liệu revenue từ reader và gán vào `snapshot.SubscriptionRevenueVND`, `snapshot.PayOSTransactionCount`, `snapshot.PayOSSuccessCount`.
+    3. Cập nhật `ProviderSet` trong `provider.go` và `wire_gen.go` nếu cần dependency mới.
+  - **Source**: `aggregator_uc_impl.go:49-69` — cả 3 field luôn = 0.
+  - **Gap type**: `missing`
+
+- [x] T036 [FIX] Xử lý reader errors trong `AggregateAdminSnapshots` và `AggregateBrandSnapshots` tại `aggregator_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Thay vì `userStats, _ := uc.userReader.GetAdminUserStats(...)`, kiểm tra `err != nil` → log error + `continue` hoặc return error (không ghi snapshot với zero values).
+    2. Áp dụng tương tự cho `brandReader` và `aiCostReader`.
+    3. Thêm `context.WithTimeout` cho mỗi reader call để tránh goroutine leak.
+  - **Source**: `aggregator_uc_impl.go:45-47` — errors silently discarded.
+  - **Gap type**: `partial`
+
+- [x] T037 [FIX] Trả error thay vì zero values khi fallback reader trả về nil trong `GetDigitalSampleLabAnalytics` tại `internal/modules/dashboard/application/usecase/brand_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Kiểm tra `stats == nil` sau fallback reader call (dòng 136-142): nếu nil → return `ErrBrandAnalyticsNotFound()`.
+    2. Không cho phép response với votes=0, rating=0.0, sentiment="positive" mặc định.
+  - **Source**: `brand_dashboard_uc_impl.go:122-151` — zero values trên fallback failure.
+  - **Gap type**: `partial`
+
+- [x] T038 [FIX] Preserve `AIQuotaRemaining` và `ExpiringVouchersCount` từ stale snapshot khi cache miss trong `GetWardrobeInsights` tại `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Kiểm tra: nếu `summary != nil && time.Since(summary.UpdatedAt) >= 1*time.Hour` (stale), vẫn giữ `summary.AIQuotaRemaining` và `summary.ExpiringVouchersCount`.
+    2. Không set `aiQuota = 0` và `expiringVouchers = 0` khi `summary == nil` — thay vào đó query từ subscription/brand contracts nếu có thể.
+    3. Viết vào write-back snapshot với giá trị đã giữ lại.
+  - **Source**: `user_dashboard_uc_impl.go:103-104,117-118` — zero value corrupts cached data.
+  - **Gap type**: `partial`
+
+- [x] T039 [FIX] Phân biệt system error (DB/network) vs authorization error trong `ExecuteDynamicQuery` tại `internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go`.
+  - **Hướng giải quyết**:
+    1. Tách `err` và `role == ""` thành 2 nhánh riêng:
+       - `err != nil` → return `apperror.NewInternalServerError(...)` (HTTP 500).
+       - `role == ""` → return `apperror.NewForbidden(...)` (HTTP 403).
+    2. Sửa tương tự cho các chỗ khác có pattern `if err != nil || condition`.
+  - **Source**: `dynamic_query_uc_impl.go:59-62` — DB error trả về 403.
+  - **Gap type**: `contradicts`
+
+---
+
+### 🟡 MEDIUM — Error Handling & Boundary
+
+- [x] T040 [FIX] Propagate JSON marshal error và DB upsert error thay vì silently discard trong `GetWardrobeInsights` tại `user_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**: Kiểm tra lỗi từ `json.Marshal` và `uc.dashboardRepo.UpsertUserWardrobeSummary`, log error nếu không thể return (non-critical). Ít nhất không discard hoàn toàn.
+  - **Source**: `user_dashboard_uc_impl.go:97,121`.
+  - **Gap type**: `partial`
+
+- [x] T041 [FIX] Định nghĩa typed constant cho transaction context key `"TxKey"` tại `internal/modules/dashboard/infrastructure/persistence/dashboard_repository_impl.go`.
+  - **Hướng giải quyết**: Tạo `type contextKey string` constant `TxKey contextKey = "dashboard_tx"` trong package persistence và sử dụng thay cho raw string.
+  - **Source**: `dashboard_repository_impl.go:23`.
+  - **Gap type**: `partial`
+
+- [x] T042 [FIX] Sửa GORM default value `'POSITIVE'` thành `'positive'` trong entity `DashboardBrandItemDailySnapshot.FeedbackSentiment` tại `internal/modules/dashboard/domain/entities/dashboard_snapshots.go` để khớp với SQL migration và Go constant.
+  - **Hướng giải quyết**: Đổi `default:'POSITIVE'` → `default:'positive'` trong GORM tag.
+  - **Source**: `dashboard_snapshots.go:62` — mismatch giữa GORM default, SQL default, và Go constant.
+  - **Gap type**: `contradicts`
+
+- [x] T043 [FIX] Thêm upper bound cho pagination limit (VD: max 100) trong `Normalize()` tại `internal/shared/application/dto/pagination.go`.
+  - **Hướng giải quyết**: Thêm `if q.Limit > 100 { q.Limit = 100 }` sau normalize.
+  - **Source**: `shared/dto/pagination.go:10-16` — không bound, risk memory exhaustion.
+  - **Gap type**: `missing`
+
+- [x] T044 [FIX] Phân biệt "zero transactions" vs "no data" trong `GetPayOSReconciliation` tại `admin_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**: Nếu `latest != nil && latest.PayOSTransactionCount == 0`, trả về response hợp lệ với các field = 0 thay vì `ErrDashboardDataNotFound()`.
+  - **Source**: `admin_dashboard_uc_impl.go:171` — zero transaction bị error.
+  - **Gap type**: `partial`
+
+- [x] T045 [FIX] Xử lý nil rating/votes khi không có snapshot và stats cũng nil trong `GetDigitalSampleLabAnalytics` tại `brand_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**: Trả về error rõ ràng thay vì response với `AvgRating: 0.0` không phân biệt được "no data".
+  - **Source**: `brand_dashboard_uc_impl.go:123,148` — 0.0 vs "no data".
+  - **Gap type**: `partial`
+
+- [x] T046 [FIX] Thêm context timeout cho các reader calls trong `AggregateAdminSnapshots` và `AggregateBrandSnapshots` tại `aggregator_uc_impl.go`.
+  - **Hướng giải quyết**: Sử dụng `context.WithTimeout(ctx, 30*time.Second)` cho mỗi reader call để tránh worker goroutine bị block vô hạn.
+  - **Source**: `aggregator_uc_impl.go:45-47` — risk goroutine leak.
+  - **Gap type**: `partial`
+
+- [x] T047 [FIX] Sửa false negative detection khi `AIRequestsCount == 0 && AIActualCostMicroVND == 0` trong `GetAIMarginAnalytics` tại `admin_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**: Chỉ treat là "no data" khi `aiStats == nil`, không check giá trị zero nữa.
+  - **Source**: `admin_dashboard_uc_impl.go:107-108` — zero requests + zero cost bị error.
+  - **Gap type**: `partial`
+
+---
+
+### 🟢 LOW — Magic Numbers, Hardcoded Configs & Consistency
+
+- [x] T048 [FIX] Extract magic number `1000000.0` (micro VND conversion) thành named constant tại `admin_dashboard_uc_impl.go` và `aggregator_uc_impl.go`.
+  - **Source**: 3 occurrences (admin_dashboard_uc_impl.go:74,115; aggregator_uc_impl.go:69).
+  - **Gap type**: `partial`
+
+- [x] T049 [FIX] Extract hardcoded config values thành config struct hoặc constants:
+  - Cache TTL `1*time.Hour` tại `user_dashboard_uc_impl.go:40`.
+  - Aggregation interval `15*time.Minute` tại `dashboard_aggregator_worker.go:32`.
+  - Default lookback `30 ngày` tại `admin_dashboard_uc_impl.go:94`.
+  - Underutilized items limit `10` tại `user_dashboard_uc_impl.go:62`.
+  - Granularity boundaries `365`, `730` tại `dynamic_query_uc_impl.go:286,289`.
+  - **Source**: Nhiều file.
+  - **Gap type**: `partial`
+
+- [x] T050 [FIX] Chuẩn hóa JSON acronym casing trong `AdminKPICardsRes` tại `internal/modules/dashboard/application/dto/admin_dashboard_dto.go`.
+  - **Hướng giải quyết**: Thống nhất convention: `"activeUsersDau"` → `"activeUsersDau"` (giữ nguyên), `"payosSuccessCount"` → `"payOSSuccessCount"`, `"netAiMarginVnd"` → `"netAIMarginVND"`.
+  - **Source**: `admin_dashboard_dto.go:11-18`.
+  - **Gap type**: `partial`
+
+- [x] T051 [FIX] Thêm `CreatedAt` field vào `DashboardUserWardrobeSummary` entity và migration để đồng bộ với các sibling entities.
+  - **Hướng giải quyết**: Thêm `CreatedAt time.Time \`gorm:"type:timestamp with time zone;not null;default:now()"\`` vào struct, và ALTER TABLE migration.
+  - **Source**: `dashboard_snapshots.go:70-84`.
+  - **Gap type**: `partial`
+
+- [x] T052 [FIX] Return validation error cho invalid date format thay vì silent fallback trong `ExecuteDynamicQuery` tại `dynamic_query_uc_impl.go` và handler.
+  - **Hướng giải quyết**: Khi `time.Parse` fail, return `apperror.NewBadRequest("Định dạng ngày không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")`.
+  - **Source**: `dynamic_query_uc_impl.go:69-77`, `admin_dashboard_handler.go:55-60`.
+  - **Gap type**: `partial`
+
+- [x] T053 [FIX] Thêm max date range guard trong `ExecuteDynamicQuery` để tránh query quá nhiều snapshots.
+  - **Hướng giải quyết**: Nếu `days > 730`, tự động giới hạn `fromDate = toDate.AddDate(0, 0, -730)` và log warning.
+  - **Source**: `dynamic_query_uc_impl.go:281`.
+  - **Gap type**: `partial`
+
+- [x] T054 [FIX] Đổi `int` thành `int64` cho accumulators `totalRequests` và `totalErrors` trong `GetAIMarginAnalytics` tại `admin_dashboard_uc_impl.go`.
+  - **Hướng giải quyết**: Đổi kiểu khai báo từ `int` → `int64` để an toàn trên 32-bit.
+  - **Source**: `admin_dashboard_uc_impl.go:134-135`.
+  - **Gap type**: `partial`
+
+- [x] T055 [FIX] Xoá redundant `req.ItemID == ""` check sau `uuid.Parse` trong `GetSampleLabFeedbacksDrillDown` tại `drilldown_uc_impl.go`.
+  - **Hướng giải quyết**: Chỉ giữ `if err != nil { return ... }` vì uuid.Parse đã validate string.
+  - **Source**: `drilldown_uc_impl.go:66`.
+  - **Gap type**: `partial`
+

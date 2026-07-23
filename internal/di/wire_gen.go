@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes/auth"
 	brand2 "smart-wardrobe-be/internal/api/routes/brand"
 	category3 "smart-wardrobe-be/internal/api/routes/category"
+	"smart-wardrobe-be/internal/api/routes/dashboard"
 	"smart-wardrobe-be/internal/api/routes/fashion"
 	"smart-wardrobe-be/internal/api/routes/me"
 	outfit2 "smart-wardrobe-be/internal/api/routes/outfit"
@@ -41,6 +42,7 @@ import (
 	usecase2 "smart-wardrobe-be/internal/modules/dashboard/application/usecase"
 	persistence3 "smart-wardrobe-be/internal/modules/dashboard/infrastructure/persistence"
 	handler2 "smart-wardrobe-be/internal/modules/dashboard/presentation/handler"
+	worker7 "smart-wardrobe-be/internal/modules/dashboard/presentation/worker"
 	chat2 "smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/chat"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/category"
@@ -57,6 +59,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/security"
 	contract2 "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_stats"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
@@ -225,6 +228,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeChatUseCase := chat2.NewWardrobeChatUseCase(cfg, iConversationalContextRepository, iMessageRepository, iFashionItemRepository, iaiOrchestrator, iUserSubscriptionContract, iUserQuotaContract, iBrandContract, iWardrobeContract, iUnitOfWork)
 	wardrobeAIHandler := handler6.NewWardrobeAIHandler(iOutfitRecommendationUseCase, iWardrobeChatUseCase)
 	fashionRouter := fashion.NewRouter(wardrobeAIHandler, authMiddleware)
+	iDynamicQueryUseCase := usecase2.NewDynamicQueryUseCase(iDashboardRepository, iBrandDashboardReader)
+	iDrillDownUseCase := usecase2.NewDrillDownUseCase(iaiCostDashboardReader, iBrandDashboardReader)
+	analyticsHandler := handler2.NewAnalyticsHandler(iDynamicQueryUseCase, iDrillDownUseCase)
+	dashboardRouter := dashboard.NewRouter(analyticsHandler, adminDashboardHandler, brandDashboardHandler, authMiddleware)
 	appRouter := &routes.AppRouter{
 		AdminRouter:        adminRouter,
 		AuthRouter:         authRouter,
@@ -235,6 +242,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		CategoryRouter:     categoryRouter,
 		BrandRouter:        brandRouter,
 		FashionRouter:      fashionRouter,
+		DashboardRouter:    dashboardRouter,
 	}
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
@@ -258,6 +266,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	fashionAnalyzeWorker := worker6.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
 	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iaiModelConfigRepository)
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
+	iAdminStatsUseCase := admin_stats.NewAdminStatsUseCase(iDepositTransactionRepository)
+	iSubscriptionDashboardReader := contract.NewSubscriptionDashboardReader(iAdminStatsUseCase)
+	iDashboardAggregatorUseCase := usecase2.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
+	dashboardAggregatorWorker := worker7.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,
@@ -270,6 +282,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
 		FashionAnalyzeWorker:        fashionAnalyzeWorker,
 		PlanChangedWorker:           planChangedWorker,
+		DashboardAggregatorWorker:   dashboardAggregatorWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
 	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)

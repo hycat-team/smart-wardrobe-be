@@ -3,14 +3,17 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
+
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -128,4 +131,36 @@ func (r *DepositTransactionRepository) UpdateWithToken(ctx context.Context, orde
 		Where("order_code = ? AND status = ? AND processing_token = ?", orderCode, depositstatus.Reconciling, token).
 		Updates(updates)
 	return res.RowsAffected, res.Error
+}
+
+func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
+	type revenueResult struct {
+		TotalRevenue decimal.Decimal
+		TotalCount   int
+		SuccessCount int
+	}
+	var result revenueResult
+
+	dayStart := snapshotDate.Truncate(24 * time.Hour)
+	dayEnd := dayStart.Add(24 * time.Hour)
+
+	err := r.GetDB(ctx).Raw(`
+		SELECT
+			COALESCE(SUM(amount), 0) AS total_revenue,
+			COUNT(*) AS total_count,
+			COUNT(*) FILTER (WHERE status = 1) AS success_count
+		FROM deposit_transactions
+		WHERE transaction_type = 'direct_purchase'
+		  AND created_at >= ?
+		  AND created_at < ?
+	`, dayStart, dayEnd).Scan(&result).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.AdminSubscriptionStatsDTO{
+		TotalSubscriptionRevenue: result.TotalRevenue,
+		PayOSTransactionCount:    result.TotalCount,
+		PayOSSuccessCount:        result.SuccessCount,
+	}, nil
 }

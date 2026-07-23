@@ -6,7 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	_ "smart-wardrobe-be/internal/shared/presentation"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +23,7 @@ func NewAdminDashboardHandler(adminUC uc_interfaces.IAdminDashboardUseCase) *Adm
 // GetKPICards lấy các thẻ chỉ số KPI tổng quan cho System Admin
 // @Summary Lấy các thẻ chỉ số KPI tổng quan Admin
 // @Description Lấy thông tin tổng số lượng người dùng, chỉ số DAU, số nhãn hàng active, số nhãn hàng chờ duyệt, doanh thu subscription và biên lợi nhuận AI net margin.
-// @Tags Admin Dashboard
+// @Tags Dashboard Admin
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AdminKPICardsRes} "Lấy danh sách thẻ KPI Admin thành công"
 // @Router /api/v1/admin/dashboard/kpi-cards [get]
@@ -39,7 +39,7 @@ func (h *AdminDashboardHandler) GetKPICards(c *gin.Context) error {
 // GetAIMargin phân tích doanh thu và chi phí AI Token thực tế
 // @Summary Phân tích biên lợi nhuận AI Token
 // @Description Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận.
-// @Tags Admin Dashboard
+// @Tags Dashboard Admin
 // @Produce json
 // @Param fromDate query string false "Ngày bắt đầu (định dạng YYYY-MM-DD)"
 // @Param toDate query string false "Ngày kết thúc (định dạng YYYY-MM-DD)"
@@ -53,10 +53,18 @@ func (h *AdminDashboardHandler) GetAIMargin(c *gin.Context) error {
 
 	var fromDate, toDate time.Time
 	if req.FromDate != "" {
-		fromDate, _ = time.Parse("2006-01-02", req.FromDate)
+		var err error
+		fromDate, err = time.Parse("2006-01-02", req.FromDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày bắt đầu (fromDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
 	}
 	if req.ToDate != "" {
-		toDate, _ = time.Parse("2006-01-02", req.ToDate)
+		var err error
+		toDate, err = time.Parse("2006-01-02", req.ToDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày kết thúc (toDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
 	}
 
 	res, err := h.adminUC.GetAIMarginAnalytics(c.Request.Context(), fromDate, toDate)
@@ -70,7 +78,7 @@ func (h *AdminDashboardHandler) GetAIMargin(c *gin.Context) error {
 // GetPayOSReconciliation lấy thông tin đối soát giao dịch thanh toán PayOS
 // @Summary Thống kê đối soát giao dịch PayOS
 // @Description Báo cáo đối soát số lượng giao dịch thanh toán PayOS, tỷ lệ thành công/thất bại và tổng số tiền thanh toán thực tế.
-// @Tags Admin Dashboard
+// @Tags Dashboard Admin
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.PayOSReconciliationRes} "Lấy thông tin đối soát PayOS thành công"
 // @Router /api/v1/admin/dashboard/payos-reconciliation [get]
@@ -86,7 +94,7 @@ func (h *AdminDashboardHandler) GetPayOSReconciliation(c *gin.Context) error {
 // GetOverview lấy toàn bộ bức tranh tổng quan hệ thống cho Admin
 // @Summary Báo cáo tổng quan Admin Dashboard
 // @Description Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS Reconciliation trong 1 kết quả duy nhất.
-// @Tags Admin Dashboard
+// @Tags Dashboard Admin
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=dto.AdminOverviewRes} "Lấy thông tin tổng quan hệ thống thành công"
 // @Router /api/v1/admin/dashboard/overview [get]

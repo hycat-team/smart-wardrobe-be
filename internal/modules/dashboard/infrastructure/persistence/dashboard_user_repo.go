@@ -16,7 +16,7 @@ func (r *DashboardRepository) UpsertUserWardrobeSummary(ctx context.Context, sum
 		Columns: []clause.Column{{Name: "user_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"total_items", "total_wardrobe_value_vnd", "average_cost_per_wear_vnd",
-			"underutilized_items_count", "underutilized_items", "category_distribution", "color_distribution",
+			"underutilized_items_count", "underutilized_items",
 			"ai_quota_remaining", "expiring_vouchers_count", "updated_at",
 		}),
 	}).Create(summary).Error

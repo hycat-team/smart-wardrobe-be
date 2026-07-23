@@ -1,6 +1,7 @@
 package application
 
 import (
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_stats"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
@@ -25,6 +26,9 @@ var ProviderSet = wire.NewSet(
 
 	quota.NewUserQuotaUseCase,
 	contract.NewUserQuotaContract,
+
+	admin_stats.NewAdminStatsUseCase,
+	contract.NewSubscriptionDashboardReader,
 
 	wallet.NewWalletUseCase,
 	purchase.NewSubscriptionPurchaseUseCase,
