@@ -74,10 +74,10 @@ func (w *LoyaltyPointExpiryWorker) run(triggerType string) {
 	defer cancel()
 
 	run := workerlog.New("loyalty_point_expiry", triggerType)
-	expiredPoints, err := w.useCase.ProcessExpiredLoyaltyPointLots(ctx, time.Now().UTC(), w.cfg.Loyalty.ExpiryWorkerBatchSize)
+	expiredPoints, err := w.useCase.ProcessExpiredLoyaltyPointLots(ctx, run, time.Now().UTC(), w.cfg.Loyalty.ExpiryWorkerBatchSize)
 	if err != nil {
 		run.LogFailure(w.log, err)
 		return
 	}
-	run.LogSuccess(w.log, zap.Int("expiredPoints", expiredPoints))
+	run.LogSuccessIfData(w.log, zap.Int("expiredPoints", expiredPoints))
 }

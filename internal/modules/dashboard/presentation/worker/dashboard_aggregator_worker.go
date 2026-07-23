@@ -7,8 +7,7 @@ import (
 	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-
-	"go.uber.org/zap"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 )
 
 type DashboardAggregatorWorker struct {
@@ -44,12 +43,16 @@ func (w *DashboardAggregatorWorker) Start(ctx context.Context) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				if err := w.aggregatorUC.AggregateAdminSnapshots(ctx); err != nil {
-					w.logger.Error("Failed to aggregate admin snapshots", zap.Error(err))
+				run := workerlog.New("dashboard_aggregator", workerlog.TriggerCron)
+				if err := w.aggregatorUC.AggregateAdminSnapshots(ctx, run); err != nil {
+					run.LogFailure(w.logger, err)
+					continue
 				}
-				if err := w.aggregatorUC.AggregateBrandSnapshots(ctx); err != nil {
-					w.logger.Error("Failed to aggregate brand snapshots", zap.Error(err))
+				if err := w.aggregatorUC.AggregateBrandSnapshots(ctx, run); err != nil {
+					run.LogFailure(w.logger, err)
+					continue
 				}
+				run.LogSuccessIfData(w.logger)
 			}
 		}
 	}()

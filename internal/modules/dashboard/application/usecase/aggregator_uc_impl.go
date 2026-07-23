@@ -12,6 +12,7 @@ import (
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	subscription_contract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"go.uber.org/zap"
 )
@@ -43,7 +44,7 @@ func NewDashboardAggregatorUseCase(
 	}
 }
 
-func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Context) error {
+func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Context, run *workerlog.Run) error {
 	today := time.Now().Truncate(24 * time.Hour)
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -51,25 +52,25 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 
 	userStats, err := uc.userReader.GetAdminUserStats(ctxTimeout, today)
 	if err != nil {
-		uc.logger.Error("Failed to read admin user stats for snapshot", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to read admin user stats for snapshot", zap.Error(err))
 		return err
 	}
 
 	brandStats, err := uc.brandReader.GetAdminBrandStats(ctxTimeout, today)
 	if err != nil {
-		uc.logger.Error("Failed to read admin brand stats for snapshot", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to read admin brand stats for snapshot", zap.Error(err))
 		return err
 	}
 
 	aiStats, err := uc.aiCostReader.GetAdminAIUsageStats(ctxTimeout, today)
 	if err != nil {
-		uc.logger.Error("Failed to read AI cost stats for snapshot", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to read AI cost stats for snapshot", zap.Error(err))
 		return err
 	}
 
 	subStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctxTimeout, today)
 	if err != nil {
-		uc.logger.Error("Failed to read subscription stats for snapshot", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to read subscription stats for snapshot", zap.Error(err))
 		return err
 	}
 
@@ -106,16 +107,21 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 		}
 	}
 
-	return uc.dashboardRepo.UpsertAdminSnapshot(ctx, snapshot)
+	run.AddTotal(1)
+	if err := uc.dashboardRepo.UpsertAdminSnapshot(ctx, snapshot); err != nil {
+		run.ChildError(uc.logger, "Failed to upsert admin daily snapshot", zap.Error(err))
+		return err
+	}
+	run.AddSuccess(1)
+	return nil
 }
 
-func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Context) error {
+func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Context, run *workerlog.Run) error {
 	today := time.Now().Truncate(24 * time.Hour)
-	uc.logger.Info("Aggregating brand daily snapshots for date", zap.String("date", today.Format("2006-01-02")))
 
 	brandIDs, err := uc.brandReader.GetActiveBrandIDs(ctx)
 	if err != nil {
-		uc.logger.Error("Failed to fetch active brand IDs for daily snapshot", zap.Error(err))
+		run.ChildError(uc.logger, "Failed to fetch active brand IDs for daily snapshot", zap.Error(err))
 		return err
 	}
 
@@ -141,9 +147,12 @@ func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Contex
 			CSFirstResponseAvgSeconds: stats.CSFirstResponseAvgSeconds,
 		}
 
+		run.AddTotal(1)
 		if err := uc.dashboardRepo.UpsertBrandSnapshot(ctx, snapshot); err != nil {
-			uc.logger.Error("Failed to upsert brand daily snapshot", zap.String("brandID", brandID.String()), zap.Error(err))
+			run.ChildError(uc.logger, "Failed to upsert brand daily snapshot", zap.String("brandID", brandID.String()), zap.Error(err))
+			continue
 		}
+		run.AddSuccess(1)
 	}
 	return nil
 }

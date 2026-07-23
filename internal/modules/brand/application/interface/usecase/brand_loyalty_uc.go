@@ -6,6 +6,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
 )
@@ -27,5 +28,5 @@ type IBrandLoyaltyUseCase interface {
 	GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error)
 	CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error)
 	UpdateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID, input dto.UpdateLoyaltyTierReq) (*dto.LoyaltyTierRes, error)
-	ProcessExpiredLoyaltyPointLots(ctx context.Context, now time.Time, batchSize int) (int, error)
+	ProcessExpiredLoyaltyPointLots(ctx context.Context, run *workerlog.Run, now time.Time, batchSize int) (int, error)
 }
