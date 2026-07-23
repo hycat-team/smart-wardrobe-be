@@ -18,6 +18,9 @@ type IDashboardRepository interface {
 	GetBrandSnapshots(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) ([]*entities.DashboardBrandDailySnapshot, error)
 	GetLatestBrandSnapshot(ctx context.Context, brandID uuid.UUID) (*entities.DashboardBrandDailySnapshot, error)
 
+	UpsertBrandItemSnapshot(ctx context.Context, snapshot *entities.DashboardBrandItemDailySnapshot) error
+	GetLatestBrandItemSnapshot(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*entities.DashboardBrandItemDailySnapshot, error)
+
 	UpsertUserWardrobeSummary(ctx context.Context, summary *entities.DashboardUserWardrobeSummary) error
 	GetUserWardrobeSummary(ctx context.Context, userID uuid.UUID) (*entities.DashboardUserWardrobeSummary, error)
 }

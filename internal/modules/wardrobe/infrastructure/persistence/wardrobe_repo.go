@@ -509,3 +509,47 @@ func (r *WardrobeItemRepository) GetUserWardrobeSummaryStats(ctx context.Context
 		UnderutilizedItemsCount: int(underutilized),
 	}, nil
 }
+
+func (r *WardrobeItemRepository) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error) {
+	staleTime := time.Now().AddDate(0, 0, -30)
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).
+		Where("user_id = ? AND is_deleted = ? AND (last_used_at IS NULL OR last_used_at < ?)", userID, false, staleTime).
+		Order("last_used_at ASC").
+		Limit(limit).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*dto.UnderutilizedItemInfoDTO, 0, len(items))
+	now := time.Now()
+	for _, item := range items {
+		wearCount := 0
+		price := 0.0
+		if item.Price != nil {
+			price = *item.Price
+		}
+		cpw := price
+		if wearCount > 0 {
+			cpw = price / float64(wearCount)
+		}
+
+		daysAgo := 30
+		if item.LastUsedAt != nil {
+			daysAgo = int(now.Sub(*item.LastUsedAt).Hours() / 24)
+		}
+
+		result = append(result, &dto.UnderutilizedItemInfoDTO{
+			ItemID:           item.ID,
+			Name:             "Trang phục",
+			CategoryName:     "Chưa phân loại",
+			PurchasePriceVND: price,
+			WearCount:        wearCount,
+			CostPerWearVND:   cpw,
+			LastWornDaysAgo:  daysAgo,
+			ImageURL:         "",
+		})
+	}
+	return result, nil
+}

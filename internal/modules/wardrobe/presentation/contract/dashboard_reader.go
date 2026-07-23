@@ -11,6 +11,7 @@ import (
 
 type IWardrobeDashboardReader interface {
 	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error)
+	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error)
 }
 
 type WardrobeDashboardReader struct {
@@ -23,4 +24,8 @@ func NewWardrobeDashboardReader(wardrobeUC uc_interfaces.IWardrobeItemUseCase) I
 
 func (r *WardrobeDashboardReader) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error) {
 	return r.wardrobeUC.GetUserWardrobeSummaryStats(ctx, userID)
+}
+
+func (r *WardrobeDashboardReader) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error) {
+	return r.wardrobeUC.GetUnderutilizedItems(ctx, userID, limit)
 }

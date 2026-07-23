@@ -57,11 +57,11 @@
 
 **Independent Test**: Gửi HTTP GET request tới `/api/v1/admin/dashboard/kpi-cards` và `/api/v1/admin/dashboard/ai-margin` kiểm tra response 200 OK với JWT token của Admin.
 
-- [ ] T010 [US1] Tạo DTOs cho Admin Dashboard tại `internal/modules/dashboard/application/dto/admin_dashboard_dto.go`.
-- [ ] T011 [US1] Tạo Mapper `AdminDashboardMapper` tại `internal/modules/dashboard/application/mapper/admin_mapper.go`.
-- [ ] T012 [US1] Tạo Interface `AdminDashboardUseCase` tại `internal/modules/dashboard/application/interface/usecase/admin_usecase.go`.
-- [ ] T013 [US1] Triển khai `AdminDashboardUseCase` tại `internal/modules/dashboard/application/usecase/admin_dashboard_uc.go` tổng hợp số liệu từ snapshot tables & Read Contracts.
-- [ ] T014 [US1] Triển khai Gin Handler `AdminDashboardHandler` tại `internal/modules/dashboard/presentation/handler/admin_handler.go`.
+- [x] T010 [US1] Tạo DTOs cho Admin Dashboard tại `internal/modules/dashboard/application/dto/admin_dashboard_dto.go`.
+- [x] T011 [US1] Tạo Interface `IAdminDashboardUseCase` tại `internal/modules/dashboard/application/interface/usecase/admin_dashboard_uc.go`.
+- [x] T012 [US1] Triển khai `AdminDashboardUseCase` tại `internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go` tổng hợp số liệu từ snapshot tables & Read Contracts.
+- [x] T013 [US1] Đăng ký Admin Dashboard UseCase, Handler và ProviderSet vào Wire DI (`internal/di/wire.go`).
+- [x] T014 [US1] Triển khai Gin Handler `AdminDashboardHandler` tại `internal/modules/dashboard/presentation/handler/admin_dashboard_handler.go` và đăng ký routes tại `internal/api/routes/admin/router.go`.
 
 🛑 **CHECKPOINT PHASE 3**: Dừng lại, báo cáo kết quả test Admin Dashboard và chờ User verify trước khi sang Phase 4.
 
@@ -73,10 +73,10 @@
 
 **Independent Test**: Gửi HTTP GET request tới `/api/v1/brand/dashboard/kpi-cards` (Staff & Owner) và `/api/v1/brand/dashboard/financials/points-liability` (Owner OK, Staff 403 Forbidden).
 
-- [ ] T015 [US2] Tạo DTOs cho Brand Dashboard tại `internal/modules/dashboard/application/dto/brand_dashboard_dto.go`.
-- [ ] T016 [US2] Tạo Mapper `BrandDashboardMapper` với logic Redaction theo Role tại `internal/modules/dashboard/application/mapper/brand_mapper.go`.
-- [ ] T017 [US2] Tạo Interface & Implementation `BrandDashboardUseCase` tại `internal/modules/dashboard/application/usecase/brand_dashboard_uc.go`.
-- [ ] T018 [US2] Triển khai Gin Handler `BrandDashboardHandler` tại `internal/modules/dashboard/presentation/handler/brand_handler.go` kiểm tra Multi-tenant JWT Scoping (`brand_id`).
+- [x] T015 [US2] Tạo DTOs cho Brand Dashboard tại `internal/modules/dashboard/application/dto/brand_dashboard_dto.go`.
+- [x] T016 [US2] Tạo Mapper `BrandDashboardMapper` với logic Redaction theo Role tại `internal/modules/dashboard/application/mapper/brand_mapper.go`.
+- [x] T017 [US2] Tạo Interface & Implementation `BrandDashboardUseCase` tại `internal/modules/dashboard/application/usecase/brand_dashboard_uc_impl.go`.
+- [x] T018 [US2] Triển khai Gin Handler `BrandDashboardHandler` tại `internal/modules/dashboard/presentation/handler/brand_dashboard_handler.go` và đăng ký routes tại `internal/api/routes/brand/router.go`.
 
 🛑 **CHECKPOINT PHASE 4**: Dừng lại, báo cáo kết quả test Brand Portal Dashboard và chờ User verify trước khi sang Phase 5.
 
@@ -88,9 +88,9 @@
 
 **Independent Test**: Gửi HTTP GET request tới `/api/v1/user/dashboard/wardrobe-insights` với JWT User kiểm tra phản hồi chỉ số CPW và danh sách item chưa mặc > 30 ngày.
 
-- [ ] T019 [US3] Tạo DTOs & Mapper cho User Wardrobe Insights tại `internal/modules/dashboard/application/dto/user_dashboard_dto.go` và `internal/modules/dashboard/application/mapper/user_mapper.go`.
-- [ ] T020 [US3] Tạo UseCase `UserDashboardUseCase` tại `internal/modules/dashboard/application/usecase/user_dashboard_uc.go` tính toán CPW và underutilized items.
-- [ ] T021 [US3] Triển khai Gin Handler `UserDashboardHandler` tại `internal/modules/dashboard/presentation/handler/user_handler.go`.
+- [x] T019 [US3] Tạo DTOs cho User Wardrobe Insights tại `internal/modules/dashboard/application/dto/user_dashboard_dto.go`.
+- [x] T020 [US3] Tạo Interface `IUserDashboardUseCase` tại `internal/modules/dashboard/application/interface/usecase/user_dashboard_uc.go`.
+- [x] T021 [US3] Triển khai `UserDashboardUseCase` tại `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go`, Gin Handler `UserDashboardHandler` tại `internal/modules/dashboard/presentation/handler/user_dashboard_handler.go` và đăng ký routes tại `internal/api/routes/wardrobe/router.go`.
 
 🛑 **CHECKPOINT PHASE 5**: Dừng lại, báo cáo kết quả test User Wardrobe Dashboard và chờ User verify trước khi sang Phase 6.
 

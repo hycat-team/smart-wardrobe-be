@@ -972,6 +972,162 @@ definitions:
     - Adjust
     - Expire
     - Refund
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes:
+    properties:
+      aiErrorCount:
+        type: integer
+      aiRequestsCount:
+        type: integer
+      fromDate:
+        type: string
+      marginPercentage:
+        type: number
+      netAiMarginVnd:
+        type: number
+      toDate:
+        type: string
+      totalAiActualCostVnd:
+        type: number
+      totalAiPaidTokens:
+        type: integer
+      totalSubscriptionRevVnd:
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminKPICardsRes:
+    properties:
+      activeUsersDau:
+        type: integer
+      netAiMarginVnd:
+        type: number
+      payosSuccessCount:
+        type: integer
+      pendingReviewBrands:
+        type: integer
+      subscriptionRevenueVnd:
+        type: number
+      totalBrands:
+        type: integer
+      totalUsers:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminOverviewRes:
+    properties:
+      aiMargin:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes'
+      kpiCards:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminKPICardsRes'
+      payosReconcile:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandKPICardsRes:
+    properties:
+      activeVouchers:
+        type: integer
+      brandId:
+        type: string
+      pointsIssued:
+        type: integer
+      pointsRedeemed:
+        type: integer
+      totalMembers:
+        type: integer
+      updatedAt:
+        type: string
+      vouchersRedeemed:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandPointsLiabilityRes:
+    properties:
+      brandId:
+        type: string
+      pointsExpiring30d:
+        type: integer
+      pointsLiabilityValueVnd:
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes:
+    properties:
+      avgRating:
+        type: number
+      feedbackSentiment:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment'
+      itemId:
+        type: string
+      topPairedCategories:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PairedCategoryStat'
+        type: array
+      votesCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.PairedCategoryStat:
+    properties:
+      categoryName:
+        type: string
+      pairCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes:
+    properties:
+      failedCount:
+        type: integer
+      successCount:
+        type: integer
+      totalSuccessValue:
+        type: number
+      totalTransactions:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.UnderutilizedItemDTO:
+    properties:
+      categoryName:
+        type: string
+      costPerWearVnd:
+        type: number
+      imageUrl:
+        type: string
+      itemId:
+        type: string
+      lastWornDaysAgo:
+        type: integer
+      name:
+        type: string
+      purchasePriceVnd:
+        type: number
+      wearCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes:
+    properties:
+      averageCostPerWearVnd:
+        type: number
+      categoryDistribution:
+        additionalProperties:
+          type: integer
+        type: object
+      totalItems:
+        type: integer
+      totalWardrobeValueVnd:
+        type: number
+      underutilizedItems:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UnderutilizedItemDTO'
+        type: array
+      underutilizedItemsCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment:
+    enum:
+    - POSITIVE
+    - NEUTRAL
+    - NEGATIVE
+    type: string
+    x-enum-varnames:
+    - Positive
+    - Neutral
+    - Negative
   smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes:
     properties:
       id:
@@ -2346,6 +2502,93 @@ paths:
       summary: Cập nhật danh mục trang phục (Admin)
       tags:
       - Admin
+  /api/v1/admin/dashboard/ai-margin:
+    get:
+      description: Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token
+        (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm
+        biên lợi nhuận.
+      parameters:
+      - description: Ngày bắt đầu (định dạng YYYY-MM-DD)
+        in: query
+        name: from_date
+        type: string
+      - description: Ngày kết thúc (định dạng YYYY-MM-DD)
+        in: query
+        name: to_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thông tin biên lợi nhuận AI thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes'
+              type: object
+      summary: Phân tích biên lợi nhuận AI Token
+      tags:
+      - Admin Dashboard
+  /api/v1/admin/dashboard/kpi-cards:
+    get:
+      description: Lấy thông tin tổng số lượng người dùng, chỉ số DAU, số nhãn hàng
+        active, số nhãn hàng chờ duyệt, doanh thu subscription và biên lợi nhuận AI
+        net margin.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy danh sách thẻ KPI Admin thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminKPICardsRes'
+              type: object
+      summary: Lấy các thẻ chỉ số KPI tổng quan Admin
+      tags:
+      - Admin Dashboard
+  /api/v1/admin/dashboard/overview:
+    get:
+      description: Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS
+        Reconciliation trong 1 kết quả duy nhất.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thông tin tổng quan hệ thống thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminOverviewRes'
+              type: object
+      summary: Báo cáo tổng quan Admin Dashboard
+      tags:
+      - Admin Dashboard
+  /api/v1/admin/dashboard/payos-reconciliation:
+    get:
+      description: Báo cáo đối soát số lượng giao dịch thanh toán PayOS, tỷ lệ thành
+        công/thất bại và tổng số tiền thanh toán thực tế.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thông tin đối soát PayOS thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes'
+              type: object
+      summary: Thống kê đối soát giao dịch PayOS
+      tags:
+      - Admin Dashboard
   /api/v1/admin/users:
     get:
       consumes:
@@ -4192,6 +4435,86 @@ paths:
       summary: Lấy danh sách brand của staff hiện tại
       tags:
       - Brand Portal
+  /api/v1/brand/dashboard/financials/points-liability:
+    get:
+      description: Thống kê số điểm hết hạn trong 30 ngày tới & giá trị quy đổi VND
+        tương ứng. Giá trị VND sẽ bị ẩn (redacted) đối với tài khoản cấp Staff.
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brand_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy báo cáo nghĩa vụ điểm quy đổi thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandPointsLiabilityRes'
+              type: object
+      summary: Phân tích nợ điểm hết hạn trong 30 ngày (Column-Level RBAC)
+      tags:
+      - Brand Dashboard
+  /api/v1/brand/dashboard/kpi-cards:
+    get:
+      description: Lấy thống kê số hội viên, điểm phát hành, điểm quy đổi, số voucher
+        active/quy đổi của nhãn hàng.
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brand_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thẻ KPI nhãn hàng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandKPICardsRes'
+              type: object
+      summary: Lấy thẻ KPI tổng quan B2B Brand Portal
+      tags:
+      - Brand Dashboard
+  /api/v1/brand/dashboard/operations/digital-sample-lab/{itemId}:
+    get:
+      description: Thống kê số lượt bình chọn, rating trung bình, sentiment phản hồi
+        và danh sách danh mục trang phục thường phối kèm nhiều nhất.
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brand_id
+        required: true
+        type: string
+      - description: ID Sản phẩm mẫu thử
+        in: path
+        name: itemId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân tích mẫu thử thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes'
+              type: object
+      summary: Phân tích đánh giá mẫu thử Digital Sample Lab
+      tags:
+      - Brand Dashboard
   /api/v1/brands:
     get:
       description: Supports pagination and search by brand name or slug.
@@ -5270,6 +5593,26 @@ paths:
       summary: Lấy danh sách trang phục hệ thống
       tags:
       - Wardrobe
+  /api/v1/user/dashboard/wardrobe-insights:
+    get:
+      description: Lấy tổng giá trị tài chính tủ đồ, chỉ số trung bình giá mỗi lần
+        mặc (CPW = giá mua / số lần mặc), tổng số đồ lãng phí chưa mặc > 30 ngày và
+        danh sách đề xuất.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân tích tủ đồ cá nhân thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes'
+              type: object
+      summary: Thống kê phân tích tủ đồ cá nhân & chỉ số Cost Per Wear (CPW)
+      tags:
+      - User Dashboard
   /api/v1/wardrobe-items/{id}:
     get:
       description: Lấy thông tin chi tiết của một trang phục theo ID, tự động chặn

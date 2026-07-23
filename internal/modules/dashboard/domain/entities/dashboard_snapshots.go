@@ -52,12 +52,28 @@ func (DashboardBrandDailySnapshot) TableName() string {
 	return "dashboard_brand_daily_snapshots"
 }
 
+type DashboardBrandItemDailySnapshot struct {
+	sharedEntities.AuditableEntity
+	BrandID             uuid.UUID                   `gorm:"type:uuid;not null;index"`
+	ItemID              uuid.UUID                   `gorm:"type:uuid;not null;index"`
+	SnapshotDate        time.Time                   `gorm:"type:date;not null"`
+	VotesCount          int                         `gorm:"not null;default:0"`
+	AvgRating           float64                     `gorm:"type:numeric(3,2);not null;default:0"`
+	FeedbackSentiment   string                      `gorm:"type:varchar(20);not null;default:'POSITIVE'"`
+	TopPairedCategories sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'[]'"`
+}
+
+func (DashboardBrandItemDailySnapshot) TableName() string {
+	return "dashboard_brand_item_daily_snapshots"
+}
+
 type DashboardUserWardrobeSummary struct {
 	UserID                  uuid.UUID                   `gorm:"type:uuid;primaryKey"`
 	TotalItems              int                         `gorm:"not null;default:0"`
 	TotalWardrobeValueVND   float64                     `gorm:"type:numeric(12,2);not null;default:0"`
 	AverageCostPerWearVND   float64                     `gorm:"type:numeric(12,2);not null;default:0"`
 	UnderutilizedItemsCount int                         `gorm:"not null;default:0"`
+	UnderutilizedItems      sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'[]'"`
 	CategoryDistribution    sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'{}'"`
 	ColorDistribution       sharedEntities.JSONDocument `gorm:"type:jsonb;not null;default:'{}'"`
 	AIQuotaRemaining        int                         `gorm:"not null;default:0"`

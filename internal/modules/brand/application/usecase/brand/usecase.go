@@ -466,3 +466,11 @@ func (uc *BrandUseCase) GetAdminBrandStats(ctx context.Context, snapshotDate tim
 func (uc *BrandUseCase) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
 	return uc.brandRepo.GetBrandAnalyticsStats(ctx, brandID, snapshotDate)
 }
+
+func (uc *BrandUseCase) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
+	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil || member == nil {
+		return brandmemberrole.Staff, nil
+	}
+	return member.Role, nil
+}

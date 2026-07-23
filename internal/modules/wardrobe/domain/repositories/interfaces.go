@@ -37,6 +37,7 @@ type IWardrobeItemRepository interface {
 	CountByCategoryIDAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
 	ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error)
+	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error)
 }
 
 type IOutfitRepository interface {

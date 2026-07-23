@@ -148,7 +148,7 @@ func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uu
 		PointsIssued:              0,
 		PointsRedeemed:            0,
 		PointsExpiring30d:         int(expiringPoints),
-		PointsLiabilityValueVND:    float64(expiringPoints) * 1000,
+		PointsLiabilityValueVND:   float64(expiringPoints) * 1000,
 		ActiveVouchers:            0,
 		VouchersRedeemed:          0,
 		DigitalSampleVotesCount:   int(sampleVotesCount),

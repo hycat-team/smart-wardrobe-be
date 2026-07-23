@@ -45,12 +45,29 @@ CREATE TABLE IF NOT EXISTS public.dashboard_brand_daily_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_brand_snapshots_brand_date ON public.dashboard_brand_daily_snapshots(brand_id, snapshot_date DESC);
 
+CREATE TABLE IF NOT EXISTS public.dashboard_brand_item_daily_snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    brand_id UUID NOT NULL REFERENCES public.brands(id) ON DELETE CASCADE,
+    item_id UUID NOT NULL,
+    snapshot_date DATE NOT NULL,
+    votes_count INT NOT NULL DEFAULT 0,
+    avg_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
+    feedback_sentiment VARCHAR(20) NOT NULL DEFAULT 'POSITIVE',
+    top_paired_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_brand_item_daily_snapshot UNIQUE (brand_id, item_id, snapshot_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_brand_item_snapshots ON public.dashboard_brand_item_daily_snapshots(brand_id, item_id, snapshot_date DESC);
+
 CREATE TABLE IF NOT EXISTS public.dashboard_user_wardrobe_summaries (
     user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
     total_items INT NOT NULL DEFAULT 0,
     total_wardrobe_value_vnd NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     average_cost_per_wear_vnd NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     underutilized_items_count INT NOT NULL DEFAULT 0,
+    underutilized_items JSONB NOT NULL DEFAULT '[]'::jsonb,
     category_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
     color_distribution JSONB NOT NULL DEFAULT '{}'::jsonb,
     ai_quota_remaining INT NOT NULL DEFAULT 0,
@@ -64,6 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_user_wardrobe_summaries_updated ON public.dashboa
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS public.dashboard_user_wardrobe_summaries;
+DROP TABLE IF EXISTS public.dashboard_brand_item_daily_snapshots;
 DROP TABLE IF EXISTS public.dashboard_brand_daily_snapshots;
 DROP TABLE IF EXISTS public.dashboard_admin_daily_snapshots;
 -- +goose StatementEnd

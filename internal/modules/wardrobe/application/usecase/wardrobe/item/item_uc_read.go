@@ -318,3 +318,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeStats(ctx context.Context, userID uuid
 func (uc *WardrobeItemUseCase) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error) {
 	return uc.wardrobeRepo.GetUserWardrobeSummaryStats(ctx, userID)
 }
+
+func (uc *WardrobeItemUseCase) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error) {
+	return uc.wardrobeRepo.GetUnderutilizedItems(ctx, userID, limit)
+}
