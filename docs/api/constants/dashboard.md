@@ -38,10 +38,10 @@ Giá trị của field `granularity` trong `DynamicQueryReq`.
 
 | Tên hằng | Giá trị (string) | JSON | Ý nghĩa |
 |----------|-----------------|------|---------|
-| `Hour` | `"hour"` | `"hour"` | Theo giờ |
+| `Hour` | `"hour"` | `"hour"` | Theo giờ (trả raw daily nếu không có hourly snapshot) |
 | `Day` | `"day"` | `"day"` | Theo ngày (mặc định nếu không gửi) |
-| `Week` | `"week"` | `"week"` | Theo tuần |
-| `Month` | `"month"` | `"month"` | Theo tháng |
+| `Week` | `"week"` | `"week"` | Theo tuần — backend aggregate daily → weekly |
+| `Month` | `"month"` | `"month"` | Theo tháng — backend aggregate daily → monthly |
 
 **Tự động điều chỉnh (auto-downgrade) khi date range quá lớn:**
 - `"hour"` + >365 ngày → tự động set thành `"day"`
@@ -68,9 +68,15 @@ Danh sách Metric Key hợp lệ trong field `metrics` của `DynamicQueryReq`.
 | Brand | `PointsIssued` | `"points_issued"` | `"points_issued"` |
 | Brand | `PointsRedeemed` | `"points_redeemed"` | `"points_redeemed"` |
 | Brand | `ActiveVouchers` | `"active_vouchers"` | `"active_vouchers"` |
+| Brand | `VouchersRedeemed` | `"vouchers_redeemed"` | `"vouchers_redeemed"` |
+| Brand | `DigitalSampleVotesCount` | `"digital_sample_votes_count"` | `"digital_sample_votes_count"` |
+| Brand | `DigitalSampleAvgRating` | `"digital_sample_avg_rating"` | `"digital_sample_avg_rating"` |
+| Brand | `OpenCSTickets` | `"open_cs_tickets"` | `"open_cs_tickets"` |
+| Brand | `CSFirstResponseAvgSeconds` | `"cs_first_response_avg_seconds"` | `"cs_first_response_avg_seconds"` |
+| Brand | `PointsExpiring30d` | `"points_expiring_30d"` | `"points_expiring_30d"` |
+| Brand | `PointsLiabilityValueVND` | `"points_liability_value_vnd"` | `"points_liability_value_vnd"` |
 | User | `TotalWardrobeItems` | `"total_wardrobe_items"` | `"total_wardrobe_items"` |
 | User | `TotalWardrobeValueVND` | `"total_wardrobe_value_vnd"` | `"total_wardrobe_value_vnd"` |
-| User | `AverageCostPerWearVND` | `"average_cost_per_wear_vnd"` | `"average_cost_per_wear_vnd"` |
 
 ---
 

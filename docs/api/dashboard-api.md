@@ -96,7 +96,7 @@ Xem thêm hằng số tại [constants/dashboard.md](constants/dashboard.md).
 | AIMargin       | `aiMargin`       | \*AIMarginAnalyticsRes   | Phân tích AI margin |
 | PayOSReconcile | `payosReconcile` | \*PayOSReconciliationRes | Đối soát PayOS      |
 
-Các trường có thể `null` nếu không có dữ liệu.
+Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về HTTP 500 với thông báo lỗi.
 
 ---
 
@@ -183,7 +183,6 @@ Các trường có thể `null` nếu không có dữ liệu.
 | ----------------------- | ------------------------- | ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TotalItems              | `totalItems`              | int                    | Tổng số món đồ trong tủ            | `SELECT COUNT(*) FROM wardrobe_items WHERE user_id=? AND is_deleted=false`                                                                                              |
 | TotalWardrobeValueVND   | `totalWardrobeValueVnd`   | float64                | Tổng giá trị tài chính tủ đồ (VND) | `SELECT COALESCE(SUM(purchase_price),0) FROM wardrobe_items WHERE purchase_price IS NOT NULL`                                                                           |
-| AverageItemValueVND     | `averageItemValueVnd`     | float64                | Giá trị trung bình mỗi món đồ      | `totalValue / totalItems`. **Đây là giá trung bình, KHÔNG phải CPW thực thụ (Cost Per Wear). CPW = price/wearCount không được hỗ trợ do wearCount không được ghi nhận** |
 | UnderutilizedItemsCount | `underutilizedItemsCount` | int                    | Số món đồ không mặc >30 ngày       | `SELECT COUNT(*) FROM wardrobe_items WHERE last_used_at IS NULL OR last_used_at < 30 ngày trước`                                                                        |
 | UnderutilizedItems      | `underutilizedItems`      | []UnderutilizedItemDTO | Danh sách đồ lãng phí              | Cùng điều kiện, lấy `last_used_at ASC`, giới hạn 10 món                                                                                                                 |
 | AIQuotaRemaining        | `aiQuotaRemaining`        | int                    | Số lượt AI Stylist còn lại         | Từ snapshot entity (nếu có stale), mặc định 0                                                                                                                           |
@@ -208,9 +207,9 @@ Các trường có thể `null` nếu không có dữ liệu.
 
 - **Endpoint:** `POST /api/v1/dashboard/analytics/query`
 - **Tác nhân (Actor):** Nhiều role (Admin, Brand Member, User) — RBAC tự động theo `targetDashboard`.
-- **Mô tả:** API truy vấn tổng hợp đa chiều. Tự động điều chỉnh:
+- **Mô tả:** API truy vấn tổng hợp đa chiều. Backend aggregate daily snapshots theo granularity yêu cầu. Tự động điều chỉnh:
     - `granularity = "hour"` + date range > 365 ngày → tự động set thành `"day"`
-    - Date range > 730 ngày → set thành `"month"`
+    - date range > 730 ngày + `"hour"`/`"day"` → set thành `"month"`
     - Date range bị giới hạn tối đa 730 ngày
 
     **RBAC:**
@@ -226,12 +225,8 @@ Các trường có thể `null` nếu không có dữ liệu.
 | BrandID             | `brandId`             | string (UUID)   | Nếu target=`"brand"` | UUID của nhãn hàng. Bỏ qua nếu target không phải brand                                                                                                                    |
 | Metrics             | `metrics`             | []string        | ✅                   | Danh sách metric key cần query. Giá trị hợp lệ xem [constants/dashboard.md#4-metric-key](constants/dashboard.md#4-metric-key). VD: `["total_users", "ai_requests_count"]` |
 | Timeframe           | `timeframe`           | object          | ✅                   | `{ "fromDate": "2026-07-01", "toDate": "2026-07-23" }`. Định dạng `YYYY-MM-DD`. Tối đa 730 ngày                                                                           |
-| Granularity         | `granularity`         | string          | ✅                   | `"hour"`, `"day"`, `"week"`, `"month"`. Xem [constants/dashboard.md#3-granularity](constants/dashboard.md#3-granularity)                                                  |
-| Filters             | `filters`             | object          | ❌ (chưa xử lý)      | **Reserved.** DTO đã định nghĩa (`map[string]string`) nhưng backend chưa implement xử lý filter. Gửi field này sẽ được bỏ qua                                             |
-| GroupBy             | `groupBy`             | []string        | ❌ (chưa xử lý)      | **Reserved.** DTO đã định nghĩa nhưng backend chưa implement xử lý group. Gửi field này sẽ được bỏ qua                                                                    |
+| Granularity         | `granularity`         | string          | ✅                   | `"hour"`, `"day"`, `"week"`, `"month"`. Xem [constants/dashboard.md#3-granularity](constants/dashboard.md#3-granularity). Backend thực sự aggregate data theo granularity này |
 | CompareWithPrevious | `compareWithPrevious` | bool            | Optional             | `true`: tính delta % so với chu kỳ trước đó. Mặc định: `false`                                                                                                            |
-
-> **Lưu ý:** `filters` và `groupBy` hiện được chấp nhận trong request nhưng chưa được xử lý bởi backend. Frontend có thể gửi để chuẩn bị cho tương lai nhưng không ảnh hưởng đến response hiện tại.
 
 - **Response struct:** `DynamicQueryRes`
 
@@ -267,20 +262,27 @@ Backend hiện chỉ map 5 metric sau. Các metric khác gửi vào sẽ bị b�
 | ---------------------------- | --------------------------------- | --------------- |
 | `"total_users"`              | `snapshot.TotalUsers`             | int → float64   |
 | `"active_users_dau"`         | `snapshot.ActiveUsersDau`         | int → float64   |
+| `"total_brands"`             | `snapshot.TotalBrands`            | int → float64   |
+| `"pending_review_brands"`    | `snapshot.PendingReviewBrands`    | int → float64   |
 | `"ai_requests_count"`        | `snapshot.AIRequestsCount`        | int64 → float64 |
 | `"subscription_revenue_vnd"` | `snapshot.SubscriptionRevenueVND` | float64         |
 | `"net_ai_margin_vnd"`        | `snapshot.NetAIMarginVND`         | float64         |
 
-> ⚠️ `total_brands` và `pending_review_brands` có tồn tại trong constant nhưng **chưa được map trong switch case xử lý**. Gửi 2 metric này sẽ nhận giá trị `0`.
-
 #### Brand (`targetDashboard = "brand"`)
 
-| Metric              | Mapped từ field           | Kiểu Go gốc   |
-| ------------------- | ------------------------- | ------------- |
-| `"total_members"`   | `snapshot.TotalMembers`   | int → float64 |
-| `"points_issued"`   | `snapshot.PointsIssued`   | int → float64 |
-| `"points_redeemed"` | `snapshot.PointsRedeemed` | int → float64 |
-| `"active_vouchers"` | `snapshot.ActiveVouchers` | int → float64 |
+| Metric                       | Mapped từ field                    | Kiểu Go gốc   |
+| ---------------------------- | ---------------------------------- | ------------- |
+| `"total_members"`            | `snapshot.TotalMembers`            | int → float64 |
+| `"points_issued"`            | `snapshot.PointsIssued`            | int → float64 |
+| `"points_redeemed"`          | `snapshot.PointsRedeemed`          | int → float64 |
+| `"active_vouchers"`          | `snapshot.ActiveVouchers`          | int → float64 |
+| `"vouchers_redeemed"`        | `snapshot.VouchersRedeemed`        | int → float64 |
+| `"digital_sample_votes_count"` | `snapshot.DigitalSampleVotesCount` | int → float64 |
+| `"digital_sample_avg_rating"`  | `snapshot.DigitalSampleAvgRating`  | float64       |
+| `"open_cs_tickets"`          | `snapshot.OpenCSTickets`           | int → float64 |
+| `"cs_first_response_avg_seconds"` | `snapshot.CSFirstResponseAvgSeconds` | int → float64 |
+| `"points_expiring_30d"`      | `snapshot.PointsExpiring30d`       | int → float64 |
+| `"points_liability_value_vnd"` | `snapshot.PointsLiabilityValueVND` | float64       |
 
 #### User (`targetDashboard = "user"`)
 
@@ -290,8 +292,6 @@ Chỉ 2 metric sau được backend xử lý. **Chỉ trả về 1 điểm dữ 
 | ---------------------------- | ------------------------------- | ------------- |
 | `"total_wardrobe_items"`     | `summary.TotalItems`            | int → float64 |
 | `"total_wardrobe_value_vnd"` | `summary.TotalWardrobeValueVND` | float64       |
-
-> ⚠️ `average_cost_per_wear_vnd` **không còn được hỗ trợ** trong dynamic query vì đây là giá trị trung bình mỗi món (`totalValue / totalItems`), không phải Cost Per Wear thực thụ. Gửi metric này sẽ bị bỏ qua.
 
 ---
 
@@ -408,13 +408,12 @@ Chỉ 2 metric sau được backend xử lý. **Chỉ trả về 1 điểm dữ 
 | `pointsExpiring30d`       | `loyalty_point_lots` | `SELECT COALESCE(SUM(remaining_points),0) FROM loyalty_point_lots WHERE brand_id=? AND status='ACTIVE' AND expires_at BETWEEN [today, today+30d]` |
 | `pointsLiabilityValueVnd` | Tính toán            | `pointsExpiring30d * 1000` (giả định 1 điểm = 1000 VND)                                                                                           |
 
-### User Wardrobe Insights (`GET /api/v1/user/dashboard/wardrobe-insights`)
+### User Wardrobe Insights (`GET /api/v1/me/dashboard/wardrobe-insights`)
 
 | Field                     | Nguồn                              | Câu truy vấn                                                                                                                                                                |
 | ------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `totalItems`              | `wardrobe_items`                   | `SELECT COUNT(*) FROM wardrobe_items WHERE user_id=? AND is_deleted=false`                                                                                                  |
 | `totalWardrobeValueVnd`   | `wardrobe_items`                   | `SELECT COALESCE(SUM(purchase_price),0) FROM wardrobe_items WHERE purchase_price IS NOT NULL`                                                                               |
-| `averageItemValueVnd`     | Tính toán                          | `totalValue / totalItems`. **Đây là giá trị trung bình mỗi món, KHÔNG phải CPW.** CPW thực thụ (= price/wearCount) không được hỗ trợ do backend không ghi nhận `wear_count` |
 | `underutilizedItemsCount` | `wardrobe_items`                   | `SELECT COUNT(*) FROM wardrobe_items WHERE last_used_at IS NULL OR last_used_at < 30 ngày trước`                                                                            |
 | `underutilizedItems`      | `wardrobe_items` + `fashion_items` | Query lấy items có `last_used_at IS NULL OR <30 ngày`, kết hợp `fashion_items` để lấy tên, danh mục, ảnh. Sắp xếp `last_used_at ASC`, giới hạn 10 items                     |
 | `aiQuotaRemaining`        | Snapshot cache                     | Từ bảng `dashboard_user_wardrobe_summaries` (được preserve khi cache stale), mặc định `0`                                                                                   |
@@ -424,21 +423,28 @@ Chỉ 2 metric sau được backend xử lý. **Chỉ trả về 1 điểm dữ 
 
 Mỗi metric key map trực tiếp vào field của snapshot entity tương ứng:
 
-| Metric key                 | Entity field                      | Target |
-| -------------------------- | --------------------------------- | ------ |
-| `total_users`              | `snapshot.TotalUsers`             | admin  |
-| `active_users_dau`         | `snapshot.ActiveUsersDau`         | admin  |
-| `ai_requests_count`        | `snapshot.AIRequestsCount`        | admin  |
-| `subscription_revenue_vnd` | `snapshot.SubscriptionRevenueVND` | admin  |
-| `net_ai_margin_vnd`        | `snapshot.NetAIMarginVND`         | admin  |
-| `total_members`            | `snapshot.TotalMembers`           | brand  |
-| `points_issued`            | `snapshot.PointsIssued`           | brand  |
-| `points_redeemed`          | `snapshot.PointsRedeemed`         | brand  |
-| `active_vouchers`          | `snapshot.ActiveVouchers`         | brand  |
-| `total_wardrobe_items`     | `summary.TotalItems`              | user   |
-| `total_wardrobe_value_vnd` | `summary.TotalWardrobeValueVND`   | user   |
-
-> `filters` và `groupBy` được chấp nhận trong request body nhưng **không được xử lý** (reserved for future use).
+| Metric key                       | Entity field                        | Target |
+| -------------------------------- | ----------------------------------- | ------ |
+| `total_users`                    | `snapshot.TotalUsers`               | admin  |
+| `active_users_dau`               | `snapshot.ActiveUsersDau`           | admin  |
+| `total_brands`                   | `snapshot.TotalBrands`              | admin  |
+| `pending_review_brands`          | `snapshot.PendingReviewBrands`      | admin  |
+| `ai_requests_count`              | `snapshot.AIRequestsCount`          | admin  |
+| `subscription_revenue_vnd`       | `snapshot.SubscriptionRevenueVND`   | admin  |
+| `net_ai_margin_vnd`              | `snapshot.NetAIMarginVND`           | admin  |
+| `total_members`                  | `snapshot.TotalMembers`             | brand  |
+| `points_issued`                  | `snapshot.PointsIssued`             | brand  |
+| `points_redeemed`                | `snapshot.PointsRedeemed`           | brand  |
+| `active_vouchers`                | `snapshot.ActiveVouchers`           | brand  |
+| `vouchers_redeemed`              | `snapshot.VouchersRedeemed`         | brand  |
+| `digital_sample_votes_count`     | `snapshot.DigitalSampleVotesCount`  | brand  |
+| `digital_sample_avg_rating`      | `snapshot.DigitalSampleAvgRating`   | brand  |
+| `open_cs_tickets`                | `snapshot.OpenCSTickets`            | brand  |
+| `cs_first_response_avg_seconds`  | `snapshot.CSFirstResponseAvgSeconds`| brand  |
+| `points_expiring_30d`            | `snapshot.PointsExpiring30d`        | brand  |
+| `points_liability_value_vnd`     | `snapshot.PointsLiabilityValueVND`  | brand  |
+| `total_wardrobe_items`           | `summary.TotalItems`                | user   |
+| `total_wardrobe_value_vnd`       | `summary.TotalWardrobeValueVND`     | user   |
 
 ---
 
