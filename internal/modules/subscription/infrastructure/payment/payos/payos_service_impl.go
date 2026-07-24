@@ -75,9 +75,6 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		"returnUrl":   req.ReturnUrl,
 		"cancelUrl":   req.CancelUrl,
 	}
-	if !req.ExpiresAt.IsZero() {
-		bodyMap["expiredAt"] = req.ExpiresAt.Unix()
-	}
 
 	var keys []string
 	for k := range bodyMap {
@@ -101,8 +98,8 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 		"cancelUrl":   req.CancelUrl,
 		"signature":   signature,
 	}
-	if s.expiredMinutes > 0 {
-		reqPayload["expiredAt"] = bodyMap["expiredAt"]
+	if s.expiredMinutes > 0 && !req.ExpiresAt.IsZero() {
+		reqPayload["expiredAt"] = req.ExpiresAt.Unix()
 	}
 
 	reqBytes, err := json.Marshal(reqPayload)

@@ -65,6 +65,11 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 		if rawErr != nil && rawErr.Error() != appErr.Message {
 			fields = append(fields, zap.String("error", rawErr.Error()))
 		}
+		if cause := appErr.Unwrap(); cause != nil {
+			if cause.Error() != appErr.Message {
+				fields = append(fields, zap.String("cause", cause.Error()))
+			}
+		}
 		if source := errorutils.PrimaryStackFrame(appErr.Stack()); source != "" {
 			fields = append(fields, zap.String("source", source))
 		}
