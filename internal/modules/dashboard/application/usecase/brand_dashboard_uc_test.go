@@ -7,6 +7,9 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
+	fashionDTO "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	brandDTO "smart-wardrobe-be/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
@@ -17,7 +20,6 @@ import (
 type mockBrandDashboardRepo struct {
 	latestSnapshot      *entities.DashboardBrandDailySnapshot
 	snapshots           []*entities.DashboardBrandDailySnapshot
-	latestItemSnapshot  *entities.DashboardBrandItemDailySnapshot
 	latestSnapshotError error
 }
 
@@ -48,14 +50,6 @@ func (m *mockBrandDashboardRepo) GetLatestBrandSnapshot(ctx context.Context, bra
 	return m.latestSnapshot, nil
 }
 
-func (m *mockBrandDashboardRepo) UpsertBrandItemSnapshot(ctx context.Context, snapshot *entities.DashboardBrandItemDailySnapshot) error {
-	return nil
-}
-
-func (m *mockBrandDashboardRepo) GetLatestBrandItemSnapshot(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*entities.DashboardBrandItemDailySnapshot, error) {
-	return m.latestItemSnapshot, nil
-}
-
 func (m *mockBrandDashboardRepo) UpsertUserWardrobeSummary(ctx context.Context, summary *entities.DashboardUserWardrobeSummary) error {
 	return nil
 }
@@ -80,6 +74,22 @@ func (m *mockBrandReader) GetUserBrandRole(ctx context.Context, userID uuid.UUID
 	return m.role, m.roleErr
 }
 
+type mockWardrobeReaderForBrand struct {
+	wardrobeContract.IWardrobeDashboardReader
+}
+
+func (m *mockWardrobeReaderForBrand) GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+type mockFashionContractForBrand struct {
+	fashionContract.IFashionContract
+}
+
+func (m *mockFashionContractForBrand) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashionDTO.FashionItemRes, error) {
+	return nil, nil
+}
+
 func TestBrandGetKPICards_FromSnapshot(t *testing.T) {
 	brandID := uuid.New()
 	repo := &mockBrandDashboardRepo{
@@ -97,7 +107,7 @@ func TestBrandGetKPICards_FromSnapshot(t *testing.T) {
 			CSFirstResponseAvgSeconds: 120,
 		},
 	}
-	uc := NewBrandDashboardUseCase(repo, &mockBrandReader{})
+	uc := NewBrandDashboardUseCase(repo, &mockBrandReader{}, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
 	res, err := uc.GetBrandKPICards(context.Background(), brandID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -132,7 +142,7 @@ func TestBrandGetPointsLiability_OwnerSeesFinancial(t *testing.T) {
 	reader := &mockBrandReader{
 		role: brandmemberrole.Owner,
 	}
-	uc := NewBrandDashboardUseCase(repo, reader)
+	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
 	res, err := uc.GetPointsLiability(context.Background(), userID, brandID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -158,7 +168,7 @@ func TestBrandGetPointsLiability_StaffSeesRedacted(t *testing.T) {
 	reader := &mockBrandReader{
 		role: brandmemberrole.Staff,
 	}
-	uc := NewBrandDashboardUseCase(repo, reader)
+	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
 	res, err := uc.GetPointsLiability(context.Background(), userID, brandID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

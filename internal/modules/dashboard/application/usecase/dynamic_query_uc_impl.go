@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -80,9 +81,22 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		return nil, apperror.NewBadRequest("Định dạng ngày kết thúc (toDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
 	}
 
+	if fromDate.After(toDate) {
+		return nil, apperror.NewBadRequest("Ngày bắt đầu (fromDate) không được sau ngày kết thúc (toDate).")
+	}
+
+	days := int(toDate.Sub(fromDate).Hours() / 24)
+	if days > dashboard_app.MaxDateRangeDays {
+		return nil, apperror.NewBadRequest("Khoảng thời gian truy vấn không được vượt quá 730 ngày. Vui lòng chọn khoảng thời gian ngắn hơn.")
+	}
+
 	gran := granularity.Granularity(strings.ToLower(string(req.Granularity)))
-	if gran == "" {
+	switch gran {
+	case granularity.Day, granularity.Week, granularity.Month, granularity.Year:
+	case "":
 		gran = granularity.Day
+	default:
+		return nil, apperror.NewBadRequest("Giá trị granularity không hợp lệ. Giá trị hợp lệ: \"day\", \"week\", \"month\", \"year\".")
 	}
 
 	series := make([]dto.TimeSeriesPointDTO, 0)
@@ -102,6 +116,10 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 					metricValues[m] = float64(s.TotalUsers)
 				case metrickey.ActiveUsersDau:
 					metricValues[m] = float64(s.ActiveUsersDau)
+				case metrickey.TotalBrands:
+					metricValues[m] = float64(s.TotalBrands)
+				case metrickey.PendingReviewBrands:
+					metricValues[m] = float64(s.PendingReviewBrands)
 				case metrickey.AIRequestsCount:
 					metricValues[m] = float64(s.AIRequestsCount)
 				case metrickey.SubscriptionRevenueVND:
@@ -135,6 +153,20 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 						metricValues[m] = float64(s.PointsRedeemed)
 					case metrickey.ActiveVouchers:
 						metricValues[m] = float64(s.ActiveVouchers)
+					case metrickey.VouchersRedeemed:
+						metricValues[m] = float64(s.VouchersRedeemed)
+					case metrickey.DigitalSampleVotesCount:
+						metricValues[m] = float64(s.DigitalSampleVotesCount)
+					case metrickey.DigitalSampleAvgRating:
+						metricValues[m] = s.DigitalSampleAvgRating
+					case metrickey.OpenCSTickets:
+						metricValues[m] = float64(s.OpenCSTickets)
+					case metrickey.CSFirstResponseAvgSeconds:
+						metricValues[m] = float64(s.CSFirstResponseAvgSeconds)
+					case metrickey.PointsExpiring30d:
+						metricValues[m] = float64(s.PointsExpiring30d)
+					case metrickey.PointsLiabilityValueVND:
+						metricValues[m] = s.PointsLiabilityValueVND
 					}
 				}
 				series = append(series, dto.TimeSeriesPointDTO{
@@ -209,9 +241,14 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		}
 	}
 
-	// Auto-downgrade granularity for large date ranges
-	gran = enforceMaxGranularity(fromDate, toDate, gran)
-	fromDate = enforceMaxDateRange(fromDate, toDate)
+	// Auto-downgrade granularity for large date ranges (trước aggregation)
+	effectiveGran := enforceMaxGranularity(fromDate, toDate, gran)
+
+	// Aggregation: gộp daily series theo effective granularity nếu là week/month/year
+	if effectiveGran == granularity.Week || effectiveGran == granularity.Month || effectiveGran == granularity.Year {
+		series = aggregateByGranularity(series, effectiveGran, req.Metrics)
+		gran = effectiveGran
+	}
 
 	return &dto.DynamicQueryRes{
 		TargetDashboard: target,
@@ -241,6 +278,10 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 					prevSum[m] += float64(s.TotalUsers)
 				case metrickey.ActiveUsersDau:
 					prevSum[m] += float64(s.ActiveUsersDau)
+				case metrickey.TotalBrands:
+					prevSum[m] += float64(s.TotalBrands)
+				case metrickey.PendingReviewBrands:
+					prevSum[m] += float64(s.PendingReviewBrands)
 				case metrickey.AIRequestsCount:
 					prevSum[m] += float64(s.AIRequestsCount)
 				case metrickey.SubscriptionRevenueVND:
@@ -273,6 +314,20 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 					prevSum[m] += float64(s.PointsRedeemed)
 				case metrickey.ActiveVouchers:
 					prevSum[m] += float64(s.ActiveVouchers)
+				case metrickey.VouchersRedeemed:
+					prevSum[m] += float64(s.VouchersRedeemed)
+				case metrickey.DigitalSampleVotesCount:
+					prevSum[m] += float64(s.DigitalSampleVotesCount)
+				case metrickey.DigitalSampleAvgRating:
+					prevSum[m] += s.DigitalSampleAvgRating
+				case metrickey.OpenCSTickets:
+					prevSum[m] += float64(s.OpenCSTickets)
+				case metrickey.CSFirstResponseAvgSeconds:
+					prevSum[m] += float64(s.CSFirstResponseAvgSeconds)
+				case metrickey.PointsExpiring30d:
+					prevSum[m] += float64(s.PointsExpiring30d)
+				case metrickey.PointsLiabilityValueVND:
+					prevSum[m] += s.PointsLiabilityValueVND
 				}
 			}
 		}
@@ -285,16 +340,126 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 	return prevSum
 }
 
-// enforceMaxDateRange caps the date range to prevent excessive DB queries.
-func enforceMaxDateRange(fromDate, toDate time.Time) time.Time {
-	days := int(toDate.Sub(fromDate).Hours() / 24)
-	if days < 0 {
-		days = -days
+type metricAggType int
+
+const (
+	metricCumulative metricAggType = iota
+	metricNonCumulative
+	metricRate
+)
+
+func getMetricAggType(m metrickey.MetricKey) metricAggType {
+	switch m {
+	case metrickey.TotalUsers, metrickey.TotalBrands, metrickey.PendingReviewBrands,
+		metrickey.TotalMembers, metrickey.ActiveVouchers,
+		metrickey.PointsExpiring30d, metrickey.PointsLiabilityValueVND,
+		metrickey.TotalWardrobeItems, metrickey.TotalWardrobeValueVND:
+		return metricCumulative
+	case metrickey.AIRequestsCount, metrickey.SubscriptionRevenueVND,
+		metrickey.PointsIssued, metrickey.PointsRedeemed,
+		metrickey.VouchersRedeemed, metrickey.DigitalSampleVotesCount,
+		metrickey.OpenCSTickets:
+		return metricNonCumulative
+	case metrickey.ActiveUsersDau, metrickey.NetAIMarginVND,
+		metrickey.DigitalSampleAvgRating, metrickey.CSFirstResponseAvgSeconds:
+		return metricRate
+	default:
+		return metricNonCumulative
 	}
-	if days > dashboard_app.MaxDateRangeDays {
-		return toDate.AddDate(0, 0, -dashboard_app.MaxDateRangeDays)
+}
+
+func periodKey(t time.Time, gran granularity.Granularity) string {
+	switch gran {
+	case granularity.Week:
+		y, w := t.ISOWeek()
+		return fmt.Sprintf("%d-W%02d", y, w)
+	case granularity.Month:
+		return t.Format("2006-01")
+	case granularity.Year:
+		return t.Format("2006")
+	default:
+		return t.Format("2006-01-02")
 	}
-	return fromDate
+}
+
+func periodStart(t time.Time, gran granularity.Granularity) time.Time {
+	switch gran {
+	case granularity.Week:
+		wd := t.Weekday()
+		if wd == time.Sunday {
+			wd = 7
+		}
+		return t.AddDate(0, 0, -int(wd-time.Monday)).Truncate(24 * time.Hour)
+	case granularity.Month:
+		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+	case granularity.Year:
+		return time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location())
+	default:
+		return t.Truncate(24 * time.Hour)
+	}
+}
+
+func aggregateByGranularity(series []dto.TimeSeriesPointDTO, gran granularity.Granularity, metrics []metrickey.MetricKey) []dto.TimeSeriesPointDTO {
+	if len(series) == 0 || (gran != granularity.Week && gran != granularity.Month && gran != granularity.Year) {
+		return series
+	}
+
+	type periodData struct {
+		points []dto.TimeSeriesPointDTO
+		start  time.Time
+	}
+	periods := map[string]*periodData{}
+	order := make([]string, 0)
+
+	for _, pt := range series {
+		key := periodKey(pt.Timestamp, gran)
+		if _, ok := periods[key]; !ok {
+			periods[key] = &periodData{start: periodStart(pt.Timestamp, gran)}
+			order = append(order, key)
+		}
+		periods[key].points = append(periods[key].points, pt)
+	}
+
+	result := make([]dto.TimeSeriesPointDTO, 0, len(order))
+	for _, key := range order {
+		pd := periods[key]
+		aggMetrics := map[metrickey.MetricKey]float64{}
+
+		for _, m := range metrics {
+			aggType := getMetricAggType(m)
+			switch aggType {
+			case metricCumulative:
+				lastPt := pd.points[len(pd.points)-1]
+				if v, ok := lastPt.Metrics[m]; ok {
+					aggMetrics[m] = v
+				}
+			case metricNonCumulative:
+				var sum float64
+				for _, pt := range pd.points {
+					sum += pt.Metrics[m]
+				}
+				aggMetrics[m] = sum
+			case metricRate:
+				var sum float64
+				count := 0
+				for _, pt := range pd.points {
+					if _, ok := pt.Metrics[m]; ok {
+						sum += pt.Metrics[m]
+						count++
+					}
+				}
+				if count > 0 {
+					aggMetrics[m] = sum / float64(count)
+				}
+			}
+		}
+
+		result = append(result, dto.TimeSeriesPointDTO{
+			Timestamp: pd.start,
+			Metrics:   aggMetrics,
+		})
+	}
+	return result
 }
 
 // enforceMaxGranularity auto-downgrades granularity when the date range exceeds limits.
@@ -304,11 +469,8 @@ func enforceMaxGranularity(fromDate, toDate time.Time, gran granularity.Granular
 		days = -days
 	}
 
-	if days > dashboard_app.MaxDateRangeDays && (gran == granularity.Hour || gran == granularity.Day) {
+	if days > dashboard_app.MaxDateRangeDays && gran == granularity.Day {
 		return granularity.Month
-	}
-	if days > dashboard_app.MaxDateRangeDays/2 && gran == granularity.Hour {
-		return granularity.Day
 	}
 	return gran
 }

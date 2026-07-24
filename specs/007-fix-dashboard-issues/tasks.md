@@ -19,10 +19,10 @@
 
 **⚠️ Lưu ý**: Phase này chỉ sửa DTO structs. MetricKey constants và use case sẽ được xử lý ở phase sau.
 
-- [ ] T001 [P] Xoá `Filters` và `GroupBy` khỏi `DynamicQueryReq` trong `internal/modules/dashboard/application/dto/dynamic_query_dto.go`
-- [ ] T002 [P] Xoá field `AverageItemValueVND float64` khỏi `UserWardrobeInsightsRes` trong `internal/modules/dashboard/application/dto/user_dashboard_dto.go`
-- [ ] T003 Xoá mapping `AverageItemValueVND` trong `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go` — xoá dòng `AverageItemValueVND: summary.AverageCostPerWearVND` ở cache-hit path (line 49) và cache-miss path (line 125)
-- [ ] T004 Verify: `go build ./...` pass, `go vet ./...` pass
+- [x] T001 [P] Xoá `Filters` và `GroupBy` khỏi `DynamicQueryReq` trong `internal/modules/dashboard/application/dto/dynamic_query_dto.go`
+- [x] T002 [P] Xoá field `AverageItemValueVND float64` khỏi `UserWardrobeInsightsRes` trong `internal/modules/dashboard/application/dto/user_dashboard_dto.go`
+- [x] T003 Xoá mapping `AverageItemValueVND` trong `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go` — xoá dòng `AverageItemValueVND: summary.AverageCostPerWearVND` ở cache-hit path và cache-miss path
+- [x] T004 Verify: `go build ./...` pass, `go vet ./...` pass
 
 **Checkpoint**: Build sạch, DTO không còn field chết.
 
@@ -34,8 +34,8 @@
 
 **Independent Test**: `go build ./...` pass.
 
-- [ ] T005 Xoá constant `AverageCostPerWearVND MetricKey = "average_cost_per_wear_vnd"` khỏi `internal/modules/dashboard/domain/constants/metrickey/metric_key.go`
-- [ ] T006 Thêm 7 constants mới vào `internal/modules/dashboard/domain/constants/metrickey/metric_key.go`:
+- [x] T005 Xoá constant `AverageCostPerWearVND MetricKey = "average_cost_per_wear_vnd"` khỏi `internal/modules/dashboard/domain/constants/metrickey/metric_key.go`
+- [x] T006 Thêm 7 constants mới vào `internal/modules/dashboard/domain/constants/metrickey/metric_key.go`:
   - `VouchersRedeemed MetricKey = "vouchers_redeemed"`
   - `DigitalSampleVotesCount MetricKey = "digital_sample_votes_count"`
   - `DigitalSampleAvgRating MetricKey = "digital_sample_avg_rating"`
@@ -43,7 +43,7 @@
   - `CSFirstResponseAvgSeconds MetricKey = "cs_first_response_avg_seconds"`
   - `PointsExpiring30d MetricKey = "points_expiring_30d"`
   - `PointsLiabilityValueVND MetricKey = "points_liability_value_vnd"`
-- [ ] T007 Verify: `go build ./...` pass
+- [x] T007 Verify: `go build ./...` pass
 
 **Checkpoint**: Build sạch, 7 brand MetricKeys sẵn sàng.
 
@@ -63,13 +63,17 @@
 | Non-cumulative (ai_requests_count, subscription_revenue_vnd, points_issued, points_redeemed, vouchers_redeemed, digital_sample_votes_count, open_cs_tickets) | **SUM** trong kỳ |
 | Rate (digital_sample_avg_rating, cs_first_response_avg_seconds, net_ai_margin_vnd) | **AVERAGE** (mean) của daily values |
 
-- [ ] T008 Thêm hàm `aggregateByGranularity(series []dto.TimeSeriesPointDTO, gran granularity.Granularity) []dto.TimeSeriesPointDTO` trong `internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go`:
+- [x] T008 Thêm hàm `aggregateByGranularity(series []dto.TimeSeriesPointDTO, gran granularity.Granularity) []dto.TimeSeriesPointDTO` trong `internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go`:
   - Phân loại metric keys (cumulative/non-cumulative/rate) dựa trên quy tắc trên
   - Gộp daily points vào periods (ISO week cho week, calendar month cho month)
   - Timestamp của aggregated point = ngày đầu kỳ (Monday cho week, 1st cho month)
-- [ ] T009 Trong `ExecuteDynamicQuery`, sau khi build `series` từ daily snapshots, nếu `gran != "day"` thì gọi `aggregateByGranularity(series, gran)`
-- [ ] T010 Kiểm tra auto-downgrade rules vẫn hoạt động — response `granularity` phản ánh đúng granularity thực tế
-- [ ] T011 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/...` pass
+- [x] T009 Trong `ExecuteDynamicQuery`, sau khi build `series` từ daily snapshots, nếu effective granularity là week/month thì gọi `aggregateByGranularity(series, gran)`
+- [x] T010 Kiểm tra auto-downgrade rules vẫn hoạt động — response `granularity` phản ánh đúng granularity thực tế
+- [x] T011 Thêm switch cases còn thiếu trong `ExecuteDynamicQuery` (`internal/modules/dashboard/application/usecase/dynamic_query_uc_impl.go`):
+  - **Admin target**: thêm case `metrickey.TotalBrands` → `snapshot.TotalBrands`, `metrickey.PendingReviewBrands` → `snapshot.PendingReviewBrands`
+  - **Brand target**: thêm 7 case mới: `VouchersRedeemed`, `DigitalSampleVotesCount`, `DigitalSampleAvgRating`, `OpenCSTickets`, `CSFirstResponseAvgSeconds`, `PointsExpiring30d`, `PointsLiabilityValueVND` → snapshot fields tương ứng
+  - Đồng bộ `sumPreviousPeriod` với các metric mới tương tự
+- [x] T012 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/...` pass
 
 **Checkpoint**: Gọi API `granularity: "month"` + 12 tháng → series có đúng 12 points.
 
@@ -83,15 +87,22 @@
 
 **⚠️ Cross-module**: Dashboard module nhận dependency mới từ **subscription** module.
 
-- [ ] T012 Thêm field `subscriptionReader subscriptionContract.ISubscriptionDashboardReader` vào struct `AdminDashboardUseCase` trong `internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go`
-- [ ] T013 Sửa `NewAdminDashboardUseCase` — thêm param `subscriptionReader subscriptionContract.ISubscriptionDashboardReader`
-- [ ] T014 Sửa fallback path trong `GetAdminKPICards` (khi `latest == nil`):
-  - Gọi `uc.subscriptionReader.GetAdminSubscriptionStats(ctx, now)`
-  - Nếu subscriptionStats != nil: set `SubscriptionRevenueVND` (convert decimal → float64), `PayOSSuccessCount`, `PayOSTransactionCount`
-  - Nếu subscriptionStats == nil: **không set mặc định 0** — return lỗi
-- [ ] T015 Sửa `internal/modules/dashboard/provider.go` — thêm `subscriptionContract.NewSubscriptionDashboardReader` vào ProviderSet, inject vào `NewAdminDashboardUseCase`
-- [ ] T016 Sửa `internal/modules/dashboard/application/usecase/admin_dashboard_uc_test.go` — thêm mock subscription reader, update `NewAdminDashboardUseCase` calls
-- [ ] T017 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/application/usecase/...` pass
+**Contract**: tạo `internal/modules/subscription/presentation/contract/dashboard_reader.go`:
+```go
+type ISubscriptionDashboardReader interface {
+    GetAdminSubscriptionStats(ctx context.Context, asOfDate time.Time) (*dto.SubscriptionStatsDTO, error)
+}
+```
+
+- [x] T013 DTO `AdminSubscriptionStatsDTO` đã tồn tại trong subscription module — không cần tạo
+- [x] T014 `ISubscriptionDashboardReader` + `dashboard_reader.go` đã tồn tại — không cần tạo
+- [x] T015 `SubscriptionDashboardReader` đã implement — không cần làm
+- [x] T016 Thêm field `subscriptionReader subscriptionContract.ISubscriptionDashboardReader` vào struct `AdminDashboardUseCase`
+- [x] T017 Sửa `NewAdminDashboardUseCase` — thêm param `subscriptionReader`
+- [x] T018 Sửa fallback path trong `GetAdminKPICards` — dùng subscriptionReader populate `SubscriptionRevenueVND` + `PayOSSuccessCount`
+- [x] T019 Chạy `wire` generator — tự động inject subscriptionReader vào DI
+- [x] T020 Sửa test file — thêm mock subscription reader, update `NewAdminDashboardUseCase` calls
+- [x] T021 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/application/usecase/...` pass
 
 **Checkpoint**: Fallback KPI cards trả về subscription + PayOS data từ live subscription reader.
 
@@ -109,65 +120,24 @@
 
 **Mục đích**: Brand module expose per-item feedback + outfit IDs.
 
-- [ ] T018 Thêm DTO `ItemFeedbackSummaryDTO` vào `internal/modules/brand/application/dto/dashboard_dto.go`:
-  ```go
-  type ItemFeedbackSummaryDTO struct {
-      VotesCount        int
-      AvgRating         float64
-      FeedbackSentiment string
-      OutfitIDs         []uuid.UUID // outfit_ids từ digital_sample_responses có outfit context
-  }
-  ```
-- [ ] T019 Thêm `GetItemFeedbackSummary(ctx context.Context, itemID uuid.UUID) (*dto.ItemFeedbackSummaryDTO, error)` vào `IBrandUseCase` trong `internal/modules/brand/application/interface/usecase/brand_uc.go`
-- [ ] T020 Implement `GetItemFeedbackSummary` trong brand use case impl:
-  - Query `digital_sample_responses` WHERE `brand_item_id = ?`
-  - `VotesCount = COUNT(*)`
-  - `AvgRating = AVG(rating)` (nullable → 0 nếu không có)
-  - `FeedbackSentiment`: AVG(rating) >= 4 → "positive", = 3 → "neutral", <= 2 → "negative"
-  - `OutfitIDs`: DISTINCT outfit_id WHERE outfit_id IS NOT NULL
-  - **Cấm zero value**: nếu không có response nào → return error (không trả DTO rỗng)
-- [ ] T021 Thêm `GetItemFeedbackSummary` vào `BrandDashboardReader` trong `internal/modules/brand/presentation/contract/dashboard_reader.go` — delegate tới `brandUC.GetItemFeedbackSummary`
+- [x] T022 Thêm DTO `ItemFeedbackSummaryDTO` vào `internal/modules/brand/application/dto/dashboard_dto.go`
+- [x] T023 Thêm `GetItemFeedbackSummary` vào `IBrandUseCase` interface
+- [x] T024 Implement `GetItemFeedbackSummary` trong `BrandUseCase` — thêm `feedbackRepo`, query `digital_sample_responses`, tính VotesCount/AvgRating/Sentiment/OutfitIDs
+- [x] T025 Thêm `GetItemFeedbackSummary` vào `BrandDashboardReader` — delegate tới `brandUC`
 
 ### Step B: Wardrobe module — GetOutfitItemFashionItemIDs
 
-**Mục đích**: Wardrobe module trả về fashion_item_ids từ outfit_ids.
-
-- [ ] T022 Thêm DTO `OutfitItemFashionDTO` vào `internal/modules/wardrobe/application/dto/dashboard_dto.go`:
-  ```go
-  type OutfitItemFashionDTO struct {
-      FashionItemID uuid.UUID
-  }
-  ```
-  (hoặc đơn giản: method trả về `[]uuid.UUID`)
-- [ ] T023 Thêm `GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error)` vào `IWardrobeDashboardReader` trong `internal/modules/wardrobe/presentation/contract/dashboard_reader.go`
-- [ ] T024 Implement trong wardrobe use case impl:
-  - Query `outfit_items` WHERE `outfit_id IN (?)`
-  - Return DISTINCT fashion_item_ids
-- [ ] T025 Implement `WardrobeDashboardReader` method delegate tới use case
+- [x] T026 Không cần DTO riêng — method trả về `[]uuid.UUID`
+- [x] T027 Thêm `GetOutfitItemFashionItemIDs` vào `IWardrobeDashboardReader`
+- [x] T028 Implement: thêm `GetFashionItemIDsByOutfitIDs` vào `IOutfitRepository` + outfit repo impl; thêm method vào `WardrobeItemUseCase`
+- [x] T029 Implement `WardrobeDashboardReader` method delegate tới `wardrobeUC`
 
 ### Step C: Dashboard module — Lazy load orchestration
 
-- [ ] T026 Mở rộng struct `BrandDashboardUseCase` trong `internal/modules/dashboard/application/usecase/brand_dashboard_uc_impl.go`:
-  - Thêm field `wardrobeReader wardrobeContract.IWardrobeDashboardReader`
-  - Thêm field `fashionContract fashionContract.IFashionContract`
-  - Update `NewBrandDashboardUseCase` constructor
-- [ ] T027 Sửa `GetDigitalSampleLabAnalytics` — lazy load logic:
-  - **Bỏ** gọi `GetLatestBrandItemSnapshot` — không dùng snapshot nữa
-  - Gọi `uc.brandReader.GetItemFeedbackSummary(ctx, itemID)` → lấy VotesCount, AvgRating, FeedbackSentiment, OutfitIDs
-  - Nếu có OutfitIDs > 0:
-    - Gọi `uc.wardrobeReader.GetOutfitItemFashionItemIDs(ctx, outfitIDs)` → []fashionItemIDs
-    - Nếu có fashionItemIDs > 0:
-      - Gọi `fashionContract.ListFashionItems(ctx, fashionItemIDs)` → []FashionItemRes (có CategoryID)
-      - Collect categoryIDs từ kết quả
-      - Gọi `fashionContract.ListCategories(ctx, categoryIDs)` → []CategoryRes
-      - Aggregate: count categoryName → sort DESC → top 5 → `[]PairedCategoryStat`
-    - Nếu không có fashionItemIDs: `topPairedCategories = []`
-  - Nếu không có OutfitIDs: `topPairedCategories = []`
-  - Return `DigitalSampleLabAnalyticsRes` với đầy đủ data
-  - **Cấm zero value**: nếu `GetItemFeedbackSummary` trả error → return error
-- [ ] T028 Sửa `internal/modules/dashboard/provider.go`:
-  - Inject `wardrobeReader` và `fashionContract` vào `NewBrandDashboardUseCase`
-- [ ] T029 Verify: `go build ./...` pass, `go test ./internal/...` pass
+- [x] T030 Mở rộng `BrandDashboardUseCase` — thêm `wardrobeReader` + `fashionContract` + update constructor
+- [x] T031 `GetDigitalSampleLabAnalytics` rewritten: lazy load feedback từ brand → pairedCategories từ wardrobe + fashion chain; giữ nguyên 2 field còn lại
+- [x] T032 Wire tự động inject `wardrobeReader` và `fashionContract` — chỉ cần chạy `wire` generator
+- [x] T033 Verify: `go build ./...` pass, `go test ./internal/...` pass (zero regression)
 
 **Checkpoint**: Digital sample lab API trả về feedbackSentiment + topPairedCategories đầy đủ từ live data.
 
@@ -181,28 +151,20 @@
 
 ### Part A: Xoá aiQuotaRemaining
 
-- [ ] T030 Xoá field `AIQuotaRemaining int` khỏi `UserWardrobeInsightsRes` trong `internal/modules/dashboard/application/dto/user_dashboard_dto.go`
-- [ ] T031 Xoá tất cả logic liên quan `AIQuotaRemaining` trong `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go`:
-  - Cache-hit path: xoá dòng `AIQuotaRemaining: summary.AIQuotaRemaining`
-  - Cache-miss path: xoá block đọc stale `summary.AIQuotaRemaining` (line 101-107)
-  - Xoá `aiQuota` variable và logic gán
-- [ ] T032 Verify: `go build ./...` pass
+- [x] T034 Xoá field `AIQuotaRemaining int` khỏi `UserWardrobeInsightsRes`
+- [x] T035 Xoá tất cả logic liên quan `AIQuotaRemaining` trong user_dashboard_uc_impl.go (cache-hit, cache-miss, write-back)
+- [x] T036 Verify: `go build ./...` pass
 
 ### Part B: Fix expiringVouchersCount từ brand reader
 
-- [ ] T033 Thêm `GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error)` vào `IBrandUseCase` trong `internal/modules/brand/application/interface/usecase/brand_uc.go`
-- [ ] T034 Implement `GetUserExpiringBenefitsCount` trong brand use case impl:
-  - Query: `SELECT COUNT(*) FROM benefit_redemptions WHERE user_id = ? AND status = 'REDEEMED' AND expires_at BETWEEN now() AND now() + interval '30 days'`
-- [ ] T035 Thêm `GetUserExpiringBenefitsCount` vào `IBrandDashboardReader` trong `internal/modules/brand/presentation/contract/dashboard_reader.go` — delegate tới `brandUC.GetUserExpiringBenefitsCount`
-- [ ] T036 Mở rộng struct `UserDashboardUseCase` trong `internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go`:
-  - Thêm field `brandReader brandContract.IBrandDashboardReader`
-  - Update `NewUserDashboardUseCase` constructor
-- [ ] T037 Sửa cache-miss path trong `GetWardrobeInsights`:
-  - Gọi `uc.brandReader.GetUserExpiringBenefitsCount(ctx, userID)` → populate `ExpiringVouchersCount`
-  - Nếu reader trả error → **không silent zero** → return error
-- [ ] T038 Sửa `internal/modules/dashboard/provider.go` — inject `brandReader` vào `NewUserDashboardUseCase`
-- [ ] T039 Sửa test file `internal/modules/dashboard/application/usecase/user_dashboard_uc_test.go` — thêm mock brand reader
-- [ ] T040 Verify: `go build ./...` pass, `go test ./internal/...` pass
+- [x] T037 Thêm `GetUserExpiringBenefitsCount` vào `IBrandUseCase`
+- [x] T038 Implement: thêm `GetUserExpiringBenefitsCount` vào `IBenefitRedemptionRepository` + `BenefitRedemptionRepository` + `BrandUseCase`
+- [x] T039 Thêm `GetUserExpiringBenefitsCount` vào `IBrandDashboardReader`
+- [x] T040 Mở rộng `UserDashboardUseCase` — thêm `brandReader` + update constructor
+- [x] T041 Cache-miss path: gọi `brandReader.GetUserExpiringBenefitsCount` để populate `ExpiringVouchersCount`
+- [x] T042 Wire tự động inject `brandReader` — không cần sửa provider.go
+- [x] T043 Sửa test file — thêm mock brand reader + update calls + remove AIQuotaRemaining assertions
+- [x] T044 Verify: `go build ./...` pass, `go test ./internal/...` pass
 
 **Checkpoint**: Response không còn aiQuotaRemaining. ExpiringVouchersCount luôn fresh sau mỗi cache miss.
 
@@ -214,11 +176,9 @@
 
 **Independent Test**: Mock PayOS service unavailable → HTTP 500, không phải 200 với `payosReconcile=null`.
 
-- [ ] T041 Sửa `GetSystemOverview` trong `internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go`:
-  - Dòng 199-201: thay `aiMargin = nil` bằng `return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu biên lợi nhuận AI. Vui lòng thử lại sau.")`
-  - Dòng 203-206: thay `payos = nil` bằng `return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu đối soát PayOS. Vui lòng thử lại sau.")`
-- [ ] T042 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/...` pass
-- [ ] T043 Run `go test ./internal/...` — zero regression
+- [x] T045 Sửa `GetSystemOverview` — thay `aiMargin = nil` và `payos = nil` bằng `return nil, apperror.NewInternalError(...)`
+- [x] T046 Verify: `go build ./...` pass, `go test ./internal/modules/dashboard/...` pass
+- [x] T047 Run `go test ./internal/...` — zero regression
 
 **Checkpoint**: Overview API trả 500 đúng lúc.
 
@@ -228,20 +188,15 @@
 
 **Mục tiêu**: Đồng bộ `docs/api/dashboard-api.md` và `docs/api/constants/dashboard.md`.
 
-- [ ] T044 Đồng bộ `docs/api/dashboard-api.md`:
-  - Xoá Filters/GroupBy khỏi DynamicQueryReq table
-  - Xoá averageItemValueVnd khỏi UserWardrobeInsightsRes
-  - Xoá aiQuotaRemaining khỏi UserWardrobeInsightsRes
-  - Thêm total_brands, pending_review_brands vào Admin metric table
-  - Thêm 7 brand MetricKeys vào Brand metric table
-  - Update Overview section: không còn null — trả 500 nếu lỗi
-  - Update Dynamic Query trace table trong Phụ lục: thêm 9 metric keys, xoá average_cost_per_wear_vnd
-  - Update Granularity description: backend thực sự aggregate
-  - Update User Wardrobe Insights trace: xoá averageItemValueVnd dòng
-- [ ] T045 Đồng bộ `docs/api/constants/dashboard.md`:
-  - Xoá `AverageCostPerWearVND` khỏi MetricKey table
-  - Thêm 7 brand MetricKeys mới
-  - Update Granularity notes: week/month được aggregate
+- [x] T048 Đồng bộ `docs/api/dashboard-api.md`:
+  - DynamicQueryReq: xoá Filters/GroupBy, xoá `"hour"` khỏi Granularity
+  - UserWardrobeInsightsRes: xoá `AIQuotaRemaining`
+  - Granularity description: cập nhật auto-downgrade rules
+  - User Wardrobe Insights trace: xoá aiQuotaRemaining, update expiringVouchersCount
+  - Các phần còn lại (metric tables, overview) đã đúng
+- [x] T049 Đồng bộ `docs/api/constants/dashboard.md`:
+  - Xoá `Hour` khỏi Granularity table + cập nhật auto-downgrade
+  - MetricKey table đã có đủ 7 brand keys + không có AverageCostPerWearVND
 
 **Checkpoint**: Docs phản ánh chính xác code hiện tại.
 

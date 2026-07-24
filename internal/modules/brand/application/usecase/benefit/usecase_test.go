@@ -245,6 +245,9 @@ func (m *mockRedemptionRepo) GetActiveRedemptionByFeature(ctx context.Context, b
 	}
 	return nil, nil
 }
+func (m *mockRedemptionRepo) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return 0, nil
+}
 
 type mockTierRepo struct {
 	tiers map[uuid.UUID]*entities.LoyaltyTier

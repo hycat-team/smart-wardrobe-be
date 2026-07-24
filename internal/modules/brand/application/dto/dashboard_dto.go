@@ -36,3 +36,10 @@ type SampleFeedbackDrillDownDTO struct {
 	Comment    string    `json:"comment"`
 	CreatedAt  time.Time `json:"createdAt"`
 }
+
+type ItemFeedbackSummaryDTO struct {
+	VotesCount        int
+	AvgRating         float64
+	FeedbackSentiment string
+	OutfitIDs         []uuid.UUID
+}

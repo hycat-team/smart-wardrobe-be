@@ -38,14 +38,12 @@ Giá trị của field `granularity` trong `DynamicQueryReq`.
 
 | Tên hằng | Giá trị (string) | JSON | Ý nghĩa |
 |----------|-----------------|------|---------|
-| `Hour` | `"hour"` | `"hour"` | Theo giờ (trả raw daily nếu không có hourly snapshot) |
 | `Day` | `"day"` | `"day"` | Theo ngày (mặc định nếu không gửi) |
 | `Week` | `"week"` | `"week"` | Theo tuần — backend aggregate daily → weekly |
 | `Month` | `"month"` | `"month"` | Theo tháng — backend aggregate daily → monthly |
+| `Year` | `"year"` | `"year"` | Theo năm — backend aggregate daily → yearly |
 
-**Tự động điều chỉnh (auto-downgrade) khi date range quá lớn:**
-- `"hour"` + >365 ngày → tự động set thành `"day"`
-- (`"hour"` hoặc `"day"`) + >730 ngày → tự động set thành `"month"`
+**Validation:** Granularity không hợp lệ hoặc date range > 730 ngày → 400 BadRequest.
 
 ---
 

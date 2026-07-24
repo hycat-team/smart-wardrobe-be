@@ -85,7 +85,7 @@ Dynamic Query Engine phải aggregate dữ liệu snapshot daily thành granular
 
 | Granularity | Phương pháp Aggregation | Ví dụ (query 12 tháng) |
 |-------------|------------------------|------------------------|
-| `hour` | Trả raw hourly data (khi có hourly snapshots trong tương lai) | N/A |
+| `hour` | 🗑️ Đã xoá — backend không support hourly | N/A |
 | `day` | Trả raw daily data (hành vi hiện tại, giữ nguyên) | 365 points |
 | `week` | Gộp daily → weekly (SUM cho metric tích luỹ, AVG cho metric tỷ lệ, ISO week) | ~52 points |
 | `month` | Gộp daily → monthly (SUM cho metric tích luỹ, AVG cho metric tỷ lệ, calendar month) | 12 points |
@@ -102,20 +102,22 @@ Xoá hoàn toàn 2 field `Filters` (`map[string]string`) và `GroupBy` (`[]strin
 ### FR-003: Populate Fallback Đầy Đủ Cho Admin KPIs (P1)
 
 Khi không có admin daily snapshot (`GetLatestAdminSnapshot` trả về nil), fallback path phải:
-- Đọc subscription revenue từ subscription reader (interface mới hoặc reader có sẵn) → populate `subscriptionRevenueVnd`.
-- Đọc PayOS transaction count/success từ subscription reader → populate `payOSSuccessCount`.
+- Đọc subscription revenue từ `subscriptionContract.ISubscriptionDashboardReader` (mở rộng contract của subscription module) → populate `subscriptionRevenueVnd`.
+- Đọc PayOS transaction count/success từ reader tương tự → populate `payOSSuccessCount`.
 
-### FR-004: Populate Fallback Đầy Đủ Cho Digital Sample Lab Analytics (P1)
+### FR-004: Lazy Load Digital Sample Lab Analytics Từ Live Data (P1)
 
-Khi không có brand item daily snapshot cho item cụ thể, fallback path phải:
-- Đọc `feedbackSentiment` từ brand reader (dữ liệu feedback của item).
-- Đọc `topPairedCategories` từ brand reader (dữ liệu pairing của item).
+Chuyển `GetDigitalSampleLabAnalytics` từ worker-based snapshot → lazy load on-demand:
+- Bỏ hoàn toàn đọc `DashboardBrandItemDailySnapshot`.
+- Đọc `feedbackSentiment` từ brand reader — query `digital_sample_responses` per-item, tính `AVG(rating)` → sentiment classification (≥4 "positive", =3 "neutral", ≤2 "negative").
+- Đọc `topPairedCategories` từ outfit pairing data qua wardrobe + fashion contracts: lấy `outfit_ids` từ brand reader → `fashion_item_ids` từ wardrobe reader → `category_ids` từ fashion contract → aggregate top 5 paired categories.
+- **Cấm zero value**: nếu item không có response nào → return error, không trả DTO rỗng.
 
 ### FR-005: Thêm MetricKey Còn Thiếu Vào Dynamic Query Engine (P2)
 
 Thêm các case metric sau vào switch-case của Dynamic Query Engine:
 
-**Admin target** (đang thiếu):
+**Admin target** (constant đã tồn tại nhưng chưa có case trong switch):
 - `total_brands` → `snapshot.TotalBrands`
 - `pending_review_brands` → `snapshot.PendingReviewBrands`
 

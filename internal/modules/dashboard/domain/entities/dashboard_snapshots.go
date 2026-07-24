@@ -3,7 +3,6 @@ package entities
 import (
 	"time"
 
-	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
 	sharedEntities "smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -50,21 +49,6 @@ type DashboardBrandDailySnapshot struct {
 
 func (DashboardBrandDailySnapshot) TableName() string {
 	return "dashboard_brand_daily_snapshots"
-}
-
-type DashboardBrandItemDailySnapshot struct {
-	sharedEntities.AuditableEntity
-	BrandID             uuid.UUID                           `gorm:"column:brand_id;type:uuid;not null;index"`
-	ItemID              uuid.UUID                           `gorm:"column:item_id;type:uuid;not null;index"`
-	SnapshotDate        time.Time                           `gorm:"column:snapshot_date;type:date;not null"`
-	VotesCount          int                                 `gorm:"column:votes_count;not null;default:0"`
-	AvgRating           float64                             `gorm:"column:avg_rating;type:numeric(3,2);not null;default:0"`
-	FeedbackSentiment   feedbacksentiment.FeedbackSentiment `gorm:"column:feedback_sentiment;type:varchar(20);not null;default:'positive'"`
-	TopPairedCategories sharedEntities.JSONDocument         `gorm:"column:top_paired_categories;type:jsonb;not null;default:'[]'"`
-}
-
-func (DashboardBrandItemDailySnapshot) TableName() string {
-	return "dashboard_brand_item_daily_snapshots"
 }
 
 type DashboardUserWardrobeSummary struct {

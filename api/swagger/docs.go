@@ -7630,25 +7630,13 @@ const docTemplate = `{
                 "compareWithPrevious": {
                     "type": "boolean"
                 },
-                "filters": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
                 "granularity": {
-                    "description": "\"hour\" | \"day\" | \"week\" | \"month\"",
+                    "description": "\"day\" | \"week\" | \"month\"",
                     "allOf": [
                         {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity"
                         }
                     ]
-                },
-                "groupBy": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "metrics": {
                     "type": "array",
@@ -7769,12 +7757,6 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes": {
             "type": "object",
             "properties": {
-                "aiQuotaRemaining": {
-                    "type": "integer"
-                },
-                "averageItemValueVnd": {
-                    "type": "number"
-                },
                 "expiringVouchersCount": {
                     "type": "integer"
                 },
@@ -7811,13 +7793,11 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity": {
             "type": "string",
             "enum": [
-                "hour",
                 "day",
                 "week",
                 "month"
             ],
             "x-enum-varnames": [
-                "Hour",
                 "Day",
                 "Week",
                 "Month"
@@ -7839,7 +7819,13 @@ const docTemplate = `{
                 "active_vouchers",
                 "total_wardrobe_items",
                 "total_wardrobe_value_vnd",
-                "average_cost_per_wear_vnd"
+                "vouchers_redeemed",
+                "digital_sample_votes_count",
+                "digital_sample_avg_rating",
+                "open_cs_tickets",
+                "cs_first_response_avg_seconds",
+                "points_expiring_30d",
+                "points_liability_value_vnd"
             ],
             "x-enum-varnames": [
                 "TotalUsers",
@@ -7855,7 +7841,13 @@ const docTemplate = `{
                 "ActiveVouchers",
                 "TotalWardrobeItems",
                 "TotalWardrobeValueVND",
-                "AverageCostPerWearVND"
+                "VouchersRedeemed",
+                "DigitalSampleVotesCount",
+                "DigitalSampleAvgRating",
+                "OpenCSTickets",
+                "CSFirstResponseAvgSeconds",
+                "PointsExpiring30d",
+                "PointsLiabilityValueVND"
             ]
         },
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard": {

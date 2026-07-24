@@ -49,4 +49,5 @@ type IOutfitRepository interface {
 	CreateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	UpdateWithItems(ctx context.Context, outfit *entities.Outfit, items []*entities.OutfitItem) error
 	DeleteOutfit(ctx context.Context, id uuid.UUID) error
+	GetFashionItemIDsByOutfitIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error)
 }

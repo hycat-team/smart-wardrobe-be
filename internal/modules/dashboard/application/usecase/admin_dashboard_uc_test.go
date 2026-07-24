@@ -17,7 +17,11 @@ import (
 	identityDTO "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 
+	subscriptionDTO "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptionContract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
+
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type mockAdminDashboardRepo struct {
@@ -56,14 +60,6 @@ func (m *mockAdminDashboardRepo) GetBrandSnapshots(ctx context.Context, brandID 
 }
 
 func (m *mockAdminDashboardRepo) GetLatestBrandSnapshot(ctx context.Context, brandID uuid.UUID) (*entities.DashboardBrandDailySnapshot, error) {
-	return nil, nil
-}
-
-func (m *mockAdminDashboardRepo) UpsertBrandItemSnapshot(ctx context.Context, snapshot *entities.DashboardBrandItemDailySnapshot) error {
-	return nil
-}
-
-func (m *mockAdminDashboardRepo) GetLatestBrandItemSnapshot(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*entities.DashboardBrandItemDailySnapshot, error) {
 	return nil, nil
 }
 
@@ -109,6 +105,16 @@ func (m *mockAICostReader) GetAIEventsDrillDown(ctx context.Context, status stri
 	return nil, 0, nil
 }
 
+type mockSubscriptionReader struct {
+	subscriptionContract.ISubscriptionDashboardReader
+	stats *subscriptionDTO.AdminSubscriptionStatsDTO
+	err   error
+}
+
+func (m *mockSubscriptionReader) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*subscriptionDTO.AdminSubscriptionStatsDTO, error) {
+	return m.stats, m.err
+}
+
 func TestAdminGetKPICards_FromSnapshot(t *testing.T) {
 	repo := &mockAdminDashboardRepo{
 		latestSnapshot: &entities.DashboardAdminDailySnapshot{
@@ -123,7 +129,7 @@ func TestAdminGetKPICards_FromSnapshot(t *testing.T) {
 		},
 	}
 
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{})
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
 	res, err := uc.GetAdminKPICards(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -163,8 +169,15 @@ func TestAdminGetKPICards_FallbackToLiveReader(t *testing.T) {
 			AIErrorCount:         5,
 		},
 	}
+	subscriptionReader := &mockSubscriptionReader{
+		stats: &subscriptionDTO.AdminSubscriptionStatsDTO{
+			TotalSubscriptionRevenue: decimal.NewFromFloat(20000000),
+			PayOSTransactionCount:    120,
+			PayOSSuccessCount:        115,
+		},
+	}
 
-	uc := NewAdminDashboardUseCase(repo, userReader, brandReader, aiReader)
+	uc := NewAdminDashboardUseCase(repo, userReader, brandReader, aiReader, subscriptionReader)
 	res, err := uc.GetAdminKPICards(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -185,7 +198,7 @@ func TestAdminGetKPICards_NoData(t *testing.T) {
 	repo := &mockAdminDashboardRepo{
 		latestSnapshot: nil,
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{})
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
 	_, err := uc.GetAdminKPICards(context.Background())
 	if err == nil {
 		t.Fatal("expected error but got nil")
@@ -219,7 +232,7 @@ func TestAdminGetAIMarginAnalytics_FromSnapshots(t *testing.T) {
 	repo := &mockAdminDashboardRepo{
 		snapshots: snapshots,
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{})
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
 	res, err := uc.GetAIMarginAnalytics(context.Background(), now.AddDate(0, 0, -3), now)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -243,7 +256,7 @@ func TestAdminGetPayOSReconciliation(t *testing.T) {
 			SubscriptionRevenueVND: 5000000,
 		},
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{})
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
 	res, err := uc.GetPayOSReconciliation(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -260,13 +273,29 @@ func TestAdminGetPayOSReconciliation(t *testing.T) {
 }
 
 func TestAdminGetSystemOverview(t *testing.T) {
+	now := time.Now()
 	repo := &mockAdminDashboardRepo{
 		latestSnapshot: &entities.DashboardAdminDailySnapshot{
-			TotalUsers:     1000,
-			ActiveUsersDau: 500,
+			SnapshotDate:           now.Truncate(24 * time.Hour),
+			TotalUsers:             1000,
+			ActiveUsersDau:         500,
+			SubscriptionRevenueVND: 2000000,
+			NetAIMarginVND:         1000000,
+			PayOSTransactionCount:  100,
+			PayOSSuccessCount:      95,
+		},
+		snapshots: []*entities.DashboardAdminDailySnapshot{
+			{
+				SnapshotDate:           now.AddDate(0, 0, -1),
+				SubscriptionRevenueVND: 2000000,
+				NetAIMarginVND:         1000000,
+				AIPaidTokens:           5000,
+				AIRequestsCount:        100,
+				AIErrorCount:           2,
+			},
 		},
 	}
-	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{})
+	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
 	res, err := uc.GetSystemOverview(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -276,5 +305,11 @@ func TestAdminGetSystemOverview(t *testing.T) {
 	}
 	if res.KPICards.TotalUsers != 1000 {
 		t.Errorf("expected TotalUsers=1000, got %d", res.KPICards.TotalUsers)
+	}
+	if res.PayOSReconcile == nil {
+		t.Fatal("expected PayOSReconcile to be non-nil")
+	}
+	if res.PayOSReconcile.TotalTransactions != 100 {
+		t.Errorf("expected TotalTransactions=100, got %d", res.PayOSReconcile.TotalTransactions)
 	}
 }

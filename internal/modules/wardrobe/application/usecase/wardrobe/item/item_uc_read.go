@@ -391,3 +391,10 @@ func (uc *WardrobeItemUseCase) GetUnderutilizedItems(ctx context.Context, userID
 	}
 	return res, nil
 }
+
+func (uc *WardrobeItemUseCase) GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(outfitIDs) == 0 {
+		return nil, nil
+	}
+	return uc.outfitRepo.GetFashionItemIDsByOutfitIDs(ctx, outfitIDs)
+}

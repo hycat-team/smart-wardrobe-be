@@ -11,20 +11,21 @@
 
 ## Subscription Reader for Fallback (FR-003)
 
-| Decision | Inject reader interface qua Wire, không phải contract từ module mới |
-|----------|---------------------------------------------------------------------|
+| Decision | Mở rộng contract của subscription module: tạo `ISubscriptionDashboardReader` |
+|----------|-----------------------------------------------------------------------------|
 | **Context** | Fallback path của `GetAdminKPICards` cần subscription revenue + PayOS stats từ live data |
-| **Alternatives** | (1) Mở rộng `IUserDashboardReader` — userReader không có subscription data; (2) Tạo contract mới trong deposit module — pattern clean nhưng thêm module phụ thuộc; (3) **Inline data từ aggregator** — không khả thi vì aggregator đọc từ snapshot worker |
-| **Why** | Chọn đọc từ contract đã có sẵn (deposit module hoặc subscription module) vì đúng clean architecture pattern |
-| **Current state** | Check các module: `internal/modules/deposit/` — kiểm tra xem có presentation/contract/ không. Nếu chưa có, tạo interface `IDepositDashboardReader` |
+| **Alternatives** | (1) Mở rộng `IUserDashboardReader` — userReader không có subscription data; (2) Tạo module `deposit` mới — overkill; (3) **Mở rộng subscription module contract** — đúng clean architecture, subscription module đã tồn tại |
+| **Why** | `deposit` module không tồn tại trong dự án. Subscription module (`internal/modules/subscription/`) có sẵn, mở rộng contract là tự nhiên nhất |
+| **Current state** | Tạo `internal/modules/subscription/presentation/contract/dashboard_reader.go` với interface `ISubscriptionDashboardReader` |
 
-## Brand Item Feedback Fallback (FR-004)
+## Brand Item Lazy Load (FR-004)
 
-| Decision | Thêm method `GetItemFeedbackSummary` vào `IBrandDashboardReader` |
-|----------|-----------------------------------------------------------------|
-| **Context** | Fallback của `GetDigitalSampleLabAnalytics` cần feedback sentiment + paired categories cho từng item |
-| **Alternatives** | (1) Đọc từ DB trực tiếp — vi phạm module boundary; (2) Query từ item snapshot repository — không có item-level fallback |
-| **Why** | BrandReader đã có pattern cho brand-level stats; thêm per-item method là extension tự nhiên |
+| Decision | Lazy load on-demand — bỏ snapshot, query live data qua 3 modules (brand + wardrobe + fashion) |
+|----------|----------------------------------------------------------------------------------------------|
+| **Context** | `GetDigitalSampleLabAnalytics` hiện tại dùng worker-based snapshot `DashboardBrandItemDailySnapshot`. Không đáng tin cậy và stale |
+| **Alternatives** | (1) Fallback khi snapshot miss — spec cũ; (2) **Lazy load hoàn toàn** — tasks.md, đúng hướng hơn |
+| **Why** | Snapshot worker có thể không kịp chạy. Lazy load đảm bảo data luôn fresh. Pattern phù hợp với tính chất real-time của digital sample lab |
+| **Implementation** | BrandReader.GetItemFeedbackSummary → WardrobeReader.GetOutfitItemFashionItemIDs → FashionContract.ListFashionItems → aggregate top 5 paired categories |
 
 ## MetricKey Constants (FR-005 / FR-007)
 

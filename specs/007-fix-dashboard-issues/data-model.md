@@ -97,6 +97,15 @@ Các DTO sau giữ nguyên 100%:
 
 Không thay đổi data model. Logic aggregation thêm trong `dynamic_query_uc_impl.go`:
 
+## 5. Lazy Load Thay Thế Snapshot (FR-004)
+
+`DashboardBrandItemDailySnapshot` entity **không còn được dùng** trong `GetDigitalSampleLabAnalytics`. Dữ liệu được tính on-demand qua 3 module:
+- Brand: `digital_sample_responses` → feedback summary + outfit IDs
+- Wardrobe: `outfit_items` → fashion item IDs từ outfit IDs
+- Fashion: `fashion_items` + `categories` → category names cho paired stats
+
+Entity `DashboardBrandItemDailySnapshot` giữ nguyên trong DB (worker vẫn populate), nhưng dashboard use case không đọc từ nó nữa.
+
 ```text
 Input: []DailySnapshot (from DB)
 Params: granularity (week|month), metric type (cumulative|non-cumulative|rate)

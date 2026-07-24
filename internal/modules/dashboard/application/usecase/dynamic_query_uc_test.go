@@ -58,14 +58,6 @@ func (m *mockDynamicQueryRepo) GetLatestBrandSnapshot(ctx context.Context, brand
 	return nil, nil
 }
 
-func (m *mockDynamicQueryRepo) UpsertBrandItemSnapshot(ctx context.Context, snapshot *entities.DashboardBrandItemDailySnapshot) error {
-	return nil
-}
-
-func (m *mockDynamicQueryRepo) GetLatestBrandItemSnapshot(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*entities.DashboardBrandItemDailySnapshot, error) {
-	return nil, nil
-}
-
 func (m *mockDynamicQueryRepo) UpsertUserWardrobeSummary(ctx context.Context, summary *entities.DashboardUserWardrobeSummary) error {
 	return nil
 }
@@ -161,9 +153,6 @@ func TestDynamicQuery_LargeDateRange_AutoDowngrade(t *testing.T) {
 		inputGran granularity.Granularity
 		wantGran  granularity.Granularity
 	}{
-		{"hourly >365d → day", 400, granularity.Hour, granularity.Day},
-		{"hourly 30d → keep hour", 30, granularity.Hour, granularity.Hour},
-		{"hourly >730d → month", 800, granularity.Hour, granularity.Month},
 		{"daily >730d → month", 800, granularity.Day, granularity.Month},
 		{"daily 100d → keep day", 100, granularity.Day, granularity.Day},
 	}

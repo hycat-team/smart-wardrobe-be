@@ -17,6 +17,8 @@ type IBrandDashboardReader interface {
 	GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error)
 	GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error)
 	GetActiveBrandIDs(ctx context.Context) ([]uuid.UUID, error)
+	GetItemFeedbackSummary(ctx context.Context, itemID uuid.UUID) (*dto.ItemFeedbackSummaryDTO, error)
+	GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 type BrandDashboardReader struct {
@@ -53,4 +55,12 @@ func (r *BrandDashboardReader) GetActiveBrandIDs(ctx context.Context) ([]uuid.UU
 		ids = append(ids, b.ID)
 	}
 	return ids, nil
+}
+
+func (r *BrandDashboardReader) GetItemFeedbackSummary(ctx context.Context, itemID uuid.UUID) (*dto.ItemFeedbackSummaryDTO, error) {
+	return r.brandUC.GetItemFeedbackSummary(ctx, itemID)
+}
+
+func (r *BrandDashboardReader) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return r.brandUC.GetUserExpiringBenefitsCount(ctx, userID)
 }

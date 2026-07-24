@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
+	"sort"
 	"time"
 
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
@@ -12,22 +12,30 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
+	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	"github.com/google/uuid"
 )
 
 type BrandDashboardUseCase struct {
-	dashboardRepo dashboardRepos.IDashboardRepository
-	brandReader   brandContract.IBrandDashboardReader
+	dashboardRepo   dashboardRepos.IDashboardRepository
+	brandReader     brandContract.IBrandDashboardReader
+	wardrobeReader  wardrobeContract.IWardrobeDashboardReader
+	fashionContract fashionContract.IFashionContract
 }
 
 func NewBrandDashboardUseCase(
 	dashboardRepo dashboardRepos.IDashboardRepository,
 	brandReader brandContract.IBrandDashboardReader,
+	wardrobeReader wardrobeContract.IWardrobeDashboardReader,
+	fashionContract fashionContract.IFashionContract,
 ) uc_interfaces.IBrandDashboardUseCase {
 	return &BrandDashboardUseCase{
-		dashboardRepo: dashboardRepo,
-		brandReader:   brandReader,
+		dashboardRepo:   dashboardRepo,
+		brandReader:     brandReader,
+		wardrobeReader:  wardrobeReader,
+		fashionContract: fashionContract,
 	}
 }
 
@@ -114,40 +122,50 @@ func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID 
 }
 
 func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*dto.DigitalSampleLabAnalyticsRes, error) {
-	itemSnapshot, err := uc.dashboardRepo.GetLatestBrandItemSnapshot(ctx, brandID, itemID)
+	// Lazy load: đọc feedback summary từ brand reader
+	feedback, err := uc.brandReader.GetItemFeedbackSummary(ctx, itemID)
 	if err != nil {
 		return nil, err
 	}
 
-	if itemSnapshot != nil {
-		votes := itemSnapshot.VotesCount
-		rating := itemSnapshot.AvgRating
-		sentiment := feedbacksentiment.FeedbackSentiment(itemSnapshot.FeedbackSentiment)
-		pairedCategories := make([]dto.PairedCategoryStat, 0)
-		if len(itemSnapshot.TopPairedCategories) > 0 {
-			_ = json.Unmarshal([]byte(itemSnapshot.TopPairedCategories), &pairedCategories)
+	// Lazy load: paired categories từ outfit → fashion item → category chain
+	pairedCategories := make([]dto.PairedCategoryStat, 0)
+	if len(feedback.OutfitIDs) > 0 {
+		fashionItemIDs, err := uc.wardrobeReader.GetOutfitItemFashionItemIDs(ctx, feedback.OutfitIDs)
+		if err != nil {
+			return nil, err
 		}
-		return &dto.DigitalSampleLabAnalyticsRes{
-			ItemID:              itemID,
-			VotesCount:          votes,
-			AvgRating:           rating,
-			FeedbackSentiment:   sentiment,
-			TopPairedCategories: pairedCategories,
-		}, nil
-	}
-
-	// Fallback to brand reader stats if available
-	stats, err := uc.brandReader.GetBrandAnalyticsStats(ctx, brandID, time.Now())
-	if err != nil {
-		return nil, err
-	}
-	if stats == nil {
-		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		if len(fashionItemIDs) > 0 {
+			fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionItemIDs)
+			if err != nil {
+				return nil, err
+			}
+			categoryCounts := map[string]int{}
+			for _, fi := range fashionItems {
+				if fi.Category != nil {
+					categoryCounts[fi.Category.Name]++
+				}
+			}
+			for name, count := range categoryCounts {
+				pairedCategories = append(pairedCategories, dto.PairedCategoryStat{
+					CategoryName: name,
+					PairCount:    count,
+				})
+			}
+			sort.Slice(pairedCategories, func(i, j int) bool {
+				return pairedCategories[i].PairCount > pairedCategories[j].PairCount
+			})
+			if len(pairedCategories) > 5 {
+				pairedCategories = pairedCategories[:5]
+			}
+		}
 	}
 
 	return &dto.DigitalSampleLabAnalyticsRes{
-		ItemID:     itemID,
-		VotesCount: stats.DigitalSampleVotesCount,
-		AvgRating:  stats.DigitalSampleAvgRating,
+		ItemID:              itemID,
+		VotesCount:          feedback.VotesCount,
+		AvgRating:           feedback.AvgRating,
+		FeedbackSentiment:   feedbacksentiment.FeedbackSentiment(feedback.FeedbackSentiment),
+		TopPairedCategories: pairedCategories,
 	}, nil
 }

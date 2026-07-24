@@ -21,9 +21,7 @@ type DynamicQueryReq struct {
 	BrandID             *uuid.UUID                      `json:"brandId,omitempty"`
 	Metrics             []metrickey.MetricKey           `json:"metrics"`
 	Timeframe           DynamicQueryTimeframeDTO        `json:"timeframe"`
-	Granularity         granularity.Granularity         `json:"granularity"` // "hour" | "day" | "week" | "month"
-	Filters             map[string]string               `json:"filters,omitempty"`
-	GroupBy             []string                        `json:"groupBy,omitempty"`
+	Granularity         granularity.Granularity         `json:"granularity"` // "day" | "week" | "month" | "year"
 	CompareWithPrevious bool                            `json:"compareWithPrevious"`
 }
 

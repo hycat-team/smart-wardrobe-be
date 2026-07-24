@@ -88,7 +88,12 @@ WHERE slug = 'premium-monthly'
 ON CONFLICT (user_id) DO UPDATE SET
     subscription_plan_id = EXCLUDED.subscription_plan_id,
     expires_at = EXCLUDED.expires_at,
-    is_auto_renew_enabled = EXCLUDED.is_auto_renew_enabled;
+    is_auto_renew_enabled = EXCLUDED.is_auto_renew_enabled,
+    current_plan_code = EXCLUDED.current_plan_code,
+    current_tier_rank = EXCLUDED.current_tier_rank,
+    current_plan_kind = EXCLUDED.current_plan_kind,
+    current_benefit_snapshot = EXCLUDED.current_benefit_snapshot,
+    started_at = EXCLUDED.started_at;
 
 -- User Daily Quota
 INSERT INTO user_daily_quotas (user_id, outfit_recommend_count, ai_usage_count, last_reset_date, created_at, updated_at)
@@ -302,7 +307,8 @@ SELECT
     (random() * 10000000000 + 500000000)::bigint, (random() * 1000000000 + 100000000)::bigint,
     NOW(), NOW()
 FROM generate_series(0, 4) AS n
-JOIN LATERAL (SELECT id FROM ai_policy_grants WHERE user_id = 'ad11ad11-ad11-ad11-ad11-ad11ad11ad12' ORDER BY created_at LIMIT 1 OFFSET n) g ON true;
+JOIN LATERAL (SELECT id FROM ai_policy_grants WHERE user_id = 'ad11ad11-ad11-ad11-ad11-ad11ad11ad12' ORDER BY created_at LIMIT 1 OFFSET n) g ON true
+ON CONFLICT (grant_id, period_index) DO NOTHING;
 
 -- AI Usage Events (50 events: 45 confirmed + 5 released)
 DO $$
@@ -375,18 +381,6 @@ SELECT
     500 + n * 3, 14000 + n * 150, 4000 + n * 50,
     5500 + n * 20, 5500000.00 + n * 20000, 18 - (n % 2), 6 + n,
     220 + n * 2, 4.2 + (n % 3) * 0.1, 10 + (n % 3), 140 + n * 2,
-    NOW(), NOW()
-FROM generate_series(0, 13) AS n;
-
--- Brand Item Daily Snapshots (7 ngày × 2 items, cho drill-down)
-INSERT INTO dashboard_brand_item_daily_snapshots (id, brand_id, item_id, snapshot_date, votes_count, avg_rating,
-    feedback_sentiment, top_paired_categories, created_at, updated_at)
-SELECT
-    gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001'::uuid,
-    CASE WHEN n % 2 = 0 THEN 'b1000001-0000-0000-0000-000000000001'::uuid ELSE 'b1000002-0000-0000-0000-000000000002'::uuid END,
-    CURRENT_DATE - (n / 2),
-    30 + n * 2, 4.0 + (n % 3) * 0.1,
-    'positive', '[{"categoryName":"Quần Jean","pairCount":25},{"categoryName":"Giày Sneaker","pairCount":18}]'::jsonb,
     NOW(), NOW()
 FROM generate_series(0, 13) AS n;
 

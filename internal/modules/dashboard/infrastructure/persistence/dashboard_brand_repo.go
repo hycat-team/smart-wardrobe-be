@@ -50,27 +50,3 @@ func (r *DashboardRepository) GetLatestBrandSnapshot(ctx context.Context, brandI
 	}
 	return &snapshot, nil
 }
-
-func (r *DashboardRepository) UpsertBrandItemSnapshot(ctx context.Context, snapshot *entities.DashboardBrandItemDailySnapshot) error {
-	return r.getDB(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "brand_id"}, {Name: "item_id"}, {Name: "snapshot_date"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"votes_count", "avg_rating", "feedback_sentiment", "top_paired_categories", "updated_at",
-		}),
-	}).Create(snapshot).Error
-}
-
-func (r *DashboardRepository) GetLatestBrandItemSnapshot(ctx context.Context, brandID uuid.UUID, itemID uuid.UUID) (*entities.DashboardBrandItemDailySnapshot, error) {
-	var snapshot entities.DashboardBrandItemDailySnapshot
-	err := r.getDB(ctx).
-		Where("brand_id = ? AND item_id = ?", brandID, itemID).
-		Order("snapshot_date DESC").
-		First(&snapshot).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &snapshot, nil
-}

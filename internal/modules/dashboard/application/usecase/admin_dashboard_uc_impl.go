@@ -12,15 +12,18 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	subscriptionContract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 )
 
 const microVNDDivisor = 1000000.0
 
 type AdminDashboardUseCase struct {
-	dashboardRepo dashboardRepos.IDashboardRepository
-	userReader    identityContract.IUserDashboardReader
-	brandReader   brandContract.IBrandDashboardReader
-	aiCostReader  aiContract.IAICostDashboardReader
+	dashboardRepo      dashboardRepos.IDashboardRepository
+	userReader         identityContract.IUserDashboardReader
+	brandReader        brandContract.IBrandDashboardReader
+	aiCostReader       aiContract.IAICostDashboardReader
+	subscriptionReader subscriptionContract.ISubscriptionDashboardReader
 }
 
 func NewAdminDashboardUseCase(
@@ -28,12 +31,14 @@ func NewAdminDashboardUseCase(
 	userReader identityContract.IUserDashboardReader,
 	brandReader brandContract.IBrandDashboardReader,
 	aiCostReader aiContract.IAICostDashboardReader,
+	subscriptionReader subscriptionContract.ISubscriptionDashboardReader,
 ) uc_interfaces.IAdminDashboardUseCase {
 	return &AdminDashboardUseCase{
-		dashboardRepo: dashboardRepo,
-		userReader:    userReader,
-		brandReader:   brandReader,
-		aiCostReader:  aiCostReader,
+		dashboardRepo:      dashboardRepo,
+		userReader:         userReader,
+		brandReader:        brandReader,
+		aiCostReader:       aiCostReader,
+		subscriptionReader: subscriptionReader,
 	}
 }
 
@@ -57,8 +62,12 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 		if err != nil {
 			return nil, err
 		}
+		subscriptionStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctx, now)
+		if err != nil {
+			return nil, err
+		}
 
-		if userStats == nil && brandStats == nil && aiStats == nil {
+		if userStats == nil && brandStats == nil && aiStats == nil && subscriptionStats == nil {
 			return nil, dashboarderrors.ErrDashboardDataNotFound()
 		}
 
@@ -77,7 +86,11 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
 			res.NetAIMarginVND = -actualCostVND
 		}
-		if userStats != nil || brandStats != nil || aiStats != nil {
+		if subscriptionStats != nil {
+			res.SubscriptionRevenueVND = subscriptionStats.TotalSubscriptionRevenue.InexactFloat64()
+			res.PayOSSuccessCount = subscriptionStats.PayOSSuccessCount
+		}
+		if userStats != nil || brandStats != nil || aiStats != nil || subscriptionStats != nil {
 			return res, nil
 		}
 		return nil, dashboarderrors.ErrDashboardDataNotFound()
@@ -197,12 +210,12 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 	now := time.Now()
 	aiMargin, err := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
 	if err != nil {
-		aiMargin = nil
+		return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu biên lợi nhuận AI. Vui lòng thử lại sau.")
 	}
 
 	payos, err := uc.GetPayOSReconciliation(ctx)
 	if err != nil {
-		payos = nil
+		return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu đối soát PayOS. Vui lòng thử lại sau.")
 	}
 
 	return &dto.AdminOverviewRes{

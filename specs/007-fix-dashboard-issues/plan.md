@@ -141,7 +141,7 @@ Tất cả đã được resolve qua `/speckit-clarify`:
 | Unknown | Context | Method |
 |---------|---------|--------|
 | Granularity aggregation pattern | Cần xác định cách gộp daily → monthly/weekly trong Go | In-memory: đọc daily snapshots, group bằng `map[yearMonth]`, tính SUM/AVG/LAST_VALUE |
-| Subscription reader cho fallback | Cần reader cho subscription revenue + PayOS stats | Kiểm tra các module hiện tại: không có subscription reader. Cần inject qua Wire. Tạo interface mới `depositContract.IDepositDashboardReader` nếu có sẵn, hoặc thêm method vào userReader |
+| Subscription reader cho fallback | Cần reader cho subscription revenue + PayOS stats | Tạo `subscriptionContract.ISubscriptionDashboardReader` trong `internal/modules/subscription/presentation/contract/` |
 | Brand item feedback/paired fallback | Cần reader cho per-item sentiment + paired categories | `brandReader.GetBrandAnalyticsStats` trả về brand-level, không per-item. Cần thêm method `GetItemFeedbackSummary` vào `IBrandDashboardReader` |
 | MetricKey cho brand fields | 7 fields mới | Tạo constants trong `metric_key.go`, thêm switch cases trong `dynamic_query_uc_impl.go` |
 
@@ -167,7 +167,7 @@ Tóm tắt:
 
 Xem [contracts/](contracts/) cho chi tiết.
 
-- **New**: `ISubscriptionDashboardReader` interface trong `internal/modules/deposit/presentation/contract/` hoặc mở rộng `userReader`
+- **New**: `ISubscriptionDashboardReader` interface trong `internal/modules/subscription/presentation/contract/dashboard_reader.go`
 - **Update**: `IBrandDashboardReader` thêm `GetItemFeedbackSummary(ctx, itemID uuid.UUID) (*dto.ItemFeedbackSummaryDTO, error)`
 
 ### 3. Quickstart Validation

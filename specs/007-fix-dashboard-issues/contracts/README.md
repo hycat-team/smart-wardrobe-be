@@ -4,16 +4,16 @@
 
 ### 1. Subscription/PayOS Dashboard Reader (FR-003)
 
-**File đích:** `internal/modules/deposit/presentation/contract/dashboard_reader.go` (nếu module `deposit` tồn tại) hoặc mở rộng `identityContract.IUserDashboardReader`
+**File đích:** `internal/modules/subscription/presentation/contract/dashboard_reader.go`
 
 **Interface mới cần tạo:**
 ```go
-type IDepositDashboardReader interface {
-    GetSubscriptionStats(ctx context.Context, asOfDate time.Time) (*dto.SubscriptionStatsDTO, error)
+type ISubscriptionDashboardReader interface {
+    GetAdminSubscriptionStats(ctx context.Context, asOfDate time.Time) (*dto.SubscriptionStatsDTO, error)
 }
 ```
 
-**DTO mới:**
+**DTO mới** trong `internal/modules/subscription/application/dto/`:
 ```go
 type SubscriptionStatsDTO struct {
     TotalSubscriptionRevenueVND float64
@@ -21,8 +21,6 @@ type SubscriptionStatsDTO struct {
     PayOSSuccessCount           int
 }
 ```
-
-**Kế hoạch:** Kiểm tra module `internal/modules/deposit/` có presentation/contract/ không. Nếu không có, inject trực tiếp từ repository của deposit module vào dashboard use case (tạm thời vi phạm module boundary nhẹ, cần tạo contract sau).
 
 ### 2. Brand Dashboard Reader — Mở rộng (FR-004)
 
@@ -43,13 +41,24 @@ type ItemFeedbackSummaryDTO struct {
     VotesCount         int
     AvgRating          float64
     FeedbackSentiment  string                          // "positive" | "neutral" | "negative"
-    TopPairedCategories []PairedCategoryStat
+    OutfitIDs          []uuid.UUID                     // outfit_ids từ digital_sample_responses
 }
 ```
 
-**Lưu ý:** DTO `PairedCategoryStat` đã tồn tại trong `brand_dashboard_dto.go`.
+### 3. Wardrobe Dashboard Reader — Mở rộng (FR-004)
 
-### 3. Dynamic Query Use Case — Không đổi interface
+**File đích:** `internal/modules/wardrobe/presentation/contract/dashboard_reader.go`
+
+**Method mới:**
+```go
+type IWardrobeDashboardReader interface {
+    // ... existing methods ...
+    
+    GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error)
+}
+```
+
+### 4. Dynamic Query Use Case — Không đổi interface
 
 **File:** `internal/modules/dashboard/application/interface/usecase/dynamic_query_uc.go`
 

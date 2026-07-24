@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
@@ -19,15 +20,18 @@ import (
 type UserDashboardUseCase struct {
 	dashboardRepo  dashboardRepos.IDashboardRepository
 	wardrobeReader wardrobeContract.IWardrobeDashboardReader
+	brandReader    brandContract.IBrandDashboardReader
 }
 
 func NewUserDashboardUseCase(
 	dashboardRepo dashboardRepos.IDashboardRepository,
 	wardrobeReader wardrobeContract.IWardrobeDashboardReader,
+	brandReader brandContract.IBrandDashboardReader,
 ) uc_interfaces.IUserDashboardUseCase {
 	return &UserDashboardUseCase{
 		dashboardRepo:  dashboardRepo,
 		wardrobeReader: wardrobeReader,
+		brandReader:    brandReader,
 	}
 }
 
@@ -46,10 +50,8 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 		return &dto.UserWardrobeInsightsRes{
 			TotalItems:              summary.TotalItems,
 			TotalWardrobeValueVND:   summary.TotalWardrobeValueVND,
-			AverageItemValueVND:     summary.AverageCostPerWearVND,
 			UnderutilizedItemsCount: summary.UnderutilizedItemsCount,
 			UnderutilizedItems:      underutilizedItems,
-			AIQuotaRemaining:        summary.AIQuotaRemaining,
 			ExpiringVouchersCount:   summary.ExpiringVouchersCount,
 		}, nil
 	}
@@ -98,12 +100,10 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 		underutilizedJSON = []byte("[]")
 	}
 
-	// Read existing AI quota & voucher counts from stale snapshot if available
-	aiQuota := 0
-	expiringVouchers := 0
-	if summary != nil {
-		aiQuota = summary.AIQuotaRemaining
-		expiringVouchers = summary.ExpiringVouchersCount
+	// Refresh expiring vouchers count from brand reader (live data)
+	expiringVouchers, err := uc.brandReader.GetUserExpiringBenefitsCount(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	newSummary := &entities.DashboardUserWardrobeSummary{
@@ -113,7 +113,6 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 		AverageCostPerWearVND:   avgCPW,
 		UnderutilizedItemsCount: underutilizedCount,
 		UnderutilizedItems:      underutilizedJSON,
-		AIQuotaRemaining:        aiQuota,
 		ExpiringVouchersCount:   expiringVouchers,
 		UpdatedAt:               time.Now(),
 	}
@@ -122,10 +121,8 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 	return &dto.UserWardrobeInsightsRes{
 		TotalItems:              totalItems,
 		TotalWardrobeValueVND:   totalValue,
-		AverageItemValueVND:     avgCPW,
 		UnderutilizedItemsCount: underutilizedCount,
 		UnderutilizedItems:      underutilizedItems,
-		AIQuotaRemaining:        aiQuota,
 		ExpiringVouchersCount:   expiringVouchers,
 	}, nil
 }

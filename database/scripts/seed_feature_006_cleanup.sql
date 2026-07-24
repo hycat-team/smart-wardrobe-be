@@ -3,7 +3,7 @@
 -- Thứ tự TRUNCATE ngược chiều foreign key
 
 TRUNCATE TABLE dashboard_user_wardrobe_summaries CASCADE;
-TRUNCATE TABLE dashboard_brand_item_daily_snapshots CASCADE;
+
 TRUNCATE TABLE dashboard_brand_daily_snapshots CASCADE;
 TRUNCATE TABLE dashboard_admin_daily_snapshots CASCADE;
 TRUNCATE TABLE digital_sample_responses CASCADE;

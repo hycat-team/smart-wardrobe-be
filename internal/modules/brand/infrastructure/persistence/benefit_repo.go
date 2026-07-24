@@ -92,3 +92,14 @@ func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.C
 	}
 	return &redemption, nil
 }
+
+func (r *BenefitRedemptionRepository) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BenefitRedemption{}).
+		Where("user_id = ? AND status = ? AND expires_at BETWEEN now() AND now() + interval '30 days'", userID, "REDEEMED").
+		Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}

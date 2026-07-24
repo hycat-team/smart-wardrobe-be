@@ -16,9 +16,7 @@ type UnderutilizedItemDTO struct {
 type UserWardrobeInsightsRes struct {
 	TotalItems              int                    `json:"totalItems"`
 	TotalWardrobeValueVND   float64                `json:"totalWardrobeValueVnd"`
-	AverageItemValueVND     float64                `json:"averageItemValueVnd"`
 	UnderutilizedItemsCount int                    `json:"underutilizedItemsCount"`
 	UnderutilizedItems      []UnderutilizedItemDTO `json:"underutilizedItems"`
-	AIQuotaRemaining        int                    `json:"aiQuotaRemaining"`
 	ExpiringVouchersCount   int                    `json:"expiringVouchersCount"`
 }

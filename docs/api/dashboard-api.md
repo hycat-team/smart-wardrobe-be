@@ -185,8 +185,7 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | TotalWardrobeValueVND   | `totalWardrobeValueVnd`   | float64                | Tổng giá trị tài chính tủ đồ (VND) | `SELECT COALESCE(SUM(purchase_price),0) FROM wardrobe_items WHERE purchase_price IS NOT NULL`                                                                           |
 | UnderutilizedItemsCount | `underutilizedItemsCount` | int                    | Số món đồ không mặc >30 ngày       | `SELECT COUNT(*) FROM wardrobe_items WHERE last_used_at IS NULL OR last_used_at < 30 ngày trước`                                                                        |
 | UnderutilizedItems      | `underutilizedItems`      | []UnderutilizedItemDTO | Danh sách đồ lãng phí              | Cùng điều kiện, lấy `last_used_at ASC`, giới hạn 10 món                                                                                                                 |
-| AIQuotaRemaining        | `aiQuotaRemaining`        | int                    | Số lượt AI Stylist còn lại         | Từ snapshot entity (nếu có stale), mặc định 0                                                                                                                           |
-| ExpiringVouchersCount   | `expiringVouchersCount`   | int                    | Số voucher sắp hết hạn             | Từ snapshot entity (nếu có stale), mặc định 0                                                                                                                           |
+| ExpiringVouchersCount   | `expiringVouchersCount`   | int                    | Số voucher sắp hết hạn             | Live query từ `benefit_redemptions` (cache miss path), hoặc từ snapshot (cache hit)                                                                                     |
 
 **Cấu trúc `UnderutilizedItemDTO`:**
 
@@ -208,9 +207,9 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 - **Endpoint:** `POST /api/v1/dashboard/analytics/query`
 - **Tác nhân (Actor):** Nhiều role (Admin, Brand Member, User) — RBAC tự động theo `targetDashboard`.
 - **Mô tả:** API truy vấn tổng hợp đa chiều. Backend aggregate daily snapshots theo granularity yêu cầu. Tự động điều chỉnh:
-    - `granularity = "hour"` + date range > 365 ngày → tự động set thành `"day"`
-    - date range > 730 ngày + `"hour"`/`"day"` → set thành `"month"`
-    - Date range bị giới hạn tối đa 730 ngày
+    - Granularity không hợp lệ → request validation trả 400
+    - Date range > 730 ngày → request validation trả 400
+    - Date range > 730 ngày → API trả về 400 BadRequest với thông báo
 
     **RBAC:**
     - `"admin"`: chỉ Admin
@@ -224,8 +223,8 @@ Các trường luôn có dữ liệu. Nếu sub-component lỗi, API trả về 
 | TargetDashboard     | `targetDashboard`     | TargetDashboard | ✅                   | Giá trị: `"admin"`, `"brand"`, `"user"`. Xem [constants/dashboard.md#2-target-dashboard](constants/dashboard.md#2-target-dashboard)                                       |
 | BrandID             | `brandId`             | string (UUID)   | Nếu target=`"brand"` | UUID của nhãn hàng. Bỏ qua nếu target không phải brand                                                                                                                    |
 | Metrics             | `metrics`             | []string        | ✅                   | Danh sách metric key cần query. Giá trị hợp lệ xem [constants/dashboard.md#4-metric-key](constants/dashboard.md#4-metric-key). VD: `["total_users", "ai_requests_count"]` |
-| Timeframe           | `timeframe`           | object          | ✅                   | `{ "fromDate": "2026-07-01", "toDate": "2026-07-23" }`. Định dạng `YYYY-MM-DD`. Tối đa 730 ngày                                                                           |
-| Granularity         | `granularity`         | string          | ✅                   | `"hour"`, `"day"`, `"week"`, `"month"`. Xem [constants/dashboard.md#3-granularity](constants/dashboard.md#3-granularity). Backend thực sự aggregate data theo granularity này |
+| Timeframe           | `timeframe`           | object          | ✅                   | `{ "fromDate": "2026-07-01", "toDate": "2026-07-23" }`. Định dạng `YYYY-MM-DD`. Tối đa 730 ngày. Nếu vượt quá → 400 BadRequest                                           |
+| Granularity         | `granularity`         | string          | ✅                   | `"day"`, `"week"`, `"month"`, `"year"`. Xem [constants/dashboard.md#3-granularity](constants/dashboard.md#3-granularity). Backend aggregate daily snapshots theo granularity yêu cầu (week/month/year) |
 | CompareWithPrevious | `compareWithPrevious` | bool            | Optional             | `true`: tính delta % so với chu kỳ trước đó. Mặc định: `false`                                                                                                            |
 
 - **Response struct:** `DynamicQueryRes`
@@ -416,8 +415,7 @@ Chỉ 2 metric sau được backend xử lý. **Chỉ trả về 1 điểm dữ 
 | `totalWardrobeValueVnd`   | `wardrobe_items`                   | `SELECT COALESCE(SUM(purchase_price),0) FROM wardrobe_items WHERE purchase_price IS NOT NULL`                                                                               |
 | `underutilizedItemsCount` | `wardrobe_items`                   | `SELECT COUNT(*) FROM wardrobe_items WHERE last_used_at IS NULL OR last_used_at < 30 ngày trước`                                                                            |
 | `underutilizedItems`      | `wardrobe_items` + `fashion_items` | Query lấy items có `last_used_at IS NULL OR <30 ngày`, kết hợp `fashion_items` để lấy tên, danh mục, ảnh. Sắp xếp `last_used_at ASC`, giới hạn 10 items                     |
-| `aiQuotaRemaining`        | Snapshot cache                     | Từ bảng `dashboard_user_wardrobe_summaries` (được preserve khi cache stale), mặc định `0`                                                                                   |
-| `expiringVouchersCount`   | Snapshot cache                     | Từ bảng `dashboard_user_wardrobe_summaries` (được preserve khi cache stale), mặc định `0`                                                                                   |
+| `expiringVouchersCount`   | `benefit_redemptions`              | Live query `SELECT COUNT(*) FROM benefit_redemptions WHERE user_id=? AND status='REDEEMED' AND expires_at BETWEEN now() AND now()+30d` (cache miss path)                   |
 
 ### Dynamic Query (`POST /api/v1/dashboard/analytics/query`)
 
