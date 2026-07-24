@@ -11,12 +11,23 @@
 
 ## 2. Workflow Compliance
 
-- Strictly comply with [agent-workflow.md](docs/development/agent-workflow.md):
+- **MANDATORY** — Full compliance with [agent-workflow.md](docs/development/agent-workflow.md):
     - **Large tasks/features**: Follow Spec-kit workflow step-by-step.
-    - **Small/trivial tasks** (simple fixes, doc edits, configs): Spec-kit is optional.
+    - **Small/trivial tasks** (simple fixes, doc edits, configs): Spec-kit workflow is optional, but you MUST still follow the **core principles** in agent-workflow.md §IV.
     - **Always suggest the next command/skill** for the dev to run after completing any workflow step.
+- **Only apply speckit when requested**: If the user does not invoke `@[/speckit-*]`, there is no need to run the speckit workflow, but you MUST still follow the docs in `docs/development/` and `docs/system-design/`.
 
-## 3. Core Principles
+## 3. Code Compliance
+
+- **MANDATORY** — Full compliance with all documents in:
+    - `docs/development/` — development process, coding conventions, handler standards, validation, routing, testing, migration
+    - `docs/system-design/` — overall architecture, design patterns, event-driven design, AI pipeline, module boundaries
+- When writing code, you **MUST** read and cross-reference the relevant docs for the task before proceeding.
+- If conflicts arise between documents, priority order: Constitution > system-design > development > other docs.
+
+## 4. Core Principles
 
 - **Conflict Resolution**: If docs and source code are inconsistent, STOP, explain the conflict, and ask the user which is authoritative. Never guess.
 - **Makefile**: Always prefer Makefile targets over manual commands if equivalent targets exist.
+- **Communication language**: Use Vietnamese when communicating with the developer.
+- **Documents in `specs/`**: Write in Vietnamese per agent-workflow.md §IV.7.
