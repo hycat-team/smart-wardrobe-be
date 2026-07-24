@@ -32,19 +32,18 @@ func (DashboardAdminDailySnapshot) TableName() string {
 
 type DashboardBrandDailySnapshot struct {
 	sharedEntities.AuditableEntity
-	BrandID                   uuid.UUID `gorm:"column:brand_id;type:uuid;not null;index"`
-	SnapshotDate              time.Time `gorm:"column:snapshot_date;type:date;not null"`
-	TotalMembers              int       `gorm:"column:total_members;not null;default:0"`
-	PointsIssued              int       `gorm:"column:points_issued;not null;default:0"`
-	PointsRedeemed            int       `gorm:"column:points_redeemed;not null;default:0"`
-	PointsExpiring30d         int       `gorm:"column:points_expiring_30d;not null;default:0"`
-	PointsLiabilityValueVND   float64   `gorm:"column:points_liability_value_vnd;type:numeric(12,2);not null;default:0"`
-	ActiveVouchers            int       `gorm:"column:active_vouchers;not null;default:0"`
-	VouchersRedeemed          int       `gorm:"column:vouchers_redeemed;not null;default:0"`
-	DigitalSampleVotesCount   int       `gorm:"column:digital_sample_votes_count;not null;default:0"`
-	DigitalSampleAvgRating    float64   `gorm:"column:digital_sample_avg_rating;type:numeric(3,2);not null;default:0"`
-	OpenCSTickets             int       `gorm:"column:open_cs_tickets;not null;default:0"`
-	CSFirstResponseAvgSeconds int       `gorm:"column:cs_first_response_avg_seconds;not null;default:0"`
+	BrandID                 uuid.UUID `gorm:"column:brand_id;type:uuid;not null;index"`
+	SnapshotDate            time.Time `gorm:"column:snapshot_date;type:date;not null"`
+	TotalMembers            int       `gorm:"column:total_members;not null;default:0"`
+	PointsIssued            int       `gorm:"column:points_issued;not null;default:0"`
+	PointsRedeemed          int       `gorm:"column:points_redeemed;not null;default:0"`
+	PointsExpiring30d       int       `gorm:"column:points_expiring_30d;not null;default:0"`
+	PointsLiabilityValueVND float64   `gorm:"column:points_liability_value_vnd;type:numeric(12,2);not null;default:0"`
+	ActiveVouchers          int       `gorm:"column:active_vouchers;not null;default:0"`
+	VouchersRedeemed        int       `gorm:"column:vouchers_redeemed;not null;default:0"`
+	DigitalSampleVotesCount int       `gorm:"column:digital_sample_votes_count;not null;default:0"`
+	DigitalSampleAvgRating  float64   `gorm:"column:digital_sample_avg_rating;type:numeric(3,2);not null;default:0"`
+	OpenCSTickets           int       `gorm:"column:open_cs_tickets;not null;default:0"`
 }
 
 func (DashboardBrandDailySnapshot) TableName() string {

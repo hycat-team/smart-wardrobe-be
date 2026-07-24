@@ -5,7 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -55,7 +58,7 @@ func (r *DashboardRepository) GetRevenueBreakdown(ctx context.Context, fromDate,
 	var results []map[string]interface{}
 	query := r.getDB(ctx).Table("deposit_transactions").
 		Select("plan_code, DATE_TRUNC('month', created_at)::date as month, COUNT(*) as transaction_count, SUM(amount) as revenue").
-		Where("status = 1 AND transaction_type = 'DIRECT_PURCHASE'")
+		Where("status = ? AND transaction_type = ?", depositstatus.Success, deposittransactiontype.DirectPurchase)
 
 	if !fromDate.IsZero() {
 		query = query.Where("created_at >= ?", fromDate)
@@ -119,7 +122,7 @@ func (r *DashboardRepository) GetAIErrorBreakdown(ctx context.Context) ([]map[st
 	var results []map[string]interface{}
 	err := r.getDB(ctx).Table("ai_usage_events").
 		Select("error_code, provider, model, COUNT(*) as error_count").
-		Where("status IN ?", []string{"FAILED", "RELEASED", "EXPIRED"}).
+		Where("status = ?", string(aiusageeventstatus.Released)).
 		Group("error_code, provider, model").
 		Order("error_count DESC").
 		Scan(&results).Error
@@ -134,8 +137,8 @@ func (r *DashboardRepository) GetRenewalStats(ctx context.Context) (map[string]i
 	var result map[string]interface{}
 	err := r.getDB(ctx).Table("subscription_renewal_attempts").
 		Select("COUNT(*) as total_attempts, " +
-			"COALESCE(SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END), 0) as success_count, " +
-			"COALESCE(SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END), 0) as failed_count, " +
+			"COALESCE(SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END), 0) as success_count, " +
+			"COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed_count, " +
 			"COALESCE(AVG(attempt_count), 0) as avg_retry_count").
 		Scan(&result).Error
 	if err != nil {

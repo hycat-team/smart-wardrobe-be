@@ -150,10 +150,10 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 			COUNT(*) AS total_count,
 			COUNT(*) FILTER (WHERE status = 1) AS success_count
 		FROM deposit_transactions
-		WHERE transaction_type = 'direct_purchase'
+		WHERE transaction_type = ?
 		  AND created_at >= ?
 		  AND created_at < ?
-	`, dayStart, dayEnd).Scan(&result).Error
+	`, string(deposittransactiontype.DirectPurchase), dayStart, dayEnd).Scan(&result).Error
 	if err != nil {
 		return nil, err
 	}

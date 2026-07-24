@@ -52,17 +52,16 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 		}
 		if stats != nil {
 			return &dto.BrandKPICardsRes{
-				BrandID:                   brandID,
-				TotalMembers:              stats.TotalMembers,
-				PointsIssued:              stats.PointsIssued,
-				PointsRedeemed:            stats.PointsRedeemed,
-				ActiveVouchers:            stats.ActiveVouchers,
-				VouchersRedeemed:          stats.VouchersRedeemed,
-				DigitalSampleVotesCount:   stats.DigitalSampleVotesCount,
-				DigitalSampleAvgRating:    stats.DigitalSampleAvgRating,
-				OpenCSTickets:             stats.OpenCSTickets,
-				CSFirstResponseAvgSeconds: stats.CSFirstResponseAvgSeconds,
-				UpdatedAt:                 time.Now(),
+				BrandID:                 brandID,
+				TotalMembers:            stats.TotalMembers,
+				PointsIssued:            stats.PointsIssued,
+				PointsRedeemed:          stats.PointsRedeemed,
+				ActiveVouchers:          stats.ActiveVouchers,
+				VouchersRedeemed:        stats.VouchersRedeemed,
+				DigitalSampleVotesCount: stats.DigitalSampleVotesCount,
+				DigitalSampleAvgRating:  stats.DigitalSampleAvgRating,
+				OpenCSTickets:           stats.OpenCSTickets,
+				UpdatedAt:               time.Now(),
 			}, nil
 		}
 		return &dto.BrandKPICardsRes{
@@ -72,17 +71,16 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 	}
 
 	return &dto.BrandKPICardsRes{
-		BrandID:                   latest.BrandID,
-		TotalMembers:              latest.TotalMembers,
-		PointsIssued:              latest.PointsIssued,
-		PointsRedeemed:            latest.PointsRedeemed,
-		ActiveVouchers:            latest.ActiveVouchers,
-		VouchersRedeemed:          latest.VouchersRedeemed,
-		DigitalSampleVotesCount:   latest.DigitalSampleVotesCount,
-		DigitalSampleAvgRating:    latest.DigitalSampleAvgRating,
-		OpenCSTickets:             latest.OpenCSTickets,
-		CSFirstResponseAvgSeconds: latest.CSFirstResponseAvgSeconds,
-		UpdatedAt:                 latest.UpdatedAt,
+		BrandID:                 latest.BrandID,
+		TotalMembers:            latest.TotalMembers,
+		PointsIssued:            latest.PointsIssued,
+		PointsRedeemed:          latest.PointsRedeemed,
+		ActiveVouchers:          latest.ActiveVouchers,
+		VouchersRedeemed:        latest.VouchersRedeemed,
+		DigitalSampleVotesCount: latest.DigitalSampleVotesCount,
+		DigitalSampleAvgRating:  latest.DigitalSampleAvgRating,
+		OpenCSTickets:           latest.OpenCSTickets,
+		UpdatedAt:               latest.UpdatedAt,
 	}, nil
 }
 

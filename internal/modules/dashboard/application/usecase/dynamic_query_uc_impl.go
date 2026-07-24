@@ -172,8 +172,6 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 						metricValues[m] = s.DigitalSampleAvgRating
 					case metrickey.OpenCSTickets:
 						metricValues[m] = float64(s.OpenCSTickets)
-					case metrickey.CSFirstResponseAvgSeconds:
-						metricValues[m] = float64(s.CSFirstResponseAvgSeconds)
 					case metrickey.PointsExpiring30d:
 						metricValues[m] = float64(s.PointsExpiring30d)
 					case metrickey.PointsLiabilityValueVND:
@@ -411,8 +409,6 @@ func metricValueFromBrandSnapshot(s *entities.DashboardBrandDailySnapshot, m met
 		v = s.DigitalSampleAvgRating
 	case metrickey.OpenCSTickets:
 		v = float64(s.OpenCSTickets)
-	case metrickey.CSFirstResponseAvgSeconds:
-		v = float64(s.CSFirstResponseAvgSeconds)
 	case metrickey.PointsExpiring30d:
 		v = float64(s.PointsExpiring30d)
 	case metrickey.PointsLiabilityValueVND:
@@ -446,8 +442,8 @@ func getMetricAggType(m metrickey.MetricKey) metricAggType {
 		metrickey.BrandItemCount:
 		return metricNonCumulative
 	case metrickey.ActiveUsersDau, metrickey.NetAIMarginVND,
-		metrickey.DigitalSampleAvgRating, metrickey.CSFirstResponseAvgSeconds,
-		metrickey.AIErrorRate, metrickey.CustomerClaimRate:
+		metrickey.DigitalSampleAvgRating, metrickey.AIErrorRate,
+		metrickey.CustomerClaimRate:
 		return metricRate
 	default:
 		return metricNonCumulative

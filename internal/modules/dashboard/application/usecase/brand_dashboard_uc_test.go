@@ -150,17 +150,16 @@ func TestBrandGetKPICards_FromSnapshot(t *testing.T) {
 	brandID := uuid.New()
 	repo := &mockBrandDashboardRepo{
 		latestSnapshot: &entities.DashboardBrandDailySnapshot{
-			BrandID:                   brandID,
-			SnapshotDate:              time.Now().Truncate(24 * time.Hour),
-			TotalMembers:              500,
-			PointsIssued:              10000,
-			PointsRedeemed:            3000,
-			ActiveVouchers:            20,
-			VouchersRedeemed:          8,
-			DigitalSampleVotesCount:   150,
-			DigitalSampleAvgRating:    4.5,
-			OpenCSTickets:             10,
-			CSFirstResponseAvgSeconds: 120,
+			BrandID:                 brandID,
+			SnapshotDate:            time.Now().Truncate(24 * time.Hour),
+			TotalMembers:            500,
+			PointsIssued:            10000,
+			PointsRedeemed:          3000,
+			ActiveVouchers:          20,
+			VouchersRedeemed:        8,
+			DigitalSampleVotesCount: 150,
+			DigitalSampleAvgRating:  4.5,
+			OpenCSTickets:           10,
 		},
 	}
 	uc := NewBrandDashboardUseCase(repo, &mockBrandReader{}, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
@@ -179,9 +178,6 @@ func TestBrandGetKPICards_FromSnapshot(t *testing.T) {
 	}
 	if res.OpenCSTickets != 10 {
 		t.Errorf("expected OpenCSTickets=10, got %d", res.OpenCSTickets)
-	}
-	if res.CSFirstResponseAvgSeconds != 120 {
-		t.Errorf("expected CSFirstResponseAvgSeconds=120, got %d", res.CSFirstResponseAvgSeconds)
 	}
 }
 

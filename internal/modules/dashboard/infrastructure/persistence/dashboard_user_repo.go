@@ -29,7 +29,7 @@ func (r *DashboardRepository) GetWardrobeCategoryDistribution(ctx context.Contex
 		Select("c.id as category_id, c.name as category_name, COUNT(*) as item_count").
 		Joins("JOIN fashion_items fi ON fi.id = wardrobe_items.fashion_item_id").
 		Joins("JOIN categories c ON c.id = fi.category_id").
-		Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = false", userID).
+		Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ?", userID, false).
 		Group("c.id, c.name").
 		Order("item_count DESC").
 		Scan(&results).Error

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func (r *DashboardRepository) UpsertBrandSnapshot(ctx context.Context, snapshot 
 			"total_members", "points_issued", "points_redeemed", "points_expiring_30d",
 			"points_liability_value_vnd", "active_vouchers", "vouchers_redeemed",
 			"digital_sample_votes_count", "digital_sample_avg_rating", "open_cs_tickets",
-			"cs_first_response_avg_seconds", "updated_at",
+			"updated_at",
 		}),
 	}).Create(snapshot).Error
 }
@@ -72,7 +73,7 @@ func (r *DashboardRepository) GetPointExpiryForecast(ctx context.Context, brandI
 	var results []map[string]interface{}
 	err := r.getDB(ctx).Table("loyalty_point_lots").
 		Select("DATE_TRUNC('month', expires_at)::date as month, COALESCE(SUM(remaining_points), 0) as points_expiring").
-		Where("brand_id = ? AND status = 'ACTIVE' AND remaining_points > 0 AND expires_at IS NOT NULL", brandID).
+		Where("brand_id = ? AND status = ? AND remaining_points > 0 AND expires_at IS NOT NULL", brandID, string(loyaltypointlotstatus.Active)).
 		Group("DATE_TRUNC('month', expires_at)").
 		Order("month ASC").
 		Limit(6).
@@ -173,8 +174,12 @@ func (r *DashboardRepository) GetBrandNewCustomerCount(ctx context.Context, bran
 // GetBrandCustomerClaimRate returns the ratio of claimed customers
 func (r *DashboardRepository) GetBrandCustomerClaimRate(ctx context.Context, brandID uuid.UUID) (float64, error) {
 	var total, claimed int64
-	_ = r.getDB(ctx).Table("brand_customers").Where("brand_id = ?", brandID).Count(&total).Error
-	_ = r.getDB(ctx).Table("brand_customers").Where("brand_id = ? AND claimed_at IS NOT NULL", brandID).Count(&claimed).Error
+	if err := r.getDB(ctx).Table("brand_customers").Where("brand_id = ?", brandID).Count(&total).Error; err != nil {
+		return 0, err
+	}
+	if err := r.getDB(ctx).Table("brand_customers").Where("brand_id = ? AND claimed_at IS NOT NULL", brandID).Count(&claimed).Error; err != nil {
+		return 0, err
+	}
 	if total == 0 {
 		return 0, nil
 	}

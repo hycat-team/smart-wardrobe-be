@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -75,7 +76,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptions(ctx context.C
 	var expiredSubs []*entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx)
 
-	err := query.Where("current_plan_kind = ? AND expires_at <= ?", 1, now).Find(&expiredSubs).Error
+	err := query.Where("current_plan_kind = ? AND expires_at <= ?", plankind.Finite, now).Find(&expiredSubs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionsBatch(ctx cont
 	var expiredSubs []*entities.UserSubscription
 	query := r.GetDB(ctx).Model(&entities.UserSubscription{}).
 		Select("user_id", "expires_at").
-		Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", 1, now)
+		Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", plankind.Finite, now)
 
 	if !lastExpiresAt.IsZero() {
 		query = query.Where("expires_at > ? OR (expires_at = ? AND user_id > ?)", lastExpiresAt, lastExpiresAt, lastUserID)
@@ -106,7 +107,7 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 	var sub entities.UserSubscription
 	query := r.GetQueryWithPreload(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
-		Where("user_id = ? AND current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", userID, 1, now)
+		Where("user_id = ? AND current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at <= ?", userID, plankind.Finite, now)
 
 	err := query.First(&sub).Error
 	if err != nil {

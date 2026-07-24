@@ -139,19 +139,18 @@ func (uc *DashboardAggregatorUseCase) AggregateBrandSnapshots(ctx context.Contex
 		}
 
 		snapshot := &entities.DashboardBrandDailySnapshot{
-			BrandID:                   brandID,
-			SnapshotDate:              today,
-			TotalMembers:              stats.TotalMembers,
-			PointsIssued:              stats.PointsIssued,
-			PointsRedeemed:            stats.PointsRedeemed,
-			PointsExpiring30d:         stats.PointsExpiring30d,
-			PointsLiabilityValueVND:   stats.PointsLiabilityValueVND,
-			ActiveVouchers:            stats.ActiveVouchers,
-			VouchersRedeemed:          stats.VouchersRedeemed,
-			DigitalSampleVotesCount:   stats.DigitalSampleVotesCount,
-			DigitalSampleAvgRating:    stats.DigitalSampleAvgRating,
-			OpenCSTickets:             stats.OpenCSTickets,
-			CSFirstResponseAvgSeconds: stats.CSFirstResponseAvgSeconds,
+			BrandID:                 brandID,
+			SnapshotDate:            today,
+			TotalMembers:            stats.TotalMembers,
+			PointsIssued:            stats.PointsIssued,
+			PointsRedeemed:          stats.PointsRedeemed,
+			PointsExpiring30d:       stats.PointsExpiring30d,
+			PointsLiabilityValueVND: stats.PointsLiabilityValueVND,
+			ActiveVouchers:          stats.ActiveVouchers,
+			VouchersRedeemed:        stats.VouchersRedeemed,
+			DigitalSampleVotesCount: stats.DigitalSampleVotesCount,
+			DigitalSampleAvgRating:  stats.DigitalSampleAvgRating,
+			OpenCSTickets:           stats.OpenCSTickets,
 		}
 
 		run.AddTotal(1)

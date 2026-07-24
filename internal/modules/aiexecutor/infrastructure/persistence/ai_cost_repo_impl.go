@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
+	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aipolicygrantstatus"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aiusageeventstatus"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
@@ -34,7 +35,7 @@ func (r *AICostRepository) ResolvePolicy(ctx context.Context, subscriptionPlanID
 	var grant aiexecutor_entities.AIPolicyGrant
 	err := db.Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).Order("effective_from DESC").First(&grant).Error
 	if err == nil && subscriptionPlanID != uuid.Nil && grant.PlanID != subscriptionPlanID {
-		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": "closed", "updated_at": now}).Error
+		_ = db.Model(&grant).Updates(map[string]any{"effective_to": now, "status": string(aipolicygrantstatus.Closed), "updated_at": now}).Error
 		err = gorm.ErrRecordNotFound
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -164,7 +165,7 @@ func (r *AICostRepository) ExpireGrantsByUserID(ctx context.Context, userID uuid
 	return r.GetDB(ctx).
 		Model(&aiexecutor_entities.AIPolicyGrant{}).
 		Where("user_id = ? AND effective_from <= ? AND (effective_to IS NULL OR effective_to > ?)", userID, now, now).
-		Updates(map[string]any{"effective_to": now, "updated_at": now, "status": "closed"}).
+		Updates(map[string]any{"effective_to": now, "updated_at": now, "status": string(aipolicygrantstatus.Closed)}).
 		Error
 }
 
@@ -230,17 +231,17 @@ func (r *AICostRepository) GetAdminAIUsageStats(ctx context.Context, snapshotDat
 
 	var errCount int64
 	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
-		Where("created_at >= ? AND created_at < ? AND status IN ?", startOfDay, endOfDay, []string{"FAILED", "RELEASED", "EXPIRED"}).
+		Where("created_at >= ? AND created_at < ? AND status IN ?", startOfDay, endOfDay, []string{string(aiusageeventstatus.Released)}).
 		Count(&errCount).Error
 
 	var paidTokens int64
 	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
 		Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).
-		Select("COALESCE(SUM(total_tokens), 0)").Scan(&paidTokens).Error
+		Select("COALESCE(SUM(prompt_tokens + output_tokens + thinking_tokens), 0)").Scan(&paidTokens).Error
 
 	var actualCost int64
-	_ = db.Model(&aiexecutor_entities.AIUsagePeriodLedger{}).
-		Where("period_start >= ? AND period_start < ?", startOfDay, endOfDay).
+	_ = db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).
 		Select("COALESCE(SUM(actual_cost_micro_vnd), 0)").Scan(&actualCost).Error
 
 	return &dto.AIUsageAdminStatsDTO{

@@ -32,6 +32,8 @@ func (w *DashboardAggregatorWorker) Start(ctx context.Context) {
 	ticker := time.NewTicker(dashboard_app.AggregationInterval)
 
 	go func() {
+		w.runAggregation(ctx)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -43,19 +45,23 @@ func (w *DashboardAggregatorWorker) Start(ctx context.Context) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				run := workerlog.New("dashboard_aggregator", workerlog.TriggerCron)
-				if err := w.aggregatorUC.AggregateAdminSnapshots(ctx, run); err != nil {
-					run.LogFailure(w.logger, err)
-					continue
-				}
-				if err := w.aggregatorUC.AggregateBrandSnapshots(ctx, run); err != nil {
-					run.LogFailure(w.logger, err)
-					continue
-				}
-				run.LogSuccessIfData(w.logger)
+				w.runAggregation(ctx)
 			}
 		}
 	}()
+}
+
+func (w *DashboardAggregatorWorker) runAggregation(ctx context.Context) {
+	run := workerlog.New("dashboard_aggregator", workerlog.TriggerCron)
+	if err := w.aggregatorUC.AggregateAdminSnapshots(ctx, run); err != nil {
+		run.LogFailure(w.logger, err)
+		return
+	}
+	if err := w.aggregatorUC.AggregateBrandSnapshots(ctx, run); err != nil {
+		run.LogFailure(w.logger, err)
+		return
+	}
+	run.LogSuccessIfData(w.logger)
 }
 
 func (w *DashboardAggregatorWorker) Stop() {

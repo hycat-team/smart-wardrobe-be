@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -50,7 +51,7 @@ func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.C
 	err := r.GetDB(ctx).
 		Joins("JOIN brand_benefits ON brand_benefits.id = benefit_redemptions.benefit_id").
 		Where("benefit_redemptions.brand_customer_id = ? AND benefit_redemptions.status = ? AND brand_benefits.feature_code = ? AND (benefit_redemptions.expires_at IS NULL OR benefit_redemptions.expires_at > ?)",
-			brandCustomerID, "redeemed", featureCode, now).
+			brandCustomerID, string(benefitredemptionstatus.Redeemed), featureCode, now).
 		First(&redemption).Error
 
 	if err != nil {
@@ -65,7 +66,7 @@ func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.C
 func (r *BenefitRedemptionRepository) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int64
 	err := r.GetDB(ctx).Model(&entities.BenefitRedemption{}).
-		Where("user_id = ? AND status = ? AND expires_at BETWEEN now() AND now() + interval '30 days'", userID, "REDEEMED").
+		Where("user_id = ? AND status = ? AND expires_at BETWEEN now() AND now() + interval '30 days'", userID, string(benefitredemptionstatus.Redeemed)).
 		Count(&count).Error
 	if err != nil {
 		return 0, err

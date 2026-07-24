@@ -8058,9 +8058,6 @@ const docTemplate = `{
                 "brandId": {
                     "type": "string"
                 },
-                "csFirstResponseAvgSeconds": {
-                    "type": "integer"
-                },
                 "digitalSampleAvgRating": {
                     "type": "number"
                 },
@@ -8714,7 +8711,6 @@ const docTemplate = `{
                 "digital_sample_votes_count",
                 "digital_sample_avg_rating",
                 "open_cs_tickets",
-                "cs_first_response_avg_seconds",
                 "points_expiring_30d",
                 "points_liability_value_vnd",
                 "new_users",
@@ -8744,7 +8740,6 @@ const docTemplate = `{
                 "DigitalSampleVotesCount",
                 "DigitalSampleAvgRating",
                 "OpenCSTickets",
-                "CSFirstResponseAvgSeconds",
                 "PointsExpiring30d",
                 "PointsLiabilityValueVND",
                 "NewUsers",

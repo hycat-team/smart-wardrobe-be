@@ -7,7 +7,12 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -103,7 +108,7 @@ func (r *BrandRepository) GetAdminBrandStats(ctx context.Context, snapshotDate t
 	}
 
 	var pendingBrands int64
-	if err := db.Model(&entities.Brand{}).Where("status = ?", "PENDING_REVIEW").Count(&pendingBrands).Error; err != nil {
+	if err := db.Model(&entities.Brand{}).Where("status = ?", string(brandstatus.PendingReview)).Count(&pendingBrands).Error; err != nil {
 		return nil, err
 	}
 
@@ -118,26 +123,26 @@ func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uu
 	db := r.GetDB(ctx)
 
 	var totalMembers int64
-	_ = db.Table("brand_customers").Where("brand_id = ? AND status = ?", brandID, "ACTIVE").Count(&totalMembers).Error
+	_ = db.Table("brand_customers").Where("brand_id = ? AND status = ?", brandID, string(brandcustomerstatus.Active)).Count(&totalMembers).Error
 
 	var pointsIssued int64
 	_ = db.Table("loyalty_point_transactions").
-		Where("brand_id = ? AND transaction_type IN ?", brandID, []string{"EARN", "CREDIT", "ISSUED"}).
-		Select("COALESCE(SUM(points), 0)").Scan(&pointsIssued).Error
+		Where("brand_id = ? AND transaction_type = ?", brandID, string(loyaltytransactiontype.Earn)).
+		Select("COALESCE(SUM(points_delta), 0)").Scan(&pointsIssued).Error
 
 	var pointsRedeemed int64
 	_ = db.Table("loyalty_point_transactions").
-		Where("brand_id = ? AND transaction_type IN ?", brandID, []string{"REDEEM", "DEBIT", "REDEEMED"}).
-		Select("COALESCE(SUM(points), 0)").Scan(&pointsRedeemed).Error
+		Where("brand_id = ? AND transaction_type = ?", brandID, string(loyaltytransactiontype.Redeem)).
+		Select("COALESCE(SUM(points_delta), 0)").Scan(&pointsRedeemed).Error
 
 	var expiringPoints int64
 	_ = db.Table("loyalty_point_lots").
-		Where("brand_id = ? AND status = ? AND expires_at >= ? AND expires_at <= ?", brandID, "ACTIVE", snapshotDate, snapshotDate.AddDate(0, 0, 30)).
+		Where("brand_id = ? AND status = ? AND expires_at >= ? AND expires_at <= ?", brandID, string(loyaltypointlotstatus.Active), snapshotDate, snapshotDate.AddDate(0, 0, 30)).
 		Select("COALESCE(SUM(remaining_points), 0)").Scan(&expiringPoints).Error
 
 	var activeVouchers int64
 	_ = db.Table("brand_benefits").
-		Where("brand_id = ? AND status IN ?", brandID, []string{"ACTIVE", "active"}).Count(&activeVouchers).Error
+		Where("brand_id = ? AND status = ?", brandID, string(benefitstatus.Active)).Count(&activeVouchers).Error
 
 	var vouchersRedeemed int64
 	_ = db.Table("benefit_redemptions").
@@ -156,27 +161,21 @@ func (r *BrandRepository) GetBrandAnalyticsStats(ctx context.Context, brandID uu
 
 	var openTickets int64
 	_ = db.Table("brand_conversations").
-		Where("brand_id = ? AND status = ?", brandID, "OPEN").Count(&openTickets).Error
-
-	var avgCsSeconds float64
-	_ = db.Table("brand_conversations").
-		Where("brand_id = ? AND first_response_seconds IS NOT NULL", brandID).
-		Select("COALESCE(AVG(first_response_seconds), 0)").Scan(&avgCsSeconds).Error
+		Where("brand_id = ? AND status = ?", brandID, string(conversationstatus.Open)).Count(&openTickets).Error
 
 	return &dto.BrandAnalyticsStatsDTO{
-		BrandID:                   brandID,
-		SnapshotDate:              snapshotDate,
-		TotalMembers:              int(totalMembers),
-		PointsIssued:              int(pointsIssued),
-		PointsRedeemed:            int(pointsRedeemed),
-		PointsExpiring30d:         int(expiringPoints),
-		PointsLiabilityValueVND:   float64(expiringPoints) * 1000.0,
-		ActiveVouchers:            int(activeVouchers),
-		VouchersRedeemed:          int(vouchersRedeemed),
-		DigitalSampleVotesCount:   int(sampleVotesCount),
-		DigitalSampleAvgRating:    sampleAvgRating,
-		OpenCSTickets:             int(openTickets),
-		CSFirstResponseAvgSeconds: int(avgCsSeconds),
+		BrandID:                 brandID,
+		SnapshotDate:            snapshotDate,
+		TotalMembers:            int(totalMembers),
+		PointsIssued:            int(pointsIssued),
+		PointsRedeemed:          int(pointsRedeemed),
+		PointsExpiring30d:       int(expiringPoints),
+		PointsLiabilityValueVND: float64(expiringPoints) * 1000.0,
+		ActiveVouchers:          int(activeVouchers),
+		VouchersRedeemed:        int(vouchersRedeemed),
+		DigitalSampleVotesCount: int(sampleVotesCount),
+		DigitalSampleAvgRating:  sampleAvgRating,
+		OpenCSTickets:           int(openTickets),
 	}, nil
 }
 

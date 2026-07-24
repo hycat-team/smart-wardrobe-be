@@ -14,5 +14,3 @@ CREATE TABLE dashboard_brand_item_daily_snapshots (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-ALTER TABLE dashboard_brand_item_daily_snapshots OWNER TO postgres;

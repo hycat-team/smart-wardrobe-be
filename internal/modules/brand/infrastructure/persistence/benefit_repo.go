@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -33,7 +34,7 @@ func (r *BrandBenefitRepository) GetByBrandID(ctx context.Context, brandID uuid.
 
 func (r *BrandBenefitRepository) GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error) {
 	var benefits []*entities.BrandBenefit
-	err := r.GetQueryWithPreload(ctx).Where("brand_id = ? AND status = ?", brandID, "active").Find(&benefits).Error
+	err := r.GetQueryWithPreload(ctx).Where("brand_id = ? AND status = ?", brandID, string(benefitstatus.Active)).Find(&benefits).Error
 	if err != nil {
 		return nil, err
 	}
