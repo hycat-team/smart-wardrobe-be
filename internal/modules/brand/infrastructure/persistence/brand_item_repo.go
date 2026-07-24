@@ -114,5 +114,3 @@ func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter 
 		TotalCount: totalCount,
 	}, nil
 }
-
-

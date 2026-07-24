@@ -32,5 +32,3 @@ func (r *PaymentEventRepository) GetByReference(ctx context.Context, provider, r
 	}
 	return &event, err
 }
-
-

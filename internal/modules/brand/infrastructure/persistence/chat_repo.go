@@ -55,5 +55,3 @@ func (r *BrandConversationRepository) GetByIDForUpdate(ctx context.Context, id u
 	}
 	return &conv, nil
 }
-
-

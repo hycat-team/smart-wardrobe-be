@@ -46,5 +46,3 @@ func (r *LoyaltyProgramRepository) GetActiveByBrandID(ctx context.Context, brand
 	}
 	return &program, nil
 }
-
-

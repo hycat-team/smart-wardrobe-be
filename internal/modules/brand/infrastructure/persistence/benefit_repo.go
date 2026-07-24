@@ -39,5 +39,3 @@ func (r *BrandBenefitRepository) GetActiveByBrandID(ctx context.Context, brandID
 	}
 	return benefits, nil
 }
-
-

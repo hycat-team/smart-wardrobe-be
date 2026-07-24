@@ -77,5 +77,3 @@ func (r *UserSubscriptionEventRepository) GetByKey(ctx context.Context, key stri
 	}
 	return &event, err
 }
-
-
