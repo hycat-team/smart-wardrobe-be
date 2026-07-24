@@ -19,6 +19,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/pkg/utils/stringutils"
@@ -101,8 +102,26 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uui
 		return nil, err
 	}
 
+	userMap := make(map[uuid.UUID]*identity_dto.UserRes)
+	if len(result.Customers) > 0 {
+		userIDs := make([]uuid.UUID, 0, len(result.Customers))
+		for _, c := range result.Customers {
+			if c.UserID != nil {
+				userIDs = append(userIDs, *c.UserID)
+			}
+		}
+		if len(userIDs) > 0 {
+			users, err := uc.userContract.GetByIDs(ctx, userIDs)
+			if err == nil {
+				for _, u := range users {
+					userMap[u.ID] = u
+				}
+			}
+		}
+	}
+
 	return &dto.BrandCustomerListRes{
-		Items:    mapper.MapBrandCustomers(result.Customers),
+		Items:    mapper.MapBrandCustomersWithUsers(result.Customers, userMap),
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
@@ -118,7 +137,14 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid
 	if customer == nil || customer.BrandID != brandID {
 		return nil, branderrors.ErrCustomerNotFound()
 	}
-	return mapper.MapBrandCustomer(customer, nil), nil
+	var user *identity_dto.UserRes
+	if customer.UserID != nil {
+		u, err := uc.userContract.GetByID(ctx, *customer.UserID)
+		if err == nil {
+			user = u
+		}
+	}
+	return mapper.MapBrandCustomer(customer, user), nil
 }
 
 func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, brandID uuid.UUID) (*dto.BrandCustomerRes, error) {

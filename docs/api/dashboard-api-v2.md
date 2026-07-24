@@ -14,13 +14,13 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `SubscriptionDistributionRes`
 - **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) GROUP BY current_plan_code ORDER BY COUNT(*) DESC`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| Distribution | `distribution` | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code |
-| ├ PlanCode | `planCode` | string | Mã gói subscription (FREE, PREMIUM_MONTHLY, ...) |
-| ├ UserCount | `userCount` | int | Số người dùng thuộc gói này |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng user |
-| TotalUsers | `totalUsers` | int | Tổng số người dùng có subscription |
+| Field        | JSON           | Kiểu                          | Ý nghĩa                                          |
+| ------------ | -------------- | ----------------------------- | ------------------------------------------------ |
+| Distribution | `distribution` | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code                 |
+| ├ PlanCode   | `planCode`     | string                        | Mã gói subscription (FREE, PREMIUM_MONTHLY, ...) |
+| ├ UserCount  | `userCount`    | int                           | Số người dùng thuộc gói này                      |
+| └ Percentage | `percentage`   | float64                       | Tỷ lệ phần trăm so với tổng user                 |
+| TotalUsers   | `totalUsers`   | int                           | Tổng số người dùng có subscription               |
 
 ---
 
@@ -35,16 +35,16 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `RevenueBreakdownRes`
 - **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='DIRECT_PURCHASE'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| FromDate | `fromDate` | string | Ngày bắt đầu kỳ thống kê |
-| ToDate | `toDate` | string | Ngày kết thúc kỳ thống kê |
-| Breakdown | `breakdown` | []RevenueBreakdownDTO | Danh sách doanh thu theo plan + tháng |
-| ├ PlanCode | `planCode` | string | Mã gói subscription |
-| ├ Month | `month` | string | Tháng (YYYY-MM) |
-| ├ TransactionCount | `transactionCount` | int | Số giao dịch thành công |
-| └ RevenueVND | `revenueVnd` | float64 | Tổng doanh thu (VND) |
-| TotalRevenueVND | `totalRevenueVnd` | float64 | Tổng doanh thu tất cả gói |
+| Field              | JSON               | Kiểu                  | Ý nghĩa                               |
+| ------------------ | ------------------ | --------------------- | ------------------------------------- |
+| FromDate           | `fromDate`         | string                | Ngày bắt đầu kỳ thống kê              |
+| ToDate             | `toDate`           | string                | Ngày kết thúc kỳ thống kê             |
+| Breakdown          | `breakdown`        | []RevenueBreakdownDTO | Danh sách doanh thu theo plan + tháng |
+| ├ PlanCode         | `planCode`         | string                | Mã gói subscription                   |
+| ├ Month            | `month`            | string                | Tháng (YYYY-MM)                       |
+| ├ TransactionCount | `transactionCount` | int                   | Số giao dịch thành công               |
+| └ RevenueVND       | `revenueVnd`       | float64               | Tổng doanh thu (VND)                  |
+| TotalRevenueVND    | `totalRevenueVnd`  | float64               | Tổng doanh thu tất cả gói             |
 
 ---
 
@@ -59,17 +59,17 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `AIUsageByOperationRes`
 - **Nguồn dữ liệu:** Bảng `ai_usage_events`, `GROUP BY operation, logical_route`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| FromDate | `fromDate` | string | Ngày bắt đầu kỳ thống kê |
-| ToDate | `toDate` | string | Ngày kết thúc kỳ thống kê |
-| Operations | `operations` | []AIUsageByOperationDTO | Danh sách thống kê theo operation |
-| ├ Operation | `operation` | string | Loại tác vụ (outfit-recommend, chat, ...) |
-| ├ LogicalRoute | `logicalRoute` | string | Tuyến xử lý (normal, reduced, free) |
-| ├ RequestCount | `requestCount` | int64 | Số lượng request |
-| ├ TotalCostVND | `totalCostVnd` | float64 | Tổng chi phí (VND) = actual_cost_micro_vnd / 1,000,000 |
-| ├ TotalPromptTokens | `totalPromptTokens` | int64 | Tổng token đầu vào |
-| └ TotalOutputTokens | `totalOutputTokens` | int64 | Tổng token đầu ra |
+| Field               | JSON                | Kiểu                    | Ý nghĩa                                                |
+| ------------------- | ------------------- | ----------------------- | ------------------------------------------------------ |
+| FromDate            | `fromDate`          | string                  | Ngày bắt đầu kỳ thống kê                               |
+| ToDate              | `toDate`            | string                  | Ngày kết thúc kỳ thống kê                              |
+| Operations          | `operations`        | []AIUsageByOperationDTO | Danh sách thống kê theo operation                      |
+| ├ Operation         | `operation`         | string                  | Loại tác vụ (outfit-recommend, chat, ...)              |
+| ├ LogicalRoute      | `logicalRoute`      | string                  | Tuyến xử lý (normal, reduced, free)                    |
+| ├ RequestCount      | `requestCount`      | int64                   | Số lượng request                                       |
+| ├ TotalCostVND      | `totalCostVnd`      | float64                 | Tổng chi phí (VND) = actual_cost_micro_vnd / 1,000,000 |
+| ├ TotalPromptTokens | `totalPromptTokens` | int64                   | Tổng token đầu vào                                     |
+| └ TotalOutputTokens | `totalOutputTokens` | int64                   | Tổng token đầu ra                                      |
 
 ---
 
@@ -81,16 +81,16 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `AIErrorBreakdownRes`
 - **Nguồn dữ liệu:** Bảng `ai_usage_events`, lấy các status thuộc nhóm lỗi (tham khảo package `aiusageeventstatus`). Tổng request lấy từ `COUNT(*)` trong 30 ngày gần nhất.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| TotalErrors | `totalErrors` | int64 | Tổng số request bị lỗi |
-| TotalRequests | `totalRequests` | int64 | Tổng số request (30 ngày qua) |
-| ErrorRate | `errorRate` | float64 | Tỷ lệ lỗi = totalErrors / totalRequests * 100 |
-| Breakdown | `breakdown` | []AIErrorBreakdownDTO | Chi tiết lỗi theo nhóm |
-| ├ ErrorCode | `errorCode` | string | Mã lỗi (rate_limit_exceeded, timeout, ...) |
-| ├ Provider | `provider` | string | Nhà cung cấp AI (openai, anthropic, ...) |
-| ├ Model | `model` | string | Model AI (gpt-4, claude-3, ...) |
-| └ ErrorCount | `errorCount` | int64 | Số lần xuất hiện lỗi này |
+| Field         | JSON            | Kiểu                  | Ý nghĩa                                        |
+| ------------- | --------------- | --------------------- | ---------------------------------------------- |
+| TotalErrors   | `totalErrors`   | int64                 | Tổng số request bị lỗi                         |
+| TotalRequests | `totalRequests` | int64                 | Tổng số request (30 ngày qua)                  |
+| ErrorRate     | `errorRate`     | float64               | Tỷ lệ lỗi = totalErrors / totalRequests \* 100 |
+| Breakdown     | `breakdown`     | []AIErrorBreakdownDTO | Chi tiết lỗi theo nhóm                         |
+| ├ ErrorCode   | `errorCode`     | string                | Mã lỗi (rate_limit_exceeded, timeout, ...)     |
+| ├ Provider    | `provider`      | string                | Nhà cung cấp AI (openai, anthropic, ...)       |
+| ├ Model       | `model`         | string                | Model AI (gpt-4, claude-3, ...)                |
+| └ ErrorCount  | `errorCount`    | int64                 | Số lần xuất hiện lỗi này                       |
 
 ---
 
@@ -102,13 +102,13 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `RenewalStatsRes`
 - **Nguồn dữ liệu:** Bảng `subscription_renewal_attempts`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| TotalAttempts | `totalAttempts` | int | Tổng số lần gia hạn (đã thực hiện) |
-| SuccessCount | `successCount` | int | Số lần gia hạn thành công (status = 'SUCCESS') |
-| FailedCount | `failedCount` | int | Số lần gia hạn thất bại (status = 'FAILED') |
-| SuccessRate | `successRate` | float64 | Tỷ lệ thành công = successCount / totalAttempts * 100 |
-| AvgRetryCount | `avgRetryCount` | float64 | Số lần thử lại trung bình (AVG của attempt_count) |
+| Field         | JSON            | Kiểu    | Ý nghĩa                                                |
+| ------------- | --------------- | ------- | ------------------------------------------------------ |
+| TotalAttempts | `totalAttempts` | int     | Tổng số lần gia hạn (đã thực hiện)                     |
+| SuccessCount  | `successCount`  | int     | Số lần gia hạn thành công (status = 'SUCCESS')         |
+| FailedCount   | `failedCount`   | int     | Số lần gia hạn thất bại (status = 'FAILED')            |
+| SuccessRate   | `successRate`   | float64 | Tỷ lệ thành công = successCount / totalAttempts \* 100 |
+| AvgRetryCount | `avgRetryCount` | float64 | Số lần thử lại trung bình (AVG của attempt_count)      |
 
 ---
 
@@ -123,14 +123,14 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `CustomerAcquisitionRes`
 - **Nguồn dữ liệu:** Bảng `brand_customers`, `GROUP BY joined_source WHERE brand_id = ?`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| TotalCustomers | `totalCustomers` | int | Tổng số khách hàng |
-| Sources | `sources` | []CustomerAcquisitionDTO | Phân bổ theo kênh thu hút |
-| ├ Source | `source` | string | Tên kênh (ví dụ: walk_in, referral, online) |
-| ├ CustomerCount | `customerCount` | int | Số khách hàng từ kênh này |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng |
+| Field           | JSON             | Kiểu                     | Ý nghĩa                                     |
+| --------------- | ---------------- | ------------------------ | ------------------------------------------- |
+| BrandID         | `brandId`        | uuid.UUID                | UUID của nhãn hàng                          |
+| TotalCustomers  | `totalCustomers` | int                      | Tổng số khách hàng                          |
+| Sources         | `sources`        | []CustomerAcquisitionDTO | Phân bổ theo kênh thu hút                   |
+| ├ Source        | `source`         | string                   | Tên kênh (ví dụ: walk_in, referral, online) |
+| ├ CustomerCount | `customerCount`  | int                      | Số khách hàng từ kênh này                   |
+| └ Percentage    | `percentage`     | float64                  | Tỷ lệ phần trăm so với tổng                 |
 
 ---
 
@@ -143,16 +143,16 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `TierDistributionRes`
 - **Nguồn dữ liệu:** Bảng `loyalty_accounts` LEFT JOIN `loyalty_tiers`, `GROUP BY current_tier_id`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| TotalMembers | `totalMembers` | int | Tổng số thành viên loyalty |
-| Tiers | `tiers` | []TierDistributionDTO | Phân bổ theo hạng |
-| ├ TierID | `tierId` | uuid.UUID | ID của hạng loyalty |
-| ├ TierName | `tierName` | string | Tên hạng (Bronze, Silver, Gold, v.v.) |
-| ├ TierRank | `tierRank` | int | Thứ hạng (1, 2, 3, ...) |
-| ├ MemberCount | `memberCount` | int | Số thành viên thuộc hạng này |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng |
+| Field         | JSON           | Kiểu                  | Ý nghĩa                               |
+| ------------- | -------------- | --------------------- | ------------------------------------- |
+| BrandID       | `brandId`      | uuid.UUID             | UUID của nhãn hàng                    |
+| TotalMembers  | `totalMembers` | int                   | Tổng số thành viên loyalty            |
+| Tiers         | `tiers`        | []TierDistributionDTO | Phân bổ theo hạng                     |
+| ├ TierID      | `tierId`       | uuid.UUID             | ID của hạng loyalty                   |
+| ├ TierName    | `tierName`     | string                | Tên hạng (Bronze, Silver, Gold, v.v.) |
+| ├ TierRank    | `tierRank`     | int                   | Thứ hạng (1, 2, 3, ...)               |
+| ├ MemberCount | `memberCount`  | int                   | Số thành viên thuộc hạng này          |
+| └ Percentage  | `percentage`   | float64               | Tỷ lệ phần trăm so với tổng           |
 
 ---
 
@@ -165,12 +165,12 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `PointExpiryForecastRes`
 - **Nguồn dữ liệu:** Bảng `loyalty_point_lots`, `WHERE status='ACTIVE' AND remaining_points>0 AND expires_at IS NOT NULL`, `GROUP BY DATE_TRUNC('month', expires_at)`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| Forecast | `forecast` | []PointExpiryForecastDTO | Dự báo theo tháng |
-| ├ Month | `month` | string | Tháng dự báo (YYYY-MM) |
-| └ PointsExpiring | `pointsExpiring` | int | Tổng số điểm sắp hết hạn trong tháng |
+| Field            | JSON             | Kiểu                     | Ý nghĩa                              |
+| ---------------- | ---------------- | ------------------------ | ------------------------------------ |
+| BrandID          | `brandId`        | uuid.UUID                | UUID của nhãn hàng                   |
+| Forecast         | `forecast`       | []PointExpiryForecastDTO | Dự báo theo tháng                    |
+| ├ Month          | `month`          | string                   | Tháng dự báo (YYYY-MM)               |
+| └ PointsExpiring | `pointsExpiring` | int                      | Tổng số điểm sắp hết hạn trong tháng |
 
 ---
 
@@ -183,19 +183,19 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `BenefitRedemptionAnalyticsRes`
 - **Nguồn dữ liệu:** Bảng `benefit_redemptions` JOIN `brand_benefits`, `GROUP BY benefit_id`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| TotalRedemptions | `totalRedemptions` | int | Tổng số lượt đổi benefit |
-| Trend | `trend` | []RedemptionTrendDTO | Xu hướng đổi benefit theo tháng |
-| ├ Month | `month` | string | Tháng (YYYY-MM) |
-| └ RedemptionCount | `redemptionCount` | int | Số lượt đổi trong tháng |
-| TopBenefits | `topBenefits` | []BenefitRedemptionDTO | Top 10 benefit được đổi nhiều nhất |
-| ├ BenefitID | `benefitId` | uuid.UUID | UUID của benefit |
-| ├ BenefitName | `benefitName` | string | Tên benefit (ví dụ: Giảm 10%, FreeShip) |
-| ├ BenefitType | `benefitType` | string | Loại benefit (discount, shipping, ...) |
-| ├ RedemptionCount | `redemptionCount` | int | Số lượt đổi |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng |
+| Field             | JSON               | Kiểu                   | Ý nghĩa                                 |
+| ----------------- | ------------------ | ---------------------- | --------------------------------------- |
+| BrandID           | `brandId`          | uuid.UUID              | UUID của nhãn hàng                      |
+| TotalRedemptions  | `totalRedemptions` | int                    | Tổng số lượt đổi benefit                |
+| Trend             | `trend`            | []RedemptionTrendDTO   | Xu hướng đổi benefit theo tháng         |
+| ├ Month           | `month`            | string                 | Tháng (YYYY-MM)                         |
+| └ RedemptionCount | `redemptionCount`  | int                    | Số lượt đổi trong tháng                 |
+| TopBenefits       | `topBenefits`      | []BenefitRedemptionDTO | Top 10 benefit được đổi nhiều nhất      |
+| ├ BenefitID       | `benefitId`        | uuid.UUID              | UUID của benefit                        |
+| ├ BenefitName     | `benefitName`      | string                 | Tên benefit (ví dụ: Giảm 10%, FreeShip) |
+| ├ BenefitType     | `benefitType`      | string                 | Loại benefit (discount, shipping, ...)  |
+| ├ RedemptionCount | `redemptionCount`  | int                    | Số lượt đổi                             |
+| └ Percentage      | `percentage`       | float64                | Tỷ lệ phần trăm so với tổng             |
 
 ---
 
@@ -208,15 +208,15 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `CatalogStatsRes`
 - **Nguồn dữ liệu:** Bảng `brand_items`, hai query `GROUP BY status` và `GROUP BY item_type`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| TotalItems | `totalItems` | int | Tổng số sản phẩm |
-| ByStatus | `byStatus` | []CatalogStatGroupDTO | Phân bổ theo trạng thái (ACTIVE, DRAFT, INACTIVE) |
-| ├ Label | `label` | string | Giá trị trạng thái |
-| ├ Count | `count` | int | Số lượng |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm |
-| ByType | `byType` | []CatalogStatGroupDTO | Phân bổ theo loại sản phẩm (clothing, accessory, ...) |
+| Field        | JSON         | Kiểu                  | Ý nghĩa                                               |
+| ------------ | ------------ | --------------------- | ----------------------------------------------------- |
+| BrandID      | `brandId`    | uuid.UUID             | UUID của nhãn hàng                                    |
+| TotalItems   | `totalItems` | int                   | Tổng số sản phẩm                                      |
+| ByStatus     | `byStatus`   | []CatalogStatGroupDTO | Phân bổ theo trạng thái (ACTIVE, DRAFT, INACTIVE)     |
+| ├ Label      | `label`      | string                | Giá trị trạng thái                                    |
+| ├ Count      | `count`      | int                   | Số lượng                                              |
+| └ Percentage | `percentage` | float64               | Tỷ lệ phần trăm                                       |
+| ByType       | `byType`     | []CatalogStatGroupDTO | Phân bổ theo loại sản phẩm (clothing, accessory, ...) |
 
 ---
 
@@ -229,16 +229,16 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `SpendSegmentationRes`
 - **Nguồn dữ liệu:** Bảng `loyalty_accounts`, dùng `CASE WHEN` để phân nhóm total_spend.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| BrandID | `brandId` | uuid.UUID | UUID của nhãn hàng |
-| TotalCustomers | `totalCustomers` | int | Tổng số khách hàng loyalty |
-| Segments | `segments` | []SpendSegmentDTO | Danh sách phân khúc |
-| ├ Segment | `segment` | string | Tên nhóm: low, medium, high, premium |
-| ├ MinVND | `minVnd` | float64 | Mức chi tiêu tối thiểu (VND) |
-| ├ MaxVND | `maxVnd` | float64 | Mức chi tiêu tối đa (VND), null nếu không giới hạn |
-| ├ CustomerCount | `customerCount` | int | Số khách hàng trong nhóm |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng |
+| Field           | JSON             | Kiểu              | Ý nghĩa                                            |
+| --------------- | ---------------- | ----------------- | -------------------------------------------------- |
+| BrandID         | `brandId`        | uuid.UUID         | UUID của nhãn hàng                                 |
+| TotalCustomers  | `totalCustomers` | int               | Tổng số khách hàng loyalty                         |
+| Segments        | `segments`       | []SpendSegmentDTO | Danh sách phân khúc                                |
+| ├ Segment       | `segment`        | string            | Tên nhóm: low, medium, high, premium               |
+| ├ MinVND        | `minVnd`         | float64           | Mức chi tiêu tối thiểu (VND)                       |
+| ├ MaxVND        | `maxVnd`         | float64           | Mức chi tiêu tối đa (VND), null nếu không giới hạn |
+| ├ CustomerCount | `customerCount`  | int               | Số khách hàng trong nhóm                           |
+| └ Percentage    | `percentage`     | float64           | Tỷ lệ phần trăm so với tổng                        |
 
 ---
 
@@ -252,14 +252,14 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 - **Response struct:** `WardrobeCategoryDistributionRes`
 - **Nguồn dữ liệu:** Join 3 bảng `wardrobe_items` → `fashion_items` → `categories`, `WHERE user_id=? AND is_deleted=false`, `GROUP BY category_id`.
 
-| Field | JSON | Kiểu | Ý nghĩa |
-|-------|------|------|---------|
-| TotalItems | `totalItems` | int | Tổng số món đồ trong tủ |
-| Categories | `categories` | []CategoryDistributionDTO | Phân bổ theo danh mục |
-| ├ CategoryID | `categoryId` | uuid.UUID | UUID của danh mục |
-| ├ CategoryName | `categoryName` | string | Tên danh mục (ví dụ: Áo Sơ Mi, Quần Jean) |
-| ├ ItemCount | `itemCount` | int | Số lượng món đồ thuộc danh mục |
-| └ Percentage | `percentage` | float64 | Tỷ lệ phần trăm so với tổng |
+| Field          | JSON           | Kiểu                      | Ý nghĩa                                   |
+| -------------- | -------------- | ------------------------- | ----------------------------------------- |
+| TotalItems     | `totalItems`   | int                       | Tổng số món đồ trong tủ                   |
+| Categories     | `categories`   | []CategoryDistributionDTO | Phân bổ theo danh mục                     |
+| ├ CategoryID   | `categoryId`   | uuid.UUID                 | UUID của danh mục                         |
+| ├ CategoryName | `categoryName` | string                    | Tên danh mục (ví dụ: Áo Sơ Mi, Quần Jean) |
+| ├ ItemCount    | `itemCount`    | int                       | Số lượng món đồ thuộc danh mục            |
+| └ Percentage   | `percentage`   | float64                   | Tỷ lệ phần trăm so với tổng               |
 
 ---
 
@@ -269,39 +269,39 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 
 Các metric này sử dụng field đã có sẵn trong `dashboard_admin_daily_snapshots`:
 
-| Metric | Field / Cách tính | Kiểu gốc | Mô tả |
-|--------|-------------------|----------|-------|
-| `new_users` | `snapshot.NewUsers` | int → float64 | Số người dùng mới đăng ký trong ngày |
-| `ai_error_count` | `snapshot.AIErrorCount` | int64 → float64 | Số request AI bị lỗi trong ngày |
-| `ai_error_rate` | `ai_error_count / ai_requests_count * 100` | float64 | Tỷ lệ lỗi AI (%), computed |
+| Metric           | Field / Cách tính                          | Kiểu gốc        | Mô tả                                |
+| ---------------- | ------------------------------------------ | --------------- | ------------------------------------ |
+| `new_users`      | `snapshot.NewUsers`                        | int → float64   | Số người dùng mới đăng ký trong ngày |
+| `ai_error_count` | `snapshot.AIErrorCount`                    | int64 → float64 | Số request AI bị lỗi trong ngày      |
+| `ai_error_rate`  | `ai_error_count / ai_requests_count * 100` | float64         | Tỷ lệ lỗi AI (%), computed           |
 
 ### Brand metrics
 
 Các metric brand mới query live từ bảng nguồn (không qua snapshot):
 
-| Metric | Nguồn | Cách tính | Mô tả |
-|--------|-------|-----------|-------|
-| `new_customers` | `brand_customers` | `COUNT(*) WHERE created_at BETWEEN fromDate AND toDate` | Số khách hàng mới trong kỳ |
-| `customer_claim_rate` | `brand_customers` | `claimed_at IS NOT NULL / total * 100` | Tỷ lệ khách hàng đã claim tài khoản |
-| `benefit_redemption_count` | `benefit_redemptions` | `COUNT(*) WHERE redeemed_at BETWEEN fromDate AND toDate` | Số lượt đổi benefit trong kỳ |
-| `brand_item_count` | `brand_items` | `COUNT(*) WHERE brand_id = ?` | Tổng số sản phẩm trong catalog |
-| `brand_item_count_by_type` | `brand_items` | `SELECT item_type, COUNT(*) GROUP BY item_type` | Số sản phẩm theo từng loại |
+| Metric                     | Nguồn                 | Cách tính                                                | Mô tả                               |
+| -------------------------- | --------------------- | -------------------------------------------------------- | ----------------------------------- |
+| `new_customers`            | `brand_customers`     | `COUNT(*) WHERE created_at BETWEEN fromDate AND toDate`  | Số khách hàng mới trong kỳ          |
+| `customer_claim_rate`      | `brand_customers`     | `claimed_at IS NOT NULL / total * 100`                   | Tỷ lệ khách hàng đã claim tài khoản |
+| `benefit_redemption_count` | `benefit_redemptions` | `COUNT(*) WHERE redeemed_at BETWEEN fromDate AND toDate` | Số lượt đổi benefit trong kỳ        |
+| `brand_item_count`         | `brand_items`         | `COUNT(*) WHERE brand_id = ?`                            | Tổng số sản phẩm trong catalog      |
+| `brand_item_count_by_type` | `brand_items`         | `SELECT item_type, COUNT(*) GROUP BY item_type`          | Số sản phẩm theo từng loại          |
 
 ---
 
 ## Tổng hợp Endpoint mới
 
-| Phương thức | Endpoint | Vai trò | Chức năng |
-|------------|----------|---------|-----------|
-| GET | `/api/v1/admin/dashboard/subscriptions/distribution` | Admin | Phân bổ người dùng theo gói subscription |
-| GET | `/api/v1/admin/dashboard/subscriptions/revenue-breakdown` | Admin | Doanh thu subscription theo gói và thời gian |
-| GET | `/api/v1/admin/dashboard/ai/usage-by-operation` | Admin | Thống kê sử dụng AI theo tác vụ |
-| GET | `/api/v1/admin/dashboard/ai/error-breakdown` | Admin | Thống kê lỗi AI theo error_code, provider, model |
-| GET | `/api/v1/admin/dashboard/subscriptions/renewal-stats` | Admin | Thống kê tỷ lệ gia hạn subscription |
-| GET | `/api/v1/brand/dashboard/customers/acquisition` | Brand | Thống kê kênh thu hút khách hàng |
-| GET | `/api/v1/brand/dashboard/loyalty/tier-distribution` | Brand | Phân bổ hạng loyalty thành viên |
-| GET | `/api/v1/brand/dashboard/loyalty/point-expiry-forecast` | Brand | Dự báo điểm sắp hết hạn |
-| GET | `/api/v1/brand/dashboard/benefits/redemption-analytics` | Brand | Thống kê top benefit được đổi nhiều nhất |
-| GET | `/api/v1/brand/dashboard/operations/catalog-stats` | Brand | Thống kê catalog sản phẩm |
-| GET | `/api/v1/brand/dashboard/customers/spend-segmentation` | Brand | Phân khúc chi tiêu khách hàng |
-| GET | `/api/v1/me/dashboard/wardrobe/category-distribution` | User | Phân bổ danh mục tủ đồ cá nhân |
+| Phương thức | Endpoint                                                  | Vai trò | Chức năng                                        |
+| ----------- | --------------------------------------------------------- | ------- | ------------------------------------------------ |
+| GET         | `/api/v1/admin/dashboard/subscriptions/distribution`      | Admin   | Phân bổ người dùng theo gói subscription         |
+| GET         | `/api/v1/admin/dashboard/subscriptions/revenue-breakdown` | Admin   | Doanh thu subscription theo gói và thời gian     |
+| GET         | `/api/v1/admin/dashboard/ai/usage-by-operation`           | Admin   | Thống kê sử dụng AI theo tác vụ                  |
+| GET         | `/api/v1/admin/dashboard/ai/error-breakdown`              | Admin   | Thống kê lỗi AI theo error_code, provider, model |
+| GET         | `/api/v1/admin/dashboard/subscriptions/renewal-stats`     | Admin   | Thống kê tỷ lệ gia hạn subscription              |
+| GET         | `/api/v1/brand/dashboard/customers/acquisition`           | Brand   | Thống kê kênh thu hút khách hàng                 |
+| GET         | `/api/v1/brand/dashboard/loyalty/tier-distribution`       | Brand   | Phân bổ hạng loyalty thành viên                  |
+| GET         | `/api/v1/brand/dashboard/loyalty/point-expiry-forecast`   | Brand   | Dự báo điểm sắp hết hạn                          |
+| GET         | `/api/v1/brand/dashboard/benefits/redemption-analytics`   | Brand   | Thống kê top benefit được đổi nhiều nhất         |
+| GET         | `/api/v1/brand/dashboard/operations/catalog-stats`        | Brand   | Thống kê catalog sản phẩm                        |
+| GET         | `/api/v1/brand/dashboard/customers/spend-segmentation`    | Brand   | Phân khúc chi tiêu khách hàng                    |
+| GET         | `/api/v1/me/dashboard/wardrobe/category-distribution`     | User    | Phân bổ danh mục tủ đồ cá nhân                   |

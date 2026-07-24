@@ -405,6 +405,16 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
+	if input.ProductCode != nil && (item.ProductCode == nil || *input.ProductCode != *item.ProductCode) {
+		existing, err := uc.brandItemRepo.GetByProductCode(ctx, brandID, *input.ProductCode)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil && existing.ID != itemID {
+			return nil, branderrors.ErrProductCodeExists()
+		}
+	}
+	item.ProductCode = input.ProductCode
 	item.Name = input.Name
 	item.Description = input.Description
 	item.Price = input.Price

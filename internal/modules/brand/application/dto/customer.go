@@ -36,6 +36,7 @@ type BrandCustomerRes struct {
 type BrandCustomerUserRes struct {
 	ID        uuid.UUID     `json:"id"`
 	Username  string        `json:"username"`
+	Email     string        `json:"email,omitempty"`
 	FirstName string        `json:"firstName"`
 	LastName  string        `json:"lastName,omitempty"`
 	Gender    gender.Gender `json:"gender"`

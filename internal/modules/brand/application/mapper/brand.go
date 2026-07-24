@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"encoding/json"
+	"strings"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
@@ -103,6 +104,31 @@ func MapBrandMembers(members []*entities.BrandMember) []*dto.BrandMemberRes {
 	return res
 }
 
+func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserRes) *dto.BrandMemberRes {
+	if member == nil {
+		return nil
+	}
+	res := MapBrandMember(member)
+	if user != nil {
+		fullName := strings.TrimSpace(user.FirstName + " " + user.LastName)
+		res.UserFullName = fullName
+		res.UserEmail = user.Email
+	}
+	return res
+}
+
+func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserRes) []*dto.BrandMemberRes {
+	res := make([]*dto.BrandMemberRes, len(members))
+	for idx, member := range members {
+		var user *identity_dto.UserRes
+		if u, ok := userMap[member.UserID]; ok {
+			user = u
+		}
+		res[idx] = MapBrandMemberWithUser(member, user)
+	}
+	return res
+}
+
 func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserRes) *dto.BrandCustomerRes {
 	if customer == nil {
 		return nil
@@ -113,6 +139,7 @@ func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserR
 		customerUser = &dto.BrandCustomerUserRes{
 			ID:        user.ID,
 			Username:  user.Username,
+			Email:     user.Email,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
 			Gender:    user.Gender,

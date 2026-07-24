@@ -462,7 +462,22 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandMembers(members), nil
+
+	userMap := make(map[uuid.UUID]*identity_dto.UserRes)
+	if len(members) > 0 {
+		userIDs := make([]uuid.UUID, len(members))
+		for i, m := range members {
+			userIDs[i] = m.UserID
+		}
+		users, err := uc.userContract.GetByIDs(ctx, userIDs)
+		if err == nil {
+			for _, u := range users {
+				userMap[u.ID] = u
+			}
+		}
+	}
+
+	return mapper.MapBrandMembersWithUsers(members, userMap), nil
 }
 
 func (uc *BrandUseCase) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {

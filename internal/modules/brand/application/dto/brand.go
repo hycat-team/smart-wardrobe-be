@@ -80,11 +80,13 @@ type AddBrandMembersRes struct {
 }
 
 type BrandMemberRes struct {
-	ID        uuid.UUID                           `json:"id"`
-	BrandID   uuid.UUID                           `json:"brandId"`
-	UserID    uuid.UUID                           `json:"userId"`
-	Role      brandmemberrole.BrandMemberRole     `json:"role"`
-	Status    brandmemberstatus.BrandMemberStatus `json:"status"`
-	CreatedAt time.Time                           `json:"createdAt"`
-	UpdatedAt time.Time                           `json:"updatedAt"`
+	ID           uuid.UUID                           `json:"id"`
+	BrandID      uuid.UUID                           `json:"brandId"`
+	UserID       uuid.UUID                           `json:"userId"`
+	UserFullName string                              `json:"userFullName,omitempty"`
+	UserEmail    string                              `json:"userEmail,omitempty"`
+	Role         brandmemberrole.BrandMemberRole     `json:"role"`
+	Status       brandmemberstatus.BrandMemberStatus `json:"status"`
+	CreatedAt    time.Time                           `json:"createdAt"`
+	UpdatedAt    time.Time                           `json:"updatedAt"`
 }
