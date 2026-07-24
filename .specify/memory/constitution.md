@@ -1,12 +1,9 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 -> 1.1.0
+- Version change: 1.1.0 -> 1.2.0
 - Modified principles:
-  - III. Asynchronous Event-Driven Processing (Expanded with worker lifecycle rules)
-  - V. Standardized Transaction & Error Handling (Expanded with validation rules)
-- Added sections:
-  - VI. AI Pipeline, Cost Control & Local Fallbacks (New Core Principle)
-  - Under Constraints: Added specific rules for Goose Migrations, Language boundaries, and naming standards
+  - Code Style, Naming & Language Standards (Expanded with JSON naming rules for API DTOs)
+- Added sections: None
 - Removed sections: None
 - Templates requiring updates:
   - .specify/templates/plan-template.md (✅ verified/no updates needed)
@@ -73,6 +70,7 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 ## Code Style, Naming & Language Standards
 - **Language Boundaries**: Swagger text, request validation errors, and all client-facing messages MUST be written in Vietnamese. Internal code comments, log messages, and database/code identifiers (variables, struct fields, functions, tables) MUST be in English.
 - **Naming Conventions**: Repository queries and data lookup methods MUST prefer the `Get...` prefix (e.g., `GetByID`) over `Find...` when retrieving entities.
+- **JSON Naming for API DTOs**: All DTO response fields serialized to JSON for frontend communication MUST use camelCase (e.g., `wardrobeItemId`, `subscriptionRevenueVnd`). Internal DTOs used exclusively for event messaging (RabbitMQ), search indexing (Elasticsearch), or AI provider response parsing MAY use snake_case for compatibility with their respective systems.
 - **File Organization**: Mapper functions converting entities to DTOs must live inside the `application/mapper` folder (never in use case files). Single-use helpers must end with the `_helper.go` suffix.
 
 ## Access Control (RBAC) & Data Privacy Policies
@@ -87,8 +85,8 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 ## Governance
 - The Project Constitution is the authoritative document superseding other developer practices.
 - Any architectural changes, new principles, or redefinitions of existing boundaries require major/minor/patch version updates.
-- Validation checks: Every pull request must verify compliance with layer boundaries, cross-module contract rules, and standard error handling.
+- Validation checks: Every pull request must verify compliance with layer boundaries, cross-module contract rules, standard error handling, and JSON naming conventions for frontend-facing DTOs.
 - Archived modules must retain their folder tree structure but be completely removed from Wire DI configuration and route registration.
 - Refer to `docs/development/local-setup.md` for running and executing development code using Makefile commands (e.g., `make dev`).
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 1.2.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-24
