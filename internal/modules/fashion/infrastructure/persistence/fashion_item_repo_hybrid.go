@@ -100,7 +100,7 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	} else if hasVector {
 		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
 		err := db.
-			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec).
+			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec, vec).
 			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
 			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", vec)).
 			Order("wardrobe_items.id ASC").

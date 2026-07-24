@@ -70,6 +70,11 @@ func RunLocalHSLMatching(
 		}
 	}
 
+	candidateMap := map[uuid.UUID]types.CandidateForPrompt{}
+	for _, c := range candidates {
+		candidateMap[c.Item.ID] = c
+	}
+
 	var items []*dto.RecommendedItemGroup
 	if len(dresses) > 0 && len(shoes) > 0 && (len(tops) == 0 || len(bottoms) == 0) {
 		primaryDress := dresses[0]
@@ -81,8 +86,8 @@ func RunLocalHSLMatching(
 			}
 		}
 
-		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam", fashionItemMap), primaryDress, dresses, fashionItemMap))
-		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("giay"), primaryShoes, shoes, fashionItemMap))
+		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam", fashionItemMap), primaryDress, dresses, fashionItemMap, candidateMap))
+		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("giay"), primaryShoes, shoes, fashionItemMap, candidateMap))
 
 		if isCold && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
@@ -92,7 +97,7 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac", fashionItemMap), primaryOuter, outerwears, fashionItemMap))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac", fashionItemMap), primaryOuter, outerwears, fashionItemMap, candidateMap))
 		}
 	} else if len(tops) > 0 && len(bottoms) > 0 {
 		primaryTop, primaryBottom := tops[0], bottoms[0]
@@ -111,8 +116,8 @@ func RunLocalHSLMatching(
 			}
 		}
 
-		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("ao"), primaryTop, tops, fashionItemMap))
-		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan", fashionItemMap), primaryBottom, bottoms, fashionItemMap))
+		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("ao"), primaryTop, tops, fashionItemMap, candidateMap))
+		items = append(items, buildItemGroup(roleForItem(primaryBottom, "quan", fashionItemMap), primaryBottom, bottoms, fashionItemMap, candidateMap))
 
 		if len(shoes) > 0 {
 			primaryShoes := shoes[0]
@@ -122,7 +127,7 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay", fashionItemMap), primaryShoes, shoes, fashionItemMap))
+			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay", fashionItemMap), primaryShoes, shoes, fashionItemMap, candidateMap))
 		}
 
 		if isCold && len(outerwears) > 0 {
@@ -133,21 +138,21 @@ func RunLocalHSLMatching(
 					break
 				}
 			}
-			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac", fashionItemMap), primaryOuter, outerwears, fashionItemMap))
+			items = append(items, buildItemGroup(roleForItem(primaryOuter, "ao-khoac", fashionItemMap), primaryOuter, outerwears, fashionItemMap, candidateMap))
 		}
 	} else {
 		if len(dresses) > 0 {
-			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam", fashionItemMap), dresses[0], dresses, fashionItemMap))
+			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam", fashionItemMap), dresses[0], dresses, fashionItemMap, candidateMap))
 		} else {
 			if len(tops) > 0 {
-				items = append(items, buildItemGroup(roleForItem(tops[0], "ao", fashionItemMap), tops[0], tops, fashionItemMap))
+				items = append(items, buildItemGroup(roleForItem(tops[0], "ao", fashionItemMap), tops[0], tops, fashionItemMap, candidateMap))
 			}
 			if len(bottoms) > 0 {
-				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan", fashionItemMap), bottoms[0], bottoms, fashionItemMap))
+				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan", fashionItemMap), bottoms[0], bottoms, fashionItemMap, candidateMap))
 			}
 		}
 		if len(shoes) > 0 {
-			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay", fashionItemMap), shoes[0], shoes, fashionItemMap))
+			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay", fashionItemMap), shoes[0], shoes, fashionItemMap, candidateMap))
 		}
 	}
 

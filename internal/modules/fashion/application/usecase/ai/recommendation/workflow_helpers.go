@@ -116,21 +116,40 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
 		brandItemDTOS, fashionItems, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
 		if err == nil {
+			type brandCandidate struct {
+				brandItem   *brand_dto.BrandItemRes
+				fashionItem *dto.FashionItemRes
+				category    string
+			}
+			candidatesByCategory := map[string][]brandCandidate{}
 			for i, brandItem := range brandItemDTOS {
-				if brandCandidatesCount >= maxBrandCandidates {
-					break
-				}
 				fashionItem := fashionItems[i]
-				if fashionItem == nil {
+				if fashionItem == nil || fashionItem.Category == nil {
 					continue
 				}
+				slug := fashionItem.Category.Slug
+				candidatesByCategory[slug] = append(candidatesByCategory[slug], brandCandidate{
+					brandItem: brandItem, fashionItem: fashionItem, category: slug,
+				})
+			}
+
+			// Ưu tiên lấy "ao" (top) trước, sau đó round-robin các category khác
+			seenCategory := map[string]bool{}
+			addBrandCandidate := func(slug string) bool {
+				items := candidatesByCategory[slug]
+				if len(items) == 0 || seenCategory[slug] {
+					return false
+				}
+				seenCategory[slug] = true
+				cand := items[0]
+				candidatesByCategory[slug] = items[1:]
+
 				mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
-					ID: brandItem.FashionItemID,
+					ID: cand.brandItem.FashionItemID,
 					FashionItem: &wardrobeDto.FashionItemRes{
-						ID: fashionItem.ID,
+						ID: cand.fashionItem.ID,
 					},
 				}
-
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
 					Source:          types.CandidateSourceRetrieval,
@@ -140,10 +159,62 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 					RetrievalRank:   brandCandidatesCount + 1,
 					RetrievalSource: string(types.CandidateSourceRetrieval),
 					ItemContext:     outfititemcontext.BrandItem,
-					BrandItem:       brandItem,
+					BrandItem:       cand.brandItem,
 				})
 				brandCandidatesCount++
+				return true
 			}
+
+			// Vòng 1: ưu tiên "ao" (top)
+			if addBrandCandidate("ao") && brandCandidatesCount >= maxBrandCandidates {
+				goto afterBrandCandidates
+			}
+			// Vòng 2: 1 item từ mỗi category còn lại (ưu tiên ao-khoac, giay, quan)
+			for _, slug := range []string{"ao-khoac", "giay", "quan", "chan-vay", "dam", "phu-kien", "mu"} {
+				if addBrandCandidate(slug) && brandCandidatesCount >= maxBrandCandidates {
+					goto afterBrandCandidates
+				}
+			}
+			// Vòng 3: round-robin lấy thêm từ các category còn item
+			for brandCandidatesCount < maxBrandCandidates {
+				added := false
+				for _, items := range candidatesByCategory {
+					if len(items) > 0 {
+						cand := items[0]
+						candidatesByCategory[cand.category] = items[1:]
+						// reuse addBrandCandidate but skip seen
+						if seenCategory[cand.category] {
+							// Already seen, take additional item from this category
+							mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
+								ID: cand.brandItem.FashionItemID,
+								FashionItem: &wardrobeDto.FashionItemRes{
+									ID: cand.fashionItem.ID,
+								},
+							}
+							rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+								Item:            mockWardrobeItem,
+								Source:          types.CandidateSourceRetrieval,
+								VectorScore:     0.95,
+								LexicalScore:    0.95,
+								RetrievalScore:  0.95,
+								RetrievalRank:   brandCandidatesCount + 1,
+								RetrievalSource: string(types.CandidateSourceRetrieval),
+								ItemContext:     outfititemcontext.BrandItem,
+								BrandItem:       cand.brandItem,
+							})
+							brandCandidatesCount++
+							added = true
+						}
+					}
+					if brandCandidatesCount >= maxBrandCandidates {
+						break
+					}
+				}
+				if !added {
+					break
+				}
+			}
+		afterBrandCandidates:
 		}
 	}
 

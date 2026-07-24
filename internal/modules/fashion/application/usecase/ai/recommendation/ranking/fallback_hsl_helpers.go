@@ -2,10 +2,12 @@ package ranking
 
 import (
 	"math"
+	"strings"
+
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/mapper"
+	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"strings"
 
 	"github.com/google/uuid"
 )
@@ -114,6 +116,7 @@ func buildItemGroup(
 	primary *wardrobeDto.WardrobeItemRes,
 	all []*wardrobeDto.WardrobeItemRes,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	candidateMap map[uuid.UUID]types.CandidateForPrompt,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, item := range all {
@@ -123,20 +126,16 @@ func buildItemGroup(
 		if len(alternatives) >= 2 {
 			break
 		}
-		var fi *dto.FashionItemRes
-		if item.FashionItem != nil {
-			fi = fashionItemMap[item.FashionItem.ID]
-		}
-		alternatives = append(alternatives, mapper.MapToRecommendedItemResFromWardrobe(item, fi))
+		fi := fashionItemMap[item.FashionItem.ID]
+		cand := candidateMap[item.ID]
+		alternatives = append(alternatives, mapper.MapToRecommendedItemRes(item, fi, cand))
 	}
 
-	var primaryFI *dto.FashionItemRes
-	if primary.FashionItem != nil {
-		primaryFI = fashionItemMap[primary.FashionItem.ID]
-	}
+	primaryFI := fashionItemMap[primary.FashionItem.ID]
+	cand := candidateMap[primary.ID]
 	return &dto.RecommendedItemGroup{
 		Role:         role,
-		Primary:      mapper.MapToRecommendedItemResFromWardrobe(primary, primaryFI),
+		Primary:      mapper.MapToRecommendedItemRes(primary, primaryFI, cand),
 		Alternatives: alternatives,
 	}
 }

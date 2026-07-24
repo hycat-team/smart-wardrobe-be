@@ -78,7 +78,7 @@ func MapToRecommendedItemResFromWardrobe(item *wardrobeDto.WardrobeItemRes, fi *
 	}
 }
 
-func mapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
+func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
 	if item == nil {
 		return nil
 	}
@@ -164,7 +164,7 @@ func MapLLMResponseToGroups(
 			fashionItemRes = fashionItemMap[primary.FashionItem.ID]
 		}
 		cand, _ := promptCandidateMap[primary.ID]
-		primaryDTO := mapToRecommendedItemRes(primary, fashionItemRes, cand)
+		primaryDTO := MapToRecommendedItemRes(primary, fashionItemRes, cand)
 
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         actualRole,
@@ -269,7 +269,7 @@ func resolveAlternativeCandidates(
 		if altItem.FashionItem != nil {
 			fashionItemRes = fashionItemMap[altItem.FashionItem.ID]
 		}
-		altDTO := mapToRecommendedItemRes(altItem, fashionItemRes, promptCandidateMap[altItem.ID])
+		altDTO := MapToRecommendedItemRes(altItem, fashionItemRes, promptCandidateMap[altItem.ID])
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			return alternatives
@@ -300,7 +300,7 @@ func resolveAlternativeCandidates(
 		if item.FashionItem != nil {
 			fashionItemRes = fashionItemMap[item.FashionItem.ID]
 		}
-		altDTO := mapToRecommendedItemRes(item, fashionItemRes, candidate)
+		altDTO := MapToRecommendedItemRes(item, fashionItemRes, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			break
