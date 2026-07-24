@@ -65,6 +65,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
 	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
+	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- A complete outfit MUST include exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
 	builder.WriteString("- Each role must appear at most once. Do NOT output two items with the same role.\n")

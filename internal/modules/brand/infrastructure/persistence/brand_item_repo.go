@@ -40,6 +40,7 @@ func (r *BrandItemRepository) GetByBrandIDs(ctx context.Context, brandIDs []uuid
 	var items []*entities.BrandItem
 	err := r.GetDB(ctx).
 		Where("brand_id IN ?", brandIDs).
+		Order("created_at DESC, item_type DESC").
 		Find(&items).Error
 	if err != nil {
 		return nil, err
