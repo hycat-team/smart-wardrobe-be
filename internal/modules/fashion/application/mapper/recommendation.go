@@ -183,7 +183,18 @@ func MapLLMResponseToGroups(
 		valid = filtered
 	}
 
-	return valid
+	// Deduplicate by role: only keep the first group for each role
+	seenRoles := make(map[string]bool)
+	deduped := make([]*dto.RecommendedItemGroup, 0, len(valid))
+	for _, g := range valid {
+		if seenRoles[g.Role] {
+			continue
+		}
+		seenRoles[g.Role] = true
+		deduped = append(deduped, g)
+	}
+
+	return deduped
 }
 
 // resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI.
