@@ -127,6 +127,16 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 					metricValues[m] = s.SubscriptionRevenueVND
 				case metrickey.NetAIMarginVND:
 					metricValues[m] = s.NetAIMarginVND
+				case metrickey.NewUsers:
+					metricValues[m] = float64(s.NewUsers)
+				case metrickey.AIErrorCount:
+					metricValues[m] = float64(s.AIErrorCount)
+				case metrickey.AIErrorRate:
+					if s.AIRequestsCount > 0 {
+						metricValues[m] = float64(s.AIErrorCount) / float64(s.AIRequestsCount) * 100.0
+					} else {
+						metricValues[m] = 0
+					}
 				}
 			}
 			series = append(series, dto.TimeSeriesPointDTO{
@@ -168,6 +178,25 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 						metricValues[m] = float64(s.PointsExpiring30d)
 					case metrickey.PointsLiabilityValueVND:
 						metricValues[m] = s.PointsLiabilityValueVND
+					case metrickey.NewCustomers:
+						val, _ := uc.dashboardRepo.GetBrandNewCustomerCount(ctx, *req.BrandID, fromDate, toDate)
+						metricValues[m] = val
+					case metrickey.CustomerClaimRate:
+						val, _ := uc.dashboardRepo.GetBrandCustomerClaimRate(ctx, *req.BrandID)
+						metricValues[m] = val
+					case metrickey.BenefitRedemptionCount:
+						val, _ := uc.dashboardRepo.GetBrandRedemptionCount(ctx, *req.BrandID, fromDate, toDate)
+						metricValues[m] = val
+					case metrickey.BrandItemCount:
+						val, _ := uc.dashboardRepo.GetBrandItemCount(ctx, *req.BrandID)
+						metricValues[m] = val
+					case metrickey.BrandItemCountByType:
+						rows, _ := uc.dashboardRepo.GetBrandItemCountByType(ctx, *req.BrandID)
+						for _, row := range rows {
+							itemType, _ := row["item_type"].(string)
+							count, _ := row["count"].(int64)
+							metricValues[metrickey.MetricKey("brand_item_count_"+itemType)] = float64(count)
+						}
 					}
 				}
 				series = append(series, dto.TimeSeriesPointDTO{
@@ -356,6 +385,14 @@ func metricValueFromAdminSnapshot(s *entities.DashboardAdminDailySnapshot, m met
 		v = s.SubscriptionRevenueVND
 	case metrickey.NetAIMarginVND:
 		v = s.NetAIMarginVND
+	case metrickey.NewUsers:
+		v = float64(s.NewUsers)
+	case metrickey.AIErrorCount:
+		v = float64(s.AIErrorCount)
+	case metrickey.AIErrorRate:
+		if s.AIRequestsCount > 0 {
+			v = float64(s.AIErrorCount) / float64(s.AIRequestsCount) * 100.0
+		}
 	default:
 		return nil
 	}
@@ -411,10 +448,13 @@ func getMetricAggType(m metrickey.MetricKey) metricAggType {
 	case metrickey.AIRequestsCount, metrickey.SubscriptionRevenueVND,
 		metrickey.PointsIssued, metrickey.PointsRedeemed,
 		metrickey.VouchersRedeemed, metrickey.DigitalSampleVotesCount,
-		metrickey.OpenCSTickets:
+		metrickey.OpenCSTickets, metrickey.NewUsers, metrickey.AIErrorCount,
+		metrickey.NewCustomers, metrickey.BenefitRedemptionCount,
+		metrickey.BrandItemCount:
 		return metricNonCumulative
 	case metrickey.ActiveUsersDau, metrickey.NetAIMarginVND,
-		metrickey.DigitalSampleAvgRating, metrickey.CSFirstResponseAvgSeconds:
+		metrickey.DigitalSampleAvgRating, metrickey.CSFirstResponseAvgSeconds,
+		metrickey.AIErrorRate, metrickey.CustomerClaimRate:
 		return metricRate
 	default:
 		return metricNonCumulative

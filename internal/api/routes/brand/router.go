@@ -35,6 +35,12 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 		brandDashboard.GET("/kpi-cards", shared_pres.WrapHandler(r.brandDashboardHandler.GetKPICards))
 		brandDashboard.GET("/financials/points-liability", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointsLiability))
 		brandDashboard.GET("/operations/digital-sample-lab/:itemId", shared_pres.WrapHandler(r.brandDashboardHandler.GetDigitalSampleLabAnalytics))
+		brandDashboard.GET("/customers/acquisition", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerAcquisition))
+		brandDashboard.GET("/loyalty/tier-distribution", shared_pres.WrapHandler(r.brandDashboardHandler.GetLoyaltyTierDistribution))
+		brandDashboard.GET("/loyalty/point-expiry-forecast", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointExpiryForecast))
+		brandDashboard.GET("/benefits/redemption-analytics", shared_pres.WrapHandler(r.brandDashboardHandler.GetBenefitRedemptionAnalytics))
+		brandDashboard.GET("/operations/catalog-stats", shared_pres.WrapHandler(r.brandDashboardHandler.GetCatalogStats))
+		brandDashboard.GET("/customers/spend-segmentation", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerSpendSegmentation))
 	}
 
 	publicBrands := group.Group("/brands")

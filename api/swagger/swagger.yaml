@@ -972,6 +972,30 @@ definitions:
     - Adjust
     - Expire
     - Refund
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO:
+    properties:
+      errorCode:
+        type: string
+      errorCount:
+        type: integer
+      model:
+        type: string
+      provider:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownRes:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO'
+        type: array
+      errorRate:
+        type: number
+      totalErrors:
+        type: integer
+      totalRequests:
+        type: integer
+    type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes:
     properties:
       aiErrorCount:
@@ -992,6 +1016,32 @@ definitions:
         type: integer
       totalSubscriptionRevVnd:
         type: number
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationDTO:
+    properties:
+      logicalRoute:
+        type: string
+      operation:
+        type: string
+      requestCount:
+        type: integer
+      totalCostVnd:
+        type: number
+      totalOutputTokens:
+        type: integer
+      totalPromptTokens:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationRes:
+    properties:
+      fromDate:
+        type: string
+      operations:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationDTO'
+        type: array
+      toDate:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminKPICardsRes:
     properties:
@@ -1020,6 +1070,34 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AdminKPICardsRes'
       payosReconcile:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes'
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes:
+    properties:
+      brandId:
+        type: string
+      topBenefits:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionDTO'
+        type: array
+      totalRedemptions:
+        type: integer
+      trend:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RedemptionTrendDTO'
+        type: array
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionDTO:
+    properties:
+      benefitId:
+        type: string
+      benefitName:
+        type: string
+      benefitType:
+        type: string
+      percentage:
+        type: number
+      redemptionCount:
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandKPICardsRes:
     properties:
@@ -1055,6 +1133,41 @@ definitions:
       pointsLiabilityValueVnd:
         type: number
     type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO:
+    properties:
+      count:
+        type: integer
+      label:
+        type: string
+      percentage:
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatsRes:
+    properties:
+      brandId:
+        type: string
+      byStatus:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO'
+        type: array
+      byType:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO'
+        type: array
+      totalItems:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.CategoryDistributionDTO:
+    properties:
+      categoryId:
+        type: string
+      categoryName:
+        type: string
+      itemCount:
+        type: integer
+      percentage:
+        type: number
+    type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO:
     properties:
       metricDeltaPercentages:
@@ -1066,6 +1179,26 @@ definitions:
         type: string
       previousPeriodTo:
         type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO:
+    properties:
+      customerCount:
+        type: integer
+      percentage:
+        type: number
+      source:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionRes:
+    properties:
+      brandId:
+        type: string
+      sources:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO'
+        type: array
+      totalCustomers:
+        type: integer
     type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes:
     properties:
@@ -1189,6 +1322,132 @@ definitions:
       totalTransactions:
         type: integer
     type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastDTO:
+    properties:
+      month:
+        type: string
+      pointsExpiring:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastRes:
+    properties:
+      brandId:
+        type: string
+      forecast:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastDTO'
+        type: array
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.RedemptionTrendDTO:
+    properties:
+      month:
+        type: string
+      redemptionCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.RenewalStatsRes:
+    properties:
+      avgRetryCount:
+        type: number
+      failedCount:
+        type: integer
+      successCount:
+        type: integer
+      successRate:
+        type: number
+      totalAttempts:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownDTO:
+    properties:
+      month:
+        type: string
+      planCode:
+        type: string
+      revenueVnd:
+        type: number
+      transactionCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownRes:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownDTO'
+        type: array
+      fromDate:
+        type: string
+      toDate:
+        type: string
+      totalRevenueVnd:
+        type: number
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentDTO:
+    properties:
+      customerCount:
+        type: integer
+      maxVnd:
+        type: number
+      minVnd:
+        type: number
+      percentage:
+        type: number
+      segment:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentationRes:
+    properties:
+      brandId:
+        type: string
+      segments:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentDTO'
+        type: array
+      totalCustomers:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO:
+    properties:
+      percentage:
+        type: number
+      planCode:
+        type: string
+      userCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionRes:
+    properties:
+      distribution:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO'
+        type: array
+      totalUsers:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionDTO:
+    properties:
+      memberCount:
+        type: integer
+      percentage:
+        type: number
+      tierId:
+        type: string
+      tierName:
+        type: string
+      tierRank:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionRes:
+    properties:
+      brandId:
+        type: string
+      tiers:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionDTO'
+        type: array
+      totalMembers:
+        type: integer
+    type: object
   smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO:
     properties:
       metrics:
@@ -1227,6 +1486,15 @@ definitions:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UnderutilizedItemDTO'
         type: array
       underutilizedItemsCount:
+        type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CategoryDistributionDTO'
+        type: array
+      totalItems:
         type: integer
     type: object
   smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment:
@@ -1273,6 +1541,14 @@ definitions:
     - cs_first_response_avg_seconds
     - points_expiring_30d
     - points_liability_value_vnd
+    - new_users
+    - ai_error_count
+    - ai_error_rate
+    - new_customers
+    - customer_claim_rate
+    - benefit_redemption_count
+    - brand_item_count
+    - brand_item_count_by_type
     type: string
     x-enum-varnames:
     - TotalUsers
@@ -1295,6 +1571,14 @@ definitions:
     - CSFirstResponseAvgSeconds
     - PointsExpiring30d
     - PointsLiabilityValueVND
+    - NewUsers
+    - AIErrorCount
+    - AIErrorRate
+    - NewCustomers
+    - CustomerClaimRate
+    - BenefitRedemptionCount
+    - BrandItemCount
+    - BrandItemCountByType
   smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard:
     enum:
     - admin
@@ -2742,6 +3026,53 @@ paths:
       summary: Phân tích biên lợi nhuận AI Token
       tags:
       - Dashboard Admin
+  /api/v1/admin/dashboard/ai/error-breakdown:
+    get:
+      description: Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm
+        theo error_code, provider và model
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê lỗi AI thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownRes'
+              type: object
+      summary: Thống kê lỗi AI theo mã lỗi, nhà cung cấp và mô hình
+      tags:
+      - Dashboard Admin
+  /api/v1/admin/dashboard/ai/usage-by-operation:
+    get:
+      description: Thống kê số lượng request, chi phí và token AI theo từng loại tác
+        vụ (operation) và tuyến xử lý (logical_route), hỗ trợ lọc khoảng thời gian
+      parameters:
+      - description: Ngày bắt đầu (định dạng YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Ngày kết thúc (định dạng YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê sử dụng AI thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationRes'
+              type: object
+      summary: Thống kê sử dụng AI theo tác vụ
+      tags:
+      - Dashboard Admin
   /api/v1/admin/dashboard/drilldown/ai-events:
     get:
       description: Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin
@@ -2832,6 +3163,72 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes'
               type: object
       summary: Thống kê đối soát giao dịch PayOS
+      tags:
+      - Dashboard Admin
+  /api/v1/admin/dashboard/subscriptions/distribution:
+    get:
+      description: Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription
+        (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân bổ subscription thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionRes'
+              type: object
+      summary: Phân bổ người dùng theo gói subscription
+      tags:
+      - Dashboard Admin
+  /api/v1/admin/dashboard/subscriptions/renewal-stats:
+    get:
+      description: Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ
+        thành công và số lần thử lại trung bình
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê gia hạn subscription thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RenewalStatsRes'
+              type: object
+      summary: Thống kê gia hạn subscription
+      tags:
+      - Dashboard Admin
+  /api/v1/admin/dashboard/subscriptions/revenue-breakdown:
+    get:
+      description: Thống kê doanh thu subscription theo từng plan_code và theo tháng,
+        hỗ trợ lọc khoảng thời gian
+      parameters:
+      - description: Ngày bắt đầu (định dạng YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Ngày kết thúc (định dạng YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy doanh thu subscription thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownRes'
+              type: object
+      summary: Doanh thu subscription theo gói và thời gian
       tags:
       - Dashboard Admin
   /api/v1/admin/users:
@@ -4680,6 +5077,81 @@ paths:
       summary: Lấy danh sách brand của staff hiện tại
       tags:
       - Brand Portal
+  /api/v1/brand/dashboard/benefits/redemption-analytics:
+    get:
+      description: Thống kê top benefit được đổi nhiều nhất và xu hướng đổi benefit
+        theo thời gian
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê đổi benefit thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes'
+              type: object
+      summary: Thống kê đổi benefit
+      tags:
+      - Dashboard Brand
+  /api/v1/brand/dashboard/customers/acquisition:
+    get:
+      description: Thống kê số lượng khách hàng và tỷ lệ phần trăm theo từng kênh
+        thu hút (joined_source)
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê kênh thu hút khách hàng thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionRes'
+              type: object
+      summary: Thống kê kênh thu hút khách hàng
+      tags:
+      - Dashboard Brand
+  /api/v1/brand/dashboard/customers/spend-segmentation:
+    get:
+      description: Thống kê số lượng khách hàng theo các nhóm chi tiêu (low, medium,
+        high, premium)
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân khúc chi tiêu thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentationRes'
+              type: object
+      summary: Phân khúc chi tiêu khách hàng
+      tags:
+      - Dashboard Brand
   /api/v1/brand/dashboard/drilldown/sample-lab-feedbacks:
     get:
       description: Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn
@@ -4763,6 +5235,80 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandKPICardsRes'
               type: object
       summary: Lấy thẻ KPI tổng quan B2B Brand Portal
+      tags:
+      - Dashboard Brand
+  /api/v1/brand/dashboard/loyalty/point-expiry-forecast:
+    get:
+      description: Dự báo số điểm sắp hết hạn theo từng tháng dựa trên dữ liệu loyalty_point_lots
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy dự báo điểm hết hạn thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastRes'
+              type: object
+      summary: Dự báo điểm loyalty sắp hết hạn
+      tags:
+      - Dashboard Brand
+  /api/v1/brand/dashboard/loyalty/tier-distribution:
+    get:
+      description: Thống kê số lượng thành viên theo từng hạng loyalty (Bronze, Silver,
+        Gold, v.v.)
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân bổ hạng loyalty thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionRes'
+              type: object
+      summary: Phân bổ hạng loyalty thành viên
+      tags:
+      - Dashboard Brand
+  /api/v1/brand/dashboard/operations/catalog-stats:
+    get:
+      description: Thống kê tổng số sản phẩm trong catalog, phân bổ theo trạng thái
+        và loại sản phẩm
+      parameters:
+      - description: ID Nhãn hàng
+        in: query
+        name: brandId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy thống kê catalog thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatsRes'
+              type: object
+      summary: Thống kê catalog sản phẩm
       tags:
       - Dashboard Brand
   /api/v1/brand/dashboard/operations/digital-sample-lab/{itemId}:
@@ -5421,6 +5967,25 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes'
               type: object
       summary: Thống kê phân tích tủ đồ cá nhân
+      tags:
+      - Dashboard User
+  /api/v1/me/dashboard/wardrobe/category-distribution:
+    get:
+      description: Thống kê số lượng và tỷ lệ phần trăm item trong tủ đồ theo từng
+        danh mục thời trang
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lấy phân bổ danh mục tủ đồ thành công
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes'
+              type: object
+      summary: Phân bổ danh mục tủ đồ
       tags:
       - Dashboard User
   /api/v1/me/outfits:

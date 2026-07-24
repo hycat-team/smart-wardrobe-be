@@ -40,6 +40,7 @@ func (r *WardrobeRouter) Init(group *gin.RouterGroup) {
 	userDashboard := privateApi.Group("/me/dashboard")
 	{
 		userDashboard.GET("/wardrobe-insights", shared_pres.WrapHandler(r.userDashboardHandler.GetWardrobeInsights))
+		userDashboard.GET("/wardrobe/category-distribution", shared_pres.WrapHandler(r.userDashboardHandler.GetWardrobeCategoryDistribution))
 	}
 
 	wardrobeApi := privateApi.Group("/wardrobe-items")

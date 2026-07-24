@@ -13,6 +13,7 @@ import (
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	subscriptionContract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/utils/numberutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 )
 
@@ -194,6 +195,185 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 		SuccessCount:      latest.PayOSSuccessCount,
 		FailedCount:       failed,
 		TotalSuccessValue: latest.SubscriptionRevenueVND,
+	}, nil
+}
+
+func (uc *AdminDashboardUseCase) GetSubscriptionDistribution(ctx context.Context) (*dto.SubscriptionDistributionRes, error) {
+	raw, err := uc.dashboardRepo.GetSubscriptionDistribution(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalUsers := 0
+	distribution := make([]dto.SubscriptionDistributionDTO, 0, len(raw))
+	for _, r := range raw {
+		planCode, _ := r["plan_code"].(string)
+		userCount, _ := r["user_count"].(int64)
+		totalUsers += int(userCount)
+		distribution = append(distribution, dto.SubscriptionDistributionDTO{
+			PlanCode:   planCode,
+			UserCount:  int(userCount),
+			Percentage: 0,
+		})
+	}
+
+	for i := range distribution {
+		if totalUsers > 0 {
+			distribution[i].Percentage = float64(distribution[i].UserCount) / float64(totalUsers) * 100
+		}
+	}
+
+	return &dto.SubscriptionDistributionRes{
+		Distribution: distribution,
+		TotalUsers:   totalUsers,
+	}, nil
+}
+
+func (uc *AdminDashboardUseCase) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) (*dto.RevenueBreakdownRes, error) {
+	if fromDate.IsZero() {
+		fromDate = time.Now().AddDate(0, -6, 0)
+	}
+	if toDate.IsZero() {
+		toDate = time.Now()
+	}
+
+	raw, err := uc.dashboardRepo.GetRevenueBreakdown(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	totalRevenue := 0.0
+	breakdown := make([]dto.RevenueBreakdownDTO, 0, len(raw))
+	for _, r := range raw {
+		planCode, _ := r["plan_code"].(string)
+		month, _ := r["month"].(time.Time)
+		txnCount, _ := r["transaction_count"].(int64)
+		revenue := numberutils.ToFloat64(r["revenue"])
+		totalRevenue += revenue
+		breakdown = append(breakdown, dto.RevenueBreakdownDTO{
+			PlanCode:         planCode,
+			Month:            month.Format("2006-01"),
+			TransactionCount: int(txnCount),
+			RevenueVND:       revenue,
+		})
+	}
+
+	return &dto.RevenueBreakdownRes{
+		FromDate:        fromDate.Format("2006-01-02"),
+		ToDate:          toDate.Format("2006-01-02"),
+		Breakdown:       breakdown,
+		TotalRevenueVND: totalRevenue,
+	}, nil
+}
+
+func (uc *AdminDashboardUseCase) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) (*dto.AIUsageByOperationRes, error) {
+	if fromDate.IsZero() {
+		fromDate = time.Now().AddDate(0, 0, -30)
+	}
+	if toDate.IsZero() {
+		toDate = time.Now()
+	}
+
+	raw, err := uc.dashboardRepo.GetAIUsageByOperation(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	operations := make([]dto.AIUsageByOperationDTO, 0, len(raw))
+	for _, r := range raw {
+		op, _ := r["operation"].(string)
+		route, _ := r["logical_route"].(string)
+		reqCount, _ := r["request_count"].(int64)
+
+		var costMicro, promptTokens, outputTokens float64
+		if v, ok := r["total_cost_micro_vnd"]; ok {
+			costMicro = numberutils.ToFloat64(v)
+		}
+		if v, ok := r["total_prompt_tokens"]; ok {
+			promptTokens = numberutils.ToFloat64(v)
+		}
+		if v, ok := r["total_output_tokens"]; ok {
+			outputTokens = numberutils.ToFloat64(v)
+		}
+		operations = append(operations, dto.AIUsageByOperationDTO{
+			Operation:         op,
+			LogicalRoute:      route,
+			RequestCount:      reqCount,
+			TotalCostVND:      costMicro / microVNDDivisor,
+			TotalPromptTokens: int64(promptTokens),
+			TotalOutputTokens: int64(outputTokens),
+		})
+	}
+
+	return &dto.AIUsageByOperationRes{
+		FromDate:   fromDate.Format("2006-01-02"),
+		ToDate:     toDate.Format("2006-01-02"),
+		Operations: operations,
+	}, nil
+}
+
+func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.AIErrorBreakdownRes, error) {
+	raw, err := uc.dashboardRepo.GetAIErrorBreakdown(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalErrors := int64(0)
+	breakdown := make([]dto.AIErrorBreakdownDTO, 0, len(raw))
+	for _, r := range raw {
+		errorCode, _ := r["error_code"].(string)
+		provider, _ := r["provider"].(string)
+		model, _ := r["model"].(string)
+		errCount, _ := r["error_count"].(int64)
+		totalErrors += errCount
+		breakdown = append(breakdown, dto.AIErrorBreakdownDTO{
+			ErrorCode:  errorCode,
+			Provider:   provider,
+			Model:      model,
+			ErrorCount: errCount,
+		})
+	}
+
+	// Query total requests in last 30 days for error rate calculation
+	toDate := time.Now()
+	fromDate := toDate.AddDate(0, 0, -30)
+	totalRequests, _ := uc.dashboardRepo.GetTotalAIRequestCount(ctx, fromDate, toDate)
+
+	errorRate := 0.0
+	if totalRequests > 0 {
+		errorRate = float64(totalErrors) / float64(totalRequests) * 100
+	}
+
+	return &dto.AIErrorBreakdownRes{
+		TotalErrors:   totalErrors,
+		TotalRequests: totalRequests,
+		ErrorRate:     errorRate,
+		Breakdown:     breakdown,
+	}, nil
+}
+
+func (uc *AdminDashboardUseCase) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsRes, error) {
+	raw, err := uc.dashboardRepo.GetRenewalStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalAttempts := int(numberutils.ToFloat64(raw["total_attempts"]))
+	successCount := int(numberutils.ToFloat64(raw["success_count"]))
+	failedCount := int(numberutils.ToFloat64(raw["failed_count"]))
+	avgRetry := numberutils.ToFloat64(raw["avg_retry_count"])
+
+	successRate := 0.0
+	if totalAttempts > 0 {
+		successRate = float64(successCount) / float64(totalAttempts) * 100
+	}
+
+	return &dto.RenewalStatsRes{
+		TotalAttempts: int(totalAttempts),
+		SuccessCount:  int(successCount),
+		FailedCount:   int(failedCount),
+		SuccessRate:   successRate,
+		AvgRetryCount: avgRetry,
 	}, nil
 }
 

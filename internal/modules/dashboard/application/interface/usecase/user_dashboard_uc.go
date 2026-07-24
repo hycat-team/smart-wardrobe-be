@@ -10,4 +10,7 @@ import (
 
 type IUserDashboardUseCase interface {
 	GetWardrobeInsights(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeInsightsRes, error)
+
+	// Expansion APIs
+	GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) (*dto.WardrobeCategoryDistributionRes, error)
 }

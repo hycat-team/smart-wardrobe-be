@@ -91,6 +91,132 @@ func (h *AdminDashboardHandler) GetPayOSReconciliation(c *gin.Context) error {
 	return nil
 }
 
+// GetSubscriptionDistribution lấy phân bổ user theo gói subscription
+// @Summary Phân bổ người dùng theo gói subscription
+// @Description Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.)
+// @Tags Dashboard Admin
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.SubscriptionDistributionRes} "Lấy phân bổ subscription thành công"
+// @Router /api/v1/admin/dashboard/subscriptions/distribution [get]
+func (h *AdminDashboardHandler) GetSubscriptionDistribution(c *gin.Context) error {
+	res, err := h.adminUC.GetSubscriptionDistribution(c.Request.Context())
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy phân bổ subscription thành công", res)
+	return nil
+}
+
+// GetRevenueBreakdown lấy doanh thu theo plan_code và thời gian
+// @Summary Doanh thu subscription theo gói và thời gian
+// @Description Thống kê doanh thu subscription theo từng plan_code và theo tháng, hỗ trợ lọc khoảng thời gian
+// @Tags Dashboard Admin
+// @Produce json
+// @Param fromDate query string false "Ngày bắt đầu (định dạng YYYY-MM-DD)"
+// @Param toDate query string false "Ngày kết thúc (định dạng YYYY-MM-DD)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.RevenueBreakdownRes} "Lấy doanh thu subscription thành công"
+// @Router /api/v1/admin/dashboard/subscriptions/revenue-breakdown [get]
+func (h *AdminDashboardHandler) GetRevenueBreakdown(c *gin.Context) error {
+	var req dto.GetAIMarginAnalyticsQueryReq
+	if err := validation.BindQuery(c, &req); err != nil {
+		return err
+	}
+
+	var fromDate, toDate time.Time
+	if req.FromDate != "" {
+		var err error
+		fromDate, err = time.Parse("2006-01-02", req.FromDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày bắt đầu (fromDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
+	}
+	if req.ToDate != "" {
+		var err error
+		toDate, err = time.Parse("2006-01-02", req.ToDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày kết thúc (toDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
+	}
+
+	res, err := h.adminUC.GetRevenueBreakdown(c.Request.Context(), fromDate, toDate)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy doanh thu subscription thành công", res)
+	return nil
+}
+
+// GetAIUsageByOperation lấy thống kê sử dụng AI theo operation
+// @Summary Thống kê sử dụng AI theo tác vụ
+// @Description Thống kê số lượng request, chi phí và token AI theo từng loại tác vụ (operation) và tuyến xử lý (logical_route), hỗ trợ lọc khoảng thời gian
+// @Tags Dashboard Admin
+// @Produce json
+// @Param fromDate query string false "Ngày bắt đầu (định dạng YYYY-MM-DD)"
+// @Param toDate query string false "Ngày kết thúc (định dạng YYYY-MM-DD)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AIUsageByOperationRes} "Lấy thống kê sử dụng AI thành công"
+// @Router /api/v1/admin/dashboard/ai/usage-by-operation [get]
+func (h *AdminDashboardHandler) GetAIUsageByOperation(c *gin.Context) error {
+	var req dto.GetAIMarginAnalyticsQueryReq
+	if err := validation.BindQuery(c, &req); err != nil {
+		return err
+	}
+
+	var fromDate, toDate time.Time
+	if req.FromDate != "" {
+		var err error
+		fromDate, err = time.Parse("2006-01-02", req.FromDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày bắt đầu (fromDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
+	}
+	if req.ToDate != "" {
+		var err error
+		toDate, err = time.Parse("2006-01-02", req.ToDate)
+		if err != nil {
+			return apperror.NewBadRequest("Định dạng ngày kết thúc (toDate) không hợp lệ. Vui lòng sử dụng YYYY-MM-DD.")
+		}
+	}
+
+	res, err := h.adminUC.GetAIUsageByOperation(c.Request.Context(), fromDate, toDate)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy thống kê sử dụng AI thành công", res)
+	return nil
+}
+
+// GetAIErrorBreakdown lấy thống kê lỗi AI theo error_code, provider, model
+// @Summary Thống kê lỗi AI theo mã lỗi, nhà cung cấp và mô hình
+// @Description Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm theo error_code, provider và model
+// @Tags Dashboard Admin
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AIErrorBreakdownRes} "Lấy thống kê lỗi AI thành công"
+// @Router /api/v1/admin/dashboard/ai/error-breakdown [get]
+func (h *AdminDashboardHandler) GetAIErrorBreakdown(c *gin.Context) error {
+	res, err := h.adminUC.GetAIErrorBreakdown(c.Request.Context())
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy thống kê lỗi AI thành công", res)
+	return nil
+}
+
+// GetRenewalStats lấy thống kê tỷ lệ gia hạn subscription
+// @Summary Thống kê gia hạn subscription
+// @Description Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công và số lần thử lại trung bình
+// @Tags Dashboard Admin
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.RenewalStatsRes} "Lấy thống kê gia hạn subscription thành công"
+// @Router /api/v1/admin/dashboard/subscriptions/renewal-stats [get]
+func (h *AdminDashboardHandler) GetRenewalStats(c *gin.Context) error {
+	res, err := h.adminUC.GetRenewalStats(c.Request.Context())
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy thống kê gia hạn subscription thành công", res)
+	return nil
+}
+
 // GetOverview lấy toàn bộ bức tranh tổng quan hệ thống cho Admin
 // @Summary Báo cáo tổng quan Admin Dashboard
 // @Description Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS Reconciliation trong 1 kết quả duy nhất.

@@ -423,6 +423,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/dashboard/ai/error-breakdown": {
+            "get": {
+                "description": "Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm theo error_code, provider và model",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Thống kê lỗi AI theo mã lỗi, nhà cung cấp và mô hình",
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê lỗi AI thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/dashboard/ai/usage-by-operation": {
+            "get": {
+                "description": "Thống kê số lượng request, chi phí và token AI theo từng loại tác vụ (operation) và tuyến xử lý (logical_route), hỗ trợ lọc khoảng thời gian",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Thống kê sử dụng AI theo tác vụ",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê sử dụng AI thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/dashboard/drilldown/ai-events": {
             "get": {
                 "description": "Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin provider, model, status code.",
@@ -564,6 +642,116 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/dashboard/subscriptions/distribution": {
+            "get": {
+                "description": "Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Phân bổ người dùng theo gói subscription",
+                "responses": {
+                    "200": {
+                        "description": "Lấy phân bổ subscription thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/dashboard/subscriptions/renewal-stats": {
+            "get": {
+                "description": "Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công và số lần thử lại trung bình",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Thống kê gia hạn subscription",
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê gia hạn subscription thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RenewalStatsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/dashboard/subscriptions/revenue-breakdown": {
+            "get": {
+                "description": "Thống kê doanh thu subscription theo từng plan_code và theo tháng, hỗ trợ lọc khoảng thời gian",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Doanh thu subscription theo gói và thời gian",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+                        "name": "toDate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy doanh thu subscription thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownRes"
                                         }
                                     }
                                 }
@@ -3565,6 +3753,129 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand/dashboard/benefits/redemption-analytics": {
+            "get": {
+                "description": "Thống kê top benefit được đổi nhiều nhất và xu hướng đổi benefit theo thời gian",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Thống kê đổi benefit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê đổi benefit thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand/dashboard/customers/acquisition": {
+            "get": {
+                "description": "Thống kê số lượng khách hàng và tỷ lệ phần trăm theo từng kênh thu hút (joined_source)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Thống kê kênh thu hút khách hàng",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê kênh thu hút khách hàng thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand/dashboard/customers/spend-segmentation": {
+            "get": {
+                "description": "Thống kê số lượng khách hàng theo các nhóm chi tiêu (low, medium, high, premium)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Phân khúc chi tiêu khách hàng",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy phân khúc chi tiêu thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentationRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand/dashboard/drilldown/sample-lab-feedbacks": {
             "get": {
                 "description": "Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn của mẫu thử sản phẩm.",
@@ -3693,6 +4004,129 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BrandKPICardsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand/dashboard/loyalty/point-expiry-forecast": {
+            "get": {
+                "description": "Dự báo số điểm sắp hết hạn theo từng tháng dựa trên dữ liệu loyalty_point_lots",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Dự báo điểm loyalty sắp hết hạn",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy dự báo điểm hết hạn thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand/dashboard/loyalty/tier-distribution": {
+            "get": {
+                "description": "Thống kê số lượng thành viên theo từng hạng loyalty (Bronze, Silver, Gold, v.v.)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Phân bổ hạng loyalty thành viên",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy phân bổ hạng loyalty thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brand/dashboard/operations/catalog-stats": {
+            "get": {
+                "description": "Thống kê tổng số sản phẩm trong catalog, phân bổ theo trạng thái và loại sản phẩm",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Brand"
+                ],
+                "summary": "Thống kê catalog sản phẩm",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Nhãn hàng",
+                        "name": "brandId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lấy thống kê catalog thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatsRes"
                                         }
                                     }
                                 }
@@ -4794,6 +5228,38 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/dashboard/wardrobe/category-distribution": {
+            "get": {
+                "description": "Thống kê số lượng và tỷ lệ phần trăm item trong tủ đồ theo từng danh mục thời trang",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard User"
+                ],
+                "summary": "Phân bổ danh mục tủ đồ",
+                "responses": {
+                    "200": {
+                        "description": "Lấy phân bổ danh mục tủ đồ thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes"
                                         }
                                     }
                                 }
@@ -7379,6 +7845,43 @@ const docTemplate = `{
                 "Refund"
             ]
         },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorCount": {
+                    "type": "integer"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownRes": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO"
+                    }
+                },
+                "errorRate": {
+                    "type": "number"
+                },
+                "totalErrors": {
+                    "type": "integer"
+                },
+                "totalRequests": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes": {
             "type": "object",
             "properties": {
@@ -7408,6 +7911,46 @@ const docTemplate = `{
                 },
                 "totalSubscriptionRevVnd": {
                     "type": "number"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationDTO": {
+            "type": "object",
+            "properties": {
+                "logicalRoute": {
+                    "type": "string"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "requestCount": {
+                    "type": "integer"
+                },
+                "totalCostVnd": {
+                    "type": "number"
+                },
+                "totalOutputTokens": {
+                    "type": "integer"
+                },
+                "totalPromptTokens": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationRes": {
+            "type": "object",
+            "properties": {
+                "fromDate": {
+                    "type": "string"
+                },
+                "operations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIUsageByOperationDTO"
+                    }
+                },
+                "toDate": {
+                    "type": "string"
                 }
             }
         },
@@ -7451,6 +7994,49 @@ const docTemplate = `{
                 },
                 "payosReconcile": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PayOSReconciliationRes"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "topBenefits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionDTO"
+                    }
+                },
+                "totalRedemptions": {
+                    "type": "integer"
+                },
+                "trend": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RedemptionTrendDTO"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.BenefitRedemptionDTO": {
+            "type": "object",
+            "properties": {
+                "benefitId": {
+                    "type": "string"
+                },
+                "benefitName": {
+                    "type": "string"
+                },
+                "benefitType": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "number"
+                },
+                "redemptionCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -7506,6 +8092,60 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "number"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatsRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "byStatus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO"
+                    }
+                },
+                "byType": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CatalogStatGroupDTO"
+                    }
+                },
+                "totalItems": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.CategoryDistributionDTO": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "categoryName": {
+                    "type": "string"
+                },
+                "itemCount": {
+                    "type": "integer"
+                },
+                "percentage": {
+                    "type": "number"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.ComparisonDTO": {
             "type": "object",
             "properties": {
@@ -7521,6 +8161,37 @@ const docTemplate = `{
                 },
                 "previousPeriodTo": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO": {
+            "type": "object",
+            "properties": {
+                "customerCount": {
+                    "type": "integer"
+                },
+                "percentage": {
+                    "type": "number"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO"
+                    }
+                },
+                "totalCustomers": {
+                    "type": "integer"
                 }
             }
         },
@@ -7716,6 +8387,201 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastDTO": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "pointsExpiring": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "forecast": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.PointExpiryForecastDTO"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.RedemptionTrendDTO": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "redemptionCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.RenewalStatsRes": {
+            "type": "object",
+            "properties": {
+                "avgRetryCount": {
+                    "type": "number"
+                },
+                "failedCount": {
+                    "type": "integer"
+                },
+                "successCount": {
+                    "type": "integer"
+                },
+                "successRate": {
+                    "type": "number"
+                },
+                "totalAttempts": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownDTO": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "planCode": {
+                    "type": "string"
+                },
+                "revenueVnd": {
+                    "type": "number"
+                },
+                "transactionCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownRes": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.RevenueBreakdownDTO"
+                    }
+                },
+                "fromDate": {
+                    "type": "string"
+                },
+                "toDate": {
+                    "type": "string"
+                },
+                "totalRevenueVnd": {
+                    "type": "number"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentDTO": {
+            "type": "object",
+            "properties": {
+                "customerCount": {
+                    "type": "integer"
+                },
+                "maxVnd": {
+                    "type": "number"
+                },
+                "minVnd": {
+                    "type": "number"
+                },
+                "percentage": {
+                    "type": "number"
+                },
+                "segment": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentationRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "segments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SpendSegmentDTO"
+                    }
+                },
+                "totalCustomers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO": {
+            "type": "object",
+            "properties": {
+                "percentage": {
+                    "type": "number"
+                },
+                "planCode": {
+                    "type": "string"
+                },
+                "userCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionRes": {
+            "type": "object",
+            "properties": {
+                "distribution": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO"
+                    }
+                },
+                "totalUsers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionDTO": {
+            "type": "object",
+            "properties": {
+                "memberCount": {
+                    "type": "integer"
+                },
+                "percentage": {
+                    "type": "number"
+                },
+                "tierId": {
+                    "type": "string"
+                },
+                "tierName": {
+                    "type": "string"
+                },
+                "tierRank": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionRes": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "type": "string"
+                },
+                "tiers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.TierDistributionDTO"
+                    }
+                },
+                "totalMembers": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_dashboard_application_dto.TimeSeriesPointDTO": {
             "type": "object",
             "properties": {
@@ -7777,6 +8643,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.CategoryDistributionDTO"
+                    }
+                },
+                "totalItems": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment": {
             "type": "string",
             "enum": [
@@ -7827,7 +8707,15 @@ const docTemplate = `{
                 "open_cs_tickets",
                 "cs_first_response_avg_seconds",
                 "points_expiring_30d",
-                "points_liability_value_vnd"
+                "points_liability_value_vnd",
+                "new_users",
+                "ai_error_count",
+                "ai_error_rate",
+                "new_customers",
+                "customer_claim_rate",
+                "benefit_redemption_count",
+                "brand_item_count",
+                "brand_item_count_by_type"
             ],
             "x-enum-varnames": [
                 "TotalUsers",
@@ -7849,7 +8737,15 @@ const docTemplate = `{
                 "OpenCSTickets",
                 "CSFirstResponseAvgSeconds",
                 "PointsExpiring30d",
-                "PointsLiabilityValueVND"
+                "PointsLiabilityValueVND",
+                "NewUsers",
+                "AIErrorCount",
+                "AIErrorRate",
+                "NewCustomers",
+                "CustomerClaimRate",
+                "BenefitRedemptionCount",
+                "BrandItemCount",
+                "BrandItemCountByType"
             ]
         },
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard": {

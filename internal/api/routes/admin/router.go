@@ -45,6 +45,13 @@ func (r *AdminRouter) Init(group *gin.RouterGroup) {
 		adminDashboard.GET("/ai-margin", shared_pres.WrapHandler(r.adminDashboardHandler.GetAIMargin))
 		adminDashboard.GET("/payos-reconciliation", shared_pres.WrapHandler(r.adminDashboardHandler.GetPayOSReconciliation))
 		adminDashboard.GET("/overview", shared_pres.WrapHandler(r.adminDashboardHandler.GetOverview))
+
+		// Expansion
+		adminDashboard.GET("/subscriptions/distribution", shared_pres.WrapHandler(r.adminDashboardHandler.GetSubscriptionDistribution))
+		adminDashboard.GET("/subscriptions/revenue-breakdown", shared_pres.WrapHandler(r.adminDashboardHandler.GetRevenueBreakdown))
+		adminDashboard.GET("/ai/usage-by-operation", shared_pres.WrapHandler(r.adminDashboardHandler.GetAIUsageByOperation))
+		adminDashboard.GET("/ai/error-breakdown", shared_pres.WrapHandler(r.adminDashboardHandler.GetAIErrorBreakdown))
+		adminDashboard.GET("/subscriptions/renewal-stats", shared_pres.WrapHandler(r.adminDashboardHandler.GetRenewalStats))
 	}
 
 	adminUsers := admin.Group("/users")

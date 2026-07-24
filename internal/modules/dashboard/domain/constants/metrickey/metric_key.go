@@ -23,4 +23,16 @@ const (
 	CSFirstResponseAvgSeconds MetricKey = "cs_first_response_avg_seconds"
 	PointsExpiring30d         MetricKey = "points_expiring_30d"
 	PointsLiabilityValueVND   MetricKey = "points_liability_value_vnd"
+
+	// Admin expansion metrics
+	NewUsers     MetricKey = "new_users"
+	AIErrorCount MetricKey = "ai_error_count"
+	AIErrorRate  MetricKey = "ai_error_rate"
+
+	// Brand expansion metrics
+	NewCustomers           MetricKey = "new_customers"
+	CustomerClaimRate      MetricKey = "customer_claim_rate"
+	BenefitRedemptionCount MetricKey = "benefit_redemption_count"
+	BrandItemCount         MetricKey = "brand_item_count"
+	BrandItemCountByType   MetricKey = "brand_item_count_by_type"
 )

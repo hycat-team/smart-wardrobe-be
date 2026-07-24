@@ -35,6 +35,41 @@ func NewUserDashboardUseCase(
 	}
 }
 
+func (uc *UserDashboardUseCase) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) (*dto.WardrobeCategoryDistributionRes, error) {
+	raw, err := uc.dashboardRepo.GetWardrobeCategoryDistribution(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalItems := 0
+	categories := make([]dto.CategoryDistributionDTO, 0, len(raw))
+	for _, r := range raw {
+		categoryIDStr, _ := r["category_id"].(string)
+		categoryName, _ := r["category_name"].(string)
+		itemCount, _ := r["item_count"].(int64)
+		totalItems += int(itemCount)
+
+		categoryID, _ := uuid.Parse(categoryIDStr)
+		categories = append(categories, dto.CategoryDistributionDTO{
+			CategoryID:   categoryID,
+			CategoryName: categoryName,
+			ItemCount:    int(itemCount),
+			Percentage:   0,
+		})
+	}
+
+	for i := range categories {
+		if totalItems > 0 {
+			categories[i].Percentage = float64(categories[i].ItemCount) / float64(totalItems) * 100
+		}
+	}
+
+	return &dto.WardrobeCategoryDistributionRes{
+		TotalItems: totalItems,
+		Categories: categories,
+	}, nil
+}
+
 func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeInsightsRes, error) {
 	summary, err := uc.dashboardRepo.GetUserWardrobeSummary(ctx, userID)
 	if err != nil {

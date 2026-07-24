@@ -20,3 +20,17 @@ type UserWardrobeInsightsRes struct {
 	UnderutilizedItems      []UnderutilizedItemDTO `json:"underutilizedItems"`
 	ExpiringVouchersCount   int                    `json:"expiringVouchersCount"`
 }
+
+// Wardrobe Category Distribution
+
+type CategoryDistributionDTO struct {
+	CategoryID   uuid.UUID `json:"categoryId"`
+	CategoryName string    `json:"categoryName"`
+	ItemCount    int       `json:"itemCount"`
+	Percentage   float64   `json:"percentage"`
+}
+
+type WardrobeCategoryDistributionRes struct {
+	TotalItems int                       `json:"totalItems"`
+	Categories []CategoryDistributionDTO `json:"categories"`
+}

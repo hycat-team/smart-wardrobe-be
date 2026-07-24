@@ -18,6 +18,27 @@ func NewUserDashboardHandler(userUC uc_interfaces.IUserDashboardUseCase) *UserDa
 	return &UserDashboardHandler{userUC: userUC}
 }
 
+// GetWardrobeCategoryDistribution lấy phân bổ danh mục tủ đồ
+// @Summary Phân bổ danh mục tủ đồ
+// @Description Thống kê số lượng và tỷ lệ phần trăm item trong tủ đồ theo từng danh mục thời trang
+// @Tags Dashboard User
+// @Produce json
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeCategoryDistributionRes} "Lấy phân bổ danh mục tủ đồ thành công"
+// @Router /api/v1/me/dashboard/wardrobe/category-distribution [get]
+func (h *UserDashboardHandler) GetWardrobeCategoryDistribution(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	res, err := h.userUC.GetWardrobeCategoryDistribution(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Lấy phân bổ danh mục tủ đồ thành công", res)
+	return nil
+}
+
 // GetWardrobeInsights lấy thống kê phân tích tủ đồ thông minh cho End User
 // @Summary Thống kê phân tích tủ đồ cá nhân
 // @Description Lấy tổng giá trị tài chính tủ đồ, giá trị trung bình mỗi món đồ (tổng giá trị / số món), tổng số đồ lãng phí chưa mặc > 30 ngày và danh sách đề xuất.
