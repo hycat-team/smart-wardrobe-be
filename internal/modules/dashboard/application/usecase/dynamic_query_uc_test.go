@@ -66,6 +66,62 @@ func (m *mockDynamicQueryRepo) GetUserWardrobeSummary(ctx context.Context, userI
 	return m.userSummary, nil
 }
 
+// Expansion stub methods
+func (m *mockDynamicQueryRepo) GetSubscriptionDistribution(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetAIErrorBreakdown(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetRenewalStats(ctx context.Context) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetCustomerAcquisition(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetLoyaltyTierDistribution(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetPointExpiryForecast(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetBenefitRedemptionAnalytics(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetCatalogStats(ctx context.Context, brandID uuid.UUID) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetCustomerSpendSegmentation(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetBrandNewCustomerCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockDynamicQueryRepo) GetBrandCustomerClaimRate(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockDynamicQueryRepo) GetBrandRedemptionCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockDynamicQueryRepo) GetBrandItemCount(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockDynamicQueryRepo) GetBrandItemCountByType(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockDynamicQueryRepo) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+
 func compareFloat64(t *testing.T, name string, got, expected float64) {
 	t.Helper()
 	if math.Abs(got-expected) > 0.01 {

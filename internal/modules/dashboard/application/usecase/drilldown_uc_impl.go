@@ -36,10 +36,6 @@ func (uc *DrillDownUseCase) GetAIEventsDrillDown(ctx context.Context, req *dto.D
 		return nil, err
 	}
 
-	if len(rawItems) == 0 {
-		return nil, dashboarderrors.ErrDashboardDataNotFound()
-	}
-
 	items := make([]dto.DrillDownAIEventDTO, 0, len(rawItems))
 	for _, item := range rawItems {
 		items = append(items, dto.DrillDownAIEventDTO{
@@ -70,10 +66,6 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 	rawItems, totalCount, err := uc.brandReader.GetSampleLabFeedbacksDrillDown(ctx, itemID, normQuery.Page, normQuery.Limit)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(rawItems) == 0 {
-		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
 	}
 
 	items := make([]dto.DrillDownSampleFeedbackDTO, 0, len(rawItems))

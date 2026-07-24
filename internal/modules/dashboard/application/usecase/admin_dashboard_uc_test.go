@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 
 	aiDTO "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
@@ -69,6 +68,62 @@ func (m *mockAdminDashboardRepo) UpsertUserWardrobeSummary(ctx context.Context, 
 
 func (m *mockAdminDashboardRepo) GetUserWardrobeSummary(ctx context.Context, userID uuid.UUID) (*entities.DashboardUserWardrobeSummary, error) {
 	return nil, nil
+}
+
+// Expansion stub methods
+func (m *mockAdminDashboardRepo) GetSubscriptionDistribution(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetAIErrorBreakdown(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetRenewalStats(ctx context.Context) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetCustomerAcquisition(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetLoyaltyTierDistribution(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetPointExpiryForecast(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetBenefitRedemptionAnalytics(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetCatalogStats(ctx context.Context, brandID uuid.UUID) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetCustomerSpendSegmentation(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetBrandNewCustomerCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockAdminDashboardRepo) GetBrandCustomerClaimRate(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockAdminDashboardRepo) GetBrandRedemptionCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockAdminDashboardRepo) GetBrandItemCount(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockAdminDashboardRepo) GetBrandItemCountByType(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockAdminDashboardRepo) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
 }
 
 type mockUserReader struct {
@@ -199,12 +254,12 @@ func TestAdminGetKPICards_NoData(t *testing.T) {
 		latestSnapshot: nil,
 	}
 	uc := NewAdminDashboardUseCase(repo, &mockUserReader{}, &mockBrandStatsReader{}, &mockAICostReader{}, &mockSubscriptionReader{})
-	_, err := uc.GetAdminKPICards(context.Background())
-	if err == nil {
-		t.Fatal("expected error but got nil")
+	res, err := uc.GetAdminKPICards(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if err.Error() != dashboarderrors.ErrDashboardDataNotFound().Error() {
-		t.Errorf("unexpected error: %v", err)
+	if res.TotalUsers != 0 || res.ActiveUsersDAU != 0 || res.TotalBrands != 0 {
+		t.Error("expected all KPI fields to be 0 when no data")
 	}
 }
 

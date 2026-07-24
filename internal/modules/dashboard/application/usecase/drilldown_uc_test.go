@@ -89,9 +89,15 @@ func TestDrillDown_GetAIEvents_NoData(t *testing.T) {
 		total:  0,
 	}
 	uc := NewDrillDownUseCase(aiReader, &mockDrillDownBrandReader{})
-	_, err := uc.GetAIEventsDrillDown(context.Background(), &dto.DrillDownAIEventQueryReq{})
-	if err == nil {
-		t.Fatal("expected error when no data")
+	res, err := uc.GetAIEventsDrillDown(context.Background(), &dto.DrillDownAIEventQueryReq{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Items) != 0 {
+		t.Error("expected empty items when no data")
+	}
+	if res.Metadata.TotalItems != 0 {
+		t.Errorf("expected TotalItems=0, got %d", res.Metadata.TotalItems)
 	}
 }
 

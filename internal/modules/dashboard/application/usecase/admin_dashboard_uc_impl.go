@@ -8,13 +8,11 @@ import (
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
-	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	identityContract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	subscriptionContract "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/utils/numberutils"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 )
 
 const microVNDDivisor = 1000000.0
@@ -68,10 +66,6 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			return nil, err
 		}
 
-		if subscriptionStats == nil {
-			return nil, dashboarderrors.ErrDashboardDataNotFound()
-		}
-
 		res := &dto.AdminKPICardsRes{
 			UpdatedAt: now,
 		}
@@ -87,8 +81,10 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
 			res.NetAIMarginVND = -actualCostVND
 		}
-		res.SubscriptionRevenueVND = subscriptionStats.TotalSubscriptionRevenue.InexactFloat64()
-		res.PayOSSuccessCount = subscriptionStats.PayOSSuccessCount
+		if subscriptionStats != nil {
+			res.SubscriptionRevenueVND = subscriptionStats.TotalSubscriptionRevenue.InexactFloat64()
+			res.PayOSSuccessCount = subscriptionStats.PayOSSuccessCount
+		}
 
 		return res, nil
 	}
@@ -124,23 +120,33 @@ func (uc *AdminDashboardUseCase) GetAIMarginAnalytics(ctx context.Context, fromD
 		if err != nil {
 			return nil, err
 		}
-		if aiStats == nil {
-			return nil, dashboarderrors.ErrDashboardDataNotFound()
-		}
+		if aiStats != nil {
+			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
+			netMargin := -actualCostVND
 
-		actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
-		netMargin := -actualCostVND
+			return &dto.AIMarginAnalyticsRes{
+				FromDate:                fromDate,
+				ToDate:                  toDate,
+				TotalSubscriptionRevVND: 0,
+				TotalAIActualCostVND:    actualCostVND,
+				NetAIMarginVND:          netMargin,
+				MarginPercentage:        0.0,
+				TotalAIPaidTokens:       aiStats.AIPaidTokens,
+				AIRequestsCount:         int64(aiStats.AIRequestsCount),
+				AIErrorCount:            int64(aiStats.AIErrorCount),
+			}, nil
+		}
 
 		return &dto.AIMarginAnalyticsRes{
 			FromDate:                fromDate,
 			ToDate:                  toDate,
 			TotalSubscriptionRevVND: 0,
-			TotalAIActualCostVND:    actualCostVND,
-			NetAIMarginVND:          netMargin,
+			TotalAIActualCostVND:    0,
+			NetAIMarginVND:          0,
 			MarginPercentage:        0.0,
-			TotalAIPaidTokens:       aiStats.AIPaidTokens,
-			AIRequestsCount:         int64(aiStats.AIRequestsCount),
-			AIErrorCount:            int64(aiStats.AIErrorCount),
+			TotalAIPaidTokens:       0,
+			AIRequestsCount:         0,
+			AIErrorCount:            0,
 		}, nil
 	}
 
@@ -185,7 +191,12 @@ func (uc *AdminDashboardUseCase) GetPayOSReconciliation(ctx context.Context) (*d
 	}
 
 	if latest == nil {
-		return nil, dashboarderrors.ErrDashboardDataNotFound()
+		return &dto.PayOSReconciliationRes{
+			TotalTransactions: 0,
+			SuccessCount:      0,
+			FailedCount:       0,
+			TotalSuccessValue: 0,
+		}, nil
 	}
 
 	failed := max(latest.PayOSTransactionCount-latest.PayOSSuccessCount, 0)
@@ -384,15 +395,9 @@ func (uc *AdminDashboardUseCase) GetSystemOverview(ctx context.Context) (*dto.Ad
 	}
 
 	now := time.Now()
-	aiMargin, err := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
-	if err != nil {
-		return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu biên lợi nhuận AI. Vui lòng thử lại sau.")
-	}
+	aiMargin, _ := uc.GetAIMarginAnalytics(ctx, now.AddDate(0, 0, -dashboard_app.DefaultLookbackDays), now)
 
-	payos, err := uc.GetPayOSReconciliation(ctx)
-	if err != nil {
-		return nil, apperror.NewInternalError("Không thể truy vấn dữ liệu đối soát PayOS. Vui lòng thử lại sau.")
-	}
+	payos, _ := uc.GetPayOSReconciliation(ctx)
 
 	return &dto.AdminOverviewRes{
 		KPICards:       kpi,

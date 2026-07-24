@@ -58,6 +58,62 @@ func (m *mockBrandDashboardRepo) GetUserWardrobeSummary(ctx context.Context, use
 	return nil, nil
 }
 
+// Expansion stub methods
+func (m *mockBrandDashboardRepo) GetSubscriptionDistribution(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetAIErrorBreakdown(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetRenewalStats(ctx context.Context) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetCustomerAcquisition(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetLoyaltyTierDistribution(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetPointExpiryForecast(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetBenefitRedemptionAnalytics(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetCatalogStats(ctx context.Context, brandID uuid.UUID) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetCustomerSpendSegmentation(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetBrandNewCustomerCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockBrandDashboardRepo) GetBrandCustomerClaimRate(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockBrandDashboardRepo) GetBrandRedemptionCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockBrandDashboardRepo) GetBrandItemCount(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockBrandDashboardRepo) GetBrandItemCountByType(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockBrandDashboardRepo) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+
 type mockBrandReader struct {
 	brandContract.IBrandDashboardReader
 	stats    *brandDTO.BrandAnalyticsStatsDTO

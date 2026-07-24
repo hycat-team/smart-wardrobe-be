@@ -7,14 +7,13 @@ import (
 
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
-	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
-	"smart-wardrobe-be/internal/pkg/utils/numberutils"
 	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/utils/numberutils"
 
 	"github.com/google/uuid"
 )
@@ -66,7 +65,10 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 				UpdatedAt:                 time.Now(),
 			}, nil
 		}
-		return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		return &dto.BrandKPICardsRes{
+			BrandID:   brandID,
+			UpdatedAt: time.Now(),
+		}, nil
 	}
 
 	return &dto.BrandKPICardsRes{
@@ -106,11 +108,10 @@ func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID 
 		if err != nil {
 			return nil, err
 		}
-		if stats == nil {
-			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
+		if stats != nil {
+			expiring30d = stats.PointsExpiring30d
+			valVND = stats.PointsLiabilityValueVND
 		}
-		expiring30d = stats.PointsExpiring30d
-		valVND = stats.PointsLiabilityValueVND
 	}
 
 	res := &dto.BrandPointsLiabilityRes{
@@ -371,6 +372,16 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 	feedback, err := uc.brandReader.GetItemFeedbackSummary(ctx, itemID)
 	if err != nil {
 		return nil, err
+	}
+
+	if feedback == nil {
+		return &dto.DigitalSampleLabAnalyticsRes{
+			ItemID:              itemID,
+			VotesCount:          0,
+			AvgRating:           0,
+			FeedbackSentiment:   feedbacksentiment.Neutral,
+			TopPairedCategories: []dto.PairedCategoryStat{},
+		}, nil
 	}
 
 	// Lazy load: paired categories từ outfit → fashion item → category chain

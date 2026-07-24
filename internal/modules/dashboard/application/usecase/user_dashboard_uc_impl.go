@@ -8,7 +8,6 @@ import (
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
-	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
@@ -100,10 +99,6 @@ func (uc *UserDashboardUseCase) GetWardrobeInsights(ctx context.Context, userID 
 	realItems, err := uc.wardrobeReader.GetUnderutilizedItems(ctx, userID, dashboard_app.UnderutilizedItemsLimit)
 	if err != nil {
 		return nil, err
-	}
-
-	if (stats == nil || stats.TotalItems == 0) && len(realItems) == 0 {
-		return nil, dashboarderrors.ErrDashboardDataNotFound()
 	}
 
 	totalItems := 0

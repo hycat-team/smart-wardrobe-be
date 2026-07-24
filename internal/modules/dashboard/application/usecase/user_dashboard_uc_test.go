@@ -52,6 +52,62 @@ func (m *mockUserDashboardRepo) GetUserWardrobeSummary(ctx context.Context, user
 	return m.summary, m.summaryErr
 }
 
+// Expansion stub methods
+func (m *mockUserDashboardRepo) GetSubscriptionDistribution(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetAIErrorBreakdown(ctx context.Context) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetRenewalStats(ctx context.Context) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetCustomerAcquisition(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetLoyaltyTierDistribution(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetPointExpiryForecast(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetBenefitRedemptionAnalytics(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetCatalogStats(ctx context.Context, brandID uuid.UUID) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetCustomerSpendSegmentation(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetBrandNewCustomerCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockUserDashboardRepo) GetBrandCustomerClaimRate(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockUserDashboardRepo) GetBrandRedemptionCount(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (float64, error) {
+	return 0, nil
+}
+func (m *mockUserDashboardRepo) GetBrandItemCount(ctx context.Context, brandID uuid.UUID) (float64, error) {
+	return 0, nil
+}
+func (m *mockUserDashboardRepo) GetBrandItemCountByType(ctx context.Context, brandID uuid.UUID) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *mockUserDashboardRepo) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+
 type mockWardrobeReader struct {
 	wardrobeContract.IWardrobeDashboardReader
 	stats            *wardrobeDTO.UserWardrobeSummaryStatsDTO
@@ -159,8 +215,11 @@ func TestUserGetWardrobeInsights_NoData(t *testing.T) {
 	userID := uuid.New()
 	repo := &mockUserDashboardRepo{}
 	uc := NewUserDashboardUseCase(repo, &mockWardrobeReader{}, &mockUserBrandReader{})
-	_, err := uc.GetWardrobeInsights(context.Background(), userID)
-	if err == nil {
-		t.Fatal("expected error but got nil")
+	res, err := uc.GetWardrobeInsights(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.TotalItems != 0 || res.TotalWardrobeValueVND != 0 {
+		t.Error("expected all fields to be 0 when no data")
 	}
 }

@@ -228,13 +228,6 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		}
 	}
 
-	if len(series) == 0 {
-		if target == targetdashboard.Brand {
-			return nil, dashboarderrors.ErrBrandAnalyticsNotFound()
-		}
-		return nil, dashboarderrors.ErrDashboardDataNotFound()
-	}
-
 	var comparison *dto.ComparisonDTO
 	if req.CompareWithPrevious {
 		duration := toDate.Sub(fromDate)
