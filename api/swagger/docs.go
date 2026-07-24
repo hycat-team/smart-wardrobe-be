@@ -6784,6 +6784,9 @@ const docTemplate = `{
                 "avatarUrl": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "firstName": {
                     "type": "string"
                 },
@@ -6913,6 +6916,12 @@ const docTemplate = `{
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
                 },
                 "updatedAt": {
+                    "type": "string"
+                },
+                "userEmail": {
+                    "type": "string"
+                },
+                "userFullName": {
                     "type": "string"
                 },
                 "userId": {
