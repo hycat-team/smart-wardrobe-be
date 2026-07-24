@@ -416,3 +416,7 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
+
+func (uc *UserUseCase) GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error) {
+	return uc.userRepo.GetAdminUserStats(ctx, snapshotDate)
+}

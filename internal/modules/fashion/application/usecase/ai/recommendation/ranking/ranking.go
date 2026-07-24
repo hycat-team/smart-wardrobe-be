@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
 
 	"github.com/google/uuid"
 )
@@ -56,6 +57,9 @@ func RankCandidates(
 			fmt.Sprintf("retrieval-score:%.3f", candidate.RetrievalScore),
 		)
 		score -= FallbackSourcePenalty(candidate.Source)
+		if candidate.ItemContext == outfititemcontext.BrandItem {
+			tags = append(tags, "source:brand-item")
+		}
 		scored[i] = types.RankedCandidate{
 			Item:          candidate.Item,
 			Score:         score,

@@ -3,6 +3,7 @@ package brand
 import (
 	"smart-wardrobe-be/internal/api/middleware"
 	brand_handler "smart-wardrobe-be/internal/modules/brand/presentation/handler"
+	dashboard_handler "smart-wardrobe-be/internal/modules/dashboard/presentation/handler"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
@@ -10,15 +11,38 @@ import (
 )
 
 type BrandRouter struct {
-	brandHandler   *brand_handler.BrandHandler
-	authMiddleware *middleware.AuthMiddleware
+	brandHandler          *brand_handler.BrandHandler
+	brandDashboardHandler *dashboard_handler.BrandDashboardHandler
+	authMiddleware        *middleware.AuthMiddleware
 }
 
-func NewRouter(h *brand_handler.BrandHandler, m *middleware.AuthMiddleware) *BrandRouter {
-	return &BrandRouter{brandHandler: h, authMiddleware: m}
+func NewRouter(
+	h *brand_handler.BrandHandler,
+	dh *dashboard_handler.BrandDashboardHandler,
+	m *middleware.AuthMiddleware,
+) *BrandRouter {
+	return &BrandRouter{
+		brandHandler:          h,
+		brandDashboardHandler: dh,
+		authMiddleware:        m,
+	}
 }
 
 func (r *BrandRouter) Init(group *gin.RouterGroup) {
+	brandDashboard := group.Group("/brand/dashboard")
+	brandDashboard.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	{
+		brandDashboard.GET("/kpi-cards", shared_pres.WrapHandler(r.brandDashboardHandler.GetKPICards))
+		brandDashboard.GET("/financials/points-liability", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointsLiability))
+		brandDashboard.GET("/operations/digital-sample-lab/:itemId", shared_pres.WrapHandler(r.brandDashboardHandler.GetDigitalSampleLabAnalytics))
+		brandDashboard.GET("/customers/acquisition", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerAcquisition))
+		brandDashboard.GET("/loyalty/tier-distribution", shared_pres.WrapHandler(r.brandDashboardHandler.GetLoyaltyTierDistribution))
+		brandDashboard.GET("/loyalty/point-expiry-forecast", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointExpiryForecast))
+		brandDashboard.GET("/benefits/redemption-analytics", shared_pres.WrapHandler(r.brandDashboardHandler.GetBenefitRedemptionAnalytics))
+		brandDashboard.GET("/operations/catalog-stats", shared_pres.WrapHandler(r.brandDashboardHandler.GetCatalogStats))
+		brandDashboard.GET("/customers/spend-segmentation", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerSpendSegmentation))
+	}
+
 	publicBrands := group.Group("/brands")
 	{
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))

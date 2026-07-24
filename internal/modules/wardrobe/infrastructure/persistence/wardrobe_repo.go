@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
@@ -474,4 +475,51 @@ func (r *WardrobeItemRepository) ReassignCategoryForCatalogItems(ctx context.Con
 	return r.GetDB(ctx).
 		Exec("UPDATE fashion_items SET category_id = ? WHERE id IN (SELECT fashion_item_id FROM wardrobe_items WHERE fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id = ?) AND item_type = ? AND is_deleted = ?)",
 			toCategoryID, fromCategoryID, itemtype.SystemCatalogItem, false).Error
+}
+
+func (r *WardrobeItemRepository) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error) {
+	db := r.GetDB(ctx)
+
+	var totalItems int64
+	if err := db.Model(&entities.WardrobeItem{}).Where("user_id = ? AND is_deleted = ?", userID, false).Count(&totalItems).Error; err != nil {
+		return nil, err
+	}
+
+	var totalValue float64
+	_ = db.Model(&entities.WardrobeItem{}).
+		Where("user_id = ? AND is_deleted = ? AND purchase_price IS NOT NULL", userID, false).
+		Select("COALESCE(SUM(purchase_price), 0)").Scan(&totalValue).Error
+
+	staleTime := time.Now().AddDate(0, 0, -30)
+	var underutilized int64
+	_ = db.Model(&entities.WardrobeItem{}).
+		Where("user_id = ? AND is_deleted = ? AND (last_used_at IS NULL OR last_used_at < ?)", userID, false, staleTime).
+		Count(&underutilized).Error
+
+	var cpw float64
+	if totalItems > 0 {
+		cpw = totalValue / float64(totalItems)
+	}
+
+	return &dto.UserWardrobeSummaryStatsDTO{
+		UserID:                  userID,
+		TotalItems:              int(totalItems),
+		TotalWardrobeValueVND:   totalValue,
+		AverageCostPerWearVND:   cpw,
+		UnderutilizedItemsCount: int(underutilized),
+	}, nil
+}
+
+func (r *WardrobeItemRepository) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error) {
+	staleTime := time.Now().AddDate(0, 0, -30)
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).
+		Where("user_id = ? AND is_deleted = ? AND (last_used_at IS NULL OR last_used_at < ?)", userID, false, staleTime).
+		Order("last_used_at ASC").
+		Limit(limit).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }

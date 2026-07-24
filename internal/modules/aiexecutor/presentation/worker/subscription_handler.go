@@ -60,7 +60,6 @@ func (w *PlanChangedWorker) startConsume() {
 			if err != nil {
 				run.LogFailure(w.logger, err,
 					zap.String("userId", payload.UserID),
-					zap.Error(err),
 				)
 				_ = d.Nack(false, false)
 			} else {

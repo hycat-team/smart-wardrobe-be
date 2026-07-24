@@ -199,3 +199,11 @@ func (uc *CostUseCase) MarkUnknown(ctx context.Context, requestID uuid.UUID, rea
 func (uc *CostUseCase) ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error) {
 	return uc.repo.ExpireUnknown(ctx, now, limit)
 }
+
+func (uc *CostUseCase) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*aiexecutor_dto.AIUsageAdminStatsDTO, error) {
+	return uc.repo.GetAdminAIUsageStats(ctx, snapshotDate)
+}
+
+func (uc *CostUseCase) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]aiexecutor_dto.AIEventDrillDownDTO, int64, error) {
+	return uc.repo.GetAIEventsDrillDown(ctx, status, page, limit)
+}

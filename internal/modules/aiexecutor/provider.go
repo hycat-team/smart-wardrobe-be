@@ -18,6 +18,7 @@ var ProviderSet = wire.NewSet(
 	aiexecutor_infra_caching.NewRedisPricingCacheService,
 
 	contract.NewAIOrchestratorContract,
+	contract.NewAICostDashboardReader,
 
 	worker.NewAIUsageReconciliationWorker,
 	worker.NewPlanChangedWorker,

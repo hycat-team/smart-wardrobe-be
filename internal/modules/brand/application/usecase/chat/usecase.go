@@ -208,13 +208,12 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 	var res []*dto.BrandConversationRes
 	for _, conv := range conversations {
 		customer := customerByUserID[conv.UserID]
+		if customer == nil {
+			continue
+		}
 		user := userMap[conv.UserID]
 		userDisp := getUserDisplayNameFromDTO(user)
-		var custName *string
-		if customer != nil {
-			custName = customer.CustomerName
-		}
-		mapped, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, custName, &userDisp)
+		mapped, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, customer.CustomerName, &userDisp)
 		if err != nil {
 			return nil, err
 		}

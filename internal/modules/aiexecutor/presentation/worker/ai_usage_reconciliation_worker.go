@@ -48,5 +48,5 @@ func (w *AIUsageReconciliationWorker) run() {
 	}
 	run.AddTotal(int(count))
 	run.AddSuccess(int(count))
-	run.LogSuccess(w.log, zap.Int64("expiredReservationCount", count))
+	run.LogSuccessIfData(w.log, zap.Int64("expiredReservationCount", count))
 }

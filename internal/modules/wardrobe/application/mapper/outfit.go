@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemBriefRes) *dto.OutfitRes {
+func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemBriefRes, availableFashionIDs map[uuid.UUID]struct{}) *dto.OutfitRes {
 	if outfit == nil {
 		return nil
 	}
@@ -34,6 +34,10 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 				Category: category,
 			}
 		}
+		isAvailable := availableFashionIDs == nil
+		if !isAvailable {
+			_, isAvailable = availableFashionIDs[item.FashionItemID]
+		}
 		itemDTOs[idx] = &dto.OutfitItemRes{
 			ID:          item.FashionItemID,
 			ItemContext: string(item.ItemContext),
@@ -42,6 +46,7 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 			PositionY:   item.PositionY,
 			Scale:       item.Scale,
 			LayerOrder:  item.LayerOrder,
+			IsAvailable: isAvailable,
 		}
 	}
 

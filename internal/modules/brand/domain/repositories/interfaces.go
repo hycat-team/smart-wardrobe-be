@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"context"
+	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -28,6 +30,9 @@ type IBrandRepository interface {
 	GetActive(ctx context.Context) ([]*entities.Brand, error)
 	GetActiveFiltered(ctx context.Context, filter BrandFilter) (*BrandListResult, error)
 	GetBrandsForAdmin(ctx context.Context, filter BrandFilter) (*BrandListResult, error)
+	GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error)
+	GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error)
+	GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error)
 }
 
 type IBrandMemberRepository interface {

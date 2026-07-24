@@ -135,8 +135,20 @@ func (r *Run) SummaryFields(result string, extra ...zap.Field) []zap.Field {
 	return append(fields, extra...)
 }
 
+func (r *Run) hasData() bool {
+	return r.counters.TotalCount > 0 || r.counters.ErrorCount > 0 || r.counters.WarningCount > 0
+}
+
 func (r *Run) LogSuccess(log logger.Interface, extra ...zap.Field) {
 	log.Info(MessageRunSucceeded, r.SummaryFields(ResultSuccess, extra...)...)
+}
+
+func (r *Run) LogSuccessIfData(log logger.Interface, extra ...zap.Field) {
+	if r.hasData() {
+		log.Info(MessageRunSucceeded, r.SummaryFields(ResultSuccess, extra...)...)
+	} else {
+		log.Debug(MessageRunSucceeded, r.SummaryFields(ResultSuccess, extra...)...)
+	}
 }
 
 func (r *Run) LogFailure(log logger.Interface, err error, extra ...zap.Field) {

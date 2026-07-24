@@ -3,11 +3,17 @@ package repositories
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strings"
+	"sync"
+
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var preloadFieldCache sync.Map
 
 type GenericRepository[T any, ID any] struct {
 	db               *gorm.DB
@@ -32,10 +38,50 @@ func (r *GenericRepository[T, ID]) GetQueryWithPreload(ctx context.Context) *gor
 	query := r.GetDB(ctx)
 
 	for _, relation := range r.preloadRelations {
-		query = query.Preload(relation)
+		if relation != "" && fieldExistsOnType[T](relation) {
+			query = query.Preload(relation)
+		}
 	}
 
 	return query
+}
+
+func fieldExistsOnType[T any](fieldPath string) bool {
+	typeKey := reflect.TypeOf((*T)(nil)).Elem().String()
+	cacheKey := typeKey + "|" + fieldPath
+	if val, ok := preloadFieldCache.Load(cacheKey); ok {
+		return val.(bool)
+	}
+
+	t := reflect.TypeOf((*T)(nil)).Elem()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	parts := strings.Split(fieldPath, ".")
+	current := t
+	for i, part := range parts {
+		field, ok := current.FieldByName(part)
+		if !ok {
+			preloadFieldCache.Store(cacheKey, false)
+			return false
+		}
+		if i < len(parts)-1 {
+			ft := field.Type
+			for ft.Kind() == reflect.Ptr || ft.Kind() == reflect.Slice {
+				ft = ft.Elem()
+			}
+			if ft.Kind() == reflect.Struct {
+				current = ft
+			} else {
+				preloadFieldCache.Store(cacheKey, false)
+				return false
+			}
+		}
+	}
+
+	preloadFieldCache.Store(cacheKey, true)
+	return true
 }
 
 func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {

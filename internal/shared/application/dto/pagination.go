@@ -14,6 +14,9 @@ func (q PaginationQuery) Normalize() PaginationQuery {
 	if q.Limit <= 0 {
 		q.Limit = 20
 	}
+	if q.Limit > 100 {
+		q.Limit = 100
+	}
 	return q
 }
 

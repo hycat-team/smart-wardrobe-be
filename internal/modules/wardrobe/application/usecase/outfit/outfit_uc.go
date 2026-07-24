@@ -188,7 +188,7 @@ func (uc *OutfitUseCase) SaveOutfit(ctx context.Context, userID uuid.UUID, input
 		}
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap, nil), nil
 }
 
 func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID, input dto.SaveOutfitReq) (*dto.OutfitRes, error) {
@@ -304,7 +304,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 		}
 	}
 
-	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap), nil
+	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap, nil), nil
 }
 
 func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitRes], error) {
@@ -334,7 +334,7 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 
 	resList := make([]*dto.OutfitRes, len(outfits))
 	for idx, outfit := range outfits {
-		resList[idx] = mapper.MapToOutfitRes(outfit, nil, nil)
+		resList[idx] = mapper.MapToOutfitRes(outfit, nil, nil, nil)
 	}
 
 	return &shared_dto.PaginationResult[*dto.OutfitRes]{
@@ -365,7 +365,39 @@ func (uc *OutfitUseCase) GetOutfitByID(ctx context.Context, userID uuid.UUID, id
 		}
 	}
 
-	return mapper.MapToOutfitRes(outfit, items, fashionMap), nil
+	userFashionIDs := make([]uuid.UUID, 0, len(items))
+	brandFashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, oi := range items {
+		if oi.ItemContext == outfititemcontext.BrandItem {
+			brandFashionIDs = append(brandFashionIDs, oi.FashionItemID)
+		} else {
+			userFashionIDs = append(userFashionIDs, oi.FashionItemID)
+		}
+	}
+
+	availableFashionIDs := map[uuid.UUID]struct{}{}
+	if len(userFashionIDs) > 0 {
+		wardrobeItems, err := uc.wardrobeRepo.GetByUserIDAndFashionItemIDs(ctx, userID, userFashionIDs)
+		if err == nil {
+			for _, wi := range wardrobeItems {
+				if wi.FashionItemID != nil {
+					availableFashionIDs[*wi.FashionItemID] = struct{}{}
+				}
+			}
+		}
+	}
+	if len(brandFashionIDs) > 0 {
+		activeBrandItems, err := uc.brandContract.ListActiveBrandItemFashionIDs(ctx, brandFashionIDs)
+		if err == nil {
+			for fid, active := range activeBrandItems {
+				if active {
+					availableFashionIDs[fid] = struct{}{}
+				}
+			}
+		}
+	}
+
+	return mapper.MapToOutfitRes(outfit, items, fashionMap, availableFashionIDs), nil
 }
 
 func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id uuid.UUID) error {

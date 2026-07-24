@@ -20,13 +20,16 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type BrandLoyaltyUseCase struct {
@@ -41,6 +44,7 @@ type BrandLoyaltyUseCase struct {
 	lotRepo      repositories.ILoyaltyPointLotRepository
 	uow          shared_repos.IUnitOfWork
 	cfg          *config.Config
+	logger       logger.Interface
 }
 
 func NewBrandLoyaltyUseCase(
@@ -55,6 +59,7 @@ func NewBrandLoyaltyUseCase(
 	lotRepo repositories.ILoyaltyPointLotRepository,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
+	l logger.Interface,
 ) uc_interfaces.IBrandLoyaltyUseCase {
 	return &BrandLoyaltyUseCase{
 		brandRepo:    brandRepo,
@@ -68,6 +73,7 @@ func NewBrandLoyaltyUseCase(
 		lotRepo:      lotRepo,
 		uow:          uow,
 		cfg:          cfg,
+		logger:       l,
 	}
 }
 
@@ -633,11 +639,13 @@ func (uc *BrandLoyaltyUseCase) UpdateLoyaltyTier(ctx context.Context, staffUserI
 	return mapper.MapLoyaltyTier(tier), nil
 }
 
-func (uc *BrandLoyaltyUseCase) ProcessExpiredLoyaltyPointLots(ctx context.Context, now time.Time, batchSize int) (int, error) {
+func (uc *BrandLoyaltyUseCase) ProcessExpiredLoyaltyPointLots(ctx context.Context, run *workerlog.Run, now time.Time, batchSize int) (int, error) {
 	accountIDs, err := uc.lotRepo.ListAccountsWithExpiredLots(ctx, now, batchSize)
 	if err != nil {
+		run.ChildError(uc.logger, "Failed to list accounts with expired lots", zap.Error(err))
 		return 0, err
 	}
+	run.AddTotal(len(accountIDs))
 	totalExpired := 0
 	for _, accountID := range accountIDs {
 		var expired int
@@ -646,9 +654,11 @@ func (uc *BrandLoyaltyUseCase) ProcessExpiredLoyaltyPointLots(ctx context.Contex
 			expired, err = uc.expireDueLotsForAccount(txCtx, accountID, now, nil)
 			return err
 		}); err != nil {
+			run.ChildError(uc.logger, "Failed to expire lots for account", zap.String("accountID", accountID.String()), zap.Error(err))
 			return totalExpired, err
 		}
 		totalExpired += expired
 	}
+	run.AddSuccess(totalExpired)
 	return totalExpired, nil
 }

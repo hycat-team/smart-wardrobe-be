@@ -68,6 +68,15 @@ func (m *mockBrandRepo) GetBrandsForAdmin(ctx context.Context, filter repositori
 		TotalCount: int64(len(list)),
 	}, nil
 }
+func (m *mockBrandRepo) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {
+	return nil, nil
+}
+func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
+	return nil, nil
+}
+func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return nil, 0, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -224,6 +233,21 @@ func (m *mockBrandItemRepo) GetByBrandIDs(ctx context.Context, brandIDs []uuid.U
 	}
 	return res, nil
 }
+func (m *mockBrandItemRepo) GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.BrandItem, error) {
+	allowed := make(map[uuid.UUID]struct{}, len(fashionItemIDs))
+	for _, id := range fashionItemIDs {
+		allowed[id] = struct{}{}
+	}
+	var res []*entities.BrandItem
+	for _, item := range m.items {
+		if item.FashionItemID != nil {
+			if _, ok := allowed[*item.FashionItemID]; ok {
+				res = append(res, item)
+			}
+		}
+	}
+	return res, nil
+}
 func (m *mockBrandItemRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
 	var list []*entities.BrandItem
 	for _, item := range m.items {
@@ -358,10 +382,10 @@ func (m *mockFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) 
 func (m *mockFashionContract) GetFashionItemDirect(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Context, job *fashion_dto.FashionAnalyzeJobDTO) (interface{}, error) {
+func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Context, job *fashion_dto.FashionAnalyzeJobDTO) (any, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) CreateFashionItemDirect(ctx context.Context, item interface{}) (uuid.UUID, error) {
+func (m *mockFashionContract) CreateFashionItemDirect(ctx context.Context, item any) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 func (m *mockFashionContract) CreateFashionItem(ctx context.Context, input fashion_dto.CreateFashionItemInput) error {
@@ -373,7 +397,7 @@ func (m *mockFashionContract) BulkCreateFashionItems(ctx context.Context, inputs
 
 type mockEventPublisher struct{}
 
-func (m *mockEventPublisher) Publish(ctx context.Context, topic string, event interface{}) error {
+func (m *mockEventPublisher) Publish(ctx context.Context, topic string, event any) error {
 	return nil
 }
 

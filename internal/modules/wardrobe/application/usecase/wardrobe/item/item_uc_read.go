@@ -314,3 +314,87 @@ func (uc *WardrobeItemUseCase) GetWardrobeStats(ctx context.Context, userID uuid
 		OutfitsCount:     int(outfitsCount),
 	}, nil
 }
+
+func (uc *WardrobeItemUseCase) GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error) {
+	return uc.wardrobeRepo.GetUserWardrobeSummaryStats(ctx, userID)
+}
+
+func (uc *WardrobeItemUseCase) GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error) {
+	items, err := uc.wardrobeRepo.GetUnderutilizedItems(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(items) == 0 {
+		return []*dto.UnderutilizedItemInfoDTO{}, nil
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil && *item.FashionItemID != uuid.Nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+
+	var fashionItems []*fashion_dto.FashionItemRes
+	if len(fashionIDs) > 0 && uc.fashionContract != nil {
+		fashionItems, _ = uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+	}
+
+	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID {
+		return f.ID
+	})
+
+	now := time.Now()
+	res := make([]*dto.UnderutilizedItemInfoDTO, 0, len(items))
+	for _, item := range items {
+		price := 0.0
+		if item.Price != nil {
+			price = *item.Price
+		}
+		wearCount := 0
+		cpw := price
+
+		daysAgo := 30
+		if item.LastUsedAt != nil {
+			daysAgo = int(now.Sub(*item.LastUsedAt).Hours() / 24)
+		}
+
+		name := "Trang phục"
+		categoryName := "Chưa phân loại"
+		imageURL := ""
+
+		if item.FashionItemID != nil {
+			if fItem, ok := fashionMap[*item.FashionItemID]; ok && fItem != nil {
+				imageURL = fItem.ImageUrl
+				if fItem.Category != nil && fItem.Category.Name != "" {
+					categoryName = fItem.Category.Name
+				}
+				if fItem.Style != nil && *fItem.Style != "" {
+					name = *fItem.Style
+				} else if fItem.Category != nil && fItem.Category.Name != "" {
+					name = fItem.Category.Name
+				}
+			}
+		}
+
+		res = append(res, &dto.UnderutilizedItemInfoDTO{
+			ItemID:           item.ID,
+			Name:             name,
+			CategoryName:     categoryName,
+			PurchasePriceVND: price,
+			WearCount:        wearCount,
+			CostPerWearVND:   cpw,
+			LastWornDaysAgo:  daysAgo,
+			ImageURL:         imageURL,
+		})
+	}
+	return res, nil
+}
+
+func (uc *WardrobeItemUseCase) GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(outfitIDs) == 0 {
+		return nil, nil
+	}
+	return uc.outfitRepo.GetFashionItemIDsByOutfitIDs(ctx, outfitIDs)
+}

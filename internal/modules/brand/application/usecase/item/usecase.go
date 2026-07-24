@@ -158,7 +158,10 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 	fashionItemMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
-		fashionContractItems, _ := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		fashionContractItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err != nil {
+			return nil, nil, err
+		}
 		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
 	}
 
@@ -227,6 +230,25 @@ func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userI
 
 	fi, _ := uc.fashionContract.GetFashionItem(ctx, *brandItem.FashionItemID)
 	return true, mapper.MapToBrandItemRes(brandItem, fi), fi, nil
+}
+
+func (uc *BrandItemUseCase) ListActiveBrandItemFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if len(fashionItemIDs) == 0 {
+		return map[uuid.UUID]bool{}, nil
+	}
+
+	brandItems, err := uc.brandItemRepo.GetByFashionItemIDs(ctx, fashionItemIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[uuid.UUID]bool, len(fashionItemIDs))
+	for _, bi := range brandItems {
+		if bi.FashionItemID != nil && bi.Status == branditemstatus.Active {
+			result[*bi.FashionItemID] = true
+		}
+	}
+	return result, nil
 }
 
 func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error) {

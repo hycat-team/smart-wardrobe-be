@@ -28,6 +28,7 @@ var ProviderSet = wire.NewSet(
 	catalog.NewWardrobeCatalogUseCase,
 	contractuc.NewWardrobeContractUseCase,
 	contract.NewWardrobeContract,
+	contract.NewWardrobeDashboardReader,
 	search_sync.NewSearchSyncUseCase,
 
 	outfit_uc.NewOutfitUseCase,

@@ -153,3 +153,7 @@ func ErrTierNameExists(name string) *apperror.Error {
 func ErrTierRankExists(rank int) *apperror.Error {
 	return apperror.NewConflict(fmt.Sprintf("Hạng thành viên thứ %d đã tồn tại trong thương hiệu này.", rank))
 }
+
+func ErrItemFeedbackNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy phản hồi nào cho sản phẩm này.")
+}

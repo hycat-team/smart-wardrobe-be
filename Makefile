@@ -115,8 +115,7 @@ wire:
 
 swagger:
 	@echo Generating Swagger specifications...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community
-	@echo Swagger generation finished.
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community > $(TEMP)\swagger_out.tmp 2>&1 && (echo Swagger generation finished.) || (echo Swagger generation FAILED. && type $(TEMP)\swagger_out.tmp)
 
 generate: wire swagger
 

@@ -58,5 +58,5 @@ func (w *WebhookInboxWorker) run() {
 		run.LogFailure(w.log, err)
 		return
 	}
-	run.LogSuccess(w.log)
+	run.LogSuccessIfData(w.log)
 }

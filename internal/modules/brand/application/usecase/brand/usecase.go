@@ -26,32 +26,38 @@ import (
 )
 
 type BrandUseCase struct {
-	brandRepo    repositories.IBrandRepository
-	memberRepo   repositories.IBrandMemberRepository
-	customerRepo repositories.IBrandCustomerRepository
-	userContract identity_contract.IUserContract
-	mediaService media.IMediaService
-	uow          shared_repos.IUnitOfWork
-	cfg          *config.Config
+	brandRepo             repositories.IBrandRepository
+	memberRepo            repositories.IBrandMemberRepository
+	customerRepo          repositories.IBrandCustomerRepository
+	feedbackRepo          repositories.IDigitalSampleResponseRepository
+	benefitRedemptionRepo repositories.IBenefitRedemptionRepository
+	userContract          identity_contract.IUserContract
+	mediaService          media.IMediaService
+	uow                   shared_repos.IUnitOfWork
+	cfg                   *config.Config
 }
 
 func NewBrandUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
+	feedbackRepo repositories.IDigitalSampleResponseRepository,
+	benefitRedemptionRepo repositories.IBenefitRedemptionRepository,
 	userContract identity_contract.IUserContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 ) uc_interfaces.IBrandUseCase {
 	return &BrandUseCase{
-		brandRepo:    brandRepo,
-		memberRepo:   memberRepo,
-		customerRepo: customerRepo,
-		userContract: userContract,
-		mediaService: mediaService,
-		uow:          uow,
-		cfg:          cfg,
+		brandRepo:             brandRepo,
+		memberRepo:            memberRepo,
+		customerRepo:          customerRepo,
+		feedbackRepo:          feedbackRepo,
+		benefitRedemptionRepo: benefitRedemptionRepo,
+		userContract:          userContract,
+		mediaService:          mediaService,
+		uow:                   uow,
+		cfg:                   cfg,
 	}
 }
 
@@ -457,4 +463,72 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 		return nil, err
 	}
 	return mapper.MapBrandMembers(members), nil
+}
+
+func (uc *BrandUseCase) GetAdminBrandStats(ctx context.Context, snapshotDate time.Time) (*dto.BrandAdminStatsDTO, error) {
+	return uc.brandRepo.GetAdminBrandStats(ctx, snapshotDate)
+}
+
+func (uc *BrandUseCase) GetBrandAnalyticsStats(ctx context.Context, brandID uuid.UUID, snapshotDate time.Time) (*dto.BrandAnalyticsStatsDTO, error) {
+	return uc.brandRepo.GetBrandAnalyticsStats(ctx, brandID, snapshotDate)
+}
+
+func (uc *BrandUseCase) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
+	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
+	if err != nil || member == nil {
+		return brandmemberrole.Staff, nil
+	}
+	return member.Role, nil
+}
+
+func (uc *BrandUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
+	return uc.brandRepo.GetSampleLabFeedbacksDrillDown(ctx, itemID, page, limit)
+}
+
+func (uc *BrandUseCase) GetItemFeedbackSummary(ctx context.Context, itemID uuid.UUID) (*dto.ItemFeedbackSummaryDTO, error) {
+	responses, err := uc.feedbackRepo.GetByBrandItemID(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if len(responses) == 0 {
+		return nil, branderrors.ErrItemFeedbackNotFound()
+	}
+
+	var totalRating float64
+	outfitSet := map[uuid.UUID]bool{}
+	for _, r := range responses {
+		if r.Rating != nil {
+			totalRating += float64(*r.Rating)
+		}
+		if r.OutfitID != nil {
+			outfitSet[*r.OutfitID] = true
+		}
+	}
+
+	avgRating := totalRating / float64(len(responses))
+
+	var sentiment string
+	if avgRating >= 4 {
+		sentiment = "positive"
+	} else if avgRating >= 3 {
+		sentiment = "neutral"
+	} else {
+		sentiment = "negative"
+	}
+
+	outfitIDs := make([]uuid.UUID, 0, len(outfitSet))
+	for id := range outfitSet {
+		outfitIDs = append(outfitIDs, id)
+	}
+
+	return &dto.ItemFeedbackSummaryDTO{
+		VotesCount:        len(responses),
+		AvgRating:         avgRating,
+		FeedbackSentiment: sentiment,
+		OutfitIDs:         outfitIDs,
+	}, nil
+}
+
+func (uc *BrandUseCase) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return uc.benefitRedemptionRepo.GetUserExpiringBenefitsCount(ctx, userID)
 }

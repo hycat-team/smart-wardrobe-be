@@ -131,3 +131,15 @@ func (r *OutfitRepository) DeleteOutfit(ctx context.Context, id uuid.UUID) error
 		return nil
 	})
 }
+
+func (r *OutfitRepository) GetFashionItemIDsByOutfitIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error) {
+	var fashionIDs []uuid.UUID
+	err := r.GetDB(ctx).Model(&entities.OutfitItem{}).
+		Where("outfit_id IN ?", outfitIDs).
+		Select("DISTINCT fashion_item_id").
+		Pluck("fashion_item_id", &fashionIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	return fashionIDs, nil
+}

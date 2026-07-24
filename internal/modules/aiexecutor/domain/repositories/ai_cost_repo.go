@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 
@@ -21,4 +22,6 @@ type IAICostRepository interface {
 	ExpireGrantsByUserID(ctx context.Context, userID uuid.UUID, now time.Time) error
 	CreateGrant(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant) error
 	CreateEvent(ctx context.Context, event *aiexecutor_entities.AIUsageEvent) error
+	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
+	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
 }

@@ -3,13 +3,15 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
+
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
-	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -184,5 +186,34 @@ func (r *UserRepository) GetUsersForAdmin(ctx context.Context, filter repositori
 	return &repositories.UserListResult{
 		Users:      users,
 		TotalCount: totalCount,
+	}, nil
+}
+
+func (r *UserRepository) GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error) {
+	db := r.GetDB(ctx)
+
+	startOfDay := time.Date(snapshotDate.Year(), snapshotDate.Month(), snapshotDate.Day(), 0, 0, 0, 0, snapshotDate.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	var totalUsers int64
+	if err := db.Model(&entities.User{}).Where("is_deleted = ?", false).Count(&totalUsers).Error; err != nil {
+		return nil, err
+	}
+
+	var newUsers int64
+	if err := db.Model(&entities.User{}).Where("is_deleted = ? AND created_at >= ? AND created_at < ?", false, startOfDay, endOfDay).Count(&newUsers).Error; err != nil {
+		return nil, err
+	}
+
+	var dauCount int64
+	if err := db.Model(&entities.User{}).Where("is_deleted = ? AND updated_at >= ? AND updated_at < ?", false, startOfDay, endOfDay).Count(&dauCount).Error; err != nil {
+		return nil, err
+	}
+
+	return &dto.UserAdminStatsDTO{
+		SnapshotDate:   snapshotDate,
+		TotalUsers:     int(totalUsers),
+		NewUsers:       int(newUsers),
+		ActiveUsersDau: int(dauCount),
 	}, nil
 }

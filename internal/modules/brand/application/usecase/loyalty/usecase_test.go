@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
 )
@@ -223,7 +224,7 @@ func TestProcessExpiredLoyaltyPointLotsGroupsExpiredLotsAndIsIdempotent(t *testi
 		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 20, ExpiresAt: &expiredAt, Status: loyaltypointlotstatus.Active},
 	)
 
-	expiredPoints, err := uc.ProcessExpiredLoyaltyPointLots(context.Background(), now, 100)
+	expiredPoints, err := uc.ProcessExpiredLoyaltyPointLots(context.Background(), workerlog.New("test", "test"), now, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +240,7 @@ func TestProcessExpiredLoyaltyPointLotsGroupsExpiredLotsAndIsIdempotent(t *testi
 		}
 	}
 
-	expiredPoints, err = uc.ProcessExpiredLoyaltyPointLots(context.Background(), now, 100)
+	expiredPoints, err = uc.ProcessExpiredLoyaltyPointLots(context.Background(), workerlog.New("test", "test"), now, 100)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,6 +74,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		r.CategoryRouter.Init(api)
 		r.BrandRouter.Init(api)
 		r.FashionRouter.Init(api)
+		r.DashboardRouter.Init(api)
 		// Phase 02 B2B2C rebuild: community/resale routes are archived out of the MVP runtime.
 	}
 

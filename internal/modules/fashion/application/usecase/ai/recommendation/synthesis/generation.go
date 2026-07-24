@@ -50,7 +50,7 @@ func GenerateOutfitRecommendation(
 	}
 	responseText, err := aiService.GenerateRecommendationText(
 		ctx,
-		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics.",
+		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony.",
 		userPrompt,
 		aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)

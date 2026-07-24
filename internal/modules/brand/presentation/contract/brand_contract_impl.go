@@ -39,6 +39,10 @@ func (c *BrandContract) CheckBrandItemEligibility(ctx context.Context, userID uu
 	return c.itemUC.CheckBrandItemEligibility(ctx, userID, fashionItemID)
 }
 
+func (c *BrandContract) ListActiveBrandItemFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return c.itemUC.ListActiveBrandItemFashionIDs(ctx, fashionItemIDs)
+}
+
 func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error {
 	return c.itemUC.SetFashionItemID(ctx, brandItemID, fashionItemID)
 }
