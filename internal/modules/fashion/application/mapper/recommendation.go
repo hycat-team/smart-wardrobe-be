@@ -45,11 +45,11 @@ func parseAliasIndex(alias string) (int, bool) {
 	return -1, false
 }
 
-func cloneWardrobeItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes) *wardrobeDto.WardrobeItemRes {
+func MapToRecommendedItemResFromWardrobe(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes) *dto.RecommendedItemRes {
 	if item == nil {
 		return nil
 	}
-	var fRes *wardrobeDto.FashionItemRes
+	var fRes *dto.RecommendedFashionItemRes
 	if fi != nil {
 		var category *wardrobeDto.CategoryBriefRes
 		if fi.Category != nil {
@@ -59,38 +59,70 @@ func cloneWardrobeItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItem
 				Slug: fi.Category.Slug,
 			}
 		}
-		fRes = &wardrobeDto.FashionItemRes{
-			ID:              fi.ID,
-			Category:        category,
-			ImageUrl:        fi.ImageUrl,
-			Color:           fi.Color,
-			ColorHex:        fi.ColorHex,
-			ColorHue:        fi.ColorHue,
-			ColorSaturation: fi.ColorSaturation,
-			ColorLightness:  fi.ColorLightness,
-			Style:           fi.Style,
-			Material:        fi.Material,
-			Pattern:         fi.Pattern,
-			Fit:             fi.Fit,
-			Seasonality:     fi.Seasonality,
-			Description:     fi.Description,
-			CreatedAt:       fi.CreatedAt,
-			UpdatedAt:       fi.UpdatedAt,
-		}
-	} else if item.FashionItem != nil {
-		fRes = &wardrobeDto.FashionItemRes{
-			ID: item.FashionItem.ID,
+		fRes = &dto.RecommendedFashionItemRes{
+			ID:       fi.ID,
+			Category: category,
+			ImageUrl: fi.ImageUrl,
+			Color:    fi.Color,
+			ColorHex: fi.ColorHex,
+			Style:    fi.Style,
+			Material: fi.Material,
+			Pattern:  fi.Pattern,
+			Fit:      fi.Fit,
 		}
 	}
-	return &wardrobeDto.WardrobeItemRes{
+	return &dto.RecommendedItemRes{
 		ID:          item.ID,
-		UserID:      item.UserID,
-		Price:       item.Price,
-		Status:      item.Status,
-		LastUsedAt:  item.LastUsedAt,
-		IsDeleted:   item.IsDeleted,
+		ItemContext: string(outfititemcontext.UserWardrobe),
 		FashionItem: fRes,
 	}
+}
+
+func mapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
+	if item == nil {
+		return nil
+	}
+	var fRes *dto.RecommendedFashionItemRes
+	if fi != nil {
+		var category *wardrobeDto.CategoryBriefRes
+		if fi.Category != nil {
+			category = &wardrobeDto.CategoryBriefRes{
+				ID:   fi.Category.ID,
+				Name: fi.Category.Name,
+				Slug: fi.Category.Slug,
+			}
+		}
+		fRes = &dto.RecommendedFashionItemRes{
+			ID:       fi.ID,
+			Category: category,
+			ImageUrl: fi.ImageUrl,
+			Color:    fi.Color,
+			ColorHex: fi.ColorHex,
+			Style:    fi.Style,
+			Material: fi.Material,
+			Pattern:  fi.Pattern,
+			Fit:      fi.Fit,
+		}
+	}
+	res := &dto.RecommendedItemRes{
+		ID:          item.ID,
+		FashionItem: fRes,
+	}
+	res.ItemContext = string(cand.ItemContext)
+	if res.ItemContext == "" {
+		res.ItemContext = string(outfititemcontext.UserWardrobe)
+	}
+	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
+		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
+			ID:        cand.BrandItem.ID,
+			BrandID:   cand.BrandItem.BrandID,
+			BrandName: cand.BrandItem.BrandName,
+			ItemType:  string(cand.BrandItem.ItemType),
+			Name:      cand.BrandItem.Name,
+			Price:     cand.BrandItem.Price,
+		}
+	}
+	return res
 }
 
 // MapLLMResponseToGroups ánh xạ các gợi ý về ID và vai trò trang phục trong phản hồi của AI/LLM về lại các món đồ ứng viên thực tế trong tủ đồ của người dùng.
@@ -131,10 +163,8 @@ func MapLLMResponseToGroups(
 		if primary.FashionItem != nil {
 			fashionItemRes = fashionItemMap[primary.FashionItem.ID]
 		}
-		primaryDTO := cloneWardrobeItemRes(primary, fashionItemRes)
-		if cand, found := promptCandidateMap[primary.ID]; found {
-			enrichWardrobeItemRes(primaryDTO, cand)
-		}
+		cand, _ := promptCandidateMap[primary.ID]
+		primaryDTO := mapToRecommendedItemRes(primary, fashionItemRes, cand)
 
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         actualRole,
@@ -198,8 +228,8 @@ func resolveAlternativeCandidates(
 	primaryID uuid.UUID,
 	alternativeIDs []string,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
-) []*wardrobeDto.WardrobeItemRes {
-	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
+) []*dto.RecommendedItemRes {
+	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
 		var altItem *wardrobeDto.WardrobeItemRes
 		if idx, ok := parseAliasIndex(altID); ok {
@@ -228,10 +258,7 @@ func resolveAlternativeCandidates(
 		if altItem.FashionItem != nil {
 			fashionItemRes = fashionItemMap[altItem.FashionItem.ID]
 		}
-		altDTO := cloneWardrobeItemRes(altItem, fashionItemRes)
-		if cand, found := promptCandidateMap[altItem.ID]; found {
-			enrichWardrobeItemRes(altDTO, cand)
-		}
+		altDTO := mapToRecommendedItemRes(altItem, fashionItemRes, promptCandidateMap[altItem.ID])
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			return alternatives
@@ -262,8 +289,7 @@ func resolveAlternativeCandidates(
 		if item.FashionItem != nil {
 			fashionItemRes = fashionItemMap[item.FashionItem.ID]
 		}
-		altDTO := cloneWardrobeItemRes(item, fashionItemRes)
-		enrichWardrobeItemRes(altDTO, candidate)
+		altDTO := mapToRecommendedItemRes(item, fashionItemRes, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
 			break
@@ -280,24 +306,4 @@ func matchesRole(item *wardrobeDto.WardrobeItemRes, role string, fashionItemMap 
 		}
 	}
 	return true
-}
-
-func enrichWardrobeItemRes(res *wardrobeDto.WardrobeItemRes, cand types.CandidateForPrompt) {
-	if res == nil {
-		return
-	}
-	res.ItemContext = string(cand.ItemContext)
-	if res.ItemContext == "" {
-		res.ItemContext = string(outfititemcontext.UserWardrobe)
-	}
-	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
-		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
-			ID:        cand.BrandItem.ID,
-			BrandID:   cand.BrandItem.BrandID,
-			BrandName: cand.BrandItem.BrandName,
-			ItemType:  string(cand.BrandItem.ItemType),
-			Name:      cand.BrandItem.Name,
-			Price:     cand.BrandItem.Price,
-		}
-	}
 }

@@ -7631,7 +7631,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "granularity": {
-                    "description": "\"day\" | \"week\" | \"month\"",
+                    "description": "\"day\" | \"week\" | \"month\" | \"year\"",
                     "allOf": [
                         {
                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity"
@@ -7795,12 +7795,14 @@ const docTemplate = `{
             "enum": [
                 "day",
                 "week",
-                "month"
+                "month",
+                "year"
             ],
             "x-enum-varnames": [
                 "Day",
                 "Week",
-                "Month"
+                "Month",
+                "Year"
             ]
         },
         "smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey": {
@@ -7990,7 +7992,7 @@ const docTemplate = `{
                     "description": "Ghi chú thêm bằng tay (free text)",
                     "type": "string"
                 },
-                "include_brand_items": {
+                "includeBrandItems": {
                     "description": "Cho phép phối đồ của brand (tỷ lệ tối đa 30%)",
                     "type": "boolean",
                     "example": true
@@ -8023,19 +8025,68 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemRes": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "colorHex": {
+                    "type": "string"
+                },
+                "fit": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemGroup": {
             "type": "object",
             "properties": {
                 "alternatives": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes"
                     }
                 },
                 "primary": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes"
                 },
                 "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes": {
+            "type": "object",
+            "properties": {
+                "brandItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+                },
+                "fashionItem": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemRes"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "itemContext": {
                     "type": "string"
                 }
             }
@@ -9123,6 +9174,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "isAvailable": {
+                    "type": "boolean"
                 },
                 "itemContext": {
                     "type": "string"

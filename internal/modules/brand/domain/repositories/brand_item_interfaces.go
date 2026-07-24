@@ -30,6 +30,7 @@ type IBrandItemRepository interface {
 	GetByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) ([]*entities.BrandItem, error)
 	GetByProductCode(ctx context.Context, brandID uuid.UUID, code string) (*entities.BrandItem, error)
 	GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error)
+	GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.BrandItem, error)
 	GetByBrandIDPaginated(ctx context.Context, filter BrandItemFilter) (*BrandItemListResult, error)
 }
 

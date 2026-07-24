@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/granularity"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/metrickey"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/targetdashboard"
+	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
@@ -212,9 +213,23 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		prevFromDate := prevToDate.Add(-duration)
 
 		currSum := map[metrickey.MetricKey]float64{}
+		currCount := map[metrickey.MetricKey]int{}
 		for _, pt := range series {
 			for k, v := range pt.Metrics {
-				currSum[k] += v
+				switch getMetricAggType(k) {
+				case metricCumulative:
+					currSum[k] = v // last value
+				case metricNonCumulative:
+					currSum[k] += v
+				case metricRate:
+					currSum[k] += v
+					currCount[k]++
+				}
+			}
+		}
+		for k := range currSum {
+			if getMetricAggType(k) == metricRate && currCount[k] > 0 {
+				currSum[k] /= float64(currCount[k])
 			}
 		}
 
@@ -223,15 +238,12 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 
 		deltaMap := map[metrickey.MetricKey]float64{}
 		for _, m := range req.Metrics {
-			currVal := currSum[m]
 			prevVal := prevSum[m]
-			if currVal == 0 && prevVal == 0 {
-				deltaMap[m] = 0.0
-			} else if prevVal == 0 {
-				deltaMap[m] = 100.0
-			} else {
-				deltaMap[m] = ((currVal - prevVal) / prevVal) * 100.0
+			if prevVal == 0 {
+				continue // Không thể tính delta % khi kỳ trước không có dữ liệu
 			}
+			currVal := currSum[m]
+			deltaMap[m] = ((currVal - prevVal) / prevVal) * 100.0
 		}
 
 		comparison = &dto.ComparisonDTO{
@@ -258,36 +270,31 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 	}, nil
 }
 
-// sumPreviousPeriod queries snapshot data for the previous period and sums metric values.
+// sumPreviousPeriod queries snapshot data for the previous period and computes aggregated metric values.
 func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target targetdashboard.TargetDashboard, req *dto.DynamicQueryReq, prevFrom, prevTo time.Time) map[metrickey.MetricKey]float64 {
 	prevSum := map[metrickey.MetricKey]float64{}
+	prevCount := map[metrickey.MetricKey]int{}
 
 	switch target {
 	case targetdashboard.Admin:
 		prevSnapshots, err := uc.dashboardRepo.GetAdminSnapshots(ctx, prevFrom, prevTo)
-		if err != nil {
-			return prevSum
-		}
-		if len(prevSnapshots) == 0 {
+		if err != nil || len(prevSnapshots) == 0 {
 			return prevSum
 		}
 		for _, s := range prevSnapshots {
 			for _, m := range req.Metrics {
-				switch m {
-				case metrickey.TotalUsers:
-					prevSum[m] += float64(s.TotalUsers)
-				case metrickey.ActiveUsersDau:
-					prevSum[m] += float64(s.ActiveUsersDau)
-				case metrickey.TotalBrands:
-					prevSum[m] += float64(s.TotalBrands)
-				case metrickey.PendingReviewBrands:
-					prevSum[m] += float64(s.PendingReviewBrands)
-				case metrickey.AIRequestsCount:
-					prevSum[m] += float64(s.AIRequestsCount)
-				case metrickey.SubscriptionRevenueVND:
-					prevSum[m] += s.SubscriptionRevenueVND
-				case metrickey.NetAIMarginVND:
-					prevSum[m] += s.NetAIMarginVND
+				val := metricValueFromAdminSnapshot(s, m)
+				if val == nil {
+					continue
+				}
+				switch getMetricAggType(m) {
+				case metricCumulative:
+					prevSum[m] = *val // last value
+				case metricNonCumulative:
+					prevSum[m] += *val
+				case metricRate:
+					prevSum[m] += *val
+					prevCount[m]++
 				}
 			}
 		}
@@ -297,37 +304,23 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 			return prevSum
 		}
 		prevSnapshots, err := uc.dashboardRepo.GetBrandSnapshots(ctx, *req.BrandID, prevFrom, prevTo)
-		if err != nil {
-			return prevSum
-		}
-		if len(prevSnapshots) == 0 {
+		if err != nil || len(prevSnapshots) == 0 {
 			return prevSum
 		}
 		for _, s := range prevSnapshots {
 			for _, m := range req.Metrics {
-				switch m {
-				case metrickey.TotalMembers:
-					prevSum[m] += float64(s.TotalMembers)
-				case metrickey.PointsIssued:
-					prevSum[m] += float64(s.PointsIssued)
-				case metrickey.PointsRedeemed:
-					prevSum[m] += float64(s.PointsRedeemed)
-				case metrickey.ActiveVouchers:
-					prevSum[m] += float64(s.ActiveVouchers)
-				case metrickey.VouchersRedeemed:
-					prevSum[m] += float64(s.VouchersRedeemed)
-				case metrickey.DigitalSampleVotesCount:
-					prevSum[m] += float64(s.DigitalSampleVotesCount)
-				case metrickey.DigitalSampleAvgRating:
-					prevSum[m] += s.DigitalSampleAvgRating
-				case metrickey.OpenCSTickets:
-					prevSum[m] += float64(s.OpenCSTickets)
-				case metrickey.CSFirstResponseAvgSeconds:
-					prevSum[m] += float64(s.CSFirstResponseAvgSeconds)
-				case metrickey.PointsExpiring30d:
-					prevSum[m] += float64(s.PointsExpiring30d)
-				case metrickey.PointsLiabilityValueVND:
-					prevSum[m] += s.PointsLiabilityValueVND
+				val := metricValueFromBrandSnapshot(s, m)
+				if val == nil {
+					continue
+				}
+				switch getMetricAggType(m) {
+				case metricCumulative:
+					prevSum[m] = *val // last value
+				case metricNonCumulative:
+					prevSum[m] += *val
+				case metricRate:
+					prevSum[m] += *val
+					prevCount[m]++
 				}
 			}
 		}
@@ -337,7 +330,67 @@ func (uc *DynamicQueryUseCase) sumPreviousPeriod(ctx context.Context, target tar
 		// so previous period comparison is not applicable.
 	}
 
+	// Average rate metrics
+	for k := range prevSum {
+		if getMetricAggType(k) == metricRate && prevCount[k] > 0 {
+			prevSum[k] /= float64(prevCount[k])
+		}
+	}
 	return prevSum
+}
+
+func metricValueFromAdminSnapshot(s *entities.DashboardAdminDailySnapshot, m metrickey.MetricKey) *float64 {
+	var v float64
+	switch m {
+	case metrickey.TotalUsers:
+		v = float64(s.TotalUsers)
+	case metrickey.ActiveUsersDau:
+		v = float64(s.ActiveUsersDau)
+	case metrickey.TotalBrands:
+		v = float64(s.TotalBrands)
+	case metrickey.PendingReviewBrands:
+		v = float64(s.PendingReviewBrands)
+	case metrickey.AIRequestsCount:
+		v = float64(s.AIRequestsCount)
+	case metrickey.SubscriptionRevenueVND:
+		v = s.SubscriptionRevenueVND
+	case metrickey.NetAIMarginVND:
+		v = s.NetAIMarginVND
+	default:
+		return nil
+	}
+	return &v
+}
+
+func metricValueFromBrandSnapshot(s *entities.DashboardBrandDailySnapshot, m metrickey.MetricKey) *float64 {
+	var v float64
+	switch m {
+	case metrickey.TotalMembers:
+		v = float64(s.TotalMembers)
+	case metrickey.PointsIssued:
+		v = float64(s.PointsIssued)
+	case metrickey.PointsRedeemed:
+		v = float64(s.PointsRedeemed)
+	case metrickey.ActiveVouchers:
+		v = float64(s.ActiveVouchers)
+	case metrickey.VouchersRedeemed:
+		v = float64(s.VouchersRedeemed)
+	case metrickey.DigitalSampleVotesCount:
+		v = float64(s.DigitalSampleVotesCount)
+	case metrickey.DigitalSampleAvgRating:
+		v = s.DigitalSampleAvgRating
+	case metrickey.OpenCSTickets:
+		v = float64(s.OpenCSTickets)
+	case metrickey.CSFirstResponseAvgSeconds:
+		v = float64(s.CSFirstResponseAvgSeconds)
+	case metrickey.PointsExpiring30d:
+		v = float64(s.PointsExpiring30d)
+	case metrickey.PointsLiabilityValueVND:
+		v = s.PointsLiabilityValueVND
+	default:
+		return nil
+	}
+	return &v
 }
 
 type metricAggType int

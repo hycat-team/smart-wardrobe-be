@@ -115,7 +115,7 @@ func buildItemGroup(
 	all []*wardrobeDto.WardrobeItemRes,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedItemGroup {
-	alternatives := make([]*wardrobeDto.WardrobeItemRes, 0, 2)
+	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, item := range all {
 		if item.ID == primary.ID {
 			continue
@@ -127,7 +127,7 @@ func buildItemGroup(
 		if item.FashionItem != nil {
 			fi = fashionItemMap[item.FashionItem.ID]
 		}
-		alternatives = append(alternatives, mapper.MapToWardrobeItemResWithFashion(item, fi))
+		alternatives = append(alternatives, mapper.MapToRecommendedItemResFromWardrobe(item, fi))
 	}
 
 	var primaryFI *dto.FashionItemRes
@@ -136,7 +136,7 @@ func buildItemGroup(
 	}
 	return &dto.RecommendedItemGroup{
 		Role:         role,
-		Primary:      mapper.MapToWardrobeItemResWithFashion(primary, primaryFI),
+		Primary:      mapper.MapToRecommendedItemResFromWardrobe(primary, primaryFI),
 		Alternatives: alternatives,
 	}
 }

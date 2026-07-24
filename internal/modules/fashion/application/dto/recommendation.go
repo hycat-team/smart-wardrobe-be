@@ -32,7 +32,26 @@ type RecommendOutfitReq struct {
 	// Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)
 	ColorTone *string `json:"colorTone" example:"light"`
 	// Cho phép phối đồ của brand (tỷ lệ tối đa 30%)
-	IncludeBrandItems *bool `json:"include_brand_items,omitempty" example:"true"`
+	IncludeBrandItems *bool `json:"includeBrandItems,omitempty" example:"true"`
+}
+
+type RecommendedFashionItemRes struct {
+	ID       uuid.UUID                     `json:"id"`
+	Category *wardrobeDto.CategoryBriefRes `json:"category,omitempty"`
+	ImageUrl string                        `json:"imageUrl,omitempty"`
+	Color    *string                       `json:"color,omitempty"`
+	ColorHex *string                       `json:"colorHex,omitempty"`
+	Style    *string                       `json:"style,omitempty"`
+	Material *string                       `json:"material,omitempty"`
+	Pattern  *string                       `json:"pattern,omitempty"`
+	Fit      *string                       `json:"fit,omitempty"`
+}
+
+type RecommendedItemRes struct {
+	ID          uuid.UUID                      `json:"id"`
+	ItemContext string                         `json:"itemContext,omitempty"`
+	BrandItem   *wardrobeDto.BrandItemBriefRes `json:"brandItem,omitempty"`
+	FashionItem *RecommendedFashionItemRes     `json:"fashionItem,omitempty"`
 }
 
 type RecommendedOutfitRes struct {
@@ -44,9 +63,9 @@ type RecommendedOutfitRes struct {
 }
 
 type RecommendedItemGroup struct {
-	Role         string                         `json:"role"`
-	Primary      *wardrobeDto.WardrobeItemRes   `json:"primary"`
-	Alternatives []*wardrobeDto.WardrobeItemRes `json:"alternatives"`
+	Role         string                `json:"role"`
+	Primary      *RecommendedItemRes   `json:"primary"`
+	Alternatives []*RecommendedItemRes `json:"alternatives"`
 }
 
 type PendingTransferRes struct {

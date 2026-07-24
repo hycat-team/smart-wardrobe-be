@@ -51,4 +51,5 @@ type OutfitItemRes struct {
 	PositionY   float64              `json:"positionY"`
 	Scale       float64              `json:"scale"`
 	LayerOrder  int16                `json:"layerOrder"`
+	IsAvailable bool                 `json:"isAvailable"`
 }

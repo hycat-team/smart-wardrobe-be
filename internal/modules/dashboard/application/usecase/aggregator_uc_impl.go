@@ -6,6 +6,7 @@ import (
 
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 	repo_interfaces "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
@@ -55,10 +56,20 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 		run.ChildError(uc.logger, "Failed to read admin user stats for snapshot", zap.Error(err))
 		return err
 	}
+	if userStats == nil {
+		err := dashboarderrors.ErrDashboardDataNotFound()
+		run.ChildError(uc.logger, "Admin user stats returned nil for snapshot", zap.Error(err))
+		return err
+	}
 
 	brandStats, err := uc.brandReader.GetAdminBrandStats(ctxTimeout, today)
 	if err != nil {
 		run.ChildError(uc.logger, "Failed to read admin brand stats for snapshot", zap.Error(err))
+		return err
+	}
+	if brandStats == nil {
+		err := dashboarderrors.ErrDashboardDataNotFound()
+		run.ChildError(uc.logger, "Admin brand stats returned nil for snapshot", zap.Error(err))
 		return err
 	}
 
@@ -67,45 +78,41 @@ func (uc *DashboardAggregatorUseCase) AggregateAdminSnapshots(ctx context.Contex
 		run.ChildError(uc.logger, "Failed to read AI cost stats for snapshot", zap.Error(err))
 		return err
 	}
+	if aiStats == nil {
+		err := dashboarderrors.ErrDashboardDataNotFound()
+		run.ChildError(uc.logger, "AI cost stats returned nil for snapshot", zap.Error(err))
+		return err
+	}
 
 	subStats, err := uc.subscriptionReader.GetAdminSubscriptionStats(ctxTimeout, today)
 	if err != nil {
 		run.ChildError(uc.logger, "Failed to read subscription stats for snapshot", zap.Error(err))
 		return err
 	}
+	if subStats == nil {
+		err := dashboarderrors.ErrDashboardDataNotFound()
+		run.ChildError(uc.logger, "Subscription stats returned nil for snapshot", zap.Error(err))
+		return err
+	}
 
 	snapshot := &entities.DashboardAdminDailySnapshot{
-		SnapshotDate: today,
+		SnapshotDate:         today,
+		TotalUsers:           userStats.TotalUsers,
+		NewUsers:             userStats.NewUsers,
+		ActiveUsersDau:       userStats.ActiveUsersDau,
+		TotalBrands:          brandStats.TotalBrands,
+		PendingReviewBrands:  brandStats.PendingReviewBrands,
+		AIRequestsCount:      int64(aiStats.AIRequestsCount),
+		AIErrorCount:         int64(aiStats.AIErrorCount),
+		AIPaidTokens:         aiStats.AIPaidTokens,
+		AIActualCostMicroVND: aiStats.AIActualCostMicroVND,
 	}
 
-	if userStats != nil {
-		snapshot.TotalUsers = userStats.TotalUsers
-		snapshot.NewUsers = userStats.NewUsers
-		snapshot.ActiveUsersDau = userStats.ActiveUsersDau
-	}
-
-	if brandStats != nil {
-		snapshot.TotalBrands = brandStats.TotalBrands
-		snapshot.PendingReviewBrands = brandStats.PendingReviewBrands
-	}
-
-	if aiStats != nil {
-		snapshot.AIRequestsCount = int64(aiStats.AIRequestsCount)
-		snapshot.AIErrorCount = int64(aiStats.AIErrorCount)
-		snapshot.AIPaidTokens = aiStats.AIPaidTokens
-		snapshot.AIActualCostMicroVND = aiStats.AIActualCostMicroVND
-		snapshot.NetAIMarginVND = snapshot.SubscriptionRevenueVND - (float64(aiStats.AIActualCostMicroVND) / microVNDDivisor)
-	}
-
-	if subStats != nil {
-		rev, _ := subStats.TotalSubscriptionRevenue.Float64()
-		snapshot.SubscriptionRevenueVND = rev
-		snapshot.PayOSTransactionCount = subStats.PayOSTransactionCount
-		snapshot.PayOSSuccessCount = subStats.PayOSSuccessCount
-		if aiStats != nil {
-			snapshot.NetAIMarginVND = rev - (float64(aiStats.AIActualCostMicroVND) / microVNDDivisor)
-		}
-	}
+	rev, _ := subStats.TotalSubscriptionRevenue.Float64()
+	snapshot.SubscriptionRevenueVND = rev
+	snapshot.PayOSTransactionCount = subStats.PayOSTransactionCount
+	snapshot.PayOSSuccessCount = subStats.PayOSSuccessCount
+	snapshot.NetAIMarginVND = rev - (float64(aiStats.AIActualCostMicroVND) / microVNDDivisor)
 
 	run.AddTotal(1)
 	if err := uc.dashboardRepo.UpsertAdminSnapshot(ctx, snapshot); err != nil {

@@ -1139,7 +1139,7 @@ definitions:
       granularity:
         allOf:
         - $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_granularity.Granularity'
-        description: '"day" | "week" | "month"'
+        description: '"day" | "week" | "month" | "year"'
       metrics:
         items:
           $ref: '#/definitions/smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey'
@@ -1244,11 +1244,13 @@ definitions:
     - day
     - week
     - month
+    - year
     type: string
     x-enum-varnames:
     - Day
     - Week
     - Month
+    - Year
   smart-wardrobe-be_internal_modules_dashboard_domain_constants_metrickey.MetricKey:
     enum:
     - total_users
@@ -1388,7 +1390,7 @@ definitions:
       details:
         description: Ghi chú thêm bằng tay (free text)
         type: string
-      include_brand_items:
+      includeBrandItems:
         description: Cho phép phối đồ của brand (tỷ lệ tối đa 30%)
         example: true
         type: boolean
@@ -1419,15 +1421,47 @@ definitions:
         example: warm
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemRes:
+    properties:
+      category:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes'
+      color:
+        type: string
+      colorHex:
+        type: string
+      fit:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      material:
+        type: string
+      pattern:
+        type: string
+      style:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemGroup:
     properties:
       alternatives:
         items:
-          $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes'
         type: array
       primary:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes'
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes'
       role:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes:
+    properties:
+      brandItem:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes'
+      fashionItem:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemRes'
+      id:
+        type: string
+      itemContext:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedOutfitRes:
@@ -2160,6 +2194,8 @@ definitions:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes'
       id:
         type: string
+      isAvailable:
+        type: boolean
       itemContext:
         type: string
       layerOrder:

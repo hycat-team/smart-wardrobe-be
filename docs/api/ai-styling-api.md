@@ -23,8 +23,85 @@ Tài liệu này mô tả API AI styling đang được triển khai (implemente
       "includeBrandItems": true
     }
     ```
-*   **Response:**
-    *   `200 OK`: Trả về kết quả gợi ý outfit, danh sách items và giải thích của AI.
+*   **Response `200 OK`:**
+    ```json
+    {
+      "title": "Set đồ Streetwear năng động",
+      "explanation": "Sự kết hợp giữa hoodie tím nổi bật và quần jogger xám tạo nên phong cách đường phố thoải mái, trẻ trung.",
+      "items": [
+        {
+          "role": "top",
+          "primary": {
+            "id": "fdb10007-0000-0000-0000-000000000007",
+            "itemContext": "brand_item",
+            "brandItem": {
+              "id": "fdb20001-0000-0000-0000-000000000001",
+              "brandId": "feed0001-0000-0000-0000-000000000001",
+              "brandName": "Feedback Test Brand",
+              "itemType": "sample",
+              "name": "Digital Sample Hoodie",
+              "price": null
+            },
+            "fashionItem": {
+              "id": "fdb10007-0000-0000-0000-000000000007",
+              "category": { "id": "…", "name": "Áo", "slug": "ao" },
+              "imageUrl": "https://…",
+              "color": "Purple",
+              "colorHex": "#7c3aed",
+              "style": "Streetwear",
+              "material": "Fleece",
+              "pattern": "Solid",
+              "fit": "Oversized"
+            }
+          },
+          "alternatives": [
+            {
+              "id": "…",
+              "itemContext": "user_wardrobe",
+              "fashionItem": {
+                "id": "…",
+                "category": { "id": "…", "name": "Áo", "slug": "ao" },
+                "imageUrl": "https://…",
+                "color": "Đen tuyền",
+                "colorHex": "#000000",
+                "style": "Tối giản"
+              }
+            }
+          ]
+        },
+        {
+          "role": "outerwear",
+          "primary": {
+            "id": "fdb10008-…",
+            "itemContext": "brand_item",
+            "brandItem": { … },
+            "fashionItem": { … }
+          },
+          "alternatives": []
+        },
+        {
+          "role": "bottom",
+          "primary": {
+            "id": "…",
+            "itemContext": "user_wardrobe",
+            "fashionItem": { … }
+          },
+          "alternatives": [ … ]
+        },
+        {
+          "role": "footwear",
+          "primary": { … },
+          "alternatives": [ … ]
+        }
+      ],
+      "isFallback": false,
+      "remainingQuota": 12
+    }
+    ```
+    **Ghi chú response:**
+    - Item `itemContext = "brand_item"` là brand sample, kèm `brandItem` để FE hiển thị nút feedback.
+    - Item `itemContext = "user_wardrobe"` là đồ trong tủ của user.
+    - Các field zero value (`userId`, `status`, `isLocked`, `createdAt`, `isDeleted`, `lastUsedAt`, HSL/thời vụ/mô tả của fashionItem) được lược bỏ để giảm kích thước response ~70%.
 
 ### 2. Gửi feedback cho brand sample trong outfit gợi ý
 *   **Endpoint:** `POST /api/v1/brand-items/:itemId/feedbacks`

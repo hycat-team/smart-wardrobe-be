@@ -71,6 +71,18 @@ func (r *BrandItemRepository) GetByFashionItemID(ctx context.Context, fashionIte
 	return &item, nil
 }
 
+func (r *BrandItemRepository) GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.BrandItem, error) {
+	if len(fashionItemIDs) == 0 {
+		return nil, nil
+	}
+	var items []*entities.BrandItem
+	err := r.GetDB(ctx).Where("fashion_item_id IN ?", fashionItemIDs).Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 type DigitalSampleResponseRepository struct {
 	shared_persist.GenericRepository[entities.DigitalSampleResponse, uuid.UUID]
 }

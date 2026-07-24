@@ -233,6 +233,21 @@ func (m *mockBrandItemRepo) GetByBrandIDs(ctx context.Context, brandIDs []uuid.U
 	}
 	return res, nil
 }
+func (m *mockBrandItemRepo) GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.BrandItem, error) {
+	allowed := make(map[uuid.UUID]struct{}, len(fashionItemIDs))
+	for _, id := range fashionItemIDs {
+		allowed[id] = struct{}{}
+	}
+	var res []*entities.BrandItem
+	for _, item := range m.items {
+		if item.FashionItemID != nil {
+			if _, ok := allowed[*item.FashionItemID]; ok {
+				res = append(res, item)
+			}
+		}
+	}
+	return res, nil
+}
 func (m *mockBrandItemRepo) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
 	var list []*entities.BrandItem
 	for _, item := range m.items {

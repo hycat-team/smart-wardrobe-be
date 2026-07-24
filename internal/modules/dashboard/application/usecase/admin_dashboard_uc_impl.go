@@ -67,7 +67,7 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			return nil, err
 		}
 
-		if userStats == nil && brandStats == nil && aiStats == nil && subscriptionStats == nil {
+		if subscriptionStats == nil {
 			return nil, dashboarderrors.ErrDashboardDataNotFound()
 		}
 
@@ -86,14 +86,10 @@ func (uc *AdminDashboardUseCase) GetAdminKPICards(ctx context.Context) (*dto.Adm
 			actualCostVND := float64(aiStats.AIActualCostMicroVND) / microVNDDivisor
 			res.NetAIMarginVND = -actualCostVND
 		}
-		if subscriptionStats != nil {
-			res.SubscriptionRevenueVND = subscriptionStats.TotalSubscriptionRevenue.InexactFloat64()
-			res.PayOSSuccessCount = subscriptionStats.PayOSSuccessCount
-		}
-		if userStats != nil || brandStats != nil || aiStats != nil || subscriptionStats != nil {
-			return res, nil
-		}
-		return nil, dashboarderrors.ErrDashboardDataNotFound()
+		res.SubscriptionRevenueVND = subscriptionStats.TotalSubscriptionRevenue.InexactFloat64()
+		res.PayOSSuccessCount = subscriptionStats.PayOSSuccessCount
+
+		return res, nil
 	}
 
 	return &dto.AdminKPICardsRes{
