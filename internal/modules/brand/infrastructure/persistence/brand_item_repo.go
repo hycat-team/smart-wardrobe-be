@@ -83,17 +83,6 @@ func (r *BrandItemRepository) GetByFashionItemIDs(ctx context.Context, fashionIt
 	return items, nil
 }
 
-type DigitalSampleResponseRepository struct {
-	shared_persist.GenericRepository[entities.DigitalSampleResponse, uuid.UUID]
-}
-
-func NewDigitalSampleResponseRepository(db *gorm.DB) repositories.IDigitalSampleResponseRepository {
-	relations := []string{"BrandItem"}
-	return &DigitalSampleResponseRepository{
-		GenericRepository: *shared_persist.NewGenericRepository[entities.DigitalSampleResponse, uuid.UUID](db, relations),
-	}
-}
-
 func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter repositories.BrandItemFilter) (*repositories.BrandItemListResult, error) {
 	db := r.GetDB(ctx).Where("brand_id = ?", filter.BrandID)
 
@@ -126,20 +115,4 @@ func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter 
 	}, nil
 }
 
-func (r *DigitalSampleResponseRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.DigitalSampleResponse, error) {
-	var responses []*entities.DigitalSampleResponse
-	err := r.GetDB(ctx).Preload("BrandItem").Where("user_id = ?", userID).Find(&responses).Error
-	if err != nil {
-		return nil, err
-	}
-	return responses, nil
-}
 
-func (r *DigitalSampleResponseRepository) GetByBrandItemID(ctx context.Context, brandItemID uuid.UUID) ([]*entities.DigitalSampleResponse, error) {
-	var responses []*entities.DigitalSampleResponse
-	err := r.GetDB(ctx).Where("brand_item_id = ?", brandItemID).Find(&responses).Error
-	if err != nil {
-		return nil, err
-	}
-	return responses, nil
-}
