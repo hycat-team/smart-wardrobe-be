@@ -6,7 +6,7 @@
 
 ## Summary
 
-Remediate 4 sprints of technical debt: (1) Payment retry/auto-refund + password policy + worker lifecycle, (2) Cross-module contract compliance + N+1 fixes + missing indexes, (3) HTTP per-provider config + RabbitMQ reconnect + outbox pattern, (4) Auto-renew notification. Tất cả tuân thủ module boundaries, không cross-module join/preload, gọi qua contract.
+Remediate 4 sprints of technical debt: (1) Payment retry/auto-refund + password policy + worker lifecycle, (2) Cross-module contract compliance + N+1 fixes + missing indexes, (3) HTTP transport fix + RabbitMQ reconnect + outbox pattern, (4) Auto-renew notification. Tất cả tuân thủ module boundaries, không cross-module join/preload, gọi qua contract.
 
 ## Technical Context
 
@@ -63,8 +63,8 @@ specs/009-technical-debt-remediation/
 ├── plan.md              # This file
 ├── tasks-sprint1.md     # Sprint 1 tasks (25 tasks)
 ├── tasks-sprint2.md     # Sprint 2 tasks (20 tasks)
-├── tasks-sprint3.md     # Sprint 3 tasks (13 tasks)
-├── tasks-sprint4.md     # Sprint 4 tasks (25 tasks)
+├── tasks-sprint3.md     # Sprint 3 tasks (19 tasks)
+├── tasks-sprint4.md     # Sprint 4 tasks (18 tasks)
 └── checklists/          # Quality checklists
 ```
 
@@ -95,13 +95,8 @@ internal/
 │   └── dashboard/
 │       └── application/usecase/                       # Sprint 2.2
 │   └── notification/
-│       ├── domain/entities/email.go                   # Sprint 4
-│       ├── domain/constants/emailstatus/
-│       ├── domain/repositories/
-│       ├── infrastructure/persistence/email_repo.go
 │       ├── infrastructure/communication/smtp_sender.go    # Move từ identity
 │       ├── infrastructure/communication/templates/        # Move từ identity
-│       ├── application/usecase/send_email_uc.go
 │       ├── presentation/contract/notification_contract.go # INotificationContract
 │       ├── presentation/worker/email_worker.go            # RMQ consumer
 │       └── provider.go

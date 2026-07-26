@@ -1,38 +1,53 @@
 package communication
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
-	_ "embed"
 	"fmt"
+	"html/template"
 	"net/smtp"
-	"strings"
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/infrastructure/communication/templates"
 )
 
+type otpTemplateData struct {
+	OTPCode       string
+	ExpiryMinutes int
+}
+
 type GmailSmtpService struct {
-	cfg *config.Config
+	cfg            *config.Config
+	registerTmpl   *template.Template
+	forgotPwdTmpl  *template.Template
 }
 
 func NewGmailSmtpService(cfg *config.Config) communication.IEmailService {
-	return &GmailSmtpService{cfg: cfg}
+	return &GmailSmtpService{
+		cfg:           cfg,
+		registerTmpl:  template.Must(template.New("register_otp").Parse(templates.RegistrationOtpTemplate)),
+		forgotPwdTmpl: template.Must(template.New("forgot_pwd_otp").Parse(templates.ForgotPasswordTemplate)),
+	}
 }
 
 func (s *GmailSmtpService) SendRegistrationOtpEmail(ctx context.Context, toEmail string, otpCode string, expiryMinutes int) error {
 	subject := fmt.Sprintf("[%s] Mã xác thực đăng ký tài khoản", s.cfg.Email.SenderName)
-	body := strings.ReplaceAll(templates.RegistrationOtpTemplate, "{{OTP_CODE}}", otpCode)
-	body = strings.ReplaceAll(body, "{{EXPIRY_MINUTES}}", fmt.Sprintf("%d", expiryMinutes))
-	return s.sendEmailInternal(toEmail, subject, body)
+	var buf bytes.Buffer
+	if err := s.registerTmpl.Execute(&buf, otpTemplateData{OTPCode: otpCode, ExpiryMinutes: expiryMinutes}); err != nil {
+		return fmt.Errorf("render register OTP template: %w", err)
+	}
+	return s.sendEmailInternal(toEmail, subject, buf.String())
 }
 
 func (s *GmailSmtpService) SendForgotPasswordOtpEmail(ctx context.Context, toEmail string, otpCode string, expiryMinutes int) error {
 	subject := fmt.Sprintf("[%s] Mã xác thực đặt lại mật khẩu", s.cfg.Email.SenderName)
-	body := strings.ReplaceAll(templates.ForgotPasswordTemplate, "{{OTP_CODE}}", otpCode)
-	body = strings.ReplaceAll(body, "{{EXPIRY_MINUTES}}", fmt.Sprintf("%d", expiryMinutes))
-	return s.sendEmailInternal(toEmail, subject, body)
+	var buf bytes.Buffer
+	if err := s.forgotPwdTmpl.Execute(&buf, otpTemplateData{OTPCode: otpCode, ExpiryMinutes: expiryMinutes}); err != nil {
+		return fmt.Errorf("render forgot password OTP template: %w", err)
+	}
+	return s.sendEmailInternal(toEmail, subject, buf.String())
 }
 
 func (s *GmailSmtpService) sendEmailInternal(toEmail, subject, htmlBody string) error {

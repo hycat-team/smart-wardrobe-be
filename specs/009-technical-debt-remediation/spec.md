@@ -130,8 +130,8 @@ Module `notification` sẽ phụ trách tất cả email notification: OTP, paym
 
 **Acceptance Scenarios**:
 
-1. **Given** module notification đã được tạo, **When** identity module gửi OTP qua `INotificationContract`, **Then** email được ghi vào outbox, worker gửi SMTP thành công, email delivery record có status SENT
-2. **Given** SMTP server tạm thời lỗi, **When** worker gửi fail, **Then** email delivery record status FAILED, retry sau, không mất email
+1. **Given** module notification đã được tạo, **When** identity module gửi OTP qua `INotificationContract`, **Then** email được ghi vào outbox, worker gửi SMTP thành công, worker log "email sent"
+2. **Given** SMTP server tạm thời lỗi, **When** worker gửi fail, **Then** message nack → RMQ redeliver → vào DLQ sau max retries, không mất email (at-least-once delivery)
 3. **Given** module notification có queue email, **When** các module khác gọi contract, **Then** non-blocking, không ảnh hưởng response time
 
 #### User Story 4.1 — Auto-renew notification & wallet balance warning (Priority: P3)
@@ -170,6 +170,7 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 - **Payment**: Refund khi wallet balance đã dùng; overlapping giữa refund và renewal schedule
 - **Auth**: Rate limit ảnh hưởng đến API health check; user bị rate limit khi forgot password
 - **Worker**: Worker crash giữa chừng; outbox ghi duplicate; RabbitMQ network partition
+- **Auto-renew**: User toggle auto-renew OFF ngay trước khi renewal worker đọc list — worker dùng `WHERE auto_renew = true AND id = ?` trong UPDATE transaction để tránh race, không renew nếu user vừa tắt
 - **N+1**: Batch processing timeout với 10k+ records; deadlock khi UPDATE với FOR UPDATE
 - **Cross-module contract**: Circular dependency nếu contract implement sai; backward compatibility khi thay đổi contract interface
 
@@ -202,12 +203,12 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 
 - **FR-015**: Cấu hình `http.Transport` với `MaxIdleConnsPerHost=50` dùng chung cho tất cả HTTP client (ai, payos), giải quyết connection starvation
 - **FR-016**: RabbitMQ reconnect: auto re-register consumers, exponential backoff (1s, 2s, 4s, ..., max 30s), context-aware stop
-- **FR-017**: Database outbox table + outbox worker: event → outbox → publish to RMQ → mark published
+- **FR-017**: Database outbox table + outbox worker: event → outbox → publish to RMQ → mark published. **Bắt buộc cho mọi event publish** — không có direct RMQ publish path. `RabbitMQClient.Publish()` tự động ghi outbox; module có transaction sẵn ghi outbox trực tiếp. Cả 2 luồng đều qua outbox worker
 
 **Sprint 4 — Notification Module & Business Logic Maturation:**
 
-- **FR-022**: Tách email sender khỏi identity module thành `notification` module riêng — move `GmailSmtpService`, templates, `IEmailService` interface
-- **FR-023**: Module `notification` có kiến trúc async: inbox/outbox → RMQ queue → worker xử lý → gửi SMTP. Không block caller
+- **FR-022**: Tách email sender khỏi identity module thành `notification` module riêng — move `GmailSmtpService` (→ `SmtpSender`), templates, `IEmailService` interface. Delivery tracking qua worker log + RMQ DLQ, không tạo bảng `email_messages`
+- **FR-023**: Module `notification` có kiến trúc async: outbox → RMQ queue → worker xử lý → gửi SMTP. Không block caller
 - **FR-024**: Module `notification` expose `INotificationContract` qua `presentation/contract/` — interface generic `Send(channel ChannelEnum, template TemplateEnum, params map[string]any, to string)` để các module khác gửi notification mà không import trực tiếp. ChannelEnum = {Email}, template = {Otp, PaymentSuccess, TopupSuccess, RenewalSuccess, RenewalFailed, WalletWarning}
 - **FR-025**: Identity module chuyển từ dùng `IEmailService` sang gọi `INotificationContract`
 - **FR-026**: Gửi email xác nhận khi top-up thành công: số tiền, số dư mới
@@ -221,8 +222,7 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 - **DepositTransaction** (subscription): thêm refund tracking fields
 - **OutboxRecord** (shared/messaging): mới — event outbox cho RabbitMQ
 - **SubscriptionRenewalAttempt** (subscription): tracking renewal attempts
-- **EmailMessage** (notification): mới — email delivery record (to, subject, body, status, attempts, last_error, channel)
-- **EmailTemplate** (notification): code constants trong Go files — không phải DB entity. Mỗi loại email (OTP, payment, top-up, renewal, warning) là 1 HTML template string
+- **EmailTemplate** (notification): code constants trong Go files — không phải DB entity. Mỗi loại email (OTP, payment, top-up, renewal, warning) là 1 HTML template string. Delivery tracking qua worker log + RMQ DLQ, không có DB table cho email delivery
 - **NotificationContract** (notification): mới — generic contract interface `Send(channel ChannelEnum, template TemplateEnum, params map[string]any, to string)` — extensible cho push/SMS sau này
 
 ## Success Criteria
@@ -230,12 +230,12 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 ### Measurable Outcomes
 
 - **SC-001**: Payment success + subscription apply fail → system tự retry tối đa 5 lần, sau cùng tự refund vào wallet với statement rõ ràng
-- **SC-002**: Password policy block 100% password yếu không đạt chuẩn
+- **SC-002**: Password policy block 100% password yếu khi register, change-password, reset-password — login không check password policy
 - **SC-003**: Worker shutdown < 5 giây khi nhận SIGTERM, 0 goroutine leak
 - **SC-004**: 2 cross-module use case violations giảm xuống 0
 - **SC-005**: ExpireUnknown(100) giảm từ 300 queries xuống 2
-- **SC-006**: HTTP transport config `MaxIdleConnsPerHost=50`, 100 concurrent requests không bị connection contention
-- **SC-007**: RabbitMQ reconnect + outbox đảm bảo 0 event loss khi RMQ restart
+- **SC-006**: HTTP transport config `MaxIdleConnsPerHost=50`, 100 concurrent requests không bị `http: connection reset` hoặc timeout > 5s
+- **SC-007**: RabbitMQ reconnect + outbox đảm bảo at-least-once delivery — không mất event khi RMQ restart (có thể publish duplicate, không loss)
 - **SC-008**: Email sender được tách khỏi identity module, module notification hoạt động độc lập qua RMQ + outbox
 - **SC-009**: User nhận email OTP sau khi module identity chuyển sang dùng contract (regression test)
 - **SC-010**: User nhận email xác nhận khi top-up thành công
@@ -249,6 +249,7 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 - Q: EmailTemplate lưu dưới dạng DB table hay code constants? → A: Code constants (string trong Go files). Deploy là thay đổi template.
 - Q: Module notification chỉ support email hay cần extensible cho push/SMS sau này? → A: Generic interface `INotificationContract.Send(channel, template, params, to)` với channel enum, extensible cho push/SMS.
 - Q: Admin có cần UI xem email history? → A: Chỉ worker log. Không cần admin API/UI cho email history ở MVP.
+- Q: Observability cho refund, outbox, email — có cần metrics infrastructure (Prometheus) mới? → A: Không. Dùng logging hiện tại (`workerlog` + `zap`). Worker log đã có sẵn counter tracking (TotalCount, SuccessCount, ErrorCount). Chỉ cần log business events với structured fields là đủ cho MVP. Không thêm dependency metrics nào.
 
 ## Assumptions
 
@@ -258,7 +259,9 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 - Outbox pattern dùng PostgreSQL table + polling worker, không cần thêm infrastructure
 - Email history chỉ cần worker log — không cần admin API hay UI
 - EmailTemplate là code constants — không cần DB table cho template
+- Template rendering dùng `html/template` (Go stdlib) — params được escape HTML-safe trước khi render. Các hàm cũ dùng `strings.ReplaceAll` sẽ được migrate sang `html/template`
 - Thời gian mỗi sprint: 1-2 tuần
+- SC-006 (HTTP perf) và SC-007 (outbox at-least-once) được verify qua implementation correctness, không có task load test riêng
 
 ## Sprints & Phases
 
@@ -283,12 +286,15 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 | Phase | Scope | Files affected |
 |-------|-------|---------------|
 | 3.1 | HTTP transport fix + RMQ reconnect + outbox | `shared/infrastructure/ai/core.go`, `shared/infrastructure/messaging/rabbitmq*.go`, `shared/infrastructure/messaging/outbox.go` (mới), `configs/config.yaml`, migration cho bảng outbox |
+| 3.2 | Caller restructuring — UoW compliance | `item_uc_write.go`, `catalog_uc.go`, `worker_uc.go`, `init_uc.go`, `subscription_purchase_uc.go` |
 
 ### Sprint 4: Notification Module & Business Logic Maturation (P3)
 
 | Phase | Scope | Files affected |
 |-------|-------|---------------|
-| 4.0 | Foundation — Extract notification module | `internal/modules/notification/` (mới — domain, infrastructure, application, presentation), `internal/modules/identity/infrastructure/communication/` (move), `internal/modules/identity/application/interface/communication/` (move), DI wiring |
-| 4.1 | Foundational — RMQ + outbox integration | `internal/modules/notification/infrastructure/persistence/email_repo.go`, `internal/modules/notification/presentation/worker/email_worker.go`, tái sử dụng outbox và RMQ từ Sprint 3 |
+| 4.0 | Foundation — Extract notification module | `internal/modules/notification/` (mới — contract, communication, worker), `internal/modules/identity/infrastructure/communication/` (move → smtp_sender.go), `internal/modules/identity/infrastructure/communication/templates/` (move), DI wiring |
+| 4.1 | Foundational — RMQ + outbox integration | `internal/modules/notification/presentation/worker/email_worker.go`, tái sử dụng outbox và RMQ từ Sprint 3. **Không** tạo email_repo, email entity, email table |
 | 4.2 | Auto-renew notification | `subscription/application/usecase/subscription/subscription_renewal_workflow.go`, subscription worker |
-| 4.3 | Payment & top-up email | `subscription/application/usecase/wallet/wallet_uc.go`, `subscription/application/usecase/webhook/payment_webhook_uc.go`, `subscription/application/usecase/subscription/subscription_renewal_workflow.go` |
+| 4.4 | Payment & top-up email | `subscription/application/usecase/wallet/wallet_uc.go`, `subscription/application/usecase/webhook/payment_webhook_uc.go`, `subscription/application/usecase/subscription/subscription_renewal_workflow.go` |
+
+> **Note**: Mapping spec → tasks: US4.0 (Foundation: extract module) → tasks-sprint4.md US0; US4.0 (Foundation: RMQ+outbox integration) → tasks-sprint4.md US1; US4.1 (Auto-renew notif) → US2; US4.2 (Payment & top-up email) → US3. US4.3 (AI pipeline) đã move, không có task.
