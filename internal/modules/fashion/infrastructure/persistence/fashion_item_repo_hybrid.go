@@ -42,17 +42,18 @@ func (r *FashionItemRepository) GetHybridCandidates(
 ) ([]repositories.HybridCandidate, error) {
 	var records []hybridCandidateRecord
 	db := r.GetDB(ctx).Table("wardrobe_items").
+		Joins("LEFT JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
 		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
 			userID, wardrobestatus.InWardrobe, false)
 
 	if len(hardFilters.Seasonality) > 0 {
-		seasonSQL, seasonArgs := buildRecommendationSeasonalityConditionSubquery(hardFilters.Seasonality)
+		seasonSQL, seasonArgs := buildRecommendationSeasonalityConditionWithJoin(hardFilters.Seasonality)
 		if seasonSQL != "" {
 			db = db.Where(seasonSQL, seasonArgs...)
 		}
 	}
 	if len(hardFilters.CategorySlugs) > 0 {
-		db = db.Where("wardrobe_items.fashion_item_id IN (SELECT id FROM fashion_items WHERE category_id IN (SELECT id FROM categories WHERE slug IN ?))", hardFilters.CategorySlugs)
+		db = db.Where("fashion_items.category_id IN (SELECT id FROM categories WHERE slug IN ?)", hardFilters.CategorySlugs)
 	}
 	excludedQuerySQL, excludedQueryArgs := buildRecommendationTSQuerySubquery(excludedTerms)
 	if excludedQuerySQL != "" {
@@ -70,18 +71,19 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	hasKeywords := includeQuerySQL != ""
 
 	if hasVector && hasKeywords {
-		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
-		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSubquerySQL() + ", (" + includeQuerySQL + "))"
+		dbWithJoin := db.Session(&gorm.Session{})
+		vectorScoreSQL := "(1.0 - (fashion_items.embedding <=> ?))"
+		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSQLWithJoin() + ", (" + includeQuerySQL + "))"
 
-		vectorQuery := db.Session(&gorm.Session{}).
+		vectorQuery := dbWithJoin.
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, 0.0 AS lexical_score", vec).
-			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
-			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", vec)).
+			Where("fashion_items.embedding IS NOT NULL").
+			Order(gorm.Expr("fashion_items.embedding <=> ?", vec)).
 			Limit(limit)
 
 		lexicalQuery := db.Session(&gorm.Session{}).
 			Select("wardrobe_items.*, 0.0 AS vector_score, "+lexicalScoreSQL+" AS lexical_score", includeQueryArgs...).
-			Where(gorm.Expr(recommendationSearchDocumentSubquerySQL()+" @@ ("+includeQuerySQL+")", includeQueryArgs...)).
+			Where(gorm.Expr(recommendationSearchDocumentSQLWithJoin()+" @@ ("+includeQuerySQL+")", includeQueryArgs...)).
 			Order(gorm.Expr(lexicalScoreSQL+" DESC", includeQueryArgs...)).
 			Limit(limit)
 
@@ -98,24 +100,24 @@ func (r *FashionItemRepository) GetHybridCandidates(
 		mergedRecords := mergeHybridCandidateRecordsByRRF(vectorRecords, lexicalRecords, rrfK, limit)
 		return r.buildHybridCandidates(mergedRecords, "", nil)
 	} else if hasVector {
-		vectorScoreSQL := "(1.0 - ((SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?))"
+		vectorScoreSQL := "(1.0 - (fashion_items.embedding <=> ?))"
 		err := db.
 			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec, vec).
-			Where("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NOT NULL").
-			Order(gorm.Expr("(SELECT embedding FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) <=> ?", vec)).
+			Where("fashion_items.embedding IS NOT NULL").
+			Order(gorm.Expr("fashion_items.embedding <=> ?", vec)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).
 			Find(&records).Error
 		return r.buildHybridCandidates(records, repositories.HybridCandidateSourceVector, err)
 	} else if hasKeywords {
-		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSubquerySQL() + ", (" + includeQuerySQL + "))"
+		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSQLWithJoin() + ", (" + includeQuerySQL + "))"
 		whereArgs := append([]any{}, includeQueryArgs...)
 		selectArgs := append([]any{}, includeQueryArgs...)
 		selectArgs = append(selectArgs, includeQueryArgs...)
 		orderArgs := append([]any{}, includeQueryArgs...)
 		err := db.
 			Select("wardrobe_items.*, "+lexicalScoreSQL+" AS lexical_score, "+lexicalScoreSQL+" AS retrieval_score, 0.0 AS vector_score", selectArgs...).
-			Where(gorm.Expr(recommendationSearchDocumentSubquerySQL()+" @@ ("+includeQuerySQL+")", whereArgs...)).
+			Where(gorm.Expr(recommendationSearchDocumentSQLWithJoin()+" @@ ("+includeQuerySQL+")", whereArgs...)).
 			Order(gorm.Expr(lexicalScoreSQL+" DESC", orderArgs...)).
 			Order("wardrobe_items.id ASC").
 			Limit(limit).

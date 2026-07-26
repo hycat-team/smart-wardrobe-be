@@ -68,6 +68,12 @@ func (f *fakeDepositTransactionRepository) UpdateWithToken(ctx context.Context, 
 func (f *fakeDepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	return nil, nil
 }
+func (f *fakeDepositTransactionRepository) BatchUpdate(ctx context.Context, entities []*entities.DepositTransaction) error {
+	return nil
+}
+func (f *fakeDepositTransactionRepository) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type fakePaymentGatewayService struct {
 	getPaymentLinkInfoFunc func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error)
@@ -98,6 +104,9 @@ type fakePaymentWebhookUseCase struct {
 }
 
 func (f *fakePaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []byte, signature string) error {
+	return nil
+}
+func (f *fakePaymentWebhookUseCase) AutoRefund(ctx context.Context, orderCode int64, reason string) error {
 	return nil
 }
 func (f *fakePaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, info *payment.PaymentLinkInfo) error {

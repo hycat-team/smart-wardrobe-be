@@ -67,6 +67,12 @@ func (r *loyaltyLotsAccountRepo) GetByIDForUpdate(ctx context.Context, id uuid.U
 func (r *loyaltyLotsAccountRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	return nil, nil
 }
+func (r *loyaltyLotsAccountRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyAccount) error {
+	return nil
+}
+func (r *loyaltyLotsAccountRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type loyaltyLotsLotRepo struct {
 	lots map[uuid.UUID]*entities.LoyaltyPointLot
@@ -167,6 +173,12 @@ func (r *loyaltyLotsLotRepo) GetNearestExpiringActiveLot(ctx context.Context, lo
 	}
 	return nearest, nil
 }
+func (r *loyaltyLotsLotRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointLot) error {
+	return nil
+}
+func (r *loyaltyLotsLotRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type loyaltyLotsTxRepo struct {
 	transactions []*entities.LoyaltyPointTransaction
@@ -197,6 +209,12 @@ func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAc
 }
 func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
 	return nil, nil
+}
+func (r *loyaltyLotsTxRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointTransaction) error {
+	return nil
+}
+func (r *loyaltyLotsTxRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 func newLoyaltyLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entities.LoyaltyPointLot) (*BrandLoyaltyUseCase, *loyaltyLotsAccountRepo, *loyaltyLotsLotRepo, *loyaltyLotsTxRepo) {

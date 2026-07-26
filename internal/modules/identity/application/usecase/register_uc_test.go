@@ -6,10 +6,8 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
-	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
-	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
-	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 )
 
 type mockOtpService struct {
@@ -34,15 +32,17 @@ func (m *mockOtpService) GenerateOtp(ctx context.Context, email string, tempUser
 	return m.generatedOtp, nil
 }
 
-type mockEmailService struct {
-	communication.IEmailService
+type mockNotifContract struct {
+	notificationContract.INotificationContract
 	sentEmail string
 	sentOtp   string
 }
 
-func (m *mockEmailService) SendRegistrationOtpEmail(ctx context.Context, email string, otp string, expiry int) error {
-	m.sentEmail = email
-	m.sentOtp = otp
+func (m *mockNotifContract) Send(ctx context.Context, channel notificationContract.ChannelEnum, template notificationContract.TemplateEnum, params map[string]any, to string) error {
+	m.sentEmail = to
+	if otp, ok := params["OTPCode"].(string); ok {
+		m.sentOtp = otp
+	}
 	return nil
 }
 
@@ -51,11 +51,11 @@ func TestResendRegisterOtp_Success(t *testing.T) {
 		data:     `{"username": "testuser"}`,
 		cooldown: false,
 	}
-	emailSvc := &mockEmailService{}
+	notifSvc := &mockNotifContract{}
 
 	uc := &RegisterUseCase{
-		otpService:   otpSvc,
-		emailService: emailSvc,
+		otpService:    otpSvc,
+		notifContract: notifSvc,
 		cfg: &config.Config{
 			Otp: config.Otp{
 				ExpiryMinutes: 5,
@@ -76,17 +76,9 @@ func TestResendRegisterOtp_Success(t *testing.T) {
 	if otpSvc.generatedEmail != "test@example.com" {
 		t.Errorf("expected generated email to be test@example.com, got %s", otpSvc.generatedEmail)
 	}
-	if emailSvc.sentEmail != "test@example.com" || emailSvc.sentOtp != "123456" {
-		t.Errorf("expected email to be sent to test@example.com with OTP 123456, got %s / %s", emailSvc.sentEmail, emailSvc.sentOtp)
+	if notifSvc.sentEmail != "test@example.com" || notifSvc.sentOtp != "123456" {
+		t.Errorf("expected email to be sent to test@example.com with OTP 123456, got %s / %s", notifSvc.sentEmail, notifSvc.sentOtp)
 	}
-}
-
-type mockUserRepo struct {
-	repositories.IUserRepository
-}
-
-type mockPasswordHasher struct {
-	security.IPasswordHasher
 }
 
 func TestResendRegisterOtp_Expired(t *testing.T) {

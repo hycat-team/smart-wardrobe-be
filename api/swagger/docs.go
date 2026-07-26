@@ -7132,9 +7132,7 @@ const docTemplate = `{
         "smart-wardrobe-be_internal_modules_brand_application_dto.CreateLoyaltyTierReq": {
             "type": "object",
             "required": [
-                "minTotalSpend",
-                "name",
-                "rank"
+                "name"
             ],
             "properties": {
                 "description": {
@@ -9768,7 +9766,8 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9
+                9,
+                10
             ],
             "x-enum-varnames": [
                 "Pending",
@@ -9780,7 +9779,8 @@ const docTemplate = `{
                 "CreationFailed",
                 "Cancelled",
                 "Expired",
-                "InvestigationRequired"
+                "InvestigationRequired",
+                "Refunded"
             ]
         },
         "smart-wardrobe-be_internal_modules_subscription_domain_constants_plankind.PlanKind": {
@@ -9804,14 +9804,16 @@ const docTemplate = `{
                 "subscription_purchase",
                 "subscription_renewal",
                 "lower_tier_payment_credit",
-                "same_lifetime_payment_credit"
+                "same_lifetime_payment_credit",
+                "auto_refund"
             ],
             "x-enum-varnames": [
                 "Topup",
                 "SubscriptionPurchase",
                 "SubscriptionRenewal",
                 "LowerTierPaymentCredit",
-                "SameLifetimePaymentCredit"
+                "SameLifetimePaymentCredit",
+                "AutoRefund"
             ]
         },
         "smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq": {

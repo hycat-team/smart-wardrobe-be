@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -78,25 +79,38 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return err
 	}
 
+	// 6. Declare and Bind Notification Email Queue
+	if err := r.DeclareAndBindQueue(QueueNotificationEmail, RoutingKeyNotificationEmail); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
 
 	// 4. Register to listen to NotifyClose for auto-reconnection in the background upon disconnection
 	errChan := make(chan *amqp.Error, 1)
 	r.conn.NotifyClose(errChan)
-	go r.handleReconnect(errChan)
+	ctx := context.Background()
+	go r.handleReconnect(ctx, errChan)
 
 	return nil
 }
 
-func (r *RabbitMQClient) handleReconnect(errChan chan *amqp.Error) {
-	reason := <-errChan
-	if reason != nil {
+func (r *RabbitMQClient) handleReconnect(ctx context.Context, errChan chan *amqp.Error) {
+	select {
+	case <-ctx.Done():
+		return
+	case reason, ok := <-errChan:
+		if !ok || reason == nil {
+			return
+		}
 		r.logger.Warn("RabbitMQ connection disrupted. Initiating auto-reconnection...", zap.Error(reason))
-		r.reconnect()
+		r.reconnect(ctx)
 	}
 }
 
-func (r *RabbitMQClient) reconnect() {
+func (r *RabbitMQClient) reconnect(ctx context.Context) {
 	r.mu.Lock()
 	if r.isReconnecting {
 		r.mu.Unlock()
@@ -111,14 +125,35 @@ func (r *RabbitMQClient) reconnect() {
 		r.mu.Unlock()
 	}()
 
-	for {
-		r.logger.Info("Attempting to reconnect to RabbitMQ...")
+	backoff := 1 * time.Second
+	maxBackoff := 30 * time.Second
+	for attempt := 0; ; attempt++ {
+		select {
+		case <-ctx.Done():
+			r.logger.Info("RabbitMQ reconnect loop cancelled")
+			return
+		default:
+		}
+
+		r.logger.Info("Attempting to reconnect to RabbitMQ...", zap.Int("attempt", attempt+1))
 		err := r.connect(30 * time.Second)
 		if err == nil {
 			r.logger.Info("Successfully reconnected to RabbitMQ and restored topology!")
+			r.reRegisterConsumers()
 			break
 		}
-		r.logger.Error("Reconnect attempt failed, retrying in 5 seconds...", zap.Error(err))
-		time.Sleep(5 * time.Second)
+		r.logger.Error("Reconnect attempt failed, retrying...", zap.Error(err), zap.Duration("nextBackoff", backoff))
+
+		select {
+		case <-ctx.Done():
+			r.logger.Info("RabbitMQ reconnect loop cancelled during backoff")
+			return
+		case <-time.After(backoff):
+		}
+
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
 	}
 }

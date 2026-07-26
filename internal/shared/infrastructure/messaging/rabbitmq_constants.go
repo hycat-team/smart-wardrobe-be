@@ -13,10 +13,12 @@ const (
 
 	// Queues
 	QueueSubscriptionPlanChanged = "subscription_plan_changed_queue"
+	QueueNotificationEmail       = "notification_email_queue"
 
 	// Routing Keys
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
 	RoutingKeyFashionInit               = eventconstants.TopicFashionInit
 	RoutingKeyFashionAnalyze            = eventconstants.TopicFashionAnalyze
 	RoutingKeySubscriptionPlanChanged   = eventconstants.TopicSubscriptionPlanChanged
+	RoutingKeyNotificationEmail         = eventconstants.TopicNotificationEmail + ".#"
 )

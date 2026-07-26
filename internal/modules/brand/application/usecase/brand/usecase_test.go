@@ -62,6 +62,12 @@ func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid
 func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
 	return nil, 0, nil
 }
+func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Brand) error {
+	return nil
+}
+func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockCustomerRepo struct{}
 
@@ -101,6 +107,12 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 }
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
+}
+func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 func TestGetBrandsForAdmin(t *testing.T) {

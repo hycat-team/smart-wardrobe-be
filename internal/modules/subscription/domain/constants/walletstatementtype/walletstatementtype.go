@@ -8,4 +8,5 @@ const (
 	SubscriptionRenewal       WalletStatementType = "subscription_renewal"
 	LowerTierPaymentCredit    WalletStatementType = "lower_tier_payment_credit"
 	SameLifetimePaymentCredit WalletStatementType = "same_lifetime_payment_credit"
+	AutoRefund                WalletStatementType = "auto_refund"
 )

@@ -431,7 +431,7 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		}
 	}
 
-	if err := uc.memberRepo.BulkUpdate(ctx, toUpdate); err != nil {
+	if err := uc.memberRepo.BatchUpdate(ctx, toUpdate); err != nil {
 		return nil, err
 	}
 	for _, item := range pendingUpdates {

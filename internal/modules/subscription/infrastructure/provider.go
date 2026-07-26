@@ -19,5 +19,6 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWebhookInboxRepository,
 	persistence.NewUserSubscriptionEventRepository,
 	persistence.NewSubscriptionRenewalAttemptRepository,
+	persistence.NewUserContactRepository,
 	payos.NewPayOSService,
 )

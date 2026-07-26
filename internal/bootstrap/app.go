@@ -11,9 +11,11 @@ import (
 	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	dashboardWorker "smart-wardrobe-be/internal/modules/dashboard/presentation/worker"
 	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
+	notificationWorker "smart-wardrobe-be/internal/modules/notification/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
+	sharedWorker "smart-wardrobe-be/internal/shared/presentation/worker"
 	"syscall"
 	"time"
 
@@ -34,7 +36,10 @@ type AppWorkers struct {
 	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
 	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
 	DashboardAggregatorWorker   *dashboardWorker.DashboardAggregatorWorker
+	OutboxWorker                *sharedWorker.OutboxWorker
+	EmailWorker                 *notificationWorker.EmailWorker
 }
+
 type App struct {
 	Config    *config.Config
 	Server    *gin.Engine
@@ -60,12 +65,10 @@ func NewApp(
 }
 
 func (a *App) Run() error {
-	// 1. Run database migrations first
 	if err := db.RunMigrations(context.Background(), a.DB); err != nil {
 		return fmt.Errorf("database migration failed: %w", err)
 	}
 
-	// 2. Validate startup configurations
 	if err := a.Validator.Validate(context.Background()); err != nil {
 		return fmt.Errorf("startup validation failed: %w", err)
 	}
@@ -90,8 +93,27 @@ func (a *App) Run() error {
 	a.Workers.LoyaltyPointExpiryWorker.Start()
 	a.Workers.FailedItemsCleanupWorker.Start()
 	a.Workers.ProcessingRecoveryWorker.Start()
+
+	if a.Workers.ESAsyncWorker != nil {
+		a.Workers.ESAsyncWorker.Start(ctxWorker)
+	}
+	if a.Workers.FashionInitWorker != nil {
+		a.Workers.FashionInitWorker.Start(ctxWorker)
+	}
+	if a.Workers.FashionAnalyzeWorker != nil {
+		a.Workers.FashionAnalyzeWorker.Start(ctxWorker)
+	}
+	if a.Workers.PlanChangedWorker != nil {
+		a.Workers.PlanChangedWorker.Start(ctxWorker)
+	}
 	if a.Workers.DashboardAggregatorWorker != nil {
 		a.Workers.DashboardAggregatorWorker.Start(ctxWorker)
+	}
+	if a.Workers.OutboxWorker != nil {
+		a.Workers.OutboxWorker.Start(ctxWorker)
+	}
+	if a.Workers.EmailWorker != nil {
+		a.Workers.EmailWorker.Start(ctxWorker)
 	}
 
 	go func() {
@@ -113,8 +135,27 @@ func (a *App) Run() error {
 	a.Workers.LoyaltyPointExpiryWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()
+
+	if a.Workers.ESAsyncWorker != nil {
+		a.Workers.ESAsyncWorker.Stop()
+	}
+	if a.Workers.FashionInitWorker != nil {
+		a.Workers.FashionInitWorker.Stop()
+	}
+	if a.Workers.FashionAnalyzeWorker != nil {
+		a.Workers.FashionAnalyzeWorker.Stop()
+	}
+	if a.Workers.PlanChangedWorker != nil {
+		a.Workers.PlanChangedWorker.Stop()
+	}
 	if a.Workers.DashboardAggregatorWorker != nil {
 		a.Workers.DashboardAggregatorWorker.Stop()
+	}
+	if a.Workers.OutboxWorker != nil {
+		a.Workers.OutboxWorker.Stop()
+	}
+	if a.Workers.EmailWorker != nil {
+		a.Workers.EmailWorker.Stop()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

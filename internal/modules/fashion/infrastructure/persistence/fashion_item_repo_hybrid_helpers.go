@@ -244,17 +244,19 @@ func recommendationSearchDocumentSQL(includeCategory bool) string {
 	return "to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + ")))"
 }
 
-// recommendationSearchDocumentSubquerySQL returns a subquery-based tsvector expression that
-// does not require joins to the fashion_items or categories tables.
-func recommendationSearchDocumentSubquerySQL() string {
+// recommendationSearchDocumentSQLWithJoin returns a tsvector expression using LEFT JOIN
+// instead of correlated subqueries to the fashion_items table.
+func recommendationSearchDocumentSQLWithJoin() string {
 	fields := []string{
-		"color", "style", "material", "pattern", "fit", "seasonality", "description",
+		"fashion_items.color", "fashion_items.style", "fashion_items.material",
+		"fashion_items.pattern", "fashion_items.fit", "fashion_items.seasonality",
+		"fashion_items.description",
 	}
 	parts := make([]string, 0, len(fields))
 	for _, field := range fields {
-		parts = append(parts, "coalesce((SELECT "+field+" FROM fashion_items WHERE id = wardrobe_items.fashion_item_id), '')")
+		parts = append(parts, "coalesce("+field+", '')")
 	}
-	return "(SELECT to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + "))) FROM fashion_items WHERE id = wardrobe_items.fashion_item_id)"
+	return "to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + ")))"
 }
 
 // buildRecommendationTSQuerySubquery returns a subquery-based tsquery expression that
@@ -278,18 +280,18 @@ func buildRecommendationTSQuerySubquery(terms []string) (string, []any) {
 	return "(SELECT " + strings.Join(parts, " || ") + ")", args
 }
 
-// buildRecommendationSeasonalityConditionSubquery returns a subquery-based seasonality filter
-// that does not require joins to the fashion_items table.
-func buildRecommendationSeasonalityConditionSubquery(seasons []string) (string, []any) {
+// buildRecommendationSeasonalityConditionWithJoin returns a JOIN-based seasonality filter
+// using the joined fashion_items table.
+func buildRecommendationSeasonalityConditionWithJoin(seasons []string) (string, []any) {
 	aliases := recommendationSeasonalityAliases(seasons)
 	if len(aliases) == 0 {
 		return "", nil
 	}
 
-	seasonalitySQL := "immutable_unaccent(lower(coalesce((SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id), '')))"
+	seasonalitySQL := "immutable_unaccent(lower(coalesce(fashion_items.seasonality, '')))"
 	conditions := []string{
-		"(SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id) IS NULL",
-		"btrim((SELECT seasonality FROM fashion_items WHERE id = wardrobe_items.fashion_item_id)) = ''",
+		"fashion_items.seasonality IS NULL",
+		"btrim(fashion_items.seasonality) = ''",
 	}
 	args := make([]any, 0, len(aliases)+len(recommendationAllSeasonAliases))
 	for _, alias := range aliases {

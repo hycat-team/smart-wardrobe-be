@@ -22,7 +22,8 @@ type ElasticsearchClient struct {
 	cfg        *config.Config
 	logger     logger.Interface
 	httpClient *http.Client
-	isHealthy  int32 // 0 = unhealthy, 1 = healthy
+	isHealthy  int32
+	stopChan   chan struct{}
 }
 
 func NewElasticsearchClient(cfg *config.Config, l logger.Interface) *ElasticsearchClient {
@@ -33,6 +34,7 @@ func NewElasticsearchClient(cfg *config.Config, l logger.Interface) *Elasticsear
 			Timeout: 5 * time.Second,
 		},
 		isHealthy: 1,
+		stopChan:  make(chan struct{}),
 	}
 
 	go client.startHealthCheck()
@@ -142,15 +144,23 @@ func (c *ElasticsearchClient) IsHealthy() bool {
 	return atomic.LoadInt32(&c.isHealthy) == 1
 }
 
+func (c *ElasticsearchClient) Stop() {
+	close(c.stopChan)
+}
+
 func (c *ElasticsearchClient) startHealthCheck() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
-	// Initial check on startup
 	c.checkHealth()
 
-	for range ticker.C {
-		c.checkHealth()
+	for {
+		select {
+		case <-c.stopChan:
+			return
+		case <-ticker.C:
+			c.checkHealth()
+		}
 	}
 }
 

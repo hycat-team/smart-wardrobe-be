@@ -313,23 +313,23 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 				return err
 			}
 			subEvent = innerSubEvent
+
+			payload := aiexecutor_dto.PlanChangedPayload{
+				UserID:         userID.String(),
+				EventType:      subEvent.EventType,
+				ToPlanCode:     plan.Slug,
+				ToTierRank:     plan.TierRank,
+				AICostPolicyID: plan.AICostPolicyID.String(),
+				OccurredAt:     now.Format(time.RFC3339Nano),
+			}
+			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicSubscriptionPlanChanged, payload); err != nil {
+				return err
+			}
 		}
 
 		return nil
 	}); err != nil {
 		return err
-	}
-
-	if subEvent != nil {
-		payload := aiexecutor_dto.PlanChangedPayload{
-			UserID:         userID.String(),
-			EventType:      subEvent.EventType,
-			ToPlanCode:     plan.Slug,
-			ToTierRank:     plan.TierRank,
-			AICostPolicyID: plan.AICostPolicyID.String(),
-			OccurredAt:     now.Format(time.RFC3339Nano),
-		}
-		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicSubscriptionPlanChanged, payload)
 	}
 
 	return nil

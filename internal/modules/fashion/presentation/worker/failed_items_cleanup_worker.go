@@ -62,5 +62,5 @@ func (w *FailedItemsCleanupWorker) executeCleanupJob(triggerType string) {
 		run.LogFailure(w.log, err)
 		return
 	}
-	run.LogSuccess(w.log)
+	run.LogSuccessIfData(w.log)
 }

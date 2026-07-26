@@ -18,6 +18,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +28,7 @@ type WardrobeCatalogUseCase struct {
 	userSubContract contract.IUserSubscriptionContract
 	eventPublisher  event.IEventPublisher
 	fashionContract fashion_contract.IFashionContract
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewWardrobeCatalogUseCase(
@@ -34,12 +36,14 @@ func NewWardrobeCatalogUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeCatalogUseCase {
 	return &WardrobeCatalogUseCase{
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
 		eventPublisher:  eventPublisher,
 		fashionContract: fashionContract,
+		uow:             uow,
 	}
 }
 
@@ -186,22 +190,27 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		item.Price = input.Price
 	}
 
-	if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
+			return err
+		}
+
+		var fashionItemID uuid.UUID
+		if item.FashionItemID != nil {
+			fashionItemID = *item.FashionItemID
+		}
+		payload := dto.WardrobeEventPayload{
+			ItemID:        item.ID,
+			UserID:        item.UserID,
+			FashionItemID: fashionItemID,
+			ItemType:      int(item.ItemType),
+			Action:        eventconstants.ActionUpdated,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeUpdated, payload)
+	})
+	if err != nil {
 		return nil, err
 	}
-
-	var fashionItemID uuid.UUID
-	if item.FashionItemID != nil {
-		fashionItemID = *item.FashionItemID
-	}
-	payload := dto.WardrobeEventPayload{
-		ItemID:        item.ID,
-		UserID:        item.UserID,
-		FashionItemID: fashionItemID,
-		ItemType:      int(item.ItemType),
-		Action:        eventconstants.ActionUpdated,
-	}
-	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeUpdated, payload)
 
 	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
@@ -221,22 +230,24 @@ func (uc *WardrobeCatalogUseCase) DeleteSystemCatalogItem(ctx context.Context, i
 		return wardrobeerrors.ErrCatalogItemNotFound()
 	}
 
-	if err := uc.wardrobeRepo.Delete(ctx, id); err != nil {
-		return err
-	}
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.wardrobeRepo.Delete(txCtx, id); err != nil {
+			return err
+		}
 
-	var fashionItemID uuid.UUID
-	if item.FashionItemID != nil {
-		fashionItemID = *item.FashionItemID
-	}
-	payload := dto.WardrobeEventPayload{
-		ItemID:        id,
-		UserID:        item.UserID,
-		FashionItemID: fashionItemID,
-		ItemType:      int(item.ItemType),
-		Action:        eventconstants.ActionDeleted,
-	}
-	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+		var fashionItemID uuid.UUID
+		if item.FashionItemID != nil {
+			fashionItemID = *item.FashionItemID
+		}
+		payload := dto.WardrobeEventPayload{
+			ItemID:        id,
+			UserID:        item.UserID,
+			FashionItemID: fashionItemID,
+			ItemType:      int(item.ItemType),
+			Action:        eventconstants.ActionDeleted,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload)
+	})
 
-	return nil
+	return err
 }

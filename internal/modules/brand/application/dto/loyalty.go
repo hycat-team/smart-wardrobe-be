@@ -65,8 +65,8 @@ type UpdateLoyaltyTierReq struct {
 
 type CreateLoyaltyTierReq struct {
 	Name          string  `json:"name" binding:"required,max=255" label:"tên hạng thành viên"`
-	Rank          int     `json:"rank" binding:"required,min=1" label:"thứ tự hạng"`
-	MinTotalSpend float64 `json:"minTotalSpend" binding:"required,min=0" label:"chi tiêu tích lũy tối thiểu"`
+	Rank          int     `json:"rank" binding:"min=1" label:"thứ tự hạng"`
+	MinTotalSpend float64 `json:"minTotalSpend" binding:"min=0" label:"chi tiêu tích lũy tối thiểu"`
 	Description   *string `json:"description" binding:"omitempty" label:"mô tả"`
 }
 

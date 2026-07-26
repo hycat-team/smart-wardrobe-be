@@ -1,0 +1,24 @@
+package contract
+
+import "context"
+
+type ChannelEnum string
+
+const (
+	ChannelEmail ChannelEnum = "email"
+)
+
+type TemplateEnum string
+
+const (
+	TemplateOtp            TemplateEnum = "otp"
+	TemplatePaymentSuccess TemplateEnum = "payment_success"
+	TemplateTopupSuccess   TemplateEnum = "topup_success"
+	TemplateRenewalSuccess TemplateEnum = "renewal_success"
+	TemplateRenewalFailed  TemplateEnum = "renewal_failed"
+	TemplateWalletWarning  TemplateEnum = "wallet_warning"
+)
+
+type INotificationContract interface {
+	Send(ctx context.Context, channel ChannelEnum, template TemplateEnum, params map[string]any, to string) error
+}

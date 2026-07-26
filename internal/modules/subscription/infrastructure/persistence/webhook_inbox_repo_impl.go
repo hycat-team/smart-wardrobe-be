@@ -48,8 +48,10 @@ func (r *WebhookInboxRepository) MarkProcessed(ctx context.Context, id uuid.UUID
 	return r.current(ctx).Model(&entities.ProviderWebhookInbox{}).Where("id = ?", id).Updates(map[string]any{"processing_status": string(webhookprocessingstatus.Processed), "processed_at": at, "processing_token": nil, "processing_lease_until": nil}).Error
 }
 func (r *WebhookInboxRepository) MarkRetry(ctx context.Context, id uuid.UUID, at time.Time, message string) error {
-	next := at.Add(time.Minute)
-	return r.current(ctx).Model(&entities.ProviderWebhookInbox{}).Where("id = ?", id).Updates(map[string]any{"processing_status": string(webhookprocessingstatus.RetryRequired), "processing_error": message, "processing_attempts": gorm.Expr("processing_attempts + 1"), "next_processing_at": next, "processing_token": nil, "processing_lease_until": nil}).Error
+	return r.current(ctx).Model(&entities.ProviderWebhookInbox{}).Where("id = ?", id).Updates(map[string]any{"processing_status": string(webhookprocessingstatus.RetryRequired), "processing_error": message, "processing_attempts": gorm.Expr("processing_attempts + 1"), "next_processing_at": gorm.Expr("LEAST(NOW() + (interval '1 minute' * power(2, processing_attempts)), NOW() + interval '30 minutes')"), "processing_token": nil, "processing_lease_until": nil}).Error
+}
+func (r *WebhookInboxRepository) MarkFailed(ctx context.Context, id uuid.UUID, at time.Time, reason string) error {
+	return r.current(ctx).Model(&entities.ProviderWebhookInbox{}).Where("id = ?", id).Updates(map[string]any{"processing_status": string(webhookprocessingstatus.Failed), "next_processing_at": nil, "processing_error": reason, "processing_token": nil, "processing_lease_until": nil}).Error
 }
 func (r *WebhookInboxRepository) MarkInvestigation(ctx context.Context, id uuid.UUID, at time.Time, message string) error {
 	return r.current(ctx).Model(&entities.ProviderWebhookInbox{}).Where("id = ?", id).Updates(map[string]any{"processing_status": string(webhookprocessingstatus.InvestigationRequired), "processing_error": message, "next_processing_at": nil, "processing_token": nil, "processing_lease_until": nil}).Error

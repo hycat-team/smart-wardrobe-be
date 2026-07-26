@@ -13,6 +13,7 @@ const (
 	Cancelled              DepositStatus = 7
 	Expired                DepositStatus = 8
 	InvestigationRequired  DepositStatus = 9
+	Refunded               DepositStatus = 10
 )
 
 var ActivePaymentStatuses = []DepositStatus{Creating, Pending, ReconciliationRequired, Reconciling}

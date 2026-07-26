@@ -8,7 +8,7 @@ import (
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_entities "smart-wardrobe-be/internal/modules/fashion/domain/entities"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
 )
@@ -151,7 +151,7 @@ func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.Bra
 
 // isWardrobeRelatedQuery detects whether the query contains keywords asking about wardrobe or styles.
 func isWardrobeRelatedQuery(content string, recent []*fashion_entities.Message) bool {
-	normalized := strings.ToLower(shared.RemoveVietnameseSigns(content))
+	normalized := strings.ToLower(stringutils.RemoveVietnameseSigns(content))
 	if reWardrobeKeywords.MatchString(normalized) {
 		return true
 	}
@@ -159,7 +159,7 @@ func isWardrobeRelatedQuery(content string, recent []*fashion_entities.Message) 
 	limit := min(len(recent), 2)
 	for i := range limit {
 		msg := recent[len(recent)-1-i]
-		normalizedRecent := strings.ToLower(shared.RemoveVietnameseSigns(msg.Content))
+		normalizedRecent := strings.ToLower(stringutils.RemoveVietnameseSigns(msg.Content))
 		if reWardrobeKeywords.MatchString(normalizedRecent) {
 			return true
 		}

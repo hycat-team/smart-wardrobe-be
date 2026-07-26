@@ -73,6 +73,12 @@ func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid
 func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
 	return nil, 0, nil
 }
+func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Brand) error {
+	return nil
+}
+func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -114,7 +120,10 @@ func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID
 func (m *mockMemberRepo) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
 	return nil
 }
-func (m *mockMemberRepo) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+func (m *mockMemberRepo) BatchUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
+func (m *mockMemberRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
 
@@ -165,6 +174,12 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
 }
+func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockConvRepo struct {
 	conversations map[string]*entities.BrandConversation
@@ -207,6 +222,12 @@ func (m *mockConvRepo) GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*
 }
 func (m *mockConvRepo) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*entities.BrandConversation, error) {
 	return m.GetByID(ctx, id)
+}
+func (m *mockConvRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandConversation) error {
+	return nil
+}
+func (m *mockConvRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 type mockMsgRepo struct {
@@ -262,6 +283,12 @@ func (m *mockMsgRepo) CountUnread(ctx context.Context, conversationID uuid.UUID,
 		}
 	}
 	return count, nil
+}
+func (m *mockMsgRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandConversationMessage) error {
+	return nil
+}
+func (m *mockMsgRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 func TestSendUserMessage_AutoCreateAndReopen(t *testing.T) {

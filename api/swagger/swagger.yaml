@@ -494,9 +494,7 @@ definitions:
         minimum: 1
         type: integer
     required:
-    - minTotalSpend
     - name
-    - rank
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq:
     properties:
@@ -2267,6 +2265,7 @@ definitions:
     - 7
     - 8
     - 9
+    - 10
     format: int32
     type: integer
     x-enum-varnames:
@@ -2280,6 +2279,7 @@ definitions:
     - Cancelled
     - Expired
     - InvestigationRequired
+    - Refunded
   smart-wardrobe-be_internal_modules_subscription_domain_constants_plankind.PlanKind:
     enum:
     - 0
@@ -2298,6 +2298,7 @@ definitions:
     - subscription_renewal
     - lower_tier_payment_credit
     - same_lifetime_payment_credit
+    - auto_refund
     type: string
     x-enum-varnames:
     - Topup
@@ -2305,6 +2306,7 @@ definitions:
     - SubscriptionRenewal
     - LowerTierPaymentCredit
     - SameLifetimePaymentCredit
+    - AutoRefund
   smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq:
     properties:
       enabled:

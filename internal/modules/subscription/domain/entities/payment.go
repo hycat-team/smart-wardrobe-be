@@ -38,6 +38,9 @@ type DepositTransaction struct {
 	LastProviderErrorCode       *string                                       `gorm:"type:varchar(100)"`
 	LastProviderErrorAt         *time.Time                                    `gorm:"type:timestamp with time zone"`
 	FailureReason               *string                                       `gorm:"type:varchar(100)"`
+	RefundedAt                  *time.Time                                    `gorm:"type:timestamp with time zone"`
+	RefundAmount                *decimal.Decimal                              `gorm:"type:numeric(12,2)"`
+	RefundReason                *string                                       `gorm:"type:varchar(255)"`
 	CancelledAt                 *time.Time                                    `gorm:"type:timestamp with time zone"`
 	ExpiredAt                   *time.Time                                    `gorm:"type:timestamp with time zone"`
 	PlanCode                    *string                                       `gorm:"type:varchar(100)"`

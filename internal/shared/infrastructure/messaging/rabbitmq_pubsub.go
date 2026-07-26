@@ -9,35 +9,61 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body []byte) error {
+	r.mu.Lock()
 
 	if r.isReconnecting || r.ch == nil {
+		r.mu.Unlock()
 		return fmt.Errorf("RabbitMQ client is offline or reconnecting")
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal rabbitmq payload: %w", err)
-	}
-
-	r.logger.Info("Publishing event to RabbitMQ topic exchange",
+	r.logger.Info("Publishing event directly to RabbitMQ topic exchange",
 		zap.String("routing_key", topic),
 		zap.String("exchange", ExchangeName),
 	)
 
-	return r.ch.PublishWithContext(ctx,
-		ExchangeName, // exchange
-		topic,        // routing key (topic/queue name)
-		false,        // mandatory
-		false,        // immediate
+	err := r.ch.PublishWithContext(ctx,
+		ExchangeName,
+		topic,
+		false,
+		false,
 		amqp.Publishing{
-			DeliveryMode: amqp.Persistent, // Persistent message
+			DeliveryMode: amqp.Persistent,
 			ContentType:  "application/json",
 			Body:         body,
 		},
 	)
+	r.mu.Unlock()
+
+	return err
+}
+
+func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any) error {
+	if r.outboxRepo == nil {
+		return fmt.Errorf("outbox repository is not configured")
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	record := &OutboxRecord{
+		Topic:   topic,
+		Payload: body,
+		Headers: json.RawMessage(`{}`),
+		Status:  OutboxStatusPending,
+	}
+
+	r.logger.Info("Writing outbox record for event",
+		zap.String("topic", topic),
+	)
+
+	if err := r.outboxRepo.Create(ctx, record); err != nil {
+		return fmt.Errorf("failed to create outbox record: %w", err)
+	}
+
+	return nil
 }
 
 func (r *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, error) {

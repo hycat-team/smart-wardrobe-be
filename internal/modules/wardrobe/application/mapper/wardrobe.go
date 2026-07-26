@@ -3,6 +3,7 @@ package mapper
 import (
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 )
 
@@ -65,7 +66,7 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.Fas
 	res := &dto.SearchWardrobeItemRes{
 		ID:          item.ID,
 		Price:       item.Price,
-		IsSystem:    item.ItemType == 1,
+		IsSystem:    item.ItemType == itemtype.SystemCatalogItem,
 		FashionItem: MapToFashionItemRes(fi),
 	}
 	return res

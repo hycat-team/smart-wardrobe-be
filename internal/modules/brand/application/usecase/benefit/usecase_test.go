@@ -73,6 +73,12 @@ func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid
 func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
 	return nil, 0, nil
 }
+func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Brand) error {
+	return nil
+}
+func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -114,7 +120,10 @@ func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID
 func (m *mockMemberRepo) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
 	return nil
 }
-func (m *mockMemberRepo) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+func (m *mockMemberRepo) BatchUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
+func (m *mockMemberRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
 
@@ -165,6 +174,12 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
 }
+func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockBenefitRepo struct {
 	benefits map[uuid.UUID]*entities.BrandBenefit
@@ -205,6 +220,12 @@ func (m *mockBenefitRepo) GetActiveByBrandID(ctx context.Context, brandID uuid.U
 		}
 	}
 	return list, nil
+}
+func (m *mockBenefitRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandBenefit) error {
+	return nil
+}
+func (m *mockBenefitRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 type mockRedemptionRepo struct {
@@ -248,6 +269,12 @@ func (m *mockRedemptionRepo) GetActiveRedemptionByFeature(ctx context.Context, b
 func (m *mockRedemptionRepo) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	return 0, nil
 }
+func (m *mockRedemptionRepo) BatchUpdate(ctx context.Context, entities []*entities.BenefitRedemption) error {
+	return nil
+}
+func (m *mockRedemptionRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockTierRepo struct {
 	tiers map[uuid.UUID]*entities.LoyaltyTier
@@ -274,6 +301,12 @@ func (m *mockTierRepo) GetByBrandAndRank(ctx context.Context, brandID uuid.UUID,
 }
 func (m *mockTierRepo) GetHighestEligibleBySpend(ctx context.Context, brandID uuid.UUID, totalSpend float64) (*entities.LoyaltyTier, error) {
 	return nil, nil
+}
+func (m *mockTierRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyTier) error {
+	return nil
+}
+func (m *mockTierRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 func TestCreateBrandBenefit(t *testing.T) {
@@ -610,6 +643,12 @@ func (m *mockTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAccountID
 func (m *mockTxRepo) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
 	return nil, nil
 }
+func (m *mockTxRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointTransaction) error {
+	return nil
+}
+func (m *mockTxRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 func ptr[T any](v T) *T {
 	return &v
@@ -718,6 +757,12 @@ func (r *loyaltyLotsAccountRepo) GetByIDForUpdate(ctx context.Context, id uuid.U
 func (r *loyaltyLotsAccountRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	return nil, nil
 }
+func (r *loyaltyLotsAccountRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyAccount) error {
+	return nil
+}
+func (r *loyaltyLotsAccountRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type loyaltyLotsLotRepo struct {
 	lots map[uuid.UUID]*entities.LoyaltyPointLot
@@ -818,6 +863,12 @@ func (r *loyaltyLotsLotRepo) GetNearestExpiringActiveLot(ctx context.Context, lo
 	}
 	return nearest, nil
 }
+func (r *loyaltyLotsLotRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointLot) error {
+	return nil
+}
+func (r *loyaltyLotsLotRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type loyaltyLotsTxRepo struct {
 	transactions []*entities.LoyaltyPointTransaction
@@ -848,4 +899,10 @@ func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountID(ctx context.Context, loyaltyAc
 }
 func (r *loyaltyLotsTxRepo) GetByLoyaltyAccountIDPaginated(ctx context.Context, filter repositories.LoyaltyTransactionFilter) (*repositories.LoyaltyTransactionListResult, error) {
 	return nil, nil
+}
+func (r *loyaltyLotsTxRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointTransaction) error {
+	return nil
+}
+func (r *loyaltyLotsTxRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }

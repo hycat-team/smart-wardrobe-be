@@ -1,104 +1,180 @@
-# 👕 SmartWardrobe Backend (Golang Modular Monolith)
+# SmartWardrobe Backend (Closy) — Golang Modular Monolith
 
-SmartWardrobe Backend is an API service system developed using **Golang** based on a clean, high-performance, and maintainable **Modular Monolith** architecture (Clean Architecture). The system provides features for smart wardrobe management, AI-driven outfit recommendations, subscription plan management, and secure identity services (Identity).
-
----
-
-## 🛠️ Prerequisites
-
-Before getting started, make sure your computer has the following tools installed:
-
-1. **Go Compiler (v1.25.+)**
-    - Download and install at: [golang.org/dl](https://golang.org/dl/)
-    - Verify installation: `go version`
-2. **Docker & Docker Desktop (or Docker Compose)**
-    - Required to run PostgreSQL (with pgvector) and Redis in the local environment.
-    - Download and install at: [docker.com](https://www.docker.com/)
-3. **GNU Make**
-    - _Windows:_ Recommended to install via [Chocolatey](https://chocolatey.org/) (`choco install make`) or use Git Bash / WSL.
-    - _macOS:_ Pre-installed or install via Homebrew (`brew install make`).
-    - _Linux:_ `sudo apt install make` (Ubuntu/Debian).
+Backend API for a smart wardrobe management platform, featuring AI-powered outfit recommendations, subscription management, and identity services. Built with Go following **Modular Monolith + Clean Architecture** principles.
 
 ---
 
-## 🚀 Local Run Guide
+## Tech Stack
 
-Follow these steps to set up and run the project on your machine:
-
-### Step 1: Clone Project & Configure Environment
-
-1. Navigate to the project directory:
-    ```bash
-    cd smart-wardrobe-be
-    ```
-2. Create the `.env` file from the example:
-    ```bash
-    cp .env.example .env
-    ```
-    _Note:_ Open the newly created `.env` file and configure the database connection, Redis, JWT secret, or Gmail SMTP for sending real OTP codes (if needed).
-
-### Step 2: Run Project Using Docker Compose
-
-You have two options for running the application locally using Docker Compose:
-
-#### Option A: Run Only Database & Redis (Recommended for direct Go development)
-
-```bash
-docker-compose up postgres redis -d
-```
-
-_Note:_ After that, run the Go application locally using the `make dev` or `go run` command.
-
-#### Option B: Run the Full Stack Including Backend App
-
-```bash
-docker-compose up -d --build
-```
-
-This command will automatically build a lightweight Docker image for the Go Backend (using multi-stage builds, about ~15MB) and run it with full database and cache integration.
-
-_Check status:_ Run the `docker ps` command to ensure the 3 containers (`postgres-smartwardrobe`, `redis-smartwardrobe`, `backend-smartwardrobe`) are running properly.
-
-### Step 3: Install Specialized Go Development Tools
-
-The project uses **Google Wire** (Dependency Injection) and **Swag** (Swagger Generator). Install them using the pre-configured Make command:
-
-```bash
-make install-tools
-```
-
-_(Or run the following commands manually if Make is not available)_:
-
-```bash
-go install github.com/google/wire/cmd/wire@latest
-go install github.com/swaggo/swag/cmd/swag@latest
-```
+| Component | Technology |
+|---|---|
+| Language | **Go 1.25.7** |
+| HTTP Framework | **Gin** |
+| ORM | **GORM** |
+| DI Container | **Google Wire** |
+| Database | **PostgreSQL 17 + pgvector** |
+| Cache | **Redis 7** |
+| Message Queue | **RabbitMQ** |
+| Search Engine | **Elasticsearch 8** |
+| Migration | **Goose** |
+| API Docs | **Swagger (Swaggo)** |
+| Config | **Viper** |
+| Logging | **Zap** |
+| Payment | **PayOS** |
+| Media | **Cloudinary** |
+| CI/CD | **GitHub Actions** |
+| Deploy | **Docker multi-stage build + Docker Compose + Nginx + Certbot** |
 
 ---
 
-## 💻 Development & Running Workflow
+## Prerequisites
 
-The project includes automated commands in the `Makefile` to simplify development workflows.
+- **Go** `>= 1.25.7` ([golang.org/dl](https://golang.org/dl/))
+- **Docker & Docker Compose** — to run PostgreSQL, Redis, RabbitMQ, Elasticsearch
+- **GNU Make** — built-in on macOS/Linux; on Windows use Chocolatey (`choco install make`) or Git Bash/WSL
 
-### Fastest Development Command (Full Flow)
+---
 
-When starting development or after modifying anything related to Dependency Injection (declaring new Providers/Usecases) or updating Swagger APIs:
+## Local Setup
+
+### 1. Clone & configure
 
 ```bash
-make dev
+cd smart-wardrobe-be
+cp .env.example .env
+```
+
+Edit `.env` to match your environment.
+
+### 2A. Run infrastructure only (recommended)
+
+```bash
+make docker-dev-up
+```
+
+This starts **PostgreSQL + Redis + RabbitMQ + Elasticsearch** (defined in `deployments/docker-compose.yml`).
+
+Then run the Go backend:
+
+```bash
+make dev       # generate wire + swagger, build & run
+```
+
+### 2B. Or run the full stack
+
+```bash
+make docker-dev-up    # includes backend container
+```
+
+### 3. Install Go tools
+
+```bash
+make install-tools     # Wire + Swag CLI (pinned version)
+make install-goose     # Goose CLI (migration)
 ```
 
 ---
 
-## 🔍 Verify & Test the APIs
+## Makefile targets
 
-Upon successful server startup, the console will print a clean log containing the API documentation links:
+### Dev workflow
 
-```text
-==========================================================
-SmartWardrobe BE is running on port: 8080
-Swagger UI is available at: http://localhost:8080/swagger
-==========================================================
+```bash
+make wire          # Google Wire DI generation
+make swagger       # Swagger spec generation
+make generate      # wire + swagger
+make fmt           # format Go source
+make run           # build & run
+make dev           # generate + run
+make clean         # remove binary + swagger
 ```
 
-- **API Documentation (Swagger UI):** Hold `Ctrl` and click the link [http://localhost:8080/swagger](http://localhost:8080/swagger) to open the interactive API docs directly in your browser.
+### Quality & test
+
+```bash
+make fmt-check     # check formatting
+make tidy-check    # check go.mod tidiness
+make generate-check# verify generated files are up-to-date
+make vet           # go vet
+make test          # go test ./...
+make build         # build binary
+make check         # CI suite: fmt-check → tidy-check → generate-check → vet → test → build
+```
+
+### Docker
+
+```bash
+make docker-build            # build production image
+make docker-dev-up/down/stop # dev stack
+make docker-prod-up/down/stop# production stack
+```
+
+### Migration (Goose)
+
+```bash
+make migration-create name=xxx  # create a new migration file
+make migration-status           # check migration status
+make migration-up               # apply pending migrations
+make migration-down             # rollback last migration
+make migration-version          # show current version
+```
+
+---
+
+## API Documentation
+
+After starting the server, visit:
+
+```
+http://localhost:8080/swagger
+```
+
+---
+
+## Project Structure
+
+```
+.
+├── cmd/server/main.go          # Entry point
+├── internal/
+│   ├── api/                    # HTTP layer (middleware, routes)
+│   ├── bootstrap/              # App startup + workers
+│   ├── config/                 # Config loader (Viper)
+│   ├── di/                     # Google Wire composition root
+│   ├── modules/                # 7 business modules:
+│   │   ├── aiexecutor/         #   AI execution engine
+│   │   ├── brand/              #   Brand & loyalty
+│   │   ├── dashboard/          #   Analytics
+│   │   ├── fashion/            #   AI outfit recommendation
+│   │   ├── identity/           #   Auth, users, OTP
+│   │   ├── subscription/       #   Subscription & payment
+│   │   └── wardrobe/           #   Wardrobe management
+│   ├── pkg/                    # Shared utilities (logger, utils)
+│   └── shared/                 # Shared domain, infra, presentation
+├── deployments/                # Docker Compose files
+├── database/
+│   ├── init/                   # Init scripts
+│   └── migrations/             # Goose migrations
+├── api/swagger/                # Generated Swagger docs
+├── configs/                    # YAML config files
+├── docs/                       # Project documentation
+└── .github/workflows/          # CI + Deploy pipelines
+```
+
+Each module in `internal/modules/` follows Clean Architecture:
+- `domain/entities/` — domain models
+- `domain/repositories/` — repository interfaces
+- `application/usecase/` — business logic
+- `infrastructure/persistence/` — GORM implementations
+- `presentation/handler/` — HTTP handlers
+- `presentation/worker/` — background workers
+
+---
+
+## Further Reading
+
+- [Development Guide](docs/development/local-setup.md) — coding conventions, handler standards, routing, validation
+- [System Architecture](docs/system-design/architecture.md) — module boundaries, design patterns, event-driven design
+- [API docs](docs/api/) — endpoint specifications
+- [Changelog](docs/project/changelog.md)
+- [Agent Workflow](docs/development/agent-workflow.md)
