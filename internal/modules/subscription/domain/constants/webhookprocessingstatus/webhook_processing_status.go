@@ -8,4 +8,5 @@ const (
 	Processed             WebhookProcessingStatus = "processed"
 	RetryRequired         WebhookProcessingStatus = "retry_required"
 	InvestigationRequired WebhookProcessingStatus = "investigation_required"
+	Failed                WebhookProcessingStatus = "failed"
 )

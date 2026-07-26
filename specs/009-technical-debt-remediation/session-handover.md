@@ -74,12 +74,12 @@
 | **Why** | Giảm scope cho MVP. Worker log đủ debug |
 | **Trade-off** | Không thể tra cứu email history từ UI |
 
-### 8. Elasticsearch — Loại Bỏ Khỏi Hệ Thống
+### 8. Elasticsearch — Có Thể Tắt Khi Không Cần
 
 | Field | Detail |
 |-------|--------|
-| **Decision** | ES đang được lên kế hoạch loại bỏ. Không có US nào cho ES trong spec này |
-| **Đừng** | Đừng tạo US cho ES hardening. ES sẽ được xử lý riêng ngoài spec này |
+| **Decision** | ES giữ nguyên trong dự án. Nếu không cần search, có thể tắt ES manual (tắt service, không gọi ES trong code) — không cần migration hay xoá khỏi codebase. Không có US nào cho ES hardening trong spec này |
+| **Đừng** | Đừng tạo US cho ES hardening. Đừng xoá ES khỏi dự án |
 
 ### 9. RMQ Constants — Tập Trung Trong Shared Files
 

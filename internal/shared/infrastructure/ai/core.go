@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/tokenestimationmethod"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/google"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai/openai"
+	"smart-wardrobe-be/internal/shared/infrastructure/httptransport"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -41,21 +42,26 @@ type AIService struct {
 }
 
 func NewAIService(cfg *config.Config, logger logger.Interface, estimator *LocalTokenEstimator) app_ai.IAIService {
+	transport := httptransport.DefaultTransport()
 	return &AIService{
 		cfg: cfg,
 		chatTextClient: &http.Client{
-			Timeout: time.Duration(cfg.AI.ChatTextTimeoutSeconds) * time.Second,
+			Transport: transport,
+			Timeout:   time.Duration(cfg.AI.ChatTextTimeoutSeconds) * time.Second,
 		},
 		recommendationTextClient: &http.Client{
-			Timeout: time.Duration(cfg.AI.RecommendationTextTimeoutSeconds) * time.Second,
+			Transport: transport,
+			Timeout:   time.Duration(cfg.AI.RecommendationTextTimeoutSeconds) * time.Second,
 		},
 		visionClient: &http.Client{
-			Timeout: time.Duration(cfg.AI.VisionTimeoutSeconds) * time.Second,
+			Transport: transport,
+			Timeout:   time.Duration(cfg.AI.VisionTimeoutSeconds) * time.Second,
 		},
 		embeddingClient: &http.Client{
-			Timeout: time.Duration(cfg.AI.EmbeddingTimeoutSeconds) * time.Second,
+			Transport: transport,
+			Timeout:   time.Duration(cfg.AI.EmbeddingTimeoutSeconds) * time.Second,
 		},
-		freeTextClient:            &http.Client{Timeout: time.Duration(cfg.AI.FreeTextTimeoutSeconds) * time.Second},
+		freeTextClient:            &http.Client{Transport: transport, Timeout: time.Duration(cfg.AI.FreeTextTimeoutSeconds) * time.Second},
 		chatTextLimiter:           newRPMLimiter(cfg.AI.ChatTextRPMLimit, 5),
 		recommendationTextLimiter: newRPMLimiter(cfg.AI.RecommendationTextRPMLimit, 5),
 		visionLimiter:             newRPMLimiter(cfg.AI.VisionRPMLimit, 5),

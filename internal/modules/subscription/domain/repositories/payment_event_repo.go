@@ -19,5 +19,6 @@ type IWebhookInboxRepository interface {
 	MarkProcessed(ctx context.Context, id uuid.UUID, at time.Time) error
 	MarkRetry(ctx context.Context, id uuid.UUID, at time.Time, message string) error
 	MarkInvestigation(ctx context.Context, id uuid.UUID, at time.Time, message string) error
+	MarkFailed(ctx context.Context, id uuid.UUID, at time.Time, reason string) error
 	Claim(ctx context.Context, limit int, lease time.Duration) ([]*entities.ProviderWebhookInbox, error)
 }

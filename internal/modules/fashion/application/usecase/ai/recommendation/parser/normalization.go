@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/shared"
+	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 )
 
 // NormalizeText thực hiện chuẩn hóa văn bản đầu vào: chuyển thành chữ thường, thay thế từ phủ định đặc biệt,
@@ -19,7 +19,7 @@ func NormalizeText(text string) string {
 	padded = strings.ReplaceAll(padded, "-", " - ")
 	padded = strings.ReplaceAll(padded, ".", " . ")
 
-	replaced := shared.RemoveVietnameseSigns(padded)
+	replaced := stringutils.RemoveVietnameseSigns(padded)
 	return stripOrphanTelex(replaced)
 }
 

@@ -22,6 +22,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/internal/shared/domain/money"
+	"smart-wardrobe-be/internal/shared/infrastructure/httptransport"
 
 	"github.com/shopspring/decimal"
 )
@@ -49,9 +50,7 @@ func NewPayOSService(cfg *config.Config) payment.IPaymentGatewayService {
 		checksumKey:    cfg.PayOS.ChecksumKey,
 		expiredMinutes: cfg.PayOS.ExpiredMinutes,
 		endpoint:       endpoint,
-		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
-		},
+		httpClient:     httptransport.NewClient(15 * time.Second),
 	}
 }
 

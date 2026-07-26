@@ -119,6 +119,16 @@ func (r *UserSubscriptionRepository) GetActiveExpiredSubscriptionByUserIDWithLoc
 	return &sub, nil
 }
 
+func (r *UserSubscriptionRepository) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
+	var subs []*entities.UserSubscription
+	query := r.GetQueryWithPreload(ctx)
+	err := query.Where("current_plan_kind = ? AND expires_at IS NOT NULL AND expires_at > ? AND expires_at <= ?", plankind.Finite, from, to).Find(&subs).Error
+	if err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
 func (r *UserSubscriptionRepository) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return r.GetDB(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(sub).Error
 }

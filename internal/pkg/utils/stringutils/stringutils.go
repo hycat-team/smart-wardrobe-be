@@ -14,6 +14,35 @@ import (
 	"github.com/google/uuid"
 )
 
+var vietnameseReplacer *strings.Replacer
+
+func init() {
+	var pairs []string
+	chars := map[string]struct {
+		base  string
+		tones string
+	}{
+		"a": {"a", "áàảãạăắằẳẵặâấầẩẫậ"},
+		"e": {"e", "éèẻẽẹêếềểễệ"},
+		"i": {"i", "íìỉĩị"},
+		"o": {"o", "óòỏõọôốồổỗộơớờởỡợ"},
+		"u": {"u", "úùủũụưứừửữự"},
+		"y": {"y", "ýỳỷỹỵ"},
+	}
+	for _, c := range chars {
+		for _, r := range c.tones {
+			pairs = append(pairs, string(r), c.base)
+			pairs = append(pairs, string(unicode.ToUpper(r)), strings.ToUpper(c.base))
+		}
+	}
+	pairs = append(pairs, "đ", "d", "Đ", "D")
+	vietnameseReplacer = strings.NewReplacer(pairs...)
+}
+
+func RemoveVietnameseSigns(str string) string {
+	return vietnameseReplacer.Replace(str)
+}
+
 // pascal case / camel case -> snake case
 func ToSnakeCase(s string) string {
 	if s == "" {

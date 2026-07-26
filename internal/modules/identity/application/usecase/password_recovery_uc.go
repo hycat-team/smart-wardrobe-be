@@ -8,13 +8,13 @@ import (
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
-	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/identity/application/vo"
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/utils/jwtutils"
 	"smart-wardrobe-be/internal/shared/application/constants/jwttype"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
@@ -29,7 +29,7 @@ type PasswordRecoveryUseCase struct {
 	userRepo              repositories.IUserRepository
 	refreshTokenRepo      repositories.IRefreshTokenRepository
 	otpService            identity.IOtpService
-	emailService          communication.IEmailService
+	notifContract         notificationContract.INotificationContract
 	passwordHasher        security.IPasswordHasher
 	tokenBlacklistService security.ITokenBlacklistService
 	cfg                   *config.Config
@@ -40,7 +40,7 @@ func NewPasswordRecoveryUseCase(
 	userRepo repositories.IUserRepository,
 	refreshTokenRepo repositories.IRefreshTokenRepository,
 	otpService identity.IOtpService,
-	emailService communication.IEmailService,
+	notifContract notificationContract.INotificationContract,
 	passwordHasher security.IPasswordHasher,
 	tokenBlacklistService security.ITokenBlacklistService,
 	cfg *config.Config,
@@ -50,7 +50,7 @@ func NewPasswordRecoveryUseCase(
 		userRepo:              userRepo,
 		refreshTokenRepo:      refreshTokenRepo,
 		otpService:            otpService,
-		emailService:          emailService,
+		notifContract:         notifContract,
 		passwordHasher:        passwordHasher,
 		tokenBlacklistService: tokenBlacklistService,
 		cfg:                   cfg,
@@ -89,7 +89,10 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		return false, err
 	}
 
-	if err := uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes); err != nil {
+	if err := uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+		"OTPCode":       otpCode,
+		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
+	}, input.Email); err != nil {
 		return false, identityerrors.ErrRecoveryEmailFailed()
 	}
 
@@ -222,7 +225,10 @@ func (uc *PasswordRecoveryUseCase) ResendForgotPasswordOtp(ctx context.Context, 
 		return false, err
 	}
 
-	err = uc.emailService.SendForgotPasswordOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
+	err = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+		"OTPCode":       otpCode,
+		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
+	}, input.Email)
 	if err != nil {
 		return false, identityerrors.ErrRecoveryEmailFailed()
 	}

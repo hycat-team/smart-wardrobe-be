@@ -14,6 +14,7 @@ type ISubscriptionUseCase interface {
 	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error)
 	GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error)
 	ProcessScheduledRenewals(ctx context.Context, run *workerlog.Run) error
+	ProcessUpcomingExpiryNotifications(ctx context.Context) error
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error)
 }

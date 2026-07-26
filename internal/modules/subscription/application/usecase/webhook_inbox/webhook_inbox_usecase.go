@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
@@ -14,10 +15,11 @@ import (
 )
 
 type WebhookInboxUseCase struct {
-	repo       repositories.IWebhookInboxRepository
-	gateway    payment.IPaymentGatewayService
-	completion usecase_interfaces.IPaymentWebhookUseCase
-	log        logger.Interface
+	repo             repositories.IWebhookInboxRepository
+	gateway          payment.IPaymentGatewayService
+	completion       usecase_interfaces.IPaymentWebhookUseCase
+	log              logger.Interface
+	maxRetryAttempts int
 }
 
 func NewWebhookInboxUseCase(
@@ -25,12 +27,18 @@ func NewWebhookInboxUseCase(
 	gateway payment.IPaymentGatewayService,
 	completion usecase_interfaces.IPaymentWebhookUseCase,
 	log logger.Interface,
+	cfg *config.Config,
 ) usecase_interfaces.IWebhookInboxUseCase {
+	maxRetryAttempts := 5
+	if cfg.Subscription.MaxRetryAttempts > 0 {
+		maxRetryAttempts = cfg.Subscription.MaxRetryAttempts
+	}
 	return &WebhookInboxUseCase{
-		repo:       repo,
-		gateway:    gateway,
-		completion: completion,
-		log:        log,
+		repo:             repo,
+		gateway:          gateway,
+		completion:       completion,
+		log:              log,
+		maxRetryAttempts: maxRetryAttempts,
 	}
 }
 
@@ -80,6 +88,12 @@ func (uc *WebhookInboxUseCase) ProcessInbox(ctx context.Context, run *workerlog.
 			)
 			retryMarkedCount++
 			run.AddRetry(1)
+			if row.ProcessingAttempts+1 >= uc.maxRetryAttempts {
+				_ = uc.repo.MarkFailed(ctx, row.ID, time.Now().UTC(), "max retries exceeded: payment completion failed")
+				if err := uc.completion.AutoRefund(ctx, row.OrderCode, "max retries exceeded"); err != nil {
+					uc.log.Error("Auto-refund failed after max retries", zap.Int64("orderCode", row.OrderCode), zap.Error(err))
+				}
+			}
 			continue
 		}
 		_ = uc.repo.MarkProcessed(ctx, row.ID, time.Now().UTC())

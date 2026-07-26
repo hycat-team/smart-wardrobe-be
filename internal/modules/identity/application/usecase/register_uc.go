@@ -9,7 +9,6 @@ import (
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	identityerrors "smart-wardrobe-be/internal/modules/identity/application/errors"
-	"smart-wardrobe-be/internal/modules/identity/application/interface/communication"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/identity"
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
@@ -17,6 +16,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/otpconstants"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
@@ -28,7 +28,7 @@ import (
 type RegisterUseCase struct {
 	userRepo       repositories.IUserRepository
 	otpService     identity.IOtpService
-	emailService   communication.IEmailService
+	notifContract  notificationContract.INotificationContract
 	passwordHasher security.IPasswordHasher
 	cfg            *config.Config
 }
@@ -36,14 +36,14 @@ type RegisterUseCase struct {
 func NewRegisterUseCase(
 	userRepo repositories.IUserRepository,
 	otpService identity.IOtpService,
-	emailService communication.IEmailService,
+	notifContract notificationContract.INotificationContract,
 	passwordHasher security.IPasswordHasher,
 	cfg *config.Config,
 ) uc_interfaces.IRegisterUseCase {
 	return &RegisterUseCase{
 		userRepo:       userRepo,
 		otpService:     otpService,
-		emailService:   emailService,
+		notifContract:  notifContract,
 		passwordHasher: passwordHasher,
 		cfg:            cfg,
 	}
@@ -116,7 +116,10 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		return false, err
 	}
 
-	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
+	err = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+		"OTPCode":       otpCode,
+		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
+	}, input.Email)
 	if err != nil {
 		return false, identityerrors.ErrOtpEmailSendFailed()
 	}
@@ -192,7 +195,10 @@ func (uc *RegisterUseCase) ResendRegisterOtp(ctx context.Context, input dto.Rese
 		return false, err
 	}
 
-	err = uc.emailService.SendRegistrationOtpEmail(ctx, input.Email, otpCode, uc.cfg.Otp.ExpiryMinutes)
+	err = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateOtp, map[string]any{
+		"OTPCode":       otpCode,
+		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
+	}, input.Email)
 	if err != nil {
 		return false, identityerrors.ErrOtpEmailSendFailed()
 	}

@@ -11,15 +11,17 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	"smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"go.uber.org/zap"
 )
 
 type SearchSyncWorker struct {
+	*worker.BaseWorker
 	eventConsumer   event.ISearchSyncEventConsumer
 	useCase         usecase_interfaces.ISearchSyncUseCase
 	logger          logger.Interface
-	initialSyncDone int32 // 0 = not done, 1 = done
+	initialSyncDone int32
 }
 
 func NewSearchSyncWorker(
@@ -27,24 +29,21 @@ func NewSearchSyncWorker(
 	useCase usecase_interfaces.ISearchSyncUseCase,
 	l logger.Interface,
 ) *SearchSyncWorker {
-	w := &SearchSyncWorker{
-		eventConsumer:   eventConsumer,
-		useCase:         useCase,
-		logger:          l,
-		initialSyncDone: 0,
+	return &SearchSyncWorker{
+		BaseWorker:    worker.NewBaseWorker("search_sync"),
+		eventConsumer: eventConsumer,
+		useCase:       useCase,
+		logger:        l,
 	}
-
-	// Manage initial sync and recovery of search index in background loop
-	go w.manageInitialSyncAndRecovery()
-
-	// Start listening to the sync event queue via the Application layer Consumer
-	go w.startConsume()
-
-	return w
 }
 
-func (w *SearchSyncWorker) startConsume() {
-	ctx := context.Background()
+func (w *SearchSyncWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+	go w.manageInitialSyncAndRecovery(ctx)
+	go w.startConsume(ctx)
+}
+
+func (w *SearchSyncWorker) startConsume(ctx context.Context) {
 	err := w.eventConsumer.ConsumeEvents(ctx, func(ctx context.Context, eventPayload dto.WardrobeEventPayload) error {
 		run := workerlog.New("search_sync", workerlog.TriggerQueue)
 		run.LogReceived(w.logger,
@@ -66,7 +65,7 @@ func (w *SearchSyncWorker) startConsume() {
 			)
 			return err
 		}
-		run.LogSuccess(w.logger,
+		run.LogSuccessIfData(w.logger,
 			zap.String("itemId", eventPayload.ItemID.String()),
 			zap.String("userId", eventPayload.UserID.String()),
 			zap.String("action", eventPayload.Action),
@@ -79,29 +78,33 @@ func (w *SearchSyncWorker) startConsume() {
 	}
 }
 
-func (w *SearchSyncWorker) manageInitialSyncAndRecovery() {
+func (w *SearchSyncWorker) manageInitialSyncAndRecovery(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
-	w.tryInitialSync()
+	w.tryInitialSync(ctx)
 
-	for range ticker.C {
-		if atomic.LoadInt32(&w.initialSyncDone) == 1 {
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-ticker.C:
+			if atomic.LoadInt32(&w.initialSyncDone) == 1 {
+				return
+			}
+			w.tryInitialSync(ctx)
 		}
-		w.tryInitialSync()
 	}
 }
 
-func (w *SearchSyncWorker) tryInitialSync() {
-	ctx := context.Background()
+func (w *SearchSyncWorker) tryInitialSync(ctx context.Context) {
 	run := workerlog.New("search_sync", workerlog.TriggerInitialSync)
 	done, err := w.useCase.TryInitialSync(ctx, run)
 	if err != nil {
 		run.LogFailure(w.logger, err)
 	}
 	if done {
-		run.LogSuccess(w.logger)
+		run.LogSuccessIfData(w.logger)
 		atomic.StoreInt32(&w.initialSyncDone, 1)
 	}
 }

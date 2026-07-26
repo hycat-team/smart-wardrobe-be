@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/subscriptionrenewalstatus"
@@ -133,6 +134,53 @@ func (uc *SubscriptionUseCase) ProcessScheduledRenewals(ctx context.Context, run
 		return fmt.Errorf("scheduled renewal job completed with %d failed records", summary.FailedCount)
 	}
 
+	return nil
+}
+
+// ProcessUpcomingExpiryNotifications sends wallet balance warnings for subscriptions expiring within N days.
+func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Context) error {
+	warningDays := uc.cfg.Subscription.WalletBalanceWarningDays
+	if warningDays <= 0 {
+		warningDays = 3
+	}
+	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+	deadline := now.AddDate(0, 0, warningDays)
+
+	expiringSubs, err := uc.userSubRepo.GetSubscriptionsExpiringWithin(ctx, now, deadline)
+	if err != nil {
+		return subscriptionerrors.ErrQueryExpiredSubscriptionsFailed()
+	}
+
+	for _, sub := range expiringSubs {
+		if sub == nil || !sub.IsAutoRenewEnabled || sub.SubscriptionPlan == nil {
+			continue
+		}
+
+		wallet, err := uc.walletRepo.GetByUserID(ctx, sub.UserID)
+		if err != nil || wallet == nil {
+			continue
+		}
+
+		if wallet.Balance.GreaterThanOrEqual(sub.SubscriptionPlan.Price) {
+			continue
+		}
+
+		email, err := uc.userContactRepo.GetEmailByUserID(ctx, sub.UserID)
+		if err != nil || email == "" {
+			continue
+		}
+
+		daysRemaining := int(sub.ExpiresAt.Sub(now).Hours() / 24)
+		if daysRemaining < 0 {
+			daysRemaining = 0
+		}
+
+		_ = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, map[string]any{
+			"DaysRemaining":  daysRemaining,
+			"Balance":        sharedmoney.ToFloat(wallet.Balance),
+			"RequiredAmount": sharedmoney.ToFloat(sub.SubscriptionPlan.Price),
+		}, email)
+	}
 	return nil
 }
 
@@ -279,6 +327,18 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		zap.String("result", string(renewalStatusDowngraded)),
 		zap.String("reason", reason),
 	)
+
+	if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, lockedSub.UserID); emailErr == nil && userEmail != "" {
+		planName := ""
+		if lockedSub.SubscriptionPlan != nil {
+			planName = lockedSub.SubscriptionPlan.Name
+		}
+		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalFailed, map[string]any{
+			"PlanName": planName,
+			"Reason":   reason,
+		}, userEmail)
+	}
+
 	result.Status = renewalStatusDowngraded
 	return nil
 }
@@ -365,6 +425,15 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 		zap.String("result", string(renewalStatusRenewed)),
 		zap.String("reason", result.Reason),
 	)
+
+	if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, lockedSub.UserID); emailErr == nil && userEmail != "" {
+		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalSuccess, map[string]any{
+			"PlanName":     plan.Name,
+			"Amount":       sharedmoney.ToFloat(plan.Price),
+			"NewExpiresAt": lockedSub.ExpiresAt.Format("02/01/2006"),
+		}, userEmail)
+	}
+
 	result.Status = renewalStatusRenewed
 	return nil
 }

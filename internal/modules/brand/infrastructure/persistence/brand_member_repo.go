@@ -73,15 +73,3 @@ func (r *BrandMemberRepository) BulkCreate(ctx context.Context, members []*entit
 	}
 	return r.GetDB(ctx).Create(&members).Error
 }
-
-func (r *BrandMemberRepository) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
-	if len(members) == 0 {
-		return nil
-	}
-	for _, m := range members {
-		if err := r.Update(ctx, m); err != nil {
-			return err
-		}
-	}
-	return nil
-}

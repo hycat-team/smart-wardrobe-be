@@ -30,6 +30,7 @@ import (
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
 	"smart-wardrobe-be/internal/shared/application/sse"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
@@ -54,6 +55,7 @@ type FashionWorkerUseCase struct {
 	fashionItemRepo  repositories.IFashionItemRepository
 	brandContract    brand_contract.IBrandContract
 	sseManager       sse.ISSEManager
+	uow              shared_repos.IUnitOfWork
 }
 
 // NewFashionWorkerUseCase creates the worker use case responsible for AI item processing jobs.
@@ -69,6 +71,7 @@ func NewFashionWorkerUseCase(
 	fashionItemRepo repositories.IFashionItemRepository,
 	brandContract brand_contract.IBrandContract,
 	sseManager sse.ISSEManager,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IFashionWorkerUseCase {
 	return &FashionWorkerUseCase{
 		cfg:              cfg,
@@ -82,6 +85,7 @@ func NewFashionWorkerUseCase(
 		fashionItemRepo:  fashionItemRepo,
 		brandContract:    brandContract,
 		sseManager:       sseManager,
+		uow:              uow,
 	}
 }
 
@@ -144,7 +148,7 @@ func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Cont
 
 func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	var fashionItem *entities.FashionItem
-	if job.ItemType == "brand" {
+	if job.ItemType == string(fashionitemtype.Brand) {
 		brandItem, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
 		if err != nil {
 			return err
@@ -262,20 +266,24 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 				}
 			}
 
-			if err := uc.wardrobeContract.DeleteWardrobeItem(ctx, item.ID); err != nil {
+			err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+				if err := uc.wardrobeContract.DeleteWardrobeItem(txCtx, item.ID); err != nil {
+					return err
+				}
+				payload := wardrobeDto.WardrobeEventPayload{
+					ItemID: item.ID,
+					UserID: item.UserID,
+					Action: eventconstants.ActionDeleted,
+				}
+				return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload)
+			})
+			if err != nil {
 				run.ChildError(uc.logger, "Failed to delete item from database during failed item cleanup",
 					zap.String("itemId", item.ID.String()),
 					zap.Error(err),
 				)
 				return fmt.Errorf("failed to delete item %s: %w", item.ID.String(), err)
 			}
-
-			payload := wardrobeDto.WardrobeEventPayload{
-				ItemID: item.ID,
-				UserID: item.UserID,
-				Action: eventconstants.ActionDeleted,
-			}
-			_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
 			publishedDeleteEventCount++
 			totalDeleted++
 			run.AddSuccess(1)
@@ -353,16 +361,14 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		)
 		run.AddRetry(1)
 
-		time.AfterFunc(delay, func() {
-			publishCtx := context.Background()
-			if republishErr := uc.eventPublisher.Publish(publishCtx, topic, job); republishErr != nil {
-				run.ChildError(uc.logger, "Failed to republish analyze item retry job",
-					zap.String("itemId", job.ItemID.String()),
-					zap.Int("retryCount", job.RetryCount),
-					zap.Error(republishErr),
-				)
-			}
-		})
+		publishCtx := context.Background()
+		if republishErr := uc.eventPublisher.Publish(publishCtx, topic, job); republishErr != nil {
+			run.ChildError(uc.logger, "Failed to republish analyze item retry job",
+				zap.String("itemId", job.ItemID.String()),
+				zap.Int("retryCount", job.RetryCount),
+				zap.Error(republishErr),
+			)
+		}
 		return
 	}
 
@@ -525,12 +531,17 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		return nil
 	}
 
-	payload := wardrobeDto.WardrobeEventPayload{
-		ItemID: job.ItemID,
-		UserID: job.UserID,
-		Action: eventconstants.ActionCreated,
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		payload := wardrobeDto.WardrobeEventPayload{
+			ItemID: job.ItemID,
+			UserID: job.UserID,
+			Action: eventconstants.ActionCreated,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeCreated, payload)
+	})
+	if err != nil {
+		return err
 	}
-	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
@@ -564,7 +575,9 @@ func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, item
 		ProcessingVersion: processingVersion,
 	}
 
-	return uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionAnalyze, job)
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyze, job)
+	})
 }
 
 func resolveDetectedCategory(categorySlug string, snapshot *VisionCategorySnapshot) (*uuid.UUID, string) {

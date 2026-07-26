@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
@@ -26,12 +27,14 @@ import (
 )
 
 type WalletUseCase struct {
-	walletRepo     repositories.IUserWalletRepository
-	depositTxRepo  repositories.IDepositTransactionRepository
-	statementRepo  repositories.IWalletStatementRepository
-	paymentGateway payment.IPaymentGatewayService
-	uow            shared_repos.IUnitOfWork
-	cfg            *config.Config
+	walletRepo      repositories.IUserWalletRepository
+	depositTxRepo   repositories.IDepositTransactionRepository
+	statementRepo   repositories.IWalletStatementRepository
+	paymentGateway  payment.IPaymentGatewayService
+	uow             shared_repos.IUnitOfWork
+	cfg             *config.Config
+	notifContract   notificationContract.INotificationContract
+	userContactRepo repositories.IUserContactRepository
 }
 
 func NewWalletUseCase(
@@ -41,14 +44,18 @@ func NewWalletUseCase(
 	paymentGateway payment.IPaymentGatewayService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
+	notifContract notificationContract.INotificationContract,
+	userContactRepo repositories.IUserContactRepository,
 ) uc_interfaces.IWalletUseCase {
 	return &WalletUseCase{
-		walletRepo:     walletRepo,
-		depositTxRepo:  depositTxRepo,
-		statementRepo:  statementRepo,
-		paymentGateway: paymentGateway,
-		uow:            uow,
-		cfg:            cfg,
+		walletRepo:      walletRepo,
+		depositTxRepo:   depositTxRepo,
+		statementRepo:   statementRepo,
+		paymentGateway:  paymentGateway,
+		uow:             uow,
+		cfg:             cfg,
+		notifContract:   notifContract,
+		userContactRepo: userContactRepo,
 	}
 }
 
@@ -181,7 +188,16 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			locked.Status = depositstatus.ReconciliationRequired
 			locked.ReconciliationAttempts++
 		}
-		return uc.depositTxRepo.Update(txCtx, locked)
+		if err := uc.depositTxRepo.Update(txCtx, locked); err != nil {
+			return err
+		}
+		if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, userID); emailErr == nil && userEmail != "" {
+			_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateTopupSuccess, map[string]any{
+				"Amount":     sharedmoney.ToFloat(amount),
+				"NewBalance": sharedmoney.ToFloat(sharedmoney.Zero),
+			}, userEmail)
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}

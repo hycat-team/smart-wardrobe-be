@@ -22,6 +22,7 @@ type Config struct {
 	Community      Community          `mapstructure:"community"`
 	Loyalty        Loyalty            `mapstructure:"loyalty"`
 	RAG            RAG                `mapstructure:"rag"`
+	Subscription   Subscription       `mapstructure:"subscription"`
 	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
 }
 
@@ -195,6 +196,11 @@ type Email struct {
 	SenderName  string `mapstructure:"sender_name"`
 	SenderEmail string `mapstructure:"sender_email"`
 	AppPassword string `mapstructure:"app_password"`
+}
+
+type Subscription struct {
+	MaxRetryAttempts         int `mapstructure:"max_retry_attempts"`
+	WalletBalanceWarningDays int `mapstructure:"wallet_balance_warning_days"`
 }
 
 type RateLimit struct {

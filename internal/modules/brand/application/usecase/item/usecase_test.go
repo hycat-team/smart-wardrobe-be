@@ -77,6 +77,12 @@ func (m *mockBrandRepo) GetBrandAnalyticsStats(ctx context.Context, brandID uuid
 func (m *mockBrandRepo) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {
 	return nil, 0, nil
 }
+func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Brand) error {
+	return nil
+}
+func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -118,7 +124,10 @@ func (m *mockMemberRepo) GetActiveByUserID(ctx context.Context, userID uuid.UUID
 func (m *mockMemberRepo) BulkCreate(ctx context.Context, members []*entities.BrandMember) error {
 	return nil
 }
-func (m *mockMemberRepo) BulkUpdate(ctx context.Context, members []*entities.BrandMember) error {
+func (m *mockMemberRepo) BatchUpdate(ctx context.Context, members []*entities.BrandMember) error {
+	return nil
+}
+func (m *mockMemberRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
 
@@ -168,6 +177,12 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 }
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
+}
+func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
+	return nil
+}
+func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 type mockBrandItemRepo struct {
@@ -267,6 +282,12 @@ func (m *mockBrandItemRepo) GetByBrandIDPaginated(ctx context.Context, filter re
 		TotalCount: int64(len(list)),
 	}, nil
 }
+func (m *mockBrandItemRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandItem) error {
+	return nil
+}
+func (m *mockBrandItemRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 type mockDigitalSampleResponseRepo struct {
 	feedbacks map[uuid.UUID]*entities.DigitalSampleResponse
@@ -307,6 +328,12 @@ func (m *mockDigitalSampleResponseRepo) GetByBrandItemID(ctx context.Context, br
 		}
 	}
 	return res, nil
+}
+func (m *mockDigitalSampleResponseRepo) BatchUpdate(ctx context.Context, entities []*entities.DigitalSampleResponse) error {
+	return nil
+}
+func (m *mockDigitalSampleResponseRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
 }
 
 type mockUserContract struct{}

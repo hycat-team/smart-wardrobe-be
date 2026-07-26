@@ -11,6 +11,7 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefitresolution"
+	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
@@ -74,6 +75,8 @@ type PaymentWebhookUseCase struct {
 	paymentEventRepo      repositories.IPaymentEventRepository
 	inboxRepo             repositories.IWebhookInboxRepository
 	subscriptionEventRepo repositories.IUserSubscriptionEventRepository
+	notifContract         notificationContract.INotificationContract
+	userContactRepo       repositories.IUserContactRepository
 	log                   logger.Interface
 }
 
@@ -90,6 +93,8 @@ func NewPaymentWebhookUseCase(
 	paymentEventRepo repositories.IPaymentEventRepository,
 	inboxRepo repositories.IWebhookInboxRepository,
 	subscriptionEventRepo repositories.IUserSubscriptionEventRepository,
+	notifContract notificationContract.INotificationContract,
+	userContactRepo repositories.IUserContactRepository,
 	log logger.Interface,
 ) uc_interfaces.IPaymentWebhookUseCase {
 	return &PaymentWebhookUseCase{
@@ -104,6 +109,8 @@ func NewPaymentWebhookUseCase(
 		paymentEventRepo:      paymentEventRepo,
 		inboxRepo:             inboxRepo,
 		subscriptionEventRepo: subscriptionEventRepo,
+		notifContract:         notifContract,
+		userContactRepo:       userContactRepo,
 		log:                   log,
 	}
 }
@@ -490,5 +497,52 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 	}
 	tx.SubscriptionVersionBefore = &before
 	tx.SubscriptionVersionAfter = &after
+
+	if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, tx.UserID); emailErr == nil && userEmail != "" {
+		expiresAt := ""
+		if sub.ExpiresAt != nil {
+			expiresAt = sub.ExpiresAt.Format("02/01/2006")
+		}
+		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplatePaymentSuccess, map[string]any{
+			"PlanName":  plan.Name,
+			"Amount":    sharedmoney.ToFloat(tx.Amount),
+			"ExpiresAt": expiresAt,
+		}, userEmail)
+	}
+
 	return nil
+}
+
+func (uc *PaymentWebhookUseCase) AutoRefund(ctx context.Context, orderCode int64, reason string) error {
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		tx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, orderCode)
+		if err != nil {
+			return err
+		}
+		if tx == nil {
+			return subscriptionerrors.ErrTransactionNotFound(orderCode)
+		}
+		if tx.Status == depositstatus.Refunded {
+			return nil
+		}
+		now := time.Now().UTC()
+		metadata := wallet.WalletStatementMetadata{}
+		if err := wallet.ProcessWalletTransaction(txCtx, uc.walletRepo, uc.statementRepo, tx.UserID, tx.Amount, walletstatementtype.AutoRefund, "Tự động hoàn tiền: "+reason, &tx.ID, metadata, now); err != nil {
+			return err
+		}
+		tx.Status = depositstatus.Refunded
+		tx.RefundedAt = &now
+		tx.RefundAmount = &tx.Amount
+		tx.RefundReason = &reason
+		tx.BenefitResolution = nil
+		if err := uc.depositTxRepo.Update(txCtx, tx); err != nil {
+			return err
+		}
+		uc.log.Info("Auto-refund completed",
+			zap.Int64("orderCode", orderCode),
+			zap.String("reason", reason),
+			zap.String("userId", tx.UserID.String()),
+		)
+		return nil
+	})
 }

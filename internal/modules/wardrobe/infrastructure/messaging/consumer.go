@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/logger"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
@@ -24,34 +25,26 @@ func NewSearchSyncEventConsumer(messageClient shared_msg.IRabbitMQClient, l logg
 }
 
 func (c *SearchSyncEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event dto.WardrobeEventPayload) error) error {
-	deliveries, err := c.messageClient.Consume(shared_msg.QueueElasticsearchSync)
-	if err != nil {
-		return err
+	wrappedHandler := func(d amqp.Delivery) error {
+		var eventPayload dto.WardrobeEventPayload
+		if err := json.Unmarshal(d.Body, &eventPayload); err != nil {
+			c.logger.Error("[SearchSyncEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[SearchSyncEventConsumer] Error processing sync event", zap.Error(err))
+			if strings.Contains(err.Error(), "elasticsearch is offline") {
+				c.logger.Info("[SearchSyncEventConsumer] Elasticsearch is offline. Sleeping 5s and requeuing event for retry.")
+				time.Sleep(5 * time.Second)
+				return err
+			}
+			return err
+		}
+		return nil
 	}
 
-	go func() {
-		for d := range deliveries {
-			var eventPayload dto.WardrobeEventPayload
-			if err := json.Unmarshal(d.Body, &eventPayload); err != nil {
-				c.logger.Error("[SearchSyncEventConsumer] Failed to unmarshal message body", zap.Error(err))
-				_ = d.Nack(false, false)
-				continue
-			}
-
-			if err := handler(ctx, eventPayload); err != nil {
-				c.logger.Error("[SearchSyncEventConsumer] Error processing sync event", zap.Error(err))
-				if strings.Contains(err.Error(), "elasticsearch is offline") {
-					c.logger.Info("[SearchSyncEventConsumer] Elasticsearch is offline. Sleeping 5s and requeuing event for retry.")
-					time.Sleep(5 * time.Second)
-					_ = d.Nack(false, true) // Requeue
-				} else {
-					_ = d.Nack(false, false) // Discard poison pill
-				}
-			} else {
-				_ = d.Ack(false)
-			}
-		}
-	}()
-
+	c.messageClient.RegisterConsumer(shared_msg.QueueElasticsearchSync, wrappedHandler)
+	c.logger.Info("[SearchSyncEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueElasticsearchSync))
 	return nil
 }

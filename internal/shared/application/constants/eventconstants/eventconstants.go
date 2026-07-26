@@ -9,8 +9,9 @@ const (
 	TopicSubscriptionPlanChanged = "subscription.plan.changed"
 
 	// Fashion Events
-	TopicFashionInit    = "fashion.event.init"
-	TopicFashionAnalyze = "fashion.event.analyze"
+	TopicFashionInit       = "fashion.event.init"
+	TopicFashionAnalyze    = "fashion.event.analyze"
+	TopicNotificationEmail = "notification.email"
 
 	ActionCreated = "created"
 	ActionUpdated = "updated"

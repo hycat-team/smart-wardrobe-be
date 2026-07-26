@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard"
 	"smart-wardrobe-be/internal/modules/fashion"
 	"smart-wardrobe-be/internal/modules/identity"
+	"smart-wardrobe-be/internal/modules/notification"
 	"smart-wardrobe-be/internal/modules/subscription"
 	"smart-wardrobe-be/internal/modules/wardrobe"
 	"smart-wardrobe-be/internal/pkg/logger"
@@ -32,6 +33,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 
 		shared.ProviderSet,
 		identity.ProviderSet,
+		notification.ProviderSet,
 		subscription.ProviderSet,
 		aiexecutor.ProviderSet,
 		wardrobe.ProviderSet,

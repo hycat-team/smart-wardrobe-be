@@ -21,14 +21,14 @@
 
 **Independent Test**: Identity module vẫn gửi được OTP email qua contract. Module notification có thể gửi email độc lập.
 
-- [ ] T001 Create notification contract interface: `internal/modules/notification/presentation/contract/notification_contract.go` — `INotificationContract` with generic method `Send(ctx, channel ChannelEnum, template TemplateEnum, params map[string]any, to string) error`. Define `ChannelEnum` = {Email}, `TemplateEnum` = {Otp, PaymentSuccess, TopupSuccess, RenewalSuccess, RenewalFailed, WalletWarning}. Interface extensible — thêm channel/template sau không break contract.
-- [ ] T002 Create contract implementation: `internal/modules/notification/presentation/contract/notification_contract_impl.go` — lookup template constants theo `TemplateEnum`, render HTML với `html/template` engine và `params`, ghi outbox record (topic=`notification.email.*`, payload=rendered body + to + subject). **Không** tạo EmailMessage entity, không gọi repository. Outbox record là nguồn duy nhất.
-- [ ] T003 Move `GmailSmtpService` from `internal/modules/identity/infrastructure/communication/gmail_smtp_service.go` to `internal/modules/notification/infrastructure/communication/smtp_sender.go` — refactor thành `SmtpSender`
-- [ ] T004 Move email templates from `internal/modules/identity/infrastructure/communication/templates/` to `internal/modules/notification/infrastructure/communication/templates/`. Templates là code constants (HTML string trong Go files), không phải DB entity.
-- [ ] T005 Create module provider: `internal/modules/notification/provider.go` — Wire ProviderSet (gồm SmtpSender, INotificationContract, worker dependencies). **Không** cần email_repo, email entity, hay email use case.
-- [ ] T006 Update identity module: replace `IEmailService` injection with `INotificationContract` in `identity/application/usecase/register_uc.go` and `password_recovery_uc.go`; update DI wiring. Identity sẽ gọi `contract.Send(ctx, EmailChannel, OtpTemplate, params, email)` thay vì `emailService.SendRegistrationOtpEmail(...)`
-- [ ] T007 Remove old `IEmailService` interface at `identity/application/interface/communication/email_service.go` (no longer needed)
-- [ ] T008 Register `notification` module in DI: update `internal/di/wire.go` (không cần route registration — notification module không có handler/public endpoints, chỉ có worker)
+- [x] T001 Create notification contract interface: `internal/modules/notification/presentation/contract/notification_contract.go` — `INotificationContract` with generic method `Send(ctx, channel ChannelEnum, template TemplateEnum, params map[string]any, to string) error`. Define `ChannelEnum` = {Email}, `TemplateEnum` = {Otp, PaymentSuccess, TopupSuccess, RenewalSuccess, RenewalFailed, WalletWarning}. Interface extensible — thêm channel/template sau không break contract.
+- [x] T002 Create contract implementation: `internal/modules/notification/presentation/contract/notification_contract_impl.go` — lookup template constants theo `TemplateEnum`, render HTML với `html/template` engine và `params`, ghi outbox record (topic=`notification.email.*`, payload=rendered body + to + subject). **Không** tạo EmailMessage entity, không gọi repository. Outbox record là nguồn duy nhất.
+- [x] T003 Move `GmailSmtpService` from `internal/modules/identity/infrastructure/communication/gmail_smtp_service.go` to `internal/modules/notification/infrastructure/communication/smtp_sender.go` — refactor thành `SmtpSender`
+- [x] T004 Move email templates from `internal/modules/identity/infrastructure/communication/templates/` to `internal/modules/notification/infrastructure/communication/templates/`. Templates là code constants (HTML string trong Go files), không phải DB entity.
+- [x] T005 Create module provider: `internal/modules/notification/provider.go` — Wire ProviderSet (gồm SmtpSender, INotificationContract, worker dependencies). **Không** cần email_repo, email entity, hay email use case.
+- [x] T006 Update identity module: replace `IEmailService` injection with `INotificationContract` in `identity/application/usecase/register_uc.go` and `password_recovery_uc.go`; update DI wiring. Identity sẽ gọi `contract.Send(ctx, EmailChannel, OtpTemplate, params, email)` thay vì `emailService.SendRegistrationOtpEmail(...)`
+- [x] T007 Remove old `IEmailService` interface at `identity/application/interface/communication/email_service.go` (no longer needed)
+- [x] T008 Register `notification` module in DI: update `internal/di/wire.go` (không cần route registration — notification module không có handler/public endpoints, chỉ có worker)
 
 **Checkpoint**: Module notification hoạt động, identity gửi OTP qua contract, SMTP sending hoạt động
 
@@ -40,10 +40,10 @@
 
 **Independent Test**: Gọi contract → outbox record created → outbox worker publish → email worker consume → SMTP sent.
 
-- [ ] T009 [P] [US1] Add notification queue constants to `internal/shared/infrastructure/messaging/rabbitmq_constants.go` (`QueueNotificationEmail = "notification_email_queue"`, `RoutingKeyNotificationEmail = "notification.email.*"`) and event topic to `internal/shared/application/constants/eventconstants/eventconstants.go` (`TopicNotificationEmail = "notification.email"`) — nhất quán với các constants RMQ hiện tại, không tạo file constants riêng trong notification module
-- [ ] T010 [US1] Modify contract implementation (T002) to integrate with outbox: khi `Send()` được gọi, ghi outbox record (`topic = TopicNotificationEmail`, `payload = {to, subject, body, channel}`) trong cùng DB transaction với business operation (top-up, payment, renewal). Dùng `db.GetTx(ctx)` từ caller để ghi cùng transaction. Outbox worker từ Sprint 3 publish lên RMQ. **Không** save EmailMessage riêng.
-- [ ] T011 [US1] Create email worker: `internal/modules/notification/presentation/worker/email_worker.go` — trong `Start()`, gọi `rmqClient.DeclareAndBindQueue(QueueNotificationEmail, RoutingKeyNotificationEmail)` (idempotent), sau đó `Consume(QueueNotificationEmail)`. Parse payload, gọi `SmtpSender.Send(ctx, to, subject, body)`. Nếu success: ack message, log "email sent". Nếu fail: nack message → RMQ redeliver → DLQ sau max retries (do RMQ config). **Không** update EmailMessage.status, không custom attempts tracking.
-- [ ] T012 [US1] Register email worker in `internal/bootstrap/app.go` — add `EmailWorker` to `AppWorkers`, start/stop với lifecycle
+- [x] T009 [P] [US1] Add notification queue constants to `internal/shared/infrastructure/messaging/rabbitmq_constants.go` (`QueueNotificationEmail = "notification_email_queue"`, `RoutingKeyNotificationEmail = "notification.email.*"`) and event topic to `internal/shared/application/constants/eventconstants/eventconstants.go` (`TopicNotificationEmail = "notification.email"`) — nhất quán với các constants RMQ hiện tại, không tạo file constants riêng trong notification module
+- [x] T010 [US1] Modify contract implementation (T002) to integrate with outbox: khi `Send()` được gọi, ghi outbox record (`topic = TopicNotificationEmail`, `payload = {to, subject, body, channel}`) trong cùng DB transaction với business operation (top-up, payment, renewal). Dùng `db.GetTx(ctx)` từ caller để ghi cùng transaction. Outbox worker từ Sprint 3 publish lên RMQ. **Không** save EmailMessage riêng.
+- [x] T011 [US1] Create email worker: `internal/modules/notification/presentation/worker/email_worker.go` — trong `Start()`, gọi `rmqClient.DeclareAndBindQueue(QueueNotificationEmail, RoutingKeyNotificationEmail)` (idempotent), sau đó `Consume(QueueNotificationEmail)`. Parse payload, gọi `SmtpSender.Send(ctx, to, subject, body)`. Nếu success: ack message, log "email sent". Nếu fail: nack message → RMQ redeliver → DLQ sau max retries (do RMQ config). **Không** update EmailMessage.status, không custom attempts tracking.
+- [x] T012 [US1] Register email worker in `internal/bootstrap/app.go` — add `EmailWorker` to `AppWorkers`, start/stop với lifecycle
 
 **Checkpoint**: Email queue hoạt động, worker gửi SMTP async, retry qua RMQ DLQ
 
@@ -55,9 +55,9 @@
 
 **Independent Test**: Tạo subscription sắp hết hạn trong 3 ngày, auto-renew bật, wallet thiếu → user nhận email cảnh báo.
 
-- [ ] T013 [P] [US2] Add `wallet_balance_warning_days int` config to subscription config section in `internal/config/config.go` (default 3)
-- [ ] T014 [US2] Implement use case: `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` — add `ProcessUpcomingExpiryNotifications(ctx)` query các subscription: expires trong N ngày, auto-renew enabled, wallet balance < plan price → gọi `contract.Send(ctx, EmailChannel, WalletWarningTemplate, {daysRemaining, balance, requiredAmount}, userEmail)`
-- [ ] T015 [US2] Modify `SubscriptionRenewalWorker.executeRenewalJob()` in `internal/modules/subscription/presentation/worker/subscription_renewal_worker.go` — gọi `ProcessUpcomingExpiryNotifications` trước khi xử lý renewals
+- [x] T013 [P] [US2] Add `wallet_balance_warning_days int` config to subscription config section in `internal/config/config.go` (default 3)
+- [x] T014 [US2] Implement use case: `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` — add `ProcessUpcomingExpiryNotifications(ctx)` query các subscription: expires trong N ngày, auto-renew enabled, wallet balance < plan price → gọi `contract.Send(ctx, EmailChannel, WalletWarningTemplate, {daysRemaining, balance, requiredAmount}, userEmail)`
+- [x] T015 [US2] Modify `SubscriptionRenewalWorker.executeRenewalJob()` in `internal/modules/subscription/presentation/worker/subscription_renewal_worker.go` — gọi `ProcessUpcomingExpiryNotifications` trước khi xử lý renewals
 
 **Checkpoint**: User nhận email cảnh báo trước khi subscription hết hạn nếu wallet không đủ
 
@@ -69,9 +69,9 @@
 
 **Independent Test**: Top-up → email "Nạp tiền thành công". Payment → email "Thanh toán thành công".
 
-- [ ] T016 [US3] Modify wallet top-up use case: `internal/modules/subscription/application/usecase/wallet/wallet_uc.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, TopupSuccessTemplate, {amount, newBalance}, userEmail)` **bên trong** `uow.Execute` callback (đã có UoW cho top-up), dùng `txCtx` để outbox record atomic với wallet transaction.
-- [ ] T017 [US3] Modify payment webhook use case: `internal/modules/subscription/application/usecase/webhook/payment_webhook_uc.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, PaymentSuccessTemplate, {planName, amount, expiresAt}, userEmail)` **bên trong** existing UoW callback, dùng `txCtx`.
-- [ ] T018 [US3] Modify renewal workflow: `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, RenewalSuccessTemplate, ...)` và `contract.Send(txCtx, EmailChannel, RenewalFailedTemplate, ...)` **bên trong** existing UoW callback, dùng `txCtx`.
+- [x] T016 [US3] Modify wallet top-up use case: `internal/modules/subscription/application/usecase/wallet/wallet_uc.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, TopupSuccessTemplate, {amount, newBalance}, userEmail)` **bên trong** `uow.Execute` callback (đã có UoW cho top-up), dùng `txCtx` để outbox record atomic với wallet transaction.
+- [x] T017 [US3] Modify payment webhook use case: `internal/modules/subscription/application/usecase/webhook/payment_webhook_uc.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, PaymentSuccessTemplate, {planName, amount, expiresAt}, userEmail)` **bên trong** existing UoW callback, dùng `txCtx`.
+- [x] T018 [US3] Modify renewal workflow: `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` — inject `INotificationContract`. Gọi `contract.Send(txCtx, EmailChannel, RenewalSuccessTemplate, ...)` và `contract.Send(txCtx, EmailChannel, RenewalFailedTemplate, ...)` **bên trong** existing UoW callback, dùng `txCtx`.
 
 **Checkpoint**: User nhận email cho mọi giao dịch tài chính quan trọng
 

@@ -121,3 +121,24 @@ func (r *GenericRepository[T, ID]) Delete(ctx context.Context, id ID) error {
 	var entity T
 	return r.GetDB(ctx).Delete(&entity, "id = ?", id).Error
 }
+
+func (r *GenericRepository[T, ID]) BatchUpdate(ctx context.Context, entities []*T) error {
+	if len(entities) == 0 {
+		return nil
+	}
+	return r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, e := range entities {
+			if err := tx.Omit(clause.Associations).Save(e).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *GenericRepository[T, ID]) BatchUpdateMap(ctx context.Context, ids []ID, values map[string]any) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.GetDB(ctx).Model(new(T)).Where("id IN ?", ids).Updates(values).Error
+}

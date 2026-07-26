@@ -49,6 +49,12 @@ func (f *fakeSubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*e
 func (f *fakeSubscriptionPlanRepository) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
 }
+func (f *fakeSubscriptionPlanRepository) BatchUpdate(ctx context.Context, entities []*entities.SubscriptionPlan) error {
+	return nil
+}
+func (f *fakeSubscriptionPlanRepository) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
 
 func TestSubscriptionCatalogValidator(t *testing.T) {
 	ctx := context.Background()

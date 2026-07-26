@@ -134,8 +134,7 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 - Any architectural changes, new principles, or redefinitions of existing boundaries require
   major/minor/patch version updates.
 - Validation checks: Every pull request must verify compliance with layer boundaries (no cross-layer
-  skipping), cross-module contract rules, standard error handling, and JSON naming conventions for
-  frontend-facing DTOs.
+  skipping), standard error handling, and JSON naming conventions for frontend-facing DTOs.
 - Archived modules must retain their folder tree structure but be completely removed from Wire DI
   configuration and route registration.
 - Refer to `docs/development/local-setup.md` for running and executing development code using

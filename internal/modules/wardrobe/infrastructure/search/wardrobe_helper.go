@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,7 +98,7 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 		results[idx] = &dto.SearchWardrobeItemRes{
 			ID:          id,
 			Price:       hit.Source.Price,
-			IsSystem:    hit.Source.ItemType == 1,
+			IsSystem:    hit.Source.ItemType == int(itemtype.SystemCatalogItem),
 			FashionItem: fashionItem,
 		}
 	}

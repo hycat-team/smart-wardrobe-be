@@ -80,24 +80,30 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		}
 	}
 
-	err = uc.wardrobeRepo.BulkCreate(ctx, clonedItems)
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.wardrobeRepo.BulkCreate(txCtx, clonedItems); err != nil {
+			return err
+		}
+		for _, cloned := range clonedItems {
+			var fashionItemID uuid.UUID
+			if cloned.FashionItemID != nil {
+				fashionItemID = *cloned.FashionItemID
+			}
+			payload := dto.WardrobeEventPayload{
+				ItemID:        cloned.ID,
+				UserID:        cloned.UserID,
+				FashionItemID: fashionItemID,
+				ItemType:      int(cloned.ItemType),
+				Action:        eventconstants.ActionCreated,
+			}
+			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeCreated, payload); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	for _, cloned := range clonedItems {
-		var fashionItemID uuid.UUID
-		if cloned.FashionItemID != nil {
-			fashionItemID = *cloned.FashionItemID
-		}
-		payload := dto.WardrobeEventPayload{
-			ItemID:        cloned.ID,
-			UserID:        cloned.UserID,
-			FashionItemID: fashionItemID,
-			ItemType:      int(cloned.ItemType),
-			Action:        eventconstants.ActionCreated,
-		}
-		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeCreated, payload)
 	}
 
 	fashionIDs := make([]uuid.UUID, 0, len(clonedItems))
@@ -173,30 +179,33 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	item.Price = input.Price
 	item.Status = wardrobestatus.Processing
 
-	err = uc.wardrobeRepo.Update(ctx, item)
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
+			return err
+		}
+		imageURL := ""
+		imagePublicID := ""
+		processingVersion := 1
+		if existingFI != nil {
+			imageURL = existingFI.ImageUrl
+			imagePublicID = existingFI.ImagePublicID
+		}
+		fashionJob := fashion_dto.FashionAnalyzeJobDTO{
+			FashionItemID:     item.FashionItemID,
+			ItemID:            item.ID,
+			ItemType:          fashionitemtype.Wardrobe,
+			UserID:            userID,
+			ImageUrl:          imageURL,
+			ImagePublicID:     imagePublicID,
+			CategoryID:        &category.ID,
+			ProcessingVersion: processingVersion,
+			SkipVision:        true,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionInit, fashionJob)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	imageURL := ""
-	imagePublicID := ""
-	processingVersion := 1
-	if existingFI != nil {
-		imageURL = existingFI.ImageUrl
-		imagePublicID = existingFI.ImagePublicID
-	}
-	fashionJob := fashion_dto.FashionAnalyzeJobDTO{
-		FashionItemID:     item.FashionItemID,
-		ItemID:            item.ID,
-		ItemType:          fashionitemtype.Wardrobe,
-		UserID:            userID,
-		ImageUrl:          imageURL,
-		ImagePublicID:     imagePublicID,
-		CategoryID:        &category.ID,
-		ProcessingVersion: processingVersion,
-		SkipVision:        true,
-	}
-	_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, fashionJob)
 
 	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
@@ -233,31 +242,34 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress()
 	}
 
-	categoryID := (*uuid.UUID)(nil)
-	imageURL := ""
-	imagePublicID := ""
-	processingVersion := 0
-	if existingFI != nil {
-		if existingFI.Category != nil {
-			categoryID = &existingFI.Category.ID
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		categoryID := (*uuid.UUID)(nil)
+		imageURL := ""
+		imagePublicID := ""
+		processingVersion := 0
+		if existingFI != nil {
+			if existingFI.Category != nil {
+				categoryID = &existingFI.Category.ID
+			}
+			imageURL = existingFI.ImageUrl
+			imagePublicID = existingFI.ImagePublicID
 		}
-		imageURL = existingFI.ImageUrl
-		imagePublicID = existingFI.ImagePublicID
-	}
-	job := fashion_dto.FashionAnalyzeJobDTO{
-		FashionItemID:     item.FashionItemID,
-		ItemID:            item.ID,
-		ItemType:          fashionitemtype.Wardrobe,
-		UserID:            item.UserID,
-		CategoryID:        categoryID,
-		ImageUrl:          imageURL,
-		ImagePublicID:     imagePublicID,
-		ProcessingVersion: processingVersion,
-		RetryCount:        0,
-	}
-	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicFashionInit, job); err != nil {
+		job := fashion_dto.FashionAnalyzeJobDTO{
+			FashionItemID:     item.FashionItemID,
+			ItemID:            item.ID,
+			ItemType:          fashionitemtype.Wardrobe,
+			UserID:            item.UserID,
+			CategoryID:        categoryID,
+			ImageUrl:          imageURL,
+			ImagePublicID:     imagePublicID,
+			ProcessingVersion: processingVersion,
+			RetryCount:        0,
+		}
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionInit, job)
+	})
+	if err != nil {
 		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
-		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, processingVersion, processingFailureMessage, nil)
+		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, 0, processingFailureMessage, nil)
 		return nil, err
 	}
 
@@ -295,25 +307,32 @@ func (uc *WardrobeItemUseCase) DeleteWardrobeItemsBulk(ctx context.Context, user
 		}
 	}
 
-	for _, id := range ids {
-		item := itemMap[id]
-		item.IsDeleted = true
-		if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
-			return err
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		for _, id := range ids {
+			item := itemMap[id]
+			item.IsDeleted = true
+			if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
+				return err
+			}
+			var fashionItemID uuid.UUID
+			if item.FashionItemID != nil {
+				fashionItemID = *item.FashionItemID
+			}
+			payload := dto.WardrobeEventPayload{
+				ItemID:        item.ID,
+				UserID:        item.UserID,
+				FashionItemID: fashionItemID,
+				ItemType:      int(item.ItemType),
+				Action:        eventconstants.ActionDeleted,
+			}
+			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload); err != nil {
+				return err
+			}
 		}
-
-		var fashionItemID uuid.UUID
-		if item.FashionItemID != nil {
-			fashionItemID = *item.FashionItemID
-		}
-		payload := dto.WardrobeEventPayload{
-			ItemID:        item.ID,
-			UserID:        item.UserID,
-			FashionItemID: fashionItemID,
-			ItemType:      int(item.ItemType),
-			Action:        eventconstants.ActionDeleted,
-		}
-		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -337,24 +356,31 @@ func (uc *WardrobeItemUseCase) DeleteLockedWardrobeItems(ctx context.Context, us
 		}
 	}
 
-	for _, item := range lockedItems {
-		item.IsDeleted = true
-		if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
-			return err
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		for _, item := range lockedItems {
+			item.IsDeleted = true
+			if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
+				return err
+			}
+			var fashionItemID uuid.UUID
+			if item.FashionItemID != nil {
+				fashionItemID = *item.FashionItemID
+			}
+			payload := dto.WardrobeEventPayload{
+				ItemID:        item.ID,
+				UserID:        item.UserID,
+				FashionItemID: fashionItemID,
+				ItemType:      int(item.ItemType),
+				Action:        eventconstants.ActionDeleted,
+			}
+			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeDeleted, payload); err != nil {
+				return err
+			}
 		}
-
-		var fashionItemID uuid.UUID
-		if item.FashionItemID != nil {
-			fashionItemID = *item.FashionItemID
-		}
-		payload := dto.WardrobeEventPayload{
-			ItemID:        item.ID,
-			UserID:        item.UserID,
-			FashionItemID: fashionItemID,
-			ItemType:      int(item.ItemType),
-			Action:        eventconstants.ActionDeleted,
-		}
-		_ = uc.eventPublisher.Publish(ctx, eventconstants.TopicWardrobeDeleted, payload)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

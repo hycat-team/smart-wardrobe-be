@@ -207,6 +207,8 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 
 **Sprint 4 — Notification Module & Business Logic Maturation:**
 
+> **Ghi chú FR numbering**: FR-018 và FR-019 không tồn tại (bỏ qua do renumbering). FR-020/FR-021 đã được renumber thành FR-029/FR-030, sau đó FR-030 bị xoá vì duplicate với FR-003 (auto-renew toggle). Do đó Sprint 4 bắt đầu từ FR-022.
+
 - **FR-022**: Tách email sender khỏi identity module thành `notification` module riêng — move `GmailSmtpService` (→ `SmtpSender`), templates, `IEmailService` interface. Delivery tracking qua worker log + RMQ DLQ, không tạo bảng `email_messages`
 - **FR-023**: Module `notification` có kiến trúc async: outbox → RMQ queue → worker xử lý → gửi SMTP. Không block caller
 - **FR-024**: Module `notification` expose `INotificationContract` qua `presentation/contract/` — interface generic `Send(channel ChannelEnum, template TemplateEnum, params map[string]any, to string)` để các module khác gửi notification mà không import trực tiếp. ChannelEnum = {Email}, template = {Otp, PaymentSuccess, TopupSuccess, RenewalSuccess, RenewalFailed, WalletWarning}
@@ -214,14 +216,14 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 - **FR-026**: Gửi email xác nhận khi top-up thành công: số tiền, số dư mới
 - **FR-027**: Gửi email xác nhận khi payment subscription thành công: gói, ngày hết hạn
 - **FR-028**: Gửi email xác nhận khi renewal thành công/thất bại
-- **FR-029**: Hệ thống kiểm tra wallet balance N ngày trước khi subscription expires, gửi notification nếu không đủ tiền
+- **FR-029**: Hệ thống kiểm tra wallet balance 3 ngày (configurable via `wallet_balance_warning_days`) trước khi subscription expires, gửi notification nếu không đủ tiền
 
 
 ### Key Entities
 
 - **DepositTransaction** (subscription): thêm refund tracking fields
 - **OutboxRecord** (shared/messaging): mới — event outbox cho RabbitMQ
-- **SubscriptionRenewalAttempt** (subscription): tracking renewal attempts
+- **SubscriptionRenewalAttempt** (subscription): tracking renewal attempts (đã tồn tại — entity, repo, interface, migration, DI đã có sẵn)
 - **EmailTemplate** (notification): code constants trong Go files — không phải DB entity. Mỗi loại email (OTP, payment, top-up, renewal, warning) là 1 HTML template string. Delivery tracking qua worker log + RMQ DLQ, không có DB table cho email delivery
 - **NotificationContract** (notification): mới — generic contract interface `Send(channel ChannelEnum, template TemplateEnum, params map[string]any, to string)` — extensible cho push/SMS sau này
 
@@ -297,4 +299,4 @@ Chuyển toàn bộ user story về AI pipeline hardening (local NLP parser, mag
 | 4.2 | Auto-renew notification | `subscription/application/usecase/subscription/subscription_renewal_workflow.go`, subscription worker |
 | 4.4 | Payment & top-up email | `subscription/application/usecase/wallet/wallet_uc.go`, `subscription/application/usecase/webhook/payment_webhook_uc.go`, `subscription/application/usecase/subscription/subscription_renewal_workflow.go` |
 
-> **Note**: Mapping spec → tasks: US4.0 (Foundation: extract module) → tasks-sprint4.md US0; US4.0 (Foundation: RMQ+outbox integration) → tasks-sprint4.md US1; US4.1 (Auto-renew notif) → US2; US4.2 (Payment & top-up email) → US3. US4.3 (AI pipeline) đã move, không có task.
+> **Note**: Phase numbering dùng 4.4 thay vì 4.3 vì US4.3 (AI pipeline hardening) đã move sang `docs/temp/technical-dept/`. Mapping spec → tasks: US4.0 (Foundation: extract module) → tasks-sprint4.md US0; US4.0 (Foundation: RMQ+outbox integration) → tasks-sprint4.md US1; US4.1 (Auto-renew notif) → US2; US4.2 (Payment & top-up email) → US3.

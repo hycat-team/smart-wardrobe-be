@@ -12,7 +12,7 @@
 
 ## Phase 1: Setup (Database Migrations)
 
-- [ ] T001 Create Goose migration for `outbox` table: `CREATE TABLE outbox_records (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), topic VARCHAR(255) NOT NULL, payload JSONB NOT NULL, headers JSONB DEFAULT '{}', status VARCHAR(50) NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), published_at TIMESTAMPTZ, attempts INT NOT NULL DEFAULT 0, last_error TEXT)` in `database/migrations/`
+- [x] T001 Create Goose migration for `outbox` table: `CREATE TABLE outbox_records (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), topic VARCHAR(255) NOT NULL, payload JSONB NOT NULL, headers JSONB DEFAULT '{}', status VARCHAR(50) NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), published_at TIMESTAMPTZ, attempts INT NOT NULL DEFAULT 0, last_error TEXT)` in `database/migrations/`
 
 ---
 
@@ -24,25 +24,25 @@
 
 ### HTTP Transport Fix
 
-- [ ] T002 [P] [US1] Create shared `http.Transport` factory: `internal/shared/infrastructure/httptransport/transport.go` — function `NewTransport() *http.Transport` returning transport with `MaxIdleConns=100`, `MaxIdleConnsPerHost=50`, `MaxConnsPerHost=0`, `IdleConnTimeout=90s`, `DisableCompression=false`
-- [ ] T003 [US1] Refactor `internal/shared/infrastructure/ai/core.go` — replace all `&http.Client{Timeout: ...}` with shared transport, each provider keeps its own timeout but shares the transport pool
-- [ ] T004 [US1] Refactor `internal/modules/subscription/infrastructure/payment/payos/payos_service_impl.go` — replace `&http.Client{Timeout: 15 * time.Second}` with shared transport, keep timeout
+- [x] T002 [P] [US1] Create shared `http.Transport` factory: `internal/shared/infrastructure/httptransport/transport.go` — function `NewTransport() *http.Transport` returning transport with `MaxIdleConns=100`, `MaxIdleConnsPerHost=50`, `MaxConnsPerHost=0`, `IdleConnTimeout=90s`, `DisableCompression=false`
+- [x] T003 [US1] Refactor `internal/shared/infrastructure/ai/core.go` — replace all `&http.Client{Timeout: ...}` with shared transport, each provider keeps its own timeout but shares the transport pool
+- [x] T004 [US1] Refactor `internal/modules/subscription/infrastructure/payment/payos/payos_service_impl.go` — replace `&http.Client{Timeout: 15 * time.Second}` with shared transport, keep timeout
 
 ### RabbitMQ Reconnect & Consumer Re-registration
 
-- [ ] T005 [P] [US1] Add consumer registry to `RabbitMQClient` in `internal/shared/infrastructure/messaging/rabbitmq.go` — struct `consumerRegistration{queueName, handler func(amqp.Delivery) error}`; methods `RegisterConsumer(queueName, handler)` and `reRegisterConsumers()`
-- [ ] T006 [US1] Modify `RabbitMQClient.handleReconnect()` in `internal/shared/infrastructure/messaging/rabbitmq_connection.go` — after successful reconnect, call `r.reRegisterConsumers()` to re-bind all registered queues and restart consumer goroutines
-- [ ] T007 [US1] Update reconnect loop — replace infinite `for { ... time.Sleep(5s) }` with exponential backoff (1s, 2s, 4s, 8s, max 30s), add context cancellation to break loop on shutdown in `internal/shared/infrastructure/messaging/rabbitmq_connection.go`
-- [ ] T008 [US1] Update all existing workers (FashionInitWorker, FashionAnalyzeWorker, SearchSyncWorker) to register their consumers via `RegisterConsumer` instead of calling `Consume` directly — files in `internal/modules/*/presentation/worker/`
+- [x] T005 [P] [US1] Add consumer registry to `RabbitMQClient` in `internal/shared/infrastructure/messaging/rabbitmq.go` — struct `consumerRegistration{queueName, handler func(amqp.Delivery) error}`; methods `RegisterConsumer(queueName, handler)` and `reRegisterConsumers()`
+- [x] T006 [US1] Modify `RabbitMQClient.handleReconnect()` in `internal/shared/infrastructure/messaging/rabbitmq_connection.go` — after successful reconnect, call `r.reRegisterConsumers()` to re-bind all registered queues and restart consumer goroutines
+- [x] T007 [US1] Update reconnect loop — replace infinite `for { ... time.Sleep(5s) }` with exponential backoff (1s, 2s, 4s, 8s, max 30s), add context cancellation to break loop on shutdown in `internal/shared/infrastructure/messaging/rabbitmq_connection.go`
+- [x] T008 [US1] Update all existing workers (FashionInitWorker, FashionAnalyzeWorker, SearchSyncWorker) to register their consumers via `RegisterConsumer` instead of calling `Consume` directly — files in `internal/modules/*/presentation/worker/`
 
 ### Outbox Pattern
 
-- [ ] T009 [P] [US1] Create outbox entity: `internal/shared/infrastructure/messaging/outbox.go` — define `OutboxRecord` struct matching migration table, `OutboxRepository` interface with `Create(ctx, record)`, `ClaimPending(ctx, limit)`, `MarkPublished(ctx, id)`, `MarkFailed(ctx, id, err)`
-- [ ] T010 [US1] Implement outbox repository: `internal/shared/infrastructure/messaging/outbox_repo_impl.go` — GORM implementation using shared db connection, `ClaimPending` uses `SELECT ... FOR UPDATE SKIP LOCKED`
-- [ ] T011 [P] [US1] Refactor `RabbitMQClient.Publish()` in `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` — inject `OutboxRepository` vào `RabbitMQClient` (qua constructor). `Publish(ctx, topic, payload)` gọi `outboxRepo.Create(ctx, record)` — nếu `ctx` có transaction (từ `db.GetTx(ctx)`), ghi trong transaction đó; nếu không, tạo transaction riêng. Outbox worker publishes to RMQ asynchronously. Remove ALL direct `ch.PublishWithContext` code paths. This guarantees at-least-once delivery per constitution Principle III.
-- [ ] T012 [P] [US1] Create outbox worker: `internal/shared/presentation/worker/outbox_worker.go` — periodic worker (ticker 1s), calls `ClaimPending` → publish to RMQ → `MarkPublished` on success
-- [ ] T013 [US1] Register outbox worker in `internal/bootstrap/app.go` — add `OutboxWorker` to `AppWorkers` struct, start in `Run()`, stop in shutdown sequence
-- [ ] T014 [US1] Verify: scan `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` — confirm `Publish()` chỉ ghi outbox, không còn `ch.PublishWithContext`. Confirm `OutboxRepository` được inject vào `RabbitMQClient`.
+- [x] T009 [P] [US1] Create outbox entity: `internal/shared/infrastructure/messaging/outbox.go` — define `OutboxRecord` struct matching migration table, `OutboxRepository` interface with `Create(ctx, record)`, `ClaimPending(ctx, limit)`, `MarkPublished(ctx, id)`, `MarkFailed(ctx, id, err)`
+- [x] T010 [US1] Implement outbox repository: `internal/shared/infrastructure/messaging/outbox_repo_impl.go` — GORM implementation using shared db connection, `ClaimPending` uses `SELECT ... FOR UPDATE SKIP LOCKED`
+- [x] T011 [P] [US1] Refactor `RabbitMQClient.Publish()` in `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` — inject `OutboxRepository` vào `RabbitMQClient` (qua constructor). `Publish(ctx, topic, payload)` gọi `outboxRepo.Create(ctx, record)` — nếu `ctx` có transaction (từ `db.GetTx(ctx)`), ghi trong transaction đó; nếu không, tạo transaction riêng. Outbox worker publishes to RMQ asynchronously. Remove ALL direct `ch.PublishWithContext` code paths. This guarantees at-least-once delivery per constitution Principle III.
+- [x] T012 [P] [US1] Create outbox worker: `internal/shared/presentation/worker/outbox_worker.go` — periodic worker (ticker 1s), calls `ClaimPending` → publish to RMQ → `MarkPublished` on success
+- [x] T013 [US1] Register outbox worker in `internal/bootstrap/app.go` — add `OutboxWorker` to `AppWorkers` struct, start in `Run()`, stop in shutdown sequence
+- [x] T014 [US1] Verify: scan `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` — confirm `Publish()` chỉ ghi outbox, không còn `ch.PublishWithContext`. Confirm `OutboxRepository` được inject vào `RabbitMQClient`.
 
 **Checkpoint**: Outbox infrastructure hoàn chỉnh — mọi publish viết outbox record, outbox worker publish lên RMQ. Tuy nhiên caller chưa được restructure để publish trong UoW — xử lý ở Phase 3.
 
@@ -54,11 +54,11 @@
 
 **Independent Test**: Scan codebase — không còn publish call nào dùng `ctx` ngoài UoW. Mọi `Publish(txCtx, ...)` đều ở trong `uow.Execute`.
 
-- [ ] T015 [P] [US1] Restructure **wardrobe** module: `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go` (5 call sites: Clone, Update, UpdatePriority, DeleteBulk, DeleteLocked) + `internal/modules/wardrobe/application/usecase/wardrobe/catalog/catalog_uc.go` (2 call sites: UpdateFashionItem, DeleteFashionItem) — wrap DB writes + publish trong `uow.Execute(txCtx)`, gọi `Publish(txCtx, ...)`. `BatchUploadWardrobeItems` đã trong UoW, verify không break.
-- [ ] T016 [P] [US1] Restructure **fashion** module: `internal/modules/fashion/application/usecase/worker/worker_uc.go` (3 call sites ngoài UoW + 1 goroutine `time.AfterFunc`) + `internal/modules/fashion/application/usecase/worker/init_uc.go` (1 call site) — wrap trong `uow.Execute(txCtx)`. Goroutine pattern: xoá `time.AfterFunc` delay, ghi outbox record ngay (outbox worker handle async publish). Đảm bảo goroutine không còn direct publish.
-- [ ] T017 [US1] Restructure **subscription** module: `internal/modules/subscription/application/usecase/purchase/subscription_purchase_uc.go` (1 call site) — move `Publish(ctx, ...)` từ sau `uow.Execute` vào **bên trong** callback, dùng `Publish(txCtx, ...)`. Đảm bảo outbox record atomic với purchase transaction.
-- [ ] T018 [US1] Verify `internal/modules/brand/application/usecase/item/usecase.go` — Publish đã trong UoW (line 323), confirm không break.
-- [ ] T019 [US1] **Final verify**: scan toàn bộ `internal/modules/*/application/usecase/` — confirm mọi `eventPublisher.Publish(` đều dùng `txCtx` (từ UoW) hoặc `ctx` từ `db.InjectTx()`. Confirm không còn direct `amqp.Channel.PublishWithContext`. Confirm goroutine pattern đã fix.
+- [x] T015 [P] [US1] Restructure **wardrobe** module: `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go` (5 call sites: Clone, Update, UpdatePriority, DeleteBulk, DeleteLocked) + `internal/modules/wardrobe/application/usecase/wardrobe/catalog/catalog_uc.go` (2 call sites: UpdateFashionItem, DeleteFashionItem) — wrap DB writes + publish trong `uow.Execute(txCtx)`, gọi `Publish(txCtx, ...)`. `BatchUploadWardrobeItems` đã trong UoW, verify không break.
+- [x] T016 [P] [US1] Restructure **fashion** module: `internal/modules/fashion/application/usecase/worker/worker_uc.go` (3 call sites ngoài UoW + 1 goroutine `time.AfterFunc`) + `internal/modules/fashion/application/usecase/worker/init_uc.go` (1 call site) — wrap trong `uow.Execute(txCtx)`. Goroutine pattern: xoá `time.AfterFunc` delay, ghi outbox record ngay (outbox worker handle async publish). Đảm bảo goroutine không còn direct publish.
+- [x] T017 [US1] Restructure **subscription** module: `internal/modules/subscription/application/usecase/purchase/subscription_purchase_uc.go` (1 call site) — move `Publish(ctx, ...)` từ sau `uow.Execute` vào **bên trong** callback, dùng `Publish(txCtx, ...)`. Đảm bảo outbox record atomic với purchase transaction.
+- [x] T018 [US1] Verify `internal/modules/brand/application/usecase/item/usecase.go` — Publish đã trong UoW (line 323), confirm không break.
+- [x] T019 [US1] **Final verify**: scan toàn bộ `internal/modules/*/application/usecase/` — confirm mọi `eventPublisher.Publish(` đều dùng `txCtx` (từ UoW) hoặc `ctx` từ `db.InjectTx()`. Confirm không còn direct `amqp.Channel.PublishWithContext`. Confirm goroutine pattern đã fix.
 
 **Checkpoint**: US1 hoàn chỉnh — HTTP transport fixed, RMQ reconnect + consumer re-registration works, outbox + caller compliance với constitution Principle III.
 

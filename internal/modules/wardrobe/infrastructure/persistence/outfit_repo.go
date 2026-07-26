@@ -27,7 +27,7 @@ func NewOutfitRepository(db *gorm.DB) repositories.IOutfitRepository {
 
 func (r *OutfitRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*entities.Outfit, error) {
 	var outfits []*entities.Outfit
-	err := r.GetDB(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&outfits).Error
+	err := r.GetQueryWithPreload(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&outfits).Error
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (r *OutfitRepository) CountByUserID(ctx context.Context, userID uuid.UUID) 
 
 func (r *OutfitRepository) GetByUserIDPaginated(ctx context.Context, userID uuid.UUID, pagination shared_dto.PaginationQuery) ([]*entities.Outfit, error) {
 	var outfits []*entities.Outfit
-	query := r.GetDB(ctx).Model(&entities.Outfit{}).Where("user_id = ?", userID)
+	query := r.GetQueryWithPreload(ctx).Model(&entities.Outfit{}).Where("user_id = ?", userID)
 	db := shared_persist.ApplyPagination(query, pagination)
 	err := db.Order("created_at DESC").Find(&outfits).Error
 	if err != nil {

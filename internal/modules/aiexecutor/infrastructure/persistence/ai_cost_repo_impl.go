@@ -204,18 +204,40 @@ func (r *AICostRepository) finishWithoutCost(ctx context.Context, id uuid.UUID, 
 }
 func (r *AICostRepository) ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error) {
 	var ids []uuid.UUID
-	err := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).Where("status IN ? AND unknown_expires_at <= ?", []aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Reserved, aiusageeventstatus.UnknownUsage}, now).Limit(limit).Pluck("request_id", &ids).Error
+	db := r.GetDB(ctx)
+	err := db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("status IN ? AND unknown_expires_at <= ? AND status NOT IN ?",
+			[]aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Reserved, aiusageeventstatus.UnknownUsage},
+			now,
+			[]aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Confirmed, aiusageeventstatus.Released, aiusageeventstatus.ExpiredUnverified}).
+		Limit(limit).Pluck("request_id", &ids).Error
 	if err != nil {
 		return 0, err
 	}
-	var n int64
-	for _, id := range ids {
-		if err = r.finishWithoutCost(ctx, id, string(aiusageeventstatus.ExpiredUnverified), "usage_unverified_expired", nil, now); err != nil {
-			return n, err
-		}
-		n++
+	if len(ids) == 0 {
+		return 0, nil
 	}
-	return n, nil
+	result := db.Model(&aiexecutor_entities.AIUsageEvent{}).
+		Where("request_id IN ?", ids).
+		Where("status NOT IN ?",
+			[]aiusageeventstatus.AIUsageEventStatus{aiusageeventstatus.Confirmed, aiusageeventstatus.Released, aiusageeventstatus.ExpiredUnverified}).
+		Updates(map[string]any{
+			"status":                  aiusageeventstatus.ExpiredUnverified,
+			"error_code":              "usage_unverified_expired",
+			"reserved_cost_micro_vnd": 0,
+			"completed_at":            now,
+			"updated_at":              now,
+		})
+	if err = result.Error; err != nil {
+		return 0, err
+	}
+	n := result.RowsAffected
+	if n > 0 {
+		err = db.Exec(`UPDATE ai_usage_period_ledgers SET reserved_cost_micro_vnd = GREATEST(reserved_cost_micro_vnd - sub.reserved, 0), updated_at = ?
+FROM (SELECT ledger_id, SUM(reserved_cost_micro_vnd) AS reserved FROM ai_usage_events WHERE request_id IN ? AND ledger_id IS NOT NULL GROUP BY ledger_id) AS sub
+WHERE ai_usage_period_ledgers.id = sub.ledger_id`, now, ids).Error
+	}
+	return n, err
 }
 
 func (r *AICostRepository) GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error) {

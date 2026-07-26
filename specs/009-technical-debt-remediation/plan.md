@@ -45,7 +45,7 @@ Remediate 4 sprints of technical debt: (1) Payment retry/auto-refund + password 
 |------|--------|
 | I. Pragmatic Modular Monolith — không cross-module preload/join entities | ✅ Sẽ kiểm tra ở Sprint 2 |
 | II. Strict Module Boundaries & DTO Contracts — module gọi nhau qua contract | ✅ Sprint 2.2 sửa 2 violations |
-| III. Async Event-Driven — RabbitMQ cho slow tasks | ✅ Sprint 3.2 outbox pattern |
+| III. Async Event-Driven — RabbitMQ cho slow tasks | ✅ Sprint 3.1 outbox infrastructure |
 | IV. Clean Architecture — handlers thin, delegate to use cases | ✅ Worker lifecycle Sprint 1.3 |
 | V. Standardized Error Handling — apperror + UoW | ✅ Refund + retry dùng UoW |
 | VI. AI Pipeline Cost Control — không liên quan | N/A |

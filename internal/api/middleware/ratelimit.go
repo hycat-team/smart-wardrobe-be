@@ -15,6 +15,7 @@ type RateLimitMiddleware struct {
 	tokensPerPeriod      int
 	replenishmentSeconds int
 	visitors             sync.Map
+	stopChan             chan struct{}
 }
 
 type visitor struct {
@@ -28,6 +29,7 @@ func NewRateLimitMiddleware(cfg *config.Config) *RateLimitMiddleware {
 		tokenLimit:           cfg.RateLimit.TokenLimit,
 		tokensPerPeriod:      cfg.RateLimit.TokensPerPeriod,
 		replenishmentSeconds: cfg.RateLimit.ReplenishmentSeconds,
+		stopChan:             make(chan struct{}),
 	}
 
 	go m.startCleanupJob(5*time.Minute, 1*time.Minute)
@@ -73,20 +75,30 @@ func (m *RateLimitMiddleware) getLimiter(key string) *rate.Limiter {
 	return vis.Limiter
 }
 
+func (m *RateLimitMiddleware) Stop() {
+	close(m.stopChan)
+}
+
 func (m *RateLimitMiddleware) startCleanupJob(expireAfter time.Duration, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 	for {
-		time.Sleep(interval)
-		m.visitors.Range(func(key, value any) bool {
-			vis := value.(*visitor)
+		select {
+		case <-m.stopChan:
+			return
+		case <-ticker.C:
+			m.visitors.Range(func(key, value any) bool {
+				vis := value.(*visitor)
 
-			vis.mu.Lock()
-			isExpired := time.Since(vis.LastSeen) > expireAfter
-			vis.mu.Unlock()
+				vis.mu.Lock()
+				isExpired := time.Since(vis.LastSeen) > expireAfter
+				vis.mu.Unlock()
 
-			if isExpired {
-				m.visitors.Delete(key)
-			}
-			return true
-		})
+				if isExpired {
+					m.visitors.Delete(key)
+				}
+				return true
+			})
+		}
 	}
 }
