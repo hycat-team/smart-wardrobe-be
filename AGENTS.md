@@ -31,3 +31,4 @@
 - **Makefile**: Always prefer Makefile targets over manual commands if equivalent targets exist.
 - **Communication language**: Use Vietnamese when communicating with the developer.
 - **Documents in `specs/`**: Write in Vietnamese per agent-workflow.md §IV.7.
+- **Relative Paths**: Always use relative paths instead of absolute paths (e.g., avoid `file:///C:/...` or absolute local paths) when referencing files, writing documentation, specs, and code links.

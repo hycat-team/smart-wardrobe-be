@@ -104,7 +104,7 @@ To ensure AI always responds with the correct JSON structure and avoids token ov
 
 ### 1. Prompt Budgeting (Trimming input data)
 
-In the outfit recommendation service ([prompt.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/prompt.go)):
+In the outfit recommendation service ([prompt.go](../../internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/prompt.go)):
 
 - When the outfit candidate pool is too large, `BuildRecommendationPromptWithLimits` will automatically calculate the character length.
 - If it exceeds the configured limit (`recommendation_prompt_max_characters`), the system trims detailed descriptions, secondary fashion tags, and gradually removes low-scoring candidates at the bottom of the list until the prompt is within a safe limit.
@@ -118,7 +118,7 @@ AI call configurations are attached with Gemini system configuration parameters:
 
 ### 3. Output Sanitization & Anti-SQL Injection/Placeholder
 
-In [json.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/json.go):
+In [json.go](../../internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/synthesis/json.go):
 
 - **Clean Markdown**: Remove wrapping tags like `json ... `.
 - **Balanced Bracket Scanning**: Use the `ExtractFirstJSONObject` function to count nested curly braces `{}`. This technique helps accurately extract the first JSON string even if the AI writes extra introductory text before or after the JSON.
@@ -132,7 +132,7 @@ In [json.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardro
 When AI has parsing errors or runs out of service quotas, the system performs a fallback:
 
 1. **Outfit Recommendation Fallback**:
-    - When calling Gemini fails, the system triggers [RunLocalHSLMatching](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/ranking/hsl.go).
+    - When calling Gemini fails, the system triggers [RunLocalHSLMatching](../../internal/modules/wardrobe/application/usecase/wardrobe/ai/recommendation/ranking/hsl.go).
     - This algorithm uses a local HSL color processing library, matching the harmony of the color wheel (Complementary, Analogous, Triadic, Monochromatic) to coordinate the most optimal outfit from the user's existing clothing list, returning results immediately with the flag `IsFallback = true`.
 2. **Chat History Summary Fallback**:
     - If compressing the conversation encounters an error, the system skips and keeps the old summary (`ContextSummary`), without blocking the user's chat flow.

@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-18
-**Feature**: [spec.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/005-refactor-category-nesting/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

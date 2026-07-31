@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-17
-**Feature**: [spec.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/004-fix-ai-routing-policy/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

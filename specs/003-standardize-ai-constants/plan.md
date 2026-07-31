@@ -1,6 +1,6 @@
 # Kế hoạch Triển khai: Chuẩn hoá các Hằng số Kỹ thuật của AI Executor
 
-**Branch**: `003-standardize-ai-constants` | **Ngày**: 2026-07-17 | **Spec**: [spec.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/003-standardize-ai-constants/spec.md)
+**Branch**: `003-standardize-ai-constants` | **Ngày**: 2026-07-17 | **Spec**: [spec.md](spec.md)
 
 **Đầu vào**: Đặc tả tính năng từ `/specs/003-standardize-ai-constants/spec.md`
 
@@ -10,7 +10,7 @@ Tính năng này tập trung vào việc tái cấu trúc các hằng số kỹ 
 1. Phân tách và đóng gói các hằng số từ `dto/cost.go` (Operation và Route) vào các package domain tương ứng (`domain/constants/aioperation` và `domain/constants/airoute`), đồng thời thay thế string thuần trong các thực thể domain bằng các kiểu dữ liệu mới này.
 2. Thiết lập cấu hình AI Model bằng thực thể `AIModelConfig` (bảng `ai_model_configs` trực tiếp từ đầu).
 3. Chuyển đổi các kiểu dữ liệu enum của `aimodel.Model` và `aiprovider.Provider` thành `string` thuần ở mọi nơi để đảm bảo tính năng cấu hình động cho Admin mà không cần sửa code.
-4. Gộp 3 tệp migration cũ (`20260704062159_init_ai_executor_module.sql`, `20260705104500_make_ai_usage_events_ids_nullable.sql`, `20260709034434_add_task_id_to_items.sql`) thành một tệp migration duy nhất tại [20260704062159_init_ai_executor_module.sql](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/database/migrations/20260704062159_init_ai_executor_module.sql).
+4. Gộp 3 tệp migration cũ (`20260704062159_init_ai_executor_module.sql`, `20260705104500_make_ai_usage_events_ids_nullable.sql`, `20260709034434_add_task_id_to_items.sql`) thành một tệp migration duy nhất tại [20260704062159_init_ai_executor_module.sql](../../database/migrations/20260704062159_init_ai_executor_module.sql).
 
 ## Bối cảnh Kỹ thuật
 

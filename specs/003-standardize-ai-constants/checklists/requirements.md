@@ -2,7 +2,7 @@
 
 **Mục đích**: Xác thực tính đầy đủ và chất lượng của tài liệu đặc tả trước khi lập kế hoạch triển khai.
 **Ngày tạo**: 2026-07-17
-**Đặc tả tương ứng**: [spec.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/003-standardize-ai-constants/spec.md)
+**Đặc tả tương ứng**: [spec.md](../spec.md)
 
 ## Chất lượng Nội dung
 

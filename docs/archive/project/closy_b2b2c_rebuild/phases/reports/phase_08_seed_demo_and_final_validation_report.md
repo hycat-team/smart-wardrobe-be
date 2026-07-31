@@ -40,14 +40,14 @@ Chúng tôi đã hoàn thành toàn bộ các yêu cầu của Phase 08 đúng t
 ## 2. Danh Sách Các File Thay Đổi (Modified Files)
 
 * **Migration**:
-  * [NEW] [20260629000000_seed_demo_b2b2c_data.sql](file:///d:/_HYCAT/smart-wardrobe-be/migrations/20260629000000_seed_demo_b2b2c_data.sql)
+  * [NEW] [20260629000000_seed_demo_b2b2c_data.sql](../../../../../../database/migrations/20260629000000_seed_demo_b2b2c_data.sql)
 * **DTO**:
-  * [MODIFY] [brand.go](file:///d:/_HYCAT/smart-wardrobe-be/internal/modules/brand/application/dto/brand.go)
+  * [MODIFY] [brand.go](../../../../../../internal/modules/brand/application/dto/brand.go)
 * **Usecase**:
-  * [MODIFY] [brand_core_uc.go](file:///d:/_HYCAT/smart-wardrobe-be/internal/modules/brand/application/interface/usecase/brand_core_uc.go) (Interface)
-  * [MODIFY] [brand_core_uc.go](file:///d:/_HYCAT/smart-wardrobe-be/internal/modules/brand/application/usecase/brand_core_uc.go) (Implementation)
+  * [MODIFY] [brand_core_uc.go](../../../../../../internal/modules/brand/application/interface/usecase/brand_core_uc.go) (Interface)
+  * [MODIFY] [brand_core_uc.go](../../../../../../internal/modules/brand/application/usecase/brand_core_uc.go) (Implementation)
 * **Presentation & Routing**:
-  * [MODIFY] [brand_handler.go](file:///d:/_HYCAT/smart-wardrobe-be/internal/modules/brand/presentation/handler/brand_handler.go)
-  * [MODIFY] [router.go](file:///d:/_HYCAT/smart-wardrobe-be/internal/api/routes/brand/router.go)
+  * [MODIFY] [brand_handler.go](../../../../../../internal/modules/brand/presentation/handler/brand_handler.go)
+  * [MODIFY] [router.go](../../../../../../internal/api/routes/brand/router.go)
 * **API Documentation**:
-  * [NEW] [demo_validation_script.md](file:///d:/_HYCAT/smart-wardrobe-be/docs/project/closy_b2b2c_rebuild/demo_validation_script.md)
+  * [NEW] [demo_validation_script.md](../../demo_validation_script.md)

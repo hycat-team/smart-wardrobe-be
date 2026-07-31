@@ -18,7 +18,7 @@
 
 **Purpose**: Sắp xếp lại tệp cấu hình môi trường.
 
-- [x] T001 Sắp xếp các biến cấu hình `FREE_TEXT_PRIMARY_...` xuống dưới cùng trong [.env.example](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/.env.example) và [.env.production.example](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/.env.production.example)
+- [x] T001 Sắp xếp các biến cấu hình `FREE_TEXT_PRIMARY_...` xuống dưới cùng trong [.env.example](../../.env.example) và [.env.production.example](../../.env.production.example)
 
 ---
 
@@ -38,8 +38,8 @@
 
 ### Implementation for User Story 1
 
-- [x] T003 [P] [US1] Cập nhật hàm `resolveProviderModel` trong [plan.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator/plan.go) nhận thêm tham số `route airoute.AIRoute` và trả về `cfg.AI.FreeTextPrimary` khi route là `free` hoặc `local`.
-- [x] T004 [US1] Cập nhật các hàm `GenerateChatText`, `GenerateRecommendationText`, `GenerateChatTextStream` trong [orchestrator.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go) để cập nhật lại `plan.Provider` và `plan.Model` sang mô hình Free khi nhận `decision.Route == airoute.Free`.
+- [x] T003 [P] [US1] Cập nhật hàm `resolveProviderModel` trong [plan.go](../../internal/modules/aiexecutor/application/usecase/orchestrator/plan.go) nhận thêm tham số `route airoute.AIRoute` và trả về `cfg.AI.FreeTextPrimary` khi route là `free` hoặc `local`.
+- [x] T004 [US1] Cập nhật các hàm `GenerateChatText`, `GenerateRecommendationText`, `GenerateChatTextStream` trong [orchestrator.go](../../internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go) để cập nhật lại `plan.Provider` và `plan.Model` sang mô hình Free khi nhận `decision.Route == airoute.Free`.
 
 **Checkpoint**: Định tuyến Free hoạt động độc lập và chính xác, tự động hạ cấp chất lượng model tương ứng.
 
@@ -53,7 +53,7 @@
 
 ### Implementation for User Story 2
 
-- [x] T005 [US2] Cập nhật logic trong [orchestrator.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go) để kiểm tra `decision.Route == airoute.Local`, trả về lỗi `errors.New("ai route resolved to local fallback: bypassing remote api call")` mà không thực hiện gọi API LLM.
+- [x] T005 [US2] Cập nhật logic trong [orchestrator.go](../../internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go) để kiểm tra `decision.Route == airoute.Local`, trả về lỗi `errors.New("ai route resolved to local fallback: bypassing remote api call")` mà không thực hiện gọi API LLM.
 
 **Checkpoint**: Khi gặp lỗi hoặc cạn kiệt tài khoản, hệ thống chuyển giao thành công cho thuật toán cục bộ xử lý.
 
@@ -66,7 +66,7 @@
 - [x] T006 Chạy lệnh `make generate` để cập nhật lại dependency injection của Google Wire.
 - [x] T007 Thực hiện biên dịch dự án (`go build ./...`) để đảm bảo không lỗi cú pháp.
 - [x] T008 Chạy unit tests (`go test ./...`) để kiểm tra logic định tuyến AI Executor.
-- [x] T009 Xác thực kịch bản bằng tay theo [quickstart.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/004-fix-ai-routing-policy/quickstart.md).
+- [x] T009 Xác thực kịch bản bằng tay theo [quickstart.md](quickstart.md).
 
 ---
 

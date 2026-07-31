@@ -19,25 +19,25 @@ Kế hoạch được chia thành **6 Phase** với các bước cực kỳ nh�
 
 ### Bước 1.1: Refactor DTO của Module `fashion`
 - **Chi tiết:**
-  1. Di chuyển các struct `FashionItemRes`, `CategoryRes`, `FashionAnalyzeJobDTO`, `CreateCategoryInput`, `UpdateCategoryInput` từ [service.go](file:///internal/modules/fashion/contract/service.go) sang file mới `internal/modules/fashion/application/dto/contract_dtos.go`.
-  2. Cập nhật import trong [service.go](file:///internal/modules/fashion/contract/service.go) để tham chiếu đến package `fashion/application/dto` (ví dụ: `dto.FashionItemRes`).
+  1. Di chuyển các struct `FashionItemRes`, `CategoryRes`, `FashionAnalyzeJobDTO`, `CreateCategoryInput`, `UpdateCategoryInput` từ [service.go](../../../../internal/modules/fashion/contract/service.go) sang file mới `internal/modules/fashion/application/dto/contract_dtos.go`.
+  2. Cập nhật import trong [service.go](../../../../internal/modules/fashion/contract/service.go) để tham chiếu đến package `fashion/application/dto` (ví dụ: `dto.FashionItemRes`).
   3. Cập nhật import ở các module khác đang gọi đến các DTO này (ví dụ `brand`, `wardrobe`) — lưu ý: đường dẫn import mới sẽ là `smart-wardrobe-be/internal/modules/fashion/application/dto`.
 
 ### Bước 1.2: Refactor DTO của Module `subscription`
 - **Chi tiết:**
-  1. Di chuyển `UserSubscriptionDTO` và `UserSubscriptionOverviewDTO` từ [dto.go](file:///internal/modules/subscription/contract/dto.go) sang file mới `internal/modules/subscription/application/dto/quota_dtos.go`.
-  2. Xóa bỏ hoàn toàn file [dto.go](file:///internal/modules/subscription/contract/dto.go).
-  3. Cập nhật import trong [service.go](file:///internal/modules/subscription/contract/service.go) và các usecase/controller đang tham chiếu.
+  1. Di chuyển `UserSubscriptionDTO` và `UserSubscriptionOverviewDTO` từ [dto.go](../../../../internal/modules/subscription/contract/dto.go) sang file mới `internal/modules/subscription/application/dto/quota_dtos.go`.
+  2. Xóa bỏ hoàn toàn file [dto.go](../../../../internal/modules/subscription/contract/dto.go).
+  3. Cập nhật import trong [service.go](../../../../internal/modules/subscription/contract/service.go) và các usecase/controller đang tham chiếu.
 
 ### Bước 1.3: Refactor DTO/Options của Module `aiexecutor`
 - **Chi tiết:**
-  1. Di chuyển struct `OrchestratorOptions` từ [orchestrator.go](file:///internal/modules/aiexecutor/contract/orchestrator.go#L9) sang file mới `internal/modules/aiexecutor/application/dto/options.go`.
+  1. Di chuyển struct `OrchestratorOptions` từ [orchestrator.go](../../../../internal/modules/aiexecutor/contract/orchestrator.go#L9) sang file mới `internal/modules/aiexecutor/application/dto/options.go`.
   2. Cập nhật import trong `aiexecutor/contract/orchestrator.go` và các nơi sử dụng.
 
 ### Bước 1.4: Dọn dẹp Code dư thừa (Dead Code) tại Module `identity`
 - **Chi tiết:**
-  1. Xác minh file [dto.go](file:///internal/modules/identity/contract/dto.go) không được import ở đâu khác.
-  2. Xóa bỏ hoàn toàn file [dto.go](file:///internal/modules/identity/contract/dto.go).
+  1. Xác minh file [dto.go](../../../../internal/modules/identity/contract/dto.go) không được import ở đâu khác.
+  2. Xóa bỏ hoàn toàn file [dto.go](../../../../internal/modules/identity/contract/dto.go).
 
 ---
 
@@ -46,19 +46,19 @@ Kế hoạch được chia thành **6 Phase** với các bước cực kỳ nh�
 
 ### Bước 2.1: Loại bỏ `fashionContract` trong `WardrobeChatUseCase`
 - **Chi tiết:**
-  1. Sửa file [usecase.go](file:///internal/modules/fashion/application/usecase/ai/chat/usecase.go#L26) để loại bỏ dependency `fashionContract fashion_contract.IFashionContract`. Thay vào đó, inject `fashionItemRepo repositories.IFashionItemRepository`.
+  1. Sửa file [usecase.go](../../../../internal/modules/fashion/application/usecase/ai/chat/usecase.go#L26) để loại bỏ dependency `fashionContract fashion_contract.IFashionContract`. Thay vào đó, inject `fashionItemRepo repositories.IFashionItemRepository`.
   2. Cập nhật constructor `NewWardrobeChatUseCase`.
-  3. Trong [workflows.go](file:///internal/modules/fashion/application/usecase/ai/chat/workflows.go#L270), thay thế `uc.fashionContract.GetFashionItem` bằng truy vấn trực tiếp qua `uc.fashionItemRepo.GetByID`.
+  3. Trong [workflows.go](../../../../internal/modules/fashion/application/usecase/ai/chat/workflows.go#L270), thay thế `uc.fashionContract.GetFashionItem` bằng truy vấn trực tiếp qua `uc.fashionItemRepo.GetByID`.
 
 ### Bước 2.2: Loại bỏ `fashionContract` trong `OutfitRecommendationUseCase`
 - **Chi tiết:**
-  1. Sửa file [usecase.go](file:///internal/modules/fashion/application/usecase/ai/recommendation/usecase.go#L26) loại bỏ dependency `fashionContract`. Thay vào đó, inject `fashionItemRepo repositories.IFashionItemRepository`.
+  1. Sửa file [usecase.go](../../../../internal/modules/fashion/application/usecase/ai/recommendation/usecase.go#L26) loại bỏ dependency `fashionContract`. Thay vào đó, inject `fashionItemRepo repositories.IFashionItemRepository`.
   2. Cập nhật constructor `NewOutfitRecommendationUseCase`.
-  3. Trong [candidate_helpers.go](file:///internal/modules/fashion/application/usecase/ai/recommendation/candidate_helpers.go#L205), thay thế `uc.fashionContract.ListFashionItems` bằng truy vấn qua `uc.fashionItemRepo.GetByIDs`.
+  3. Trong [candidate_helpers.go](../../../../internal/modules/fashion/application/usecase/ai/recommendation/candidate_helpers.go#L205), thay thế `uc.fashionContract.ListFashionItems` bằng truy vấn qua `uc.fashionItemRepo.GetByIDs`.
 
 ### Bước 2.3: Loại bỏ `quotaContract` trong `SubscriptionUseCase`
 - **Chi tiết:**
-  1. Trong [subscription_uc.go](file:///internal/modules/subscription/application/usecase/subscription/subscription_uc.go#L37), đổi trường `quotaContract contract.IUserQuotaContract` thành `quotaUseCase uc_interfaces.IUserQuotaUseCase`.
+  1. Trong [subscription_uc.go](../../../../internal/modules/subscription/application/usecase/subscription/subscription_uc.go#L37), đổi trường `quotaContract contract.IUserQuotaContract` thành `quotaUseCase uc_interfaces.IUserQuotaUseCase`.
   2. Cập nhật constructor `NewSubscriptionUseCase` để nhận và gán `quotaUseCase`.
   3. Cập nhật dòng code `uc.quotaContract.GetAndResetDailyQuota` thành `uc.quotaUseCase.GetAndResetDailyQuota`. **Lưu ý về kiểu trả về:**
      - Hiện tại method `GetDailyQuota` trong `ISubscriptionUseCase` trả về `*contract.UserSubscriptionDTO`.
@@ -202,7 +202,7 @@ Kế hoạch được chia thành **6 Phase** với các bước cực kỳ nh�
 
 ### Bước 4.3: Refactor các repository chéo module trong `fashion`
 - **Chi tiết:**
-  1. Sửa file [interfaces.go](file:///internal/modules/fashion/domain/repositories/interfaces.go) để loại bỏ việc import repositories của `brand` và `wardrobe`.
+  1. Sửa file [interfaces.go](../../../../internal/modules/fashion/domain/repositories/interfaces.go) để loại bỏ việc import repositories của `brand` và `wardrobe`.
   2. Thay thế các logic cần thực thi chéo bằng cách lấy dữ liệu qua contract ở tầng Usecase và truyền tham số dạng Slice/Map xuống tầng dưới.
   3. Việc này phụ thuộc vào DTO từ `wardrobe/application/dto/` và `brand/application/dto/` đã được định nghĩa đầy đủ — xem **[Phase 6](20260704_refactor_plan_phase6_dto_migration.md)**.
 

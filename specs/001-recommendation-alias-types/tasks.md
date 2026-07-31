@@ -18,8 +18,8 @@
 
 **Mục đích**: Chuẩn bị cấu trúc file chia tách trong package `types`.
 
-- [x] T001 Xóa file cũ tại [types.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types/types.go) và tạo file mới [aliases.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types/aliases.go) chứa các định nghĩa kiểu alias `CandidateSource` và `RetrievalTermSource` cùng các hằng số liên quan.
-- [x] T002 Tạo file mới [structs.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go) chứa các định nghĩa struct và interface đã có, chuyển đổi các trường kiểu `string` sang `CandidateSource` và `RetrievalTermSource`.
+- [x] T001 Xóa file cũ tại [types.go](../../internal/modules/fashion/application/usecase/ai/recommendation/types/types.go) và tạo file mới [aliases.go](../../internal/modules/fashion/application/usecase/ai/recommendation/types/aliases.go) chứa các định nghĩa kiểu alias `CandidateSource` và `RetrievalTermSource` cùng các hằng số liên quan.
+- [x] T002 Tạo file mới [structs.go](../../internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go) chứa các định nghĩa struct và interface đã có, chuyển đổi các trường kiểu `string` sang `CandidateSource` và `RetrievalTermSource`.
 
 ---
 
@@ -31,10 +31,10 @@
 
 ### Triển khai cho Kịch bản 1
 
-- [x] T003 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [pool_expansion.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking/pool_expansion.go).
-- [x] T004 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [candidate_helpers.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/candidate_helpers.go).
-- [x] T005 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [workflow.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/workflow.go).
-- [x] T006 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [parser.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser/parser.go).
+- [x] T003 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [pool_expansion.go](../../internal/modules/fashion/application/usecase/ai/recommendation/ranking/pool_expansion.go).
+- [x] T004 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [candidate_helpers.go](../../internal/modules/fashion/application/usecase/ai/recommendation/candidate_helpers.go).
+- [x] T005 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [workflow.go](../../internal/modules/fashion/application/usecase/ai/recommendation/workflow.go).
+- [x] T006 [P] [US1] Cập nhật tham chiếu kiểu dữ liệu và hằng số mới trong [parser.go](../../internal/modules/fashion/application/usecase/ai/recommendation/parser/parser.go).
 
 **Điểm kiểm soát**: Kết thúc phần này, kịch bản 1 hoàn tất, hệ thống sử dụng alias an toàn.
 
@@ -48,7 +48,7 @@
 
 ### Triển khai cho Kịch bản 2
 
-- [x] T007 [US2] Chỉnh sửa [scoring.go](file:///C:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking/scoring.go) để xóa bỏ các hằng số trùng lặp và sử dụng trực tiếp các hằng số từ package `types`.
+- [x] T007 [US2] Chỉnh sửa [scoring.go](../../internal/modules/fashion/application/usecase/ai/recommendation/ranking/scoring.go) để xóa bỏ các hằng số trùng lặp và sử dụng trực tiếp các hằng số từ package `types`.
 
 **Điểm kiểm soát**: Hoàn thành việc tối ưu DRY cho các hằng số.
 

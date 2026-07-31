@@ -3,7 +3,7 @@
 ## Các Thực thể Thay đổi (Entity Modifications)
 
 ### 1. Thực thể `AIModelConfig`
-Nằm tại [model_config.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/domain/entities/model_config.go) (Đổi tên từ `pricing.go`)
+Nằm tại [model_config.go](../../internal/modules/aiexecutor/domain/entities/model_config.go) (Đổi tên từ `pricing.go`)
 
 ```go
 type AIModelConfig struct {
@@ -22,7 +22,7 @@ type AIModelConfig struct {
 ```
 
 ### 2. Thực thể `AICostPolicyOperation`
-Nằm tại [policy.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/domain/entities/policy.go)
+Nằm tại [policy.go](../../internal/modules/aiexecutor/domain/entities/policy.go)
 
 ```go
 type AICostPolicyOperation struct {
@@ -43,7 +43,7 @@ type AICostPolicyOperation struct {
 ```
 
 ### 3. Thực thể `AIUsageEvent`
-Nằm tại [usage.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/domain/entities/usage.go)
+Nằm tại [usage.go](../../internal/modules/aiexecutor/domain/entities/usage.go)
 
 ```go
 type AIUsageEvent struct {
@@ -80,7 +80,7 @@ type AIUsageEvent struct {
 ## Các DTO Thay đổi (DTO Modifications)
 
 ### 1. DTO `ExecutionPlan`
-Nằm tại [cost.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/dto/cost.go)
+Nằm tại [cost.go](../../internal/modules/aiexecutor/application/dto/cost.go)
 
 ```go
 type ExecutionPlan struct {
@@ -97,7 +97,7 @@ type ExecutionPlan struct {
 ```
 
 ### 2. DTO `AICostDecision`
-Nằm tại [cost.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/dto/cost.go)
+Nằm tại [cost.go](../../internal/modules/aiexecutor/application/dto/cost.go)
 
 ```go
 type AICostDecision struct {
@@ -110,7 +110,7 @@ type AICostDecision struct {
 ```
 
 ### 3. DTO `AIModelConfigDTO` (Đổi tên từ `PricingConfigDTO`)
-Nằm tại [model_config.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/dto/model_config.go) (Đổi tên từ `pricing.go`)
+Nằm tại [model_config.go](../../internal/modules/aiexecutor/application/dto/model_config.go) (Đổi tên từ `pricing.go`)
 
 ```go
 type AIModelConfigDTO struct {
@@ -124,7 +124,7 @@ type AIModelConfigDTO struct {
 ```
 
 ## Cấu trúc Migration Hợp nhất (Consolidated Migration)
-Lưu tại [20260704062159_init_ai_executor_module.sql](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/database/migrations/20260704062159_init_ai_executor_module.sql)
+Lưu tại [20260704062159_init_ai_executor_module.sql](../../database/migrations/20260704062159_init_ai_executor_module.sql)
 
 ```sql
 -- +goose Up

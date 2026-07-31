@@ -1,6 +1,6 @@
 # Implementation Plan: Giải quyết nợ kỹ thuật định tuyến AI Routing Policy
 
-**Branch**: `004-fix-ai-routing-policy` | **Date**: 2026-07-17 | **Spec**: [spec.md](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/specs/004-fix-ai-routing-policy/spec.md)
+**Branch**: `004-fix-ai-routing-policy` | **Date**: 2026-07-17 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/004-fix-ai-routing-policy/spec.md`
 
@@ -75,17 +75,17 @@ internal/modules/aiexecutor/
 
 ### [Component Name]
 
-#### [MODIFY] [plan.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator/plan.go)
+#### [MODIFY] [plan.go](../../internal/modules/aiexecutor/application/usecase/orchestrator/plan.go)
 - Điều chỉnh hàm `resolveProviderModel` để nhận thêm tham số `route airoute.AIRoute`.
 - Trả về `cfg.AI.FreeTextPrimary` khi `route == airoute.Free || route == airoute.Local`.
 
-#### [MODIFY] [orchestrator.go](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go)
+#### [MODIFY] [orchestrator.go](../../internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go)
 - Cập nhật logic các hàm `GenerateChatText`, `GenerateRecommendationText`, `GenerateChatTextStream`.
 - Sau khi gọi `costUC.Prepare(ctx, plan)`, kiểm tra `decision.Route`:
   - Nếu là `airoute.Local`: Trực tiếp trả về lỗi `errors.New("ai route resolved to local fallback: bypassing remote api call")` mà không thực hiện gọi API LLM.
   - Nếu là `airoute.Free`: Cập nhật lại `plan.Provider` và `plan.Model` sang mô hình Free trước khi gọi API LLM.
 
-#### [MODIFY] [.env.example](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/.env.example) và [.env.production.example](file:///c:/0LamViec/0FPTU/7-semester-7/exe101/projects/smart-wardrobe-be/.env.production.example)
+#### [MODIFY] [.env.example](../../.env.example) và [.env.production.example](../../.env.production.example)
 - Đảm bảo các cấu hình `FREE_TEXT_PRIMARY_...` nằm ở dưới cùng của phần AI. (Đã thực hiện ở Specify phase).
 
 ## Verification Plan
