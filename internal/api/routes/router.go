@@ -2,17 +2,17 @@ package routes
 
 import (
 	"net/http"
-	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 // NewEngine configures the Gin engine and suppresses verbose route registration logs at startup.
-func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *middleware.RateLimitMiddleware) *gin.Engine {
+func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *shared_middleware.RateLimitMiddleware) *gin.Engine {
 	if cfg.Server.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -27,9 +27,9 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		},
 	}))
 
-	engine.Use(middleware.GlobalErrorHandler(log, cfg.Server.Env))
-	engine.Use(middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
-	engine.Use(middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
+	engine.Use(shared_middleware.GlobalErrorHandler(log, cfg.Server.Env))
+	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
+	engine.Use(shared_middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
 
 	engine.NoRoute(func(c *gin.Context) {
@@ -45,7 +45,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		))
 	})
 
-	swaggerLock := middleware.SwaggerLockMiddleware(cfg)
+	swaggerLock := shared_middleware.SwaggerLockMiddleware(cfg)
 	swaggerGroup := engine.Group("")
 	swaggerGroup.Use(swaggerLock)
 	{
@@ -65,17 +65,12 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 			})
 		})
 
-		r.AuthRouter.Init(api)
-		r.AdminRouter.Init(api)
-		r.MeRouter.Init(api)
+		r.IdentityRouter.Init(api)
 		r.SubscriptionRouter.Init(api)
 		r.WardrobeRouter.Init(api)
-		r.OutfitRouter.Init(api)
-		r.CategoryRouter.Init(api)
+		r.DashboardRouter.Init(api)
 		r.BrandRouter.Init(api)
 		r.FashionRouter.Init(api)
-		r.DashboardRouter.Init(api)
-		// Phase 02 B2B2C rebuild: community/resale routes are archived out of the MVP runtime.
 	}
 
 	return engine

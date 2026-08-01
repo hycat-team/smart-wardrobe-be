@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/handler"
+	"smart-wardrobe-be/internal/modules/subscription/presentation/router"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 
 	"github.com/google/wire"
@@ -14,6 +15,7 @@ var ProviderSet = wire.NewSet(
 	infrastructure.ProviderSet,
 	handler.NewSubscriptionHandler,
 	handler.NewBillingHandler,
+	router.NewRouter,
 	worker.NewSubscriptionRenewalWorker,
 	worker.NewPaymentReconciliationWorker,
 	worker.NewWebhookInboxWorker,

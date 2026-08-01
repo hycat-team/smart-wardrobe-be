@@ -121,7 +121,6 @@ Giữ 1 lần sinh master spec; script tách (split) `paths` theo mapping tag→
 - **Import cycle**: Sau khi tách, `shared/presentation/middleware` và `identity/presentation/contract` phải không tạo import cycle — Go sẽ fail build nếu có, nhưng cần verify rõ.
 - **Swagger tag đổi tên**: Frontend/consumer đang dựa vào tag cũ trong docs sẽ thấy tag thay đổi — cần thông báo; đây chỉ là tài liệu không phải API contract.
 - **Script split khi mapping tag sai**: Nếu một endpoint có tag không khớp mapping, endpoint đó phải xuất hiện trong spec full nhưng có thể lọt khỏi mọi spec module — cần kiểm tra tổng số paths không giảm.
-- **Route-registry test cần snapshot baseline**: Automated test (FR-017) cần baseline tập route chụp TRƯỚC khi refactor (Đợt 0), để so sánh sau khi Đợt 0 và Đợt 1 hoàn tất — tránh dùng baseline sai (chụp sau refactor sẽ vô nghĩa).
 
 ## Requirements
 
@@ -143,7 +142,6 @@ Giữ 1 lần sinh master spec; script tách (split) `paths` theo mapping tag→
 - **FR-014**: Swagger UI MUST có dropdown (cạnh version selector) cho phép chọn spec full hoặc spec từng module.
 - **FR-015**: Cơ chế `make swagger` và `make generate-check` (CI diff) MUST bao phủ cả master spec và spec per-module.
 - **FR-016**: Không tách database schema theo module trong feature này (chỉ code-level module ownership) — giữ nguyên DB dùng chung.
-- **FR-017**: Hệ thống MUST có automated route-registry test (snapshot tập route `/api/v1/*`: path + method) để kiểm chứng toàn bộ route giữ nguyên sau Đợt 0 và Đợt 1; test chạy trong `make test`.
 
 ### Key Entities
 
@@ -157,7 +155,7 @@ Giữ 1 lần sinh master spec; script tách (split) `paths` theo mapping tag→
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% endpoint hiện tại (130 paths) giữ nguyên path, method, middleware và response sau Đợt 0 và Đợt 1 — không có breaking change với client, được xác nhận bằng automated route-registry test (FR-017) và `make test` pass.
+- **SC-001**: 100% endpoint hiện tại (130 paths) giữ nguyên path, method, middleware và response sau Đợt 0 và Đợt 1 — không có breaking change với client.
 - **SC-002**: 100% router module không import handler/implementation của module khác (chỉ import `identity_contract.IAuthMiddleware` dùng chung) sau Đợt 1.
 - **SC-003**: `internal/api/middleware` và 10 folder `internal/api/routes/<nhóm>` bị xóa hoàn toàn, `internal/api/routes/` chỉ còn 2 file.
 - **SC-004**: Dự án biên dịch sạch và vượt qua toàn bộ `make check` (fmt, tidy, generate-check, vet, test, build) sau mỗi đợt.
@@ -180,3 +178,4 @@ Giữ 1 lần sinh master spec; script tách (split) `paths` theo mapping tag→
 
 - Q: Mức độ gom tag swagger theo module (Đợt 2) → A: Option B — giữ các tag nhóm hiện có trong từng module, chỉ đảm bảo mỗi tag thuộc đúng một module; dùng mapping tag→module cho script split (không gom về 1 tag/module).
 - Q: Cơ chế kiểm chứng "không breaking change" sau refactor → A: Option A — thêm automated route-registry test (snapshot so sánh tập route `/api/v1/*` trước/sau refactor), chạy trong `make test`.
+- Q: Có giữ route-registry test sau feature không? → A: Xóa hoàn toàn — giá trị chính (bảo vệ refactor) đã hoàn thành; route được khai báo tĩnh trong code nên rủi ro mất route thấp; swagger.json + `generate-check` là route inventory đủ. (Xóa `routes_test.go`, golden `testdata/routes_baseline.txt`, và các Makefile target liên quan.)

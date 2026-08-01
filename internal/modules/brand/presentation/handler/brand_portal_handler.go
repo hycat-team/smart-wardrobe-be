@@ -59,7 +59,7 @@ func (h *BrandPortalHandler) CreateBrandRequest(c *gin.Context) error {
 
 // CreateBrandAdmin creates an active brand directly.
 // @Summary Tạo brand active trực tiếp (Admin)
-// @Tags Admin
+// @Tags Admin Brand
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateBrandReq true "Thông tin brand"
@@ -84,7 +84,7 @@ func (h *BrandPortalHandler) CreateBrandAdmin(c *gin.Context) error {
 
 // UpdateBrandStatusAdmin updates brand status.
 // @Summary Cập nhật trạng thái brand (Admin)
-// @Tags Admin
+// @Tags Admin Brand
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
@@ -115,7 +115,7 @@ func (h *BrandPortalHandler) UpdateBrandStatusAdmin(c *gin.Context) error {
 // GetBrandsAdmin lấy danh sách brand cho Admin
 // @Summary Lấy danh sách brand (Admin)
 // @Description Cho phép admin lấy danh sách brand phân trang, tìm kiếm theo tên/slug và lọc theo trạng thái của brand.
-// @Tags Admin
+// @Tags Admin Brand
 // @Accept json
 // @Produce json
 // @Param query query dto.GetBrandsAdminQueryReq false "Bộ lọc danh sách brand"

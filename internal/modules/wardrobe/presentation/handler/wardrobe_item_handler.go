@@ -347,7 +347,7 @@ func (h *WardrobeItemHandler) RetryWardrobeAnalysis(c *gin.Context) error {
 // GetCatalogItemsAdmin gets all system catalog templates (Admin)
 // @Summary Lấy danh sách trang phục mẫu (Admin)
 // @Description Cho phép Admin lấy danh sách trang phục mẫu hệ thống để quản lý
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Produce json
 // @Param query query dto.GetSystemCatalogItemsQueryReq false "Bộ lọc danh sách trang phục mẫu"
 // @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục mẫu"
@@ -370,7 +370,7 @@ func (h *WardrobeItemHandler) GetCatalogItemsAdmin(c *gin.Context) error {
 // UpdateCatalogItemAdmin updates a system catalog item (Admin)
 // @Summary Cập nhật trang phục mẫu (Admin)
 // @Description Cho phép Admin cập nhật thông tin thuộc tính của một trang phục mẫu hệ thống
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Accept json
 // @Produce json
 // @Param id path string true "ID trang phục mẫu"
@@ -400,7 +400,7 @@ func (h *WardrobeItemHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
 // DeleteCatalogItemAdmin deletes a system catalog item (Admin)
 // @Summary Xóa trang phục mẫu (Admin)
 // @Description Cho phép Admin xóa một trang phục mẫu hệ thống
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Produce json
 // @Param id path string true "ID trang phục mẫu"
 // @Success 200 {object} shared_pres.APIResponse "Xóa thành công"

@@ -175,7 +175,7 @@ The current route layout includes both public and authenticated resource groups.
 - Keep AI endpoints under `/api/v1/ai/...`.
 - Each business module registers its own route group under `/api/v1/<name>/...`.
 
-To see the current route groups, check `internal/api/routes/` or `internal/api/routes/router.go`.
+To see the current module routers, check `internal/modules/*/presentation/router/` or the engine assembly in `internal/api/routes/router.go`.
 
 ---
 

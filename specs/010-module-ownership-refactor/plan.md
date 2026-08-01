@@ -12,7 +12,7 @@ Refactor modular monolith để mỗi module tự sở hữu surface area (endpo
 2. **Đợt 1 — Module tự định nghĩa endpoint**: Tạo `presentation/router/` cho 6 module (identity, subscription, wardrobe, dashboard, brand, fashion); phân tách các route cross-module đang trộn lẫn; `internal/api/routes/` chỉ còn NewEngine + AppRouter.
 3. **Đợt 2 — Swagger per-module**: Realign `@Tags` theo module (mỗi tag thuộc đúng 1 module), script split master spec thành `api/swagger/modules/<tên>.json`, dropdown trong Swagger UI.
 
-Không tách database schema. Không breaking change (được bảo vệ bằng automated route-registry test).
+Không tách database schema. Không breaking change (toàn bộ endpoint giữ nguyên, xác minh bằng smoke test + `make test`).
 
 ## Technical Context
 
@@ -22,7 +22,7 @@ Không tách database schema. Không breaking change (được bảo vệ bằng
 
 **Storage**: Không đổi — PostgreSQL dùng chung, không tách schema
 
-**Testing**: `go test` qua `make test`; `make check` (fmt-check, tidy-check, generate-check, vet, test, build). Thêm route-registry snapshot test.
+**Testing**: `go test` qua `make test`; `make check` (fmt-check, tidy-check, generate-check, vet, test, build).
 
 **Target Platform**: Linux server (production), Windows/Linux (dev) — Makefile đã hỗ trợ cả 2 (Windows PowerShell + Unix branches)
 
@@ -67,7 +67,7 @@ specs/010-module-ownership-refactor/
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output (không có data model — nêu rõ N/A)
 ├── quickstart.md        # Phase 1 output
-├── contracts/           # Phase 1 output (IAuthMiddleware, route-registry, tag mapping)
+├── contracts/           # Phase 1 output (IAuthMiddleware, tag mapping)
 └── tasks.md             # Phase 2 output (/speckit-tasks - chưa tạo)
 ```
 
@@ -119,7 +119,7 @@ api/
 
 Các quyết định nghiên cứu chính:
 
-1. **Route-registry test (FR-017)**: Gin `engine.Routes()` trả `[]RoutesInfo` (Method + Path). Snapshot test so sánh tập route trước/sau refactor. Baseline chụp trước khi refactor, lưu dạng golden file. Test dựng `NewEngine` với handler nil-dep (constructor chỉ gán field, không deref lúc khởi tạo) → không cần DB.
+1. **Không dùng route-registry test** (quyết định sau khi triển khai): Test snapshot route bị gỡ bỏ sau feature vì giá trị chỉ nằm trong giai đoạn refactor; route được khai báo tĩnh trong code và swagger.json + `generate-check` là route inventory đủ. (Xem spec Clarifications.)
 2. **Swagger split script**: Chọn Go script (`go run ./internal/tools/swagger-split`), đọc master `swagger.json`, mapping tag→module (YAML/JSON), lọc `paths` → 6 file. Lý do: cross-platform, tái dùng JSON struct, `generate-check` diff được.
 3. **Tag `Admin` dùng chung 3 module**: Q1 Option B yêu cầu mỗi tag thuộc đúng 1 module → tách `Admin` thành `Admin Identity` / `Admin Wardrobe` / `Admin Brand`.
 4. **Import cycle**: `shared/presentation/middleware` KHÔNG import `internal/modules/*` (xác minh qua grep); `identity/presentation/contract` chỉ import `gin`. AuthMiddleware dùng thẳng `identityerrors` + `ITokenBlacklistService` — an toàn.
@@ -135,9 +135,8 @@ Các quyết định nghiên cứu chính:
 ## Contracts
 
 - **[auth_middleware.md](specs/010-module-ownership-refactor/contracts/auth_middleware.md)** — interface `IAuthMiddleware` (Handle/OptionalHandle), nơi đặt, cách Wire bind, consumer nào dùng.
-- **[route-registry.md](specs/010-module-ownership-refactor/contracts/route-registry.md)** — giao thức route-registry test: format golden file, cách sinh baseline, cách chạy.
 - **[swagger-module-mapping.md](specs/010-module-ownership-refactor/contracts/swagger-module-mapping.md)** — mapping tag→module (sau realign), format spec per-module, cơ chế dropdown.
 
 ## Quickstart
 
-- **[quickstart.md](specs/010-module-ownership-refactor/quickstart.md)** — hướng dẫn validate từng đợt: baseline route-registry, `make generate`, `make check`, kiểm tra dropdown swagger.
+- **[quickstart.md](specs/010-module-ownership-refactor/quickstart.md)** — hướng dẫn validate từng đợt: `make generate`, `make check`, kiểm tra dropdown swagger.

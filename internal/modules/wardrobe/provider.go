@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/handler"
+	"smart-wardrobe-be/internal/modules/wardrobe/presentation/router"
 	presentation_worker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 
 	"github.com/google/wire"
@@ -36,5 +37,6 @@ var ProviderSet = wire.NewSet(
 	handler.NewWardrobeItemHandler,
 	handler.NewOutfitHandler,
 	handler.NewCategoryHandler,
+	router.NewRouter,
 	presentation_worker.NewSearchSyncWorker,
 )

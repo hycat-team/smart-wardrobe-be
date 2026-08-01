@@ -21,9 +21,9 @@ var ignoredStackFunctions = []string{
 
 var noiseCandidateFunctions = []string{
 	"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalErrorHandler",
-	"smart-wardrobe-be/internal/api/middleware.CORSMiddleware",
+	"smart-wardrobe-be/internal/shared/presentation/middleware.CORSMiddleware",
 	"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalTimeoutMiddleware",
-	"smart-wardrobe-be/internal/api/routes.NewEngine.(*RateLimitMiddleware).Handle",
+	"smart-wardrobe-be/internal/shared/presentation/middleware.(*RateLimitMiddleware).Handle",
 }
 
 type stackFrame struct {

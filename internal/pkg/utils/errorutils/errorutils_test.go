@@ -57,12 +57,12 @@ func TestFilterStackTraceArrayDropsAppErrorAndDuplicateFrames(t *testing.T) {
 		"\t/app/internal/shared/application/constants/apperror/error.go:57",
 		"smart-wardrobe-be/internal/shared/application/constants/apperror.ErrUnauthorized()",
 		"\t/app/internal/shared/application/constants/apperror/dynamic_errors.go:66 +0x18",
-		"smart-wardrobe-be/internal/api/middleware/auth.Handle.func1(0xc0000e0300)",
-		"\t/app/internal/api/middleware/auth.go:89 +0x2d7",
-		"smart-wardrobe-be/internal/api/middleware/auth.Handle.func1(0xc0000e0300)",
-		"\t/app/internal/api/middleware/auth.go:89 +0x2d7",
+		"smart-wardrobe-be/internal/modules/identity/presentation/middleware/auth.Handle.func1(0xc0000e0300)",
+		"\t/app/internal/modules/identity/presentation/middleware/auth.go:89 +0x2d7",
+		"smart-wardrobe-be/internal/modules/identity/presentation/middleware/auth.Handle.func1(0xc0000e0300)",
+		"\t/app/internal/modules/identity/presentation/middleware/auth.go:89 +0x2d7",
 		"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalErrorHandler.func3(0xc0000e0300)",
-		"\t/app/internal/api/middleware/error_handler.go:47 +0xaf",
+		"\t/app/internal/shared/presentation/middleware/error_handler.go:47 +0xaf",
 	}, "\n")
 
 	filtered := FilterStackTraceArray(stack)
@@ -127,9 +127,9 @@ func TestFilterStackTraceArrayKeepsMiddlewareFrameWhenItIsOnlySignal(t *testing.
 	stack := strings.Join([]string{
 		"goroutine 1 [running]:",
 		"smart-wardrobe-be/internal/api/routes.NewEngine.(*RateLimitMiddleware).Handle.func5(0xc0000e0300)",
-		"\t/app/internal/api/middleware/ratelimit.go:48 +0x48",
+		"\t/app/internal/shared/presentation/middleware/ratelimit.go:48 +0x48",
 		"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalErrorHandler.func3(0xc0000e0300)",
-		"\t/app/internal/api/middleware/error_handler.go:47 +0xaf",
+		"\t/app/internal/shared/presentation/middleware/error_handler.go:47 +0xaf",
 	}, "\n")
 
 	filtered := FilterStackTraceArray(stack)

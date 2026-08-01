@@ -1,48 +1,31 @@
-package brand
+package router
 
 import (
-	"smart-wardrobe-be/internal/api/middleware"
 	brand_handler "smart-wardrobe-be/internal/modules/brand/presentation/handler"
-	dashboard_handler "smart-wardrobe-be/internal/modules/dashboard/presentation/handler"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
+	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-type BrandRouter struct {
-	brandHandler          *brand_handler.BrandHandler
-	brandDashboardHandler *dashboard_handler.BrandDashboardHandler
-	authMiddleware        *middleware.AuthMiddleware
+type Router struct {
+	brandHandler *brand_handler.BrandHandler
+	auth         identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
-	h *brand_handler.BrandHandler,
-	dh *dashboard_handler.BrandDashboardHandler,
-	m *middleware.AuthMiddleware,
-) *BrandRouter {
-	return &BrandRouter{
-		brandHandler:          h,
-		brandDashboardHandler: dh,
-		authMiddleware:        m,
+	brandHandler *brand_handler.BrandHandler,
+	auth identity_contract.IAuthMiddleware,
+) *Router {
+	return &Router{
+		brandHandler: brandHandler,
+		auth:         auth,
 	}
 }
 
-func (r *BrandRouter) Init(group *gin.RouterGroup) {
-	brandDashboard := group.Group("/brand/dashboard")
-	brandDashboard.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
-	{
-		brandDashboard.GET("/kpi-cards", shared_pres.WrapHandler(r.brandDashboardHandler.GetKPICards))
-		brandDashboard.GET("/financials/points-liability", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointsLiability))
-		brandDashboard.GET("/operations/digital-sample-lab/:itemId", shared_pres.WrapHandler(r.brandDashboardHandler.GetDigitalSampleLabAnalytics))
-		brandDashboard.GET("/customers/acquisition", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerAcquisition))
-		brandDashboard.GET("/loyalty/tier-distribution", shared_pres.WrapHandler(r.brandDashboardHandler.GetLoyaltyTierDistribution))
-		brandDashboard.GET("/loyalty/point-expiry-forecast", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointExpiryForecast))
-		brandDashboard.GET("/benefits/redemption-analytics", shared_pres.WrapHandler(r.brandDashboardHandler.GetBenefitRedemptionAnalytics))
-		brandDashboard.GET("/operations/catalog-stats", shared_pres.WrapHandler(r.brandDashboardHandler.GetCatalogStats))
-		brandDashboard.GET("/customers/spend-segmentation", shared_pres.WrapHandler(r.brandDashboardHandler.GetCustomerSpendSegmentation))
-	}
-
+func (r *Router) Init(group *gin.RouterGroup) {
 	publicBrands := group.Group("/brands")
 	{
 		publicBrands.GET("", shared_pres.WrapHandler(r.brandHandler.GetActiveBrands))
@@ -52,7 +35,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	}
 
 	userBrands := group.Group("/brands")
-	userBrands.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	userBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrands.POST("/claim", shared_pres.WrapHandler(r.brandHandler.ClaimOfflineAccount))
 		userBrands.POST("/:brandId/join-loyalty", shared_pres.WrapHandler(r.brandHandler.JoinLoyalty))
@@ -63,26 +46,26 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	}
 
 	userBrandItems := group.Group("/brand-items")
-	userBrandItems.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	userBrandItems.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrandItems.POST("/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.SubmitSampleFeedback))
 	}
 
 	optAuthBrandItems := group.Group("/brand-items")
-	optAuthBrandItems.Use(r.authMiddleware.OptionalHandle())
+	optAuthBrandItems.Use(r.auth.OptionalHandle())
 	{
 		optAuthBrandItems.GET("/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForUser))
 	}
 
 	userBrandBenefits := group.Group("/brand-benefits")
-	userBrandBenefits.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	userBrandBenefits.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		userBrandBenefits.GET("/:benefitId", shared_pres.WrapHandler(r.brandHandler.GetActiveBenefitForUser))
 		userBrandBenefits.POST("/:benefitId/redeem", shared_pres.WrapHandler(r.brandHandler.RedeemBenefit))
 	}
 
 	meBrands := group.Group("/me")
-	meBrands.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	meBrands.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 	{
 		meBrands.GET("/brand-loyalties", shared_pres.WrapHandler(r.brandHandler.ListUserBrandLoyalties))
 		meBrands.GET("/brand-loyalties/:brandId", shared_pres.WrapHandler(r.brandHandler.GetUserBrandLoyalty))
@@ -92,7 +75,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	}
 
 	portal := group.Group("/brand-portal")
-	portal.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	portal.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
 	{
 		portal.GET("/me/brands", shared_pres.WrapHandler(r.brandHandler.GetMyPortalBrands))
 		portal.POST("/brands", shared_pres.WrapHandler(r.brandHandler.CreateBrandRequest))
@@ -135,7 +118,7 @@ func (r *BrandRouter) Init(group *gin.RouterGroup) {
 	}
 
 	admin := group.Group("/admin/brands")
-	admin.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.Admin))
+	admin.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
 	{
 		admin.GET("", shared_pres.WrapHandler(r.brandHandler.GetBrandsAdmin))
 		admin.POST("", shared_pres.WrapHandler(r.brandHandler.CreateBrandAdmin))

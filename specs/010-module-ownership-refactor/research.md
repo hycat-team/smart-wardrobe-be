@@ -8,31 +8,22 @@ Giải quyết toàn bộ điểm NEEDS CLARIFICATION / câu hỏi nghiên cứu
 
 ---
 
-## R1 — Route-registry test không cần DB (FR-017)
+## R1 — Route-registry test (đã triển khai rồi gỡ bỏ)
 
-### Câu hỏi
-Làm sao snapshot tập route `/api/v1/*` để so sánh trước/sau refactor mà không cần chạy DB/Redis (vì `make test` chạy local không có infra)?
+### Câu hỏi ban đầu
+Làm sao snapshot tập route `/api/v1/*` để so sánh trước/sau refactor mà không cần chạy DB/Redis?
 
-### Decision
-Dùng `engine.Routes()` của Gin — trả `gin.RoutesInfo` (Method + Path + Handler). Viết 1 test ở `internal/api/routes/` dựng engine bằng `NewEngine(cfg, appRouter, log, rateLimit)` với các router module/handler **nil-dep** (constructor của router chỉ gán field, không deref lúc khởi tạo — đã xác minh từ pattern hiện có). Test so sánh tập `(method, path)` của engine với **golden file** snapshot.
+### Quyết định ban đầu (đã thực thi trong lúc refactor)
+Dùng `engine.Routes()` của Gin — trả `gin.RoutesInfo` (Method + Path + Handler). Test `internal/api/routes/routes_test.go` dựng engine với handler **nil-dep** và so sánh tập `(method, path)` với golden file `testdata/routes_baseline.txt`. Baseline được chụp TRƯỚC khi refactor (150 routes) và xác nhận giữ nguyên 100% sau Đợt 1.
 
-### Cách hoạt động
-1. **Trước refactor (Đợt 0 bắt đầu)**: tạo file `internal/api/routes/routes_test.go` + golden `testdata/routes_baseline.txt`. Chạy 1 lần để chụp baseline (130 paths) từ code hiện tại.
-2. **Sau mỗi đợt**: `make test` chạy test so sánh baseline với `engine.Routes()` thực tế.
-3. Nếu path/method thay đổi → test fail → bắt buộc xem xét breaking change.
+### Quyết định sau triển khai: GỠ BỎ
+Sau khi feature hoàn tất, test + golden file + các Makefile target liên quan bị xóa hoàn toàn. Lý do:
+- Giá trị chính (bảo vệ refactor 150 routes) đã hoàn thành.
+- Route được khai báo tĩnh trong code — rủi ro "mất route" do vô ý rất thấp và dễ thấy trong code review.
+- Swagger.json (130 paths) + `generate-check` đã là route inventory tự động.
+- Tránh gánh nặng bảo trì: mỗi endpoint mới phải chạy `-update` khiến test thành false alarm.
 
-### Lưu ý
-- Handler nil-dep: `WardrobeItemHandler{}` rỗng vẫn đăng ký được route (route chỉ wrap `shared_pres.WrapHandler(h.Method)` — method value không bị gọi lúc khởi tạo).
-- Middleware: `NewRateLimitMiddleware(cfg)` cần cfg thật; dùng config test tối thiểu. `AuthMiddleware` cần `ITokenBlacklistService` — có thể nil vì `Handle()` không gọi lúc dựng.
-- Golden file phải commit cùng code.
-
-### Rationale
-Không cần infra, deterministic, chạy trong CI. Phát hiện chính xác "mất route" hoặc "đổi method" — vấn đề rủi ro nhất của refactor di chuyển route.
-
-### Alternatives considered
-- Dựng app thật + DB/Redis: nặng, không chạy được `make test` local.
-- So sánh swagger.json trước/sau: swagger sinh từ annotation handler (không từ router) nên KHÔNG phát hiện route bị mất khi di chuyển router — chỉ phát hiện đổi annotation. Không đủ.
-- Manual smoke test: dễ sót với 130 paths.
+Tham chiếu: spec Clarifications.
 
 ---
 
@@ -156,10 +147,10 @@ Thứ tự hiện tại trong `router.go` giữ nguyên tương đối, nhóm th
 5. `BrandRouter.Init(api)` — `/brands`, `/brand-items`, `/brand-benefits`, `/me/brand-loyalties`, `/brand-portal`, `/admin/brands`
 6. `FashionRouter.Init(api)` — `/ai`
 
-Gin không conflict vì các path phân nhóm khác nhau (không có wildcard cùng cấp trùng nhau). Route-registry test sẽ bắt lỗi nếu có conflict (Gin panic khi dựng).
+Gin không conflict vì các path phân nhóm khác nhau (không có wildcard cùng cấp trùng nhau). Khi khởi động app, Gin sẽ panic nếu có conflict path — dùng smoke test `make run` để xác nhận.
 
 ### Rationale
-Giữ thứ tự gần với hiện tại để giảm rủi ro; route-registry test phát hiện conflict sớm.
+Giữ thứ tự gần với hiện tại để giảm rủi ro; conflict path sẽ bị Gin panic khi dựng engine và bắt được qua smoke test.
 
 ---
 

@@ -4,7 +4,6 @@
 package di
 
 import (
-	"smart-wardrobe-be/internal/api/middleware"
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/config"
@@ -20,6 +19,7 @@ import (
 	"smart-wardrobe-be/internal/shared"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
+	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 
 	"github.com/google/wire"
 )
@@ -41,11 +41,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		fashion.ProviderSet,
 		dashboard.ProviderSet,
 
-		middleware.NewAuthMiddleware,
-		middleware.NewRateLimitMiddleware,
+		shared_middleware.NewRateLimitMiddleware,
 		routes.RouterSet,
 		routes.NewEngine,
-		wire.Struct(new(routes.AppRouter), "*"),
 		wire.Struct(new(bootstrap.AppWorkers), "*"),
 	)
 	return &bootstrap.App{}, nil, nil

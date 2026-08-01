@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/presentation/handler"
+	"smart-wardrobe-be/internal/modules/fashion/presentation/router"
 	presentation_worker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
 
 	"github.com/google/wire"
@@ -31,6 +32,7 @@ var ProviderSet = wire.NewSet(
 	contract.NewFashionContract,
 
 	handler.NewWardrobeAIHandler,
+	router.NewRouter,
 	presentation_worker.NewFailedItemsCleanupWorker,
 	presentation_worker.NewProcessingRecoveryWorker,
 	presentation_worker.NewFashionInitWorker,
