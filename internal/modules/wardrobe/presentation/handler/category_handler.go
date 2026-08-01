@@ -48,7 +48,7 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) error {
 // GetCategoriesAdmin get all categories for admin
 // @Summary Lấy danh sách danh mục trang phục (Admin)
 // @Description Cho phép Admin lấy danh sách toàn bộ danh mục trang phục trong hệ thống để quản trị
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Produce json
 // @Success 200 {object} shared_pres.APIResponse{data=[]dto.CategoryRes} "Danh sách danh mục"
 // @Router /api/v1/admin/categories [get]
@@ -59,7 +59,7 @@ func (h *CategoryHandler) GetCategoriesAdmin(c *gin.Context) error {
 // GetCategoryByIDAdmin get category details for admin
 // @Summary Lấy chi tiết danh mục trang phục (Admin)
 // @Description Cho phép Admin lấy thông tin chi tiết của một danh mục trang phục theo ID
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Produce json
 // @Param id path string true "ID danh mục"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.CategoryRes} "Thông tin danh mục"
@@ -82,7 +82,7 @@ func (h *CategoryHandler) GetCategoryByIDAdmin(c *gin.Context) error {
 // CreateCategoryAdmin create a new category
 // @Summary Tạo danh mục trang phục (Admin)
 // @Description Cho phép Admin tạo mới một danh mục trang phục trong hệ thống
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateCategoryReq true "Thông tin danh mục cần tạo"
@@ -106,7 +106,7 @@ func (h *CategoryHandler) CreateCategoryAdmin(c *gin.Context) error {
 // UpdateCategoryAdmin update a category
 // @Summary Cập nhật danh mục trang phục (Admin)
 // @Description Cho phép Admin cập nhật thông tin của một danh mục trang phục theo ID
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Accept json
 // @Produce json
 // @Param id path string true "ID danh mục"
@@ -136,7 +136,7 @@ func (h *CategoryHandler) UpdateCategoryAdmin(c *gin.Context) error {
 // DeleteCategoryAdmin delete a category
 // @Summary Xóa danh mục trang phục (Admin)
 // @Description Cho phép Admin xóa một danh mục trang phục nếu không còn trang phục người dùng liên kết
-// @Tags Admin
+// @Tags Admin Wardrobe
 // @Produce json
 // @Param id path string true "ID danh mục"
 // @Success 200 {object} shared_pres.APIResponse "Xóa danh mục thành công"

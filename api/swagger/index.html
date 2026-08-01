@@ -13,10 +13,6 @@
       :root {
         color-scheme: light !important;
       }
-      .swagger-ui .topbar .download-url-wrapper {
-        display: flex;
-        gap: 10px;
-      }
       .custom-toolbar {
         background-color: #fafafa;
         padding: 10px 20px;
@@ -26,6 +22,24 @@
         align-items: center;
         gap: 10px;
         font-family: sans-serif;
+      }
+      .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .toolbar-label {
+        font-size: 14px;
+        color: #555;
+      }
+      .custom-select {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
       }
       .custom-btn {
         padding: 6px 12px;
@@ -57,7 +71,14 @@
   </head>
   <body>
     <div class="custom-toolbar">
-      <span style="font-size: 14px; color: #555">Tùy chọn hiển thị:</span>
+      <div class="toolbar-group">
+        <span class="toolbar-label">API Version:</span>
+        <select id="version-select" class="custom-select"></select>
+      </div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">Module:</span>
+        <select id="module-select" class="custom-select"></select>
+      </div>
       <button class="custom-btn primary" onclick="expandAll()">
         Mở rộng tất cả (Expand All)
       </button>
@@ -90,18 +111,82 @@
         };
       }
 
+      // Định nghĩa các version API và module spec tương ứng.
+      // Khi thêm version mới, thêm entry vào đây và mở rộng modules map.
+      const API_VERSIONS = {
+        v1: {
+          modules: {
+            "Tất cả": "/api-docs/swagger.json",
+            identity: "/api-docs/modules/identity/swagger.json",
+            subscription: "/api-docs/modules/subscription/swagger.json",
+            wardrobe: "/api-docs/modules/wardrobe/swagger.json",
+            dashboard: "/api-docs/modules/dashboard/swagger.json",
+            brand: "/api-docs/modules/brand/swagger.json",
+            fashion: "/api-docs/modules/fashion/swagger.json",
+          },
+        },
+      };
+
+      let currentUi = null;
+
+      function loadSpec(url) {
+        if (!currentUi) return;
+        currentUi.specActions.download(url);
+      }
+
+      function populateVersionSelect() {
+        const versionSelect = document.getElementById("version-select");
+        versionSelect.innerHTML = "";
+        Object.keys(API_VERSIONS).forEach((version) => {
+          const option = document.createElement("option");
+          option.value = version;
+          option.textContent = version;
+          versionSelect.appendChild(option);
+        });
+        versionSelect.value = Object.keys(API_VERSIONS)[0];
+        populateModuleSelect();
+      }
+
+      function populateModuleSelect() {
+        const version = document.getElementById("version-select").value;
+        const modules = API_VERSIONS[version].modules;
+        const moduleSelect = document.getElementById("module-select");
+        moduleSelect.innerHTML = "";
+        Object.keys(modules).forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          moduleSelect.appendChild(option);
+        });
+      }
+
+      function onVersionChange() {
+        populateModuleSelect();
+        const version = document.getElementById("version-select").value;
+        loadSpec(API_VERSIONS[version].modules["Tất cả"]);
+      }
+
+      function onModuleChange() {
+        const version = document.getElementById("version-select").value;
+        const moduleName = document.getElementById("module-select").value;
+        loadSpec(API_VERSIONS[version].modules[moduleName]);
+      }
+
       window.onload = function () {
-        SwaggerUIBundle({
-          urls: [
-            { url: "/api-docs/swagger.json", name: "v1" }
-          ],
+        document.getElementById("version-select").addEventListener("change", onVersionChange);
+        document.getElementById("module-select").addEventListener("change", onModuleChange);
+
+        currentUi = SwaggerUIBundle({
+          url: "/api-docs/swagger.json",
           dom_id: "#swagger-ui",
           deepLinking: true,
           presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
           layout: "StandaloneLayout",
           docExpansion: "none",
-        })
-      }
+        });
+
+        populateVersionSelect();
+      };
 
       function expandAll() {
         document

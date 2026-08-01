@@ -29,7 +29,7 @@ func NewAdminHandler(uc usecase_interfaces.IUserUseCase) *AdminHandler {
 // UpdateUserStatus cập nhật trạng thái tài khoản người dùng
 // @Summary Cập nhật trạng thái tài khoản người dùng
 // @Description Cho phép admin khóa hoặc mở lại tài khoản user. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.
-// @Tags Admin
+// @Tags Admin Identity
 // @Accept json
 // @Produce json
 // @Param id path string true "ID người dùng"
@@ -64,7 +64,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 // GetUsers lấy danh sách người dùng cho Admin
 // @Summary Lấy danh sách người dùng
 // @Description Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền.
-// @Tags Admin
+// @Tags Admin Identity
 // @Accept json
 // @Produce json
 // @Param query query dto.GetUsersQueryReq false "Bộ lọc danh sách người dùng"

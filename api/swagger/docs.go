@@ -25,7 +25,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Brand"
                 ],
                 "summary": "Lấy danh sách brand (Admin)",
                 "parameters": [
@@ -91,7 +91,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Brand"
                 ],
                 "summary": "Tạo brand active trực tiếp (Admin)",
                 "parameters": [
@@ -136,7 +136,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Brand"
                 ],
                 "summary": "Cập nhật trạng thái brand (Admin)",
                 "parameters": [
@@ -186,7 +186,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Lấy danh sách danh mục trang phục (Admin)",
                 "responses": {
@@ -222,7 +222,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Tạo danh mục trang phục (Admin)",
                 "parameters": [
@@ -265,7 +265,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Lấy chi tiết danh mục trang phục (Admin)",
                 "parameters": [
@@ -307,7 +307,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Cập nhật danh mục trang phục (Admin)",
                 "parameters": [
@@ -355,7 +355,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Xóa danh mục trang phục (Admin)",
                 "parameters": [
@@ -771,7 +771,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Identity"
                 ],
                 "summary": "Lấy danh sách người dùng",
                 "parameters": [
@@ -833,7 +833,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Identity"
                 ],
                 "summary": "Cập nhật trạng thái tài khoản người dùng",
                 "parameters": [
@@ -883,7 +883,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Lấy danh sách trang phục mẫu (Admin)",
                 "parameters": [
@@ -940,7 +940,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Cập nhật trang phục mẫu (Admin)",
                 "parameters": [
@@ -988,7 +988,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Admin Wardrobe"
                 ],
                 "summary": "Xóa trang phục mẫu (Admin)",
                 "parameters": [

@@ -49,8 +49,7 @@ root/smart-wardrobe-be
 |
 |-- internal
 |   |-- api
-|   |   |-- middleware            # Gin middleware (auth, rate-limit, CORS, etc.)
-|   |   `-- routes                # Route group registrations, Gin engine setup
+|   |   `-- routes                # Gin engine setup (NewEngine) + AppRouter composition root
 |   |-- bootstrap
 |   |   `-- app.go                # App lifecycle, worker coordination, shutdown
 |   |-- config/                   # Go configuration loader
@@ -68,7 +67,7 @@ root/smart-wardrobe-be
 |       |-- application           # Cross-cutting: AI, constants, DTOs, event, media
 |       |-- domain                # Entities, constants, money VO, repository interfaces
 |       |-- infrastructure        # DB, caching, media, AI, messaging, search implementations
-|       |-- presentation          # Shared HTTP helpers, SSE
+|       |-- presentation          # Shared HTTP helpers, SSE, shared middleware (CORS, timeout, rate-limit, role, swagger lock, error handler)
 |       `-- provider.go           # Wire ProviderSet for shared services
 |
 |-- api/swagger/                  # Generated Swagger specs
@@ -142,6 +141,8 @@ internal/modules/<name>
 |-- presentation
 |   |-- contract                # Cross-module service interfaces & implementations (DTOs only)
 |   |-- handler                 # HTTP handlers (thin, delegate to use cases)
+|   |-- middleware              # (optional) module-owned Gin middleware (e.g., identity AuthMiddleware)
+|   |-- router                  # (optional) module self-registers its endpoint group via Init(api)
 |   `-- worker                  # Background workers (optional)
 `-- provider.go                 # Wire ProviderSet for the module
 ```
@@ -188,13 +189,15 @@ The Gin engine is assembled in `internal/api/routes/router.go`. Route groups are
 /api/v1/admin/...
 ```
 
-Each business module registers its own route group. Route group initialization is wired in `internal/api/routes/provider.go` and invoked in `router.go`. To see the current route groups:
+Each business module **self-registers its own endpoint group** via `presentation/router/router.go` (an `Init(api *gin.RouterGroup)` method). `internal/api/routes/provider.go` (`AppRouter`) only composes the six module routers through Wire, and `internal/api/routes/router.go` (`NewEngine`) invokes `Init(api)` on each module router in order. To see the current module routers:
 
 ```bash
-ls internal/api/routes/
+ls internal/modules/*/presentation/router/
 ```
 
-Swagger is served from `/swagger` and static docs assets from `/api-docs`.
+Shared HTTP middleware (CORS, timeout, rate-limit, role authorize, swagger lock, global error handler) lives in `internal/shared/presentation/middleware/`; module-owned middleware (e.g., identity `AuthMiddleware`) lives in `internal/modules/<name>/presentation/middleware/` and is consumed through `presentation/contract/` interfaces.
+
+Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-module Swagger specs are generated under `api/swagger/modules/<name>/swagger.json` and selectable via the Swagger UI dropdown.
 
 ---
 

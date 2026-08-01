@@ -1,42 +1,25 @@
 package routes
 
 import (
-	"smart-wardrobe-be/internal/api/routes/admin"
-	"smart-wardrobe-be/internal/api/routes/auth"
-	"smart-wardrobe-be/internal/api/routes/brand"
-	"smart-wardrobe-be/internal/api/routes/category"
-	"smart-wardrobe-be/internal/api/routes/dashboard"
-	"smart-wardrobe-be/internal/api/routes/fashion"
-	"smart-wardrobe-be/internal/api/routes/me"
-	"smart-wardrobe-be/internal/api/routes/outfit"
-	"smart-wardrobe-be/internal/api/routes/subscription"
-	"smart-wardrobe-be/internal/api/routes/wardrobe"
+	brand_router "smart-wardrobe-be/internal/modules/brand/presentation/router"
+	dashboard_router "smart-wardrobe-be/internal/modules/dashboard/presentation/router"
+	fashion_router "smart-wardrobe-be/internal/modules/fashion/presentation/router"
+	identity_router "smart-wardrobe-be/internal/modules/identity/presentation/router"
+	subscription_router "smart-wardrobe-be/internal/modules/subscription/presentation/router"
+	wardrobe_router "smart-wardrobe-be/internal/modules/wardrobe/presentation/router"
 
 	"github.com/google/wire"
 )
 
 type AppRouter struct {
-	AdminRouter        *admin.AdminRouter
-	AuthRouter         *auth.AuthRouter
-	MeRouter           *me.MeRouter
-	SubscriptionRouter *subscription.SubscriptionRouter
-	WardrobeRouter     *wardrobe.WardrobeRouter
-	OutfitRouter       *outfit.OutfitRouter
-	CategoryRouter     *category.CategoryRouter
-	BrandRouter        *brand.BrandRouter
-	FashionRouter      *fashion.FashionRouter
-	DashboardRouter    *dashboard.DashboardRouter
+	IdentityRouter     *identity_router.Router
+	SubscriptionRouter *subscription_router.Router
+	WardrobeRouter     *wardrobe_router.Router
+	DashboardRouter    *dashboard_router.Router
+	BrandRouter        *brand_router.Router
+	FashionRouter      *fashion_router.Router
 }
 
 var RouterSet = wire.NewSet(
-	admin.NewRouter,
-	auth.NewRouter,
-	me.NewRouter,
-	subscription.NewRouter,
-	wardrobe.NewRouter,
-	outfit.NewRouter,
-	category.NewRouter,
-	brand.NewRouter,
-	fashion.NewRouter,
-	dashboard.NewRouter,
+	wire.Struct(new(AppRouter), "*"),
 )

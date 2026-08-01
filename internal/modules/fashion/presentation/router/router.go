@@ -1,29 +1,33 @@
-package fashion
+package router
 
 import (
-	"smart-wardrobe-be/internal/api/middleware"
 	fashion_handler "smart-wardrobe-be/internal/modules/fashion/presentation/handler"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
+	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-type FashionRouter struct {
-	aiHandler      *fashion_handler.WardrobeAIHandler
-	authMiddleware *middleware.AuthMiddleware
+type Router struct {
+	aiHandler *fashion_handler.WardrobeAIHandler
+	auth      identity_contract.IAuthMiddleware
 }
 
-func NewRouter(aiHandler *fashion_handler.WardrobeAIHandler, m *middleware.AuthMiddleware) *FashionRouter {
-	return &FashionRouter{
-		aiHandler:      aiHandler,
-		authMiddleware: m,
+func NewRouter(
+	aiHandler *fashion_handler.WardrobeAIHandler,
+	auth identity_contract.IAuthMiddleware,
+) *Router {
+	return &Router{
+		aiHandler: aiHandler,
+		auth:      auth,
 	}
 }
 
-func (r *FashionRouter) Init(group *gin.RouterGroup) {
+func (r *Router) Init(group *gin.RouterGroup) {
 	privateApi := group.Group("")
-	privateApi.Use(r.authMiddleware.Handle(), middleware.RolesAuthorize(roleslug.User))
+	privateApi.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 
 	aiApi := privateApi.Group("/ai")
 	{
