@@ -161,6 +161,34 @@ CREATE TABLE "public"."ai_usage_period_ledgers" (
 CREATE UNIQUE INDEX ai_usage_period_ledgers_grant_id_period_index_key ON public.ai_usage_period_ledgers USING btree (grant_id, period_index);
 
 -- Table Definition
+CREATE TABLE "public"."brand_customers" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "brand_id" uuid NOT NULL,
+    "user_id" uuid,
+    "customer_name" varchar(255),
+    "phone_e164" varchar(50),
+    "phone_hash" varchar(255),
+    "external_customer_code" varchar(100),
+    "joined_source" varchar(50) NOT NULL,
+    "status" varchar(50) NOT NULL DEFAULT 'ACTIVE'::character varying,
+    "joined_at" timestamptz NOT NULL DEFAULT now(),
+    "claimed_at" timestamptz,
+    "created_by_member_id" uuid,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "updated_at" timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT "brand_customers_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE CASCADE,
+    CONSTRAINT "brand_customers_created_by_member_id_fkey" FOREIGN KEY ("created_by_member_id") REFERENCES "public"."brand_members"("id") ON DELETE SET NULL,
+    CONSTRAINT "brand_customers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    PRIMARY KEY ("id")
+);
+
+
+-- Indices
+CREATE UNIQUE INDEX uq_brand_customers_brand_user ON public.brand_customers USING btree (brand_id, user_id) WHERE (user_id IS NOT NULL);
+CREATE UNIQUE INDEX uq_brand_customers_brand_phone_hash ON public.brand_customers USING btree (brand_id, phone_hash) WHERE (phone_hash IS NOT NULL);
+CREATE INDEX idx_brand_customers_brand_status ON public.brand_customers USING btree (brand_id, status);
+
+-- Table Definition
 CREATE TABLE "public"."ai_usage_events" (
     "id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "request_id" uuid NOT NULL,
@@ -202,34 +230,6 @@ CREATE TABLE "public"."ai_usage_events" (
 CREATE UNIQUE INDEX ai_usage_events_request_id_key ON public.ai_usage_events USING btree (request_id);
 CREATE INDEX ix_ai_usage_events_user_day ON public.ai_usage_events USING btree (user_id, created_at, status);
 CREATE INDEX ix_ai_usage_events_unknown ON public.ai_usage_events USING btree (status, unknown_expires_at) WHERE ((status)::text = ANY ((ARRAY['reserved'::character varying, 'unknown_usage'::character varying])::text[]));
-
--- Table Definition
-CREATE TABLE "public"."brand_customers" (
-    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-    "brand_id" uuid NOT NULL,
-    "user_id" uuid,
-    "customer_name" varchar(255),
-    "phone_e164" varchar(50),
-    "phone_hash" varchar(255),
-    "external_customer_code" varchar(100),
-    "joined_source" varchar(50) NOT NULL,
-    "status" varchar(50) NOT NULL DEFAULT 'ACTIVE'::character varying,
-    "joined_at" timestamptz NOT NULL DEFAULT now(),
-    "claimed_at" timestamptz,
-    "created_by_member_id" uuid,
-    "created_at" timestamptz NOT NULL DEFAULT now(),
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT "brand_customers_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE CASCADE,
-    CONSTRAINT "brand_customers_created_by_member_id_fkey" FOREIGN KEY ("created_by_member_id") REFERENCES "public"."brand_members"("id") ON DELETE SET NULL,
-    CONSTRAINT "brand_customers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL,
-    PRIMARY KEY ("id")
-);
-
-
--- Indices
-CREATE UNIQUE INDEX uq_brand_customers_brand_user ON public.brand_customers USING btree (brand_id, user_id) WHERE (user_id IS NOT NULL);
-CREATE UNIQUE INDEX uq_brand_customers_brand_phone_hash ON public.brand_customers USING btree (brand_id, phone_hash) WHERE (phone_hash IS NOT NULL);
-CREATE INDEX idx_brand_customers_brand_status ON public.brand_customers USING btree (brand_id, status);
 
 -- Table Definition
 CREATE TABLE "public"."outfits" (
@@ -410,6 +410,9 @@ CREATE TABLE "public"."wardrobe_items" (
 CREATE INDEX idx_wardrobe_items_last_used_at ON public.wardrobe_items USING btree (last_used_at);
 CREATE INDEX idx_wardrobe_items_user_fashion_item ON public.wardrobe_items USING btree (user_id, fashion_item_id);
 CREATE INDEX idx_wardrobe_items_task_id ON public.wardrobe_items USING btree (task_id);
+CREATE INDEX idx_wardrobe_items_user_status ON public.wardrobe_items USING btree (user_id, is_deleted, status);
+CREATE INDEX idx_wardrobe_items_fashion_item ON public.wardrobe_items USING btree (fashion_item_id);
+CREATE INDEX idx_wardrobe_items_type_status ON public.wardrobe_items USING btree (item_type, is_deleted);
 
 -- Table Definition
 CREATE TABLE "public"."brand_conversation_messages" (
@@ -450,6 +453,26 @@ CREATE TABLE "public"."digital_sample_responses" (
 CREATE INDEX idx_digital_sample_responses_item_user ON public.digital_sample_responses USING btree (brand_item_id, user_id);
 
 -- Table Definition
+CREATE TABLE "public"."dashboard_user_wardrobe_summaries" (
+    "user_id" uuid NOT NULL,
+    "total_items" int4 NOT NULL DEFAULT 0,
+    "total_wardrobe_value_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
+    "average_cost_per_wear_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
+    "underutilized_items_count" int4 NOT NULL DEFAULT 0,
+    "underutilized_items" jsonb NOT NULL DEFAULT '[]'::jsonb,
+    "ai_quota_remaining" int4 NOT NULL DEFAULT 0,
+    "expiring_vouchers_count" int4 NOT NULL DEFAULT 0,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "updated_at" timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT "dashboard_user_wardrobe_summaries_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE,
+    PRIMARY KEY ("user_id")
+);
+
+
+-- Indices
+CREATE INDEX idx_user_wardrobe_summaries_updated ON public.dashboard_user_wardrobe_summaries USING btree (updated_at DESC);
+
+-- Table Definition
 CREATE TABLE "public"."ai_model_configs" (
     "id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "provider" varchar(50) NOT NULL,
@@ -470,26 +493,6 @@ CREATE TABLE "public"."ai_model_configs" (
 
 -- Indices
 CREATE UNIQUE INDEX uq_provider_model_active ON public.ai_model_configs USING btree (provider, model, effective_from);
-
--- Table Definition
-CREATE TABLE "public"."dashboard_user_wardrobe_summaries" (
-    "user_id" uuid NOT NULL,
-    "total_items" int4 NOT NULL DEFAULT 0,
-    "total_wardrobe_value_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
-    "average_cost_per_wear_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
-    "underutilized_items_count" int4 NOT NULL DEFAULT 0,
-    "underutilized_items" jsonb NOT NULL DEFAULT '[]'::jsonb,
-    "ai_quota_remaining" int4 NOT NULL DEFAULT 0,
-    "expiring_vouchers_count" int4 NOT NULL DEFAULT 0,
-    "created_at" timestamptz NOT NULL DEFAULT now(),
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT "dashboard_user_wardrobe_summaries_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE,
-    PRIMARY KEY ("user_id")
-);
-
-
--- Indices
-CREATE INDEX idx_user_wardrobe_summaries_updated ON public.dashboard_user_wardrobe_summaries USING btree (updated_at DESC);
 
 -- Table Definition
 CREATE TABLE "public"."messages" (
@@ -593,6 +596,22 @@ CREATE UNIQUE INDEX uq_brand_items_fashion_item ON public.brand_items USING btre
 CREATE INDEX idx_brand_items_task_id ON public.brand_items USING btree (task_id);
 
 -- Table Definition
+CREATE TABLE "public"."categories" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "name" varchar(100) NOT NULL,
+    "slug" varchar(100) NOT NULL,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "updated_at" timestamptz NOT NULL DEFAULT now(),
+    "sort_order" int4 NOT NULL DEFAULT 0,
+    PRIMARY KEY ("id")
+);
+
+
+-- Indices
+CREATE UNIQUE INDEX categories_name_key ON public.categories USING btree (name);
+CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug);
+
+-- Table Definition
 CREATE TABLE "public"."dashboard_brand_daily_snapshots" (
     "id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "brand_id" uuid NOT NULL,
@@ -618,22 +637,6 @@ CREATE TABLE "public"."dashboard_brand_daily_snapshots" (
 -- Indices
 CREATE UNIQUE INDEX uq_brand_daily_snapshot ON public.dashboard_brand_daily_snapshots USING btree (brand_id, snapshot_date);
 CREATE INDEX idx_brand_snapshots_brand_date ON public.dashboard_brand_daily_snapshots USING btree (brand_id, snapshot_date DESC);
-
--- Table Definition
-CREATE TABLE "public"."categories" (
-    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-    "name" varchar(100) NOT NULL,
-    "slug" varchar(100) NOT NULL,
-    "created_at" timestamptz NOT NULL DEFAULT now(),
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    "sort_order" int4 NOT NULL DEFAULT 0,
-    PRIMARY KEY ("id")
-);
-
-
--- Indices
-CREATE UNIQUE INDEX categories_name_key ON public.categories USING btree (name);
-CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug);
 
 -- Table Definition
 CREATE TABLE "public"."conversational_contexts" (
@@ -757,6 +760,9 @@ CREATE TABLE "public"."deposit_transactions" (
     "wallet_credit_amount" numeric(12,2),
     "subscription_version_before" int8,
     "subscription_version_after" int8,
+    "refunded_at" timestamptz,
+    "refund_amount" numeric(12,2),
+    "refund_reason" varchar(255),
     CONSTRAINT "deposit_transactions_subscription_plan_id_fkey" FOREIGN KEY ("subscription_plan_id") REFERENCES "public"."subscription_plans"("id") ON DELETE SET NULL,
     CONSTRAINT "deposit_transactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE,
     PRIMARY KEY ("id")
@@ -767,6 +773,25 @@ CREATE TABLE "public"."deposit_transactions" (
 CREATE UNIQUE INDEX deposit_transactions_order_code_key ON public.deposit_transactions USING btree (order_code);
 CREATE UNIQUE INDEX ux_active_direct_purchase_per_user ON public.deposit_transactions USING btree (user_id) WHERE (((transaction_type)::text = 'DIRECT_PURCHASE'::text) AND (status = ANY (ARRAY[0, 3, 4, 5])));
 CREATE INDEX idx_deposit_reconciliation ON public.deposit_transactions USING btree (next_reconciliation_at, expires_at) WHERE (status = ANY (ARRAY[0, 3, 4, 5]));
+
+-- Table Definition
+CREATE TABLE "public"."outbox_records" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "topic" varchar(255) NOT NULL,
+    "payload" jsonb NOT NULL,
+    "headers" jsonb DEFAULT '{}'::jsonb,
+    "status" varchar(50) NOT NULL DEFAULT 'pending'::character varying,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "published_at" timestamptz,
+    "attempts" int4 NOT NULL DEFAULT 0,
+    "last_error" text,
+    PRIMARY KEY ("id")
+);
+
+
+-- Indices
+CREATE INDEX idx_outbox_records_status ON public.outbox_records USING btree (status);
+CREATE INDEX idx_outbox_records_created_at ON public.outbox_records USING btree (created_at);
 
 -- Table Definition
 CREATE TABLE "public"."brands" (
@@ -932,6 +957,56 @@ CREATE TABLE "public"."brand_benefits" (
 CREATE INDEX idx_brand_benefits_brand_status ON public.brand_benefits USING btree (brand_id, status);
 
 -- Table Definition
+CREATE TABLE "public"."ai_cost_policies" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "code" varchar(100) NOT NULL,
+    "version" int8 NOT NULL,
+    "name" varchar(150) NOT NULL,
+    "enforcement_mode" varchar(30) NOT NULL,
+    "period_days" int4 NOT NULL,
+    "hard_cost_micro_vnd" int8,
+    "compact_threshold_bps" int4 NOT NULL DEFAULT 8000,
+    "free_route_threshold_bps" int4 NOT NULL DEFAULT 9200,
+    "unknown_hold_minutes" int4 NOT NULL DEFAULT 1440,
+    "max_unknown_paid_requests_per_day" int4 NOT NULL DEFAULT 2,
+    "is_active" bool NOT NULL DEFAULT true,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "updated_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("id")
+);
+
+
+-- Indices
+CREATE UNIQUE INDEX ai_cost_policies_code_version_key ON public.ai_cost_policies USING btree (code, version);
+
+-- Table Definition
+CREATE TABLE "public"."dashboard_admin_daily_snapshots" (
+    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "snapshot_date" date NOT NULL,
+    "total_users" int4 NOT NULL DEFAULT 0,
+    "new_users" int4 NOT NULL DEFAULT 0,
+    "active_users_dau" int4 NOT NULL DEFAULT 0,
+    "total_brands" int4 NOT NULL DEFAULT 0,
+    "pending_review_brands" int4 NOT NULL DEFAULT 0,
+    "ai_requests_count" int8 NOT NULL DEFAULT 0,
+    "ai_error_count" int8 NOT NULL DEFAULT 0,
+    "ai_paid_tokens" int8 NOT NULL DEFAULT 0,
+    "ai_actual_cost_micro_vnd" int8 NOT NULL DEFAULT 0,
+    "subscription_revenue_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
+    "net_ai_margin_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
+    "payos_transaction_count" int4 NOT NULL DEFAULT 0,
+    "payos_success_count" int4 NOT NULL DEFAULT 0,
+    "created_at" timestamptz NOT NULL DEFAULT now(),
+    "updated_at" timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY ("id")
+);
+
+
+-- Indices
+CREATE UNIQUE INDEX dashboard_admin_daily_snapshots_snapshot_date_key ON public.dashboard_admin_daily_snapshots USING btree (snapshot_date);
+CREATE INDEX idx_admin_snapshots_date ON public.dashboard_admin_daily_snapshots USING btree (snapshot_date DESC);
+
+-- Table Definition
 CREATE TABLE "public"."provider_webhook_inbox" (
     "id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "provider" varchar(50) NOT NULL,
@@ -961,29 +1036,6 @@ CREATE TABLE "public"."provider_webhook_inbox" (
 CREATE UNIQUE INDEX ux_webhook_provider_reference ON public.provider_webhook_inbox USING btree (provider, provider_reference, event_code) WHERE (provider_reference IS NOT NULL);
 CREATE UNIQUE INDEX ux_webhook_payload_hash ON public.provider_webhook_inbox USING btree (provider, canonical_payload_hash) WHERE (provider_reference IS NULL);
 CREATE INDEX idx_webhook_inbox_processing ON public.provider_webhook_inbox USING btree (next_processing_at, processing_lease_until) WHERE ((processing_status)::text = ANY ((ARRAY['RECEIVED'::character varying, 'RETRY_REQUIRED'::character varying, 'PROCESSING'::character varying])::text[]));
-
--- Table Definition
-CREATE TABLE "public"."ai_cost_policies" (
-    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-    "code" varchar(100) NOT NULL,
-    "version" int8 NOT NULL,
-    "name" varchar(150) NOT NULL,
-    "enforcement_mode" varchar(30) NOT NULL,
-    "period_days" int4 NOT NULL,
-    "hard_cost_micro_vnd" int8,
-    "compact_threshold_bps" int4 NOT NULL DEFAULT 8000,
-    "free_route_threshold_bps" int4 NOT NULL DEFAULT 9200,
-    "unknown_hold_minutes" int4 NOT NULL DEFAULT 1440,
-    "max_unknown_paid_requests_per_day" int4 NOT NULL DEFAULT 2,
-    "is_active" bool NOT NULL DEFAULT true,
-    "created_at" timestamptz NOT NULL DEFAULT now(),
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY ("id")
-);
-
-
--- Indices
-CREATE UNIQUE INDEX ai_cost_policies_code_version_key ON public.ai_cost_policies USING btree (code, version);
 
 -- Table Definition
 CREATE TABLE "public"."subscription_plans" (
@@ -1036,31 +1088,4 @@ CREATE TABLE "public"."ai_cost_policy_operations" (
 
 -- Indices
 CREATE UNIQUE INDEX ai_cost_policy_operations_policy_id_operation_key ON public.ai_cost_policy_operations USING btree (policy_id, operation);
-
--- Table Definition
-CREATE TABLE "public"."dashboard_admin_daily_snapshots" (
-    "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-    "snapshot_date" date NOT NULL,
-    "total_users" int4 NOT NULL DEFAULT 0,
-    "new_users" int4 NOT NULL DEFAULT 0,
-    "active_users_dau" int4 NOT NULL DEFAULT 0,
-    "total_brands" int4 NOT NULL DEFAULT 0,
-    "pending_review_brands" int4 NOT NULL DEFAULT 0,
-    "ai_requests_count" int8 NOT NULL DEFAULT 0,
-    "ai_error_count" int8 NOT NULL DEFAULT 0,
-    "ai_paid_tokens" int8 NOT NULL DEFAULT 0,
-    "ai_actual_cost_micro_vnd" int8 NOT NULL DEFAULT 0,
-    "subscription_revenue_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
-    "net_ai_margin_vnd" numeric(12,2) NOT NULL DEFAULT 0.00,
-    "payos_transaction_count" int4 NOT NULL DEFAULT 0,
-    "payos_success_count" int4 NOT NULL DEFAULT 0,
-    "created_at" timestamptz NOT NULL DEFAULT now(),
-    "updated_at" timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY ("id")
-);
-
-
--- Indices
-CREATE UNIQUE INDEX dashboard_admin_daily_snapshots_snapshot_date_key ON public.dashboard_admin_daily_snapshots USING btree (snapshot_date);
-CREATE INDEX idx_admin_snapshots_date ON public.dashboard_admin_daily_snapshots USING btree (snapshot_date DESC);
 
