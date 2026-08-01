@@ -14,6 +14,7 @@ import (
 var ProviderSet = wire.NewSet(
 	benefit.NewBrandBenefitUseCase,
 	brand.NewBrandUseCase,
+	brand.NewBrandDashboardAnalyticsUseCase,
 	chat.NewBrandChatUseCase,
 	claim.NewBrandClaimUseCase,
 	item.NewBrandItemUseCase,

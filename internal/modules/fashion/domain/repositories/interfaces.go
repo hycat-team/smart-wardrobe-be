@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
@@ -32,12 +33,7 @@ const (
 
 type HybridCandidate struct {
 	ID              uuid.UUID
-	UserID          uuid.UUID
 	FashionItemID   *uuid.UUID
-	Price           *float64
-	Status          int16
-	LastUsedAt      *time.Time
-	IsDeleted       bool
 	VectorScore     float64
 	LexicalScore    float64
 	RetrievalScore  float64
@@ -50,12 +46,17 @@ type IFashionItemRepository interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error)
 	GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.FashionItem, error)
 	GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error)
+	SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error)
+	GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error)
+	GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.DashboardFashionItemCategoryDTO, error)
 	ClaimManualAnalysisRetry(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, now time.Time) (*entities.FashionItem, bool, error)
 	ClaimStaleProcessingRetry(ctx context.Context, itemID uuid.UUID, processingVersion int, staleBefore time.Time, now time.Time) (*entities.FashionItem, bool, error)
 	MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error)
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
-	GetHybridCandidates(ctx context.Context, userID uuid.UUID, semanticVector []float32, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
+	ReassignCategory(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
+	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
+	GetHybridCandidates(ctx context.Context, fashionItemIDs []uuid.UUID, semanticVector []float32, lexicalTerms []string, excludedTerms []string, hardFilters RecommendationHardFilters, limit int, rrfK int) ([]HybridCandidate, error)
 }
 
 type IConversationalContextRepository interface {

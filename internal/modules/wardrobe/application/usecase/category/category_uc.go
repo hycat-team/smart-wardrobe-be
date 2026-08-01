@@ -161,7 +161,12 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return wardrobeerrors.ErrCategoryOtherImmutable()
 		}
 
-		userItemCount, err := uc.wardrobeRepo.CountByCategoryIDAndItemType(txCtx, category.ID, itemtype.UserItem)
+		fashionIDs, err := uc.fashionContract.GetFashionItemIDsByCategory(txCtx, id)
+		if err != nil {
+			return err
+		}
+
+		userItemCount, err := uc.wardrobeRepo.CountItems(txCtx, fashionIDs, itemtype.UserItem)
 		if err != nil {
 			return err
 		}
@@ -169,7 +174,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			return wardrobeerrors.ErrCategoryHasUserItems()
 		}
 
-		systemItemCount, err := uc.wardrobeRepo.CountByCategoryIDAndItemType(txCtx, category.ID, itemtype.SystemCatalogItem)
+		systemItemCount, err := uc.wardrobeRepo.CountItems(txCtx, fashionIDs, itemtype.SystemCatalogItem)
 		if err != nil {
 			return err
 		}
@@ -181,7 +186,7 @@ func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) err
 			if fallbackCategory == nil {
 				return wardrobeerrors.ErrFallbackCategoryNotFound()
 			}
-			if err := uc.wardrobeRepo.ReassignCategoryForCatalogItems(txCtx, category.ID, fallbackCategory.ID); err != nil {
+			if err := uc.fashionContract.ReassignCategoryForCatalogItems(txCtx, fashionIDs, id, fallbackCategory.ID); err != nil {
 				return err
 			}
 		}

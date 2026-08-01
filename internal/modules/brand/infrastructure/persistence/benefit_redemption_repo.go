@@ -73,3 +73,28 @@ func (r *BenefitRedemptionRepository) GetUserExpiringBenefitsCount(ctx context.C
 	}
 	return int(count), nil
 }
+
+func (r *BenefitRedemptionRepository) GetRedemptionAnalyticsByBrand(ctx context.Context, brandID uuid.UUID) ([]repositories.BenefitRedemptionAnalytics, error) {
+	var rows []repositories.BenefitRedemptionAnalytics
+	err := r.GetDB(ctx).
+		Table("benefit_redemptions").
+		Select("bb.id AS benefit_id, bb.name AS benefit_name, bb.benefit_type, "+
+			"COUNT(*) AS redemption_count, DATE_TRUNC('month', benefit_redemptions.redeemed_at)::date AS month").
+		Joins("JOIN brand_benefits bb ON bb.id = benefit_redemptions.benefit_id").
+		Where("benefit_redemptions.brand_id = ?", brandID).
+		Group("bb.id, bb.name, bb.benefit_type, DATE_TRUNC('month', benefit_redemptions.redeemed_at)").
+		Order("redemption_count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *BenefitRedemptionRepository) CountRedemptionsByBrand(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BenefitRedemption{}).
+		Where("brand_id = ? AND redeemed_at >= ? AND redeemed_at <= ?", brandID, fromDate, toDate).
+		Count(&count).Error
+	return count, err
+}

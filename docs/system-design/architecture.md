@@ -219,19 +219,37 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 
 ## VII. DATABASE SCHEMA MAPPING
 
-The system uses a PostgreSQL relational database as the Single Source of Truth, integrating with GORM for entity management.
+The system uses a PostgreSQL relational database (with pgvector) as the Single Source of Truth, integrating with GORM for entity management.
 
-### Core Tables
+> **Trạng thái hiện tại**: Toàn bộ bảng nằm trong schema `public`. Kế hoạch tách schema theo module (feature `011-assess-schema-separation`) sẽ di chuyển từng module sang schema riêng (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`) với `search_path` trong DSN. FK trỏ tới `users` được GIỮ xuyên schema; FK xuyên module phi-users được CẮT và enforce qua contract.
 
-- `users`: Stores B2C user account information.
-- `wardrobe_items`: Manages digitized clothing and image paths.
-- `outfits`: Stores saved outfits.
-- `brands`: Information about partner brands.
-- `brand_members`: Manages employee roles belonging to brands.
-- `loyalty_points`: Accumulated points of users at each brand.
-- `campaigns`: Marketing events and campaigns of brands.
-- `digital_samples`: Stores prototype designs in the Sample Lab.
-- `sample_votes`: User voting history for design prototypes.
+### Tables by Module
+
+**identity** (3): `users`, `refresh_tokens`, `user_style_profiles`
+
+**wardrobe** (3): `wardrobe_items`, `outfits`, `outfit_items`
+
+**fashion** (4): `fashion_items`, `categories`, `conversational_contexts`, `messages`
+
+**brand** (15): `brands`, `brand_members`, `brand_customers`, `brand_customer_claims`, `loyalty_programs`, `loyalty_tiers`, `loyalty_accounts`, `loyalty_point_transactions`, `loyalty_point_lots`, `brand_benefits`, `benefit_redemptions`, `brand_conversations`, `brand_conversation_messages`, `brand_items`, `digital_sample_responses`
+
+**subscription** (10 + 1 sequence): `subscription_plans`, `user_subscriptions`, `user_daily_quotas`, `user_wallets`, `deposit_transactions`, `wallet_statements`, `provider_payment_events`, `provider_webhook_inbox`, `user_subscription_events`, `subscription_renewal_attempts` (+ sequence `deposit_transactions_order_code_seq`)
+
+**aiexecutor** (6): `ai_cost_policies`, `ai_cost_policy_operations`, `ai_policy_grants`, `ai_usage_period_ledgers`, `ai_usage_events`, `ai_model_configs`
+
+**dashboard** (3): `dashboard_admin_daily_snapshots`, `dashboard_brand_daily_snapshots`, `dashboard_user_wardrobe_summaries`
+
+**shared** (1): `outbox_records`
+
+### Foreign Keys xuyên module (rào cản tách schema)
+
+- **GIỮ (xuyên schema tới `users`)**: gần như mọi module đều có FK trỏ tới `users` (identity, wardrobe, fashion, brand ×15, subscription ×10, aiexecutor, dashboard). PostgreSQL hỗ trợ FK xuyên schema nên không cần cắt.
+- **CẮT (phi-users, enforce qua contract)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand).
+
+### Chỉ mục vector (pgvector HNSW)
+
+- `fitems_embedding_cosine_idx` on `fashion_items.embedding` (HNSW `vector_cosine_ops`)
+- `ustyles_embedding_cosine_idx` on `user_style_profiles.taste_embedding` (HNSW `vector_cosine_ops`)
 
 ---
 

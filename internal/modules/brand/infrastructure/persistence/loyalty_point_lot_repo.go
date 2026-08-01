@@ -108,3 +108,19 @@ func (r *LoyaltyPointLotRepository) ListByAccountID(ctx context.Context, loyalty
 		Find(&lots).Error
 	return lots, err
 }
+
+func (r *LoyaltyPointLotRepository) SumExpiringPointsByMonth(ctx context.Context, brandID uuid.UUID, status loyaltypointlotstatus.LoyaltyPointLotStatus) ([]repositories.MonthPointSum, error) {
+	var rows []repositories.MonthPointSum
+	err := r.GetDB(ctx).
+		Table("loyalty_point_lots").
+		Select("DATE_TRUNC('month', expires_at)::date AS month, COALESCE(SUM(remaining_points), 0) AS points_expiring").
+		Where("brand_id = ? AND status = ? AND remaining_points > 0 AND expires_at IS NOT NULL", brandID, string(status)).
+		Group("DATE_TRUNC('month', expires_at)").
+		Order("month ASC").
+		Limit(6).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

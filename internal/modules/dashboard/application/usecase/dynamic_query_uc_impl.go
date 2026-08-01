@@ -177,23 +177,21 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 					case metrickey.PointsLiabilityValueVND:
 						metricValues[m] = s.PointsLiabilityValueVND
 					case metrickey.NewCustomers:
-						val, _ := uc.dashboardRepo.GetBrandNewCustomerCount(ctx, *req.BrandID, fromDate, toDate)
-						metricValues[m] = val
+						val, _ := uc.brandReader.GetBrandNewCustomerCount(ctx, *req.BrandID, fromDate, toDate)
+						metricValues[m] = float64(val)
 					case metrickey.CustomerClaimRate:
-						val, _ := uc.dashboardRepo.GetBrandCustomerClaimRate(ctx, *req.BrandID)
+						val, _ := uc.brandReader.GetBrandCustomerClaimRate(ctx, *req.BrandID)
 						metricValues[m] = val
 					case metrickey.BenefitRedemptionCount:
-						val, _ := uc.dashboardRepo.GetBrandRedemptionCount(ctx, *req.BrandID, fromDate, toDate)
-						metricValues[m] = val
+						val, _ := uc.brandReader.GetBrandRedemptionCount(ctx, *req.BrandID, fromDate, toDate)
+						metricValues[m] = float64(val)
 					case metrickey.BrandItemCount:
-						val, _ := uc.dashboardRepo.GetBrandItemCount(ctx, *req.BrandID)
-						metricValues[m] = val
+						val, _ := uc.brandReader.GetBrandItemCount(ctx, *req.BrandID)
+						metricValues[m] = float64(val)
 					case metrickey.BrandItemCountByType:
-						rows, _ := uc.dashboardRepo.GetBrandItemCountByType(ctx, *req.BrandID)
+						rows, _ := uc.brandReader.GetBrandItemCountByType(ctx, *req.BrandID)
 						for _, row := range rows {
-							itemType, _ := row["item_type"].(string)
-							count, _ := row["count"].(int64)
-							metricValues[metrickey.MetricKey("brand_item_count_"+itemType)] = float64(count)
+							metricValues[metrickey.MetricKey("brand_item_count_"+row.Label)] = float64(row.Count)
 						}
 					}
 				}

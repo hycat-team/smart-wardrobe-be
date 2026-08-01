@@ -108,6 +108,15 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
 }
+func (m *mockCustomerRepo) CountByJoinedSource(ctx context.Context, brandID uuid.UUID) ([]repositories.CustomerSourceCount, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) CountNewByBrandID(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+func (m *mockCustomerRepo) CountClaimedByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
+}
 func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
 	return nil
 }

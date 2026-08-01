@@ -178,6 +178,15 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
 }
+func (m *mockCustomerRepo) CountByJoinedSource(ctx context.Context, brandID uuid.UUID) ([]repositories.CustomerSourceCount, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) CountNewByBrandID(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+func (m *mockCustomerRepo) CountClaimedByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
+}
 func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
 	return nil
 }
@@ -281,6 +290,15 @@ func (m *mockBrandItemRepo) GetByBrandIDPaginated(ctx context.Context, filter re
 		Items:      list,
 		TotalCount: int64(len(list)),
 	}, nil
+}
+func (m *mockBrandItemRepo) CountByStatus(ctx context.Context, brandID uuid.UUID) ([]repositories.BrandItemStatusCount, error) {
+	return nil, nil
+}
+func (m *mockBrandItemRepo) CountByType(ctx context.Context, brandID uuid.UUID) ([]repositories.BrandItemTypeCount, error) {
+	return nil, nil
+}
+func (m *mockBrandItemRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
 }
 func (m *mockBrandItemRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandItem) error {
 	return nil
@@ -419,6 +437,21 @@ func (m *mockFashionContract) CreateFashionItem(ctx context.Context, input fashi
 	return nil
 }
 func (m *mockFashionContract) BulkCreateFashionItems(ctx context.Context, inputs []fashion_dto.CreateFashionItemInput) error {
+	return nil
+}
+func (m *mockFashionContract) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]fashion_dto.FashionProcessingInfoDTO, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+func (m *mockFashionContract) ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return nil
+}
+func (m *mockFashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return nil
 }
 

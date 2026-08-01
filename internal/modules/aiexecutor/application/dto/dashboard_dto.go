@@ -18,3 +18,19 @@ type AIEventDrillDownDTO struct {
 	ErrorMessage string    `json:"errorMessage"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
+
+type AIUsageByOperationDTO struct {
+	Operation         string `json:"operation"`
+	LogicalRoute      string `json:"logicalRoute"`
+	RequestCount      int64  `json:"requestCount"`
+	TotalCostMicroVND int64  `json:"totalCostMicroVnd"`
+	TotalPromptTokens int64  `json:"totalPromptTokens"`
+	TotalOutputTokens int64  `json:"totalOutputTokens"`
+}
+
+type AIErrorBreakdownDTO struct {
+	ErrorCode  string `json:"errorCode"`
+	Provider   string `json:"provider"`
+	Model      string `json:"model"`
+	ErrorCount int64  `json:"errorCount"`
+}

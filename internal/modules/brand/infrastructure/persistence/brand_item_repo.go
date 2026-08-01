@@ -115,3 +115,39 @@ func (r *BrandItemRepository) GetByBrandIDPaginated(ctx context.Context, filter 
 		TotalCount: totalCount,
 	}, nil
 }
+
+func (r *BrandItemRepository) CountByStatus(ctx context.Context, brandID uuid.UUID) ([]repositories.BrandItemStatusCount, error) {
+	var rows []repositories.BrandItemStatusCount
+	err := r.GetDB(ctx).Model(&entities.BrandItem{}).
+		Select("status AS status, COUNT(*) AS count").
+		Where("brand_id = ?", brandID).
+		Group("status").
+		Order("count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *BrandItemRepository) CountByType(ctx context.Context, brandID uuid.UUID) ([]repositories.BrandItemTypeCount, error) {
+	var rows []repositories.BrandItemTypeCount
+	err := r.GetDB(ctx).Model(&entities.BrandItem{}).
+		Select("item_type AS item_type, COUNT(*) AS count").
+		Where("brand_id = ?", brandID).
+		Group("item_type").
+		Order("count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *BrandItemRepository) CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BrandItem{}).
+		Where("brand_id = ?", brandID).
+		Count(&count).Error
+	return count, err
+}

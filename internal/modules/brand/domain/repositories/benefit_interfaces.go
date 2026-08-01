@@ -22,4 +22,14 @@ type IBenefitRedemptionRepository interface {
 	GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error)
 	GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error)
 	GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error)
+	GetRedemptionAnalyticsByBrand(ctx context.Context, brandID uuid.UUID) ([]BenefitRedemptionAnalytics, error)
+	CountRedemptionsByBrand(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error)
+}
+
+type BenefitRedemptionAnalytics struct {
+	BenefitID       uuid.UUID
+	BenefitName     string
+	BenefitType     string
+	RedemptionCount int64
+	Month           time.Time
 }

@@ -164,3 +164,24 @@ func (r *DepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Con
 		PayOSSuccessCount:        result.SuccessCount,
 	}, nil
 }
+
+func (r *DepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
+	query := r.GetDB(ctx).
+		Table("deposit_transactions").
+		Select("plan_code, DATE_TRUNC('month', created_at)::date AS month, COUNT(*) AS transaction_count, SUM(amount) AS revenue").
+		Where("status = ? AND transaction_type = ?", depositstatus.Success, deposittransactiontype.DirectPurchase)
+	if !fromDate.IsZero() {
+		query = query.Where("created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("created_at <= ?", toDate)
+	}
+	var rows []dto.RevenueBreakdownDTO
+	err := query.Group("plan_code, DATE_TRUNC('month', created_at)").
+		Order("month ASC, plan_code ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

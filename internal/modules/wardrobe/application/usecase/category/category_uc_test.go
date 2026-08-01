@@ -73,6 +73,21 @@ func (f fakeFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, i
 func (f fakeFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
+func (f fakeFashionContract) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]fashion_dto.FashionProcessingInfoDTO, error) {
+	return nil, nil
+}
+func (f fakeFashionContract) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
+	return nil, nil
+}
+func (f fakeFashionContract) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+func (f fakeFashionContract) ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return nil
+}
+func (f fakeFashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
+	return nil
+}
 
 type fakeUnitOfWork struct{}
 

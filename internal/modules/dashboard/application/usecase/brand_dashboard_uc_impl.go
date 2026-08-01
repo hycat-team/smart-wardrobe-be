@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
@@ -13,7 +14,6 @@ import (
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
 	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
-	"smart-wardrobe-be/internal/pkg/utils/numberutils"
 
 	"github.com/google/uuid"
 )
@@ -122,20 +122,18 @@ func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID 
 }
 
 func (uc *BrandDashboardUseCase) GetCustomerAcquisition(ctx context.Context, brandID uuid.UUID) (*dto.CustomerAcquisitionRes, error) {
-	raw, err := uc.dashboardRepo.GetCustomerAcquisition(ctx, brandID)
+	rows, err := uc.brandReader.GetCustomerAcquisition(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
 	totalCustomers := 0
-	sources := make([]dto.CustomerAcquisitionDTO, 0, len(raw))
-	for _, r := range raw {
-		source, _ := r["source"].(string)
-		customerCount, _ := r["customer_count"].(int64)
-		totalCustomers += int(customerCount)
+	sources := make([]dto.CustomerAcquisitionDTO, 0, len(rows))
+	for _, r := range rows {
+		totalCustomers += int(r.CustomerCount)
 		sources = append(sources, dto.CustomerAcquisitionDTO{
-			Source:        source,
-			CustomerCount: int(customerCount),
+			Source:        r.Source,
+			CustomerCount: int(r.CustomerCount),
 			Percentage:    0,
 		})
 	}
@@ -154,26 +152,20 @@ func (uc *BrandDashboardUseCase) GetCustomerAcquisition(ctx context.Context, bra
 }
 
 func (uc *BrandDashboardUseCase) GetLoyaltyTierDistribution(ctx context.Context, brandID uuid.UUID) (*dto.TierDistributionRes, error) {
-	raw, err := uc.dashboardRepo.GetLoyaltyTierDistribution(ctx, brandID)
+	rows, err := uc.brandReader.GetLoyaltyTierDistribution(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
 	totalMembers := 0
-	tiers := make([]dto.TierDistributionDTO, 0, len(raw))
-	for _, r := range raw {
-		tierIDStr, _ := r["tier_id"].(string)
-		tierName, _ := r["tier_name"].(string)
-		memberCount, _ := r["member_count"].(int64)
-		totalMembers += int(memberCount)
-
-		tierID, _ := uuid.Parse(tierIDStr)
-		tierRank := int(numberutils.ToFloat64(r["tier_rank"]))
+	tiers := make([]dto.TierDistributionDTO, 0, len(rows))
+	for _, r := range rows {
+		totalMembers += int(r.MemberCount)
 		tiers = append(tiers, dto.TierDistributionDTO{
-			TierID:      tierID,
-			TierName:    tierName,
-			TierRank:    tierRank,
-			MemberCount: int(memberCount),
+			TierID:      r.TierID,
+			TierName:    r.TierName,
+			TierRank:    r.TierRank,
+			MemberCount: int(r.MemberCount),
 			Percentage:  0,
 		})
 	}
@@ -192,18 +184,16 @@ func (uc *BrandDashboardUseCase) GetLoyaltyTierDistribution(ctx context.Context,
 }
 
 func (uc *BrandDashboardUseCase) GetPointExpiryForecast(ctx context.Context, brandID uuid.UUID) (*dto.PointExpiryForecastRes, error) {
-	raw, err := uc.dashboardRepo.GetPointExpiryForecast(ctx, brandID)
+	rows, err := uc.brandReader.GetPointExpiryForecast(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
-	forecast := make([]dto.PointExpiryForecastDTO, 0, len(raw))
-	for _, r := range raw {
-		month, _ := r["month"].(time.Time)
-		points := int(numberutils.ToFloat64(r["points_expiring"]))
+	forecast := make([]dto.PointExpiryForecastDTO, 0, len(rows))
+	for _, r := range rows {
 		forecast = append(forecast, dto.PointExpiryForecastDTO{
-			Month:          month.Format("2006-01"),
-			PointsExpiring: points,
+			Month:          r.Month.Format("2006-01"),
+			PointsExpiring: int(r.PointsExpiring),
 		})
 	}
 
@@ -214,34 +204,27 @@ func (uc *BrandDashboardUseCase) GetPointExpiryForecast(ctx context.Context, bra
 }
 
 func (uc *BrandDashboardUseCase) GetBenefitRedemptionAnalytics(ctx context.Context, brandID uuid.UUID) (*dto.BenefitRedemptionAnalyticsRes, error) {
-	raw, err := uc.dashboardRepo.GetBenefitRedemptionAnalytics(ctx, brandID)
+	rows, err := uc.brandReader.GetBenefitRedemptionAnalytics(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
-	benefitMap := map[string]*dto.BenefitRedemptionDTO{}
+	benefitMap := map[uuid.UUID]*dto.BenefitRedemptionDTO{}
 	trendMap := map[string]int{}
 
-	for _, r := range raw {
-		benefitIDStr, _ := r["benefit_id"].(string)
-		benefitName, _ := r["benefit_name"].(string)
-		benefitType, _ := r["benefit_type"].(string)
-		redemptionCount, _ := r["redemption_count"].(int64)
-		month, _ := r["month"].(time.Time)
+	for _, r := range rows {
+		monthKey := r.Month.Format("2006-01")
+		trendMap[monthKey] += int(r.RedemptionCount)
 
-		monthKey := month.Format("2006-01")
-		trendMap[monthKey] += int(redemptionCount)
-
-		if _, ok := benefitMap[benefitIDStr]; !ok {
-			benefitID, _ := uuid.Parse(benefitIDStr)
-			benefitMap[benefitIDStr] = &dto.BenefitRedemptionDTO{
-				BenefitID:       benefitID,
-				BenefitName:     benefitName,
-				BenefitType:     benefitType,
+		if _, ok := benefitMap[r.BenefitID]; !ok {
+			benefitMap[r.BenefitID] = &dto.BenefitRedemptionDTO{
+				BenefitID:       r.BenefitID,
+				BenefitName:     r.BenefitName,
+				BenefitType:     r.BenefitType,
 				RedemptionCount: 0,
 			}
 		}
-		benefitMap[benefitIDStr].RedemptionCount += int(redemptionCount)
+		benefitMap[r.BenefitID].RedemptionCount += int(r.RedemptionCount)
 	}
 
 	topBenefits := make([]dto.BenefitRedemptionDTO, 0, len(benefitMap))
@@ -285,57 +268,48 @@ func (uc *BrandDashboardUseCase) GetBenefitRedemptionAnalytics(ctx context.Conte
 }
 
 func (uc *BrandDashboardUseCase) GetCatalogStats(ctx context.Context, brandID uuid.UUID) (*dto.CatalogStatsRes, error) {
-	raw, err := uc.dashboardRepo.GetCatalogStats(ctx, brandID)
+	stats, err := uc.brandReader.GetCatalogStats(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
-	totalCount, _ := raw["total_count"].(int64)
-
-	calcPercent := func(items []map[string]interface{}) []dto.CatalogStatGroupDTO {
+	calcPercent := func(items []brand_dto.CatalogStatGroupDTO) []dto.CatalogStatGroupDTO {
 		result := make([]dto.CatalogStatGroupDTO, 0, len(items))
 		for _, item := range items {
-			label, _ := item["label"].(string)
-			countVal, _ := item["count"].(int64)
 			pct := 0.0
-			if totalCount > 0 {
-				pct = float64(countVal) / float64(totalCount) * 100
+			if stats.TotalCount > 0 {
+				pct = float64(item.Count) / float64(stats.TotalCount) * 100
 			}
 			result = append(result, dto.CatalogStatGroupDTO{
-				Label:      label,
-				Count:      int(countVal),
+				Label:      item.Label,
+				Count:      int(item.Count),
 				Percentage: pct,
 			})
 		}
 		return result
 	}
 
-	byStatusRaw, _ := raw["by_status"].([]map[string]interface{})
-	byTypeRaw, _ := raw["by_type"].([]map[string]interface{})
-
 	return &dto.CatalogStatsRes{
 		BrandID:    brandID,
-		TotalItems: int(totalCount),
-		ByStatus:   calcPercent(byStatusRaw),
-		ByType:     calcPercent(byTypeRaw),
+		TotalItems: int(stats.TotalCount),
+		ByStatus:   calcPercent(stats.ByStatus),
+		ByType:     calcPercent(stats.ByType),
 	}, nil
 }
 
 func (uc *BrandDashboardUseCase) GetCustomerSpendSegmentation(ctx context.Context, brandID uuid.UUID) (*dto.SpendSegmentationRes, error) {
-	raw, err := uc.dashboardRepo.GetCustomerSpendSegmentation(ctx, brandID)
+	rows, err := uc.brandReader.GetCustomerSpendSegmentation(ctx, brandID)
 	if err != nil {
 		return nil, err
 	}
 
 	totalCustomers := 0
 	segments := make([]dto.SpendSegmentDTO, 0, 4)
-	for _, r := range raw {
-		segment, _ := r["segment"].(string)
-		customerCount, _ := r["customer_count"].(int64)
-		totalCustomers += int(customerCount)
+	for _, r := range rows {
+		totalCustomers += int(r.CustomerCount)
 		segments = append(segments, dto.SpendSegmentDTO{
-			Segment:       segment,
-			CustomerCount: int(customerCount),
+			Segment:       r.Segment,
+			CustomerCount: int(r.CustomerCount),
 		})
 	}
 

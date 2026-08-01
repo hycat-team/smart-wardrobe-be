@@ -3,8 +3,10 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -55,6 +57,54 @@ func (r *FashionItemRepository) GetStaleProcessingItems(ctx context.Context, sta
 		return nil, err
 	}
 	return items, nil
+}
+
+// SearchFashionItemIDs returns fashion_item ids matching the keyword query and/or category slug.
+func (r *FashionItemRepository) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
+	db := r.GetDB(ctx).Model(&entities.FashionItem{})
+	if categorySlug != nil && *categorySlug != "" {
+		db = db.Joins("JOIN categories ON categories.id = fashion_items.category_id").
+			Where("categories.slug = ?", *categorySlug)
+	}
+	if query != nil && *query != "" {
+		queryStr := strings.ToLower(*query)
+		db = db.Where("(LOWER(fashion_items.color) LIKE ? OR LOWER(fashion_items.style) LIKE ? OR LOWER(fashion_items.material) LIKE ? OR LOWER(fashion_items.pattern) LIKE ? OR LOWER(fashion_items.fit) LIKE ? OR LOWER(fashion_items.seasonality) LIKE ? OR LOWER(fashion_items.description) LIKE ? OR LOWER(categories.name) LIKE ?)",
+			"%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%", "%"+queryStr+"%")
+	}
+	var ids []uuid.UUID
+	if err := db.Pluck("fashion_items.id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+// GetFashionItemIDsByCategory returns fashion_item ids belonging to the given category.
+func (r *FashionItemRepository) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("category_id = ?", categoryID).
+		Pluck("id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+func (r *FashionItemRepository) GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.DashboardFashionItemCategoryDTO, error) {
+	if len(fashionItemIDs) == 0 {
+		return nil, nil
+	}
+	var rows []dto.DashboardFashionItemCategoryDTO
+	err := r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Select("id AS fashion_item_id, category_id AS category_id").
+		Where("id IN ?", fashionItemIDs).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 func (r *FashionItemRepository) ClaimManualAnalysisRetry(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, now time.Time) (*entities.FashionItem, bool, error) {
@@ -137,4 +187,29 @@ func (r *FashionItemRepository) CompleteProcessingSuccess(ctx context.Context, i
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).
 		Updates(updates)
 	return result.RowsAffected > 0, result.Error
+}
+
+func (r *FashionItemRepository) ReassignCategory(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	if len(fashionItemIDs) == 0 {
+		return nil
+	}
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id IN ? AND category_id = ?", fashionItemIDs, fromCategoryID).
+		Update("category_id", toCategoryID).Error
+}
+
+func (r *FashionItemRepository) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id = ?", fashionItemID).
+		Updates(map[string]any{
+			"review_reason":              nil,
+			"processing_error_reason":    nil,
+			"processing_retry_count":     0,
+			"processing_started_at":      nil,
+			"last_processing_attempt_at": nil,
+			"processing_version":         gorm.Expr("processing_version + 1"),
+			"updated_at":                 time.Now().UTC(),
+		}).Error
 }

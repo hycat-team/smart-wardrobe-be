@@ -41,6 +41,23 @@ type FashionItemBriefRes struct {
 	Category *CategoryBriefRes `json:"category,omitempty"`
 }
 
+type FashionProcessingInfoDTO struct {
+	ID                      uuid.UUID  `json:"id"`
+	ProcessingVersion       int        `json:"processingVersion"`
+	ProcessingStartedAt     *time.Time `json:"processingStartedAt,omitempty"`
+	LastProcessingAttemptAt *time.Time `json:"lastProcessingAttemptAt,omitempty"`
+}
+
+type DashboardCategoryDTO struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type DashboardFashionItemCategoryDTO struct {
+	FashionItemID uuid.UUID  `json:"fashionItemId"`
+	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
+}
+
 type CategoryRes struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`

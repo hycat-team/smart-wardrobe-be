@@ -30,6 +30,12 @@ GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.F
 // ReassignCategoryForCatalogItems cập nhật category_id cho fashion_items
 // (admin bulk operation, giữ đồng bộ qua contract).
 ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID, wardrobeItemIDs []uuid.UUID) error
+
+// ResetProcessingState reset các processing fields trên fashion_items
+// (review_reason, processing_error_reason, processing_retry_count, processing_started_at,
+// last_processing_attempt_at, increment processing_version) — dùng bởi wardrobe
+// trong RetryWardrobeAnalysis khi user claim manual retry.
+ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
 ```
 
 ## 2. Dashboard Reader contracts

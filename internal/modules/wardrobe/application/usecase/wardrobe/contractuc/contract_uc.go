@@ -130,6 +130,10 @@ func (uc *WardrobeContractUseCase) VerifyItemsForPost(ctx context.Context, userI
 	return nil
 }
 
+func (uc *WardrobeContractUseCase) GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return uc.wardrobeRepo.GetUserFashionItemIDs(ctx, userID)
+}
+
 func (uc *WardrobeContractUseCase) SetFashionItemID(ctx context.Context, itemID uuid.UUID, fashionItemID uuid.UUID) error {
 	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
 	if err != nil {
@@ -144,6 +148,40 @@ func (uc *WardrobeContractUseCase) SetFashionItemID(ctx context.Context, itemID 
 
 func (uc *WardrobeContractUseCase) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fashionIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		if err == nil {
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		}
+	}
+
+	result := make([]*dto.WardrobeItemRes, 0, len(items))
+	for _, item := range items {
+		var fi *fashion_dto.FashionItemRes
+		if item.FashionItemID != nil {
+			fi = fashionMap[*item.FashionItemID]
+		}
+		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
+	}
+	return result, nil
+}
+
+// GetActiveWardrobeItemsByUserID returns active wardrobe items for a user, limited at the
+// database level (no in-memory truncation). Used by the recommendation flow.
+func (uc *WardrobeContractUseCase) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemRes, error) {
+	items, err := uc.wardrobeRepo.GetActiveByUserID(ctx, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -255,6 +293,17 @@ func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, 
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+
+	staleInfo := map[uuid.UUID]fashion_dto.FashionProcessingInfoDTO{}
+	if len(fashionIDs) > 0 {
+		infos, err := uc.fashionContract.GetStaleProcessingInfo(ctx, fashionIDs)
+		if err == nil {
+			for _, info := range infos {
+				staleInfo[info.ID] = info
+			}
+		}
+	}
+
 	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
@@ -265,13 +314,34 @@ func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, 
 
 	result := make([]*dto.WardrobeItemRes, 0, len(items))
 	for _, item := range items {
+		if item.FashionItemID == nil {
+			continue
+		}
+		info, ok := staleInfo[*item.FashionItemID]
+		if !ok {
+			continue
+		}
+		if !isFashionItemStale(info, staleBefore) {
+			continue
+		}
 		var fi *fashion_dto.FashionItemRes
-		if item.FashionItemID != nil {
-			fi = fashionMap[*item.FashionItemID]
+		if f, ok := fashionMap[*item.FashionItemID]; ok {
+			fi = f
 		}
 		result = append(result, mapper.MapToWardrobeItemRes(item, fi))
 	}
 	return result, nil
+}
+
+// isFashionItemStale checks whether the fashion item is stale given its processing timestamps.
+func isFashionItemStale(info fashion_dto.FashionProcessingInfoDTO, staleBefore time.Time) bool {
+	if info.LastProcessingAttemptAt != nil {
+		return info.LastProcessingAttemptAt.Before(staleBefore)
+	}
+	if info.ProcessingStartedAt != nil {
+		return info.ProcessingStartedAt.Before(staleBefore)
+	}
+	return false
 }
 
 func (uc *WardrobeContractUseCase) MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error) {

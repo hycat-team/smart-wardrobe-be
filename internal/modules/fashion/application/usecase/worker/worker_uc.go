@@ -389,7 +389,10 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		}
 		return
 	}
-	_, _ = uc.wardrobeContract.MarkProcessingFailed(ctx, job.ItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
+	if job.FashionItemID != nil {
+		_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
+	}
+	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.Failed)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
 		uc.publishSSEEvent(job, analyzetaskstatus.Failed, items[0], err.Error())
@@ -469,7 +472,10 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 		}
 		return
 	}
-	_, _ = uc.wardrobeContract.MarkProcessingNeedsReview(ctx, job.ItemID, job.ProcessingVersion, reviewReason)
+	if job.FashionItemID != nil {
+		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, *job.FashionItemID, job.ProcessingVersion, reviewReason)
+	}
+	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.NeedsReview)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
 		uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, items[0], "")
@@ -523,15 +529,23 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		return nil
 	}
 
-	completed, err := uc.wardrobeContract.CompleteProcessingSuccess(ctx, job.ItemID, job.ProcessingVersion, updateMap)
-	if err != nil {
-		return err
-	}
-	if !completed {
-		return nil
+	// Wardrobe item: fashion module sở hữu fashion_items (metadata + embedding),
+	// wardrobe module sở hữu wardrobe_items (chỉ đổi status qua contract).
+	if job.FashionItemID != nil {
+		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
+		if err != nil {
+			return err
+		}
+		if !completed {
+			return nil
+		}
 	}
 
-	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+	if err := uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.InWardrobe); err != nil {
+		return err
+	}
+
+	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		payload := wardrobeDto.WardrobeEventPayload{
 			ItemID: job.ItemID,
 			UserID: job.UserID,

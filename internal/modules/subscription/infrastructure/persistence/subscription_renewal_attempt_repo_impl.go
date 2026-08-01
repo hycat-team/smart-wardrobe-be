@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -34,4 +35,18 @@ func (r *SubscriptionRenewalAttemptRepository) GetByKey(ctx context.Context, key
 }
 func (r *SubscriptionRenewalAttemptRepository) Update(ctx context.Context, attempt *entities.SubscriptionRenewalAttempt) error {
 	return r.current(ctx).Save(attempt).Error
+}
+func (r *SubscriptionRenewalAttemptRepository) GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error) {
+	var result dto.RenewalStatsDTO
+	err := r.current(ctx).
+		Table("subscription_renewal_attempts").
+		Select("COUNT(*) AS total_attempts, " +
+			"COALESCE(SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END), 0) AS success_count, " +
+			"COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed_count, " +
+			"COALESCE(AVG(attempt_count), 0) AS avg_retry_count").
+		Scan(&result).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

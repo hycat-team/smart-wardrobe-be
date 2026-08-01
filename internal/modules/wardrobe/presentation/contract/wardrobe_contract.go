@@ -16,6 +16,8 @@ type IWardrobeContract interface {
 	VerifyItemsForPost(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) error
 	GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error)
 	GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error)
+	GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemRes, error)
+	GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	SetFashionItemID(ctx context.Context, itemID uuid.UUID, fashionItemID uuid.UUID) error
 	GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemRes, error)
 	DeleteWardrobeItem(ctx context.Context, itemID uuid.UUID) error

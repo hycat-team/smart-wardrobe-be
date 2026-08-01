@@ -3,7 +3,6 @@ package persistence
 import (
 	"sort"
 	"strings"
-	"time"
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 
@@ -11,13 +10,7 @@ import (
 )
 
 type hybridCandidateRecord struct {
-	ID            uuid.UUID  `gorm:"column:id"`
-	UserID        uuid.UUID  `gorm:"column:user_id"`
-	FashionItemID *uuid.UUID `gorm:"column:fashion_item_id"`
-	Price         *float64   `gorm:"column:price"`
-	Status        int16      `gorm:"column:status"`
-	LastUsedAt    *time.Time `gorm:"column:last_used_at"`
-	IsDeleted     bool       `gorm:"column:is_deleted"`
+	ID uuid.UUID `gorm:"column:id"`
 
 	VectorScore     float64 `gorm:"column:vector_score"`
 	LexicalScore    float64 `gorm:"column:lexical_score"`
@@ -112,14 +105,10 @@ func (r *FashionItemRepository) buildHybridCandidates(
 		if recordSource == "" {
 			recordSource = record.RetrievalSource
 		}
+		itemID := record.ID
 		candidates = append(candidates, repositories.HybridCandidate{
-			ID:              record.ID,
-			UserID:          record.UserID,
-			FashionItemID:   record.FashionItemID,
-			Price:           record.Price,
-			Status:          record.Status,
-			LastUsedAt:      record.LastUsedAt,
-			IsDeleted:       record.IsDeleted,
+			ID:              itemID,
+			FashionItemID:   &itemID,
 			VectorScore:     record.VectorScore,
 			LexicalScore:    record.LexicalScore,
 			RetrievalScore:  record.RetrievalScore,
