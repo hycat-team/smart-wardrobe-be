@@ -36,17 +36,18 @@ Scan xác nhận không còn raw access cross-module:
    -- phải thấy "Index Scan using fitems_embedding_cosine_idx"
    ```
 
-### 3. Worker processing + eventual consistency (outbox)
+### 3. Worker processing + worker-direct (Sprint 1)
 
 1. Trigger AI processing (upload item → worker claim).
-2. Kiểm tra `wardrobe_items` update + outbox event publish:
+2. Kiểm tra `wardrobe_items` status update (Processing → InWardrobe/Failed/NeedsReview) và `fashion_items` được ghi metadata + embedding qua fashion repo (worker-direct, không qua outbox cho claim/processing state):
    ```sql
-   SELECT * FROM outbox_records WHERE topic = 'wardrobe.processing.state' ORDER BY created_at DESC;
+   SELECT id, processing_version, review_reason FROM fashion_items WHERE id = '<fashion_item_id>';
    ```
-3. Kiểm tra fashion consumer đã cập nhật `fashion_items` (processing_version tăng, review_reason reset...).
-4. Test idempotent: publish duplicate event → không double-increment `processing_version`.
+3. Kiểm tra fashion worker ghi `fashion_items` + đổi status `wardrobe_items` qua contract (`UpdateItemStatus`).
+4. Test race condition claim: 2 worker claim cùng item → chỉ 1 thắng (version check trên `fashion_items`).
 5. Đo latency claim retry ≤ +100ms so với baseline trước refactor (SC-007).
 6. Verify các thao tác đồng bộ qua contract vẫn hoạt động: `GetStaleProcessingInfo`, `ReassignCategoryForCatalogItems`.
+7. Recovery worker `RecoverStaleProcessingItems` republish stale items hoặc mark failed khi retry cạn.
 
 ### 4. Dashboard APIs
 
@@ -87,7 +88,7 @@ ORDER BY schemaname, tablename;
 
 ### 3. Search_path hoạt động
 
-1. App khởi động với DSN `search_path=identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,public`.
+1. App khởi động với DSN `search_path=public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared` (`public` đứng đầu để `goose_db_version` resolve — bảng goose luôn ở public).
 2. Chạy các luồng nghiệp vụ chính:
    - Worker processing (claim/retry/complete).
    - AI recommendation (vector search + HNSW).

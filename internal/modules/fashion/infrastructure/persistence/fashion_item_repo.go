@@ -161,6 +161,17 @@ func (r *FashionItemRepository) ClaimStaleProcessingRetry(ctx context.Context, i
 	return &claimed, true, nil
 }
 
+func (r *FashionItemRepository) IncrementProcessingRetryCount(ctx context.Context, itemID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id = ?", itemID).
+		Updates(map[string]any{
+			"processing_retry_count":     gorm.Expr("processing_retry_count + 1"),
+			"last_processing_attempt_at": time.Now().UTC(),
+			"updated_at":                 time.Now().UTC(),
+		}).Error
+}
+
 func (r *FashionItemRepository) MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error) {
 	result := r.GetDB(ctx).Model(&entities.FashionItem{}).
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).

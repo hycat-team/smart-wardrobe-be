@@ -82,7 +82,7 @@
 - Khi Down tái lập FK xuyên module đã cắt: check dữ liệu không orphan trước `ADD CONSTRAINT`.
 
 ### Rationale
-- Xét schema thực tế (`closy_db-schema.sql`): 42 bảng + sequence `deposit_transactions_order_code_seq` đều ở `public`, không có UPDATE/INSERT...SELECT/merge/drop cột → an toàn để viết Down.
+- Xét schema thực tế (`closy_db-schema.sql`): 45 bảng + sequence `deposit_transactions_order_code_seq` đều ở `public`, không có UPDATE/INSERT...SELECT/merge/drop cột → an toàn để viết Down.
 
 ### Alternatives considered
 - Migration đổi dữ liệu → không viết Down, dùng Backup + Restore (áp dụng cho migration khác, không phải feature này).

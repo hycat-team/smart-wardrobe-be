@@ -30,7 +30,7 @@
 
 - [x] T001 [P] [US1] Bổ sung vào `docs/temp/technical-debt/cross-module-db-access.md`: vi phạm import domain constants (`fashion_item_repo_hybrid.go:7` import `wardrobestatus`), ghi chú `IWardrobeContract` đã có sẵn `GetStaleProcessingItems`/`MarkProcessingFailed`/`MarkProcessingNeedsReview`/`CompleteProcessingSuccess`, đánh dấu trạng thái "đang xử lý trong Sprint 1" cho các mục wardrobe↔fashion.
 - [x] T002 [P] [US1] Cập nhật `docs/temp/technical-debt/dashboard-cross-module-queries.md`: gỡ bảng `brand_conversations` (không còn được query), bổ sung `user_subscriptions` (dashboard_admin_repo.go:45), `loyalty_accounts` + `loyalty_tiers` (dashboard_brand_repo.go:58-60), `brand_benefits` (dashboard_brand_repo.go:94), bổ sung vi phạm import constants (`loyaltypointlotstatus`, `aiusageeventstatus`, `depositstatus`, `deposittransactiontype`).
-- [x] T003 [P] [US1] Cập nhật `docs/system-design/architecture.md` §VII: thay mục "Core Tables" (bảng ma `loyalty_points`/`campaigns`/`digital_samples`/`sample_votes`) bằng bảng mapping thực tế (42 bảng theo module, đối chiếu `database/scripts/closy_db-schema.sql`); thêm ghi chú FK xuyên module hiện hữu + kế hoạch xử lý (giữ FK tới `users`, cắt FK còn lại).
+- [x] T003 [P] [US1] Cập nhật `docs/system-design/architecture.md` §VII: thay mục "Core Tables" (bảng ma `loyalty_points`/`campaigns`/`digital_samples`/`sample_votes`) bằng bảng mapping thực tế (45 bảng theo module, đối chiếu `database/scripts/closy_db-schema.sql`); thêm ghi chú FK xuyên module hiện hữu + kế hoạch xử lý (giữ FK tới `users`, cắt FK còn lại).
 - [x] T004 [US1] Tạo mới `docs/temp/technical-debt/schema-separation-assessment.md` gồm 3 phần: (1) phân loại & ưu tiên vi phạm (wardrobe→fashion HIGH, fashion→wardrobe HIGH, dashboard LOW), (2) danh sách FK xuyên module — **9 FK phi-users cần CẮT** (đi qua contract) + **~30 FK trỏ tới `users` được GIỮ xuyên schema** theo Q1/Q2, (3) kết luận khả thi + chi phí + rủi ro + thứ tự thực hiện; ghi nhận phương án vector search đã chốt (`GetUserFashionItemIDs` + query `fashion_items WHERE id IN (...) ORDER BY embedding`) và đính chính nhận định HNSW.
 
 **Checkpoint 1.1**: 2 tech debt docs + §VII khớp 100% code; tài liệu đánh giá trả lời 3 câu hỏi.
@@ -48,8 +48,8 @@
 - [x] T005 [P] [US2] Thêm method vào `IFashionContract` (`internal/modules/fashion/presentation/contract/fashion_contract.go`) — chỉ các thao tác ĐỒNG BỘ: `GetStaleProcessingInfo(fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error)`, `ReassignCategoryForCatalogItems(fromCategoryID, toCategoryID uuid.UUID, wardrobeItemIDs []uuid.UUID) error`, và `ResetProcessingState(fashionItemID uuid.UUID) error` (cho luồng retry của `RetryWardrobeAnalysis`). KHÔNG thêm claim/processing state vào contract đồng bộ (fashion worker gọi trực tiếp fashionItemRepo). Không trùng lặp `GetStaleProcessingItems` (đã thuộc `IWardrobeContract`).
 - [x] T006 [US2] Implement các method `IFashionContract` trên fashion module: use case + repository method trên `fashion_items` (`GetStaleProcessingInfo`, `ReassignCategoryForCatalogItems`, `ResetProcessingState`) trong `internal/modules/fashion/application/usecase/` và `internal/modules/fashion/infrastructure/persistence/`.
 - [x] T007 [US2] Cập nhật Wire DI wiring fashion contract impl trong `internal/di/` (fashion provider expose đủ method mới).
-- [x] T008 [P] [US2] Thêm method `GetUserFashionItemIDs(ctx, userID) ([]uuid.UUID, error)` vào `IWardrobeContract` (`internal/modules/wardrobe/presentation/contract/wardrobe_contract.go`) — implement chỉ `SELECT fashion_item_id FROM wardrobe_items WHERE user_id = ? AND status = ? AND is_deleted = false`; không trả entity.
-- [x] T009 [US2] Refactor `internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo.go`: thay UPDATE `fashion_items` trực tiếp L468 (`ReassignCategoryForCatalogItems`) bằng gọi `IFashionContract.ReassignCategoryForCatalogItems`; các UPDATE claim/processing state (L234, L266, L376) chuyển sang outbox event (T013); thay JOIN đọc `fashion_items`/`categories` (L67-68, L200-201, L253-254, L331-332, L409-410, L424-425, L433, L460-461) bằng lấy dữ liệu qua contract + stitch bằng `sliceutils.IndexBy`/`GroupBy`.
+- [x] T008 [P] [US2] Thêm method `GetActiveWardrobeItemsByUserID(ctx, userID, limit)` vào `IWardrobeContract` (`internal/modules/wardrobe/presentation/contract/wardrobe_contract.go`) — implement lọc active (`status = InWardrobe` + `is_deleted = false`) + giới hạn theo gói ngay tại DB, trả DTO đầy đủ; recommendation flow dùng method này để lấy fashion_item_ids (không load toàn bộ wardrobe lên RAM). Giữ `GetUserFashionItemIDs` phục vụ dashboard reader.
+- [x] T009 [US2] Refactor `internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo.go`: thay UPDATE `fashion_items` trực tiếp L468 (`ReassignCategoryForCatalogItems`) bằng gọi `IFashionContract.ReassignCategoryForCatalogItems`; các UPDATE claim/processing state (L234, L266, L376) xử lý ở fashion side qua repo — worker-direct (T013/T014); thay JOIN đọc `fashion_items`/`categories` (L67-68, L200-201, L253-254, L331-332, L409-410, L424-425, L433, L460-461) bằng lấy dữ liệu qua contract + stitch bằng `sliceutils.IndexBy`/`GroupBy`.
 - [x] T010 [US2] Đảm bảo wardrobe không còn import entity/repo fashion; inject `IFashionContract` vào wardrobe provider (DI) trong `internal/di/` và `internal/modules/wardrobe/presentation/contract/wardrobe_contract_impl.go`.
 - [x] T011 [US2] Refactor `GetHybridCandidates` trong `internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid.go`: bỏ `Table("wardrobe_items")` + JOIN; thay bằng query `fashion_items WHERE id IN (?)` + `ORDER BY embedding <=> ?` + giữ filter seasonality/category/excluded trên fashion module; giữ RRF merge + fallback logic.
 - [x] T012 [US2] Cập nhật fashion provider (DI) nhận `IWardrobeContract` cho `GetHybridCandidates` trong `internal/di/` và `internal/modules/fashion/`.
@@ -73,7 +73,7 @@
 - [x] T017 [P] [US3] Thêm method vào `IBrandDashboardReader` (`internal/modules/brand/presentation/contract/dashboard_reader.go`): `GetCustomerAcquisition`, `GetLoyaltyTierDistribution`, `GetPointExpiryForecast`, `GetBenefitRedemptionAnalytics`, `GetCatalogStats`, `GetCustomerSpendSegmentation`, `GetBrandNewCustomerCount`, `GetBrandCustomerClaimRate`, `GetBrandRedemptionCount`, `GetBrandItemCount`, `GetBrandItemCountByType` — implement qua brand use case + repo (chuyển query từ `dashboard_brand_repo.go` sang brand module, trả DTO).
 - [x] T018 [P] [US3] Thêm method vào `ISubscriptionDashboardReader` (`internal/modules/subscription/presentation/contract/dashboard_reader.go`): `GetSubscriptionDistribution`, `GetRevenueBreakdown`, `GetRenewalStats` — implement qua subscription use case + repo.
 - [x] T019 [P] [US3] Thêm method vào `IAICostDashboardReader` (`internal/modules/aiexecutor/presentation/contract/dashboard_reader.go`): `GetAIUsageByOperation`, `GetTotalAIRequestCount`, `GetAIErrorBreakdown` — implement qua aiexecutor use case + repo.
-- [x] T020 [P] [US3] Thêm method `GetWardrobeCategoryDistribution(ctx, userID)` vào `IWardrobeDashboardReader` (`internal/modules/wardrobe/presentation/contract/dashboard_reader.go`) — implement qua wardrobe use case + repo (trả wardrobe items + fashion_item_id của user).
+- [x] T020 [P] [US3] `IWardrobeDashboardReader` expose method trả fashion_item_ids của user (`GetUserWardrobeFashionItemIDs` — `internal/modules/wardrobe/presentation/contract/dashboard_reader.go`) — dashboard use case dùng method này + `IFashionDashboardReader.GetCategoryIDsByFashionItemIDs`/`GetCategoriesByIDs` để dựng phân bổ category, không query DB trực tiếp.
 - [x] T021 [P] [US3] Tạo mới `IFashionDashboardReader` trong `internal/modules/fashion/presentation/contract/dashboard_reader.go` (fashion module sở hữu `fashion_items`/`categories`) với method: `GetCategoriesByIDs(ctx, categoryIDs)`, `GetCategoryIDsByFashionItemIDs(ctx, fashionItemIDs)` + impl + DI.
 - [x] T022 [US3] Refactor `internal/modules/dashboard/infrastructure/persistence/dashboard_brand_repo.go`, `dashboard_admin_repo.go`, `dashboard_user_repo.go`: inject các contract reader (DI), thay từng raw query bằng gọi reader method + map sang DTO hiện tại; xoá query bảng module khác, giữ query bảng dashboard snapshot của chính module.
 - [x] T023 [US3] Snapshot test dashboard: chạy toàn bộ API dashboard (user/brand/admin) so sánh response trước/sau refactor giống hệt; unit test từng reader method (empty data → zero value, đúng format) trong `internal/modules/dashboard/`.
@@ -84,7 +84,7 @@
 
 # SPRINT 2 — Tách Database Schema Vật Lý
 
-**Mục tiêu**: 42 bảng + 1 sequence sang schema module; FK xuyên module được xử lý theo Q1/Q2; migration thuần `SET SCHEMA` có Down đầy đủ; toàn bộ test suite pass.
+**Mục tiêu**: 45 bảng + 1 sequence sang schema module; FK xuyên module được xử lý theo Q1/Q2; migration thuần `SET SCHEMA` có Down đầy đủ; toàn bộ test suite pass.
 
 ---
 
@@ -96,10 +96,10 @@
 
 ### Implementation
 
-- [ ] T024 [US4] Thiết kế schema mapping mục tiêu trong `docs/temp/technical-debt/schema-separation-mapping.md`: liệt kê 42 bảng → schema đích theo module (identity: `users`/`refresh_tokens`/`user_style_profiles`; wardrobe: `wardrobe_items`/`outfits`/`outfit_items`; fashion: `fashion_items`/`categories`/`conversational_contexts`/`messages`; brand: 15 bảng; subscription: 10 bảng + sequence `deposit_transactions_order_code_seq`; aiexecutor: 6 bảng; dashboard: 3 bảng; shared: `outbox_records`); liệt kê 9 FK xuyên module cần cắt + ~30 FK tới `users` giữ xuyên schema.
-- [ ] T025 [US4] Viết Goose migration `database/migrations/20260801000000_separate_module_schemas.sql`: **Up** = `CREATE SCHEMA` từng module + `ALTER TABLE ... SET SCHEMA` (42 bảng) + `ALTER SEQUENCE deposit_transactions_order_code_seq SET SCHEMA subscription` + `ALTER INDEX ... SET SCHEMA` (index unique/partial) + `DROP CONSTRAINT` 9 FK xuyên module + `ADD CONSTRAINT` giữ FK tới `users` (schema-qualified `identity.users`); **Down** = `SET SCHEMA public` ngược lại + tái lập 9 FK xuyên module (check dữ liệu không orphan trước `ADD CONSTRAINT`) + drop schema module.
-- [ ] T026 [US4] Chạy `make migration-up` + `make migration-down` trên DB test; verify round-trip không mất dữ liệu (so sánh count bảng trước/sau).
-- [ ] T027 [US4] Cập nhật DSN thêm `search_path` = `identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,public` trong `internal/shared/infrastructure/db/db.go` + `internal/config/`; xác nhận GORM `NamingStrategy` không bị ảnh hưởng; chạy toàn bộ test suite trên schema tách.
+- [x] T024 [US4] Thiết kế schema mapping mục tiêu trong `docs/temp/technical-debt/schema-separation-mapping.md`: liệt kê 45 bảng → schema đích theo module (identity: `users`/`refresh_tokens`/`user_style_profiles`; wardrobe: `wardrobe_items`/`outfits`/`outfit_items`; fashion: `fashion_items`/`categories`/`conversational_contexts`/`messages`; brand: 15 bảng; subscription: 10 bảng + sequence `deposit_transactions_order_code_seq`; aiexecutor: 6 bảng; dashboard: 3 bảng; shared: `outbox_records`); liệt kê 9 FK xuyên module cần cắt + ~30 FK tới `users` giữ xuyên schema.
+- [x] T025 [US4] Viết Goose migration `database/migrations/20260801000000_separate_module_schemas.sql`: **Up** = `CREATE SCHEMA` từng module + `ALTER TABLE ... SET SCHEMA` (45 bảng) + sequence auto-owned tự đi theo bảng + `DROP CONSTRAINT` 9 FK xuyên module; **Down** = `SET SCHEMA public` ngược lại + tái lập 9 FK xuyên module (check dữ liệu không orphan trước `ADD CONSTRAINT`) + drop schema module.
+- [x] T026 [US4] Chạy `make migration-up` + `make migration-down` trên DB test; verify round-trip không mất dữ liệu (so sánh count bảng trước/sau — 45 bảng khớp, FK 80→71→80, HNSW giữ).
+- [x] T027 [US4] Cập nhật DSN thêm `search_path` = `public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared` trong `internal/shared/infrastructure/db/db.go` + `listener.go` + `internal/config/` (`public` đứng đầu để `goose_db_version` resolve — bảng goose luôn ở public; lệch nhỏ so với kế hoạch `identity,...public`); xác nhận GORM `NamingStrategy` không bị ảnh hưởng (raw SQL không schema-qualified resolve qua search_path); chạy toàn bộ test suite trên schema tách (`make check` pass).
 
 **Checkpoint 2.1**: Migration round-trip an toàn; app hoạt động với search_path multi-schema.
 
@@ -113,11 +113,11 @@
 
 ### Implementation
 
-- [ ] T028 [US4] Verify integrity sau khi cắt FK: (a) với mỗi FK bị cắt (`wardrobe_items→fashion_items`, `brand_items→fashion_items`, `digital_sample_responses→outfits`, `subscription_plans→ai_cost_policies`, `ai_policy_grants→subscription_plans`, ...) xác nhận mọi luồng ghi liên quan đều qua contract; (b) rà soát xoá mềm/delete cascade bị mất do cắt FK — bổ sung logic xoá qua contract nếu cần; (c) verify các FK GIỮ (xuyên schema trỏ tới `users`, ~30 FK) vẫn enforce: xoá `users` → cascade delete ở các bảng liên quan, chèn bản ghi vi phạm `user_id` không tồn tại → bị chặn bởi FK (scan `internal/modules/`).
-- [ ] T029 [US4] Chạy `make check` (fmt + tidy + generate + vet + test + build) pass.
-- [ ] T030 [US4] Chạy các luồng nghiệp vụ chính trên schema tách: worker processing, AI recommendation (vector search), dashboard (user/brand/admin), payment (PayOS webhook → deposit → wallet → subscription), loyalty (earn/redeem/expire).
-- [ ] T031 [US4] Verify HNSW index vẫn dùng trong vector search: `EXPLAIN (ANALYZE)` query `SELECT id FROM fashion_items WHERE id IN (...) ORDER BY embedding <=> '...' LIMIT 20` — phải thấy `Index Scan using fitems_embedding_cosine_idx`.
-- [ ] T032 [US4] Cập nhật `database/scripts/closy_db-schema.sql` (dump schema mới schema-qualified) + `docs/system-design/architecture.md` §VII theo schema tách.
+- [x] T028 [US4] Verify integrity sau khi cắt FK: (a) với mỗi FK bị cắt (`wardrobe_items→fashion_items`, `brand_items→fashion_items`, `digital_sample_responses→outfits`, `subscription_plans→ai_cost_policies`, `ai_policy_grants→subscription_plans`, ...) xác nhận mọi luồng ghi liên quan đều qua contract (Sprint 1 — 0 raw cross-module access); (b) rà soát xoá mềm/delete cascade bị mất do cắt FK — không có luồng hard-delete `fashion_items`/`brands` cần cascade (chỉ soft delete), không cần bổ sung; (c) verify các FK GIỮ (xuyên schema trỏ tới `users`, ~30 FK) vẫn enforce: chèn `user_id` không tồn tại → bị chặn bởi FK, xoá `users` → cascade delete đúng.
+- [x] T029 [US4] Chạy `make check` (fmt + tidy + generate + vet + test + build) pass.
+- [x] T030 [US4] Chạy các luồng nghiệp vụ chính trên schema tách: worker processing (failed_items_cleanup, processing_recovery, subscription_renewal, loyalty_point_expiry — startup chạy OK), AI recommendation (vector search + HNSW hoạt động), dashboard aggregator (user/brand/admin snapshot ghi thành công), dashboard reads, sequence `deposit_transactions_order_code_seq`; payment PayOS webhook + loyalty earn/redeem E2E cần external API keys (logic worker + reads verified).
+- [x] T031 [US4] Verify HNSW index vẫn dùng trong vector search: `EXPLAIN` query `SELECT id FROM fashion_items WHERE id IN (...) ORDER BY embedding <=> '...' LIMIT 20` — thấy `Index Scan using fitems_embedding_cosine_idx` (schema `fashion`, index def schema-qualified).
+- [x] T032 [US4] Cập nhật `database/scripts/closy_db-schema.sql` (dump mới schema-qualified theo module, 45 bảng + sequence, FK giữ) + `docs/system-design/architecture.md` §VII theo schema tách.
 
 **Checkpoint 2.2**: SC-005, SC-006 đạt; round-trip migration không mất dữ liệu.
 
@@ -127,8 +127,8 @@
 
 **Purpose**: Hoàn thiện và xác nhận tổng thể.
 
-- [ ] T033 [P] Chạy quickstart.md validation: toàn bộ kịch bản Sprint 1 & Sprint 2 trong `specs/011-assess-schema-separation/quickstart.md` pass (kiểm tra HNSW index, outbox event, migration round-trip, schema mapping, search_path).
-- [ ] T034 [P] Rà soát toàn bộ: không còn hardcode domain constant, không còn import module khác trong use case/repo, tài liệu `docs/` không còn thông tin lỗi thời về schema.
+- [x] T033 [P] Chạy quickstart.md validation: toàn bộ kịch bản Sprint 1 & Sprint 2 trong `specs/011-assess-schema-separation/quickstart.md` pass (kiểm tra HNSW index, worker-direct/outbox cho event khác, migration round-trip, schema mapping, search_path, sequence, app startup + aggregator).
+- [x] T034 [P] Rà soát toàn bộ: không còn hardcode domain constant, không còn import module khác trong use case/repo, tài liệu `docs/` không còn thông tin lỗi thời về schema (đính chính 42 → 45 bảng trong spec/plan/tasks/research/data-model/sprint1-assessment/architecture §VII).
 
 **Checkpoint 2.3**: Toàn bộ checklist feature đạt; sẵn sàng integration & PR.
 
@@ -230,3 +230,28 @@ Với nhiều developer:
 - Không sửa `database/init`; mọi thay đổi DB qua Goose migration mới.
 - Commit sau mỗi task hoặc nhóm task logic.
 - Sprint 2 chỉ bắt đầu khi SC-004 đạt.
+
+---
+
+## Phase 3: Convergence
+
+**Outcome**: Đối chiếu Sprint 1 (T001-T023) giữa spec/plan/tasks và code hiện tại. Quyết định F3 đã chốt: **worker-direct là chuẩn** (worker ghi trực tiếp `fashionItemRepo` + `UpdateItemStatus`, KHÔNG outbox cho claim/processing state) — spec.md FR-010 cần được cập nhật cho khớp.
+
+- [x] T035 Hiện thực hoá worker recovery stale items trong `RecoverStaleProcessingItems` (`internal/modules/fashion/application/usecase/worker/worker_uc.go:304-337`): đang là no-op chỉ đếm `republishedCount++`, không republish job qua `eventPublisher` cũng không `MarkProcessingFailed` khi retry cạn; `publishProcessingRetry` (L567) là dead code — hoặc wire nó vào hoặc xoá; đảm bảo stale item được republish `TopicFashionAnalyze` hoặc mark failed đúng hạn mức per `US2/edge-case` (missing)
+- [x] T036 Bổ sung test cho SC-007 trong `internal/modules/fashion/application/usecase/worker/worker_uc_test.go`: (a) race condition claim — 2 worker claim cùng item, chỉ 1 thắng (row lock/version check ở fashion side); (b) đo latency claim retry ≤ +100ms so với baseline trước refactor per `T015`/`SC-007` (missing)
+- [x] T037 Cập nhật `spec.md` FR-010 + `plan.md` Task 1.2.4 để phản ánh quyết định đã chốt: claim/processing state ghi trực tiếp qua `fashionItemRepo` + `wardrobeContract.UpdateItemStatus` (worker-direct), không dùng outbox event; giữ read stale info + reassign category đồng bộ qua contract per `FR-010` (contradicts)
+- [x] T038 Review/justify `GetActiveWardrobeItemsByUserID` (thêm mới, không có trong spec/plan/tasks) trong `IWardrobeContract`/`WardrobeContractUseCase`/`wardrobe_repo.go` và việc recommendation flow dùng nó thay `GetUserFashionItemIDs`; cập nhật `spec.md` FR-007 + `tasks.md` T008 cho khớp implementation per `FR-007` (unrequested)
+- [x] T039 Bổ sung `GetWardrobeCategoryDistribution(ctx, userID)` vào `IWardrobeDashboardReader` (`internal/modules/wardrobe/presentation/contract/dashboard_reader.go`) + impl theo đúng T020 — hoặc cập nhật task T020 mô tả hiện tại (dashboard use case stitch qua `GetUserWardrobeFashionItemIDs` + `IFashionDashboardReader`) per `T020` (partial)
+- [x] T040 Dùng tham số `staleBefore` trong `GetStaleProcessingItems` (`internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo.go:237-248`) — hiện nhận param nhưng WHERE chỉ lọc status/is_deleted, không lọc theo thời gian stale per `US2/edge-case` (partial)
+- [x] T041 Quyết định version-control 3 tài liệu tech debt (`docs/temp/technical-debt/cross-module-db-access.md`, `dashboard-cross-module-queries.md`, `schema-separation-assessment.md`): hiện `docs/temp` bị gitignore nên không commit; cân nhắc bỏ ignore hoặc sao chép nội dung vào `specs/011-assess-schema-separation/` như `sprint1-assessment.md` per `FR-001`/`FR-002`/`FR-004` (unrequested)
+
+---
+
+## Phase 4: Convergence
+
+**Outcome**: Rà soát lại sau Phase 3 — code đã đạt (recovery worker, test SC-007, staleBefore, gitignore), nhưng còn 4 chỗ mô tả tài liệu lỗi thời về **outbox cho claim/processing state** trong spec/plan/tasks (worker-direct đã chốt ở Phase 3). Cần đồng bộ doc để hết contradicts.
+
+- [x] T042 Cập nhật `spec.md` FR-006: bỏ cụm "chuyển sang outbox event do fashion consumer xử lý (phân định theo FR-010)" — thay bằng "xử lý ở fashion side qua repo của mình (phân định theo FR-010)" để khớp worker-direct đã chốt per `FR-010` (contradicts)
+- [x] T043 Cập nhật `spec.md` US2 mô tả (dòng giới thiệu user story 2): cụm "3 UPDATE claim/processing state chuyển sang outbox theo FR-010" → "3 UPDATE claim/processing state xử lý ở fashion side qua repo (worker-direct) theo FR-010" per `FR-010` (contradicts)
+- [x] T044 Cập nhật `plan.md`: (a) bảng Constitution Check III — dòng "Q5 chốt: critical path chuyển sang eventual consistency, publish event qua transactional outbox" → "Q5 chốt: critical path chuyển sang worker-direct (fashion worker ghi fashion_items qua repo + wardrobeContract.UpdateItemStatus), không dùng outbox cho claim/processing state"; (b) Task 1.2.1 ghi chú Phân định (I3): "chuyển sang outbox event (Task 1.2.4)" → "xử lý ở fashion side qua repo (Task 1.2.4 worker-direct)" per `FR-010` (contradicts)
+- [x] T045 Cập nhật `tasks.md` mô tả T009 (không đổi trạng thái [x]): cụm "các UPDATE claim/processing state (L234, L266, L376) chuyển sang outbox event (T013)" → "xử lý qua fashion worker worker-direct (T013/T014)" cho khớp implementation per `FR-010` (contradicts)

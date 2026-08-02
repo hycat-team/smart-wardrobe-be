@@ -146,6 +146,7 @@ type Database struct {
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	SearchPath      string        `mapstructure:"search_path"`
 }
 
 type Redis struct {

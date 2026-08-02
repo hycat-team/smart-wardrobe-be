@@ -4,7 +4,7 @@
 
 ## 1. Schema hiện tại (single `public`)
 
-Nguồn: `database/scripts/closy_db-schema.sql` (42 bảng + 1 sequence, tất cả ở `public`).
+Nguồn: `database/scripts/closy_db-schema.sql` (45 bảng + 1 sequence, tất cả ở `public`).
 
 ### 1.1 Bảng thuộc module sở hữu
 

@@ -237,8 +237,8 @@ func (r *WardrobeItemRepository) GetFailedItemsForCleanup(ctx context.Context, l
 func (r *WardrobeItemRepository) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
 	err := r.GetDB(ctx).
-		Where("wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?", wardrobestatus.Processing, false).
-		Order("wardrobe_items.created_at ASC").
+		Where("wardrobe_items.status = ? AND wardrobe_items.is_deleted = ? AND wardrobe_items.updated_at < ?", wardrobestatus.Processing, false, staleBefore).
+		Order("wardrobe_items.updated_at ASC").
 		Limit(limit).
 		Find(&items).Error
 	if err != nil {

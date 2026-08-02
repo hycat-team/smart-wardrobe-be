@@ -8,10 +8,10 @@
 
 Feature triển khai theo **2 Sprint lớn** (phân cấp: Sprint → Phase → Task → Sub-task):
 
-- **Sprint 1 — Đánh giá + Xử lý tech debt**: (a) phase đánh giá/nghiên cứu làm tiền đề, (b) refactor cross-module DB access wardrobe↔fashion qua contract (kèm chuyển claim/processing state sang eventual consistency qua outbox, giữ đọc stale info + reassign category đồng bộ qua contract), (c) refactor dashboard queries qua contract reader.
-- **Sprint 2 — Tách database schema vật lý**: tách 42 bảng + 1 sequence từ `public` sang schema riêng theo module (identity, wardrobe, fashion, brand, subscription, aiexecutor, dashboard, shared), cắt ~9 FK xuyên module (giữ ~30 FK tới `users`), migration thuần `SET SCHEMA` có Down đầy đủ, cập nhật DSN/search_path/GORM.
+- **Sprint 1 — Đánh giá + Xử lý tech debt**: (a) phase đánh giá/nghiên cứu làm tiền đề, (b) refactor cross-module DB access wardrobe↔fashion qua contract (kèm chuyển claim/processing state sang worker-direct: fashion worker ghi `fashion_items` qua repo + `wardrobeContract.UpdateItemStatus`, giữ đọc stale info + reassign category đồng bộ qua contract), (c) refactor dashboard queries qua contract reader.
+- **Sprint 2 — Tách database schema vật lý**: tách 45 bảng + 1 sequence từ `public` sang schema riêng theo module (identity, wardrobe, fashion, brand, subscription, aiexecutor, dashboard, shared), cắt ~9 FK xuyên module (giữ ~30 FK tới `users`), migration thuần `SET SCHEMA` có Down đầy đủ, cập nhật DSN/search_path/GORM.
 
-Các quyết định đã chốt ở clarify: giữ FK xuyên schema tới `users` (Q1), cắt FK xuyên module còn lại (Q2), không phân quyền DB-level (Q3), migration thuần `SET SCHEMA` viết Down (Q4), eventual consistency qua outbox cho critical path worker (Q5).
+Các quyết định đã chốt ở clarify: giữ FK xuyên schema tới `users` (Q1), cắt FK xuyên module còn lại (Q2), không phân quyền DB-level (Q3), migration thuần `SET SCHEMA` viết Down (Q4), worker-direct cho critical path worker (Q5).
 
 ## Technical Context
 
@@ -31,7 +31,7 @@ Các quyết định đã chốt ở clarify: giữ FK xuyên schema tới `user
 
 **Constraints**: 1 connection chung tới DB (không phân quyền DB-level); không sửa `database/init`; mọi thay đổi DB qua Goose migration mới; không cross-module import/join/preload entity; eventual consistency chấp nhận độ trễ nhỏ
 
-**Scale/Scope**: 7 module sở hữu bảng + shared; 42 bảng + 1 sequence cần `SET SCHEMA`
+**Scale/Scope**: 7 module sở hữu bảng + shared; 45 bảng + 1 sequence cần `SET SCHEMA`
 
 ## Constitution Check
 
@@ -41,7 +41,7 @@ Các quyết định đã chốt ở clarify: giữ FK xuyên schema tới `user
 |---|----------------------|------------|---------------------------|
 | I | Pragmatic Modular Monolith — cấm cross-module joins/preloads | ⚠️ Vi phạm hiện hữu | Feature này SỬA vi phạm: Sprint 1 refactor hết cross-module JOIN/UPDATE qua contract. Đúng tinh thần Hiến pháp |
 | II | Strict Module Boundaries & DTO Contracts | ✅ Tuân thủ | Mọi cross-module access qua `presentation/contract/` bằng DTO; stitch bằng sliceutils |
-| III | Event-Driven + Outbox | ✅ Tuân thủ | Q5 chốt: critical path chuyển sang eventual consistency, publish event qua transactional outbox |
+| III | Event-Driven + Outbox | ✅ Tuân thủ | Q5 chốt: critical path chuyển sang worker-direct (fashion worker ghi `fashion_items` qua repo + `wardrobeContract.UpdateItemStatus`), không dùng outbox cho claim/processing state; outbox vẫn dùng cho các event nghiệp vụ khác (wardrobe created/updated/deleted) |
 | IV | Clean Architecture & Strict Layer | ✅ Tuân thủ | Refactor giữ nguyên cấu trúc presentation → application → domain ← infrastructure |
 | V | Transaction & Error Handling (UoW) | ✅ Tuân thủ | Event outbox ghi trong cùng transaction với business op |
 | VI | AI Pipeline & Cost Control | ✅ Tuân thủ | Không thay đổi logic AI; giữ HNSW index |
@@ -135,7 +135,7 @@ docs/                 # + cập nhật architecture.md §VII, 2 tech debt docs, 
 
 **File**: `docs/system-design/architecture.md`
 
-- Sub-task 1.1.3.1: Thay mục "Core Tables" (bảng ma: `loyalty_points`, `campaigns`, `digital_samples`, `sample_votes`) bằng bảng mapping thực tế (42 bảng) theo module sở hữu (đối chiếu `database/scripts/closy_db-schema.sql`).
+- Sub-task 1.1.3.1: Thay mục "Core Tables" (bảng ma: `loyalty_points`, `campaigns`, `digital_samples`, `sample_votes`) bằng bảng mapping thực tế (45 bảng) theo module sở hữu (đối chiếu `database/scripts/closy_db-schema.sql`).
 - Sub-task 1.1.3.2: Thêm ghi chú về FK xuyên module hiện hữu (rào cản tách schema) và kế hoạch xử lý (giữ FK tới `users`, cắt FK còn lại).
 
 #### Task 1.1.4 — Tạo tài liệu đánh giá khả thi tách schema
@@ -163,34 +163,34 @@ docs/                 # + cập nhật architecture.md §VII, 2 tech debt docs, 
 - Sub-task 1.2.1.2: Implement qua use case fashion + repository method trên `fashion_items`.
 - Sub-task 1.2.1.3: Cập nhật Wire DI wiring fashion contract impl.
 
-> **Phân định (I3)**: claim retry + processing state (mark failed / needs review / complete success) KHÔNG thêm vào `IFashionContract` đồng bộ — chuyển sang outbox event (Task 1.2.4). `GetStaleProcessingItems` vốn thuộc `IWardrobeContract` (operate trên `wardrobe_items`) được giữ nguyên, KHÔNG trùng lặp sang `IFashionContract`.
+> **Phân định (I3)**: claim retry + processing state (mark failed / needs review / complete success) KHÔNG thêm vào `IFashionContract` đồng bộ — xử lý ở fashion side qua repo (Task 1.2.4 worker-direct). `GetStaleProcessingItems` vốn thuộc `IWardrobeContract` (operate trên `wardrobe_items`) được giữ nguyên, KHÔNG trùng lặp sang `IFashionContract`.
 
 #### Task 1.2.2 — Wardrobe gọi qua `IFashionContract` thay vì raw JOIN/UPDATE
 
 **File**: `internal/modules/wardrobe/infrastructure/persistence/wardrobe_repo.go` (+ wardrobe application/usecase, + wardrobe contract impl)
 
-- Sub-task 1.2.2.1: Thay UPDATE `fashion_items` trực tiếp (L468 `ReassignCategoryForCatalogItems`) bằng gọi `IFashionContract.ReassignCategoryForCatalogItems`; các UPDATE claim/processing state (L234, L266, L376) chuyển sang outbox event (Task 1.2.4).
+- Sub-task 1.2.2.1: Thay UPDATE `fashion_items` trực tiếp (L468 `ReassignCategoryForCatalogItems`) bằng gọi `IFashionContract.ReassignCategoryForCatalogItems`; các UPDATE claim/processing state (L234, L266, L376) xử lý ở fashion side qua repo — worker-direct (Task 1.2.4).
 - Sub-task 1.2.2.2: Thay các JOIN đọc `fashion_items`/`categories` (L67-68, L200-201, L253-254, L331-332, L409-410, L424-425, L433, L460-461) bằng lấy fashion data qua contract + stitch bằng `sliceutils.IndexBy`/`GroupBy`.
 - Sub-task 1.2.2.3: Đảm bảo wardrobe không còn import entity/repo fashion; inject `IFashionContract` vào wardrobe provider (DI).
 - Sub-task 1.2.2.4: `go vet ./internal/modules/wardrobe/...` pass; scan xác nhận không còn `fashion_items` raw access.
 
-#### Task 1.2.3 — Refactor `GetHybridCandidates` theo phương án `GetUserFashionItemIDs`
+#### Task 1.2.3 — Refactor `GetHybridCandidates` theo phương án contract lấy fashion_item_ids
 
 **File**: `internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid.go`, `internal/modules/wardrobe/presentation/contract/wardrobe_contract.go`
 
-- Sub-task 1.2.3.1: Thêm method `GetUserFashionItemIDs(ctx, userID)` vào `IWardrobeContract` (implement: chỉ `SELECT fashion_item_id FROM wardrobe_items WHERE user_id = ? AND status = ? AND is_deleted = false`).
-- Sub-task 1.2.3.2: Refactor `GetHybridCandidates`: bỏ `Table("wardrobe_items")` + JOIN; thay bằng query `fashion_items WHERE id IN (?)` + `ORDER BY embedding <=> ?` + giữ filter seasonality/category/excluded trên fashion module.
+- Sub-task 1.2.3.1: Thêm method `GetActiveWardrobeItemsByUserID(ctx, userID, limit)` vào `IWardrobeContract` (implement: lọc active `status = InWardrobe` + `is_deleted = false` + giới hạn theo gói ngay tại DB, trả DTO đầy đủ). Giữ `GetUserFashionItemIDs` phục vụ dashboard reader.
+- Sub-task 1.2.3.2: Refactor `GetHybridCandidates`: bỏ `Table("wardrobe_items")` + JOIN; nhận `fashionItemIDs` từ caller (rút từ activeItems của `GetActiveWardrobeItemsByUserID`); thay bằng query `fashion_items WHERE id IN (?)` + `ORDER BY embedding <=> ?` + giữ filter seasonality/category/excluded trên fashion module.
 - Sub-task 1.2.3.3: Giữ nguyên RRF merge + fallback logic; verify HNSW index vẫn được dùng (EXPLAIN).
 - Sub-task 1.2.3.4: Cập nhật fashion provider (DI) nhận `IWardrobeContract`.
 
-#### Task 1.2.4 — Chuyển critical path worker sang eventual consistency (outbox)
+#### Task 1.2.4 — Chuyển critical path worker sang worker-direct
 
-**File**: wardrobe worker (`internal/modules/wardrobe/presentation/worker/`), outbox infra (`internal/shared/infrastructure/messaging/outbox.go`), fashion consumer
+**File**: fashion worker (`internal/modules/fashion/application/usecase/worker/worker_uc.go`)
 
-- Sub-task 1.2.4.1: Wardrobe ghi `wardrobe_items` + publish outbox event `wardrobe.processing.state` (payload chứa itemID, fashionItemID, action, processingVersion, occurred_at) trong cùng transaction (transactional outbox, Hiến pháp III). Action gồm: `claim_manual_retry`, `claim_stale_retry`, `mark_failed`, `mark_needs_review`, `complete_success`.
-- Sub-task 1.2.4.2: Fashion module tạo consumer/worker nhận event, cập nhật `fashion_items` (claim retry / processing state) — KHÔNG qua contract đồng bộ.
-- Sub-task 1.2.4.3: Xử lý race condition claim (2 worker): row lock `FOR UPDATE` trên bảng sở hữu + version check; idempotent consumer.
-- Sub-task 1.2.4.4: Unit test cho flow worker → event → fashion update; verify không mất event (outbox retry); đo latency claim retry ≤ +100ms so với trước (SC-007).
+- Sub-task 1.2.4.1: Fashion worker sau AI xong gọi trực tiếp `fashionItemRepo.CompleteProcessingSuccess`/`MarkProcessingFailed`/`MarkProcessingNeedsReview` để ghi `fashion_items` (metadata + embedding + reset processing fields, giữ version check ở fashion side); đổi status `wardrobe_items` qua `wardrobeContract.UpdateItemStatus` (không dùng outbox cho claim/processing state).
+- Sub-task 1.2.4.2: Recovery worker `RecoverStaleProcessingItems` republish stale items qua `eventPublisher` (topic `fashion.analyze`) hoặc mark failed khi `processing_retry_count` đạt `MaxRetryCount`.
+- Sub-task 1.2.4.3: Xử lý race condition claim (2 worker cùng claim 1 item): version check trên `fashion_items` — chỉ worker nào khớp `processing_version` mới thắng.
+- Sub-task 1.2.4.4: Unit test cho flow worker → fashion update; verify race condition claim (2 worker → 1 thắng); đo latency claim retry ≤ +100ms so với trước (SC-007).
 
 #### Task 1.2.5 — Chuẩn hóa import domain constants cross-module
 
@@ -199,7 +199,7 @@ docs/                 # + cập nhật architecture.md §VII, 2 tech debt docs, 
 - Sub-task 1.2.5.1: Scan hardcode giá trị domain constant (thay bằng symbol import, theo exception Hiến pháp II).
 - Sub-task 1.2.5.2: `go vet` + scan xác nhận không còn hardcode.
 
-**Checkpoint 1.2**: 0 JOIN/UPDATE cross-module trong wardrobe_repo; `GetHybridCandidates` không chạm `wardrobe_items`; claim/processing state qua outbox, đọc stale info + reassign category qua contract; `make test` pass.
+**Checkpoint 1.2**: 0 JOIN/UPDATE cross-module trong wardrobe_repo; `GetHybridCandidates` không chạm `wardrobe_items`; claim/processing state worker-direct (fashion side qua repo), đọc stale info + reassign category qua contract; `make test` pass.
 
 ---
 
@@ -254,7 +254,7 @@ docs/                 # + cập nhật architecture.md §VII, 2 tech debt docs, 
 
 ## SPRINT 2 — Tách Database Schema Vật Lý
 
-**Mục tiêu**: 42 bảng + 1 sequence sang schema module; FK xuyên module được xử lý theo Q1/Q2; migration thuần `SET SCHEMA` có Down đầy đủ; toàn bộ test suite pass.
+**Mục tiêu**: 45 bảng + 1 sequence sang schema module; FK xuyên module được xử lý theo Q1/Q2; migration thuần `SET SCHEMA` có Down đầy đủ; toàn bộ test suite pass.
 
 ### PHASE 2.1 — Migration tách schema
 
@@ -262,14 +262,14 @@ docs/                 # + cập nhật architecture.md §VII, 2 tech debt docs, 
 
 **File mới**: `docs/temp/technical-debt/schema-separation-mapping.md` (hoặc ghi trong data-model.md)
 
-- Sub-task 2.1.1.1: Liệt kê 42 bảng → schema đích theo module: identity (`users`, `refresh_tokens`, `user_style_profiles`), wardrobe (`wardrobe_items`, `outfits`, `outfit_items`), fashion (`fashion_items`, `categories`, `conversational_contexts`, `messages`), brand (15 bảng `brands*`/`loyalty*`/`benefit*`), subscription (10 bảng + sequence `deposit_transactions_order_code_seq`), aiexecutor (6 bảng `ai_*`), dashboard (3 bảng `dashboard_*`), shared (`outbox_records`).
+- Sub-task 2.1.1.1: Liệt kê 45 bảng → schema đích theo module: identity (`users`, `refresh_tokens`, `user_style_profiles`), wardrobe (`wardrobe_items`, `outfits`, `outfit_items`), fashion (`fashion_items`, `categories`, `conversational_contexts`, `messages`), brand (15 bảng `brands*`/`loyalty*`/`benefit*`), subscription (10 bảng + sequence `deposit_transactions_order_code_seq`), aiexecutor (6 bảng `ai_*`), dashboard (3 bảng `dashboard_*`), shared (`outbox_records`).
 - Sub-task 2.1.1.2: Liệt kê 9 FK xuyên module cần cắt + ~30 FK tới `users` giữ xuyên schema.
 
 #### Task 2.1.2 — Viết Goose migration tách schema (Up + Down)
 
 **File mới**: `database/migrations/20260801000000_separate_module_schemas.sql`
 
-- Sub-task 2.1.2.1: **Up**: `CREATE SCHEMA` cho từng module; `ALTER TABLE ... SET SCHEMA` (42 bảng); `ALTER SEQUENCE deposit_transactions_order_code_seq SET SCHEMA subscription`; `ALTER INDEX ... SET SCHEMA` (index unique/partial); `DROP CONSTRAINT` 9 FK xuyên module; `ADD CONSTRAINT` giữ FK tới `users` (schema-qualified `identity.users`).
+- Sub-task 2.1.2.1: **Up**: `CREATE SCHEMA` cho từng module; `ALTER TABLE ... SET SCHEMA` (45 bảng); `ALTER SEQUENCE deposit_transactions_order_code_seq SET SCHEMA subscription`; `ALTER INDEX ... SET SCHEMA` (index unique/partial); `DROP CONSTRAINT` 9 FK xuyên module; `ADD CONSTRAINT` giữ FK tới `users` (schema-qualified `identity.users`).
 - Sub-task 2.1.2.2: **Down**: `SET SCHEMA public` ngược lại; tái lập 9 FK xuyên module (kiểm tra dữ liệu không orphan trước `ADD CONSTRAINT`); drop các schema module.
 - Sub-task 2.1.2.3: Chạy `make migration-up` + `make migration-down` trên DB test, verify round-trip không mất dữ liệu.
 

@@ -16,8 +16,8 @@
 - Q: Xử lý các FK xuyên module khác (không phải tới `users`) khi tách schema → A: Cắt toàn bộ FK xuyên module (trừ FK tới `users`), enforce integrity qua contract ở app layer — Option B.
 - Q: Tách schema có kèm phân quyền DB-level (GRANT theo schema) không → A: Vẫn dùng 1 connection chung truy cập mọi schema, chỉ tách về mặt tổ chức/ownership — Option A.
 - Q: Migration tách schema có cần Down/rollback đầy đủ không → A: Quyết định theo tiêu chí loại migration: (1) NẾU migration chỉ gồm `CREATE SCHEMA`, `ALTER TABLE ... SET SCHEMA`, `ALTER SEQUENCE ... SET SCHEMA`, `ALTER INDEX ... SET SCHEMA`, không thay đổi dữ liệu → VIẾT Down đầy đủ; (2) NẾU migration có chuyển đổi dữ liệu (`UPDATE`, `INSERT INTO ... SELECT`), merge/split bảng, drop cột, recalculate, thay đổi semantics dữ liệu → KHÔNG viết Down, dùng Backup + Restore.
-- Q: Xét schema thực tế (`closy_db-schema.sql`, 42 bảng + sequence `deposit_transactions_order_code_seq` đều ở `public`), migration tách schema thuộc nhóm nào → A: Thuộc nhóm (1) — thuần `SET SCHEMA` cho table/sequence/index + `DROP CONSTRAINT`/`ADD CONSTRAINT` (cắt ~9 FK xuyên module, giữ ~30 FK tới `users`), KHÔNG có thao tác đổi dữ liệu → VIẾT Down đầy đủ. Lưu ý khi Down: tái lập FK xuyên module đã cắt phải check dữ liệu không orphan trước khi `ADD CONSTRAINT`.
-- Q: Giữ tính atomic transaction giữa wardrobe ↔ fashion sau khi refactor qua contract → A: Chấp nhận eventual consistency — wardrobe ghi `wardrobe_items` xong publish event qua outbox, fashion module tự xử lý update `fashion_items` (event-driven, theo Hiến pháp III) — Option B.
+- Q: Xét schema thực tế (`closy_db-schema.sql`, 45 bảng + sequence `deposit_transactions_order_code_seq` đều ở `public`), migration tách schema thuộc nhóm nào → A: Thuộc nhóm (1) — thuần `SET SCHEMA` cho table/sequence/index + `DROP CONSTRAINT`/`ADD CONSTRAINT` (cắt ~9 FK xuyên module, giữ ~30 FK tới `users`), KHÔNG có thao tác đổi dữ liệu → VIẾT Down đầy đủ. Lưu ý khi Down: tái lập FK xuyên module đã cắt phải check dữ liệu không orphan trước khi `ADD CONSTRAINT`.
+- Q: Giữ tính atomic transaction giữa wardrobe ↔ fashion sau khi refactor qua contract → A: Chấp nhận eventual consistency — fashion worker ghi trực tiếp `fashion_items` qua repo của mình, đổi status `wardrobe_items` qua `wardrobeContract.UpdateItemStatus` (worker-direct, theo quyết định chốt thay thế outbox cho claim/processing state) — Option B.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -33,14 +33,14 @@ Developer cần hiểu đúng toàn bộ phạm vi vi phạm cross-module trư�
 
 1. **Given** tài liệu `cross-module-db-access.md` hiện chỉ liệt kê JOIN/UPDATE SQL trực tiếp, **When** Developer đối chiếu với `wardrobe_repo.go` và `fashion_item_repo_hybrid.go`, **Then** tài liệu bổ sung đầy đủ vi phạm import domain constants cross-module và ghi nhận `IWardrobeContract` đã có sẵn method phù hợp.
 2. **Given** tài liệu `dashboard-cross-module-queries.md` đang liệt kê bảng `brand_conversations` và thiếu một số bảng, **When** Developer đối chiếu với 3 file repo dashboard, **Then** tài liệu gỡ bảng không còn tồn tại, bổ sung bảng thiếu (`user_subscriptions`, `loyalty_accounts`, `loyalty_tiers`, `brand_benefits`) và các vi phạm import domain constants.
-3. **Given** §VII hiện liệt kê bảng không tồn tại (`loyalty_points`, `campaigns`, `digital_samples`, `sample_votes`), **When** Developer cập nhật, **Then** các bảng ma được thay bằng bảng mapping thực tế (42 bảng) gán đúng module sở hữu.
+3. **Given** §VII hiện liệt kê bảng không tồn tại (`loyalty_points`, `campaigns`, `digital_samples`, `sample_votes`), **When** Developer cập nhật, **Then** các bảng ma được thay bằng bảng mapping thực tế (45 bảng) gán đúng module sở hữu.
 4. **Given** tài liệu đánh giá khả thi, **When** Developer đọc, **Then** toàn bộ FK xuyên module được liệt kê rõ ràng: **9 FK xuyên module phi-users cần CẮT** (đi qua contract) + **~30 FK trỏ tới `users` được GIỮ xuyên schema**, đồng thời nêu rõ kết luận khả thi + chi phí + rủi ro + thứ tự thực hiện cho 2 sprint sau.
 
 ---
 
 ### User Story 2 - Xử lý cross-module DB access wardrobe ↔ fashion (Priority: P1) — Sprint 1
 
-Wardrobe module đang JOIN/UPDATE trực tiếp bảng `fashion_items`/`categories` (12 vị trí trong `wardrobe_repo.go`, gồm 4 UPDATE — hiện trạng; sau refactor: 1 UPDATE reassign category giữ đồng bộ, 3 UPDATE claim/processing state chuyển sang outbox theo FR-010), và fashion module đang query bảng `wardrobe_items` (`GetHybridCandidates`). Sau phase đánh giá, Developer refactor để mọi truy cập đi qua contract, đúng Hiến pháp I & II.
+Wardrobe module đang JOIN/UPDATE trực tiếp bảng `fashion_items`/`categories` (12 vị trí trong `wardrobe_repo.go`, gồm 4 UPDATE — hiện trạng; sau refactor: 1 UPDATE reassign category giữ đồng bộ, 3 UPDATE claim/processing state xử lý ở fashion side qua repo — worker-direct, theo FR-010), và fashion module đang query bảng `wardrobe_items` (`GetHybridCandidates`). Sau phase đánh giá, Developer refactor để mọi truy cập đi qua contract, đúng Hiến pháp I & II.
 
 **Why this priority**: Đây là nhóm vi phạm HIGH nhất — gồm cả thao tác GHI (UPDATE) vào bảng module khác. Không xử lý thì không thể tách schema. Là tiền đề bắt buộc cho Sprint 2.
 
@@ -50,7 +50,7 @@ Wardrobe module đang JOIN/UPDATE trực tiếp bảng `fashion_items`/`categori
 
 1. **Given** `wardrobe_repo.go` đang `LEFT JOIN fashion_items` và `UPDATE fashion_items` trực tiếp, **When** refactor xong, **Then** wardrobe module không còn JOIN/UPDATE bảng fashion, mọi thao tác đi qua method contract do fashion module expose.
 2. **Given** `fashion_item_repo_hybrid.go` `GetHybridCandidates` đang query bảng `wardrobe_items` trực tiếp, **When** refactor theo phương án đã chốt, **Then** wardrobe module expose `GetUserFashionItemIDs` qua `IWardrobeContract`, fashion module query `fashion_items WHERE id IN (...) ORDER BY embedding <=> ?` trên bảng của mình — tận dụng HNSW index.
-3. **Given** các UPDATE processing state nằm trong transaction với update `wardrobe_items` (critical path worker), **When** refactor, **Then** chuyển sang mô hình eventual consistency: wardrobe ghi `wardrobe_items` + publish outbox event trong cùng transaction, fashion consume event và update `fashion_items` bất đồng bộ; riêng đọc stale info + reassign category giữ đồng bộ qua contract.
+3. **Given** các UPDATE processing state nằm trong transaction với update `wardrobe_items` (critical path worker), **When** refactor, **Then** chuyển sang mô hình worker-direct: fashion worker ghi `fashion_items` qua repo của mình và đổi status `wardrobe_items` qua `wardrobeContract.UpdateItemStatus` (không dùng outbox cho claim/processing state); riêng đọc stale info + reassign category giữ đồng bộ qua contract.
 4. **Given** import domain constants cross-module đã được hiến pháp cho phép, **When** refactor, **Then** module dùng symbol constant (không hardcode giá trị).
 
 ---
@@ -83,7 +83,7 @@ Sau khi Sprint 1 hoàn tất (không còn cross-module DB access), Developer tá
 
 1. **Given** database đang ở schema `public` duy nhất, **When** tách schema xong, **Then** mỗi module sở hữu schema riêng, không còn bảng lẫn trong `public`.
 2. **Given** các FK xuyên module đã được liệt kê ở phase đánh giá, **When** tách schema, **Then** FK trỏ tới `users` được giữ (FK xuyên schema), các FK xuyên module còn lại được cắt và integrity được enforce qua contract ở app layer.
-3. **Given** migration hiện tại đang chạy trên `public` (42 bảng + sequence `deposit_transactions_order_code_seq`), **When** tách schema, **Then** có migration chuyển đổi thuần `SET SCHEMA` + drop/add constraint (không đổi dữ liệu), có Down đầy đủ để rollback về `public`, không phá migration consolidated hiện tại, config DSN/search_path/GORM cập nhật đúng.
+3. **Given** migration hiện tại đang chạy trên `public` (45 bảng + sequence `deposit_transactions_order_code_seq`), **When** tách schema, **Then** có migration chuyển đổi thuần `SET SCHEMA` + drop/add constraint (không đổi dữ liệu), có Down đầy đủ để rollback về `public`, không phá migration consolidated hiện tại, config DSN/search_path/GORM cập nhật đúng.
 4. **Given** `users` là bảng hub trung tâm, **When** tách schema, **Then** identity được tách ra schema riêng, các module khác giữ FK xuyên schema trỏ tới `users` (PostgreSQL hỗ trợ FK xuyên schema, giữ referential integrity).
 
 ---
@@ -95,7 +95,7 @@ Sau khi Sprint 1 hoàn tất (không còn cross-module DB access), Developer tá
 - Import domain constants cross-module được hiến pháp cho phép (exception), nhưng hardcode giá trị vẫn là vi phạm — phân biệt rõ 2 loại.
 - `users` là bảng hub bị gần như mọi module tham chiếu — được xử lý bằng cách giữ FK xuyên schema (không cắt, không chuyển UUID thuần).
 - Vector similarity search phải tiếp tục dùng HNSW index sau khi tách schema (giữ hiệu năng).
-- Worker processing (claim retry, processing state) hiện chạy transaction atomic xuyên bảng — được tái cấu trúc sang eventual consistency (outbox event), chấp nhận độ trễ nhỏ giữa cập nhật `wardrobe_items` và `fashion_items`; cần xử lý race condition khi 2 worker claim cùng item (row lock `FOR UPDATE` trên bảng sở hữu).
+- Worker processing (claim retry, processing state) hiện chạy transaction atomic xuyên bảng — được tái cấu trúc sang **worker-direct**: fashion worker ghi trực tiếp `fashion_items` (metadata + embedding + reset processing fields) và đổi status `wardrobe_items` qua `wardrobeContract.UpdateItemStatus`; chấp nhận độ trễ nhỏ giữa cập nhật `fashion_items` và `wardrobe_items`; cần xử lý race condition khi 2 worker claim cùng item (version check trên `fashion_items`, recovery worker republish stale items qua `RecoverStaleProcessingItems`).
 
 ## Requirements *(mandatory)*
 
@@ -105,29 +105,29 @@ Sau khi Sprint 1 hoàn tất (không còn cross-module DB access), Developer tá
 
 - **FR-001**: Tài liệu `cross-module-db-access.md` MUST được cập nhật liệt kê đầy đủ vị trí vi phạm (JOIN/UPDATE SQL + import domain constants) khớp 100% với code hiện tại.
 - **FR-002**: Tài liệu `dashboard-cross-module-queries.md` MUST được cập nhật: gỡ bảng không còn tồn tại (`brand_conversations`), bổ sung bảng thiếu (`user_subscriptions`, `loyalty_accounts`, `loyalty_tiers`, `brand_benefits`) và các vi phạm import domain constants.
-- **FR-003**: Mục §VII của `docs/system-design/architecture.md` MUST được thay bằng bảng mapping schema thực tế (42 bảng) theo module sở hữu, không còn bảng ma.
+- **FR-003**: Mục §VII của `docs/system-design/architecture.md` MUST được thay bằng bảng mapping schema thực tế (45 bảng) theo module sở hữu, không còn bảng ma.
 - **FR-004**: Tài liệu đánh giá khả thi MUST được tạo tại `docs/temp/technical-debt/` gồm: phân loại vi phạm, danh sách FK xuyên module + khả năng cắt bỏ, kết luận khả thi + chi phí + rủi ro + thứ tự thực hiện.
 
 **Sprint 1 — Xử lý tech debt:**
 
 - **FR-005**: Wardrobe module MUST không còn JOIN/UPDATE trực tiếp bảng `fashion_items`/`categories`; mọi thao tác qua contract do fashion module expose.
-- **FR-006**: Fashion module MUST expose các contract method cho các thao tác **ĐỒNG BỘ còn giữ** do wardrobe gọi: đọc stale processing info (`GetStaleProcessingInfo`) và reassign category (`ReassignCategoryForCatalogItems`). Các thao tác claim retry / cập nhật processing state trên `fashion_items` **KHÔNG đi qua contract đồng bộ** — chuyển sang outbox event do fashion consumer xử lý (phân định theo FR-010).
-- **FR-007**: Fashion module MUST không còn query trực tiếp bảng `wardrobe_items`; dùng `GetUserFashionItemIDs` từ `IWardrobeContract` + query `fashion_items WHERE id IN (...) ORDER BY embedding <=> ?`.
+- **FR-006**: Fashion module MUST expose các contract method cho các thao tác **ĐỒNG BỘ còn giữ** do wardrobe gọi: đọc stale processing info (`GetStaleProcessingInfo`) và reassign category (`ReassignCategoryForCatalogItems`). Các thao tác claim retry / cập nhật processing state trên `fashion_items` **KHÔNG đi qua contract đồng bộ** — xử lý ở fashion side qua repo của mình (phân định theo FR-010).
+- **FR-007**: Fashion module MUST không còn query trực tiếp bảng `wardrobe_items`; lấy fashion_item_ids từ `IWardrobeContract` (qua `GetActiveWardrobeItemsByUserID` — trả active items kèm giới hạn theo gói từ DB) + query `fashion_items WHERE id IN (...) ORDER BY embedding <=> ?`.
 - **FR-008**: Dashboard module MUST không còn query trực tiếp bảng của brand/subscription/aiexecutor/wardrobe/fashion; chỉ truy cập qua contract reader.
 - **FR-009**: Các contract reader hiện có (`IBrandDashboardReader`, `ISubscriptionDashboardReader`, `IAICostDashboardReader`, `IWardrobeDashboardReader`) MUST được bổ sung method cần thiết; `IFashionDashboardReader` MUST được tạo mới.
-- **FR-010**: Các thao tác ghi `fashion_items` hiện nằm trong transaction critical path worker MUST được tái cấu trúc theo hướng eventual consistency: wardrobe ghi `wardrobe_items` xong publish event qua outbox (transactional outbox, Hiến pháp III), fashion module consume event và tự update `fashion_items`; không còn yêu cầu atomic giữa 2 bảng. **Phân định rõ**: claim retry + processing state (mark failed / needs review / complete success) → outbox event; đọc stale info + reassign category → đồng bộ qua contract (FR-006).
+- **FR-010**: Các thao tác ghi `fashion_items` hiện nằm trong critical path worker MUST được tái cấu trúc theo hướng **worker-direct** (đã chốt clarify): fashion worker ghi trực tiếp `fashion_items` qua repo của mình (`fashionItemRepo.CompleteProcessingSuccess`/`MarkProcessingFailed`/`MarkProcessingNeedsReview`) và đổi status `wardrobe_items` qua `wardrobeContract.UpdateItemStatus`; không còn wardrobe ghi `fashion_items` hay yêu cầu atomic giữa 2 bảng. **Phân định rõ**: claim retry + processing state (mark failed / needs review / complete success) xử lý ở fashion side qua repo; đọc stale info + reassign category → đồng bộ qua contract (FR-006); race condition claim xử lý bằng version check trên `fashion_items` + recovery worker republish stale items.
 - **FR-011**: Import domain constants cross-module MUST dùng symbol constant, không hardcode giá trị.
 
 **Sprint 2 — Tách schema vật lý:**
 
 - **FR-012**: Mỗi module MUST có schema PostgreSQL riêng (gồm cả identity); không còn bảng module trong schema `public` chung.
 - **FR-013**: Toàn bộ FK xuyên module MUST được xử lý theo phương án trong tài liệu đánh giá: các FK trỏ tới `users` (hub trung tâm) được GIỮ dưới dạng FK xuyên schema (PostgreSQL hỗ trợ); các FK xuyên module khác (vd: `wardrobe_items→fashion_items`, `brand_items→fashion_items`, `digital_sample_responses→outfits`, `subscription_plans→ai_cost_policies`, `ai_policy_grants→subscription_plans`, dashboard snapshots→`brands`) được CẮT và chuyển sang enforce integrity qua contract ở app layer.
-- **FR-014**: Migration chuyển đổi schema MUST tuân theo tiêu chí: migration thuần chuyển schema (chỉ `CREATE SCHEMA` + `SET SCHEMA` cho table/sequence/index + `DROP CONSTRAINT`/`ADD CONSTRAINT`, không đổi dữ liệu) MUST viết Down đầy đủ; migration có chuyển đổi dữ liệu (UPDATE/INSERT...SELECT, merge/split, drop cột, recalculate, đổi semantics) KHÔNG viết Down, thay vào đó phải Backup + Restore an toàn. Áp dụng: migration tách schema của feature này thuộc loại thuần chuyển schema → VIẾT Down đầy đủ (42 bảng + sequence `deposit_transactions_order_code_seq` từ `public` sang schema module). Khi Down tái lập FK xuyên module đã cắt, phải check dữ liệu không orphan trước khi `ADD CONSTRAINT`.
+- **FR-014**: Migration chuyển đổi schema MUST tuân theo tiêu chí: migration thuần chuyển schema (chỉ `CREATE SCHEMA` + `SET SCHEMA` cho table/sequence/index + `DROP CONSTRAINT`/`ADD CONSTRAINT`, không đổi dữ liệu) MUST viết Down đầy đủ; migration có chuyển đổi dữ liệu (UPDATE/INSERT...SELECT, merge/split, drop cột, recalculate, đổi semantics) KHÔNG viết Down, thay vào đó phải Backup + Restore an toàn. Áp dụng: migration tách schema của feature này thuộc loại thuần chuyển schema → VIẾT Down đầy đủ (45 bảng + sequence `deposit_transactions_order_code_seq` từ `public` sang schema module). Khi Down tái lập FK xuyên module đã cắt, phải check dữ liệu không orphan trước khi `ADD CONSTRAINT`.
 - **FR-015**: Cấu hình DSN/search_path/GORM MUST được cập nhật để mỗi module truy cập đúng schema của mình, đồng thời đảm bảo FK xuyên schema tới `users` vẫn hoạt động; ứng dụng vẫn dùng 1 connection chung (không phân quyền DB-level theo module).
 
 ### Key Entities
 
-- **Database schema (PostgreSQL `public`)**: Tập hợp 42 bảng đang hoạt động, mỗi bảng thuộc một module sở hữu (identity, wardrobe, fashion, brand, subscription, aiexecutor, dashboard).
+- **Database schema (PostgreSQL `public`)**: Tập hợp 45 bảng đang hoạt động, mỗi bảng thuộc một module sở hữu (identity, wardrobe, fashion, brand, subscription, aiexecutor, dashboard).
 - **Module boundary**: Ràng buộc kiến trúc quy định module chỉ truy cập dữ liệu module khác qua `presentation/contract/`, không JOIN/preload/import entity xuyên module.
 - **Foreign Key xuyên module**: Các quan hệ FK vượt biên module (`wardrobe_items→fashion_items`, `brand_items→fashion_items`, `digital_sample_responses→outfits`, `subscription_plans→ai_cost_policies`, `ai_policy_grants→subscription_plans`, dashboard snapshots→brands/users, ...) — rào cản chính khi tách schema.
 - **Contract interface**: Các interface trong `presentation/contract/` của từng module (bao gồm `dashboard_reader.go`) — kênh duy nhất cho phép truy cập dữ liệu cross-module.
@@ -147,12 +147,12 @@ Sau khi Sprint 1 hoàn tất (không còn cross-module DB access), Developer tá
 ## Assumptions
 
 - Feature được triển khai theo 3 phase: Phase 1 đánh giá/nghiên cứu (làm trước) → Sprint 1 xử lý tech debt → Sprint 2 tách schema vật lý.
-- Vector search đã chốt: dùng `GetUserFashionItemIDs` qua contract (không giữ raw query cross-module, không dùng exception hiến pháp).
+- Vector search đã chốt: fashion lấy fashion_item_ids từ `IWardrobeContract.GetActiveWardrobeItemsByUserID` (lọc active + giới hạn theo gói ngay DB, không load toàn bộ wardrobe lên RAM) và query `fashion_items WHERE id IN (...) ORDER BY embedding <=> ?` trên bảng của mình (không giữ raw query cross-module, không dùng exception hiến pháp). `GetUserFashionItemIDs` vẫn được giữ phục vụ dashboard reader.
 - Xử lý bảng hub `users` đã chốt: tách identity ra schema riêng, giữ FK xuyên schema tới `users` (không cắt FK users, không dùng UUID thuần).
 - Xử lý FK xuyên module đã chốt: cắt toàn bộ FK xuyên module (trừ FK tới `users`), enforce integrity qua contract ở app layer.
 - Phân quyền DB-level đã chốt: không phân quyền theo module — vẫn dùng 1 connection chung, tách schema chỉ về mặt tổ chức/ownership.
-- Migration rollback đã chốt theo tiêu chí: migration thuần `SET SCHEMA` (không đổi dữ liệu) viết Down; migration có chuyển đổi dữ liệu không viết Down, dùng Backup + Restore. Xét schema thực tế (42 bảng + 1 sequence đều ở `public`, chỉ có SET SCHEMA + drop/add constraint, không đổi dữ liệu) → migration tách schema VIẾT Down đầy đủ.
-- Atomicity cross-module đã chốt: không giữ atomic giữa wardrobe ↔ fashion; chuyển sang eventual consistency qua outbox event (theo Hiến pháp III), chấp nhận độ trễ nhỏ. Phân định: claim/processing state → outbox; đọc stale info + reassign category → contract đồng bộ.
+- Migration rollback đã chốt theo tiêu chí: migration thuần `SET SCHEMA` (không đổi dữ liệu) viết Down; migration có chuyển đổi dữ liệu không viết Down, dùng Backup + Restore. Xét schema thực tế (45 bảng + 1 sequence đều ở `public`, chỉ có SET SCHEMA + drop/add constraint, không đổi dữ liệu) → migration tách schema VIẾT Down đầy đủ.
+- Atomicity cross-module đã chốt: không giữ atomic giữa wardrobe ↔ fashion; chuyển sang **worker-direct** (fashion worker ghi `fashion_items` qua repo + `wardrobeContract.UpdateItemStatus` cho `wardrobe_items`), chấp nhận độ trễ nhỏ. Phân định: claim/processing state xử lý ở fashion side qua repo; đọc stale info + reassign category → contract đồng bộ.
 - Tài liệu đánh giá khả thi tạm đặt trong `docs/temp/technical-debt/`; ADR chính thức sẽ tạo khi bắt đầu Sprint 2.
 - `architecture.md` §VII cần cập nhật; các mục khác (§III, §VI) chỉ cập nhật nếu phát sinh mâu thuẫn trong quá trình code.
 - Ngôn ngữ tài liệu trong `specs/` và `docs/` viết bằng tiếng Việt (theo AGENTS.md), trừ tên kỹ thuật/identifier giữ nguyên tiếng Anh.

@@ -16,7 +16,7 @@
 ## 2. Kết quả Sprint 1 (T001-T023)
 
 ### Phase 1.1 — Đánh giá
-- Cập nhật `docs/system-design/architecture.md` §VII: bảng mapping thực tế (42 bảng theo module), ghi chú FK xuyên module.
+- Cập nhật `docs/system-design/architecture.md` §VII: bảng mapping thực tế (45 bảng theo module), ghi chú FK xuyên module.
 - 2 tech debt docs + tài liệu đánh giá khả thi (bản nháp trong `docs/temp/`, không commit).
 
 ### Phase 1.2 — Wardrobe ↔ Fashion
@@ -48,6 +48,6 @@
 
 ## 4. Còn lại (Sprint 2 — T024-T034)
 
-- Migration tách schema (`CREATE SCHEMA` + `SET SCHEMA` 42 bảng + sequence, cắt 9 FK xuyên module phi-users, giữ ~30 FK tới users).
+- Migration tách schema (`CREATE SCHEMA` + `SET SCHEMA` 45 bảng + sequence, cắt 9 FK xuyên module phi-users, giữ ~30 FK tới users).
 - Cập nhật DSN `search_path` + GORM.
 - Verify HNSW index + toàn bộ luồng nghiệp vụ trên schema tách.

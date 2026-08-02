@@ -322,10 +322,34 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 			run.AddSkipped(1)
 			continue
 		}
-		_ = fi
+		if fi.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
+			if _, err := uc.fashionItemRepo.MarkProcessingFailed(ctx, fi.ID, fi.ProcessingVersion, autoRetryExceededMessage, nil); err == nil {
+				_ = uc.wardrobeContract.UpdateItemStatus(ctx, item.ID, wardrobestatus.Failed)
+				markedFailedCount++
+			}
+			run.ChildInfo(uc.logger, "Stale processing item marked failed after retries exhausted",
+				zap.String("itemId", item.ID.String()),
+				zap.Int("processingVersion", fi.ProcessingVersion),
+			)
+			continue
+		}
+
+		if err := uc.fashionItemRepo.IncrementProcessingRetryCount(ctx, fi.ID); err != nil {
+			run.ChildError(uc.logger, "Failed to increment retry count for stale processing item",
+				zap.String("itemId", item.ID.String()),
+				zap.Error(err),
+			)
+			continue
+		}
+		if err := uc.publishProcessingRetry(ctx, item.ID, &fi.ID, item.UserID); err != nil {
+			run.ChildError(uc.logger, "Failed to republish stale processing item",
+				zap.String("itemId", item.ID.String()),
+				zap.Error(err),
+			)
+			continue
+		}
 		republishedCount++
-		_ = autoRetryExceededMessage
-		_ = staleBefore
+		run.AddSuccess(1)
 	}
 
 	run.AddSummaryFields(

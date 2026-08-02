@@ -221,9 +221,9 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 
 The system uses a PostgreSQL relational database (with pgvector) as the Single Source of Truth, integrating with GORM for entity management.
 
-> **Trạng thái hiện tại**: Toàn bộ bảng nằm trong schema `public`. Kế hoạch tách schema theo module (feature `011-assess-schema-separation`) sẽ di chuyển từng module sang schema riêng (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`) với `search_path` trong DSN. FK trỏ tới `users` được GIỮ xuyên schema; FK xuyên module phi-users được CẮT và enforce qua contract.
+> **Trạng thái hiện tại** (Sprint 2, migration `20260801000000_separate_module_schemas`): 45 bảng + 1 sequence đã tách sang schema theo module (`identity`, `wardrobe`, `fashion`, `brand`, `subscription`, `aiexecutor`, `dashboard`, `shared`). DSN dùng `search_path = public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared` (`public` đứng đầu để `goose_db_version` luôn resolve). FK trỏ tới `users` được GIỮ xuyên schema; 9 FK xuyên module phi-users được CẮT và enforce qua contract ở app layer.
 
-### Tables by Module
+### Tables by Module (45 bảng + 1 sequence)
 
 **identity** (3): `users`, `refresh_tokens`, `user_style_profiles`
 
@@ -233,7 +233,7 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 **brand** (15): `brands`, `brand_members`, `brand_customers`, `brand_customer_claims`, `loyalty_programs`, `loyalty_tiers`, `loyalty_accounts`, `loyalty_point_transactions`, `loyalty_point_lots`, `brand_benefits`, `benefit_redemptions`, `brand_conversations`, `brand_conversation_messages`, `brand_items`, `digital_sample_responses`
 
-**subscription** (10 + 1 sequence): `subscription_plans`, `user_subscriptions`, `user_daily_quotas`, `user_wallets`, `deposit_transactions`, `wallet_statements`, `provider_payment_events`, `provider_webhook_inbox`, `user_subscription_events`, `subscription_renewal_attempts` (+ sequence `deposit_transactions_order_code_seq`)
+**subscription** (10 + 1 sequence): `subscription_plans`, `user_subscriptions`, `user_daily_quotas`, `user_wallets`, `deposit_transactions`, `wallet_statements`, `provider_payment_events`, `provider_webhook_inbox`, `user_subscription_events`, `subscription_renewal_attempts` (+ sequence `deposit_transactions_order_code_seq`, OWNED BY `deposit_transactions.order_code`)
 
 **aiexecutor** (6): `ai_cost_policies`, `ai_cost_policy_operations`, `ai_policy_grants`, `ai_usage_period_ledgers`, `ai_usage_events`, `ai_model_configs`
 
@@ -241,15 +241,42 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 **shared** (1): `outbox_records`
 
-### Foreign Keys xuyên module (rào cản tách schema)
+### Access Matrix — module nào đọc/ghi schema của module nào (qua contract)
 
-- **GIỮ (xuyên schema tới `users`)**: gần như mọi module đều có FK trỏ tới `users` (identity, wardrobe, fashion, brand ×15, subscription ×10, aiexecutor, dashboard). PostgreSQL hỗ trợ FK xuyên schema nên không cần cắt.
-- **CẮT (phi-users, enforce qua contract)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand).
+> 1 connection chung (Q3): mọi module **có thể** query mọi schema qua `search_path` — không có phân quyền DB-level. Boundary được enforce ở **app layer** (Hiến pháp II): chỉ truy cập dữ liệu module khác qua `presentation/contract/`, cấm import entity/repo cross-module (đã verify SC-004: 0 raw cross-module DB access). Bảng này liệt kê các **kênh contract hợp lệ** đang dùng.
 
-### Chỉ mục vector (pgvector HNSW)
+| Module (caller) | Sở hữu schema | Truy cập schema của module khác | Kênh contract |
+|---|---|---|---|
+| **wardrobe** | `wardrobe` | `fashion` (đọc category/fashion item; write reassign category) | `IFashionContract` |
+| **fashion** | `fashion` | `wardrobe` (đọc item, update status, delete) | `IWardrobeContract` |
+|  |  | `subscription` (đọc quota/overview) | `IUserSubscriptionContract` |
+|  |  | `brand` (đọc brand item hợp lệ cho styling) | `IBrandContract` |
+|  |  | `identity` (đọc user) | `IUserContract` |
+| **brand** | `brand` | `identity` (đọc user theo id/username/email) | `IUserContract` |
+| **subscription** | `subscription` | `identity` (auth middleware — router, không truy cập dữ liệu) | `IAuthMiddleware` |
+| **aiexecutor** | `aiexecutor` | `subscription` (đọc overview/quotas cho reservation policy) | `IUserSubscriptionContract` |
+| **identity** | `identity` | `notification` (gửi email/SMS) | `INotificationContract` |
+|  |  | `subscription` (đọc subscription overview) | `IUserSubscriptionContract` |
+| **dashboard** | `dashboard` | `aiexecutor` (AI usage/cost stats) | `IAICostDashboardReader` |
+|  |  | `brand` (customer/loyalty/catalog analytics) | `IBrandDashboardReader` |
+|  |  | `fashion` (category/fashion item mapping) | `IFashionDashboardReader` |
+|  |  | `identity` (user stats) | `IUserDashboardReader` |
+|  |  | `subscription` (distribution/revenue/renewal) | `ISubscriptionDashboardReader` |
+|  |  | `wardrobe` (summary/underutilized/fashion ids) | `IWardrobeDashboardReader` |
 
-- `fitems_embedding_cosine_idx` on `fashion_items.embedding` (HNSW `vector_cosine_ops`)
-- `ustyles_embedding_cosine_idx` on `user_style_profiles.taste_embedding` (HNSW `vector_cosine_ops`)
+**Ghi chú access theo chiều dữ liệu**: dashboard chỉ **đọc** qua DashboardReader; fashion/wardrobe/brand có cả đọc + ghi hạn chế qua contract (write chỉ qua method contract được expose, ví dụ `IFashionContract.ReassignCategoryForCatalogItems`, `IWardrobeContract.UpdateItemStatus`); FK xuyên module đã cắt → mọi ghi chéo đều qua contract (không có raw UPDATE).
+
+### Foreign Keys xuyên module
+
+- **GIỮ (xuyên schema tới `users`, 30 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng).
+- **CẮT (phi-users, enforce qua contract, 9 FK)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand). Integrity được đảm bảo qua contract reader/writer ở app layer (không có luồng hard-delete `fashion_items`/`brands` cần cascade bị mất).
+
+### Chỉ mục vector (pgvector HNSW) — giữ nguyên sau tách schema
+
+- `fitems_embedding_cosine_idx` on `fashion.fashion_items.embedding` (HNSW `vector_cosine_ops`)
+- `ustyles_embedding_cosine_idx` on `identity.user_style_profiles.taste_embedding` (HNSW `vector_cosine_ops`)
+
+> Verified (Sprint 2): `EXPLAIN` vector search dùng `Index Scan using fitems_embedding_cosine_idx`; index def schema-qualified.
 
 ---
 

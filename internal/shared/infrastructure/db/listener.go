@@ -24,7 +24,11 @@ type OutboxListener struct {
 }
 
 func NewOutboxListener(cfg *config.Config, l logger.Interface) (*OutboxListener, error) {
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+	searchPath := cfg.Database.SearchPath
+	if searchPath == "" {
+		searchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+	}
+	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s search_path=%s",
 		cfg.Database.Host,
 		cfg.Database.User,
 		cfg.Database.Password,
@@ -32,6 +36,7 @@ func NewOutboxListener(cfg *config.Config, l logger.Interface) (*OutboxListener,
 		cfg.Database.Port,
 		cfg.Database.SslMode,
 		cfg.Database.TimeZone,
+		searchPath,
 	)
 
 	ol := &OutboxListener{
