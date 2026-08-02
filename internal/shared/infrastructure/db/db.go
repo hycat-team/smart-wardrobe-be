@@ -25,8 +25,18 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 
 	var db *gorm.DB
 
+	// search_path đa schema: mỗi module sở hữu schema riêng (Sprint 2).
+	// `public` đặt ĐẦU để goose_db_version (bảng goose) luôn resolve ở public —
+	// nếu không, goose CLI (`make migration-*` không kèm search_path) sẽ không
+	// thấy bảng version đã được tạo qua embedded runner (search_path khác).
+	const defaultSearchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+	searchPath := cfg.Database.SearchPath
+	if searchPath == "" {
+		searchPath = defaultSearchPath
+	}
+
 	err := resilience.RunStartupRetry(cfg, l, "postgres", func(timeout time.Duration) error {
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s connect_timeout=%d",
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s connect_timeout=%d search_path=%s",
 			cfg.Database.Host,
 			cfg.Database.User,
 			cfg.Database.Password,
@@ -35,6 +45,7 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 			cfg.Database.SslMode,
 			cfg.Database.TimeZone,
 			int(timeout.Seconds()),
+			searchPath,
 		)
 
 		openedDB, err := gorm.Open(postgres.Open(dsn), gormConfig)

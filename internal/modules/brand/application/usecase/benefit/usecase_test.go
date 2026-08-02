@@ -174,6 +174,15 @@ func (m *mockCustomerRepo) CountByBrandID(ctx context.Context, brandID uuid.UUID
 func (m *mockCustomerRepo) CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	return map[uuid.UUID]int64{}, nil
 }
+func (m *mockCustomerRepo) CountByJoinedSource(ctx context.Context, brandID uuid.UUID) ([]repositories.CustomerSourceCount, error) {
+	return nil, nil
+}
+func (m *mockCustomerRepo) CountNewByBrandID(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
+	return 0, nil
+}
+func (m *mockCustomerRepo) CountClaimedByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	return 0, nil
+}
 func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandCustomer) error {
 	return nil
 }
@@ -267,6 +276,12 @@ func (m *mockRedemptionRepo) GetActiveRedemptionByFeature(ctx context.Context, b
 	return nil, nil
 }
 func (m *mockRedemptionRepo) GetUserExpiringBenefitsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockRedemptionRepo) GetRedemptionAnalyticsByBrand(ctx context.Context, brandID uuid.UUID) ([]repositories.BenefitRedemptionAnalytics, error) {
+	return nil, nil
+}
+func (m *mockRedemptionRepo) CountRedemptionsByBrand(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
 	return 0, nil
 }
 func (m *mockRedemptionRepo) BatchUpdate(ctx context.Context, entities []*entities.BenefitRedemption) error {
@@ -757,6 +772,12 @@ func (r *loyaltyLotsAccountRepo) GetByIDForUpdate(ctx context.Context, id uuid.U
 func (r *loyaltyLotsAccountRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	return nil, nil
 }
+func (r *loyaltyLotsAccountRepo) CountByTier(ctx context.Context, brandID uuid.UUID) ([]repositories.TierMemberCount, error) {
+	return nil, nil
+}
+func (r *loyaltyLotsAccountRepo) CountBySpendSegment(ctx context.Context, brandID uuid.UUID) ([]repositories.SpendSegmentCount, error) {
+	return nil, nil
+}
 func (r *loyaltyLotsAccountRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyAccount) error {
 	return nil
 }
@@ -862,6 +883,9 @@ func (r *loyaltyLotsLotRepo) GetNearestExpiringActiveLot(ctx context.Context, lo
 		}
 	}
 	return nearest, nil
+}
+func (r *loyaltyLotsLotRepo) SumExpiringPointsByMonth(ctx context.Context, brandID uuid.UUID, status loyaltypointlotstatus.LoyaltyPointLotStatus) ([]repositories.MonthPointSum, error) {
+	return nil, nil
 }
 func (r *loyaltyLotsLotRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointLot) error {
 	return nil

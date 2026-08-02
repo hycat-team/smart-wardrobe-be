@@ -13,6 +13,7 @@ type IWardrobeDashboardReader interface {
 	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error)
 	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.UnderutilizedItemInfoDTO, error)
 	GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error)
+	GetUserWardrobeFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type WardrobeDashboardReader struct {
@@ -33,4 +34,8 @@ func (r *WardrobeDashboardReader) GetUnderutilizedItems(ctx context.Context, use
 
 func (r *WardrobeDashboardReader) GetOutfitItemFashionItemIDs(ctx context.Context, outfitIDs []uuid.UUID) ([]uuid.UUID, error) {
 	return r.wardrobeUC.GetOutfitItemFashionItemIDs(ctx, outfitIDs)
+}
+
+func (r *WardrobeDashboardReader) GetUserWardrobeFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return r.wardrobeUC.GetUserWardrobeFashionItemIDs(ctx, userID)
 }

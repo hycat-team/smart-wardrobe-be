@@ -28,4 +28,5 @@ type IDepositTransactionRepository interface {
 	ClaimReconciliationCandidates(ctx context.Context, limit int, lease time.Duration) ([]*ClaimedDepositTransaction, error)
 	UpdateWithToken(ctx context.Context, orderCode int64, token uuid.UUID, updates map[string]any) (int64, error)
 	GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error)
+	GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error)
 }

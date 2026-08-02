@@ -8,6 +8,8 @@ import (
 
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
+	fashionDTO "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	wardrobeDTO "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
@@ -134,6 +136,18 @@ func (m *mockUserBrandReader) GetUserExpiringBenefitsCount(ctx context.Context, 
 	return m.expiringCount, m.expiringCountErr
 }
 
+type mockFashionReaderForUser struct {
+	fashionContract.IFashionDashboardReader
+}
+
+func (m *mockFashionReaderForUser) GetCategoriesByIDs(ctx context.Context, categoryIDs []uuid.UUID) ([]fashionDTO.DashboardCategoryDTO, error) {
+	return nil, nil
+}
+
+func (m *mockFashionReaderForUser) GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]fashionDTO.DashboardFashionItemCategoryDTO, error) {
+	return nil, nil
+}
+
 func TestUserGetWardrobeInsights_CacheHit(t *testing.T) {
 	userID := uuid.New()
 	underutilized := []wardrobeDTO.UnderutilizedItemInfoDTO{
@@ -154,7 +168,7 @@ func TestUserGetWardrobeInsights_CacheHit(t *testing.T) {
 			UpdatedAt:               time.Now(),
 		},
 	}
-	uc := NewUserDashboardUseCase(repo, &mockWardrobeReader{}, &mockUserBrandReader{})
+	uc := NewUserDashboardUseCase(repo, &mockWardrobeReader{}, &mockUserBrandReader{}, &mockFashionReaderForUser{})
 	res, err := uc.GetWardrobeInsights(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -188,7 +202,7 @@ func TestUserGetWardrobeInsights_CacheMissOnDemand(t *testing.T) {
 		},
 	}
 	brandReader := &mockUserBrandReader{expiringCount: 5}
-	uc := NewUserDashboardUseCase(repo, wardrobeReader, brandReader)
+	uc := NewUserDashboardUseCase(repo, wardrobeReader, brandReader, &mockFashionReaderForUser{})
 	res, err := uc.GetWardrobeInsights(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -214,7 +228,7 @@ func TestUserGetWardrobeInsights_CacheMissOnDemand(t *testing.T) {
 func TestUserGetWardrobeInsights_NoData(t *testing.T) {
 	userID := uuid.New()
 	repo := &mockUserDashboardRepo{}
-	uc := NewUserDashboardUseCase(repo, &mockWardrobeReader{}, &mockUserBrandReader{})
+	uc := NewUserDashboardUseCase(repo, &mockWardrobeReader{}, &mockUserBrandReader{}, &mockFashionReaderForUser{})
 	res, err := uc.GetWardrobeInsights(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	shared_entities "smart-wardrobe-be/internal/shared/domain/entities"
 
 	"github.com/google/uuid"
@@ -16,23 +15,12 @@ import (
 // - Tìm kiếm từ khóa (Lexical Search) bằng chỉ mục GIN của PostgreSQL tsquery trên các thuộc tính văn bản.
 // - Các tùy chọn tìm kiếm dự phòng (fallback) nếu một trong hai phương thức tìm kiếm trên bị trống hoặc lỗi.
 //
-// Hành vi:
-// 1. Khởi tạo câu lệnh SQL cơ sở lọc các wardrobe items đang hoạt động, thuộc sở hữu của userID và chưa bị xóa mềm.
-// 2. Sử dụng subquery để lọc theo category slug nếu có trong hard filters.
-// 3. Áp dụng bộ lọc seasonality (mùa vụ) cứng nếu có.
-// 4. Áp dụng lọc loại trừ các từ khóa thô/mở rộng trong [excludedTerms].
-// 5. Nếu có cả vector ngữ nghĩa và từ khóa:
-//   - a. Truy vấn top ứng viên theo khoảng cách vector cosine.
-//   - b. Truy vấn top ứng viên theo độ tương đồng lexical (ts_rank_cd).
-//   - c. Hợp nhất và xếp hạng lại bằng thuật toán RRF qua [mergeHybridCandidateRecordsByRRF].
-//
-// 6. Nếu chỉ có vector ngữ nghĩa: truy vấn và sắp xếp hoàn toàn bằng khoảng cách vector cosine.
-// 7. Nếu chỉ có từ khóa: truy vấn và sắp xếp hoàn toàn bằng điểm FTS ts_rank_cd.
-// 8. Nếu không có cả hai: truy vấn dự phòng lấy các món đồ được tạo gần đây nhất.
-// 9. Xây dựng danh sách ứng viên hoàn chỉnh qua helper [buildHybridCandidates].
+// Signature hiện tại nhận danh sách fashion_item_ids (lấy từ wardrobe module qua contract) và query trực tiếp
+// trên bảng fashion_items (module sở hữu) — không JOIN bảng wardrobe_items. Kết quả trả về ID = fashion_item_id
+// kèm các điểm số; caller stitch dữ liệu wardrobe (ID/UserID/Price/Status) qua wardrobe contract.
 func (r *FashionItemRepository) GetHybridCandidates(
 	ctx context.Context,
-	userID uuid.UUID,
+	fashionItemIDs []uuid.UUID,
 	semanticVector []float32,
 	lexicalTerms []string,
 	excludedTerms []string,
@@ -41,10 +29,11 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	rrfK int,
 ) ([]repositories.HybridCandidate, error) {
 	var records []hybridCandidateRecord
-	db := r.GetDB(ctx).Table("wardrobe_items").
-		Joins("LEFT JOIN fashion_items ON fashion_items.id = wardrobe_items.fashion_item_id").
-		Where("wardrobe_items.user_id = ? AND wardrobe_items.status = ? AND wardrobe_items.is_deleted = ?",
-			userID, wardrobestatus.InWardrobe, false)
+	db := r.GetDB(ctx).Table("fashion_items")
+
+	if len(fashionItemIDs) > 0 {
+		db = db.Where("fashion_items.id IN ?", fashionItemIDs)
+	}
 
 	if len(hardFilters.Seasonality) > 0 {
 		seasonSQL, seasonArgs := buildRecommendationSeasonalityConditionWithJoin(hardFilters.Seasonality)
@@ -76,13 +65,13 @@ func (r *FashionItemRepository) GetHybridCandidates(
 		lexicalScoreSQL := "ts_rank_cd(" + recommendationSearchDocumentSQLWithJoin() + ", (" + includeQuerySQL + "))"
 
 		vectorQuery := dbWithJoin.
-			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, 0.0 AS lexical_score", vec).
+			Select("fashion_items.id, "+vectorScoreSQL+" AS vector_score, 0.0 AS lexical_score", vec).
 			Where("fashion_items.embedding IS NOT NULL").
 			Order(gorm.Expr("fashion_items.embedding <=> ?", vec)).
 			Limit(limit)
 
 		lexicalQuery := db.Session(&gorm.Session{}).
-			Select("wardrobe_items.*, 0.0 AS vector_score, "+lexicalScoreSQL+" AS lexical_score", includeQueryArgs...).
+			Select("fashion_items.id, 0.0 AS vector_score, "+lexicalScoreSQL+" AS lexical_score", includeQueryArgs...).
 			Where(gorm.Expr(recommendationSearchDocumentSQLWithJoin()+" @@ ("+includeQuerySQL+")", includeQueryArgs...)).
 			Order(gorm.Expr(lexicalScoreSQL+" DESC", includeQueryArgs...)).
 			Limit(limit)
@@ -102,10 +91,10 @@ func (r *FashionItemRepository) GetHybridCandidates(
 	} else if hasVector {
 		vectorScoreSQL := "(1.0 - (fashion_items.embedding <=> ?))"
 		err := db.
-			Select("wardrobe_items.*, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec, vec).
+			Select("fashion_items.id, "+vectorScoreSQL+" AS vector_score, "+vectorScoreSQL+" AS retrieval_score, 0.0 AS lexical_score", vec, vec).
 			Where("fashion_items.embedding IS NOT NULL").
 			Order(gorm.Expr("fashion_items.embedding <=> ?", vec)).
-			Order("wardrobe_items.id ASC").
+			Order("fashion_items.id ASC").
 			Limit(limit).
 			Find(&records).Error
 		return r.buildHybridCandidates(records, repositories.HybridCandidateSourceVector, err)
@@ -116,17 +105,17 @@ func (r *FashionItemRepository) GetHybridCandidates(
 		selectArgs = append(selectArgs, includeQueryArgs...)
 		orderArgs := append([]any{}, includeQueryArgs...)
 		err := db.
-			Select("wardrobe_items.*, "+lexicalScoreSQL+" AS lexical_score, "+lexicalScoreSQL+" AS retrieval_score, 0.0 AS vector_score", selectArgs...).
+			Select("fashion_items.id, "+lexicalScoreSQL+" AS lexical_score, "+lexicalScoreSQL+" AS retrieval_score, 0.0 AS vector_score", selectArgs...).
 			Where(gorm.Expr(recommendationSearchDocumentSQLWithJoin()+" @@ ("+includeQuerySQL+")", whereArgs...)).
 			Order(gorm.Expr(lexicalScoreSQL+" DESC", orderArgs...)).
-			Order("wardrobe_items.id ASC").
+			Order("fashion_items.id ASC").
 			Limit(limit).
 			Find(&records).Error
 		return r.buildHybridCandidates(records, repositories.HybridCandidateSourceLexical, err)
 	}
 
-	err := db.Order("wardrobe_items.created_at DESC").
-		Order("wardrobe_items.id ASC").
+	err := db.Order("fashion_items.created_at DESC").
+		Order("fashion_items.id ASC").
 		Limit(limit).
 		Find(&records).Error
 	return r.buildHybridCandidates(records, repositories.HybridCandidateSourceFallback, err)

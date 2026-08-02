@@ -96,3 +96,43 @@ func (uc *FashionItemUseCase) BulkCreateFashionItems(ctx context.Context, inputs
 	}
 	return nil
 }
+
+func (uc *FashionItemUseCase) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error) {
+	if len(fashionItemIDs) == 0 {
+		return nil, nil
+	}
+	items, err := uc.fashionItemRepo.GetByIDs(ctx, fashionItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.FashionProcessingInfoDTO, 0, len(items))
+	for _, item := range items {
+		result = append(result, dto.FashionProcessingInfoDTO{
+			ID:                      item.ID,
+			ProcessingVersion:       item.ProcessingVersion,
+			ProcessingStartedAt:     item.ProcessingStartedAt,
+			LastProcessingAttemptAt: item.LastProcessingAttemptAt,
+		})
+	}
+	return result, nil
+}
+
+func (uc *FashionItemUseCase) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
+	return uc.fashionItemRepo.SearchFashionItemIDs(ctx, query, categorySlug)
+}
+
+func (uc *FashionItemUseCase) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
+	return uc.fashionItemRepo.GetFashionItemIDsByCategory(ctx, categoryID)
+}
+
+func (uc *FashionItemUseCase) GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.DashboardFashionItemCategoryDTO, error) {
+	return uc.fashionItemRepo.GetCategoryIDsByFashionItemIDs(ctx, fashionItemIDs)
+}
+
+func (uc *FashionItemUseCase) ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return uc.fashionItemRepo.ReassignCategory(ctx, fashionItemIDs, fromCategoryID, toCategoryID)
+}
+
+func (uc *FashionItemUseCase) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
+	return uc.fashionItemRepo.ResetProcessingState(ctx, fashionItemID)
+}

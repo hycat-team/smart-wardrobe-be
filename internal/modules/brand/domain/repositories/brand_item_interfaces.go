@@ -32,6 +32,19 @@ type IBrandItemRepository interface {
 	GetByFashionItemID(ctx context.Context, fashionItemID uuid.UUID) (*entities.BrandItem, error)
 	GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.BrandItem, error)
 	GetByBrandIDPaginated(ctx context.Context, filter BrandItemFilter) (*BrandItemListResult, error)
+	CountByStatus(ctx context.Context, brandID uuid.UUID) ([]BrandItemStatusCount, error)
+	CountByType(ctx context.Context, brandID uuid.UUID) ([]BrandItemTypeCount, error)
+	CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error)
+}
+
+type BrandItemStatusCount struct {
+	Status string
+	Count  int64
+}
+
+type BrandItemTypeCount struct {
+	ItemType string
+	Count    int64
 }
 
 type IDigitalSampleResponseRepository interface {

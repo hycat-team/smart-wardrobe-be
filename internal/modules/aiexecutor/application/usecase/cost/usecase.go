@@ -207,3 +207,15 @@ func (uc *CostUseCase) GetAdminAIUsageStats(ctx context.Context, snapshotDate ti
 func (uc *CostUseCase) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]aiexecutor_dto.AIEventDrillDownDTO, int64, error) {
 	return uc.repo.GetAIEventsDrillDown(ctx, status, page, limit)
 }
+
+func (uc *CostUseCase) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]aiexecutor_dto.AIUsageByOperationDTO, error) {
+	return uc.repo.GetAIUsageByOperation(ctx, fromDate, toDate)
+}
+
+func (uc *CostUseCase) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return uc.repo.GetTotalAIRequestCount(ctx, fromDate, toDate)
+}
+
+func (uc *CostUseCase) GetAIErrorBreakdown(ctx context.Context) ([]aiexecutor_dto.AIErrorBreakdownDTO, error) {
+	return uc.repo.GetAIErrorBreakdown(ctx)
+}

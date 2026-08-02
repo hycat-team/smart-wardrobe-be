@@ -13,4 +13,10 @@ type IFashionItemUseCase interface {
 	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error)
 	CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error
 	BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error
+	GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error)
+	SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error)
+	GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error)
+	GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.DashboardFashionItemCategoryDTO, error)
+	ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
+	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
 }

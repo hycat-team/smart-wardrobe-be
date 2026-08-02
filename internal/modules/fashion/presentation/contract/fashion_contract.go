@@ -22,4 +22,9 @@ type IFashionContract interface {
 	CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error)
 	UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error)
 	DeleteCategory(ctx context.Context, id uuid.UUID) error
+	GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error)
+	SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error)
+	GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error)
+	ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
+	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
 }

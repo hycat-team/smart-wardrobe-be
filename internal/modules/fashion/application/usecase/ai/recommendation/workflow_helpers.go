@@ -9,7 +9,6 @@ import (
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/ranking"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
@@ -50,24 +49,16 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 		return nil, nil, fashioerrors.ErrAiOutfitQuotaExceeded()
 	}
 
-	items, err := uc.wardrobeContract.GetWardrobeItemsByUserID(ctx, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if len(items) > subOverview.MaxWardrobeItems {
-		items = items[:subOverview.MaxWardrobeItems]
-	}
-	activeItems := make([]*wardrobeDto.WardrobeItemRes, 0, len(items))
-	for _, item := range items {
-		if item.Status == wardrobestatus.InWardrobe && !item.IsDeleted {
-			activeItems = append(activeItems, item)
-		}
+	// Lấy active items (InWardrobe + not deleted) qua contract — wardrobe module lọc + giới hạn từ DB,
+	// không load toàn bộ wardrobe lên RAM rồi cắt.
+	activeItems, err := uc.wardrobeContract.GetActiveWardrobeItemsByUserID(ctx, userID, subOverview.MaxWardrobeItems)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if len(activeItems) < 5 {
@@ -220,9 +211,22 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	// Fetch Wardrobe items
 	wardrobeLimit := minimumPool - brandCandidatesCount
+
+	// Rút fashion_item_ids từ chính activeItems (đã lọc + cắt theo giới hạn gói ở validateAndGetActiveItems)
+	// để đảm bảo tập query vector search khớp chính xác với tập wardrobe items khả dụng — không lệch.
+	userFashionItemIDs := make([]uuid.UUID, 0, len(activeItems))
+	activeByFashionID := map[uuid.UUID]*wardrobeDto.WardrobeItemRes{}
+	for _, item := range activeItems {
+		if item.FashionItem != nil {
+			userFashionItemIDs = append(userFashionItemIDs, item.FashionItem.ID)
+			activeByFashionID[item.FashionItem.ID] = item
+		}
+	}
+	userFashionItemIDs = sliceutils.UniqueUUIDs(userFashionItemIDs)
+
 	candidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,
-		userID,
+		userFashionItemIDs,
 		queryVector,
 		retrieval.ExtractTermStrings(retrievalQuery.LexicalTerms),
 		retrieval.ExtractTermStrings(retrievalQuery.ExcludedTerms),
@@ -232,23 +236,12 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	)
 	if err == nil {
 		for _, candidate := range candidates {
-			var fashionItemRes *wardrobeDto.FashionItemRes
-			if candidate.FashionItemID != nil {
-				fashionItemRes = &wardrobeDto.FashionItemRes{
-					ID: *candidate.FashionItemID,
-				}
-			}
-			dtoItem := &wardrobeDto.WardrobeItemRes{
-				ID:          candidate.ID,
-				UserID:      candidate.UserID,
-				Price:       candidate.Price,
-				Status:      wardrobestatus.WardrobeItemStatus(candidate.Status),
-				LastUsedAt:  candidate.LastUsedAt,
-				IsDeleted:   candidate.IsDeleted,
-				FashionItem: fashionItemRes,
+			item := activeByFashionID[candidate.ID]
+			if item == nil {
+				continue
 			}
 			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
-				Item:            dtoItem,
+				Item:            item,
 				Source:          types.CandidateSource(candidate.RetrievalSource),
 				VectorScore:     candidate.VectorScore,
 				LexicalScore:    candidate.LexicalScore,

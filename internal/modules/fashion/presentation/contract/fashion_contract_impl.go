@@ -85,3 +85,23 @@ func (c *FashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, inpu
 func (c *FashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return c.categoryUC.DeleteCategory(ctx, id)
 }
+
+func (c *FashionContract) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error) {
+	return c.fashionItemUC.GetStaleProcessingInfo(ctx, fashionItemIDs)
+}
+
+func (c *FashionContract) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
+	return c.fashionItemUC.SearchFashionItemIDs(ctx, query, categorySlug)
+}
+
+func (c *FashionContract) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
+	return c.fashionItemUC.GetFashionItemIDsByCategory(ctx, categoryID)
+}
+
+func (c *FashionContract) ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
+	return c.fashionItemUC.ReassignCategoryForCatalogItems(ctx, fashionItemIDs, fromCategoryID, toCategoryID)
+}
+
+func (c *FashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
+	return c.fashionItemUC.ResetProcessingState(ctx, fashionItemID)
+}

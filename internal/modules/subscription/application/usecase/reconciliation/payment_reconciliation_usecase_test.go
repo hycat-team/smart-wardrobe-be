@@ -68,6 +68,9 @@ func (f *fakeDepositTransactionRepository) UpdateWithToken(ctx context.Context, 
 func (f *fakeDepositTransactionRepository) GetAdminSubscriptionStats(ctx context.Context, snapshotDate time.Time) (*dto.AdminSubscriptionStatsDTO, error) {
 	return nil, nil
 }
+func (f *fakeDepositTransactionRepository) GetRevenueBreakdown(ctx context.Context, fromDate, toDate time.Time) ([]dto.RevenueBreakdownDTO, error) {
+	return nil, nil
+}
 func (f *fakeDepositTransactionRepository) BatchUpdate(ctx context.Context, entities []*entities.DepositTransaction) error {
 	return nil
 }

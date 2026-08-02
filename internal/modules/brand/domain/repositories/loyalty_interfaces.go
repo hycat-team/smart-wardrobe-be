@@ -32,6 +32,20 @@ type ILoyaltyAccountRepository interface {
 	GetByBrandCustomerIDForUpdate(ctx context.Context, brandCustomerID uuid.UUID) (*entities.LoyaltyAccount, error)
 	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*entities.LoyaltyAccount, error)
 	GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error)
+	CountByTier(ctx context.Context, brandID uuid.UUID) ([]TierMemberCount, error)
+	CountBySpendSegment(ctx context.Context, brandID uuid.UUID) ([]SpendSegmentCount, error)
+}
+
+type TierMemberCount struct {
+	TierID      uuid.UUID
+	TierName    string
+	TierRank    int
+	MemberCount int64
+}
+
+type SpendSegmentCount struct {
+	Segment       string
+	CustomerCount int64
 }
 
 type LoyaltyTransactionFilter struct {
@@ -60,4 +74,10 @@ type ILoyaltyPointLotRepository interface {
 	ListAccountsWithExpiredLots(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
 	GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error)
 	ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error)
+	SumExpiringPointsByMonth(ctx context.Context, brandID uuid.UUID, status loyaltypointlotstatus.LoyaltyPointLotStatus) ([]MonthPointSum, error)
+}
+
+type MonthPointSum struct {
+	Month          time.Time
+	PointsExpiring int64
 }

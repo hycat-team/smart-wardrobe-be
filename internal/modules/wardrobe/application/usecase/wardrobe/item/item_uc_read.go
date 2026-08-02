@@ -94,6 +94,14 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		categorySlug = &query.CategorySlug
 	}
 
+	var filterFashionIDs []uuid.UUID
+	if categorySlug != nil {
+		filterFashionIDs, err = uc.fashionContract.SearchFashionItemIDs(ctx, nil, categorySlug)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	page := query.Page
 	if page <= 0 {
 		page = 1
@@ -113,12 +121,12 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	totalItems, err := uc.wardrobeRepo.CountByUserIDAndFilters(ctx, userID, categorySlug, statuses)
+	totalItems, err := uc.wardrobeRepo.CountByUserIDAndFilters(ctx, userID, filterFashionIDs, statuses)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserIDAndFiltersPaginated(ctx, userID, categorySlug, statuses, paginationQuery)
+	items, err := uc.wardrobeRepo.GetByUserIDAndFiltersPaginated(ctx, userID, filterFashionIDs, statuses, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -226,23 +234,21 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			categorySlug = &query.CategorySlug
 		}
 
-		totalItems, err = uc.wardrobeRepo.CountItems(ctx, searchQ, categorySlug, itemtype.SystemCatalogItem)
+		fashionIDs, searchErr := uc.fashionContract.SearchFashionItemIDs(ctx, searchQ, categorySlug)
+		if searchErr != nil {
+			return nil, searchErr
+		}
+
+		totalItems, err = uc.wardrobeRepo.CountItems(ctx, fashionIDs, itemtype.SystemCatalogItem)
 		if err != nil {
 			return nil, err
 		}
 
-		dbItems, err := uc.wardrobeRepo.GetItemsPaginated(ctx, searchQ, categorySlug, itemtype.SystemCatalogItem, paginationQuery)
+		dbItems, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, itemtype.SystemCatalogItem, paginationQuery)
 		if err != nil {
 			return nil, err
 		}
 
-		fashionIDs := make([]uuid.UUID, 0, len(dbItems))
-		for _, item := range dbItems {
-			if item.FashionItemID != nil {
-				fashionIDs = append(fashionIDs, *item.FashionItemID)
-			}
-		}
-		fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 		fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 		if len(fashionIDs) > 0 {
 			fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
@@ -397,4 +403,8 @@ func (uc *WardrobeItemUseCase) GetOutfitItemFashionItemIDs(ctx context.Context, 
 		return nil, nil
 	}
 	return uc.outfitRepo.GetFashionItemIDsByOutfitIDs(ctx, outfitIDs)
+}
+
+func (uc *WardrobeItemUseCase) GetUserWardrobeFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return uc.wardrobeRepo.GetUserFashionItemIDs(ctx, userID)
 }

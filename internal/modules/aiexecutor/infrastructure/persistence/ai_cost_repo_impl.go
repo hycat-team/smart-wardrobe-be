@@ -324,3 +324,54 @@ func (r *AICostRepository) GetAIEventsDrillDown(ctx context.Context, status stri
 
 	return items, total, nil
 }
+
+func (r *AICostRepository) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error) {
+	query := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).
+		Select("operation, logical_route, COUNT(*) AS request_count, " +
+			"COALESCE(SUM(actual_cost_micro_vnd), 0) AS total_cost_micro_vnd, " +
+			"COALESCE(SUM(prompt_tokens), 0) AS total_prompt_tokens, " +
+			"COALESCE(SUM(output_tokens), 0) AS total_output_tokens")
+	if !fromDate.IsZero() {
+		query = query.Where("created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("created_at <= ?", toDate)
+	}
+	var rows []dto.AIUsageByOperationDTO
+	err := query.Group("operation, logical_route").
+		Order("request_count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *AICostRepository) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	query := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{})
+	if !fromDate.IsZero() {
+		query = query.Where("created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("created_at <= ?", toDate)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *AICostRepository) GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error) {
+	var rows []dto.AIErrorBreakdownDTO
+	err := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).
+		Select("error_code, provider, model, COUNT(*) AS error_count").
+		Where("status = ?", string(aiusageeventstatus.Released)).
+		Group("error_code, provider, model").
+		Order("error_count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

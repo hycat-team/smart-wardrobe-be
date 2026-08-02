@@ -11,6 +11,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 	dashboardRepos "smart-wardrobe-be/internal/modules/dashboard/domain/repositories"
+	fashionContract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	wardrobeContract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	"github.com/google/uuid"
@@ -20,39 +21,76 @@ type UserDashboardUseCase struct {
 	dashboardRepo  dashboardRepos.IDashboardRepository
 	wardrobeReader wardrobeContract.IWardrobeDashboardReader
 	brandReader    brandContract.IBrandDashboardReader
+	fashionReader  fashionContract.IFashionDashboardReader
 }
 
 func NewUserDashboardUseCase(
 	dashboardRepo dashboardRepos.IDashboardRepository,
 	wardrobeReader wardrobeContract.IWardrobeDashboardReader,
 	brandReader brandContract.IBrandDashboardReader,
+	fashionReader fashionContract.IFashionDashboardReader,
 ) uc_interfaces.IUserDashboardUseCase {
 	return &UserDashboardUseCase{
 		dashboardRepo:  dashboardRepo,
 		wardrobeReader: wardrobeReader,
 		brandReader:    brandReader,
+		fashionReader:  fashionReader,
 	}
 }
 
 func (uc *UserDashboardUseCase) GetWardrobeCategoryDistribution(ctx context.Context, userID uuid.UUID) (*dto.WardrobeCategoryDistributionRes, error) {
-	raw, err := uc.dashboardRepo.GetWardrobeCategoryDistribution(ctx, userID)
+	fashionItemIDs, err := uc.wardrobeReader.GetUserWardrobeFashionItemIDs(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
+	if len(fashionItemIDs) == 0 {
+		return &dto.WardrobeCategoryDistributionRes{TotalItems: 0, Categories: []dto.CategoryDistributionDTO{}}, nil
+	}
+
+	itemCategoryMap := map[uuid.UUID]*uuid.UUID{}
+	categoryIDs := []uuid.UUID{}
+	seenCategory := map[uuid.UUID]bool{}
+	if len(fashionItemIDs) > 0 {
+		mappings, err := uc.fashionReader.GetCategoryIDsByFashionItemIDs(ctx, fashionItemIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range mappings {
+			itemCategoryMap[m.FashionItemID] = m.CategoryID
+			if m.CategoryID != nil && !seenCategory[*m.CategoryID] {
+				seenCategory[*m.CategoryID] = true
+				categoryIDs = append(categoryIDs, *m.CategoryID)
+			}
+		}
+	}
+
+	categoryMap := map[uuid.UUID]string{}
+	if len(categoryIDs) > 0 {
+		categories, err := uc.fashionReader.GetCategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range categories {
+			categoryMap[c.ID] = c.Name
+		}
+	}
+
+	counts := map[uuid.UUID]int{}
+	for _, fashionItemID := range fashionItemIDs {
+		categoryID := itemCategoryMap[fashionItemID]
+		if categoryID != nil {
+			counts[*categoryID]++
+		}
+	}
 
 	totalItems := 0
-	categories := make([]dto.CategoryDistributionDTO, 0, len(raw))
-	for _, r := range raw {
-		categoryIDStr, _ := r["category_id"].(string)
-		categoryName, _ := r["category_name"].(string)
-		itemCount, _ := r["item_count"].(int64)
-		totalItems += int(itemCount)
-
-		categoryID, _ := uuid.Parse(categoryIDStr)
+	categories := make([]dto.CategoryDistributionDTO, 0, len(counts))
+	for categoryID, itemCount := range counts {
+		totalItems += itemCount
 		categories = append(categories, dto.CategoryDistributionDTO{
 			CategoryID:   categoryID,
-			CategoryName: categoryName,
-			ItemCount:    int(itemCount),
+			CategoryName: categoryMap[categoryID],
+			ItemCount:    itemCount,
 			Percentage:   0,
 		})
 	}

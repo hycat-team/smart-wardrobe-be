@@ -3,11 +3,13 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
+
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
-	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -148,4 +150,34 @@ func (r *BrandCustomerRepository) CountByBrandIDs(ctx context.Context, brandIDs 
 		counts[row.BrandID] = row.Count
 	}
 	return counts, nil
+}
+
+func (r *BrandCustomerRepository) CountByJoinedSource(ctx context.Context, brandID uuid.UUID) ([]repositories.CustomerSourceCount, error) {
+	var rows []repositories.CustomerSourceCount
+	err := r.GetDB(ctx).Model(&entities.BrandCustomer{}).
+		Select("joined_source AS source, COUNT(*) AS customer_count").
+		Where("brand_id = ?", brandID).
+		Group("joined_source").
+		Order("customer_count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *BrandCustomerRepository) CountNewByBrandID(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BrandCustomer{}).
+		Where("brand_id = ? AND created_at >= ? AND created_at <= ?", brandID, fromDate, toDate).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *BrandCustomerRepository) CountClaimedByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.GetDB(ctx).Model(&entities.BrandCustomer{}).
+		Where("brand_id = ? AND claimed_at IS NOT NULL", brandID).
+		Count(&count).Error
+	return count, err
 }

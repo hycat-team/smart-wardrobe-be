@@ -11,6 +11,9 @@ import (
 type IAICostDashboardReader interface {
 	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
 	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
+	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
+	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
+	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
 }
 
 type AICostDashboardReader struct {
@@ -27,4 +30,16 @@ func (r *AICostDashboardReader) GetAdminAIUsageStats(ctx context.Context, snapsh
 
 func (r *AICostDashboardReader) GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error) {
 	return r.costUC.GetAIEventsDrillDown(ctx, status, page, limit)
+}
+
+func (r *AICostDashboardReader) GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error) {
+	return r.costUC.GetAIUsageByOperation(ctx, fromDate, toDate)
+}
+
+func (r *AICostDashboardReader) GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error) {
+	return r.costUC.GetTotalAIRequestCount(ctx, fromDate, toDate)
+}
+
+func (r *AICostDashboardReader) GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error) {
+	return r.costUC.GetAIErrorBreakdown(ctx)
 }

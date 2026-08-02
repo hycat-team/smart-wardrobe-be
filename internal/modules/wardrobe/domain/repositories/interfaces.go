@@ -17,15 +17,17 @@ import (
 type IWardrobeItemRepository interface {
 	shared_repos.IGenericRepository[entities.WardrobeItem, uuid.UUID]
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
-	CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus) (int64, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID, categorySlug *string) ([]*entities.WardrobeItem, error)
-	GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, categorySlug *string, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
+	CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus) (int64, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
+	GetActiveByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
+	GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	BulkCreate(ctx context.Context, items []*entities.WardrobeItem) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.WardrobeItem, error)
 	GetByUserIDAndFashionItemIDs(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error)
-	CountItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) (int64, error)
-	GetItems(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error)
-	GetItemsPaginated(ctx context.Context, query *string, categorySlug *string, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
+	GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) (int64, error)
+	GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error)
+	GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error)
 	GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*entities.WardrobeItem, error)
 	GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.WardrobeItem, error)
 	ClaimManualAnalysisRetry(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, now time.Time) (*entities.WardrobeItem, bool, error)
@@ -34,8 +36,6 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
-	CountByCategoryIDAndItemType(ctx context.Context, categoryID uuid.UUID, itemType itemtype.ItemType) (int64, error)
-	ReassignCategoryForCatalogItems(ctx context.Context, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error)
 	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
 }

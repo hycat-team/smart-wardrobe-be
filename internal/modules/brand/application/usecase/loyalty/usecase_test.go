@@ -67,6 +67,12 @@ func (r *loyaltyLotsAccountRepo) GetByIDForUpdate(ctx context.Context, id uuid.U
 func (r *loyaltyLotsAccountRepo) GetByBrandAndUser(ctx context.Context, brandID uuid.UUID, userID uuid.UUID) (*entities.LoyaltyAccount, error) {
 	return nil, nil
 }
+func (r *loyaltyLotsAccountRepo) CountByTier(ctx context.Context, brandID uuid.UUID) ([]repositories.TierMemberCount, error) {
+	return nil, nil
+}
+func (r *loyaltyLotsAccountRepo) CountBySpendSegment(ctx context.Context, brandID uuid.UUID) ([]repositories.SpendSegmentCount, error) {
+	return nil, nil
+}
 func (r *loyaltyLotsAccountRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyAccount) error {
 	return nil
 }
@@ -172,6 +178,9 @@ func (r *loyaltyLotsLotRepo) GetNearestExpiringActiveLot(ctx context.Context, lo
 		}
 	}
 	return nearest, nil
+}
+func (r *loyaltyLotsLotRepo) SumExpiringPointsByMonth(ctx context.Context, brandID uuid.UUID, status loyaltypointlotstatus.LoyaltyPointLotStatus) ([]repositories.MonthPointSum, error) {
+	return nil, nil
 }
 func (r *loyaltyLotsLotRepo) BatchUpdate(ctx context.Context, entities []*entities.LoyaltyPointLot) error {
 	return nil

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
@@ -138,4 +139,18 @@ func (r *UserSubscriptionRepository) BulkCreate(ctx context.Context, subs []*ent
 		return nil
 	}
 	return r.GetDB(ctx).Create(&subs).Error
+}
+
+func (r *UserSubscriptionRepository) GetDistributionByPlanCode(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error) {
+	var rows []dto.SubscriptionDistributionDTO
+	err := r.GetDB(ctx).
+		Model(&entities.UserSubscription{}).
+		Select("current_plan_code AS plan_code, COUNT(*) AS user_count").
+		Group("current_plan_code").
+		Order("user_count DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }

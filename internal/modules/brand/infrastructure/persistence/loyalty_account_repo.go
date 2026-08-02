@@ -86,3 +86,39 @@ func (r *LoyaltyAccountRepository) GetByBrandAndUser(ctx context.Context, brandI
 	}
 	return &account, nil
 }
+
+func (r *LoyaltyAccountRepository) CountByTier(ctx context.Context, brandID uuid.UUID) ([]repositories.TierMemberCount, error) {
+	var rows []repositories.TierMemberCount
+	err := r.GetDB(ctx).
+		Table("loyalty_accounts").
+		Select("lt.id AS tier_id, lt.name AS tier_name, lt.rank AS tier_rank, COUNT(*) AS member_count").
+		Joins("JOIN loyalty_tiers lt ON lt.id = loyalty_accounts.current_tier_id").
+		Where("loyalty_accounts.brand_id = ? AND loyalty_accounts.current_tier_id IS NOT NULL", brandID).
+		Group("lt.id, lt.name, lt.rank").
+		Order("lt.rank ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *LoyaltyAccountRepository) CountBySpendSegment(ctx context.Context, brandID uuid.UUID) ([]repositories.SpendSegmentCount, error) {
+	var rows []repositories.SpendSegmentCount
+	err := r.GetDB(ctx).
+		Table("loyalty_accounts").
+		Select("CASE "+
+			"WHEN total_spend >= 0 AND total_spend < 1000000 THEN 'low' "+
+			"WHEN total_spend >= 1000000 AND total_spend < 5000000 THEN 'medium' "+
+			"WHEN total_spend >= 5000000 AND total_spend < 10000000 THEN 'high' "+
+			"ELSE 'premium' END AS segment, "+
+			"COUNT(*) AS customer_count").
+		Where("brand_id = ?", brandID).
+		Group("segment").
+		Order("segment ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

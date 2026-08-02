@@ -242,6 +242,12 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress()
 	}
 
+	if item.FashionItemID != nil {
+		if err := uc.fashionContract.ResetProcessingState(ctx, *item.FashionItemID); err != nil {
+			uc.logger.Error("[RetryWardrobeAnalysis] Failed to reset fashion processing state", zap.Error(err))
+		}
+	}
+
 	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		categoryID := (*uuid.UUID)(nil)
 		imageURL := ""

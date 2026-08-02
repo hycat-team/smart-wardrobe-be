@@ -9,6 +9,7 @@ database:
     max_idle_conns: 10
     max_open_conns: 90
     conn_max_lifetime: 1h
+    search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
 redis:
     host: localhost
     port: 6379

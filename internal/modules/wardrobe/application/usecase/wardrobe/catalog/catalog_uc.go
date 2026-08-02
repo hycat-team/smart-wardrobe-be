@@ -62,23 +62,30 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		Limit: limit,
 	}
 
-	totalItems, err := uc.wardrobeRepo.CountItems(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem)
+	var queryStr *string
+	if query.Query != nil && *query.Query != "" {
+		queryStr = query.Query
+	}
+	var categorySlug *string
+	if query.CategorySlug != nil && *query.CategorySlug != "" {
+		categorySlug = query.CategorySlug
+	}
+
+	fashionIDs, err := uc.fashionContract.SearchFashionItemIDs(ctx, queryStr, categorySlug)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, query.Query, query.CategorySlug, itemtype.SystemCatalogItem, paginationQuery)
+	totalItems, err := uc.wardrobeRepo.CountItems(ctx, fashionIDs, itemtype.SystemCatalogItem)
 	if err != nil {
 		return nil, err
 	}
 
-	fashionIDs := make([]uuid.UUID, 0, len(items))
-	for _, item := range items {
-		if item.FashionItemID != nil {
-			fashionIDs = append(fashionIDs, *item.FashionItemID)
-		}
+	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, itemtype.SystemCatalogItem, paginationQuery)
+	if err != nil {
+		return nil, err
 	}
-	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+
 	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)

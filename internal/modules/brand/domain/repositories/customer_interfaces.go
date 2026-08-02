@@ -34,6 +34,14 @@ type IBrandCustomerRepository interface {
 	GetByBrandIDPaginated(ctx context.Context, filter BrandCustomerFilter) (*BrandCustomerListResult, error)
 	CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error)
 	CountByBrandIDs(ctx context.Context, brandIDs []uuid.UUID) (map[uuid.UUID]int64, error)
+	CountByJoinedSource(ctx context.Context, brandID uuid.UUID) ([]CustomerSourceCount, error)
+	CountNewByBrandID(ctx context.Context, brandID uuid.UUID, fromDate, toDate time.Time) (int64, error)
+	CountClaimedByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error)
+}
+
+type CustomerSourceCount struct {
+	Source        string
+	CustomerCount int64
 }
 
 type IBrandCustomerClaimRepository interface {

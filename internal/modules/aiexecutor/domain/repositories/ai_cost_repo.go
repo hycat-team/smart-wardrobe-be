@@ -24,4 +24,7 @@ type IAICostRepository interface {
 	CreateEvent(ctx context.Context, event *aiexecutor_entities.AIUsageEvent) error
 	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
 	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
+	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
+	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
+	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
 }

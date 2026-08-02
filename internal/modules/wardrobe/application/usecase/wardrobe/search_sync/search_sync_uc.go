@@ -112,7 +112,7 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 		return false, nil
 	}
 
-	items, err := uc.wardrobeRepo.GetItems(ctx, nil, nil, itemtype.SystemCatalogItem)
+	items, err := uc.wardrobeRepo.GetItems(ctx, nil, itemtype.SystemCatalogItem)
 	if err != nil {
 		run.ChildError(uc.logger, "Failed to fetch system catalog items for initial sync", zap.Error(err))
 		return false, err
