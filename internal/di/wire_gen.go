@@ -52,6 +52,7 @@ import (
 	"smart-wardrobe-be/internal/modules/identity/presentation/handler"
 	"smart-wardrobe-be/internal/modules/identity/presentation/middleware"
 	"smart-wardrobe-be/internal/modules/identity/presentation/router"
+	"smart-wardrobe-be/internal/modules/notification/application/usecase/email"
 	"smart-wardrobe-be/internal/modules/notification/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	worker9 "smart-wardrobe-be/internal/modules/notification/presentation/worker"
@@ -272,7 +273,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	outboxWorker := worker8.NewOutboxWorker(outboxRepository, rabbitMQClient, outboxListener, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
-	emailWorker := worker9.NewEmailWorker(rabbitMQClient, smtpSender, l)
+	iEmailUseCase := email.NewEmailUseCase(smtpSender)
+	emailWorker := worker9.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               iSubscriptionRenewalWorker,
 		PaymentReconciliationWorker: iPaymentReconciliationWorker,

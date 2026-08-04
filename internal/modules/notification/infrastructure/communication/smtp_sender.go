@@ -9,7 +9,10 @@ import (
 	"net/smtp"
 
 	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/modules/notification/application/interface/usecase"
 )
+
+var _ usecase.IEmailSender = (*SmtpSender)(nil)
 
 type SmtpSender struct {
 	cfg           *config.Config
