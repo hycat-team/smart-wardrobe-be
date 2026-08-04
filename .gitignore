@@ -729,9 +729,6 @@ backend/global.json
 .gocache/
 docs/temp/*
 !docs/temp/technical-debt/
-!docs/temp/technical-debt/cross-module-db-access.md
-!docs/temp/technical-debt/dashboard-cross-module-queries.md
-!docs/temp/technical-debt/schema-separation-assessment.md
 !docs/temp/technical-debt/schema-separation-mapping.md
 docs/temp/technical-debt/outbox-cleanup-and-retry.md
 
