@@ -7,23 +7,23 @@ import (
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/application/event"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type PlanChangedWorker struct {
 	*worker.BaseWorker
-	messageClient shared_msg.IRabbitMQClient
+	messageClient event.IMessageConsumer
 	grantUseCase  uc_interfaces.IGrantUseCase
 	logger        logger.Interface
 }
 
 func NewPlanChangedWorker(
-	messageClient shared_msg.IRabbitMQClient,
+	messageClient event.IMessageConsumer,
 	grantUseCase uc_interfaces.IGrantUseCase,
 	l logger.Interface,
 ) *PlanChangedWorker {
@@ -41,9 +41,9 @@ func (w *PlanChangedWorker) Start(ctx context.Context) {
 }
 
 func (w *PlanChangedWorker) startConsume(ctx context.Context) {
-	handler := func(d amqp.Delivery) error {
+	handler := func(msg event.Message) error {
 		var payload aiexecutor_dto.PlanChangedPayload
-		if err := json.Unmarshal(d.Body, &payload); err != nil {
+		if err := json.Unmarshal(msg.Body, &payload); err != nil {
 			w.logger.Error("[PlanChangedWorker] Failed to unmarshal message body", zap.Error(err))
 			return err
 		}

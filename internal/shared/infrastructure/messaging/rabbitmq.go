@@ -15,16 +15,11 @@ import (
 )
 
 var _ event.IEventPublisher = (*RabbitMQClient)(nil)
-
-type IRabbitMQClient interface {
-	Consume(queueName string) (<-chan amqp.Delivery, error)
-	RegisterConsumer(queueName string, handler func(delivery amqp.Delivery) error)
-	Close()
-}
+var _ event.IMessageConsumer = (*RabbitMQClient)(nil)
 
 type consumerRegistration struct {
 	queueName string
-	handler   func(delivery amqp.Delivery) error
+	handler   func(event.Message) error
 }
 
 type RabbitMQClient struct {
@@ -68,7 +63,7 @@ func (r *RabbitMQClient) Close() {
 	r.logger.Info("Closed RabbitMQ connections successfully.")
 }
 
-func (r *RabbitMQClient) RegisterConsumer(queueName string, handler func(delivery amqp.Delivery) error) {
+func (r *RabbitMQClient) RegisterConsumer(queueName string, handler func(event.Message) error) {
 	r.consumerMu.Lock()
 
 	r.consumers = append(r.consumers, consumerRegistration{
@@ -76,7 +71,7 @@ func (r *RabbitMQClient) RegisterConsumer(queueName string, handler func(deliver
 		handler:   handler,
 	})
 
-	deliveries, err := r.Consume(queueName)
+	deliveries, err := r.consumeAMQP(queueName)
 	r.consumerMu.Unlock()
 
 	if err != nil {
@@ -92,7 +87,7 @@ func (r *RabbitMQClient) reRegisterConsumers() {
 	defer r.consumerMu.Unlock()
 
 	for _, reg := range r.consumers {
-		deliveries, err := r.Consume(reg.queueName)
+		deliveries, err := r.consumeAMQP(reg.queueName)
 		if err != nil {
 			r.logger.Error("Failed to re-register consumer for queue", zap.String("queue", reg.queueName), zap.Error(err))
 			continue
@@ -102,9 +97,9 @@ func (r *RabbitMQClient) reRegisterConsumers() {
 	}
 }
 
-func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(amqp.Delivery) error, deliveries <-chan amqp.Delivery) {
+func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(event.Message) error, deliveries <-chan amqp.Delivery) {
 	for d := range deliveries {
-		if err := handler(d); err != nil {
+		if err := handler(event.Message{Body: d.Body}); err != nil {
 			r.logger.Error("Consumer handler error", zap.String("queue", queueName), zap.Error(err))
 			_ = d.Nack(false, false)
 		} else {

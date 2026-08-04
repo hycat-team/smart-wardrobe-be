@@ -7,23 +7,23 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/application/event"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type FashionAnalyzeWorker struct {
 	*worker.BaseWorker
-	messageClient shared_msg.IRabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IFashionWorkerUseCase
 	logger        logger.Interface
 }
 
 func NewFashionAnalyzeWorker(
-	messageClient shared_msg.IRabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IFashionWorkerUseCase,
 	l logger.Interface,
 ) *FashionAnalyzeWorker {
@@ -41,9 +41,9 @@ func (w *FashionAnalyzeWorker) Start(ctx context.Context) {
 }
 
 func (w *FashionAnalyzeWorker) startConsume(ctx context.Context) {
-	handler := func(d amqp.Delivery) error {
+	handler := func(msg event.Message) error {
 		var job dto.FashionAnalyzeJobDTO
-		if err := json.Unmarshal(d.Body, &job); err != nil {
+		if err := json.Unmarshal(msg.Body, &job); err != nil {
 			w.logger.Error("[FashionAnalyzeWorker] Failed to unmarshal message body", zap.Error(err))
 			return err
 		}

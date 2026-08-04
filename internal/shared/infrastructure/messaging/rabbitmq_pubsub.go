@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"smart-wardrobe-be/internal/shared/application/event"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
@@ -66,7 +68,27 @@ func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any)
 	return nil
 }
 
-func (r *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, error) {
+// Consume returns a technology-agnostic channel of event.Message for the queue,
+// wrapping the underlying broker deliveries so callers never depend on AMQP types.
+func (r *RabbitMQClient) Consume(queueName string) (<-chan event.Message, error) {
+	deliveries, err := r.consumeAMQP(queueName)
+	if err != nil {
+		return nil, err
+	}
+	out := make(chan event.Message)
+	go func() {
+		defer close(out)
+		for d := range deliveries {
+			out <- event.Message{Body: d.Body}
+		}
+	}()
+	return out, nil
+}
+
+// consumeAMQP subscribes to the queue and returns raw AMQP deliveries.
+// Kept private: ack/nack handling stays inside the infrastructure layer
+// (startConsumerLoop), so workers never touch broker-specific types.
+func (r *RabbitMQClient) consumeAMQP(queueName string) (<-chan amqp.Delivery, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

@@ -23,7 +23,7 @@ var ProviderSet = wire.NewSet(
 	sse.NewSSEManager,
 	infra_db.NewOutboxListener,
 	sharedWorker.NewOutboxWorker,
-	wire.Bind(new(messaging.IRabbitMQClient), new(*messaging.RabbitMQClient)),
+	wire.Bind(new(event.IMessageConsumer), new(*messaging.RabbitMQClient)),
 	wire.Bind(new(event.IEventPublisher), new(*messaging.RabbitMQClient)),
 	wire.Bind(new(sse.ISSEManager), new(*sse.SSEManager)),
 )

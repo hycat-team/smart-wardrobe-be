@@ -7,27 +7,27 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
+	wardrobe_event "smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	"smart-wardrobe-be/internal/pkg/logger"
+	shared_event "smart-wardrobe-be/internal/shared/application/event"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type SearchSyncEventConsumer struct {
-	messageClient shared_msg.IRabbitMQClient
+	messageClient shared_event.IMessageConsumer
 	logger        logger.Interface
 }
 
-func NewSearchSyncEventConsumer(messageClient shared_msg.IRabbitMQClient, l logger.Interface) event.ISearchSyncEventConsumer {
+func NewSearchSyncEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.ISearchSyncEventConsumer {
 	return &SearchSyncEventConsumer{messageClient: messageClient, logger: l}
 }
 
 func (c *SearchSyncEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event dto.WardrobeEventPayload) error) error {
-	wrappedHandler := func(d amqp.Delivery) error {
+	wrappedHandler := func(msg shared_event.Message) error {
 		var eventPayload dto.WardrobeEventPayload
-		if err := json.Unmarshal(d.Body, &eventPayload); err != nil {
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[SearchSyncEventConsumer] Failed to unmarshal message body", zap.Error(err))
 			return err
 		}
