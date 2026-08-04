@@ -727,10 +727,7 @@ backend/global.json
 .sonarqube/
 .cache/
 .gocache/
-docs/temp/*
-!docs/temp/technical-debt/
-!docs/temp/technical-debt/schema-separation-mapping.md
-docs/temp/technical-debt/outbox-cleanup-and-retry.md
+docs/temp
 
 .env
 .env.*
