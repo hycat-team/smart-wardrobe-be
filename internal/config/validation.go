@@ -60,6 +60,9 @@ func validateConfig(cfg *Config) error {
 	if cfg.Loyalty.ExpiryWorkerInterval <= 0 || cfg.Loyalty.ExpiryWorkerBatchSize <= 0 {
 		return fmt.Errorf("loyalty expiry worker configuration is invalid")
 	}
+	if cfg.Outbox.RetryMaxAttempts <= 0 || cfg.Outbox.RetryIntervalMinutes <= 0 || cfg.Outbox.CleanupRetentionDays <= 0 || cfg.Outbox.CleanupIntervalMinutes <= 0 || cfg.Outbox.BatchSize <= 0 {
+		return fmt.Errorf("outbox worker configuration is invalid")
+	}
 	// Validate Token Estimation Configurations
 	est := cfg.AI.TokenEstimation
 	if est.CharsPerToken <= 0 {

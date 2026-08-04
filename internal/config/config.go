@@ -24,6 +24,15 @@ type Config struct {
 	RAG            RAG                `mapstructure:"rag"`
 	Subscription   Subscription       `mapstructure:"subscription"`
 	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
+	Outbox         OutboxConfig       `mapstructure:"outbox"`
+}
+
+type OutboxConfig struct {
+	RetryMaxAttempts       int `mapstructure:"retry_max_attempts"`
+	RetryIntervalMinutes   int `mapstructure:"retry_interval_minutes"`
+	CleanupRetentionDays   int `mapstructure:"cleanup_retention_days"`
+	CleanupIntervalMinutes int `mapstructure:"cleanup_interval_minutes"`
+	BatchSize              int `mapstructure:"batch_size"`
 }
 
 type Loyalty struct {

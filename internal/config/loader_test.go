@@ -125,3 +125,35 @@ func TestProductionConfigIsValid(t *testing.T) {
 		t.Fatal("production config was not loaded")
 	}
 }
+
+func TestLoadConfigBindsOutboxConfig(t *testing.T) {
+	prepareConfigTest(t, nil)
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Outbox.RetryMaxAttempts != 3 {
+		t.Fatalf("unexpected outbox retry_max_attempts: %d", cfg.Outbox.RetryMaxAttempts)
+	}
+	if cfg.Outbox.RetryIntervalMinutes != 5 {
+		t.Fatalf("unexpected outbox retry_interval_minutes: %d", cfg.Outbox.RetryIntervalMinutes)
+	}
+	if cfg.Outbox.CleanupRetentionDays != 7 {
+		t.Fatalf("unexpected outbox cleanup_retention_days: %d", cfg.Outbox.CleanupRetentionDays)
+	}
+	if cfg.Outbox.CleanupIntervalMinutes != 60 {
+		t.Fatalf("unexpected outbox cleanup_interval_minutes: %d", cfg.Outbox.CleanupIntervalMinutes)
+	}
+	if cfg.Outbox.BatchSize != 50 {
+		t.Fatalf("unexpected outbox batch_size: %d", cfg.Outbox.BatchSize)
+	}
+}
+
+func TestLoadConfigRejectsInvalidOutboxConfig(t *testing.T) {
+	prepareConfigTest(t, func(value string) string {
+		return strings.Replace(value, "    retry_max_attempts: 3", "    retry_max_attempts: 0", 1)
+	})
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "outbox") {
+		t.Fatalf("expected outbox validation error, got %v", err)
+	}
+}

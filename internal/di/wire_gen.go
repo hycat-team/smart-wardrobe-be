@@ -270,7 +270,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	if err != nil {
 		return nil, nil, err
 	}
-	outboxWorker := worker8.NewOutboxWorker(outboxRepository, rabbitMQClient, outboxListener, l)
+	outboxWorker := worker8.NewOutboxWorker(outboxRepository, rabbitMQClient, outboxListener, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	emailWorker := worker9.NewEmailWorker(rabbitMQClient, smtpSender, l)
 	appWorkers := &bootstrap.AppWorkers{

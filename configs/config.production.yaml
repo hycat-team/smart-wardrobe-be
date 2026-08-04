@@ -164,6 +164,12 @@ ai:
         local_safety_multiplier: 1.25
         count_tokens_threshold_ratio: 0.70
         count_tokens_timeout: 1500ms
+outbox:
+    retry_max_attempts: 3
+    retry_interval_minutes: 5
+    cleanup_retention_days: 7
+    cleanup_interval_minutes: 60
+    batch_size: 50
 rabbitmq:
     host: rabbitmq
     port: 5672
