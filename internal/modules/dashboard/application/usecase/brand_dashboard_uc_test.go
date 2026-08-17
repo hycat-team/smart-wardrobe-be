@@ -195,7 +195,7 @@ func TestBrandGetPointsLiability_OwnerSeesFinancial(t *testing.T) {
 		role: brandmemberrole.Owner,
 	}
 	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
-	res, err := uc.GetPointsLiability(context.Background(), userID, brandID)
+	res, err := uc.GetPointsLiability(context.Background(), userID, brandID, brandmemberrole.Owner)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestBrandGetPointsLiability_StaffSeesRedacted(t *testing.T) {
 		role: brandmemberrole.Staff,
 	}
 	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
-	res, err := uc.GetPointsLiability(context.Background(), userID, brandID)
+	res, err := uc.GetPointsLiability(context.Background(), userID, brandID, brandmemberrole.Staff)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

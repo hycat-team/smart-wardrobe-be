@@ -10,10 +10,8 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltypointlotstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/loyaltytransactiontype"
@@ -79,10 +77,6 @@ func NewBrandLoyaltyUseCase(
 }
 
 func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandCustomersQueryReq) (*dto.BrandCustomerListRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
-
 	var statusFilter *brandcustomerstatus.BrandCustomerStatus
 	if query.Status != nil {
 		val := brandcustomerstatus.BrandCustomerStatus(*query.Status)
@@ -127,9 +121,6 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uui
 }
 
 func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, customerID uuid.UUID) (*dto.BrandCustomerRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	customer, err := uc.customerRepo.GetByID(ctx, customerID)
 	if err != nil {
 		return nil, err
@@ -192,9 +183,6 @@ func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID
 	if strings.TrimSpace(input.PhoneE164) == "" {
 		return nil, branderrors.ErrPhoneRequired()
 	}
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	creator, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {
 		return nil, err
@@ -239,10 +227,6 @@ func (uc *BrandLoyaltyUseCase) GrantLoyaltyPoints(ctx context.Context, staffUser
 	var response *dto.LoyaltyPointsTransactionRes
 
 	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		if err := usecase.RequireBrandRoleShared(txCtx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-			return err
-		}
-
 		if input.IdempotencyKey != nil && strings.TrimSpace(*input.IdempotencyKey) != "" {
 			existingTx, err := uc.txRepo.GetByBrandAndIdempotencyKey(txCtx, brandID, strings.TrimSpace(*input.IdempotencyKey))
 			if err != nil {
@@ -473,10 +457,6 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, user
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.GetLoyaltyTransactionsQueryReq) (*dto.LoyaltyTransactionListRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
-
 	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
 	if err != nil {
 		return nil, err
@@ -503,9 +483,6 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
 	if err != nil {
 		return nil, err
@@ -517,9 +494,6 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyProgramForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) (*dto.LoyaltyProgramRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	program, err := uc.programRepo.GetActiveByBrandID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -531,10 +505,6 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyProgramForStaff(ctx context.Context, st
 }
 
 func (uc *BrandLoyaltyUseCase) UpsertLoyaltyProgram(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.UpsertLoyaltyProgramReq) (*dto.LoyaltyProgramRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
-		return nil, err
-	}
-
 	program, err := uc.programRepo.GetByBrandID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -572,9 +542,6 @@ func (uc *BrandLoyaltyUseCase) UpsertLoyaltyProgram(ctx context.Context, staffUs
 }
 
 func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyTierRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	tiers, err := uc.tierRepo.GetByBrandID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -583,10 +550,6 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staf
 }
 
 func (uc *BrandLoyaltyUseCase) CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
-		return nil, err
-	}
-
 	existing, err := uc.tierRepo.GetByBrandAndName(ctx, brandID, input.Name)
 	if err != nil {
 		return nil, err
@@ -617,10 +580,6 @@ func (uc *BrandLoyaltyUseCase) CreateLoyaltyTier(ctx context.Context, staffUserI
 }
 
 func (uc *BrandLoyaltyUseCase) UpdateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID, input dto.UpdateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner); err != nil {
-		return nil, err
-	}
-
 	tier, err := uc.tierRepo.GetByID(ctx, tierID)
 	if err != nil {
 		return nil, err

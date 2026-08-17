@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/domain/entities"
 
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 
 	"github.com/google/uuid"
@@ -21,11 +22,12 @@ import (
 
 type mockDynamicQueryBrandReader struct {
 	brandContract.IBrandDashboardReader
-	role brandmemberrole.BrandMemberRole
+	role    brandmemberrole.BrandMemberRole
+	roleErr error
 }
 
 func (m *mockDynamicQueryBrandReader) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
-	return m.role, nil
+	return m.role, m.roleErr
 }
 
 type mockDynamicQueryRepo struct {
@@ -222,5 +224,22 @@ func TestDynamicQuery_LargeDateRange_AutoDowngrade(t *testing.T) {
 				t.Errorf("enforceMaxGranularity(%d, %s) = %s, want %s", tt.days, tt.inputGran, got, tt.wantGran)
 			}
 		})
+	}
+}
+
+func TestDynamicQuery_BrandRBAC_ForbiddenForNonMember(t *testing.T) {
+	userID := uuid.New()
+	brandID := uuid.New()
+	uc := NewDynamicQueryUseCase(&mockDynamicQueryRepo{}, &mockDynamicQueryBrandReader{
+		roleErr: apperror.NewForbidden("forbidden"),
+	})
+	_, err := uc.ExecuteDynamicQuery(context.Background(), userID, roleslug.User, &dto.DynamicQueryReq{
+		TargetDashboard: targetdashboard.Brand,
+		BrandID:         &brandID,
+		Metrics:         []metrickey.MetricKey{metrickey.TotalUsers},
+		Timeframe:       dto.DynamicQueryTimeframeDTO{FromDate: "2026-07-01", ToDate: "2026-07-23"},
+	})
+	if err == nil {
+		t.Fatal("expected Forbidden error for non-member accessing brand dashboard")
 	}
 }

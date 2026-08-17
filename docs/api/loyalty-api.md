@@ -1,6 +1,6 @@
 # Loyalty & Membership API Specs
 
-Tài liệu thiết kế các API liên quan đến chương trình loyalty, tích điểm thành viên, đặc quyền/voucher và cơ chế feature access trong mô hình B2B2C. Tất cả các giá trị hằng số sử dụng trong request/response tham chiếu chi tiết tại [constants/brand.md](constants/brand.md).
+Tài liệu thiết kế các API liên quan đến chương trình loyalty, tích điểm thành viên, đặc quyền/voucher và cơ chế feature access trong mô hình B2B2C. Tất cả các giá trị hằng số sử dụng trong request/response tham chiếu chi tiết tại [constants/brand.md](constants/brand.md). Ma trận phân quyền owner/staff của brand portal tham chiếu tại [Brand Permission Matrix](../../system-design/brand-permission-matrix.md).
 
 ---
 

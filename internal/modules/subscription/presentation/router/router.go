@@ -15,6 +15,7 @@ type Router struct {
 	cfg                 *config.Config
 	subscriptionHandler *subscription_handler.SubscriptionHandler
 	billingHandler      *subscription_handler.BillingHandler
+	adminBillingHandler *subscription_handler.AdminBillingHandler
 	auth                identity_contract.IAuthMiddleware
 }
 
@@ -22,12 +23,14 @@ func NewRouter(
 	cfg *config.Config,
 	h *subscription_handler.SubscriptionHandler,
 	b *subscription_handler.BillingHandler,
+	ab *subscription_handler.AdminBillingHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
 		cfg:                 cfg,
 		subscriptionHandler: h,
 		billingHandler:      b,
+		adminBillingHandler: ab,
 		auth:                auth,
 	}
 }
@@ -55,5 +58,16 @@ func (r *Router) Init(group *gin.RouterGroup) {
 			paymentWriteApi.POST("/me/purchase", shared_pres.WrapHandler(r.billingHandler.CreateDirectPurchase))
 			paymentWriteApi.POST("/me/purchase-with-wallet", shared_pres.WrapHandler(r.billingHandler.PurchasePlanWithWallet))
 		}
+	}
+
+	adminBilling := group.Group("/admin/subscriptions/transactions")
+	adminBilling.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		adminBilling.GET("", shared_pres.WrapHandler(r.adminBillingHandler.ListTransactions))
+		adminBilling.GET("/:id", shared_pres.WrapHandler(r.adminBillingHandler.GetTransaction))
+		adminBilling.POST("/:orderCode/retry-investigation", shared_pres.WrapHandler(r.adminBillingHandler.RetryInvestigation))
+		adminBilling.POST("/:orderCode/resolve-paid", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsPaid))
+		adminBilling.POST("/:orderCode/resolve-cancelled", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsCancelled))
+		adminBilling.POST("/:orderCode/resolve-creation-failed", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsCreationFailed))
 	}
 }

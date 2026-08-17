@@ -29,6 +29,42 @@ func NewDepositTransactionRepository(dbConn *gorm.DB) repositories.IDepositTrans
 	}
 }
 
+func (r *DepositTransactionRepository) ListAdmin(ctx context.Context, filter repositories.AdminDepositTransactionFilter, page, limit int) ([]*entities.DepositTransaction, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	db := r.GetDB(ctx).Model(&entities.DepositTransaction{})
+	if filter.Status != nil {
+		db = db.Where("status = ?", string(*filter.Status))
+	}
+	if filter.FromDate != nil {
+		db = db.Where("created_at >= ?", *filter.FromDate)
+	}
+	if filter.ToDate != nil {
+		db = db.Where("created_at <= ?", *filter.ToDate)
+	}
+	if filter.OrderCode != nil {
+		db = db.Where("order_code = ?", *filter.OrderCode)
+	}
+	if filter.UserID != nil {
+		db = db.Where("user_id = ?", *filter.UserID)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var rows []*entities.DepositTransaction
+	if err := db.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
 func (r *DepositTransactionRepository) GetByGatewayReference(ctx context.Context, reference string) (*entities.DepositTransaction, error) {
 	var tx entities.DepositTransaction
 	err := r.GetDB(ctx).Where("successful_provider_reference = ?", reference).First(&tx).Error

@@ -20,7 +20,8 @@ type Config struct {
 	RabbitMQ       RabbitMQ           `mapstructure:"rabbitmq"`
 	Elasticsearch  Elasticsearch      `mapstructure:"elasticsearch"`
 	Community      Community          `mapstructure:"community"`
-	Loyalty        Loyalty            `mapstructure:"loyalty"`
+	Loyalty        Loyalty              `mapstructure:"loyalty"`
+	BrandMembership BrandMembershipCacheTTL `mapstructure:"brand_membership"`
 	RAG            RAG                `mapstructure:"rag"`
 	Subscription   Subscription       `mapstructure:"subscription"`
 	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
@@ -39,6 +40,12 @@ type Loyalty struct {
 	ExpiryWorkerEnabled   bool          `mapstructure:"expiry_worker_enabled"`
 	ExpiryWorkerInterval  time.Duration `mapstructure:"expiry_worker_interval"`
 	ExpiryWorkerBatchSize int           `mapstructure:"expiry_worker_batch_size"`
+}
+
+// BrandMembershipCacheTTL is the TTL of the Redis cache that stores a user's
+// active brand memberships used by brand RBAC middleware. Default 5 minutes.
+type BrandMembershipCacheTTL struct {
+	TTL time.Duration `mapstructure:"ttl"`
 }
 
 type WardrobeProcessing struct {

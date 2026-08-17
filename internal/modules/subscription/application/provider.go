@@ -1,6 +1,7 @@
 package application
 
 import (
+	admin_billing "smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_billing"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_stats"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
@@ -34,6 +35,7 @@ var ProviderSet = wire.NewSet(
 	purchase.NewSubscriptionPurchaseUseCase,
 	webhook.NewPaymentWebhookUseCase,
 	resolution.NewPaymentResolutionUseCase,
+	admin_billing.NewAdminBillingUseCase,
 	reconciliation.NewPaymentReconciliationUseCase,
 	webhook_inbox.NewWebhookInboxUseCase,
 	validator.NewSubscriptionCatalogValidator,

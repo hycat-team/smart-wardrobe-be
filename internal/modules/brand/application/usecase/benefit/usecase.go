@@ -10,14 +10,12 @@ import (
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
-	"smart-wardrobe-be/internal/modules/brand/application/usecase"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
@@ -66,10 +64,6 @@ func NewBrandBenefitUseCase(
 }
 
 func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
-
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -138,9 +132,6 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 }
 
 func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	benefits, err := uc.benefitRepo.GetByBrandID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -210,10 +201,6 @@ func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context
 }
 
 func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {
-	if err := usecase.RequireBrandRoleShared(ctx, uc.brandRepo, uc.memberRepo, staffUserID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
-
 	benefit, err := uc.benefitRepo.GetByID(ctx, benefitID)
 	if err != nil {
 		return nil, err

@@ -9,6 +9,7 @@ import (
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
+	brand_caching "smart-wardrobe-be/internal/modules/brand/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
@@ -35,6 +36,7 @@ type BrandUseCase struct {
 	mediaService          media.IMediaService
 	uow                   shared_repos.IUnitOfWork
 	cfg                   *config.Config
+	membershipCache       brand_caching.IBrandMembershipCache
 }
 
 func NewBrandUseCase(
@@ -47,6 +49,7 @@ func NewBrandUseCase(
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
+	membershipCache brand_caching.IBrandMembershipCache,
 ) uc_interfaces.IBrandUseCase {
 	return &BrandUseCase{
 		brandRepo:             brandRepo,
@@ -58,6 +61,7 @@ func NewBrandUseCase(
 		mediaService:          mediaService,
 		uow:                   uow,
 		cfg:                   cfg,
+		membershipCache:       membershipCache,
 	}
 }
 
@@ -127,6 +131,11 @@ func (uc *BrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.UUID
 		brand.ApprovedAt = &now
 	}
 	if err := uc.brandRepo.Update(ctx, brand); err != nil {
+		return nil, err
+	}
+	// Changing a brand's status changes its members' effective authorization,
+	// so invalidate their membership cache immediately.
+	if err := uc.InvalidateBrandMembersCache(ctx, brandID); err != nil {
 		return nil, err
 	}
 	return mapper.MapBrand(brand, -1), nil
@@ -246,9 +255,6 @@ func (uc *BrandUseCase) GetBrandLogoUploadSignature(ctx context.Context, userID 
 }
 
 func (uc *BrandUseCase) UpdateBrandImages(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.UpdateBrandImagesReq) (*dto.BrandRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -276,9 +282,6 @@ func (uc *BrandUseCase) UpdateBrandImages(ctx context.Context, userID uuid.UUID,
 }
 
 func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.PortalBrandRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {
 		return nil, err
@@ -294,10 +297,6 @@ func (uc *BrandUseCase) GetBrandForPortal(ctx context.Context, userID uuid.UUID,
 }
 
 func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.AddBrandMembersReq) (*dto.AddBrandMembersRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
-
 	result := &dto.AddBrandMembersRes{
 		Created: []dto.AddBrandMemberItemResult{},
 		Updated: []dto.AddBrandMemberItemResult{},
@@ -451,13 +450,18 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		})
 	}
 
+	// Invalidate the membership cache of every affected user so role/status
+	// changes take effect immediately (not after the cache TTL).
+	for _, userID := range resolvedUserOrder {
+		if err := uc.InvalidateUserMembershipCache(ctx, userID); err != nil {
+			return nil, err
+		}
+	}
+
 	return result, nil
 }
 
 func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandMemberRes, error) {
-	if err := uc.RequireBrandRole(ctx, userID, brandID, brandmemberrole.Owner, brandmemberrole.Staff); err != nil {
-		return nil, err
-	}
 	members, err := uc.memberRepo.GetByBrandID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -488,12 +492,80 @@ func (uc *BrandUseCase) GetBrandAnalyticsStats(ctx context.Context, brandID uuid
 	return uc.brandRepo.GetBrandAnalyticsStats(ctx, brandID, snapshotDate)
 }
 
+// GetUserBrandRole returns the active member role of the user in the brand.
+// It reads through a per-user cache to avoid hitting the database on every
+// request; on a cache miss it loads the user's active memberships from the DB
+// and stores them. It returns ErrBrandPortalForbidden when the user is not an
+// active member of an active brand (no default "staff" fallback).
 func (uc *BrandUseCase) GetUserBrandRole(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (brandmemberrole.BrandMemberRole, error) {
-	member, err := uc.memberRepo.GetByBrandAndUser(ctx, brandID, userID)
-	if err != nil || member == nil {
-		return brandmemberrole.Staff, nil
+	memberships, err := uc.getActiveBrandMemberships(ctx, userID)
+	if err != nil {
+		return "", err
 	}
-	return member.Role, nil
+	role, ok := memberships[brandID]
+	if !ok {
+		return "", branderrors.ErrBrandPortalForbidden()
+	}
+	return role, nil
+}
+
+// InvalidateUserMembershipCache drops the cached memberships of a single user.
+func (uc *BrandUseCase) InvalidateUserMembershipCache(ctx context.Context, userID uuid.UUID) error {
+	if uc.membershipCache == nil {
+		return nil
+	}
+	return uc.membershipCache.InvalidateByUserID(ctx, userID)
+}
+
+// InvalidateBrandMembersCache drops the cached memberships of every active
+// member of a brand (used when a brand's status changes).
+func (uc *BrandUseCase) InvalidateBrandMembersCache(ctx context.Context, brandID uuid.UUID) error {
+	if uc.membershipCache == nil {
+		return nil
+	}
+	members, err := uc.memberRepo.GetByBrandID(ctx, brandID)
+	if err != nil {
+		return err
+	}
+	userIDs := make([]uuid.UUID, 0, len(members))
+	for _, m := range members {
+		userIDs = append(userIDs, m.UserID)
+	}
+	return uc.membershipCache.InvalidateByBrandID(ctx, brandID, userIDs)
+}
+
+// getActiveBrandMemberships returns a map of brandID -> role for the user's
+// memberships where the member is active and the brand is active. It reads the
+// cache first and falls back to the database on a miss.
+func (uc *BrandUseCase) getActiveBrandMemberships(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]brandmemberrole.BrandMemberRole, error) {
+	if uc.membershipCache != nil {
+		if cached, err := uc.membershipCache.Get(ctx, userID); err == nil && cached != nil {
+			return cached, nil
+		}
+	}
+
+	members, err := uc.memberRepo.GetActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	memberships := make(map[uuid.UUID]brandmemberrole.BrandMemberRole, len(members))
+	for _, m := range members {
+		if m == nil || m.Status != brandmemberstatus.Active {
+			continue
+		}
+		if m.Brand != nil && m.Brand.Status != brandstatus.Active {
+			continue
+		}
+		memberships[m.BrandID] = m.Role
+	}
+
+	if uc.membershipCache != nil {
+		if err := uc.membershipCache.Set(ctx, userID, memberships); err != nil {
+			// Cache write failures must not break the authorization decision.
+			return memberships, nil
+		}
+	}
+	return memberships, nil
 }
 
 func (uc *BrandUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, itemID uuid.UUID, page, limit int) ([]dto.SampleFeedbackDrillDownDTO, int64, error) {

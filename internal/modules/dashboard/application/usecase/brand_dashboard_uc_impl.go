@@ -7,6 +7,7 @@ import (
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"
@@ -84,12 +85,7 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 	}, nil
 }
 
-func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*dto.BrandPointsLiabilityRes, error) {
-	role, err := uc.brandReader.GetUserBrandRole(ctx, userID, brandID)
-	if err != nil {
-		return nil, err
-	}
-
+func (uc *BrandDashboardUseCase) GetPointsLiability(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, role brandmemberrole.BrandMemberRole) (*dto.BrandPointsLiabilityRes, error) {
 	latest, err := uc.dashboardRepo.GetLatestBrandSnapshot(ctx, brandID)
 	if err != nil {
 		return nil, err

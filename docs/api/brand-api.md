@@ -477,7 +477,8 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 - Mô hình vai trò hiện tại chỉ còn hai giá trị:
     - `owner`: chủ sở hữu brand, mỗi brand chỉ có một owner active.
     - `staff`: nhân viên vận hành brand portal.
-- Các vai trò cũ `staff`, `staff`, `staff` được gom về `staff`.
+- Các vai trò vận hành trước đây (nhiều vai trò quản trị/nhân viên) đã được gom về một giá trị `staff`.
+- **Ma trận phân quyền đầy đủ (owner/staff):** Xem [Brand Permission Matrix](../../system-design/brand-permission-matrix.md) — nguồn duy nhất cho middleware và tài liệu quyền brand portal.
 - API `POST /api/v1/brand-portal/brands/:brandId/members` chỉ cho phép thêm hoặc cập nhật thành viên với role `staff`; không dùng API này để tạo owner mới.
 - API `GET /api/v1/brand-portal/me/brands` và `GET /api/v1/brand-portal/brands/:brandId` trả thêm thông tin membership của current user gồm `memberId`, `memberRole`, `memberStatus` để frontend biết quyền của user trong brand đang chọn.
 

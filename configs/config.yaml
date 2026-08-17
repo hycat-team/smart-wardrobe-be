@@ -185,6 +185,8 @@ loyalty:
     expiry_worker_enabled: true
     expiry_worker_interval: 1h
     expiry_worker_batch_size: 100
+brand_membership:
+    ttl: 5m
 rag:
     recently_worn_penalty_days: 3
     long_unworn_bonus_days: 14

@@ -5,6 +5,8 @@ const (
 	CtxUserId      = "userId"
 	CtxRoleSlug    = "roleSlug"
 	CtxEmail       = "email"
+	CtxBrandId     = "brandId"
+	CtxBrandRole   = "brandRole"
 
 	CookieRefreshToken        = "refreshToken"
 	CookieForgotPasswordToken = "forgotPasswordToken"

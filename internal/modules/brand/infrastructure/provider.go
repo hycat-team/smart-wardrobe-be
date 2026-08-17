@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 
 	"github.com/google/wire"
@@ -22,4 +23,5 @@ var ProviderSet = wire.NewSet(
 	persistence.NewLoyaltyPointTransactionRepository,
 	persistence.NewLoyaltyPointLotRepository,
 	persistence.NewBrandCustomerClaimRepository,
+	caching.NewRedisBrandMembershipCache,
 )

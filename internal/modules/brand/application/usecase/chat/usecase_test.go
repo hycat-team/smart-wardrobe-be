@@ -10,7 +10,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/conversationstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandchat/senderrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
@@ -378,25 +377,7 @@ func TestSendStaffMessage_Authorization(t *testing.T) {
 	brandID := uuid.New()
 	userID := uuid.New()
 	staffID := uuid.New()
-	otherStaffID := uuid.New()
 	convID := uuid.New()
-
-	brandRepo := &mockBrandRepo{brands: map[uuid.UUID]*entities.Brand{
-		brandID: {
-			Slug:   "closy",
-			Name:   "Closy Brand",
-			Status: brandstatus.Active,
-		},
-	}}
-
-	memberRepo := &mockMemberRepo{members: map[string]*entities.BrandMember{
-		brandID.String() + "_" + staffID.String(): {
-			BrandID: brandID,
-			UserID:  staffID,
-			Role:    brandmemberrole.Owner,
-			Status:  brandmemberstatus.Active,
-		},
-	}}
 
 	convRepo := &mockConvRepo{conversations: map[string]*entities.BrandConversation{
 		brandID.String() + "_" + userID.String(): {
@@ -409,11 +390,9 @@ func TestSendStaffMessage_Authorization(t *testing.T) {
 	msgRepo := &mockMsgRepo{messages: make(map[uuid.UUID]*entities.BrandConversationMessage)}
 
 	uc := &BrandChatUseCase{
-		brandRepo:  brandRepo,
-		memberRepo: memberRepo,
-		convRepo:   convRepo,
-		msgRepo:    msgRepo,
-		uow:        loyaltyLotsTestUOW{},
+		convRepo: convRepo,
+		msgRepo:  msgRepo,
+		uow:      loyaltyLotsTestUOW{},
 	}
 
 	// 1. Valid staff replies
@@ -424,10 +403,34 @@ func TestSendStaffMessage_Authorization(t *testing.T) {
 	if res.SenderRole != string(senderrole.BrandStaff) {
 		t.Errorf("Expected BRAND_STAFF role, got %s", res.SenderRole)
 	}
+}
 
-	// 2. Other brand staff replies -> forbidden
-	_, err = uc.SendStaffMessage(context.Background(), otherStaffID, brandID, convID, dto.SendBrandChatMessageReq{Message: "Intruder"})
+func TestSendStaffMessage_ConversationBelongsToBrand(t *testing.T) {
+	brandID := uuid.New()
+	otherBrandID := uuid.New()
+	userID := uuid.New()
+	convID := uuid.New()
+
+	convRepo := &mockConvRepo{conversations: map[string]*entities.BrandConversation{
+		otherBrandID.String() + "_" + userID.String(): {
+			AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: convID}},
+			BrandID:         otherBrandID,
+			UserID:          userID,
+			Status:          conversationstatus.Open,
+		},
+	}}
+	msgRepo := &mockMsgRepo{messages: make(map[uuid.UUID]*entities.BrandConversationMessage)}
+
+	uc := &BrandChatUseCase{
+		convRepo: convRepo,
+		msgRepo:  msgRepo,
+		uow:      loyaltyLotsTestUOW{},
+	}
+
+	// Replying to a conversation that belongs to a different brand is rejected
+	// at the use case level (business validation), regardless of staff identity.
+	_, err := uc.SendStaffMessage(context.Background(), uuid.New(), brandID, convID, dto.SendBrandChatMessageReq{Message: "Intruder"})
 	if err == nil {
-		t.Fatalf("Expected forbidden err, got nil")
+		t.Fatalf("Expected error for conversation not belonging to brand, got nil")
 	}
 }

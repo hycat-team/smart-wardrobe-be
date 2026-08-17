@@ -24,9 +24,11 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/claim"
 	item2 "smart-wardrobe-be/internal/modules/brand/application/usecase/item"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/loyalty"
+	caching4 "smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
 	persistence6 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	contract6 "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	handler5 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
+	middleware2 "smart-wardrobe-be/internal/modules/brand/presentation/middleware"
 	router5 "smart-wardrobe-be/internal/modules/brand/presentation/router"
 	worker3 "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	usecase2 "smart-wardrobe-be/internal/modules/dashboard/application/usecase"
@@ -56,11 +58,13 @@ import (
 	"smart-wardrobe-be/internal/modules/notification/infrastructure/communication"
 	"smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	worker9 "smart-wardrobe-be/internal/modules/notification/presentation/worker"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_billing"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/admin_stats"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/quota"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/reconciliation"
+	"smart-wardrobe-be/internal/modules/subscription/application/usecase/resolution"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
@@ -93,7 +97,7 @@ import (
 	"smart-wardrobe-be/internal/shared/infrastructure/media"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/infrastructure/search"
-	middleware2 "smart-wardrobe-be/internal/shared/presentation/middleware"
+	middleware3 "smart-wardrobe-be/internal/shared/presentation/middleware"
 	worker8 "smart-wardrobe-be/internal/shared/presentation/worker"
 )
 
@@ -151,7 +155,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWebhookInboxRepository := persistence2.NewWebhookInboxRepository(gormDB)
 	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, iNotificationContract, iUserContactRepository, l)
 	billingHandler := handler2.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
-	router7 := router2.NewRouter(cfg, subscriptionHandler, billingHandler, authMiddleware)
+	iAdminBillingUseCase := admin.NewAdminBillingUseCase(iDepositTransactionRepository)
+	iPaymentResolutionUseCase := resolution.NewPaymentResolutionUseCase(iDepositTransactionRepository, iPaymentWebhookUseCase, iUnitOfWork)
+	adminBillingHandler := handler2.NewAdminBillingHandler(l, iAdminBillingUseCase, iPaymentResolutionUseCase)
+	router7 := router2.NewRouter(cfg, subscriptionHandler, billingHandler, adminBillingHandler, authMiddleware)
 	iWardrobeItemRepository := persistence3.NewWardrobeItemRepository(gormDB)
 	iOutfitRepository := persistence3.NewOutfitRepository(gormDB)
 	elasticsearchClient := search.NewElasticsearchClient(cfg, l)
@@ -195,7 +202,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	categoryHandler := handler3.NewCategoryHandler(usecaseICategoryUseCase)
 	router8 := router3.NewRouter(wardrobeItemHandler, outfitHandler, categoryHandler, authMiddleware)
 	iDashboardRepository := persistence7.NewDashboardRepository(gormDB)
-	iBrandUseCase := brand.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iDigitalSampleResponseRepository, iBenefitRedemptionRepository, iUserContract, iMediaService, iUnitOfWork, cfg)
+	iBrandMembershipCache := caching4.NewRedisBrandMembershipCache(client, cfg)
+	iBrandUseCase := brand.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iDigitalSampleResponseRepository, iBenefitRedemptionRepository, iUserContract, iMediaService, iUnitOfWork, cfg, iBrandMembershipCache)
 	iBrandDashboardAnalyticsUseCase := brand.NewBrandDashboardAnalyticsUseCase(iBrandCustomerRepository, iLoyaltyAccountRepository, iLoyaltyPointLotRepository, iBenefitRedemptionRepository, iBrandItemRepository)
 	iBrandDashboardReader := contract6.NewBrandDashboardReader(iBrandUseCase, iBrandDashboardAnalyticsUseCase)
 	iDynamicQueryUseCase := usecase2.NewDynamicQueryUseCase(iDashboardRepository, iBrandDashboardReader)
@@ -213,7 +221,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iFashionDashboardReader := contract4.NewFashionDashboardReader(iCategoryUseCase, iFashionItemUseCase)
 	iUserDashboardUseCase := usecase2.NewUserDashboardUseCase(iDashboardRepository, iWardrobeDashboardReader, iBrandDashboardReader, iFashionDashboardReader)
 	userDashboardHandler := handler4.NewUserDashboardHandler(iUserDashboardUseCase)
-	router9 := router4.NewRouter(analyticsHandler, adminDashboardHandler, brandDashboardHandler, userDashboardHandler, authMiddleware)
+	brandRoleMiddleware := middleware2.NewBrandRoleMiddleware(iBrandUseCase)
+	router9 := router4.NewRouter(analyticsHandler, adminDashboardHandler, brandDashboardHandler, userDashboardHandler, brandRoleMiddleware, authMiddleware)
 	brandPortalHandler := handler5.NewBrandPortalHandler(iBrandUseCase, iBrandItemUseCase, sseManager)
 	iLoyaltyProgramRepository := persistence6.NewLoyaltyProgramRepository(gormDB)
 	iBrandLoyaltyUseCase := loyalty.NewBrandLoyaltyUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserContract, iLoyaltyProgramRepository, iLoyaltyTierRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iUnitOfWork, cfg, l)
@@ -225,7 +234,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandChatUseCase := chat.NewBrandChatUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iUserContract, iBrandConversationRepository, iBrandConversationMessageRepository, iUnitOfWork)
 	brandChatHandler := handler5.NewBrandChatHandler(iBrandChatUseCase)
 	brandHandler := handler5.NewBrandHandler(brandPortalHandler, brandLoyaltyHandler, brandChatHandler)
-	router10 := router5.NewRouter(brandHandler, authMiddleware)
+	router10 := router5.NewRouter(brandHandler, brandRoleMiddleware, authMiddleware)
 	iWardrobeContractUseCase := contractuc.NewWardrobeContractUseCase(iWardrobeItemRepository, iUserSubscriptionContract, iFashionContract)
 	iWardrobeContract := contract7.NewWardrobeContract(iWardrobeContractUseCase)
 	iUserQuotaContract := contract2.NewUserQuotaContract(iUserQuotaUseCase)
@@ -243,7 +252,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		BrandRouter:        router10,
 		FashionRouter:      router11,
 	}
-	rateLimitMiddleware := middleware2.NewRateLimitMiddleware(cfg)
+	rateLimitMiddleware := middleware3.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
 	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)

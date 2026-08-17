@@ -7,20 +7,26 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+
 	"github.com/gin-gonic/gin"
 )
 
 type Router struct {
 	brandHandler *brand_handler.BrandHandler
+	brandRole    brand_contract.IBrandRoleMiddleware
 	auth         identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	brandHandler *brand_handler.BrandHandler,
+	brandRole brand_contract.IBrandRoleMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
 		brandHandler: brandHandler,
+		brandRole:    brandRole,
 		auth:         auth,
 	}
 }
@@ -80,41 +86,54 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portal.GET("/me/brands", shared_pres.WrapHandler(r.brandHandler.GetMyPortalBrands))
 		portal.POST("/brands", shared_pres.WrapHandler(r.brandHandler.CreateBrandRequest))
 		portal.GET("/brands/profile-images/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandLogoUploadSignature))
-		portal.GET("/brands/:brandId", shared_pres.WrapHandler(r.brandHandler.GetBrandForPortal))
-		portal.PATCH("/brands/:brandId/profile-images", shared_pres.WrapHandler(r.brandHandler.UpdateBrandImages))
-		portal.POST("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.AddBrandMember))
-		portal.GET("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.GetBrandMembers))
-		portal.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
-		portal.GET("/brands/:brandId/customers/:customerId", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomer))
-		portal.POST("/brands/:brandId/customers/:customerId/claim-token", shared_pres.WrapHandler(r.brandHandler.CreateClaimToken))
-		portal.GET("/brands/:brandId/customers/:customerId/claim-tokens", shared_pres.WrapHandler(r.brandHandler.ListClaimTokens))
-		portal.POST("/brands/:brandId/customers/:customerId/claim-tokens/:claimId/revoke", shared_pres.WrapHandler(r.brandHandler.RevokeClaimToken))
-		portal.POST("/brands/:brandId/customers/offline-purchase", shared_pres.WrapHandler(r.brandHandler.CreateOfflineCustomer))
-		portal.POST("/brands/:brandId/loyalty/points", shared_pres.WrapHandler(r.brandHandler.GrantLoyaltyPoints))
-		portal.GET("/brands/:brandId/loyalty/accounts/:accountId/transactions", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountTransactionsForStaff))
-		portal.GET("/brands/:brandId/loyalty/accounts/:accountId/lots", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountLotsForStaff))
-		portal.GET("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyProgramForStaff))
-		portal.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
-		portal.GET("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForStaff))
-		portal.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
-		portal.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))
-		portal.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
-		portal.GET("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListBrandBenefitsForStaff))
-		portal.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))
-		portal.GET("/brands/:brandId/conversations", shared_pres.WrapHandler(r.brandHandler.ListBrandConversations))
-		portal.GET("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.ListConversationMessages))
-		portal.POST("/brands/:brandId/conversations/:conversationId/read", shared_pres.WrapHandler(r.brandHandler.MarkStaffConversationRead))
-		portal.POST("/brands/:brandId/conversations/:conversationId/close", shared_pres.WrapHandler(r.brandHandler.CloseConversation))
-		portal.POST("/brands/:brandId/conversations/:conversationId/reopen", shared_pres.WrapHandler(r.brandHandler.ReopenConversation))
-		portal.POST("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.SendStaffMessage))
-		portal.POST("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.CreateBrandItem))
-		portal.GET("/brands/:brandId/items/tasks/:taskId/sse", shared_pres.WrapHandler(r.brandHandler.SubscribeBrandItemTaskSSE))
-		portal.GET("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.GetBrandItemsForStaff))
-		portal.GET("/brands/:brandId/items/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandItemUploadSignature))
-		portal.GET("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForStaff))
-		portal.PUT("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItem))
-		portal.PATCH("/brands/:brandId/items/:itemId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItemStatus))
-		portal.GET("/brands/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.GetBrandItemFeedbacks))
+	}
+
+	// Brand RBAC is centralized here via BrandRoleMiddleware: routes requiring a
+	// real brand membership (owner/staff) go under memberGroup; owner-only
+	// configuration routes (loyalty program/tiers) go under ownerGroup.
+	portalMember := group.Group("/brand-portal")
+	portalMember.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
+	{
+		portalMember.GET("/brands/:brandId", shared_pres.WrapHandler(r.brandHandler.GetBrandForPortal))
+		portalMember.PATCH("/brands/:brandId/profile-images", shared_pres.WrapHandler(r.brandHandler.UpdateBrandImages))
+		portalMember.POST("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.AddBrandMember))
+		portalMember.GET("/brands/:brandId/members", shared_pres.WrapHandler(r.brandHandler.GetBrandMembers))
+		portalMember.GET("/brands/:brandId/customers", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomers))
+		portalMember.GET("/brands/:brandId/customers/:customerId", shared_pres.WrapHandler(r.brandHandler.GetBrandCustomer))
+		portalMember.POST("/brands/:brandId/customers/:customerId/claim-token", shared_pres.WrapHandler(r.brandHandler.CreateClaimToken))
+		portalMember.GET("/brands/:brandId/customers/:customerId/claim-tokens", shared_pres.WrapHandler(r.brandHandler.ListClaimTokens))
+		portalMember.POST("/brands/:brandId/customers/:customerId/claim-tokens/:claimId/revoke", shared_pres.WrapHandler(r.brandHandler.RevokeClaimToken))
+		portalMember.POST("/brands/:brandId/customers/offline-purchase", shared_pres.WrapHandler(r.brandHandler.CreateOfflineCustomer))
+		portalMember.POST("/brands/:brandId/loyalty/points", shared_pres.WrapHandler(r.brandHandler.GrantLoyaltyPoints))
+		portalMember.GET("/brands/:brandId/loyalty/accounts/:accountId/transactions", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountTransactionsForStaff))
+		portalMember.GET("/brands/:brandId/loyalty/accounts/:accountId/lots", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountLotsForStaff))
+		portalMember.GET("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyProgramForStaff))
+		portalMember.GET("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForStaff))
+		portalMember.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
+		portalMember.GET("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListBrandBenefitsForStaff))
+		portalMember.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))
+		portalMember.GET("/brands/:brandId/conversations", shared_pres.WrapHandler(r.brandHandler.ListBrandConversations))
+		portalMember.GET("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.ListConversationMessages))
+		portalMember.POST("/brands/:brandId/conversations/:conversationId/read", shared_pres.WrapHandler(r.brandHandler.MarkStaffConversationRead))
+		portalMember.POST("/brands/:brandId/conversations/:conversationId/close", shared_pres.WrapHandler(r.brandHandler.CloseConversation))
+		portalMember.POST("/brands/:brandId/conversations/:conversationId/reopen", shared_pres.WrapHandler(r.brandHandler.ReopenConversation))
+		portalMember.POST("/brands/:brandId/conversations/:conversationId/messages", shared_pres.WrapHandler(r.brandHandler.SendStaffMessage))
+		portalMember.POST("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.CreateBrandItem))
+		portalMember.GET("/brands/:brandId/items/tasks/:taskId/sse", shared_pres.WrapHandler(r.brandHandler.SubscribeBrandItemTaskSSE))
+		portalMember.GET("/brands/:brandId/items", shared_pres.WrapHandler(r.brandHandler.GetBrandItemsForStaff))
+		portalMember.GET("/brands/:brandId/items/upload-signature", shared_pres.WrapHandler(r.brandHandler.GetBrandItemUploadSignature))
+		portalMember.GET("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.GetBrandItemForStaff))
+		portalMember.PUT("/brands/:brandId/items/:itemId", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItem))
+		portalMember.PATCH("/brands/:brandId/items/:itemId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandItemStatus))
+		portalMember.GET("/brands/:brandId/items/:itemId/feedbacks", shared_pres.WrapHandler(r.brandHandler.GetBrandItemFeedbacks))
+	}
+
+	portalOwner := group.Group("/brand-portal")
+	portalOwner.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin), r.brandRole.PathAuthorize("brandId", brandmemberrole.Owner))
+	{
+		portalOwner.PUT("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.UpsertLoyaltyProgram))
+		portalOwner.POST("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.CreateLoyaltyTier))
+		portalOwner.PUT("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.UpdateLoyaltyTier))
 	}
 
 	admin := group.Group("/admin/brands")

@@ -59,6 +59,10 @@ func (h *BrandDashboardHandler) GetPointsLiability(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
+	role, err := contextutils.GetBrandRole(c)
+	if err != nil {
+		return err
+	}
 	var req dto.GetBrandDashboardQueryReq
 	if err := validation.BindQuery(c, &req); err != nil {
 		return err
@@ -68,7 +72,7 @@ func (h *BrandDashboardHandler) GetPointsLiability(c *gin.Context) error {
 		return err
 	}
 
-	res, err := h.brandUC.GetPointsLiability(c.Request.Context(), userID, brandID)
+	res, err := h.brandUC.GetPointsLiability(c.Request.Context(), userID, brandID, role)
 	if err != nil {
 		return err
 	}

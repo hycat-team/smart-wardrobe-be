@@ -5,6 +5,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/infrastructure"
 	"smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/brand/presentation/handler"
+	"smart-wardrobe-be/internal/modules/brand/presentation/middleware"
 	"smart-wardrobe-be/internal/modules/brand/presentation/router"
 	"smart-wardrobe-be/internal/modules/brand/presentation/worker"
 
@@ -20,6 +21,8 @@ var ProviderSet = wire.NewSet(
 	handler.NewBrandLoyaltyHandler,
 	handler.NewBrandChatHandler,
 	handler.NewBrandHandler,
+	middleware.NewBrandRoleMiddleware,
+	wire.Bind(new(contract.IBrandRoleMiddleware), new(*middleware.BrandRoleMiddleware)),
 	router.NewRouter,
 	worker.NewLoyaltyPointExpiryWorker,
 )

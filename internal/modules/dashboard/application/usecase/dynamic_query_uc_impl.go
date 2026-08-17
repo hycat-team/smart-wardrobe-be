@@ -59,11 +59,8 @@ func (uc *DynamicQueryUseCase) ExecuteDynamicQuery(
 		if req.BrandID == nil {
 			return nil, apperror.NewBadRequest("Thiếu thông tin brandId để truy vấn Brand Dashboard.")
 		}
-		role, err := uc.brandReader.GetUserBrandRole(ctx, userID, *req.BrandID)
+		_, err := uc.brandReader.GetUserBrandRole(ctx, userID, *req.BrandID)
 		if err != nil {
-			return nil, apperror.NewInternalError("Không thể xác thực quyền truy cập nhãn hàng. Vui lòng thử lại sau.")
-		}
-		if role == "" {
 			return nil, apperror.NewForbidden("Bạn không có quyền truy cập thông tin nhãn hàng này.")
 		}
 	case targetdashboard.User:

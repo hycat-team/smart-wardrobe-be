@@ -1,7 +1,9 @@
 package router
 
 import (
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_handler "smart-wardrobe-be/internal/modules/dashboard/presentation/handler"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
@@ -15,6 +17,7 @@ type Router struct {
 	adminDashboardHandler *dashboard_handler.AdminDashboardHandler
 	brandDashboardHandler *dashboard_handler.BrandDashboardHandler
 	userDashboardHandler  *dashboard_handler.UserDashboardHandler
+	brandRole             brand_contract.IBrandRoleMiddleware
 	auth                  identity_contract.IAuthMiddleware
 }
 
@@ -23,6 +26,7 @@ func NewRouter(
 	adminDashboardHandler *dashboard_handler.AdminDashboardHandler,
 	brandDashboardHandler *dashboard_handler.BrandDashboardHandler,
 	userDashboardHandler *dashboard_handler.UserDashboardHandler,
+	brandRole brand_contract.IBrandRoleMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
@@ -30,6 +34,7 @@ func NewRouter(
 		adminDashboardHandler: adminDashboardHandler,
 		brandDashboardHandler: brandDashboardHandler,
 		userDashboardHandler:  userDashboardHandler,
+		brandRole:             brandRole,
 		auth:                  auth,
 	}
 }
@@ -49,7 +54,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	brandDashboard := group.Group("/brand/dashboard")
-	brandDashboard.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	brandDashboard.Use(r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		brandDashboard.GET("/kpi-cards", shared_pres.WrapHandler(r.brandDashboardHandler.GetKPICards))
 		brandDashboard.GET("/financials/points-liability", shared_pres.WrapHandler(r.brandDashboardHandler.GetPointsLiability))
@@ -83,7 +88,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	}
 
 	brandDrill := group.Group("/brand/dashboard/drilldown")
-	brandDrill.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User, roleslug.Admin))
+	brandDrill.Use(r.auth.Handle(), r.brandRole.QueryAuthorize("brandId", brandmemberrole.Owner, brandmemberrole.Staff))
 	{
 		brandDrill.GET("/sample-lab-feedbacks", shared_pres.WrapHandler(r.analyticsHandler.GetSampleLabFeedbacksDrillDown))
 	}

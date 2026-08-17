@@ -17,6 +17,7 @@ Các hằng số dùng trong APIs liên quan đến Thương hiệu, Thành viê
 - **Các giá trị hợp lệ:**
     - `owner`: Chủ sở hữu nhãn hàng (quyền cao nhất).
     - `staff`: Nhân viên truyền thông.
+- **Ma trận phân quyền chi tiết:** Xem [Brand Permission Matrix](../../system-design/brand-permission-matrix.md) — nguồn duy nhất cho middleware và docs về nhóm quyền owner/staff.
 
 ## 3. Trạng thái thành viên trong Brand (BrandMemberStatus)
 
