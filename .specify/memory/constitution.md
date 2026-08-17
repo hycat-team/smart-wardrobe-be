@@ -1,17 +1,18 @@
 <!--
 Sync Impact Report:
-- Version change: 1.3.0 -> 1.4.0
+- Version change: 1.4.0 -> 1.5.0
 - Modified principles:
-  - III. Asynchronous Event-Driven Processing (expanded with outbox pattern requirement)
+  - Access Control (RBAC): renamed "B2C Roles" to "Subscription tiers (PlanKind)"; clarified
+    system RoleSlug has only `admin`/`user` (users.role_slug); B2B Roles (owner/staff) & System Admin unchanged
 - Added sections: None
-- Removed sections: None
 - Removed sections: None
 - Templates requiring updates:
   - .specify/templates/plan-template.md (✅ verified/no updates needed)
   - .specify/templates/spec-template.md (✅ verified/no updates needed)
   - .specify/templates/tasks-template.md (✅ verified/no updates needed)
   - .specify/templates/constitution-template.md (✅ verified/no updates needed)
-- Follow-up TODOs: None
+- Follow-up TODOs:
+  - docs/system-design/architecture.md §"Individual Users (B2C Roles)" will be aligned in feature 012 (US10, task T053)
 -->
 
 # SmartWardrobe Backend Constitution
@@ -117,12 +118,17 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 
 ## Access Control (RBAC) & Data Privacy Policies
 - **Role-Based Access Control (RBAC)**:
-  - **B2C Roles**: *Guest* (can only view subscription plans or public pages), *Standard User*
-    (limited wardrobe up to 50 items and daily AI quota), *Premium User* (unlimited wardrobe and
-    expanded AI styling quota).
-  - **B2B Roles**: *Brand Owner* (full access to configure Brand Portal and service billing),
-    *Brand Staff* (employee of the brand).
-  - **System Admin**: Full authority to review brand status, approve registrations, and troubleshoot.
+  - **System RoleSlug (`users.role_slug`)**: Chỉ có 2 vai trò hệ thống — `admin` (quản trị viên hệ
+    thống) và `user` (người dùng thông thường). Đây là vai trò hệ thống duy nhất; cấm thêm RoleSlug
+    mới ngoài 2 giá trị này.
+  - **Hạng theo gói subscription (Subscription tiers)**: *Guest*, *Standard User*, *Premium User*
+    là HẠNG THEO GÓI CƯỚC (PlanKind: `free` / `premium`), KHÔNG phải vai trò hệ thống:
+    - *Guest* (chưa đăng nhập): chỉ được xem gói cước hoặc trang public.
+    - *Standard User* (gói `free`): tủ đồ giới hạn và quota AI hàng ngày.
+    - *Premium User* (gói `premium`): tủ đồ không giới hạn và quota AI phối đồ mở rộng.
+  - **B2B Roles** (membership trong brand — không phải RoleSlug): *Brand Owner* (full quyền cấu hình
+    Brand Portal và service billing), *Brand Staff* (nhân viên vận hành của nhãn hàng).
+  - **System Admin**: toàn quyền review trạng thái brand, duyệt đăng ký, và troubleshoot.
 - **Data Privacy & Anonymization**:
   - All brand portal reports must use aggregated and anonymized data. Sharing personally identifiable
     information (PII) is strictly prohibited.
@@ -140,4 +146,4 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-26
+**Version**: 1.5.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-17
