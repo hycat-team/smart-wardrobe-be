@@ -347,6 +347,20 @@
     }
   },
   "definitions": {
+    "internal_modules_subscription_presentation_handler.resolveRequest": {
+      "properties": {
+        "paymentLinkId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemReq": {
       "properties": {
         "emailOrUsername": {

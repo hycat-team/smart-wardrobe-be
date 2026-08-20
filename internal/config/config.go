@@ -3,29 +3,29 @@ package config
 import "time"
 
 type Config struct {
-	Database       Database           `mapstructure:"database"`
-	Redis          Redis              `mapstructure:"redis"`
-	Server         Server             `mapstructure:"server"`
-	Startup        Startup            `mapstructure:"startup"`
-	Jwt            Jwt                `mapstructure:"jwt"`
-	Logger         Logger             `mapstructure:"logger"`
-	Quota          Quota              `mapstructure:"quota"`
-	Otp            Otp                `mapstructure:"otp"`
-	Email          Email              `mapstructure:"email"`
-	RateLimit      RateLimit          `mapstructure:"rate_limit"`
-	ClaimRateLimit ClaimRateLimit     `mapstructure:"claim_rate_limit"`
-	PayOS          PayOS              `mapstructure:"payos"`
-	Cloudinary     Cloudinary         `mapstructure:"cloudinary"`
-	AI             AIServiceConfig    `mapstructure:"ai"`
-	RabbitMQ       RabbitMQ           `mapstructure:"rabbitmq"`
-	Elasticsearch  Elasticsearch      `mapstructure:"elasticsearch"`
-	Community      Community          `mapstructure:"community"`
-	Loyalty        Loyalty              `mapstructure:"loyalty"`
+	Database        Database                `mapstructure:"database"`
+	Redis           Redis                   `mapstructure:"redis"`
+	Server          Server                  `mapstructure:"server"`
+	Startup         Startup                 `mapstructure:"startup"`
+	Jwt             Jwt                     `mapstructure:"jwt"`
+	Logger          Logger                  `mapstructure:"logger"`
+	Quota           Quota                   `mapstructure:"quota"`
+	Otp             Otp                     `mapstructure:"otp"`
+	Email           Email                   `mapstructure:"email"`
+	RateLimit       RateLimit               `mapstructure:"rate_limit"`
+	ClaimRateLimit  ClaimRateLimit          `mapstructure:"claim_rate_limit"`
+	PayOS           PayOS                   `mapstructure:"payos"`
+	Cloudinary      Cloudinary              `mapstructure:"cloudinary"`
+	AI              AIServiceConfig         `mapstructure:"ai"`
+	RabbitMQ        RabbitMQ                `mapstructure:"rabbitmq"`
+	Elasticsearch   Elasticsearch           `mapstructure:"elasticsearch"`
+	Community       Community               `mapstructure:"community"`
+	Loyalty         Loyalty                 `mapstructure:"loyalty"`
 	BrandMembership BrandMembershipCacheTTL `mapstructure:"brand_membership"`
-	RAG            RAG                `mapstructure:"rag"`
-	Subscription   Subscription       `mapstructure:"subscription"`
-	Wardrobe       WardrobeProcessing `mapstructure:"wardrobe"`
-	Outbox         OutboxConfig       `mapstructure:"outbox"`
+	RAG             RAG                     `mapstructure:"rag"`
+	Subscription    Subscription            `mapstructure:"subscription"`
+	Wardrobe        WardrobeProcessing      `mapstructure:"wardrobe"`
+	Outbox          OutboxConfig            `mapstructure:"outbox"`
 }
 
 type OutboxConfig struct {

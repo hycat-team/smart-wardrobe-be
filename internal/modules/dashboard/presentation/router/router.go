@@ -1,9 +1,9 @@
 package router
 
 import (
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_handler "smart-wardrobe-be/internal/modules/dashboard/presentation/handler"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"

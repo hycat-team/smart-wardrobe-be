@@ -761,6 +761,251 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/subscriptions/transactions": {
+            "get": {
+                "description": "Trả về danh sách giao dịch nạp tiền/đăng ký (lọc theo trạng thái, thời gian).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Lấy danh sách giao dịch thanh toán",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trạng thái giao dịch",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày bắt đầu (YYYY-MM-DD)",
+                        "name": "fromDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ngày kết thúc (YYYY-MM-DD)",
+                        "name": "toDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số bản ghi/trang",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/transactions/{id}": {
+            "get": {
+                "description": "Trả về chi tiết một giao dịch thanh toán theo ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Lấy chi tiết giao dịch thanh toán",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID giao dịch",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/transactions/{orderCode}/resolve-cancelled": {
+            "post": {
+                "description": "Xác nhận giao dịch đã bị hủy.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Xác nhận hủy giao dịch",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Mã đơn hàng",
+                        "name": "orderCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Lý do",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_subscription_presentation_handler.resolveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/transactions/{orderCode}/resolve-creation-failed": {
+            "post": {
+                "description": "Đánh dấu giao dịch là tạo link thanh toán thất bại.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Đánh dấu tạo link thất bại",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Mã đơn hàng",
+                        "name": "orderCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Lý do",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_subscription_presentation_handler.resolveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/transactions/{orderCode}/resolve-paid": {
+            "post": {
+                "description": "Xác nhận đã thanh toán. Bắt buộc có bằng chứng (reference + paymentLinkId).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Xác nhận giao dịch đã thanh toán",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Mã đơn hàng",
+                        "name": "orderCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Bằng chứng + lý do",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_subscription_presentation_handler.resolveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/transactions/{orderCode}/retry-investigation": {
+            "post": {
+                "description": "Chuyển giao dịch về trạng thái cần đối soát lại.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Billing"
+                ],
+                "summary": "Gửi lại yêu cầu đối soát giao dịch",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Mã đơn hàng",
+                        "name": "orderCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Lý do",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_subscription_presentation_handler.resolveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/users": {
             "get": {
                 "description": "Cho phép admin lấy danh sách người dùng phân trang, tìm kiếm và lọc theo trạng thái/phân quyền.",
@@ -6405,6 +6650,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "internal_modules_subscription_presentation_handler.resolveRequest": {
+            "type": "object",
+            "properties": {
+                "paymentLinkId": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMemberItemReq": {
             "type": "object",
             "required": [

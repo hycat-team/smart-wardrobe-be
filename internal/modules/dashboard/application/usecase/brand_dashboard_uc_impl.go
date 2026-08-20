@@ -6,8 +6,8 @@ import (
 	"time"
 
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
-	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"

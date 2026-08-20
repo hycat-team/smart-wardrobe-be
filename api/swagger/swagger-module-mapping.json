@@ -1,8 +1,22 @@
 {
-  "identity": ["Auth", "Me", "Admin Identity"],
-  "subscription": ["Subscription", "Billing"],
-  "wardrobe": ["Wardrobe", "Outfits", "Category", "Admin Wardrobe"],
-  "dashboard": ["Dashboard Analytics", "Dashboard User", "Dashboard Brand", "Dashboard Admin"],
-  "brand": ["Brand", "Brand Portal", "Brand Chat", "Brand Loyalty", "Brand Item", "Brand Member", "Brand Benefit", "Admin Brand"],
-  "fashion": ["Wardrobe AI"]
+    "identity": ["Auth", "Me", "Admin Identity"],
+    "subscription": ["Subscription", "Billing", "Admin Billing"],
+    "wardrobe": ["Wardrobe", "Outfits", "Category", "Admin Wardrobe"],
+    "dashboard": [
+        "Dashboard Analytics",
+        "Dashboard User",
+        "Dashboard Brand",
+        "Dashboard Admin"
+    ],
+    "brand": [
+        "Brand",
+        "Brand Portal",
+        "Brand Chat",
+        "Brand Loyalty",
+        "Brand Item",
+        "Brand Member",
+        "Brand Benefit",
+        "Admin Brand"
+    ],
+    "fashion": ["Wardrobe AI"]
 }
