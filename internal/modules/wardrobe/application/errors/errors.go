@@ -80,10 +80,6 @@ func ErrUpdateItemForbidden() *apperror.Error {
 	return apperror.NewForbidden("Bạn không được phép cập nhật thông tin trang phục này.")
 }
 
-func ErrManualClassifySoldItem() *apperror.Error {
-	return apperror.NewBadRequest("Không thể phân loại thủ công trang phục đã bán.")
-}
-
 func ErrCategoryNotFound() *apperror.Error {
 	return apperror.NewBadRequest("Danh mục trang phục không tồn tại.")
 }

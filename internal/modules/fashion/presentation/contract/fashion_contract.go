@@ -14,6 +14,7 @@ type IFashionContract interface {
 	ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemBriefRes, error)
 	CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error
 	BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error
+	UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error
 	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error)
 	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error)
 	GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error)

@@ -93,10 +93,6 @@ func NewFashionWorkerUseCase(
 func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
 	run.AddTotal(1)
 
-	if job.SkipVision {
-		return uc.processManualClassify(ctx, job, run)
-	}
-
 	item, err := uc.loadProcessableItem(ctx, job, run)
 	if err != nil {
 		return err
@@ -143,92 +139,6 @@ func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Cont
 	run.AddSuccess(1)
 	run.AddSummaryFields(zap.Bool("reviewRequired", false))
 
-	return nil
-}
-
-func (uc *FashionWorkerUseCase) processManualClassify(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) error {
-	var fashionItem *entities.FashionItem
-	if job.ItemType == string(fashionitemtype.Brand) {
-		brandItem, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
-		if err != nil {
-			return err
-		}
-		if brandItem == nil || brandItem.FashionItemID == uuid.Nil {
-			run.AddSkipped(1)
-			run.ChildWarn(uc.logger, "Manual classify skipped: brand item or fashion item not found",
-				zap.String("itemId", job.ItemID.String()),
-			)
-			return nil
-		}
-		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, brandItem.FashionItemID)
-		if err != nil || fashionItem == nil {
-			run.AddSkipped(1)
-			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
-				zap.String("itemId", job.ItemID.String()),
-			)
-			return nil
-		}
-	} else {
-		items, err := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
-		if err != nil {
-			return err
-		}
-		var wardrobeItem *wardrobeDto.WardrobeItemRes
-		if len(items) > 0 {
-			wardrobeItem = items[0]
-		}
-		if wardrobeItem == nil || wardrobeItem.FashionItem == nil {
-			run.AddSkipped(1)
-			run.ChildWarn(uc.logger, "Manual classify skipped: wardrobe item or fashion item not found",
-				zap.String("itemId", job.ItemID.String()),
-			)
-			return nil
-		}
-		fashionItem, err = uc.fashionItemRepo.GetByID(ctx, wardrobeItem.FashionItem.ID)
-		if err != nil || fashionItem == nil {
-			run.AddSkipped(1)
-			run.ChildWarn(uc.logger, "Manual classify skipped: fashion item not found",
-				zap.String("itemId", job.ItemID.String()),
-			)
-			return nil
-		}
-	}
-
-	categoryName := ""
-	if fashionItem.Category != nil {
-		categoryName = fashionItem.Category.Name
-	}
-	color := stringutils.GetString(fashionItem.Color)
-	style := stringutils.GetString(fashionItem.Style)
-	material := stringutils.GetString(fashionItem.Material)
-	pattern := stringutils.GetString(fashionItem.Pattern)
-	fit := stringutils.GetString(fashionItem.Fit)
-	seasonality := stringutils.GetString(fashionItem.Seasonality)
-	description := stringutils.GetString(fashionItem.Description)
-
-	richTextContext := shared.BuildRichTextContext(categoryName, color, style, material, pattern, fit, seasonality, description)
-
-	embedding, err := shared.GenerateItemEmbedding(ctx, uc.aiService, richTextContext)
-	if err != nil {
-		run.ChildError(uc.logger, "Manual classify embedding failed",
-			zap.String("itemId", job.ItemID.String()),
-			zap.Error(err),
-		)
-		uc.handleJobFailure(ctx, job, err, run)
-		return nil
-	}
-
-	updateMap := map[string]any{
-		"embedding": entities.Vector(embedding),
-	}
-
-	if err := uc.completeProcessedItem(ctx, job, updateMap); err != nil {
-		uc.handleJobFailure(ctx, job, err, run)
-		return nil
-	}
-
-	run.AddSuccess(1)
-	run.AddSummaryFields(zap.Bool("reviewRequired", false))
 	return nil
 }
 

@@ -51,12 +51,12 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		wardrobeApi.DELETE("/bulk", shared_pres.WrapHandler(r.itemHandler.DeleteWardrobeItemsBulk))
 		wardrobeApi.DELETE("/locked", shared_pres.WrapHandler(r.itemHandler.DeleteLockedWardrobeItems))
 		wardrobeApi.GET("/:id", shared_pres.WrapHandler(r.itemHandler.GetWardrobeItemByID))
+		wardrobeApi.PATCH("/:id", shared_pres.WrapHandler(r.itemHandler.UpdateWardrobeItem))
 		wardrobeApi.POST("/:id/clone", shared_pres.WrapHandler(r.itemHandler.CloneWardrobeItem))
 		wardrobeApi.POST("/catalog-init", shared_pres.WrapHandler(r.itemHandler.InitClosetFromCatalog))
 		wardrobeApi.POST("/batch-upload", shared_pres.WrapHandler(r.itemHandler.BatchUploadWardrobeItems))
 		wardrobeApi.GET("/tasks/:taskId/sse", shared_pres.WrapHandler(r.itemHandler.SubscribeTaskSSE))
 		wardrobeApi.POST("/:id/retry-analysis", shared_pres.WrapHandler(r.itemHandler.RetryWardrobeAnalysis))
-		wardrobeApi.PUT("/:id/manual-classify", shared_pres.WrapHandler(r.itemHandler.ManualClassify))
 	}
 
 	meApi := privateApi.Group("/me/wardrobe-items")

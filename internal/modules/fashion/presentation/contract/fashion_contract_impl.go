@@ -54,6 +54,10 @@ func (c *FashionContract) BulkCreateFashionItems(ctx context.Context, inputs []d
 	return c.fashionItemUC.BulkCreateFashionItems(ctx, inputs)
 }
 
+func (c *FashionContract) UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {
+	return c.fashionItemUC.UpdateFashionItemCategory(ctx, fashionItemID, categoryID)
+}
+
 func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
 	return c.categoryUC.GetCategory(ctx, id)
 }

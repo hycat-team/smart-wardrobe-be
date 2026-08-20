@@ -133,7 +133,7 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 	return resList, nil
 }
 
-func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.ManualClassifyReq) (*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) UpdateWardrobeItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.UpdateWardrobeItemReq) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
 	if err != nil {
 		return nil, err
@@ -141,75 +141,36 @@ func (uc *WardrobeItemUseCase) ManualClassify(ctx context.Context, userID uuid.U
 	if item == nil {
 		return nil, wardrobeerrors.ErrItemNotFound()
 	}
-
 	if item.UserID != userID {
 		return nil, wardrobeerrors.ErrUpdateItemForbidden()
 	}
 
-	if item.Status == wardrobestatus.Sold {
-		return nil, wardrobeerrors.ErrManualClassifySoldItem()
+	if input.Price != nil {
+		item.Price = input.Price
 	}
 
-	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
-	if err != nil {
-		return nil, err
-	}
-	if shared.IsItemLocked(items, itemID, subOverview.MaxWardrobeItems) {
-		return nil, wardrobeerrors.ErrItemLockedDueToLimit(subOverview.MaxWardrobeItems)
-	}
-
-	category, err := uc.fashionContract.GetCategory(ctx, input.CategoryID)
-	if err != nil {
-		return nil, err
-	}
-	if category == nil {
-		return nil, wardrobeerrors.ErrCategoryNotFound()
-	}
-
-	var existingFI *fashion_dto.FashionItemRes
-	if item.FashionItemID != nil {
-		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
-	}
-
-	item.Price = input.Price
-	item.Status = wardrobestatus.Processing
-
-	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
-			return err
+	if input.CategoryID != nil {
+		category, err := uc.fashionContract.GetCategory(ctx, *input.CategoryID)
+		if err != nil {
+			return nil, err
 		}
-		imageURL := ""
-		imagePublicID := ""
-		processingVersion := 1
-		if existingFI != nil {
-			imageURL = existingFI.ImageUrl
-			imagePublicID = existingFI.ImagePublicID
+		if category == nil {
+			return nil, wardrobeerrors.ErrCategoryNotFound()
 		}
-		fashionJob := fashion_dto.FashionAnalyzeJobDTO{
-			FashionItemID:     item.FashionItemID,
-			ItemID:            item.ID,
-			ItemType:          fashionitemtype.Wardrobe,
-			UserID:            userID,
-			ImageUrl:          imageURL,
-			ImagePublicID:     imagePublicID,
-			CategoryID:        &category.ID,
-			ProcessingVersion: processingVersion,
-			SkipVision:        true,
+		if item.FashionItemID != nil {
+			if err := uc.fashionContract.UpdateFashionItemCategory(ctx, *item.FashionItemID, *input.CategoryID); err != nil {
+				return nil, err
+			}
 		}
-		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionInit, fashionJob)
-	})
-	if err != nil {
+	}
+
+	if err := uc.wardrobeRepo.Update(ctx, item); err != nil {
 		return nil, err
 	}
 
 	var fi *fashion_dto.FashionItemRes
 	if item.FashionItemID != nil {
-		fi = existingFI
+		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
 	return mapper.MapToWardrobeItemRes(item, fi), nil
 }

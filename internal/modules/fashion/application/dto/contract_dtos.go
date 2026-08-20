@@ -75,7 +75,6 @@ type FashionAnalyzeJobDTO struct {
 	CategoryID        *uuid.UUID `json:"categoryId,omitempty"`
 	ProcessingVersion int        `json:"processingVersion"`
 	RetryCount        int        `json:"retryCount,omitempty"`
-	SkipVision        bool       `json:"skipVision,omitempty"`
 	TaskID            string     `json:"taskId,omitempty"`
 	Total             int        `json:"total,omitempty"`
 	Index             int        `json:"index,omitempty"`

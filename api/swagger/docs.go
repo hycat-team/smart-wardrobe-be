@@ -7405,6 +7405,57 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Cho phép người dùng chỉnh sửa giá và danh mục của trang phục",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wardrobe"
+                ],
+                "summary": "Cập nhật thông tin trang phục",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID trang phục",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateWardrobeItemReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chi tiết trang phục sau khi cập nhật",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/api/v1/wardrobe-items/{id}/clone": {
@@ -7454,59 +7505,6 @@ const docTemplate = `{
                                             "items": {
                                                 "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
                                             }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/wardrobe-items/{id}/manual-classify": {
-            "put": {
-                "description": "Cho phép người dùng tự điền tay thông tin cho trang phục phân tích lỗi hoặc cần rà soát, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Wardrobe"
-                ],
-                "summary": "Tự phân loại trang phục thủ công",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID trang phục",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Thông tin phân loại thủ công",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Chi tiết trang phục sau khi cập nhật",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes"
                                         }
                                     }
                                 }
@@ -11603,44 +11601,6 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq": {
-            "type": "object",
-            "required": [
-                "categoryId",
-                "color",
-                "fit",
-                "material",
-                "pattern",
-                "seasonality",
-                "style"
-            ],
-            "properties": {
-                "categoryId": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "fit": {
-                    "type": "string"
-                },
-                "material": {
-                    "type": "string"
-                },
-                "pattern": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "number"
-                },
-                "seasonality": {
-                    "type": "string"
-                },
-                "style": {
-                    "type": "string"
-                }
-            }
-        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
             "type": "object",
             "properties": {
@@ -11824,6 +11784,17 @@ const docTemplate = `{
                 },
                 "style": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateWardrobeItemReq": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
                 }
             }
         },

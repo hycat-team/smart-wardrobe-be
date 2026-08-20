@@ -88,6 +88,9 @@ func (f fakeFashionContract) ReassignCategoryForCatalogItems(ctx context.Context
 func (f fakeFashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return nil
 }
+func (f fakeFashionContract) UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {
+	return nil
+}
 
 type fakeUnitOfWork struct{}
 

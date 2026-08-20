@@ -97,6 +97,10 @@ func (uc *FashionItemUseCase) BulkCreateFashionItems(ctx context.Context, inputs
 	return nil
 }
 
+func (uc *FashionItemUseCase) UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {
+	return uc.fashionItemRepo.UpdateCategory(ctx, fashionItemID, categoryID)
+}
+
 func (uc *FashionItemUseCase) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error) {
 	if len(fashionItemIDs) == 0 {
 		return nil, nil

@@ -4135,44 +4135,6 @@
       ],
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.ManualClassifyReq": {
-      "properties": {
-        "categoryId": {
-          "type": "string"
-        },
-        "color": {
-          "type": "string"
-        },
-        "fit": {
-          "type": "string"
-        },
-        "material": {
-          "type": "string"
-        },
-        "pattern": {
-          "type": "string"
-        },
-        "price": {
-          "type": "number"
-        },
-        "seasonality": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "categoryId",
-        "color",
-        "fit",
-        "material",
-        "pattern",
-        "seasonality",
-        "style"
-      ],
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
       "properties": {
         "fashionItem": {
@@ -4355,6 +4317,17 @@
         },
         "style": {
           "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateWardrobeItemReq": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
         }
       },
       "type": "object"

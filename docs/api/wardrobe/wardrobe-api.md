@@ -66,12 +66,21 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
 - **Đối tượng ảnh hưởng:** Tạo bản ghi quần áo mới từ thông tin của vật phẩm có sẵn.
 - **Mô tả:** Sao chép nhanh toàn bộ thông tin của một vật phẩm quần áo đã có trong tủ đồ.
 
-### 8. Phân loại thuộc tính thời trang thủ công cho quần áo
+### 8. Cập nhật thông tin trang phục
 
-- **Endpoint:** `PUT /api/v1/wardrobe-items/:id/manual-classify`
+- **Endpoint:** `PATCH /api/v1/wardrobe-items/:id`
 - **Tác nhân (Actor):** Khách hàng (User).
-- **Đối tượng ảnh hưởng:** Cập nhật thông tin quần áo và dữ liệu vector embedding liên quan.
-- **Mô tả:** Người dùng tự điền thông tin thuộc tính thời trang cho quần áo bị phân tích lỗi hoặc cần duyệt lại thủ công.
+- **Đối tượng ảnh hưởng:** Cập nhật giá và danh mục của trang phục.
+- **Mô tả:** Cho phép người dùng chỉnh sửa `price` và `categoryId` của trang phục. Các thuộc tính khác (color, style, material...) do AI tự phân tích, người dùng không được sửa.
+- **Request Body:**
+    ```json
+    {
+      "price": 150000,
+      "categoryId": "uuid-cua-danh-muc"
+    }
+    ```
+- **Response:**
+    - `200 OK`: Trả về thông tin trang phục sau cập nhật.
 
 ### 9. Yêu cầu phân tích AI lại đối với quần áo bị lỗi
 

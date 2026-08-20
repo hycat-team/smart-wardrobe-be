@@ -26,7 +26,6 @@ const (
 	msgWardrobeInitClosetFromCatalogSuccess = "Khởi tạo nhanh tủ đồ thành công"
 	msgWardrobeBatchUploadItemsSuccess      = "Tải lên và bắt đầu phân tích hàng loạt thành công"
 	msgWardrobeGetSystemCatalogItemsSuccess = "Lấy danh sách trang phục hệ thống thành công"
-	msgWardrobeManualClassifySuccess        = "Tự phân loại trang phục thủ công thành công"
 	msgWardrobeRetryAnalysisSuccess         = "Yêu cầu phân tích lại trang phục đã được gửi thành công"
 	msgWardrobeGetCatalogItemsSuccess       = "Lấy danh sách trang phục mẫu thành công"
 	msgWardrobeUpdateCatalogItemSuccess     = "Cập nhật trang phục mẫu thành công"
@@ -281,17 +280,17 @@ func (h *WardrobeItemHandler) GetSystemCatalogWardrobeItems(c *gin.Context) erro
 	return nil
 }
 
-// ManualClassify manual classification fallback for a failed or review-required wardrobe item
-// @Summary Tự phân loại trang phục thủ công
-// @Description Cho phép người dùng tự điền tay thông tin cho trang phục phân tích lỗi hoặc cần rà soát, hệ thống dùng Text Embedding cập nhật vector và duyệt vào tủ đồ
+// UpdateWardrobeItem updates user-editable fields of a wardrobe item
+// @Summary Cập nhật thông tin trang phục
+// @Description Cho phép người dùng chỉnh sửa giá và danh mục của trang phục
 // @Tags Wardrobe
 // @Accept json
 // @Produce json
 // @Param id path string true "ID trang phục"
-// @Param body body dto.ManualClassifyReq true "Thông tin phân loại thủ công"
+// @Param body body dto.UpdateWardrobeItemReq true "Thông tin cập nhật"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục sau khi cập nhật"
-// @Router /api/v1/wardrobe-items/{id}/manual-classify [put]
-func (h *WardrobeItemHandler) ManualClassify(c *gin.Context) error {
+// @Router /api/v1/wardrobe-items/{id} [patch]
+func (h *WardrobeItemHandler) UpdateWardrobeItem(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
@@ -302,17 +301,17 @@ func (h *WardrobeItemHandler) ManualClassify(c *gin.Context) error {
 		return err
 	}
 
-	var input dto.ManualClassifyReq
+	var input dto.UpdateWardrobeItemReq
 	if err := validation.BindJSON(c, &input); err != nil {
 		return err
 	}
 
-	response, err := h.itemUseCase.ManualClassify(c.Request.Context(), userID, itemID, input)
+	response, err := h.itemUseCase.UpdateWardrobeItem(c.Request.Context(), userID, itemID, input)
 	if err != nil {
 		return err
 	}
 
-	shared_pres.Success(c, msgWardrobeManualClassifySuccess, response)
+	shared_pres.Success(c, "Cập nhật trang phục thành công", response)
 	return nil
 }
 

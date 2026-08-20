@@ -109,18 +109,10 @@ type SearchWardrobeItemsQueryReq struct {
 	CategorySlug string `form:"categorySlug"`
 }
 
-type ManualClassifyReq struct {
-	CategoryID  uuid.UUID `json:"categoryId" binding:"required" label:"danh mục"`
-	Color       string    `json:"color" binding:"required" label:"màu sắc"`
-	Style       string    `json:"style" binding:"required" label:"phong cách"`
-	Material    string    `json:"material" binding:"required" label:"chất liệu"`
-	Pattern     string    `json:"pattern" binding:"required" label:"họa tiết"`
-	Fit         string    `json:"fit" binding:"required" label:"dáng mặc"`
-	Seasonality string    `json:"seasonality" binding:"required" label:"mùa phù hợp"`
-	Price       *float64  `json:"price,omitempty"`
+type UpdateWardrobeItemReq struct {
+	Price      *float64  `json:"price,omitempty"`
+	CategoryID *uuid.UUID `json:"categoryId,omitempty"`
 }
-
-type RetryWardrobeAnalysisReq struct{}
 
 type GetSystemCatalogItemsQueryReq struct {
 	shared_dto.PaginationQuery

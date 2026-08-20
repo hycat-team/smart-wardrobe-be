@@ -210,6 +210,13 @@ func (r *FashionItemRepository) ReassignCategory(ctx context.Context, fashionIte
 		Update("category_id", toCategoryID).Error
 }
 
+func (r *FashionItemRepository) UpdateCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id = ?", fashionItemID).
+		Update("category_id", categoryID).Error
+}
+
 func (r *FashionItemRepository) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return r.GetDB(ctx).
 		Model(&entities.FashionItem{}).

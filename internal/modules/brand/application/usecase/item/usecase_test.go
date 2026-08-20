@@ -454,6 +454,9 @@ func (m *mockFashionContract) ReassignCategoryForCatalogItems(ctx context.Contex
 func (m *mockFashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return nil
 }
+func (m *mockFashionContract) UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {
+	return nil
+}
 
 type mockEventPublisher struct{}
 
