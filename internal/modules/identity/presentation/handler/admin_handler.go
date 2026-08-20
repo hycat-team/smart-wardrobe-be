@@ -7,6 +7,7 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
+	"smart-wardrobe-be/internal/shared/domain/constants/adminaudit"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -90,8 +91,8 @@ func (h *AdminHandler) CreateUser(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminUserID,
-		Action:      "user.create",
-		TargetType:  "user",
+		Action:      string(adminaudit.UserCreate),
+		TargetType:  string(adminaudit.User),
 		TargetID:    &res.ID,
 		Payload: map[string]any{
 			"username": res.Username,
@@ -139,8 +140,8 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminUserID,
-		Action:      "user.role_change",
-		TargetType:  "user",
+		Action:      string(adminaudit.UserRoleChange),
+		TargetType:  string(adminaudit.User),
 		TargetID:    &targetUserID,
 		Payload: map[string]any{
 			"newRole": req.RoleSlug,
@@ -179,8 +180,8 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminUserID,
-		Action:      "user.deactivate",
-		TargetType:  "user",
+		Action:      string(adminaudit.UserDeactivate),
+		TargetType:  string(adminaudit.User),
 		TargetID:    &targetUserID,
 		Payload: map[string]any{
 			"status": "inactive",
@@ -241,8 +242,8 @@ func (h *AdminHandler) RevokeUserSessions(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminUserID,
-		Action:      "user.sessions_revoke",
-		TargetType:  "user",
+		Action:      string(adminaudit.UserSessionsRevoke),
+		TargetType:  string(adminaudit.User),
 		TargetID:    &targetUserID,
 		RequestIP:   &clientIP,
 	})
@@ -282,15 +283,15 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 		return err
 	}
 
-	action := "user.activate"
+	action := adminaudit.UserActivate
 	if input.Status == 0 {
-		action = "user.deactivate"
+		action = adminaudit.UserDeactivate
 	}
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminUserID,
-		Action:      action,
-		TargetType:  "user",
+		Action:      string(action),
+		TargetType:  string(adminaudit.User),
 		TargetID:    &targetUserID,
 		Payload: map[string]any{
 			"status": input.Status,

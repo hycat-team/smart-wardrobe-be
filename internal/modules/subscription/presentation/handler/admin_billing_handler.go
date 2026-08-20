@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/adminaudit"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -231,8 +232,8 @@ func (h *AdminBillingHandler) RetryInvestigation(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "payment.retry_investigation",
-		TargetType:  "deposit_transaction",
+		Action:      string(adminaudit.PaymentRetryInvestigation),
+		TargetType:  string(adminaudit.DepositTransaction),
 		Payload: map[string]any{
 			"orderCode": input.OrderCode,
 			"reason":    input.Reason,
@@ -271,8 +272,8 @@ func (h *AdminBillingHandler) ResolveAsPaid(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "payment.resolve_paid",
-		TargetType:  "deposit_transaction",
+		Action:      string(adminaudit.PaymentResolvePaid),
+		TargetType:  string(adminaudit.DepositTransaction),
 		Payload: map[string]any{
 			"orderCode":     input.OrderCode,
 			"paymentLinkId": req.PaymentLinkID,
@@ -313,8 +314,8 @@ func (h *AdminBillingHandler) ResolveAsCancelled(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "payment.resolve_cancelled",
-		TargetType:  "deposit_transaction",
+		Action:      string(adminaudit.PaymentResolveCancelled),
+		TargetType:  string(adminaudit.DepositTransaction),
 		Payload: map[string]any{
 			"orderCode": input.OrderCode,
 			"reason":    input.Reason,
@@ -353,8 +354,8 @@ func (h *AdminBillingHandler) ResolveAsCreationFailed(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "payment.resolve_creation_failed",
-		TargetType:  "deposit_transaction",
+		Action:      string(adminaudit.PaymentResolveCreationFailed),
+		TargetType:  string(adminaudit.DepositTransaction),
 		Payload: map[string]any{
 			"orderCode": input.OrderCode,
 			"reason":    input.Reason,

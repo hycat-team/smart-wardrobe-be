@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/adminaudit"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -108,8 +109,8 @@ func (h *AdminHandler) UpdatePricing(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "ai.pricing_update",
-		TargetType:  "ai_model_config",
+		Action:      string(adminaudit.AIPricingUpdate),
+		TargetType:  string(adminaudit.AIModelConfig),
 		TargetID:    &id,
 		RequestIP:   &clientIP,
 	})
@@ -219,8 +220,8 @@ func (h *AdminHandler) CreateGrant(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "ai.grant_create",
-		TargetType:  "ai_policy_grant",
+		Action:      string(adminaudit.AIGrantCreate),
+		TargetType:  string(adminaudit.AIPolicyGrant),
 		TargetID:    &grant.ID,
 		Payload: map[string]any{
 			"userId":         req.UserID,

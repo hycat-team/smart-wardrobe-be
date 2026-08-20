@@ -1,6 +1,6 @@
-# Brand Management API Specs
+# Brand Portal API Specs
 
-Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profile), cổng đối tác (Brand Portal), thành viên, xét duyệt của Admin (Admin approval) và claim tài khoản khách offline trong mô hình B2B2C. Tất cả các trường dữ liệu JSON sử dụng camelCase theo đúng [API Guidelines](api-guidelines.md).
+Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (Brand Portal), bao gồm đăng ký xét duyệt, quản lý hồ sơ/thành viên, khách hàng offline, và các endpoint công khai của thương hiệu.
 
 ---
 
@@ -16,7 +16,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 - **Example:** `GET /api/v1/brands?q=seed&page=1&limit=20`
 - **Tác nhân (Actor):** Khách hàng (Customer).
 - **Đối tượng ảnh hưởng:** Đọc danh sách dữ liệu các nhãn hàng (`brands`) có trạng thái active.
-- **Mô tả:** Trả về các thương hiệu công khai (brand public) đang hoạt động để người dùng có thể duyệt xem, đăng ký tham gia chương trình loyalty, xem các đặc quyền (benefits) và danh sách sản phẩm. Trả về thêm `totalCustomer` là tổng số khách hàng đã tham gia loyalty của brand. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
+- **Mô tả:** Trả về các thương hiệu công khai (brand public) đang hoạt động để người dùng có thể duyệt xem, đăng ký tham gia chương trình loyalty, xem các đặc quyền (benefits) và danh sách sản phẩm. Trả về thêm `totalCustomer` là tổng số khách hàng đã tham gia loyalty của brand. Trạng thái `status` tham chiếu [constants.md:BrandStatus](constants.md#1-trang-thai-cua-brand-brandstatus).
 - **Response:**
     - `200 OK`:
         ```json
@@ -122,14 +122,14 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 
 ---
 
-## Flow 2: Đăng ký và xét duyệt đối tác nhãn hàng (Brand Portal & Admin)
+## Flow 2: Đăng ký và xét duyệt đối tác nhãn hàng (Brand Portal)
 
 ### 1. Gửi yêu cầu đăng ký tạo brand mới
 
 - **Endpoint:** `POST /api/v1/brand-portal/brands`
 - **Tác nhân (Actor):** Người dùng muốn trở thành chủ sở hữu nhãn hàng (brand owner).
 - **Đối tượng ảnh hưởng:** Tạo bản ghi thương hiệu (`brands`) ở trạng thái chờ duyệt và gán quyền chủ thương hiệu (brand member owner) tương ứng theo use case backend.
-- **Mô tả:** Gửi hồ sơ đăng ký nhãn hàng để Admin xem xét phê duyệt. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
+- **Mô tả:** Gửi hồ sơ đăng ký nhãn hàng để Admin xem xét phê duyệt. Trạng thái `status` tham chiếu [constants.md:BrandStatus](constants.md#1-trang-thai-cua-brand-brandstatus).
 - **Request Body:**
     ```json
     {
@@ -151,77 +151,6 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 - **Mô tả:** Sử dụng cho giao diện chuyển đổi thương hiệu (brand switcher) trên portal.
 - **Response:**
     - `200 OK`: Trả về mảng danh sách thương hiệu `PortalBrandRes`.
-
-### 3. Admin cập nhật trạng thái của thương hiệu
-
-- **Endpoint:** `PATCH /api/v1/admin/brands/:brandId/status`
-- **Tác nhân (Actor):** Quản trị viên hệ thống (Admin Closy).
-- **Đối tượng ảnh hưởng:** Cập nhật trường trạng thái thương hiệu `brands.status`.
-- **Mô tả:** Duyệt thương hiệu hoạt động bằng cách đổi trạng thái sang `active`, hoặc tạm ngưng hoạt động sang `suspended`. Trạng thái `status` tham chiếu [constants/brand.md:BrandStatus](constants/brand.md#1-trang-thai-cua-brand-brandstatus).
-- **Request Body:**
-    ```json
-    {
-        "status": "active"
-    }
-    ```
-- **Response:**
-    - `200 OK`: Trả về thông tin thương hiệu sau cập nhật `BrandRes`.
-
-### 4. Admin tạo trực tiếp thương hiệu ở trạng thái active
-
-- **Endpoint:** `POST /api/v1/admin/brands`
-- **Tác nhân (Actor):** Quản trị viên hệ thống (Admin Closy).
-- **Đối tượng ảnh hưởng:** Tạo bản ghi thương hiệu `brands` ở trạng thái active trực tiếp.
-- **Mô tả:** Phục vụ cho mục đích vận hành nội bộ, seed dữ liệu demo, hoặc đối tác đặc biệt đã phê duyệt trực tiếp.
-- **Request Body:** Tương tự cấu trúc `POST /api/v1/brand-portal/brands`.
-- **Response:**
-- `201 Created`: Trả về thông tin thương hiệu `BrandRes`.
-
-### 5. Admin lấy danh sách thương hiệu
-
-- **Endpoint:** `GET /api/v1/admin/brands`
-- **Tác nhân (Actor):** Quản trị viên hệ thống (Admin Closy).
-- **Đối tượng ảnh hưởng:** Đọc danh sách thương hiệu (`brands`).
-- **Mô tả:** Cho phép admin lấy danh sách thương hiệu phân trang, hỗ trợ lọc theo trạng thái `status` (`pending_review`, `active`, `suspended`, `archived`) và tìm kiếm theo tên hoặc slug nhãn hàng qua query param `q`.
-- **Query Parameters:**
-    - `page` (int, optional): Số trang cần lấy, mặc định `1`.
-    - `limit` (int, optional): Số lượng phần tử mỗi trang, mặc định `20`.
-    - `status` (string, optional): Trạng thái của nhãn hàng.
-    - `q` (string, optional): Từ khóa tìm kiếm theo tên hoặc slug.
-- **Response:**
-    - `200 OK`: Trả về danh sách thương hiệu phân trang `AdminBrandListRes`.
-        ```json
-        {
-            "success": true,
-            "data": {
-                "items": [
-                    {
-                        "id": "787c9f80-0a15-4be4-8a48-f68cdbf5f154",
-                        "slug": "local-brand-a",
-                        "name": "Local Brand A",
-                        "description": "Thương hiệu thời trang nội địa",
-                        "logoUrl": "https://res.cloudinary.com/.../logo.png",
-                        "logoPublicId": "brands/local-brand-a/logo",
-                        "backgroundUrl": null,
-                        "backgroundPublicId": null,
-                        "status": "active",
-                        "totalCustomer": 150,
-                        "createdByUserId": "2c9164cb-1c61-44d1-b82e-4efbb5f4b111",
-                        "approvedByUserId": "3d9164cb-1c61-44d1-b82e-4efbb5f4b222",
-                        "approvedAt": "2026-06-29T10:00:00Z",
-                        "createdAt": "2026-06-29T09:00:00Z",
-                        "updatedAt": "2026-06-29T10:00:00Z"
-                    }
-                ],
-                "metadata": {
-                    "page": 1,
-                    "limit": 20,
-                    "totalItems": 1,
-                    "totalPages": 1
-                }
-            }
-        }
-        ```
 
 ---
 
@@ -268,7 +197,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 - **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/members`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
 - **Đối tượng ảnh hưởng:** Tạo mới hoặc cập nhật bản ghi thành viên `brand_members`.
-- **Mô tả:** Thêm nhiều tài khoản user đã tồn tại vào danh sách thành viên quản lý thương hiệu bằng `emailOrUsername`. Backend tự tìm user theo email hoặc tên đăng nhập; frontend không cần biết `userId`. Nếu user đã là thành viên của brand, backend cập nhật `role`, chuyển `status` về `active` và trả về trong nhóm `updated`. Vai trò `role` tham chiếu [constants/brand.md:BrandMemberRole](constants/brand.md#2-vai-tro-thanh-vien-trong-brand-brandmemberrole).
+- **Mô tả:** Thêm nhiều tài khoản user đã tồn tại vào danh sách thành viên quản lý thương hiệu bằng `emailOrUsername`. Backend tự tìm user theo email hoặc tên đăng nhập; frontend không cần biết `userId`. Nếu user đã là thành viên của brand, backend cập nhật `role`, chuyển `status` về `active` và trả về trong nhóm `updated`. Vai trò `role` tham chiếu [constants.md:BrandMemberRole](constants.md#2-vai-tro-thanh-vien-trong-brand-brandmemberrole).
 - **Request Body:**
     ```json
     {
@@ -322,7 +251,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/members`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
 - **Đối tượng ảnh hưởng:** Đọc danh sách bản ghi thành viên `brand_members`.
-- **Mô tả:** Trả về danh sách tất cả các thành viên quản trị của nhãn hàng. Vai trò `role` và trạng thái `status` tham chiếu [constants/brand.md](constants/brand.md).
+- **Mô tả:** Trả về danh sách tất cả các thành viên quản trị của nhãn hàng. Vai trò `role` và trạng thái `status` tham chiếu [constants.md](constants.md).
 - **Response:**
     - `200 OK`: Trả về mảng danh sách thành viên `BrandMemberRes`.
 
@@ -335,7 +264,7 @@ Tài liệu thiết kế API liên quan đến hồ sơ nhãn hàng (brand profi
 - **Dữ liệu phản hồi trong Stream (Event Payload):**
     - Mỗi bản tin được phát đi dưới dạng event mặc định (`message`), chứa chuỗi JSON đại diện cho cấu trúc `SSEEventPayload`:
         - `itemId` (string): ID của Brand Item tương ứng.
-        - `status` (string): Trạng thái phân tích của item này. Các giá trị hợp lệ bao gồm `completed`, `failed`, `needs_review` (Tham chiếu chi tiết tại [constants/task.md](constants/task.md#1-trang-thai-nhiem-vu-phan-tich-analyzetaskstatus)).
+        - `status` (string): Trạng thái phân tích của item này. Các giá trị hợp lệ bao gồm `completed`, `failed`, `needs_review` (Tham chiếu chi tiết tại [constants.md](../wardrobe/constants.md#1-trang-thai-nhiem-vu-phan-tich-analyzetaskstatus)).
         - `total` (int): Tổng số lượng item cần phân tích trong task này (đối với Brand Item đơn lẻ thì giá trị luôn là 1).
         - `index` (int): Số thứ tự index của item hiện tại (đối với Brand Item đơn lẻ thì giá trị luôn là 0).
         - `data` (object, optional): Chứa dữ liệu BrandItem chi tiết khi trạng thái là `completed` hoặc `needs_review`.
@@ -393,7 +322,7 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
 - **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/customers/offline-purchase`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ của nhãn hàng (Brand staff).
 - **Đối tượng ảnh hưởng:** Tạo mới hoặc sử dụng lại bản ghi khách hàng thương hiệu `brand_customers`; khởi tạo tài khoản điểm loyalty tương ứng.
-- **Mô tả:** Ghi nhận thông tin khách hàng mua sắm offline để tích điểm mà không tạo mới tài khoản `users`. Khách offline ban đầu sẽ có trường `userId = null` cho đến khi họ thực hiện liên kết tài khoản thành công. Trường `joinedSource` và trạng thái `status` tham chiếu [constants/brand.md](constants/brand.md).
+- **Mô tả:** Ghi nhận thông tin khách hàng mua sắm offline để tích điểm mà không tạo mới tài khoản `users`. Khách offline ban đầu sẽ có trường `userId = null` cho đến khi họ thực hiện liên kết tài khoản thành công. Trường `joinedSource` và trạng thái `status` tham chiếu [constants.md](constants.md).
 - **Request Body:**
     ```json
     {
@@ -478,7 +407,7 @@ Khách hàng mua hàng trực tiếp tại cửa hàng được nhân viên POS 
     - `owner`: chủ sở hữu brand, mỗi brand chỉ có một owner active.
     - `staff`: nhân viên vận hành brand portal.
 - Các vai trò vận hành trước đây (nhiều vai trò quản trị/nhân viên) đã được gom về một giá trị `staff`.
-- **Ma trận phân quyền đầy đủ (owner/staff):** Xem [Brand Permission Matrix](../../system-design/brand-permission-matrix.md) — nguồn duy nhất cho middleware và tài liệu quyền brand portal.
+- **Ma trận phân quyền đầy đủ (owner/staff):** Xem [Brand Permission Matrix](../../../system-design/brand-permission-matrix.md) — nguồn duy nhất cho middleware và tài liệu quyền brand portal.
 - API `POST /api/v1/brand-portal/brands/:brandId/members` chỉ cho phép thêm hoặc cập nhật thành viên với role `staff`; không dùng API này để tạo owner mới.
 - API `GET /api/v1/brand-portal/me/brands` và `GET /api/v1/brand-portal/brands/:brandId` trả thêm thông tin membership của current user gồm `memberId`, `memberRole`, `memberStatus` để frontend biết quyền của user trong brand đang chọn.
 

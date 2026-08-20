@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+	"smart-wardrobe-be/internal/shared/domain/constants/adminaudit"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -86,8 +87,8 @@ func (h *AdminSubscriptionHandler) CreatePlan(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "subscription.plan_create",
-		TargetType:  "subscription_plan",
+		Action:      string(adminaudit.SubscriptionPlanCreate),
+		TargetType:  string(adminaudit.SubscriptionPlan),
 		TargetID:    &created.ID,
 		Payload: map[string]any{
 			"planCode": created.Slug,
@@ -136,8 +137,8 @@ func (h *AdminSubscriptionHandler) UpdatePlan(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "subscription.plan_update",
-		TargetType:  "subscription_plan",
+		Action:      string(adminaudit.SubscriptionPlanUpdate),
+		TargetType:  string(adminaudit.SubscriptionPlan),
 		TargetID:    &id,
 		RequestIP:   &clientIP,
 	})
@@ -178,8 +179,8 @@ func (h *AdminSubscriptionHandler) SetPlanActive(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "subscription.plan_deactivate",
-		TargetType:  "subscription_plan",
+		Action:      string(adminaudit.SubscriptionPlanDeactivate),
+		TargetType:  string(adminaudit.SubscriptionPlan),
 		TargetID:    &id,
 		Payload: map[string]any{
 			"isActive": req.IsActive,
@@ -262,8 +263,8 @@ func (h *AdminSubscriptionHandler) CancelSubscription(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "subscription.cancel",
-		TargetType:  "user_subscription",
+		Action:      string(adminaudit.SubscriptionCancel),
+		TargetType:  string(adminaudit.UserSubscription),
 		TargetID:    &userID,
 		RequestIP:   &clientIP,
 	})
@@ -311,8 +312,8 @@ func (h *AdminSubscriptionHandler) GrantSubscription(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "subscription.grant",
-		TargetType:  "user_subscription",
+		Action:      string(adminaudit.SubscriptionGrant),
+		TargetType:  string(adminaudit.UserSubscription),
 		TargetID:    &userID,
 		Payload: map[string]any{
 			"planId": planID,

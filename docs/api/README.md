@@ -30,3 +30,63 @@ Tất cả các API được phát triển trong dự án Closy tuân thủ chu�
 ## 6. Tính Hiện Hữu
 *   Tài liệu API chỉ ghi nhận các API thực tế đã được triển khai (implemented) trong codebase. 
 *   Các tính năng chưa phát triển (Future backlog) không được liệt kê để tránh gây nhầm lẫn khi tích hợp.
+
+---
+
+## Cấu trúc Thư mục API Docs
+
+```
+docs/api/
+├── README.md                    ← Tài liệu này
+├── admin/                       ← Admin Audit Log module
+│   ├── constants.md             ← Hằng số Audit Action, Target Type
+│   └── audit-log-api.md         ← API tra cứu Nhật ký Quản trị
+├── aiexecutor/                  ← AI Executor module
+│   ├── constants.md             ← Hằng số AI Policy Grant, Enforcement Mode
+│   └── admin-ai-api.md          ← API quản lý giá AI, hạn mức, usage
+├── brand/                       ← Brand module (B2B2C)
+│   ├── constants.md             ← Hằng số Brand, Member, Loyalty, Benefit
+│   ├── brand-portal-api.md      ← API Brand Portal, Customer-facing
+│   ├── admin-brand-api.md       ← API quản trị Brand (Admin)
+│   ├── brand-item-api.md        ← API Digital Sample Lab & Brand Items
+│   ├── brand-chat-api.md        ← API Chat Customer ↔ Brand Staff
+│   └── brand-loyalty-api.md     ← API Loyalty, Points, Benefits, Vouchers
+├── dashboard/                   ← Dashboard & Analytics module
+│   ├── constants.md             ← Hằng số Dashboard (Granularity, Metric Key)
+│   ├── dashboard-admin-api.md   ← API Dashboard Admin
+│   ├── dashboard-brand-api.md   ← API Dashboard Brand (B2B)
+│   └── dashboard-analytics-api.md ← API Dynamic Query Engine & Analytics
+├── fashion/                     ← Fashion / AI Styling module
+│   ├── constants.md             ← Hằng số Outfit Item Context, AI Request
+│   └── ai-styling-api.md        ← API gợi ý phối đồ AI
+├── identity/                    ← Identity & Auth module
+│   ├── constants.md             ← Hằng số Role, User Status, Gender
+│   ├── auth-api.md              ← API Đăng ký, Đăng nhập, Quên mật khẩu
+│   ├── me-api.md                ← API Hồ sơ của tôi (Profile)
+│   └── admin-user-api.md        ← API quản trị Người dùng (Admin)
+├── subscription/                ← Subscription & Billing module
+│   ├── constants.md             ← Hằng số Deposit, Plan, AI Policy
+│   ├── subscription-api.md      ← API xem gói, quản lý quota
+│   ├── billing-api.md           ← API ví nội bộ, mua gói, PayOS
+│   ├── admin-subscription-api.md ← API quản trị gói cước (Admin)
+│   └── admin-billing-api.md     ← API quản trị thanh toán (Admin)
+└── wardrobe/                    ← Wardrobe & Outfit module
+    ├── constants.md             ← Hằng số Wardrobe, Outfit, Task
+    ├── wardrobe-api.md          ← API quản lý tủ đồ cá nhân
+    ├── outfits-api.md           ← API thiết kế bộ phối đồ
+    ├── category-api.md          ← API danh mục thời trang
+    └── admin-wardrobe-api.md    ← API quản trị tủ đồ (Admin)
+```
+
+## Mapping Swagger Modules → API Docs
+
+| Swagger Module | API Docs Folder | Tags |
+|----------------|-----------------|------|
+| `admin` | `admin/` | Admin Audit |
+| `aiexecutor` | `aiexecutor/` | Admin AI |
+| `brand` | `brand/` | Admin Brand, Brand, Brand Portal, Brand Chat, Brand Loyalty, Brand Item, Brand Benefit |
+| `dashboard` | `dashboard/` | Dashboard Admin, Dashboard Brand, Dashboard Analytics, Dashboard User |
+| `fashion` | `fashion/` | Wardrobe AI |
+| `identity` | `identity/` | Admin User, Auth, Me |
+| `subscription` | `subscription/` | Admin Subscription, Admin Billing, Subscription, Billing |
+| `wardrobe` | `wardrobe/` | Admin Wardrobe, Category, Wardrobe, Outfits |

@@ -120,14 +120,14 @@ Tài liệu này mô tả API AI styling đang được triển khai (implemente
     ```
 *   **Response:**
     *   `201 Created`: Trả về phản hồi mẫu thử vừa lưu `DigitalSampleResponseRes`.
-*   **Tham chiếu:** Chi tiết validation, vote type và response xem [sample-lab-api.md](sample-lab-api.md).
+*   **Tham chiếu:** Chi tiết validation, vote type và response xem [sample-lab-api.md](../sample-lab-api.md).
 
 ### Quy tắc B2B2C
 *   `includeBrandItems = true` không có nghĩa bắt buộc phải dùng brand item; AI chỉ nên dùng nếu phù hợp với outfit.
 *   Fashion module gọi Brand contract để lấy danh sách brand items được phép, không tự đọc chi tiết loyalty/benefit.
-*   Brand item candidate phải thỏa mãn điều kiện brand active, item active, và user có quyền truy cập hợp lệ (access) nếu item yêu cầu đặc quyền (benefit). Các benefit/feature code tham chiếu [constants/brand.md](constants/brand.md).
+*   Brand item candidate phải thỏa mãn điều kiện brand active, item active, và user có quyền truy cập hợp lệ (access) nếu item yêu cầu đặc quyền (benefit). Các benefit/feature code tham chiếu [constants.md](../brand/constants.md).
 *   AI output không được tự ý inject brand item không nằm trong candidate list mà backend đã cung cấp.
-*   Item trong outfit response cần giữ `itemContext = brand_item`; giá trị tham chiếu [constants/wardrobe.md](constants/wardrobe.md).
+*   Item trong outfit response cần giữ `itemContext = brand_item`; giá trị tham chiếu [constants.md](constants.md).
 *   Nếu brand item trong response là `sample`, frontend nên cho user gửi feedback qua `POST /api/v1/brand-items/:itemId/feedbacks` ngay tại màn hình kết quả gợi ý. Nên đính kèm `outfitId` khi user đã lưu outfit đó.
 
 ---

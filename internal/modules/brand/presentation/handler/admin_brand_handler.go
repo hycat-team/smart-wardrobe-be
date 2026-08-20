@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
+	"smart-wardrobe-be/internal/shared/domain/constants/adminaudit"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -110,8 +111,8 @@ func (h *AdminBrandHandler) AddStaff(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "brand.member_add",
-		TargetType:  "brand_member",
+		Action:      string(adminaudit.BrandMemberAdd),
+		TargetType:  string(adminaudit.BrandMember),
 		TargetID:    &member.ID,
 		Payload: map[string]any{
 			"brandId": brandID,
@@ -164,8 +165,8 @@ func (h *AdminBrandHandler) UpdateMember(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "brand.member_role_change",
-		TargetType:  "brand_member",
+		Action:      string(adminaudit.BrandMemberRoleChange),
+		TargetType:  string(adminaudit.BrandMember),
 		TargetID:    &memberID,
 		Payload: map[string]any{
 			"brandId": brandID,
@@ -210,8 +211,8 @@ func (h *AdminBrandHandler) RemoveMember(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "brand.member_remove",
-		TargetType:  "brand_member",
+		Action:      string(adminaudit.BrandMemberRemove),
+		TargetType:  string(adminaudit.BrandMember),
 		TargetID:    &memberID,
 		Payload: map[string]any{
 			"brandId": brandID,
@@ -256,8 +257,8 @@ func (h *AdminBrandHandler) TransferOwnership(c *gin.Context) error {
 	clientIP := c.ClientIP()
 	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
 		ActorUserID: adminID,
-		Action:      "brand.ownership_transfer",
-		TargetType:  "brand",
+		Action:      string(adminaudit.BrandOwnershipTransfer),
+		TargetType:  string(adminaudit.Brand),
 		TargetID:    &brandID,
 		Payload: map[string]any{
 			"newOwnerUserId":   req.NewOwnerUserID,

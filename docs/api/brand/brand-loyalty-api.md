@@ -1,6 +1,6 @@
 # Loyalty & Membership API Specs
 
-Tài liệu thiết kế các API liên quan đến chương trình loyalty, tích điểm thành viên, đặc quyền/voucher và cơ chế feature access trong mô hình B2B2C. Tất cả các giá trị hằng số sử dụng trong request/response tham chiếu chi tiết tại [constants/brand.md](constants/brand.md). Ma trận phân quyền owner/staff của brand portal tham chiếu tại [Brand Permission Matrix](../../system-design/brand-permission-matrix.md).
+Tài liệu thiết kế các API liên quan đến chương trình loyalty, tích điểm thành viên, đặc quyền/voucher và cơ chế feature access trong mô hình B2B2C. Tất cả các giá trị hằng số sử dụng trong request/response tham chiếu chi tiết tại [constants.md](constants.md). Ma trận phân quyền owner/staff của brand portal tham chiếu tại [Brand Permission Matrix](../../../system-design/brand-permission-matrix.md).
 
 ---
 
@@ -20,7 +20,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `POST /api/v1/brand-portal/brands/:brandId/loyalty/points`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ của nhãn hàng (Brand staff).
 - **Đối tượng ảnh hưởng:** Tạo bản ghi lịch sử giao dịch điểm `loyalty_point_transactions`, cập nhật số dư điểm trong tài khoản loyalty và các lô điểm sử dụng (point lots).
-- **Mô tả:** API hợp nhất cho phép nhân viên POS ghi nhận tích điểm dựa trên mã người dùng `userId`, số điện thoại `phone`, hoặc mã khách hàng bên ngoài `externalCustomerCode`. Nếu chỉ cung cấp số điện thoại hoặc mã bên ngoài, backend sẽ tự động tạo hoặc sử dụng lại hồ sơ offline `brand_customers` mà không tạo tài khoản `users` mới. Loại giao dịch `transactionType` tham chiếu [constants/brand.md:LoyaltyTransactionType](constants/brand.md).
+- **Mô tả:** API hợp nhất cho phép nhân viên POS ghi nhận tích điểm dựa trên mã người dùng `userId`, số điện thoại `phone`, hoặc mã khách hàng bên ngoài `externalCustomerCode`. Nếu chỉ cung cấp số điện thoại hoặc mã bên ngoài, backend sẽ tự động tạo hoặc sử dụng lại hồ sơ offline `brand_customers` mà không tạo tài khoản `users` mới. Loại giao dịch `transactionType` tham chiếu [constants.md:LoyaltyTransactionType](constants.md#17-loai-giao-dich-diem-loyalty-loyaltytransactiontype).
 - **Request Body:**
     ```json
     {
@@ -164,7 +164,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `GET /api/v1/brands/:brandId/benefits`
 - **Tác nhân (Actor):** Khách hàng (Customer).
 - **Đối tượng ảnh hưởng:** Đọc danh sách các đặc quyền `brand_benefits` đang ở trạng thái active.
-- **Mô tả:** Trả về danh sách các ưu đãi hoặc đặc quyền mở để người dùng đổi điểm. Loại đặc quyền `benefitType`, loại mở khóa `unlockType`, mã đặc quyền hệ thống `featureCode` và trạng thái `status` tham chiếu chi tiết tại [constants/brand.md](constants/brand.md).
+- **Mô tả:** Trả về danh sách các ưu đãi hoặc đặc quyền mở để người dùng đổi điểm. Loại đặc quyền `benefitType`, loại mở khóa `unlockType`, mã đặc quyền hệ thống `featureCode` và trạng thái `status` tham chiếu chi tiết tại [constants.md](constants.md).
 - **Response:**
     - `200 OK`: Trả về mảng danh sách đặc quyền `BrandBenefitRes`.
 
@@ -182,7 +182,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `POST /api/v1/brand-benefits/:benefitId/redeem`
 - **Tác nhân (Actor):** Khách hàng (Customer).
 - **Đối tượng ảnh hưởng:** Tạo bản ghi lượt đổi quà `benefit_redemptions`, thực hiện trừ số dư điểm trong tài khoản loyalty nếu đặc quyền yêu cầu điểm để quy đổi.
-- **Mô tả:** Đổi mã giảm giá voucher hoặc kích hoạt đặc quyền truy cập (feature access) theo `benefitId`. Backend tự xác định brand từ bản ghi `brand_benefits`, kiểm tra user là khách hàng loyalty active của brand đó, rồi áp dụng điều kiện đổi bằng điểm tích lũy hoặc quyền lợi hạng thẻ thành viên (tier privilege). Trạng thái của lượt đổi `status` tham chiếu tại [constants/brand.md:BenefitRedemptionStatus](constants/brand.md#9-trang-thai-quy-doi-dac-quyen-benefitredemptionstatus).
+- **Mô tả:** Đổi mã giảm giá voucher hoặc kích hoạt đặc quyền truy cập (feature access) theo `benefitId`. Backend tự xác định brand từ bản ghi `brand_benefits`, kiểm tra user là khách hàng loyalty active của brand đó, rồi áp dụng điều kiện đổi bằng điểm tích lũy hoặc quyền lợi hạng thẻ thành viên (tier privilege). Trạng thái của lượt đổi `status` tham chiếu tại [constants.md:BenefitRedemptionStatus](constants.md#9-trang-thai-quy-doi-dac-quyen-benefitredemptionstatus).
 - **Response:**
     - `201 Created`: Trả về thông tin kết quả quy đổi `BenefitRedemptionRes`.
 
@@ -231,7 +231,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
     - `unlockType = tier_privilege`: FE hiển thị và gửi `requiredTierId`; không hiển thị / không gửi `requiredPoints`. User có quyền khi tier hiện tại có `rank` lớn hơn hoặc bằng tier yêu cầu.
     - `unlockType = point_redemption`: FE hiển thị `requiredPoints`; không hiển thị / không gửi `requiredTierId`. Nếu gửi `requiredPoints = null`, `0` hoặc số âm thì backend lưu là `null` và benefit không yêu cầu điểm khi redeem.
     - `unlockType = manual_grant`: FE không cần hiển thị `requiredPoints` hoặc `requiredTierId`; benefit được brand trao thủ công.
-    - `featureCode`: bắt buộc khi `benefitType = feature_access` và phải nằm trong [constants/brand.md:BenefitFeatureCode](constants/brand.md#8-ma-dac-quyen-he-thong-benefitfeaturecode).
+    - `featureCode`: bắt buộc khi `benefitType = feature_access` và phải nằm trong [constants.md:BenefitFeatureCode](constants.md#8-ma-dac-quyen-he-thong-benefitfeaturecode).
     - `featureConfig`: JSON tuỳ chọn. Backend hiện chỉ đọc `validDurationDays` để tính `expiresAt` của lượt redeem; các key khác chỉ được lưu lại và trả về, chưa dùng để check quyền.
 - **Response:**
     - `201 Created`: Trả về thông tin đặc quyền vừa tạo `BrandBenefitRes`.
@@ -250,7 +250,7 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `PATCH /api/v1/brand-portal/brands/:brandId/benefits/:benefitId/status`
 - **Tác nhân (Actor):** Chủ thương hiệu hoặc quản lý nhãn hàng (Brand owner/staff).
 - **Đối tượng ảnh hưởng:** Cập nhật trạng thái hoạt động của đặc quyền `brand_benefits.status`.
-- **Mô tả:** Kích hoạt hiển thị (active), tạm đóng (inactive) hoặc lưu trữ thu hồi (archived) một chương trình ưu đãi. Trạng thái `status` tham chiếu chi tiết tại [constants/brand.md:BenefitStatus](constants/brand.md).
+- **Mô tả:** Kích hoạt hiển thị (active), tạm đóng (inactive) hoặc lưu trữ thu hồi (archived) một chương trình ưu đãi. Trạng thái `status` tham chiếu chi tiết tại [constants.md:BenefitStatus](constants.md#13-trang-thai-cua-dac-quyen-benefitstatus).
 - **Request Body:**
     ```json
     {
