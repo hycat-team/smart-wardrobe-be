@@ -13,6 +13,8 @@ const (
 	TopicFashionAnalyze    = "fashion.event.analyze"
 	TopicNotificationEmail = "notification.email"
 
+	TopicAuditLog = "admin.audit.log"
+
 	ActionCreated = "created"
 	ActionUpdated = "updated"
 	ActionDeleted = "deleted"

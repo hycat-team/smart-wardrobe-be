@@ -12,11 +12,12 @@ import (
 )
 
 type Router struct {
-	cfg                 *config.Config
-	subscriptionHandler *subscription_handler.SubscriptionHandler
-	billingHandler      *subscription_handler.BillingHandler
-	adminBillingHandler *subscription_handler.AdminBillingHandler
-	auth                identity_contract.IAuthMiddleware
+	cfg                      *config.Config
+	subscriptionHandler      *subscription_handler.SubscriptionHandler
+	billingHandler           *subscription_handler.BillingHandler
+	adminBillingHandler      *subscription_handler.AdminBillingHandler
+	adminSubscriptionHandler *subscription_handler.AdminSubscriptionHandler
+	auth                     identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
@@ -24,14 +25,16 @@ func NewRouter(
 	h *subscription_handler.SubscriptionHandler,
 	b *subscription_handler.BillingHandler,
 	ab *subscription_handler.AdminBillingHandler,
+	as *subscription_handler.AdminSubscriptionHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		cfg:                 cfg,
-		subscriptionHandler: h,
-		billingHandler:      b,
-		adminBillingHandler: ab,
-		auth:                auth,
+		cfg:                      cfg,
+		subscriptionHandler:      h,
+		billingHandler:           b,
+		adminBillingHandler:      ab,
+		adminSubscriptionHandler: as,
+		auth:                     auth,
 	}
 }
 
@@ -69,5 +72,22 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		adminBilling.POST("/:orderCode/resolve-paid", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsPaid))
 		adminBilling.POST("/:orderCode/resolve-cancelled", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsCancelled))
 		adminBilling.POST("/:orderCode/resolve-creation-failed", shared_pres.WrapHandler(r.adminBillingHandler.ResolveAsCreationFailed))
+	}
+
+	adminPlans := group.Group("/admin/subscriptions/plans")
+	adminPlans.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		adminPlans.GET("", shared_pres.WrapHandler(r.adminSubscriptionHandler.ListPlans))
+		adminPlans.POST("", shared_pres.WrapHandler(r.adminSubscriptionHandler.CreatePlan))
+		adminPlans.PUT("/:id", shared_pres.WrapHandler(r.adminSubscriptionHandler.UpdatePlan))
+		adminPlans.PATCH("/:id/status", shared_pres.WrapHandler(r.adminSubscriptionHandler.SetPlanActive))
+	}
+
+	adminSubs := group.Group("/admin/subscriptions")
+	adminSubs.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		adminSubs.GET("", shared_pres.WrapHandler(r.adminSubscriptionHandler.ListSubscriptions))
+		adminSubs.POST("/:userId/cancel", shared_pres.WrapHandler(r.adminSubscriptionHandler.CancelSubscription))
+		adminSubs.POST("/:userId/grant", shared_pres.WrapHandler(r.adminSubscriptionHandler.GrantSubscription))
 	}
 }

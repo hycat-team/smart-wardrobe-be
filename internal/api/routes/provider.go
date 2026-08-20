@@ -1,6 +1,8 @@
 package routes
 
 import (
+	admin_router "smart-wardrobe-be/internal/modules/admin/presentation/router"
+	aiexecutor_router "smart-wardrobe-be/internal/modules/aiexecutor/presentation/router"
 	brand_router "smart-wardrobe-be/internal/modules/brand/presentation/router"
 	dashboard_router "smart-wardrobe-be/internal/modules/dashboard/presentation/router"
 	fashion_router "smart-wardrobe-be/internal/modules/fashion/presentation/router"
@@ -18,6 +20,8 @@ type AppRouter struct {
 	DashboardRouter    *dashboard_router.Router
 	BrandRouter        *brand_router.Router
 	FashionRouter      *fashion_router.Router
+	AIExecutorRouter   *aiexecutor_router.Router
+	AdminRouter        *admin_router.Router
 }
 
 var RouterSet = wire.NewSet(

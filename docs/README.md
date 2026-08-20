@@ -19,8 +19,14 @@ docs/
 └── archive/             # Lưu trữ các tài liệu cũ và lịch sử refactor/rebuild.
 ```
 
+## Key Design References
+
+- **Brand Permission Matrix**: [brand-permission-matrix.md](system-design/brand-permission-matrix.md) — Ma trận phân quyền chi tiết cho Brand Portal (Owner vs Staff).
+- **Out of Scope ADR (2026-08)**: [out-of-scope-2026-08.md](decisions/out-of-scope-2026-08.md) — 9 hạng mục tính năng nằm ngoài phạm vi MVP.
+
 ## New Model Positioning: B2B2C
 
 - **B2C**: Personal digital wardrobe application and AI outfit assistant.
 - **B2B**: The project's main revenue stream through providing Brand Loyalty, Customer Service, Brand Campaign, Benefits, Insight Dashboard, and **Digital Sample Lab** services for fashion brands.
 - **Non-Core Goals (Non-Goals)**: Discontinue positioning or developing Closy as a social network (Community Feed, Community Post) or a second-hand marketplace (Resale, Transfer Item, P2P transaction).
+

@@ -25,7 +25,7 @@ graph TD
     Module2 --> Module3
 ```
 
-### Phiên bản hiện tại
+### Phiên bản hiện tại & Phạm vi ngoài lề (Out of Scope)
 
 Một số capability trong tài liệu này hiện đã được triển khai một phần hoặc triển khai theo hình thức khác trong code hiện tại, ví dụ:
 
@@ -33,6 +33,9 @@ Một số capability trong tài liệu này hiện đã được triển khai m
 - `Closet Initialization Catalog`
 - nền dữ liệu cho `Garment Lifecycle Decay`
 - `AI Fashion Chatbot` theo phiên
+
+> [!NOTE]
+> Các hạng mục nâng cao tạm hoãn hoặc nằm ngoài phạm vi MVP của giai đoạn hiện tại (như Dynamic Global RBAC, Support Ticket, 3D Virtual Trial, Swap/Re-roll AI, Scheduled OOTD...) được ghi nhận chính thức tại [ADR Out of Scope 2026-08](../decisions/out-of-scope-2026-08.md).
 
 Tuy nhiên, tài liệu này vẫn giữ nguyên toàn bộ các mô tả roadmap vì chúng còn bao hàm thiết kế mục tiêu hoàn chỉnh, không chỉ là trạng thái implementation hiện tại.
 

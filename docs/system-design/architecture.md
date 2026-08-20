@@ -282,22 +282,24 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 ## VIII. AUTHENTICATION & ROLE AUTHORIZATION
 
-The system delegates authorization according to the RBAC (Role-Based Access Control) model for both individual users and business employees.
+The system delegates authorization according to the RBAC (Role-Based Access Control) model for system users, subscription tiers, and brand memberships.
 
-### 1. Individual Users (B2C Roles)
+### 1. System Roles (`roleslug`)
 
-- **Guest**: Not logged in, can only view the subscription plan list or public pages.
-- **Standard User**: Limited digital wardrobe (up to 50 items) and limited daily AI quota.
-- **Premium User**: Unlimited digital wardrobe and expanded quota for AI outfit styling.
+- **User (`roleslug.User = "user"`)**: Standard authenticated consumer account.
+- **Admin (`roleslug.Admin = "admin"`)**: System administrator with full authority across administration endpoints (`/admin/*`).
 
-### 2. Business Users (B2B Roles)
+### 2. Subscription Tiers (Individual Consumer Quotas - `PlanKind`)
 
-- **Brand Owner**: Full access to configure the Brand Portal and manage service billing.
-- **Brand Staff**: Employee of the brand.
+Consumer capabilities and limits are driven by active subscriptions (`PlanKind`):
+- **Free Plan (`plankind.Free = "free"`)**: Standard digital wardrobe item limits and standard daily AI quotas.
+- **Premium Plan (`plankind.Paid = "premium"`)**: Higher digital wardrobe limits and expanded daily AI outfit/chat styling quotas.
 
-### 3. System Administrator (System Admin)
+### 3. Business / Brand Roles (`brandmemberrole`)
 
-- System administrators have full authority to review the status of brands, approve new partner registrations, and troubleshoot issues.
+Managed through the brand membership system (`brand_members` table):
+- **Brand Owner (`brandmemberrole.Owner = "owner"`)**: Full access to configure Brand Portal, manage staff members, and brand settings.
+- **Brand Staff (`brandmemberrole.Staff = "staff"`)**: Employee of the brand with delegated access to manage items, promotions, and customer chats.
 
 ---
 

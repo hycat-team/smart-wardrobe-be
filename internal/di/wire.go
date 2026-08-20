@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/internal/api/routes"
 	"smart-wardrobe-be/internal/bootstrap"
 	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/modules/admin"
 	"smart-wardrobe-be/internal/modules/aiexecutor"
 	"smart-wardrobe-be/internal/modules/brand"
 	"smart-wardrobe-be/internal/modules/dashboard"
@@ -40,6 +41,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		brand.ProviderSet,
 		fashion.ProviderSet,
 		dashboard.ProviderSet,
+		admin.ProviderSet,
 
 		shared_middleware.NewRateLimitMiddleware,
 		routes.RouterSet,

@@ -20,6 +20,7 @@ var ProviderSet = wire.NewSet(
 	handler.NewBrandPortalHandler,
 	handler.NewBrandLoyaltyHandler,
 	handler.NewBrandChatHandler,
+	handler.NewAdminBrandHandler,
 	handler.NewBrandHandler,
 	middleware.NewBrandRoleMiddleware,
 	wire.Bind(new(contract.IBrandRoleMiddleware), new(*middleware.BrandRoleMiddleware)),

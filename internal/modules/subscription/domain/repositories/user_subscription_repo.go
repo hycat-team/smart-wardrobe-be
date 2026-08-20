@@ -5,11 +5,18 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
+
+type AdminUserSubscriptionFilter struct {
+	PlanCode *string
+	Status   *usersubscriptionstatus.UserSubscriptionStatus
+	UserID   *uuid.UUID
+}
 
 // IUserSubscriptionRepository handles database operations for user subscriptions
 type IUserSubscriptionRepository interface {
@@ -24,4 +31,5 @@ type IUserSubscriptionRepository interface {
 	BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error
 	ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error
 	GetDistributionByPlanCode(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error)
+	ListAdmin(ctx context.Context, filter AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error)
 }

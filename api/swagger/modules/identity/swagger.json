@@ -65,7 +65,194 @@
         },
         "summary": "Lấy danh sách người dùng",
         "tags": [
-          "Admin Identity"
+          "Admin User"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Cho phép quản trị viên tạo tài khoản người dùng mới (mặc định vai trò user).",
+        "parameters": [
+          {
+            "description": "Thông tin tài khoản mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.CreateAdminUserReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Tạo tài khoản người dùng",
+        "tags": [
+          "Admin User"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "delete": {
+        "description": "Vô hiệu hóa mềm tài khoản người dùng và thu hồi toàn bộ phiên đăng nhập.",
+        "parameters": [
+          {
+            "description": "ID người dùng",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Vô hiệu hóa tài khoản người dùng",
+        "tags": [
+          "Admin User"
+        ]
+      },
+      "get": {
+        "description": "Lấy thông tin chi tiết tài khoản người dùng và trạng thái gói cước.",
+        "parameters": [
+          {
+            "description": "ID người dùng",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Chi tiết tài khoản người dùng",
+        "tags": [
+          "Admin User"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/role": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Đổi vai trò (role) của tài khoản người dùng. Chỉ có tài khoản admin seed mới được quyền nâng cấp tài khoản lên admin.",
+        "parameters": [
+          {
+            "description": "ID người dùng",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Vai trò mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserRoleReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Đổi vai trò tài khoản người dùng",
+        "tags": [
+          "Admin User"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/sessions": {
+      "get": {
+        "description": "Lấy danh sách các phiên làm việc / thiết bị đăng nhập của người dùng.",
+        "parameters": [
+          {
+            "description": "ID người dùng",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Danh sách phiên đăng nhập",
+        "tags": [
+          "Admin User"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/sessions/revoke": {
+      "post": {
+        "description": "Thu hồi và vô hiệu hóa tất cả các phiên làm việc hiện tại của người dùng.",
+        "parameters": [
+          {
+            "description": "ID người dùng",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Thu hồi toàn bộ phiên đăng nhập",
+        "tags": [
+          "Admin User"
         ]
       }
     },
@@ -74,7 +261,7 @@
         "consumes": [
           "application/json"
         ],
-        "description": "Cho phép admin khóa hoặc mở lại tài khoản user. Khi khóa sang inactive, hệ thống chỉ revoke refresh token; access token hiện tại vẫn còn hiệu lực đến hết TTL theo cơ chế JWT stateless.",
+        "description": "Cho phép admin khóa hoặc mở lại tài khoản user.",
         "parameters": [
           {
             "description": "ID người dùng",
@@ -118,7 +305,7 @@
         },
         "summary": "Cập nhật trạng thái tài khoản người dùng",
         "tags": [
-          "Admin Identity"
+          "Admin User"
         ]
       }
     },
@@ -694,6 +881,17 @@
     }
   },
   "definitions": {
+    "internal_modules_subscription_presentation_handler.adminGrantPlanReq": {
+      "properties": {
+        "planId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "type": "object"
+    },
     "internal_modules_subscription_presentation_handler.resolveRequest": {
       "properties": {
         "paymentLinkId": {
@@ -704,6 +902,85 @@
         },
         "reference": {
           "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_admin_application_dto.AdminAuditLogDTO": {
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "requestIp": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_admin_application_dto.AdminAuditLogListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_admin_application_dto.AdminAuditLogDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.CreateAIGrantReq": {
+      "properties": {
+        "aiCostPolicyId": {
+          "type": "string"
+        },
+        "effectiveTo": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "aiCostPolicyId",
+        "userId"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.UpdatePricingReq": {
+      "properties": {
+        "effectiveTo": {
+          "type": "string"
+        },
+        "inputUsdPerMillion": {
+          "type": "number"
+        },
+        "outputUsdPerMillion": {
+          "type": "number"
+        },
+        "usdToVnd": {
+          "type": "number"
         }
       },
       "type": "object"
@@ -780,6 +1057,17 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_brand_application_dto.AdminAddBrandStaffReq": {
+      "properties": {
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_brand_application_dto.AdminBrandListRes": {
       "properties": {
         "items": {
@@ -790,6 +1078,17 @@
         },
         "metadata": {
           "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_brand_application_dto.AdminUpdateBrandMemberReq": {
+      "properties": {
+        "role": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_brandmemberrole.BrandMemberRole"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
         }
       },
       "type": "object"
@@ -1881,6 +2180,25 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_brand_application_dto.TransferBrandOwnershipReq": {
+      "properties": {
+        "newOwnerUserId": {
+          "type": "string"
+        },
+        "oldOwnerHandling": {
+          "enum": [
+            "staff",
+            "remove"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "newOwnerUserId",
+        "oldOwnerHandling"
+      ],
       "type": "object"
     },
     "smart-wardrobe-be_internal_modules_brand_application_dto.UpdateBenefitStatusReq": {
@@ -3412,6 +3730,51 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.CreateAdminUserReq": {
+      "properties": {
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender"
+            }
+          ],
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "roleSlug": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "firstName",
+        "password",
+        "username"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_identity_application_dto.InferredBodyProfileReq": {
       "properties": {
         "bodyShape": {
@@ -3430,10 +3793,19 @@
     },
     "smart-wardrobe-be_internal_modules_identity_application_dto.LoginReq": {
       "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
         "loginName": {
           "type": "string"
         },
         "password": {
+          "type": "string"
+        },
+        "userAgent": {
           "type": "string"
         }
       },
@@ -3628,6 +4000,17 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserRoleReq": {
+      "properties": {
+        "roleSlug": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_roleslug.RoleSlug"
+        }
+      },
+      "required": [
+        "roleSlug"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateUserStatusReq": {
       "properties": {
         "status": {
@@ -3783,6 +4166,172 @@
         "Inactive"
       ]
     },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.AdminDepositTransactionListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.DepositTransactionRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.AdminUserSubscriptionItemDTO": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "isAutoRenewEnabled": {
+          "type": "boolean"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.AdminUserSubscriptionListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.AdminUserSubscriptionItemDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.CreateSubscriptionPlanReq": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "price": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.DepositTransactionRes": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "cancelledAt": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "nextReconciliationAt": {
+          "type": "string"
+        },
+        "orderCode": {
+          "type": "integer"
+        },
+        "paymentLinkId": {
+          "type": "string"
+        },
+        "paymentUrl": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_domain_constants_depositstatus.DepositStatus"
+        },
+        "targetPlanId": {
+          "type": "string"
+        },
+        "transactionType": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_subscription_application_dto.DirectPurchaseReq": {
       "properties": {
         "cancelUrl": {
@@ -3869,6 +4418,14 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.SetPlanActiveReq": {
+      "properties": {
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO": {
       "properties": {
         "aiChatDailyQuota": {
@@ -3882,6 +4439,9 @@
         },
         "id": {
           "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
         },
         "maxOutfits": {
           "type": "integer"
@@ -3900,6 +4460,38 @@
         },
         "slug": {
           "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.UpdateSubscriptionPlanReq": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
         },
         "tierRank": {
           "type": "integer"

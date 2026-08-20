@@ -16,6 +16,7 @@ var ProviderSet = wire.NewSet(
 	handler.NewSubscriptionHandler,
 	handler.NewBillingHandler,
 	handler.NewAdminBillingHandler,
+	handler.NewAdminSubscriptionHandler,
 	router.NewRouter,
 	worker.NewSubscriptionRenewalWorker,
 	worker.NewPaymentReconciliationWorker,

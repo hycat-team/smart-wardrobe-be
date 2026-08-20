@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	shared_repos "smart-wardrobe-be/internal/shared/infrastructure/repositories"
@@ -153,4 +154,48 @@ func (r *UserSubscriptionRepository) GetDistributionByPlanCode(ctx context.Conte
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (r *UserSubscriptionRepository) ListAdmin(ctx context.Context, filter repositories.AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 20
+	}
+	db := r.GetDB(ctx).Model(&entities.UserSubscription{})
+
+	if filter.PlanCode != nil && *filter.PlanCode != "" {
+		db = db.Where("current_plan_code = ?", *filter.PlanCode)
+	}
+	if filter.UserID != nil {
+		db = db.Where("user_id = ?", *filter.UserID)
+	}
+	if filter.Status != nil {
+		now := time.Now()
+		switch *filter.Status {
+		case usersubscriptionstatus.Active:
+			db = db.Where("expires_at IS NULL OR expires_at > ?", now)
+		case usersubscriptionstatus.Expired:
+			db = db.Where("expires_at IS NOT NULL AND expires_at <= ?", now)
+		}
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var subs []*entities.UserSubscription
+	err := r.GetQueryWithPreload(ctx).
+		Where(db).
+		Order("started_at DESC").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&subs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return subs, total, nil
 }

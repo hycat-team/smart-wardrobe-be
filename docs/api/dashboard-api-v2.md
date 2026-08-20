@@ -10,14 +10,14 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/distribution`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.), kèm tỷ lệ phần trăm.
+- **Mô tả:** Thống kê số lượng người dùng đang hoạt động theo từng gói subscription (`free`, `premium-monthly`, v.v.), kèm tỷ lệ phần trăm.
 - **Response struct:** `SubscriptionDistributionRes`
 - **Nguồn dữ liệu:** Bảng `user_subscriptions`, query `SELECT current_plan_code, COUNT(*) GROUP BY current_plan_code ORDER BY COUNT(*) DESC`.
 
 | Field        | JSON           | Kiểu                          | Ý nghĩa                                          |
 | ------------ | -------------- | ----------------------------- | ------------------------------------------------ |
 | Distribution | `distribution` | []SubscriptionDistributionDTO | Danh sách phân bổ theo plan_code                 |
-| ├ PlanCode   | `planCode`     | string                        | Mã gói subscription (FREE, PREMIUM_MONTHLY, ...) |
+| ├ PlanCode   | `planCode`     | string                        | Mã gói subscription (`free`, `premium-monthly`, ...) |
 | ├ UserCount  | `userCount`    | int                           | Số người dùng thuộc gói này                      |
 | └ Percentage | `percentage`   | float64                       | Tỷ lệ phần trăm so với tổng user                 |
 | TotalUsers   | `totalUsers`   | int                           | Tổng số người dùng có subscription               |
@@ -28,12 +28,12 @@ Tài liệu bổ sung cho [dashboard-api.md](dashboard-api.md). Chỉ bao gồm 
 
 - **Endpoint:** `GET /api/v1/admin/dashboard/subscriptions/revenue-breakdown`
 - **Tác nhân (Actor):** Quản trị viên (`roleslug.Admin`).
-- **Mô tả:** Thống kê doanh thu subscription theo từng plan_code và theo tháng, chỉ tính các giao dịch DIRECT_PURCHASE thành công. Hỗ trợ lọc khoảng thời gian.
+- **Mô tả:** Thống kê doanh thu subscription theo từng plan_code và theo tháng, chỉ tính các giao dịch `direct_purchase` thành công. Hỗ trợ lọc khoảng thời gian.
 - **Query Parameters:**
     - `fromDate` (string, optional) — Ngày bắt đầu, định dạng `YYYY-MM-DD`. Mặc định: 6 tháng trước.
     - `toDate` (string, optional) — Ngày kết thúc, định dạng `YYYY-MM-DD`. Mặc định: hôm nay.
 - **Response struct:** `RevenueBreakdownRes`
-- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='DIRECT_PURCHASE'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`.
+- **Nguồn dữ liệu:** Bảng `deposit_transactions`, `WHERE status=1 AND transaction_type='direct_purchase'`, `GROUP BY plan_code, DATE_TRUNC('month', created_at)`.
 
 | Field              | JSON               | Kiểu                  | Ý nghĩa                               |
 | ------------------ | ------------------ | --------------------- | ------------------------------------- |

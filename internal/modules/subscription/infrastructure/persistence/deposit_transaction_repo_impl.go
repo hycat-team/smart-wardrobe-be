@@ -38,7 +38,7 @@ func (r *DepositTransactionRepository) ListAdmin(ctx context.Context, filter rep
 	}
 	db := r.GetDB(ctx).Model(&entities.DepositTransaction{})
 	if filter.Status != nil {
-		db = db.Where("status = ?", string(*filter.Status))
+		db = db.Where("status = ?", int16(*filter.Status))
 	}
 	if filter.FromDate != nil {
 		db = db.Where("created_at >= ?", *filter.FromDate)

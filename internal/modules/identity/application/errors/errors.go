@@ -169,3 +169,19 @@ func ErrRegistrationSessionExpired() *apperror.Error {
 func ErrForgotPasswordSessionExpired() *apperror.Error {
 	return apperror.NewBadRequest("Yêu cầu khôi phục mật khẩu đã hết hạn hoặc không tồn tại. Vui lòng gửi lại yêu cầu.")
 }
+
+func ErrAdminCannotPromoteAdmin() *apperror.Error {
+	return apperror.NewForbidden("Chỉ tài khoản admin seed mới được quyền phong hoặc tạo tài khoản admin.")
+}
+
+func ErrSelfRoleUpdate() *apperror.Error {
+	return apperror.NewForbidden("Bạn không thể tự thay đổi vai trò tài khoản của chính mình.")
+}
+
+func ErrCannotModifyAdminRole() *apperror.Error {
+	return apperror.NewForbidden("Không thể thay đổi vai trò của tài khoản quản trị viên khác.")
+}
+
+func ErrSelfDeactivation() *apperror.Error {
+	return apperror.NewForbidden("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.")
+}

@@ -71,6 +71,8 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 		r.DashboardRouter.Init(api)
 		r.BrandRouter.Init(api)
 		r.FashionRouter.Init(api)
+		r.AIExecutorRouter.Init(api)
+		r.AdminRouter.Init(api)
 	}
 
 	return engine

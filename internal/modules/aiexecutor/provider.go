@@ -5,6 +5,8 @@ import (
 	aiexecutor_infra_caching "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	"smart-wardrobe-be/internal/modules/aiexecutor/presentation/handler"
+	"smart-wardrobe-be/internal/modules/aiexecutor/presentation/router"
 	"smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 
 	"github.com/google/wire"
@@ -19,6 +21,9 @@ var ProviderSet = wire.NewSet(
 
 	contract.NewAIOrchestratorContract,
 	contract.NewAICostDashboardReader,
+
+	handler.NewAdminHandler,
+	router.NewRouter,
 
 	worker.NewAIUsageReconciliationWorker,
 	worker.NewPlanChangedWorker,

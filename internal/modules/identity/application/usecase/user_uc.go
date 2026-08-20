@@ -420,3 +420,181 @@ func (uc *UserUseCase) GetUsersForAdmin(ctx context.Context, query dto.GetUsersQ
 func (uc *UserUseCase) GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error) {
 	return uc.userRepo.GetAdminUserStats(ctx, snapshotDate)
 }
+
+// GetUserDetail retrieves full user information and subscription overview for admin
+func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dto.AdminUserDetailRes, error) {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil || user.IsDeleted {
+		return nil, identityerrors.ErrUserNotFound()
+	}
+
+	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		sub = nil
+	}
+
+	userRes := mapper.MapToUserRes(user, sub)
+	return &dto.AdminUserDetailRes{
+		User:         userRes,
+		Subscription: sub,
+	}, nil
+}
+
+// CreateUserByAdmin allows an admin to create a new user account (defaults to user role)
+func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.UUID, req dto.CreateAdminUserReq) (*dto.UserRes, error) {
+	// FR-012: Check role: only "user" is permitted unless special admin seed creation
+	role := roleslug.User
+	if req.RoleSlug != nil {
+		if *req.RoleSlug == roleslug.Admin {
+			return nil, identityerrors.ErrAdminCannotPromoteAdmin()
+		}
+		role = *req.RoleSlug
+	}
+
+	existingUser, err := uc.userRepo.GetByUsernameOrEmail(ctx, req.Username)
+	if err != nil {
+		return nil, err
+	}
+	if existingUser != nil {
+		return nil, identityerrors.ErrUsernameExists(req.Username)
+	}
+
+	existingEmail, err := uc.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	if existingEmail != nil {
+		return nil, identityerrors.ErrEmailExists(req.Email)
+	}
+
+	hash, err := uc.passwordHasher.HashPassword(req.Password)
+	if err != nil {
+		return nil, identityerrors.ErrAccountCreationFailed()
+	}
+
+	var dob *time.Time
+	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
+		if parsedDob, err := time.Parse("2006-01-02", *req.DateOfBirth); err == nil {
+			dob = &parsedDob
+		}
+	}
+
+	newUser := &entities.User{
+		Username:     req.Username,
+		Email:        req.Email,
+		PasswordHash: hash,
+		FirstName:    &req.FirstName,
+		LastName:     req.LastName,
+		DateOfBirth:  dob,
+		Gender:       req.Gender,
+		RoleSlug:     role,
+		Status:       userstatus.Active,
+	}
+
+	if err := uc.userRepo.Create(ctx, newUser); err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToUserRes(newUser, nil), nil
+}
+
+// UpdateUserRole updates a user's system role (guards against self-modification and elevating to admin)
+func (uc *UserUseCase) UpdateUserRole(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, req dto.UpdateUserRoleReq) (*dto.UserRes, error) {
+	if adminUserID == targetUserID {
+		return nil, identityerrors.ErrSelfRoleUpdate()
+	}
+
+	targetUser, err := uc.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if targetUser == nil || targetUser.IsDeleted {
+		return nil, identityerrors.ErrUserNotFound()
+	}
+
+	if targetUser.RoleSlug == roleslug.Admin {
+		return nil, identityerrors.ErrCannotModifyAdminRole()
+	}
+
+	// FR-012: Regular admins cannot promote anyone to admin
+	if req.RoleSlug == roleslug.Admin {
+		return nil, identityerrors.ErrAdminCannotPromoteAdmin()
+	}
+
+	targetUser.RoleSlug = req.RoleSlug
+	if err := uc.userRepo.Update(ctx, targetUser); err != nil {
+		return nil, err
+	}
+
+	sub, _ := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, targetUserID)
+	return mapper.MapToUserRes(targetUser, sub), nil
+}
+
+// DeactivateUser performs a soft deactivation and revokes all active sessions/tokens
+func (uc *UserUseCase) DeactivateUser(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID) (*dto.UserRes, error) {
+	if adminUserID == targetUserID {
+		return nil, identityerrors.ErrSelfDeactivation()
+	}
+
+	targetUser, err := uc.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if targetUser == nil || targetUser.IsDeleted {
+		return nil, identityerrors.ErrUserNotFound()
+	}
+
+	if targetUser.RoleSlug == roleslug.Admin {
+		return nil, identityerrors.ErrUserStatusOnly()
+	}
+
+	targetUser.Status = userstatus.Inactive
+	if err := uc.userRepo.Update(ctx, targetUser); err != nil {
+		return nil, err
+	}
+
+	_ = uc.refreshTokenRepo.RevokeAllByUserID(ctx, targetUserID)
+	accessTokenTTL := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
+	_ = uc.tokenBlacklistService.BlacklistUser(ctx, targetUserID, accessTokenTTL)
+
+	sub, _ := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, targetUserID)
+	return mapper.MapToUserRes(targetUser, sub), nil
+}
+
+// ListUserSessions returns the active and past login sessions for a user
+func (uc *UserUseCase) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]*dto.UserSessionItemDTO, error) {
+	tokens, err := uc.refreshTokenRepo.ListByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*dto.UserSessionItemDTO, 0, len(tokens))
+	for _, t := range tokens {
+		if t == nil {
+			continue
+		}
+		res = append(res, &dto.UserSessionItemDTO{
+			ID:           t.ID,
+			DeviceName:   t.DeviceName,
+			DeviceIP:     t.DeviceIP,
+			UserAgent:    t.UserAgent,
+			LastActiveAt: t.LastActiveAt,
+			ExpiresAt:    t.ExpiresAt,
+			IsRevoked:    t.IsRevoked,
+			CreatedAt:    t.CreatedAt,
+		})
+	}
+	return res, nil
+}
+
+// RevokeUserSessions revokes all refresh tokens and blacklists the user's active access tokens
+func (uc *UserUseCase) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
+	if err := uc.refreshTokenRepo.RevokeAllByUserID(ctx, userID); err != nil {
+		return err
+	}
+	accessTokenTTL := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
+	return uc.tokenBlacklistService.BlacklistUser(ctx, userID, accessTokenTTL)
+}

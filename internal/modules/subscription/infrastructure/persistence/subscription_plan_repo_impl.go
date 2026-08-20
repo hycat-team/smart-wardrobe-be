@@ -71,3 +71,31 @@ func (r *SubscriptionPlanRepository) GetBySlug(ctx context.Context, slug string)
 	}
 	return &plan, nil
 }
+
+func (r *SubscriptionPlanRepository) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
+	var plan entities.SubscriptionPlan
+	err := r.GetDB(ctx).
+		Where("slug = ?", slug).
+		First(&plan).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (r *SubscriptionPlanRepository) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
+	var plans []*entities.SubscriptionPlan
+	err := r.GetDB(ctx).
+		Order("tier_rank ASC, price ASC").
+		Find(&plans).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return plans, nil
+}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"smart-wardrobe-be/internal/config"
+	adminWorker "smart-wardrobe-be/internal/modules/admin/presentation/worker"
 	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
 	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
 	dashboardWorker "smart-wardrobe-be/internal/modules/dashboard/presentation/worker"
@@ -38,6 +39,8 @@ type AppWorkers struct {
 	DashboardAggregatorWorker   *dashboardWorker.DashboardAggregatorWorker
 	OutboxWorker                *sharedWorker.OutboxWorker
 	EmailWorker                 *notificationWorker.EmailWorker
+	AuditLogConsumerWorker      *adminWorker.AuditLogConsumerWorker
+	AuditCleanupWorker          *adminWorker.AuditCleanupWorker
 }
 
 type App struct {
@@ -115,6 +118,12 @@ func (a *App) Run() error {
 	if a.Workers.EmailWorker != nil {
 		a.Workers.EmailWorker.Start(ctxWorker)
 	}
+	if a.Workers.AuditLogConsumerWorker != nil {
+		a.Workers.AuditLogConsumerWorker.Start(ctxWorker)
+	}
+	if a.Workers.AuditCleanupWorker != nil {
+		a.Workers.AuditCleanupWorker.Start(ctxWorker)
+	}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -156,6 +165,12 @@ func (a *App) Run() error {
 	}
 	if a.Workers.EmailWorker != nil {
 		a.Workers.EmailWorker.Stop()
+	}
+	if a.Workers.AuditLogConsumerWorker != nil {
+		a.Workers.AuditLogConsumerWorker.Stop()
+	}
+	if a.Workers.AuditCleanupWorker != nil {
+		a.Workers.AuditCleanupWorker.Stop()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

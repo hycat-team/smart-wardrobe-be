@@ -1,6 +1,7 @@
 package application
 
 import (
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/admin"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/benefit"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/brand"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/chat"
@@ -12,6 +13,7 @@ import (
 )
 
 var ProviderSet = wire.NewSet(
+	admin.NewBrandAdminUseCase,
 	benefit.NewBrandBenefitUseCase,
 	brand.NewBrandUseCase,
 	brand.NewBrandDashboardAnalyticsUseCase,

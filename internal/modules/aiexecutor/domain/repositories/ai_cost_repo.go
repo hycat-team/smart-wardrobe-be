@@ -27,4 +27,6 @@ type IAICostRepository interface {
 	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
 	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
 	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
+	GetUsageByUser(ctx context.Context, userID uuid.UUID, fromDate, toDate *time.Time, page, limit int) ([]*aiexecutor_entities.AIUsageEvent, int64, error)
+	ListGrantsByUser(ctx context.Context, userID uuid.UUID) ([]*aiexecutor_entities.AIPolicyGrant, error)
 }

@@ -13,4 +13,6 @@ type ISubscriptionPlanRepository interface {
 	GetDefaultPlan(ctx context.Context) (*entities.SubscriptionPlan, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.SubscriptionPlan, error)
 	GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error)
+	GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error)
+	ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error)
 }

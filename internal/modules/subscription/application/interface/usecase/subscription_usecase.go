@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"github.com/google/uuid"
@@ -17,4 +18,7 @@ type ISubscriptionUseCase interface {
 	ProcessUpcomingExpiryNotifications(ctx context.Context) error
 	SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error)
 	GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error)
+	AdminList(ctx context.Context, planCode *string, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error)
+	AdminCancel(ctx context.Context, userID uuid.UUID) error
+	AdminGrant(ctx context.Context, userID uuid.UUID, planID uuid.UUID) error
 }

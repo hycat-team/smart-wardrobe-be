@@ -375,3 +375,46 @@ func (r *AICostRepository) GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErr
 	}
 	return rows, nil
 }
+
+func (r *AICostRepository) GetUsageByUser(ctx context.Context, userID uuid.UUID, fromDate, toDate *time.Time, page, limit int) ([]*aiexecutor_entities.AIUsageEvent, int64, error) {
+	db := r.GetDB(ctx).Model(&aiexecutor_entities.AIUsageEvent{}).Where("user_id = ?", userID)
+	if fromDate != nil && !fromDate.IsZero() {
+		db = db.Where("created_at >= ?", *fromDate)
+	}
+	if toDate != nil && !toDate.IsZero() {
+		db = db.Where("created_at <= ?", *toDate)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	var events []*aiexecutor_entities.AIUsageEvent
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return events, total, nil
+}
+
+func (r *AICostRepository) ListGrantsByUser(ctx context.Context, userID uuid.UUID) ([]*aiexecutor_entities.AIPolicyGrant, error) {
+	var grants []*aiexecutor_entities.AIPolicyGrant
+	err := r.GetDB(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Find(&grants).Error
+	if err != nil {
+		return nil, err
+	}
+	return grants, nil
+}

@@ -23,6 +23,7 @@ func MapToSubscriptionPlanDTO(plan *entities.SubscriptionPlan) *dto.Subscription
 		DurationDays:       plan.DurationDays,
 		PlanKind:           plan.PlanKind,
 		TierRank:           plan.TierRank,
+		IsActive:           plan.IsActive,
 	}
 }
 

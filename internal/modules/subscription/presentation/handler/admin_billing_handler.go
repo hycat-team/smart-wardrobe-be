@@ -4,12 +4,16 @@ import (
 	"strconv"
 	"time"
 
+	admin_dto "smart-wardrobe-be/internal/modules/admin/application/dto"
+	admin_contract "smart-wardrobe-be/internal/modules/admin/presentation/contract"
+	subscription_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
@@ -26,29 +30,31 @@ const (
 )
 
 type AdminBillingHandler struct {
-	logger       logger.Interface
-	adminBilling uc_interfaces.IAdminBillingUseCase
-	resolution   uc_interfaces.IPaymentResolutionUseCase
+	logger           logger.Interface
+	adminBilling     uc_interfaces.IAdminBillingUseCase
+	resolution       uc_interfaces.IPaymentResolutionUseCase
+	auditLogContract admin_contract.IAuditLogContract
 }
 
 func NewAdminBillingHandler(
 	logger logger.Interface,
 	adminBilling uc_interfaces.IAdminBillingUseCase,
 	resolution uc_interfaces.IPaymentResolutionUseCase,
+	auditLogContract admin_contract.IAuditLogContract,
 ) *AdminBillingHandler {
 	return &AdminBillingHandler{
-		logger:       logger,
-		adminBilling: adminBilling,
-		resolution:   resolution,
+		logger:           logger,
+		adminBilling:     adminBilling,
+		resolution:       resolution,
+		auditLogContract: auditLogContract,
 	}
 }
 
 type adminListTransactionsReq struct {
+	shared_dto.PaginationQuery
 	Status   string `form:"status"`
 	FromDate string `form:"fromDate"`
 	ToDate   string `form:"toDate"`
-	Page     int    `form:"page"`
-	Limit    int    `form:"limit"`
 }
 
 // ListTransactions
@@ -62,7 +68,7 @@ type adminListTransactionsReq struct {
 // @Param toDate query string false "Ngày kết thúc (YYYY-MM-DD)"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số bản ghi/trang"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=subscription_dto.AdminDepositTransactionListRes}
 // @Router /api/v1/admin/subscriptions/transactions [get]
 func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 	var req adminListTransactionsReq
@@ -85,14 +91,47 @@ func (h *AdminBillingHandler) ListTransactions(c *gin.Context) error {
 			filter.ToDate = &t
 		}
 	}
-	items, total, err := h.adminBilling.ListTransactions(c.Request.Context(), filter, req.Page, req.Limit)
+	rows, total, err := h.adminBilling.ListTransactions(c.Request.Context(), filter, req.Page, req.Limit)
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, successAdminListTransactions, gin.H{
-		"items": items,
-		"total": total,
-	})
+
+	items := make([]*subscription_dto.DepositTransactionRes, len(rows))
+	for i, tx := range rows {
+		var cancelAt, nextReconAt *time.Time
+		if tx.CancelledAt != nil {
+			cancelAt = tx.CancelledAt
+		}
+		if tx.NextReconciliationAt != nil {
+			nextReconAt = tx.NextReconciliationAt
+		}
+		floatAmt, _ := tx.Amount.Float64()
+		items[i] = &subscription_dto.DepositTransactionRes{
+			ID:                   tx.ID,
+			UserID:               tx.UserID,
+			OrderCode:            tx.OrderCode,
+			Amount:               floatAmt,
+			Currency:             string(tx.Currency),
+			Status:               tx.Status,
+			TransactionType:      string(tx.TransactionType),
+			TargetPlanID:         tx.SubscriptionPlanID,
+			PaymentUrl:           tx.PaymentUrl,
+			Reference:            tx.SuccessfulProviderReference,
+			PaymentLinkId:        tx.PaymentLinkID,
+			FailureReason:        tx.FailureReason,
+			CancelledAt:          cancelAt,
+			NextReconciliationAt: nextReconAt,
+			CreatedAt:            tx.CreatedAt,
+			UpdatedAt:            tx.UpdatedAt,
+		}
+	}
+
+	response := &shared_dto.PaginationResult[*subscription_dto.DepositTransactionRes]{
+		Items:    items,
+		Metadata: shared_dto.BuildPaginationMetadata(req.PaginationQuery, total),
+	}
+
+	shared_pres.Success(c, successAdminListTransactions, response)
 	return nil
 }
 
@@ -187,6 +226,20 @@ func (h *AdminBillingHandler) RetryInvestigation(c *gin.Context) error {
 	if err := h.resolution.RetryInvestigation(c.Request.Context(), input); err != nil {
 		return err
 	}
+
+	adminID, _ := contextutils.GetUserId(c)
+	clientIP := c.ClientIP()
+	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
+		ActorUserID: adminID,
+		Action:      "payment.retry_investigation",
+		TargetType:  "deposit_transaction",
+		Payload: map[string]any{
+			"orderCode": input.OrderCode,
+			"reason":    input.Reason,
+		},
+		RequestIP: &clientIP,
+	})
+
 	shared_pres.Success(c, successAdminRetryInvestigation, nil)
 	return nil
 }
@@ -213,6 +266,22 @@ func (h *AdminBillingHandler) ResolveAsPaid(c *gin.Context) error {
 	if err := h.resolution.ResolveAsPaid(c.Request.Context(), input); err != nil {
 		return err
 	}
+
+	adminID, _ := contextutils.GetUserId(c)
+	clientIP := c.ClientIP()
+	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
+		ActorUserID: adminID,
+		Action:      "payment.resolve_paid",
+		TargetType:  "deposit_transaction",
+		Payload: map[string]any{
+			"orderCode":     input.OrderCode,
+			"paymentLinkId": req.PaymentLinkID,
+			"reference":     req.Reference,
+			"reason":        input.Reason,
+		},
+		RequestIP: &clientIP,
+	})
+
 	shared_pres.Success(c, successAdminResolveAsPaid, nil)
 	return nil
 }
@@ -239,6 +308,20 @@ func (h *AdminBillingHandler) ResolveAsCancelled(c *gin.Context) error {
 	if err := h.resolution.ResolveAsCancelled(c.Request.Context(), input); err != nil {
 		return err
 	}
+
+	adminID, _ := contextutils.GetUserId(c)
+	clientIP := c.ClientIP()
+	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
+		ActorUserID: adminID,
+		Action:      "payment.resolve_cancelled",
+		TargetType:  "deposit_transaction",
+		Payload: map[string]any{
+			"orderCode": input.OrderCode,
+			"reason":    input.Reason,
+		},
+		RequestIP: &clientIP,
+	})
+
 	shared_pres.Success(c, successAdminResolveAsCancelled, nil)
 	return nil
 }
@@ -265,6 +348,20 @@ func (h *AdminBillingHandler) ResolveAsCreationFailed(c *gin.Context) error {
 	if err := h.resolution.ResolveAsCreationFailed(c.Request.Context(), input); err != nil {
 		return err
 	}
+
+	adminID, _ := contextutils.GetUserId(c)
+	clientIP := c.ClientIP()
+	_ = h.auditLogContract.Record(c.Request.Context(), admin_dto.RecordAuditLogInput{
+		ActorUserID: adminID,
+		Action:      "payment.resolve_creation_failed",
+		TargetType:  "deposit_transaction",
+		Payload: map[string]any{
+			"orderCode": input.OrderCode,
+			"reason":    input.Reason,
+		},
+		RequestIP: &clientIP,
+	})
+
 	shared_pres.Success(c, successAdminResolveAsCreationFailed, nil)
 	return nil
 }

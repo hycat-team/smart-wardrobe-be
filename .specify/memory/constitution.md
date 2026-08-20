@@ -1,10 +1,11 @@
 <!--
 Sync Impact Report:
-- Version change: 1.4.0 -> 1.5.0
+- Version change: 1.5.0 -> 1.6.0
 - Modified principles:
   - Access Control (RBAC): renamed "B2C Roles" to "Subscription tiers (PlanKind)"; clarified
     system RoleSlug has only `admin`/`user` (users.role_slug); B2B Roles (owner/staff) & System Admin unchanged
-- Added sections: None
+- Added sections:
+  - VII. Design Patterns & Conventions Compliance — MUST read docs/system-design/design-pattern.md
 - Removed sections: None
 - Templates requiring updates:
   - .specify/templates/plan-template.md (✅ verified/no updates needed)
@@ -91,6 +92,16 @@ back to local processing (e.g., local HSL matching or Gemma models) if quotas ar
 failures occur. AI responses must enforce schema constraints (Gemini Response Schema) and undergo strict
 balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection validation.
 
+### VII. Design Patterns & Conventions Compliance
+Before writing or modifying any code in this project, agents MUST read and comply with
+`docs/system-design/design-pattern.md`. This document is the authoritative source for
+project-specific design patterns, utility package usage, repository conventions, error
+handling recipes, pagination patterns, handler structure, and all other coding conventions
+not covered by this constitution. It may evolve independently — always read the latest
+version. In case of conflict between this constitution and `design-pattern.md`, this
+constitution takes precedence for architectural boundaries and principles; `design-pattern.md`
+governs implementation-level conventions.
+
 ## Technology Stack & Database Constraints
 - **Language & Runtime**: Golang compiler (v1.25.+) with Google Wire for dependency injection.
 - **Web & API Framework**: Gin web framework with automated Swagger generation via Swag.
@@ -146,4 +157,4 @@ balanced bracket scanning, placeholder checking, and anti-SQL/tsquery injection 
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-17
+**Version**: 1.6.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-17

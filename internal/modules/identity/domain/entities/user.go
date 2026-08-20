@@ -57,9 +57,13 @@ type UserStyleProfile struct {
 
 type RefreshToken struct {
 	AuditableEntity
-	UserID    uuid.UUID `gorm:"type:uuid;not null"`
-	User      *User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Token     string    `gorm:"type:varchar(500);uniqueIndex;not null"`
-	ExpiresAt time.Time `gorm:"type:timestamp with time zone;not null"`
-	IsRevoked bool      `gorm:"type:boolean;not null;default:false"`
+	UserID       uuid.UUID  `gorm:"type:uuid;not null"`
+	User         *User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Token        string     `gorm:"type:varchar(500);uniqueIndex;not null"`
+	ExpiresAt    time.Time  `gorm:"type:timestamp with time zone;not null"`
+	IsRevoked    bool       `gorm:"type:boolean;not null;default:false"`
+	DeviceName   *string    `gorm:"type:varchar(255)"`
+	DeviceIP     *string    `gorm:"type:varchar(45)"`
+	UserAgent    *string    `gorm:"type:varchar(512)"`
+	LastActiveAt *time.Time `gorm:"type:timestamp with time zone"`
 }

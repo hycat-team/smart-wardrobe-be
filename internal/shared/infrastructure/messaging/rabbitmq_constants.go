@@ -14,6 +14,7 @@ const (
 	// Queues
 	QueueSubscriptionPlanChanged = "subscription_plan_changed_queue"
 	QueueNotificationEmail       = "notification_email_queue"
+	QueueAuditLog                = "audit_log_queue"
 
 	// Routing Keys
 	RoutingKeyElasticsearchSyncWildcard = "wardrobe.event.*"
@@ -21,4 +22,5 @@ const (
 	RoutingKeyFashionAnalyze            = eventconstants.TopicFashionAnalyze
 	RoutingKeySubscriptionPlanChanged   = eventconstants.TopicSubscriptionPlanChanged
 	RoutingKeyNotificationEmail         = eventconstants.TopicNotificationEmail + ".#"
+	RoutingKeyAuditLog                  = eventconstants.TopicAuditLog
 )

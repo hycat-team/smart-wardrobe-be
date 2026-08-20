@@ -20,12 +20,18 @@ type ConfirmRegisterOtpReq struct {
 }
 
 type LoginReq struct {
-	LoginName string `json:"loginName" binding:"required" label:"tên đăng nhập hoặc email"`
-	Password  string `json:"password" binding:"required" label:"mật khẩu"`
+	LoginName  string  `json:"loginName" binding:"required" label:"tên đăng nhập hoặc email"`
+	Password   string  `json:"password" binding:"required" label:"mật khẩu"`
+	DeviceName *string `json:"deviceName,omitempty"`
+	DeviceIP   *string `json:"deviceIp,omitempty"`
+	UserAgent  *string `json:"userAgent,omitempty"`
 }
 
 type RefreshTokenReq struct {
-	OldRefreshToken string `json:"oldRefreshToken" binding:"required" label:"refresh token cũ"`
+	OldRefreshToken string  `json:"oldRefreshToken" binding:"required" label:"refresh token cũ"`
+	DeviceName      *string `json:"deviceName,omitempty"`
+	DeviceIP        *string `json:"deviceIp,omitempty"`
+	UserAgent       *string `json:"userAgent,omitempty"`
 }
 
 type LogoutReq struct {

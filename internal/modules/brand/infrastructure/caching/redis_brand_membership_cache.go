@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"smart-wardrobe-be/internal/config"
@@ -17,6 +18,8 @@ import (
 type RedisBrandMembershipCache struct {
 	redisClient *redis.Client
 	ttl         time.Duration
+	hitCount    atomic.Uint64
+	missCount   atomic.Uint64
 }
 
 func NewRedisBrandMembershipCache(client *redis.Client, cfg *config.Config) caching.IBrandMembershipCache {
@@ -26,22 +29,35 @@ func NewRedisBrandMembershipCache(client *redis.Client, cfg *config.Config) cach
 	}
 }
 
+func (s *RedisBrandMembershipCache) HitCount() uint64 {
+	return s.hitCount.Load()
+}
+
+func (s *RedisBrandMembershipCache) MissCount() uint64 {
+	return s.missCount.Load()
+}
+
 func (s *RedisBrandMembershipCache) Get(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]brandmemberrole.BrandMemberRole, error) {
 	if s.redisClient == nil {
+		s.missCount.Add(1)
 		return nil, nil
 	}
 	key := brandMembershipCacheKey(userID)
 	cached, err := s.redisClient.Get(ctx, key).Result()
 	if err != nil {
+		s.missCount.Add(1)
 		return nil, nil // miss or backend unavailable -> caller falls back to DB
 	}
 	var raw map[string]string
 	if err := json.Unmarshal([]byte(cached), &raw); err != nil {
+		s.missCount.Add(1)
 		return nil, nil
 	}
 	if len(raw) == 0 {
+		s.missCount.Add(1)
 		return nil, nil
 	}
+	s.hitCount.Add(1)
 	memberships := make(map[uuid.UUID]brandmemberrole.BrandMemberRole, len(raw))
 	for brandIDStr, role := range raw {
 		brandID, err := uuid.Parse(brandIDStr)

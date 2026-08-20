@@ -66,6 +66,12 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	adminUsers.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
 	{
 		adminUsers.GET("", shared_pres.WrapHandler(r.adminHandler.GetUsers))
+		adminUsers.POST("", shared_pres.WrapHandler(r.adminHandler.CreateUser))
+		adminUsers.GET("/:id", shared_pres.WrapHandler(r.adminHandler.GetUserDetail))
+		adminUsers.PATCH("/:id/role", shared_pres.WrapHandler(r.adminHandler.UpdateUserRole))
 		adminUsers.PATCH("/:id/status", shared_pres.WrapHandler(r.adminHandler.UpdateUserStatus))
+		adminUsers.DELETE("/:id", shared_pres.WrapHandler(r.adminHandler.DeactivateUser))
+		adminUsers.GET("/:id/sessions", shared_pres.WrapHandler(r.adminHandler.ListUserSessions))
+		adminUsers.POST("/:id/sessions/revoke", shared_pres.WrapHandler(r.adminHandler.RevokeUserSessions))
 	}
 }

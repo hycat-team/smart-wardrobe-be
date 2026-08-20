@@ -90,3 +90,17 @@ type BrandMemberRes struct {
 	CreatedAt    time.Time                           `json:"createdAt"`
 	UpdatedAt    time.Time                           `json:"updatedAt"`
 }
+
+type AdminAddBrandStaffReq struct {
+	UserID uuid.UUID `json:"userId" binding:"required" label:"mã người dùng"`
+}
+
+type AdminUpdateBrandMemberReq struct {
+	Role   *brandmemberrole.BrandMemberRole     `json:"role,omitempty" label:"vai trò thành viên"`
+	Status *brandmemberstatus.BrandMemberStatus `json:"status,omitempty" label:"trạng thái thành viên"`
+}
+
+type TransferBrandOwnershipReq struct {
+	NewOwnerUserID   uuid.UUID `json:"newOwnerUserId" binding:"required" label:"mã chủ sở hữu mới"`
+	OldOwnerHandling string    `json:"oldOwnerHandling" binding:"required,oneof=staff remove" label:"xử lý chủ cũ"`
+}

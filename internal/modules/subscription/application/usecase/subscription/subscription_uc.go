@@ -11,6 +11,7 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/pkg/logger"
@@ -246,4 +247,104 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 	}
 
 	return result, nil
+}
+
+// AdminList lists user subscriptions with optional filtering by planCode and status.
+func (uc *SubscriptionUseCase) AdminList(ctx context.Context, planCode *string, status *usersubscriptionstatus.UserSubscriptionStatus, page, limit int) ([]*dto.AdminUserSubscriptionItemDTO, int64, error) {
+	filter := repositories.AdminUserSubscriptionFilter{
+		PlanCode: planCode,
+		Status:   status,
+	}
+	subs, total, err := uc.userSubRepo.ListAdmin(ctx, filter, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	planByID, err := uc.stateSupport.ResolveSubscriptionPlans(ctx, subs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return mapper.BuildAdminUserSubscriptionItemDTOList(subs, planByID), total, nil
+}
+
+// AdminCancel downgrades a user's subscription back to the default free plan.
+func (uc *SubscriptionUseCase) AdminCancel(ctx context.Context, userID uuid.UUID) error {
+	defaultPlan, err := uc.planRepo.GetDefaultPlan(ctx)
+	if err != nil {
+		return err
+	}
+	if defaultPlan == nil {
+		return subscriptionerrors.ErrDefaultPlanConfigNotFound()
+	}
+
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, userID)
+		if err != nil {
+			return err
+		}
+		if sub == nil {
+			return subscriptionerrors.ErrUserSubscriptionNotFound()
+		}
+
+		now := time.Now()
+		sub.SubscriptionPlanID = defaultPlan.ID
+		sub.CurrentPlanCode = defaultPlan.Slug
+		sub.CurrentTierRank = defaultPlan.TierRank
+		sub.CurrentPlanKind = defaultPlan.PlanKind
+		sub.CurrentBenefitSnapshot = entities.JSONDocument(`{}`)
+		sub.ExpiresAt = nil
+		sub.FallbackPlanID = nil
+		sub.FallbackPlanCode = nil
+		sub.FallbackTierRank = nil
+		sub.FallbackPlanKind = nil
+		sub.FallbackBenefitSnapshot = entities.JSONDocument(`{}`)
+		sub.IsAutoRenewEnabled = false
+		sub.UpdatedAt = now
+		sub.Version++
+
+		if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
+			return err
+		}
+
+		// Reset quota if needed
+		if quota, err := uc.quotaRepo.GetByUserID(txCtx, userID); err == nil && quota != nil {
+			quota.OutfitRecommendCount = 0
+			quota.AiUsageCount = 0
+			quota.LastResetDate = now
+			_ = uc.quotaRepo.Update(txCtx, quota)
+		}
+
+		return nil
+	})
+}
+
+// AdminGrant manually assigns a subscription plan to a user.
+func (uc *SubscriptionUseCase) AdminGrant(ctx context.Context, userID uuid.UUID, planID uuid.UUID) error {
+	plan, err := uc.planRepo.GetByID(ctx, planID)
+	if err != nil {
+		return err
+	}
+	if plan == nil {
+		return subscriptionerrors.ErrSubscriptionPlanNotFound()
+	}
+	if !plan.IsActive {
+		return subscriptionerrors.ErrPlanInactive()
+	}
+
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		now := time.Now()
+		if err := ApplySubscriptionPlan(txCtx, uc.userSubRepo, userID, plan, now); err != nil {
+			return err
+		}
+
+		if quota, err := uc.quotaRepo.GetByUserID(txCtx, userID); err == nil && quota != nil {
+			quota.OutfitRecommendCount = 0
+			quota.AiUsageCount = 0
+			quota.LastResetDate = now
+			_ = uc.quotaRepo.Update(txCtx, quota)
+		}
+
+		return nil
+	})
 }

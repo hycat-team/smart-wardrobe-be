@@ -14,20 +14,23 @@ import (
 )
 
 type Router struct {
-	brandHandler *brand_handler.BrandHandler
-	brandRole    brand_contract.IBrandRoleMiddleware
-	auth         identity_contract.IAuthMiddleware
+	brandHandler      *brand_handler.BrandHandler
+	adminBrandHandler *brand_handler.AdminBrandHandler
+	brandRole         brand_contract.IBrandRoleMiddleware
+	auth              identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	brandHandler *brand_handler.BrandHandler,
+	adminBrandHandler *brand_handler.AdminBrandHandler,
 	brandRole brand_contract.IBrandRoleMiddleware,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		brandHandler: brandHandler,
-		brandRole:    brandRole,
-		auth:         auth,
+		brandHandler:      brandHandler,
+		adminBrandHandler: adminBrandHandler,
+		brandRole:         brandRole,
+		auth:              auth,
 	}
 }
 
@@ -142,5 +145,11 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		admin.GET("", shared_pres.WrapHandler(r.brandHandler.GetBrandsAdmin))
 		admin.POST("", shared_pres.WrapHandler(r.brandHandler.CreateBrandAdmin))
 		admin.PATCH("/:brandId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBrandStatusAdmin))
+
+		admin.GET("/:brandId/members", shared_pres.WrapHandler(r.adminBrandHandler.ListMembers))
+		admin.POST("/:brandId/members", shared_pres.WrapHandler(r.adminBrandHandler.AddStaff))
+		admin.PATCH("/:brandId/members/:memberId", shared_pres.WrapHandler(r.adminBrandHandler.UpdateMember))
+		admin.DELETE("/:brandId/members/:memberId", shared_pres.WrapHandler(r.adminBrandHandler.RemoveMember))
+		admin.POST("/:brandId/transfer-ownership", shared_pres.WrapHandler(r.adminBrandHandler.TransferOwnership))
 	}
 }

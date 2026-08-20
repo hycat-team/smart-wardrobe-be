@@ -137,6 +137,15 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		return err
 	}
 
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	if input.DeviceIP == nil && clientIP != "" {
+		input.DeviceIP = &clientIP
+	}
+	if input.UserAgent == nil && userAgent != "" {
+		input.UserAgent = &userAgent
+	}
+
 	output, err := h.sessionUC.Login(c.Request.Context(), input)
 	if err != nil {
 		return err
@@ -238,8 +247,12 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		return identityerrors.ErrCookieTokenMissing()
 	}
 
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 	input := dto.RefreshTokenReq{
 		OldRefreshToken: oldRefreshToken,
+		DeviceIP:        &clientIP,
+		UserAgent:       &userAgent,
 	}
 
 	output, err := h.sessionUC.RefreshToken(c.Request.Context(), input)

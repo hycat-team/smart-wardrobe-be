@@ -157,3 +157,23 @@ func ErrTierRankExists(rank int) *apperror.Error {
 func ErrItemFeedbackNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy phản hồi nào cho sản phẩm này.")
 }
+
+func ErrBrandMemberNotFound() *apperror.Error {
+	return apperror.NewNotFound("Không tìm thấy thành viên nhãn hàng này.")
+}
+
+func ErrMemberAlreadyExists() *apperror.Error {
+	return apperror.NewConflict("Người dùng này đã là thành viên của nhãn hàng.")
+}
+
+func ErrCannotRemoveLastOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể gỡ bỏ chủ sở hữu duy nhất của nhãn hàng. Cần chuyển giao quyền sở hữu trước.")
+}
+
+func ErrCannotDemoteLastOwner() *apperror.Error {
+	return apperror.NewForbidden("Không thể hạ vai trò chủ sở hữu duy nhất của nhãn hàng.")
+}
+
+func ErrNewOwnerNotMember() *apperror.Error {
+	return apperror.NewBadRequest("Người nhận quyền sở hữu mới chưa phải là thành viên của nhãn hàng.")
+}

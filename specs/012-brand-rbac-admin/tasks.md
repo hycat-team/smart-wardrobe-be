@@ -116,11 +116,11 @@
 
 **Independent Test**: Admin tạo/tắt plan → public list phản ánh; cancel user → về free + grant AI thu hồi; grant user → nhận plan + grant AI.
 
-- [ ] T028 [P] [US5] Mở rộng `ISubscriptionPlanUseCase` + impl (`internal/modules/subscription/application/usecase/plan/`): `CreatePlan`, `UpdatePlan`, `SetPlanActive` (chống trùng slug qua `GetBySlug`; inactive ⇒ không xuất hiện public)
-- [ ] T029 [P] [US5] Thêm `ListAdmin(ctx, filter)` vào `IUserSubscriptionRepository` (`internal/modules/subscription/domain/repositories/user_subscription_repo.go`) + impl (filter planCode/status + phân trang)
-- [ ] T030 [US5] Mở rộng `ISubscriptionUseCase` + impl (`internal/modules/subscription/application/usecase/subscription/`): `AdminList`, `AdminCancel` (downgrade về free qua state machine `state_machine.go`), `AdminGrant` (kích hoạt luồng `PlanChanged` hiện có để đồng bộ grant AI)
-- [ ] T031 [US5] Tạo `AdminSubscriptionHandler` trong `internal/modules/subscription/presentation/handler/admin_subscription_handler.go`: `GET/POST /admin/subscriptions/plans`, `PUT/PATCH /admin/subscriptions/plans/:id`, `GET /admin/subscriptions`, `POST /admin/subscriptions/:userId/cancel`, `POST /admin/subscriptions/:userId/grant`; swagger `@Tags Admin Subscription`
-- [ ] T032 [US5] Thêm group routes trong `internal/modules/subscription/presentation/router/router.go` (`/admin/subscriptions*`, `/admin/subscriptions/plans*`) + thêm `handler.NewAdminSubscriptionHandler` vào `internal/modules/subscription/provider.go` + `make wire`
+- [X] T028 [P] [US5] Mở rộng `ISubscriptionPlanUseCase` + impl (`internal/modules/subscription/application/usecase/plan/`): `CreatePlan`, `UpdatePlan`, `SetPlanActive` (chống trùng slug qua `GetBySlug`; inactive ⇒ không xuất hiện public)
+- [X] T029 [P] [US5] Thêm `ListAdmin(ctx, filter)` vào `IUserSubscriptionRepository` (`internal/modules/subscription/domain/repositories/user_subscription_repo.go`) + impl (filter planCode/status + phân trang)
+- [X] T030 [US5] Mở rộng `ISubscriptionUseCase` + impl (`internal/modules/subscription/application/usecase/subscription/`): `AdminList`, `AdminCancel` (downgrade về free qua state machine `state_machine.go`), `AdminGrant` (kích hoạt luồng `PlanChanged` hiện có để đồng bộ grant AI)
+- [X] T031 [US5] Tạo `AdminSubscriptionHandler` trong `internal/modules/subscription/presentation/handler/admin_subscription_handler.go`: `GET/POST /admin/subscriptions/plans`, `PUT/PATCH /admin/subscriptions/plans/:id`, `GET /admin/subscriptions`, `POST /admin/subscriptions/:userId/cancel`, `POST /admin/subscriptions/:userId/grant`; swagger `@Tags Admin Subscription`
+- [X] T032 [US5] Thêm group routes trong `internal/modules/subscription/presentation/router/router.go` (`/admin/subscriptions*`, `/admin/subscriptions/plans*`) + thêm `handler.NewAdminSubscriptionHandler` vào `internal/modules/subscription/provider.go` + `make wire`
 
 **Checkpoint**: Chạy quickstart mục C (Plan & subscription).
 
@@ -132,11 +132,11 @@
 
 **Independent Test**: Admin xem chi tiết; tạo user → login được; đổi role user→admin bằng admin thường → 403, bằng admin seed → 200; deactivate → không login; sessions có device/IP; revoke → token hết hiệu lực.
 
-- [ ] T033 [P] [US6] Cập nhật `Login` và `RefreshToken` trong `internal/modules/identity/application/usecase/session_uc.go`: nhận + lưu `device_name`/`device_ip`/`user_agent` lúc tạo phiên, cập nhật `last_active_at` lúc refresh (handler `auth_handler.go` truyền từ header `User-Agent`/`X-Forwarded-For`/RemoteAddr)
-- [ ] T034 [P] [US6] Thêm method đọc phiên vào repo refresh token (`internal/modules/identity/infrastructure/persistence/refresh_token_repo_impl.go`): `ListByUserID` (kèm device fields); mở rộng entity `RefreshToken` trong `internal/modules/identity/domain/entities/user.go`
-- [ ] T035 [US6] Mở rộng `IUserUseCase` (`internal/modules/identity/application/interface/usecase/user_uc.go`) + impl (`user_uc.go`): `GetUserDetail`, `CreateUser` (bcrypt hash + username/email unique, role mặc định user), `UpdateUserRole` (chỉ admin seed được đổi thành admin; chặn self/admin-khác), `ListUserSessions`, `RevokeUserSessions`; tái sử dụng `UpdateUserStatus` cho deactivate
-- [ ] T036 [US6] Cập nhật `AdminHandler` (`internal/modules/identity/presentation/handler/admin_handler.go`): thêm handlers `GET /admin/users/:id`, `POST /admin/users`, `PATCH /admin/users/:id/role`, `DELETE /admin/users/:id`, `GET /admin/users/:id/sessions`, `POST /admin/users/:id/sessions/revoke`; swagger `@Tags Admin User`
-- [ ] T037 [US6] Thêm routes trong `internal/modules/identity/presentation/router/router.go` group `/admin/users` + wire handler
+- [X] T033 [P] [US6] Cập nhật `Login` và `RefreshToken` trong `internal/modules/identity/application/usecase/session_uc.go`: nhận + lưu `device_name`/`device_ip`/`user_agent` lúc tạo phiên, cập nhật `last_active_at` lúc refresh (handler `auth_handler.go` truyền từ header `User-Agent`/`X-Forwarded-For`/RemoteAddr)
+- [X] T034 [P] [US6] Thêm method đọc phiên vào repo refresh token (`internal/modules/identity/infrastructure/persistence/refresh_token_repo_impl.go`): `ListByUserID` (kèm device fields); mở rộng entity `RefreshToken` trong `internal/modules/identity/domain/entities/user.go`
+- [X] T035 [US6] Mở rộng `IUserUseCase` (`internal/modules/identity/application/interface/usecase/user_uc.go`) + impl (`user_uc.go`): `GetUserDetail`, `CreateUser` (bcrypt hash + username/email unique, role mặc định user), `UpdateUserRole` (chỉ admin seed được đổi thành admin; chặn self/admin-khác), `ListUserSessions`, `RevokeUserSessions`; tái sử dụng `UpdateUserStatus` cho deactivate
+- [X] T036 [US6] Cập nhật `AdminHandler` (`internal/modules/identity/presentation/handler/admin_handler.go`): thêm handlers `GET /admin/users/:id`, `POST /admin/users`, `PATCH /admin/users/:id/role`, `DELETE /admin/users/:id`, `GET /admin/users/:id/sessions`, `POST /admin/users/:id/sessions/revoke`; swagger `@Tags Admin User`
+- [X] T037 [US6] Thêm routes trong `internal/modules/identity/presentation/router/router.go` group `/admin/users` + wire handler
 
 **Checkpoint**: Chạy quickstart mục C (User admin).
 
@@ -148,9 +148,9 @@
 
 **Independent Test**: Admin thêm staff → vào portal; transfer với `oldOwnerHandling=staff` → chủ cũ thành staff; `remove` → chủ cũ bị gỡ; 1 owner → 4xx.
 
-- [ ] T038 [P] [US7] Tạo `IBrandAdminUseCase` + impl trong `internal/modules/brand/application/usecase/admin/brand_admin_uc.go`: `ListMembers`, `AddStaff`, `UpdateMember` (role/status), `RemoveMember` (guard single-owner), `TransferOwnership` (`newOwnerUserId`, `oldOwnerHandling: staff|remove`; guard single-owner; invalidate cache 2 user liên quan)
-- [ ] T039 [US7] Tạo `AdminBrandHandler` trong `internal/modules/brand/presentation/handler/admin_brand_handler.go`: `GET/POST /admin/brands/:brandId/members`, `PATCH/DELETE /admin/brands/:brandId/members/:memberId`, `POST /admin/brands/:brandId/transfer-ownership`; swagger `@Tags Admin Brand`
-- [ ] T040 [US7] Thêm group admin routes trong `internal/modules/brand/presentation/router/router.go` (`/admin/brands/:brandId/members*`, `/admin/brands/:brandId/transfer-ownership`) với `RolesAuthorize(roleslug.Admin)` + wire handler
+- [X] T038 [P] [US7] Tạo `IBrandAdminUseCase` + impl trong `internal/modules/brand/application/usecase/admin/brand_admin_uc.go`: `ListMembers`, `AddStaff`, `UpdateMember` (role/status), `RemoveMember` (guard single-owner), `TransferOwnership` (`newOwnerUserId`, `oldOwnerHandling: staff|remove`; guard single-owner; invalidate cache 2 user liên quan)
+- [X] T039 [US7] Tạo `AdminBrandHandler` trong `internal/modules/brand/presentation/handler/admin_brand_handler.go`: `GET/POST /admin/brands/:brandId/members`, `PATCH/DELETE /admin/brands/:brandId/members/:memberId`, `POST /admin/brands/:brandId/transfer-ownership`; swagger `@Tags Admin Brand`
+- [X] T040 [US7] Thêm group admin routes trong `internal/modules/brand/presentation/router/router.go` (`/admin/brands/:brandId/members*`, `/admin/brands/:brandId/transfer-ownership`) với `RolesAuthorize(roleslug.Admin)` + wire handler
 
 **Checkpoint**: Chạy quickstart mục C (Brand member admin).
 
@@ -162,10 +162,10 @@
 
 **Independent Test**: Admin xem pricing; sửa giá → chi phí mới theo giá mới; xem usage user; tạo grant → hạn mức user phản ánh.
 
-- [ ] T041 [P] [US8] Thêm `ListAdmin(ctx)` vào `IAIModelConfigRepository` (`internal/modules/aiexecutor/domain/repositories/pricing_repo.go`) + impl; thêm `GetUsageByUser(ctx, userID, from, to)` và `ListGrantsByUser(ctx, userID)` vào `IAICostRepository` (`ai_cost_repo.go`) + impl (`internal/modules/aiexecutor/infrastructure/persistence/`)
-- [ ] T042 [US8] Tạo `IAIAdminUseCase` + impl trong `internal/modules/aiexecutor/application/usecase/admin/ai_admin_uc.go`: `ListPricing`, `UpdatePricing` (invalidate redis pricing cache / để TTL), `GetUserUsage`, `ListGrants`, `CreateGrant` (dùng `CreateGrant` + `ExpireGrantsByUserID` nếu cần)
-- [ ] T043 [US8] Tạo `AdminHandler` (`internal/modules/aiexecutor/presentation/handler/admin_handler.go`) + `Router` (`internal/modules/aiexecutor/presentation/router/router.go`): group `/admin/ai/*` (`GET /admin/ai/pricing`, `PUT /admin/ai/pricing/:id`, `GET /admin/ai/usage`, `GET /admin/ai/grants`, `POST /admin/ai/grants`) với `auth.Handle()` + `RolesAuthorize(roleslug.Admin)`; swagger `@Tags Admin AI`
-- [ ] T044 [US8] Cập nhật `internal/modules/aiexecutor/provider.go` (thêm handler/router/usecase) + `internal/api/routes/provider.go` (thêm `AIExecutorRouter` vào AppRouter) + `internal/api/routes/router.go` (gọi `Init`) + `internal/di/wire.go` + `make wire`
+- [X] T041 [P] [US8] Thêm `ListAdmin(ctx)` vào `IAIModelConfigRepository` (`internal/modules/aiexecutor/domain/repositories/pricing_repo.go`) + impl; thêm `GetUsageByUser(ctx, userID, from, to)` và `ListGrantsByUser(ctx, userID)` vào `IAICostRepository` (`ai_cost_repo.go`) + impl (`internal/modules/aiexecutor/infrastructure/persistence/`)
+- [X] T042 [US8] Tạo `IAIAdminUseCase` + impl trong `internal/modules/aiexecutor/application/usecase/admin/ai_admin_uc.go`: `ListPricing`, `UpdatePricing` (invalidate redis pricing cache / để TTL), `GetUserUsage`, `ListGrants`, `CreateGrant` (dùng `CreateGrant` + `ExpireGrantsByUserID` nếu cần)
+- [X] T043 [US8] Tạo `AdminHandler` (`internal/modules/aiexecutor/presentation/handler/admin_handler.go`) + `Router` (`internal/modules/aiexecutor/presentation/router/router.go`): group `/admin/ai/*` (`GET /admin/ai/pricing`, `PUT /admin/ai/pricing/:id`, `GET /admin/ai/usage`, `GET /admin/ai/grants`, `POST /admin/ai/grants`) với `auth.Handle()` + `RolesAuthorize(roleslug.Admin)`; swagger `@Tags Admin AI`
+- [X] T044 [US8] Cập nhật `internal/modules/aiexecutor/provider.go` (thêm handler/router/usecase) + `internal/api/routes/provider.go` (thêm `AIExecutorRouter` vào AppRouter) + `internal/api/routes/router.go` (gọi `Init`) + `internal/di/wire.go` + `make wire`
 
 **Checkpoint**: Chạy quickstart mục C (AI executor admin).
 
@@ -177,13 +177,14 @@
 
 **Independent Test**: Hành động admin (vd đổi status user) → sau vài nhịp consumer, có bản ghi audit; `GET /admin/audit-logs` trả đúng; user thường → 403; bản ghi > 12 tháng bị dọn.
 
-- [ ] T045 [P] [US9] Tạo module `admin`: entity `internal/modules/admin/domain/entities/admin_audit_log.go`, repo interface `internal/modules/admin/domain/repositories/admin_audit_log_repo.go` (`Create`, `List(filter)`, `DeleteOlderThan`), impl gorm `internal/modules/admin/infrastructure/persistence/admin_audit_log_repo.go` (bảng `shared.admin_audit_logs`)
-- [ ] T046 [P] [US9] Tạo `IAuditLogUseCase` + impl `internal/modules/admin/application/usecase/audit_log_uc.go` (`Record`, `List`, `DeleteOlderThan`); interface `internal/modules/admin/application/interface/usecase/audit_log_uc.go`
-- [ ] T047 [P] [US9] Thêm hằng số messaging: `eventconstants.TopicAuditLog = "admin.audit.log"` trong `internal/shared/application/constants/eventconstants/eventconstants.go`; `QueueAuditLog = "audit_log_queue"` + `RoutingKeyAuditLog` trong `internal/shared/infrastructure/messaging/rabbitmq_constants.go`; bind queue trong `internal/shared/infrastructure/messaging/rabbitmq_connection.go`; tạo contract `IAuditLogContract` + impl trong `internal/modules/admin/presentation/contract/audit_log_contract.go` — `Record` = `event.IEventPublisher.Publish(ctx, TopicAuditLog, RecordAuditInput)` (ghi outbox, KHÔNG ghi DB trực tiếp)
-- [ ] T048 [US9] Tạo `AdminAuditHandler` + `Router` trong `internal/modules/admin/presentation/`: `GET /admin/audit-logs` (filter actorUserId/action/targetType/targetId/fromDate/toDate/page/limit) với `auth.Handle()` + `RolesAuthorize(roleslug.Admin)`; swagger `@Tags Admin Audit`
-- [ ] T049 [US9] Tạo consumer worker `internal/modules/admin/presentation/worker/audit_log_consumer.go` (`event.IMessageConsumer.RegisterConsumer(QueueAuditLog, handler)` → unmarshal payload → `IAuditLogUseCase.Record` → ghi bảng, ack/nack theo pattern `email_worker.go`) + cleanup worker `audit_cleanup_worker.go` (xóa `created_at < now()-12 months` định kỳ hàng ngày); đăng ký cả 2 vào bootstrap worker
-- [ ] T050 [US9] Tạo `internal/modules/admin/provider.go` (entity/repo/usecase/contract/handler/router/consumer/cleanup); đăng ký `admin.ProviderSet` vào `internal/di/wire.go` + `AdminRouter` vào `internal/api/routes/provider.go` + `internal/api/routes/router.go` + `make wire`
-- [ ] T051 [US9] Inject `IAuditLogContract` vào các admin handler đã xây (identity `admin_handler.go`, subscription `admin_billing_handler.go` + `admin_subscription_handler.go`, brand `admin_brand_handler.go`, aiexecutor `admin_handler.go`) + thêm lệnh `Record` với action/target/payload theo `contracts/admin-audit-log.md` (không chứa secret/token/password)
+- [X] T045 [P] [US9] Tạo module `admin`: entity `internal/modules/admin/domain/entities/admin_audit_log.go`, repo interface `internal/modules/admin/domain/repositories/admin_audit_log_repo.go` (`Create`, `List(filter)`, `DeleteOlderThan`), impl gorm `internal/modules/admin/infrastructure/persistence/admin_audit_log_repo.go` (bảng `shared.admin_audit_logs`)
+- [X] T046 [P] [US9] Tạo `IAuditLogUseCase` + impl `internal/modules/admin/application/usecase/audit_log_uc.go` (`Record`, `List`, `DeleteOlderThan`); interface `internal/modules/admin/application/interface/usecase/audit_log_uc.go`
+- [X] T047 [P] [US9] Thêm hằng số messaging: `eventconstants.TopicAuditLog = "admin.audit.log"` trong `internal/shared/application/constants/eventconstants/eventconstants.go`; `QueueAuditLog = "audit_log_queue"` + `RoutingKeyAuditLog` trong `internal/shared/infrastructure/messaging/rabbitmq_constants.go`; bind queue trong `internal/shared/infrastructure/messaging/rabbitmq_connection.go`; tạo contract `IAuditLogContract` + impl trong `internal/modules/admin/presentation/contract/audit_log_contract.go` — `Record` = `event.IEventPublisher.Publish(ctx, TopicAuditLog, RecordAuditInput)` (ghi outbox, KHÔNG ghi DB trực tiếp)
+- [X] T048 [US9] Tạo `AdminAuditHandler` + `Router` trong `internal/modules/admin/presentation/`: `GET /admin/audit-logs` (filter actorUserId/action/targetType/targetId/fromDate/toDate/page/limit) với `auth.Handle()` + `RolesAuthorize(roleslug.Admin)`; swagger `@Tags Admin Audit`
+- [X] T049 [US9] Tạo consumer worker `internal/modules/admin/presentation/worker/audit_log_consumer.go` (`event.IMessageConsumer.RegisterConsumer(QueueAuditLog, handler)` → unmarshal payload → `IAuditLogUseCase.Record` → ghi bảng, ack/nack theo pattern `email_worker.go`) + cleanup worker `audit_cleanup_worker.go` (xóa `created_at < now()-12 months` định kỳ hàng ngày); đăng ký cả 2 vào bootstrap worker
+- [X] T050 [US9] Tạo `internal/modules/admin/provider.go` (entity/repo/usecase/contract/handler/router/consumer/cleanup); đăng ký `admin.ProviderSet` vào `internal/di/wire.go` + `AdminRouter` vào `internal/api/routes/provider.go` + `internal/api/routes/router.go` + `make wire`
+- [X] T051 [US9] Inject `IAuditLogContract` vào các admin handler đã xây (identity `admin_handler.go`, subscription `admin_billing_handler.go` + `admin_subscription_handler.go`, brand `admin_brand_handler.go`, aiexecutor `admin_handler.go`) + thêm lệnh `Record` với action/target/payload theo `contracts/admin-audit-log.md` (không chứa secret/token/password)
+
 
 **Checkpoint**: Chạy quickstart mục C (Audit log).
 
@@ -195,11 +196,12 @@
 
 **Independent Test**: Đọc docs không còn mâu thuẫn với code (transaction_type, plan code, khái niệm role, ma trận); tài liệu out-of-scope đủ 9 mục.
 
-- [ ] T052 [P] [US10] Sửa `docs/api/dashboard-api-v2.md`: `DIRECT_PURCHASE` → `direct_purchase` (dòng 36, 31) và plan codes `FREE/PREMIUM_MONTHLY/PREMIUM_YEARLY` → khớp `free`/`premium-monthly` (dòng 13, 20)
-- [ ] T053 [P] [US10] Sửa `docs/system-design/architecture.md` (dòng ~287-291): đổi khái niệm "B2C Roles" → "hạng theo gói subscription (PlanKind free/premium)"; làm rõ `roleslug` chỉ có admin/user
-- [ ] T054 [P] [US10] Sửa `docs/api/brand-api.md` dòng 480: sửa danh sách role cũ bị gõ lặp "staff, staff, staff"; reference ma trận quyền `docs/system-design/brand-permission-matrix.md`
-- [ ] T055 [P] [US10] Tạo `docs/decisions/out-of-scope-2026-08.md`: liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do
-- [ ] T056 [P] [US10] Cập nhật `docs/product/roadmap.md` + `docs/README.md`: trỏ tới ADR out-of-scope và ma trận quyền
+- [X] T052 [P] [US10] Sửa `docs/api/dashboard-api-v2.md`: `DIRECT_PURCHASE` → `direct_purchase` (dòng 36, 31) và plan codes `FREE/PREMIUM_MONTHLY/PREMIUM_YEARLY` → khớp `free`/`premium-monthly` (dòng 13, 20)
+- [X] T053 [P] [US10] Sửa `docs/system-design/architecture.md` (dòng ~287-291): đổi khái niệm "B2C Roles" → "hạng theo gói subscription (PlanKind free/premium)"; làm rõ `roleslug` chỉ có admin/user
+- [X] T054 [P] [US10] Sửa `docs/api/brand-api.md` dòng 480: sửa danh sách role cũ bị gõ lặp "staff, staff, staff"; reference ma trận quyền `docs/system-design/brand-permission-matrix.md`
+- [X] T055 [P] [US10] Tạo `docs/decisions/out-of-scope-2026-08.md`: liệt kê 9 mục (RBAC toàn hệ thống giữ `users.role_slug`, campaign, support ticket, virtual trial, notification đa kênh + quản lý, swap/re-roll AI, AI OOTD generator, body-shape validation, garment decay) kèm lý do
+- [X] T056 [P] [US10] Cập nhật `docs/product/roadmap.md` + `docs/README.md`: trỏ tới ADR out-of-scope và ma trận quyền
+
 
 **Checkpoint**: Đối chiếu docs với code theo quickstart mục D — không còn mâu thuẫn.
 
@@ -209,14 +211,15 @@
 
 **Purpose**: Đảm bảo chất lượng tổng thể, sinh code, bảo mật và kiểm chứng end-to-end.
 
-- [ ] T057 Chạy `make wire` + `make swagger` → commit `wire_gen.go` + `api/swagger/`; chạy `make check` (fmt, tidy, generate-check, vet, test, build) và sửa mọi lỗi phát sinh
-- [ ] T058 [P] Bổ sung unit test `BrandRoleMiddleware` trong `internal/modules/brand/presentation/middleware/brand_role_test.go` (path/query resolve, admin bypass, role không thuộc allowedRoles ⇒ 403, context set đúng)
-- [ ] T059 [P] Bổ sung unit test cache membership trong `internal/modules/brand/infrastructure/caching/redis_brand_membership_cache_test.go` (get/set/invalidate/fallback nil client)
-- [ ] T060 [P] Bổ sung test admin user role-restriction trong `internal/modules/identity/application/usecase/user_uc_test.go` (chặn đổi role thành admin khi không phải seed; chặn self)
-- [ ] T061 [P] Bổ sung test `PaymentResolutionUseCase` cho ca thiếu evidence và trạng thái không khớp (`internal/modules/subscription/application/usecase/resolution/payment_resolution_uc_test.go` nếu chưa có)
-- [ ] T062 Chạy quickstart.md mục A–D end-to-end (curl + kiểm tra Redis key `brand:members:*`, audit rows, docs) và ghi kết quả
-- [ ] T063 Rà soát bảo mật cuối: không cross-module FK ngoài `admin_audit_logs.actor_user_id→identity.users`; payload audit không chứa secret; context key không hardcode; worker nền không bỏ sót check sau khi gỡ khỏi usecase
-- [ ] T064 [P] Bổ sung đo metric cache hit/miss cho `RedisBrandMembershipCache` (counter trong `internal/modules/brand/infrastructure/caching/redis_brand_membership_cache.go`, log/đọc được) để kiểm chứng SC-003 (cache hit ≥90% trên portal/dashboard) — và bổ sung ghi chú cách đo vào `quickstart.md`
+- [X] T057 Chạy `make wire` + `make swagger` → commit `wire_gen.go` + `api/swagger/`; chạy `make check` (fmt, tidy, generate-check, vet, test, build) và sửa mọi lỗi phát sinh
+- [X] T058 [P] Bổ sung unit test `BrandRoleMiddleware` trong `internal/modules/brand/presentation/middleware/brand_role_test.go` (path/query resolve, admin bypass, role không thuộc allowedRoles ⇒ 403, context set đúng)
+- [X] T059 [P] Bổ sung unit test cache membership trong `internal/modules/brand/infrastructure/caching/redis_brand_membership_cache_test.go` (get/set/invalidate/fallback nil client)
+- [X] T060 [P] Bổ sung test admin user role-restriction trong `internal/modules/identity/application/usecase/user_uc_test.go` (chặn đổi role thành admin khi không phải seed; chặn self)
+- [X] T061 [P] Bổ sung test `PaymentResolutionUseCase` cho ca thiếu evidence và trạng thái không khớp (`internal/modules/subscription/application/usecase/resolution/payment_resolution_uc_test.go` nếu chưa có)
+- [X] T062 Chạy quickstart.md mục A–D end-to-end (curl + kiểm tra Redis key `brand:members:*`, audit rows, docs) và ghi kết quả
+- [X] T063 Rà soát bảo mật cuối: không cross-module FK ngoài `admin_audit_logs.actor_user_id→identity.users`; payload audit không chứa secret; context key không hardcode; worker nền không bỏ sót check sau khi gỡ khỏi usecase
+- [X] T064 [P] Bổ sung đo metric cache hit/miss cho `RedisBrandMembershipCache` (counter trong `internal/modules/brand/infrastructure/caching/redis_brand_membership_cache.go`, log/đọc được) để kiểm chứng SC-003 (cache hit ≥90% trên portal/dashboard) — và bổ sung ghi chú cách đo vào `quickstart.md`
+
 
 ---
 
@@ -318,3 +321,13 @@ Task: "Tạo BrandRoleMiddleware trong internal/modules/brand/presentation/middl
 - Chạy `make wire` sau mỗi phase thêm provider/handler; `make swagger` sau khi thêm annotation
 - Commit sau mỗi task hoặc nhóm logic
 - Tránh: task mơ hồ, xung đột cùng file, cross-story dependency phá vỡ tính độc lập
+
+---
+
+## Phase 14: Convergence
+
+**Purpose**: Sửa các gap còn lại từ convergence check — tuân thủ §VII design-pattern.md.
+
+- [X] T065 [P] Tạo `internal/modules/admin/application/errors/errors.go` — domain error constructors cho admin module dùng `apperror` factories (vd: `ErrAuditLogNotFound`, `ErrInvalidFilter`) thay vì raw errors; cập nhật usecase/handler để dùng error constructors mới per §VII (partial)
+- [X] T066 [P] Tạo `internal/modules/admin/application/mapper/audit_log.go` — extract mapper entity→DTO từ `audit_log_uc.go:56-68` vào dedicated mapper package; refactor usecase gọi mapper thay vì inline for-loop per §VII (contradicts)
+- [X] T067 [P] Kiểm tra `internal/modules/identity/application/dto/admin_user_dto.go` — xác nhận `AdminUserListRes` đã chứa `PaginationMetadata`; nếu chưa thì wrap bằng `shared_dto.PaginationResult[*AdminUserDTO]` trong handler per §VII pagination pattern (partial)

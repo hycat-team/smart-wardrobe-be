@@ -191,3 +191,7 @@ func ErrAiOutfitQuotaExceeded() *apperror.Error {
 func ErrAiChatQuotaExceeded() *apperror.Error {
 	return apperror.NewBadRequest("Bạn đã dùng hết lượt trò chuyện với AI Chatbot trong hôm nay.")
 }
+
+func ErrPlanSlugAlreadyExists() *apperror.Error {
+	return apperror.NewConflict("Mã định danh gói (slug) đã tồn tại trong hệ thống.")
+}

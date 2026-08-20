@@ -49,6 +49,12 @@ func (f *fakeSubscriptionPlanRepository) GetDefaultPlan(ctx context.Context) (*e
 func (f *fakeSubscriptionPlanRepository) GetBySlug(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
 }
+func (f *fakeSubscriptionPlanRepository) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
+	return nil, nil
+}
+func (f *fakeSubscriptionPlanRepository) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
+	return f.plans, nil
+}
 func (f *fakeSubscriptionPlanRepository) BatchUpdate(ctx context.Context, entities []*entities.SubscriptionPlan) error {
 	return nil
 }

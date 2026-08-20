@@ -45,3 +45,14 @@ func (r *ModelConfigRepository) GetActiveByProviderAndModel(ctx context.Context,
 	}
 	return &item, nil
 }
+
+func (r *ModelConfigRepository) ListAdmin(ctx context.Context) ([]*entities.AIModelConfig, error) {
+	var items []*entities.AIModelConfig
+	err := r.GetDB(ctx).
+		Order("provider ASC, model ASC, effective_from DESC").
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}

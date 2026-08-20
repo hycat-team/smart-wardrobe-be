@@ -92,11 +92,16 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, identityerrors.ErrSessionIssueFailed()
 	}
 
+	now := time.Now()
 	rt := &entities.RefreshToken{
-		UserID:    user.ID,
-		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(refreshExpiry),
-		IsRevoked: false,
+		UserID:       user.ID,
+		Token:        refreshToken,
+		ExpiresAt:    now.Add(refreshExpiry),
+		IsRevoked:    false,
+		DeviceName:   input.DeviceName,
+		DeviceIP:     input.DeviceIP,
+		UserAgent:    input.UserAgent,
+		LastActiveAt: &now,
 	}
 	rt.ID = uuid.New()
 
@@ -170,11 +175,29 @@ func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTok
 		return nil, identityerrors.ErrSessionCreateFailed()
 	}
 
+	now := time.Now()
+	deviceName := existingToken.DeviceName
+	if input.DeviceName != nil {
+		deviceName = input.DeviceName
+	}
+	deviceIP := existingToken.DeviceIP
+	if input.DeviceIP != nil {
+		deviceIP = input.DeviceIP
+	}
+	userAgent := existingToken.UserAgent
+	if input.UserAgent != nil {
+		userAgent = input.UserAgent
+	}
+
 	rt := &entities.RefreshToken{
-		UserID:    user.ID,
-		Token:     newRefreshToken,
-		ExpiresAt: time.Now().Add(remainingTime),
-		IsRevoked: false,
+		UserID:       user.ID,
+		Token:        newRefreshToken,
+		ExpiresAt:    now.Add(remainingTime),
+		IsRevoked:    false,
+		DeviceName:   deviceName,
+		DeviceIP:     deviceIP,
+		UserAgent:    userAgent,
+		LastActiveAt: &now,
 	}
 	rt.ID = uuid.New()
 

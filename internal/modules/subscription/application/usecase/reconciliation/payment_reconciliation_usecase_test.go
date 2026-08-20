@@ -77,6 +77,9 @@ func (f *fakeDepositTransactionRepository) BatchUpdate(ctx context.Context, enti
 func (f *fakeDepositTransactionRepository) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (f *fakeDepositTransactionRepository) ListAdmin(ctx context.Context, filter repositories.AdminDepositTransactionFilter, page, limit int) ([]*entities.DepositTransaction, int64, error) {
+	return nil, 0, nil
+}
 
 type fakePaymentGatewayService struct {
 	getPaymentLinkInfoFunc func(ctx context.Context, orderCode int64) (*payment.PaymentLinkInfo, error)

@@ -12,6 +12,7 @@ type IAIModelConfigRepository interface {
 	shared_repos.IGenericRepository[entities.AIModelConfig, uuid.UUID]
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.AIModelConfig, error)
 	GetActiveByProviderAndModel(ctx context.Context, provider string, model string) (*entities.AIModelConfig, error)
+	ListAdmin(ctx context.Context) ([]*entities.AIModelConfig, error)
 }
 
 type IPricingConfigRepository = IAIModelConfigRepository
