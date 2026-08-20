@@ -187,6 +187,8 @@ loyalty:
     expiry_worker_batch_size: 100
 brand_membership:
     ttl: 5m
+brand_feature_access:
+    ttl: 15m
 rag:
     recently_worn_penalty_days: 3
     long_unworn_bonus_days: 14

@@ -437,6 +437,20 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes": {
       "properties": {
         "benefitType": {
@@ -1323,6 +1337,41 @@
           "type": "string"
         },
         "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes": {
+      "properties": {
+        "benefits": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "minTotalSpend": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "integer"
+        },
+        "updatedAt": {
           "type": "string"
         }
       },

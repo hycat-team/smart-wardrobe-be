@@ -41,6 +41,7 @@ type BrandLoyaltyUseCase struct {
 	accountRepo  repositories.ILoyaltyAccountRepository
 	txRepo       repositories.ILoyaltyPointTransactionRepository
 	lotRepo      repositories.ILoyaltyPointLotRepository
+	benefitRepo  repositories.IBrandBenefitRepository
 	uow          shared_repos.IUnitOfWork
 	cfg          *config.Config
 	logger       logger.Interface
@@ -56,6 +57,7 @@ func NewBrandLoyaltyUseCase(
 	accountRepo repositories.ILoyaltyAccountRepository,
 	txRepo repositories.ILoyaltyPointTransactionRepository,
 	lotRepo repositories.ILoyaltyPointLotRepository,
+	benefitRepo repositories.IBrandBenefitRepository,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 	l logger.Interface,
@@ -70,6 +72,7 @@ func NewBrandLoyaltyUseCase(
 		accountRepo:  accountRepo,
 		txRepo:       txRepo,
 		lotRepo:      lotRepo,
+		benefitRepo:  benefitRepo,
 		uow:          uow,
 		cfg:          cfg,
 		logger:       l,
@@ -547,6 +550,54 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyTiersForStaff(ctx context.Context, staf
 		return nil, err
 	}
 	return mapper.MapLoyaltyTiers(tiers), nil
+}
+
+func (uc *BrandLoyaltyUseCase) GetLoyaltyTierDetailForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, tierID uuid.UUID) (*dto.LoyaltyTierDetailRes, error) {
+	tier, err := uc.tierRepo.GetByID(ctx, tierID)
+	if err != nil {
+		return nil, err
+	}
+	if tier == nil || tier.BrandID != brandID {
+		return nil, branderrors.ErrTierNotFound()
+	}
+
+	benefits, err := uc.benefitRepo.GetActiveByBrandIDAndTierID(ctx, brandID, tierID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.LoyaltyTierDetailRes{
+		LoyaltyTierRes: *mapper.MapLoyaltyTier(tier),
+		Benefits:       mapper.MapBrandBenefits(benefits),
+	}, nil
+}
+
+func (uc *BrandLoyaltyUseCase) GetLoyaltyTierDetailForUser(ctx context.Context, brandID uuid.UUID, tierID uuid.UUID) (*dto.LoyaltyTierDetailRes, error) {
+	brand, err := uc.brandRepo.GetByID(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	if brand == nil || brand.Status != brandstatus.Active {
+		return nil, branderrors.ErrBrandNotActive()
+	}
+
+	tier, err := uc.tierRepo.GetByID(ctx, tierID)
+	if err != nil {
+		return nil, err
+	}
+	if tier == nil || tier.BrandID != brandID {
+		return nil, branderrors.ErrTierNotFound()
+	}
+
+	benefits, err := uc.benefitRepo.GetActiveByBrandIDAndTierID(ctx, brandID, tierID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.LoyaltyTierDetailRes{
+		LoyaltyTierRes: *mapper.MapLoyaltyTier(tier),
+		Benefits:       mapper.MapBrandBenefits(benefits),
+	}, nil
 }
 
 func (uc *BrandLoyaltyUseCase) CreateLoyaltyTier(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateLoyaltyTierReq) (*dto.LoyaltyTierRes, error) {

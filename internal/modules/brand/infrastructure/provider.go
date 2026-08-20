@@ -24,4 +24,5 @@ var ProviderSet = wire.NewSet(
 	persistence.NewLoyaltyPointLotRepository,
 	persistence.NewBrandCustomerClaimRepository,
 	caching.NewRedisBrandMembershipCache,
+	caching.NewRedisBrandFeatureAccessCache,
 )

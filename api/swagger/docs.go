@@ -3146,6 +3146,30 @@ const docTemplate = `{
                         "name": "brandId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại mở khóa (tier_privilege, point_redemption, manual_grant)",
+                        "name": "unlockType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
+                        "name": "benefitType",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3160,10 +3184,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes"
                                         }
                                     }
                                 }
@@ -4668,6 +4689,51 @@ const docTemplate = `{
             }
         },
         "/api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy chi tiết hạng loyalty kèm quyền lợi (Staff)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hạng",
+                        "name": "tierId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "put": {
                 "consumes": [
                     "application/json"
@@ -5492,6 +5558,30 @@ const docTemplate = `{
                         "name": "brandId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại mở khóa (tier_privilege, point_redemption, manual_grant)",
+                        "name": "unlockType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)",
+                        "name": "benefitType",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5506,10 +5596,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes"
                                         }
                                     }
                                 }
@@ -5814,6 +5901,53 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/brands/{brandId}/loyalty/tiers/{tierId}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Loyalty"
+                ],
+                "summary": "Lấy chi tiết hạng loyalty kèm quyền lợi (User)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID brand",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID hạng",
+                        "name": "tierId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes"
                                         }
                                     }
                                 }
@@ -7810,6 +7944,20 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes": {
             "type": "object",
             "properties": {
@@ -8697,6 +8845,41 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes": {
+            "type": "object",
+            "properties": {
+                "benefits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes"
+                    }
+                },
+                "brandId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "minTotalSpend": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }

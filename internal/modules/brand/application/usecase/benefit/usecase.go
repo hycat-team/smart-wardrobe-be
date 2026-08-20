@@ -8,10 +8,11 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
+	caching "smart-wardrobe-be/internal/modules/brand/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/benefit/strategies"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefittype"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
@@ -19,6 +20,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -35,6 +37,8 @@ type BrandBenefitUseCase struct {
 	redemptionRepo repositories.IBenefitRedemptionRepository
 	tierRepo       repositories.ILoyaltyTierRepository
 	uow            shared_repos.IUnitOfWork
+	strategies     map[benefitunlocktype.BenefitUnlockType]UnlockStrategy
+	featureCache   caching.IBrandFeatureAccessCache
 }
 
 func NewBrandBenefitUseCase(
@@ -48,7 +52,14 @@ func NewBrandBenefitUseCase(
 	redemptionRepo repositories.IBenefitRedemptionRepository,
 	tierRepo repositories.ILoyaltyTierRepository,
 	uow shared_repos.IUnitOfWork,
+	featureCache caching.IBrandFeatureAccessCache,
 ) uc_interfaces.IBrandBenefitUseCase {
+	strategies := map[benefitunlocktype.BenefitUnlockType]UnlockStrategy{
+		benefitunlocktype.TierPrivilege:   strategies.NewTierPrivilegeStrategy(accountRepo, tierRepo, redemptionRepo),
+		benefitunlocktype.PointRedemption: strategies.NewPointRedemptionStrategy(accountRepo, lotRepo, txRepo, redemptionRepo),
+		benefitunlocktype.ManualGrant:     strategies.NewManualGrantStrategy(),
+	}
+
 	return &BrandBenefitUseCase{
 		brandRepo:      brandRepo,
 		memberRepo:     memberRepo,
@@ -60,6 +71,8 @@ func NewBrandBenefitUseCase(
 		redemptionRepo: redemptionRepo,
 		tierRepo:       tierRepo,
 		uow:            uow,
+		strategies:     strategies,
+		featureCache:   featureCache,
 	}
 }
 
@@ -131,15 +144,48 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 	return mapper.MapBrandBenefit(benefit), nil
 }
 
-func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
-	benefits, err := uc.benefitRepo.GetByBrandID(ctx, brandID)
+func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
+	var unlockType *benefitunlocktype.BenefitUnlockType
+	if query.UnlockType != nil {
+		val := benefitunlocktype.BenefitUnlockType(strings.ToLower(*query.UnlockType))
+		unlockType = &val
+	}
+
+	var benefitType *benefittype.BenefitType
+	if query.BenefitType != nil {
+		val := benefittype.BenefitType(strings.ToLower(*query.BenefitType))
+		benefitType = &val
+	}
+
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	filter := repositories.BrandBenefitFilter{
+		BrandID:     brandID,
+		UnlockType:  unlockType,
+		BenefitType: benefitType,
+		Page:        page,
+		Limit:       limit,
+	}
+
+	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandBenefits(benefits), nil
+
+	return &dto.BrandBenefitListRes{
+		Items:    mapper.MapBrandBenefits(result.Benefits),
+		Metadata: shared_dto.BuildPaginationMetadata(shared_dto.PaginationQuery{Page: page, Limit: limit}, result.TotalCount),
+	}, nil
 }
 
-func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -148,11 +194,44 @@ func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, br
 		return nil, branderrors.ErrBrandNotActive()
 	}
 
-	benefits, err := uc.benefitRepo.GetActiveByBrandID(ctx, brandID)
+	var unlockType *benefitunlocktype.BenefitUnlockType
+	if query.UnlockType != nil {
+		val := benefitunlocktype.BenefitUnlockType(strings.ToLower(*query.UnlockType))
+		unlockType = &val
+	}
+
+	var benefitType *benefittype.BenefitType
+	if query.BenefitType != nil {
+		val := benefittype.BenefitType(strings.ToLower(*query.BenefitType))
+		benefitType = &val
+	}
+
+	page := query.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	filter := repositories.BrandBenefitFilter{
+		BrandID:     brandID,
+		UnlockType:  unlockType,
+		BenefitType: benefitType,
+		Page:        page,
+		Limit:       limit,
+	}
+
+	result, err := uc.benefitRepo.GetActiveByBrandIDPaginated(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandBenefits(benefits), nil
+
+	return &dto.BrandBenefitListRes{
+		Items:    mapper.MapBrandBenefits(result.Benefits),
+		Metadata: shared_dto.BuildPaginationMetadata(shared_dto.PaginationQuery{Page: page, Limit: limit}, result.TotalCount),
+	}, nil
 }
 
 func (uc *BrandBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
@@ -243,44 +322,49 @@ func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, user
 		return false, nil
 	}
 
+	cachedCodes, err := uc.featureCache.Get(ctx, userID, brandID)
+	if err == nil && cachedCodes != nil {
+		for _, code := range cachedCodes {
+			if code == string(featureCode) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
 	benefits, err := uc.benefitRepo.GetActiveByBrandID(ctx, brandID)
 	if err != nil {
 		return false, err
 	}
 
 	now := time.Now().UTC()
+	var grantedCodes []string
 	for _, benefit := range benefits {
-		if benefit.BenefitType != benefittype.FeatureAccess || benefit.FeatureCode == nil || *benefit.FeatureCode != featureCode {
+		if benefit.BenefitType != benefittype.FeatureAccess || benefit.FeatureCode == nil {
 			continue
 		}
 
-		if benefit.UnlockType == benefitunlocktype.TierPrivilege {
-			account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
-			if err != nil || account == nil || account.CurrentTierID == nil {
-				continue
-			}
+		strategy, ok := uc.strategies[benefit.UnlockType]
+		if !ok {
+			continue
+		}
 
-			userTier, err := uc.tierRepo.GetByID(ctx, *account.CurrentTierID)
-			if err != nil || userTier == nil {
-				continue
-			}
+		hasAccess, err := strategy.CheckAccess(ctx, benefit, customer, now)
+		if err != nil {
+			return false, err
+		}
+		if hasAccess {
+			grantedCodes = append(grantedCodes, string(*benefit.FeatureCode))
+		}
+	}
 
-			requiredTier, err := uc.tierRepo.GetByID(ctx, *benefit.RequiredTierID)
-			if err != nil || requiredTier == nil {
-				continue
-			}
+	if len(grantedCodes) > 0 {
+		_ = uc.featureCache.Set(ctx, userID, brandID, grantedCodes)
+	}
 
-			if userTier.Rank >= requiredTier.Rank {
-				return true, nil
-			}
-		} else if benefit.UnlockType == benefitunlocktype.PointRedemption || benefit.UnlockType == benefitunlocktype.ManualGrant {
-			red, err := uc.redemptionRepo.GetActiveRedemptionByFeature(ctx, customer.ID, string(featureCode), now)
-			if err != nil {
-				return false, err
-			}
-			if red != nil {
-				return true, nil
-			}
+	for _, code := range grantedCodes {
+		if code == string(featureCode) {
+			return true, nil
 		}
 	}
 
@@ -317,117 +401,33 @@ func (uc *BrandBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UU
 		return nil, branderrors.ErrBenefitNotActive()
 	}
 
+	strategy, ok := uc.strategies[benefit.UnlockType]
+	if !ok {
+		return nil, branderrors.ErrBenefitUnlockTypeNotSupported()
+	}
+
 	now := time.Now().UTC()
 	var redemption *entities.BenefitRedemption
 
-	switch benefit.UnlockType {
-	case benefitunlocktype.PointRedemption:
+	if benefit.UnlockType == benefitunlocktype.PointRedemption {
 		err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-			var featStr string
-			if benefit.FeatureCode != nil {
-				featStr = string(*benefit.FeatureCode)
-			}
-			existing, err := uc.redemptionRepo.GetActiveRedemptionByFeature(txCtx, customer.ID, featStr, now)
-			if err != nil {
-				return err
-			}
-			if existing != nil {
-				return branderrors.ErrBenefitRedemptionExists()
-			}
-
-			reqPoints := 0
-			if benefit.RequiredPoints != nil {
-				reqPoints = *benefit.RequiredPoints
-			}
-
-			if reqPoints > 0 {
-				account, err := uc.accountRepo.GetByBrandCustomerIDForUpdate(txCtx, customer.ID)
-				if err != nil {
-					return err
-				}
-				if account == nil {
-					return branderrors.ErrInsufficientLoyaltyPoints()
-				}
-
-				reason := "Doi quyen loi: " + benefit.Name
-				refType := "BENEFIT_REDEMPTION"
-				refID := benefit.ID
-				_, err = uc.redeemLoyaltyPointsFromLots(txCtx, account.ID, reqPoints, now, &reason, &refType, &refID, &userID)
-				if err != nil {
-					return err
-				}
-			}
-
-			var expiresAt *time.Time
-			durationDays := parseValidDurationDays(benefit.FeatureConfig)
-			if durationDays > 0 {
-				t := now.Add(time.Duration(durationDays) * 24 * time.Hour)
-				expiresAt = &t
-			}
-
-			redemption = &entities.BenefitRedemption{
-				BenefitID:       benefit.ID,
-				BrandID:         brandID,
-				BrandCustomerID: customer.ID,
-				UserID:          &userID,
-				PointsSpent:     reqPoints,
-				Status:          benefitredemptionstatus.Redeemed,
-				RedeemedAt:      now,
-				ExpiresAt:       expiresAt,
-			}
-
-			return uc.redemptionRepo.Create(txCtx, redemption)
+			var redeemErr error
+			redemption, redeemErr = strategy.Redeem(txCtx, benefit, customer, userID, now)
+			return redeemErr
 		})
-		if err != nil {
-			return nil, err
-		}
-	case benefitunlocktype.TierPrivilege:
-		account, err := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
-		if err != nil {
-			return nil, err
-		}
-		if account == nil || account.CurrentTierID == nil {
-			return nil, branderrors.ErrBenefitRequiredTierNotMet()
-		}
-
-		userTier, err := uc.tierRepo.GetByID(ctx, *account.CurrentTierID)
-		if err != nil || userTier == nil {
-			return nil, branderrors.ErrBenefitRequiredTierNotMet()
-		}
-
-		requiredTier, err := uc.tierRepo.GetByID(ctx, *benefit.RequiredTierID)
-		if err != nil || requiredTier == nil {
-			return nil, branderrors.ErrBenefitRequiredTierNotMet()
-		}
-
-		if userTier.Rank < requiredTier.Rank {
-			return nil, branderrors.ErrBenefitRequiredTierNotMet()
-		}
-
-		var expiresAt *time.Time
-		durationDays := parseValidDurationDays(benefit.FeatureConfig)
-		if durationDays > 0 {
-			t := now.Add(time.Duration(durationDays) * 24 * time.Hour)
-			expiresAt = &t
-		}
-
-		redemption = &entities.BenefitRedemption{
-			BenefitID:       benefit.ID,
-			BrandID:         brandID,
-			BrandCustomerID: customer.ID,
-			UserID:          &userID,
-			PointsSpent:     0,
-			Status:          benefitredemptionstatus.Redeemed,
-			RedeemedAt:      now,
-			ExpiresAt:       expiresAt,
-		}
-
-		if err := uc.redemptionRepo.Create(ctx, redemption); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, branderrors.ErrBenefitUnlockTypeNotSupported()
+	} else {
+		redemption, err = strategy.Redeem(ctx, benefit, customer, userID, now)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := uc.redemptionRepo.Create(ctx, redemption); err != nil {
+		return nil, err
+	}
+
+	_ = uc.featureCache.Invalidate(ctx, userID, brandID)
 
 	return mapper.MapBenefitRedemption(redemption), nil
 }

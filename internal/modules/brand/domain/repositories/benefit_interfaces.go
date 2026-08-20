@@ -4,16 +4,33 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefittype"
+	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitunlocktype"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
 
+type BrandBenefitFilter struct {
+	BrandID     uuid.UUID
+	UnlockType  *benefitunlocktype.BenefitUnlockType
+	BenefitType *benefittype.BenefitType
+	Page        int
+	Limit       int
+}
+
+type BrandBenefitListResult struct {
+	Benefits   []*entities.BrandBenefit
+	TotalCount int64
+}
+
 type IBrandBenefitRepository interface {
 	shared_repos.IGenericRepository[entities.BrandBenefit, uuid.UUID]
 	GetByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
 	GetActiveByBrandID(ctx context.Context, brandID uuid.UUID) ([]*entities.BrandBenefit, error)
+	GetActiveByBrandIDAndTierID(ctx context.Context, brandID, tierID uuid.UUID) ([]*entities.BrandBenefit, error)
+	GetActiveByBrandIDPaginated(ctx context.Context, filter BrandBenefitFilter) (*BrandBenefitListResult, error)
 }
 
 type IBenefitRedemptionRepository interface {

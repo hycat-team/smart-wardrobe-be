@@ -8,6 +8,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	branderrors "smart-wardrobe-be/internal/modules/brand/application/errors"
+	"smart-wardrobe-be/internal/modules/brand/application/usecase/benefit/strategies"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitstatus"
@@ -230,6 +231,30 @@ func (m *mockBenefitRepo) GetActiveByBrandID(ctx context.Context, brandID uuid.U
 	}
 	return list, nil
 }
+func (m *mockBenefitRepo) GetActiveByBrandIDAndTierID(ctx context.Context, brandID, tierID uuid.UUID) ([]*entities.BrandBenefit, error) {
+	var list []*entities.BrandBenefit
+	for _, b := range m.benefits {
+		if b.BrandID == brandID && b.Status == benefitstatus.Active && b.UnlockType == benefitunlocktype.TierPrivilege && b.RequiredTierID != nil && *b.RequiredTierID == tierID {
+			list = append(list, b)
+		}
+	}
+	return list, nil
+}
+func (m *mockBenefitRepo) GetActiveByBrandIDPaginated(ctx context.Context, filter repositories.BrandBenefitFilter) (*repositories.BrandBenefitListResult, error) {
+	var list []*entities.BrandBenefit
+	for _, b := range m.benefits {
+		if b.BrandID == filter.BrandID && b.Status == benefitstatus.Active {
+			if filter.UnlockType != nil && b.UnlockType != *filter.UnlockType {
+				continue
+			}
+			if filter.BenefitType != nil && b.BenefitType != *filter.BenefitType {
+				continue
+			}
+			list = append(list, b)
+		}
+	}
+	return &repositories.BrandBenefitListResult{Benefits: list, TotalCount: int64(len(list))}, nil
+}
 func (m *mockBenefitRepo) BatchUpdate(ctx context.Context, entities []*entities.BrandBenefit) error {
 	return nil
 }
@@ -288,6 +313,15 @@ func (m *mockRedemptionRepo) BatchUpdate(ctx context.Context, entities []*entiti
 	return nil
 }
 func (m *mockRedemptionRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
+	return nil
+}
+
+type mockFeatureCache struct{}
+
+func (m *mockFeatureCache) Get(_ context.Context, _, _ uuid.UUID) ([]string, error) { return nil, nil }
+func (m *mockFeatureCache) Set(_ context.Context, _, _ uuid.UUID, _ []string) error { return nil }
+func (m *mockFeatureCache) Invalidate(_ context.Context, _, _ uuid.UUID) error      { return nil }
+func (m *mockFeatureCache) InvalidateByBrand(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
 	return nil
 }
 
@@ -549,15 +583,23 @@ func TestRedeemBenefit_InsufficientPoints(t *testing.T) {
 		},
 	}}
 
+	lotRepo := &loyaltyLotsLotRepo{lots: make(map[uuid.UUID]*entities.LoyaltyPointLot)}
+	redemptionRepo := &mockRedemptionRepo{redemptions: make(map[uuid.UUID]*entities.BenefitRedemption)}
+	txRepo := &mockTxRepo{transactions: make(map[uuid.UUID]*entities.LoyaltyPointTransaction)}
+
 	uc := &BrandBenefitUseCase{
 		brandRepo:      brandRepo,
 		customerRepo:   customerRepo,
 		benefitRepo:    benefitRepo,
 		accountRepo:    accountRepo,
-		lotRepo:        &loyaltyLotsLotRepo{lots: make(map[uuid.UUID]*entities.LoyaltyPointLot)},
-		redemptionRepo: &mockRedemptionRepo{redemptions: make(map[uuid.UUID]*entities.BenefitRedemption)},
-		txRepo:         &mockTxRepo{transactions: make(map[uuid.UUID]*entities.LoyaltyPointTransaction)},
+		lotRepo:        lotRepo,
+		redemptionRepo: redemptionRepo,
+		txRepo:         txRepo,
 		uow:            loyaltyLotsTestUOW{},
+		featureCache:   &mockFeatureCache{},
+		strategies: map[benefitunlocktype.BenefitUnlockType]UnlockStrategy{
+			benefitunlocktype.PointRedemption: strategies.NewPointRedemptionStrategy(accountRepo, lotRepo, txRepo, redemptionRepo),
+		},
 	}
 
 	_, err := uc.RedeemBenefit(context.Background(), userID, benefitID)
@@ -606,6 +648,8 @@ func TestRedeemBenefitAllowsFreePointRedemption(t *testing.T) {
 	}}
 	redemptionRepo := &mockRedemptionRepo{redemptions: make(map[uuid.UUID]*entities.BenefitRedemption)}
 	txRepo := &mockTxRepo{transactions: make(map[uuid.UUID]*entities.LoyaltyPointTransaction)}
+	lotRepo := &loyaltyLotsLotRepo{lots: make(map[uuid.UUID]*entities.LoyaltyPointLot)}
+	accountRepo := &loyaltyLotsAccountRepo{accounts: make(map[uuid.UUID]*entities.LoyaltyAccount)}
 
 	uc := &BrandBenefitUseCase{
 		brandRepo:      brandRepo,
@@ -613,7 +657,13 @@ func TestRedeemBenefitAllowsFreePointRedemption(t *testing.T) {
 		benefitRepo:    benefitRepo,
 		redemptionRepo: redemptionRepo,
 		txRepo:         txRepo,
+		lotRepo:        lotRepo,
+		accountRepo:    accountRepo,
 		uow:            loyaltyLotsTestUOW{},
+		featureCache:   &mockFeatureCache{},
+		strategies: map[benefitunlocktype.BenefitUnlockType]UnlockStrategy{
+			benefitunlocktype.PointRedemption: strategies.NewPointRedemptionStrategy(accountRepo, lotRepo, txRepo, redemptionRepo),
+		},
 	}
 
 	res, err := uc.RedeemBenefit(context.Background(), userID, benefitID)
@@ -685,6 +735,7 @@ func newBenefitLotsTestUseCase(account *entities.LoyaltyAccount, lots ...*entiti
 		lotRepo:     lotRepo,
 		txRepo:      txRepo,
 		uow:         loyaltyLotsTestUOW{},
+		strategies:  make(map[benefitunlocktype.BenefitUnlockType]UnlockStrategy),
 	}
 	return uc, accountRepo, lotRepo, txRepo
 }
@@ -694,12 +745,26 @@ func TestRedeemLoyaltyPointsExpiresDueLotsBeforeBalanceCheck(t *testing.T) {
 	account := &entities.LoyaltyAccount{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, BrandID: uuid.New(), BrandCustomerID: uuid.New(), CurrentPoints: 200}
 	expiredAt := now.Add(-time.Hour)
 	validAt := now.Add(time.Hour)
-	uc, accountRepo, lotRepo, txRepo := newBenefitLotsTestUseCase(account,
+	_, accountRepo, lotRepo, txRepo := newBenefitLotsTestUseCase(account,
 		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &expiredAt, Status: loyaltypointlotstatus.Active},
 		&entities.LoyaltyPointLot{AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}}, LoyaltyAccountID: account.ID, RemainingPoints: 100, ExpiresAt: &validAt, Status: loyaltypointlotstatus.Active},
 	)
 
-	if _, err := uc.redeemLoyaltyPointsFromLots(context.Background(), account.ID, 150, now, nil, nil, nil, nil); err == nil {
+	strategy := strategies.NewPointRedemptionStrategy(accountRepo, lotRepo, txRepo, &mockRedemptionRepo{redemptions: make(map[uuid.UUID]*entities.BenefitRedemption)})
+
+	benefit := &entities.BrandBenefit{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		BrandID:         account.BrandID,
+		RequiredPoints:  ptr(150),
+		Status:          benefitstatus.Active,
+	}
+	customer := &entities.BrandCustomer{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: account.BrandCustomerID}},
+		BrandID:         account.BrandID,
+		Status:          brandcustomerstatus.Active,
+	}
+
+	if _, err := strategy.Redeem(context.Background(), benefit, customer, uuid.New(), now); err == nil {
 		t.Fatal("expected insufficient points after expiry")
 	}
 	if accountRepo.accounts[account.ID].CurrentPoints != 100 {

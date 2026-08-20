@@ -486,10 +486,10 @@ func (m *mockBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, userID
 func (m *mockBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+func (m *mockBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID) ([]*dto.BrandBenefitRes, error) {
+func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	return nil, nil
 }
 func (m *mockBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {

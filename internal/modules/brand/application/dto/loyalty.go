@@ -81,6 +81,18 @@ type LoyaltyTierRes struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
+type LoyaltyTierDetailRes struct {
+	LoyaltyTierRes
+	Benefits []*BrandBenefitRes `json:"benefits,omitempty"`
+}
+
+type ListBrandBenefitsQueryReq struct {
+	Page        int     `form:"page" binding:"omitempty,min=1" label:"trang"`
+	Limit       int     `form:"limit" binding:"omitempty,min=1,max=100" label:"số lượng"`
+	UnlockType  *string `form:"unlockType" binding:"omitempty" label:"loại mở khóa"`
+	BenefitType *string `form:"benefitType" binding:"omitempty" label:"loại quyền lợi"`
+}
+
 type LoyaltyPointLotRes struct {
 	ID                uuid.UUID  `json:"id"`
 	EarnedPoints      int        `json:"earnedPoints"`

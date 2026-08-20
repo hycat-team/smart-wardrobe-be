@@ -41,6 +41,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		publicBrands.GET("/:brandId", shared_pres.WrapHandler(r.brandHandler.GetActiveBrand))
 		publicBrands.GET("/:brandId/items", shared_pres.WrapHandler(r.brandHandler.ListBrandProducts))
 		publicBrands.GET("/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListActiveBenefitsForUser))
+		publicBrands.GET("/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTierDetailForUser))
 	}
 
 	userBrands := group.Group("/brands")
@@ -112,6 +113,7 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		portalMember.GET("/brands/:brandId/loyalty/accounts/:accountId/lots", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyAccountLotsForStaff))
 		portalMember.GET("/brands/:brandId/loyalty/program", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyProgramForStaff))
 		portalMember.GET("/brands/:brandId/loyalty/tiers", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTiersForStaff))
+		portalMember.GET("/brands/:brandId/loyalty/tiers/:tierId", shared_pres.WrapHandler(r.brandHandler.GetLoyaltyTierDetailForStaff))
 		portalMember.POST("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.CreateBrandBenefit))
 		portalMember.GET("/brands/:brandId/benefits", shared_pres.WrapHandler(r.brandHandler.ListBrandBenefitsForStaff))
 		portalMember.PATCH("/brands/:brandId/benefits/:benefitId/status", shared_pres.WrapHandler(r.brandHandler.UpdateBenefitStatus))

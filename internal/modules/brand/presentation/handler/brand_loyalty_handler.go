@@ -490,6 +490,60 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
 	return nil
 }
 
+// GetLoyaltyTierDetailForStaff gets tier detail with benefits for staff.
+// @Summary Lấy chi tiết hạng loyalty kèm quyền lợi (Staff)
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param tierId path string true "ID hạng"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierDetailRes}
+// @Router /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId} [get]
+func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForStaff(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	tierID, err := uuid.Parse(c.Param("tierId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.GetLoyaltyTierDetailForStaff(c.Request.Context(), userID, brandID, tierID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandLoyaltyGetTiersSuccess, res)
+	return nil
+}
+
+// GetLoyaltyTierDetailForUser gets tier detail with benefits for user.
+// @Summary Lấy chi tiết hạng loyalty kèm quyền lợi (User)
+// @Tags Brand Loyalty
+// @Produce json
+// @Param brandId path string true "ID brand"
+// @Param tierId path string true "ID hạng"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierDetailRes}
+// @Router /api/v1/brands/{brandId}/loyalty/tiers/{tierId} [get]
+func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForUser(c *gin.Context) error {
+	brandID, err := uuid.Parse(c.Param("brandId"))
+	if err != nil {
+		return err
+	}
+	tierID, err := uuid.Parse(c.Param("tierId"))
+	if err != nil {
+		return err
+	}
+	res, err := h.loyaltyUC.GetLoyaltyTierDetailForUser(c.Request.Context(), brandID, tierID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, msgBrandLoyaltyGetTiersSuccess, res)
+	return nil
+}
+
 // CreateBrandBenefit creates a new benefit for a brand.
 // @Summary Tạo quyền lợi cho brand (Staff)
 // @Tags Brand Benefit
@@ -526,7 +580,11 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandBenefitRes}
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng mỗi trang"
+// @Param unlockType query string false "Loại mở khóa (tier_privilege, point_redemption, manual_grant)"
+// @Param benefitType query string false "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitListRes}
 // @Router /api/v1/brand-portal/brands/{brandId}/benefits [get]
 func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -537,7 +595,11 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := h.benefitUC.ListBrandBenefitsForStaff(c.Request.Context(), userID, brandID)
+	var query dto.ListBrandBenefitsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.benefitUC.ListBrandBenefitsForStaff(c.Request.Context(), userID, brandID, query)
 	if err != nil {
 		return err
 	}
@@ -586,14 +648,22 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandBenefitRes}
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng mỗi trang"
+// @Param unlockType query string false "Loại mở khóa (tier_privilege, point_redemption, manual_grant)"
+// @Param benefitType query string false "Loại quyền lợi (voucher, discount, gift, free_shipping, early_access, feature_access)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitListRes}
 // @Router /api/v1/brands/{brandId}/benefits [get]
 func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
 	brandID, err := uuid.Parse(c.Param("brandId"))
 	if err != nil {
 		return err
 	}
-	res, err := h.benefitUC.ListActiveBenefitsForUser(c.Request.Context(), brandID)
+	var query dto.ListBrandBenefitsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+	res, err := h.benefitUC.ListActiveBenefitsForUser(c.Request.Context(), brandID, query)
 	if err != nil {
 		return err
 	}

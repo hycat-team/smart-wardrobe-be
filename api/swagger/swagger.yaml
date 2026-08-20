@@ -165,6 +165,15 @@ definitions:
       userId:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes:
     properties:
       benefitType:
@@ -757,6 +766,29 @@ definitions:
       id:
         type: string
       name:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes:
+    properties:
+      benefits:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
+        type: array
+      brandId:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      minTotalSpend:
+        type: number
+      name:
+        type: string
+      rank:
+        type: integer
+      updatedAt:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierRes:
@@ -5017,6 +5049,23 @@ paths:
         name: brandId
         required: true
         type: string
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng mỗi trang
+        in: query
+        name: limit
+        type: integer
+      - description: Loại mở khóa (tier_privilege, point_redemption, manual_grant)
+        in: query
+        name: unlockType
+        type: string
+      - description: Loại quyền lợi (voucher, discount, gift, free_shipping, early_access,
+          feature_access)
+        in: query
+        name: benefitType
+        type: string
       produces:
       - application/json
       responses:
@@ -5027,9 +5076,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes'
               type: object
       summary: Lấy danh sách quyền lợi cho brand staff
       tags:
@@ -5942,6 +5989,33 @@ paths:
       tags:
       - Brand Loyalty
   /api/v1/brand-portal/brands/{brandId}/loyalty/tiers/{tierId}:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hạng
+        in: path
+        name: tierId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes'
+              type: object
+      summary: Lấy chi tiết hạng loyalty kèm quyền lợi (Staff)
+      tags:
+      - Brand Loyalty
     put:
       consumes:
       - application/json
@@ -6427,6 +6501,23 @@ paths:
         name: brandId
         required: true
         type: string
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng mỗi trang
+        in: query
+        name: limit
+        type: integer
+      - description: Loại mở khóa (tier_privilege, point_redemption, manual_grant)
+        in: query
+        name: unlockType
+        type: string
+      - description: Loại quyền lợi (voucher, discount, gift, free_shipping, early_access,
+          feature_access)
+        in: query
+        name: benefitType
+        type: string
       produces:
       - application/json
       responses:
@@ -6437,9 +6528,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBenefitListRes'
               type: object
       summary: Lấy danh sách quyền lợi đang hoạt động của brand (Public)
       tags:
@@ -6624,6 +6713,34 @@ paths:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandCustomerRes'
               type: object
       summary: Tham gia chương trình khách hàng thân thiết
+      tags:
+      - Brand Loyalty
+  /api/v1/brands/{brandId}/loyalty/tiers/{tierId}:
+    get:
+      parameters:
+      - description: ID brand
+        in: path
+        name: brandId
+        required: true
+        type: string
+      - description: ID hạng
+        in: path
+        name: tierId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.LoyaltyTierDetailRes'
+              type: object
+      summary: Lấy chi tiết hạng loyalty kèm quyền lợi (User)
       tags:
       - Brand Loyalty
   /api/v1/brands/claim:

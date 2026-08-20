@@ -153,7 +153,7 @@ vet:
 
 test:
 	@echo Running Go tests...
-	@go test ./...
+	@go test ./... 2>&1 | findstr /V /C:"no test files"
 	@echo Go tests finished.
 
 build:

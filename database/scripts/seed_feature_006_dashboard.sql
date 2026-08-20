@@ -60,11 +60,11 @@ END $$;
 -- Brand Benefits (voucher-type)
 INSERT INTO brand_benefits (id, brand_id, name, description, benefit_type, unlock_type, required_points, status, created_at, updated_at)
 VALUES
-    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 10%', 'Giảm 10% cho đơn hàng tiếp theo', 'voucher', 'points', 500, 'active', NOW(), NOW()),
-    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 50K', 'Giảm 50.000đ cho đơn từ 500K', 'voucher', 'points', 1000, 'active', NOW(), NOW()),
-    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Miễn phí vận chuyển', 'Miễn phí vận chuyển toàn quốc', 'voucher', 'points', 300, 'active', NOW(), NOW()),
-    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Quà tặng sinh nhật', 'Món quà đặc biệt nhân dịp sinh nhật', 'gift', 'tier', 0, 'active', NOW(), NOW()),
-    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 20%', 'Giảm 20% cho đơn hàng mùa hè', 'voucher', 'points', 2000, 'active', NOW(), NOW());
+    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 10%', 'Giảm 10% cho đơn hàng tiếp theo', 'voucher', 'point_redemption', 500, 'active', NOW(), NOW()),
+    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 50K', 'Giảm 50.000đ cho đơn từ 500K', 'voucher', 'point_redemption', 1000, 'active', NOW(), NOW()),
+    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Miễn phí vận chuyển', 'Miễn phí vận chuyển toàn quốc', 'voucher', 'point_redemption', 300, 'active', NOW(), NOW()),
+    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Quà tặng sinh nhật', 'Món quà đặc biệt nhân dịp sinh nhật', 'gift', 'tier_privilege', 0, 'active', NOW(), NOW()),
+    (gen_random_uuid(), 'e7b10001-0000-0000-0000-000000000001', 'Giảm 20%', 'Giảm 20% cho đơn hàng mùa hè', 'voucher', 'point_redemption', 2000, 'active', NOW(), NOW());
 
 -- Benefit Redemptions
 INSERT INTO benefit_redemptions (id, benefit_id, brand_id, brand_customer_id, user_id, points_spent, status, redeemed_at, created_at, updated_at)

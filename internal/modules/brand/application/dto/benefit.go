@@ -3,6 +3,8 @@ package dto
 import (
 	"time"
 
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
+
 	"github.com/google/uuid"
 )
 
@@ -37,6 +39,8 @@ type BrandBenefitRes struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 	UpdatedAt        time.Time  `json:"updatedAt"`
 }
+
+type BrandBenefitListRes = shared_dto.PaginationResult[*BrandBenefitRes]
 
 type BenefitRedemptionRes struct {
 	ID              uuid.UUID  `json:"id"`
