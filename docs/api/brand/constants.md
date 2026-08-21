@@ -68,8 +68,6 @@ Các hằng số dùng trong APIs liên quan đến Thương hiệu, Thành viê
 - **Đường dẫn package:** `internal/shared/domain/constants/brand/benefit/benefitfeaturecode`
 - **Các giá trị hợp lệ:**
     - `sample_mix_access`: Cho phép thử đồ mẫu thiết kế ảo trong Digital Sample Lab.
-    - `brand_item_recommendation`: Nhận gợi ý phối đồ AI ưu tiên sản phẩm của nhãn hàng.
-    - `priority_brand_chat`: Kênh chat hỗ trợ được ưu tiên phản hồi sớm.
 
 ## 9. Trạng thái quy đổi đặc quyền (BenefitRedemptionStatus)
 

@@ -146,7 +146,53 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `200 OK`: Trả về thông tin hạng thành viên sau khi cập nhật `LoyaltyTierRes`.
 
-### 6. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
+### 6. Quản trị viên xem chi tiết hạng thành viên kèm danh sách đặc quyền
+
+- **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/tiers/:tierId`
+- **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
+- **Đối tượng ảnh hưởng:** Đọc thông tin hạng thành viên `loyalty_tiers` và các đặc quyền `brand_benefits` gắn với hạng đó.
+- **Mô tả:** Trả về thông tin chi tiết của một hạng thành viên kèm danh sách các đặc quyền đang active mà yêu cầu hạng này (`unlockType = tier_privilege` và `requiredTierId` trùng với `tierId`).
+- **Response:**
+    - `200 OK`: Trả về thông tin hạng `LoyaltyTierDetailRes`.
+    ```json
+    {
+        "data": {
+            "id": "...",
+            "brandId": "...",
+            "name": "Gold",
+            "rank": 3,
+            "minTotalSpend": 5000000,
+            "description": "Hạng Gold - Chi tiêu từ 5 triệu",
+            "createdAt": "2026-08-01T00:00:00Z",
+            "updatedAt": "2026-08-01T00:00:00Z",
+            "benefits": [
+                {
+                    "id": "...",
+                    "name": "Quyền thử đồ mẫu cho hạng Gold",
+                    "benefitType": "feature_access",
+                    "unlockType": "tier_privilege",
+                    "requiredPoints": null,
+                    "requiredTierId": "...",
+                    "requiredTierName": "Gold",
+                    "featureCode": "sample_mix_access",
+                    "featureConfig": {"validDurationDays": 30},
+                    "status": "active"
+                }
+            ]
+        }
+    }
+    ```
+
+### 7. Khách hàng xem chi tiết hạng thành viên kèm danh sách đặc quyền
+
+- **Endpoint:** `GET /api/v1/brands/:brandId/loyalty/tiers/:tierId`
+- **Tác nhân (Actor):** Khách hàng (Customer) hoặc công khai (Public).
+- **Đối tượng ảnh hưởng:** Đọc thông tin hạng thành viên `loyalty_tiers` và các đặc quyền `brand_benefits` gắn với hạng đó.
+- **Mô tả:** Tương tự endpoint staff (Item 6), nhưng không yêu cầu quyền brand portal. Kiểm tra brand đang active trước khi trả về.
+- **Response:**
+    - `200 OK`: Trả về thông tin hạng `LoyaltyTierDetailRes` (cùng format với Item 6).
+
+### 8. Lấy lịch sử điểm của một tài khoản loyalty bất kỳ (phục vụ đối soát)
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/loyalty/accounts/:accountId/transactions`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
@@ -164,9 +210,48 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Endpoint:** `GET /api/v1/brands/:brandId/benefits`
 - **Tác nhân (Actor):** Khách hàng (Customer).
 - **Đối tượng ảnh hưởng:** Đọc danh sách các đặc quyền `brand_benefits` đang ở trạng thái active.
-- **Mô tả:** Trả về danh sách các ưu đãi hoặc đặc quyền mở để người dùng đổi điểm. Loại đặc quyền `benefitType`, loại mở khóa `unlockType`, mã đặc quyền hệ thống `featureCode` và trạng thái `status` tham chiếu chi tiết tại [constants.md](constants.md).
+- **Mô tả:** Trả về danh sách các ưu đãi hoặc đặc quyền mở để người dùng đổi điểm. Hỗ trợ phân trang và lọc theo `unlockType` hoặc `benefitType`. Loại đặc quyền `benefitType`, loại mở khóa `unlockType`, mã đặc quyền hệ thống `featureCode` và trạng thái `status` tham chiếu chi tiết tại [constants.md](constants.md).
+- **Query Params:**
+
+    | Param | Type | Bắt buộc | Mặc định | Mô tả |
+    |---|---|---|---|---|
+    | `page` | int | Không | `1` | Số trang |
+    | `limit` | int | Không | `20` | Số item mỗi trang (tối đa 100) |
+    | `unlockType` | string | Không | - | Lọc theo loại mở khóa: `tier_privilege`, `point_redemption`, `manual_grant` |
+    | `benefitType` | string | Không | - | Lọc theo loại quyền lợi: `voucher`, `discount`, `gift`, `free_shipping`, `early_access`, `feature_access` |
+
 - **Response:**
-    - `200 OK`: Trả về mảng danh sách đặc quyền `BrandBenefitRes`.
+    - `200 OK`: Trả về danh sách đặc quyền phân trang `BrandBenefitListRes`.
+    ```json
+    {
+        "data": {
+            "items": [
+                {
+                    "id": "...",
+                    "brandId": "...",
+                    "name": "Giảm 10%",
+                    "description": "Giảm 10% cho đơn hàng tiếp theo",
+                    "benefitType": "voucher",
+                    "unlockType": "point_redemption",
+                    "requiredPoints": 500,
+                    "requiredTierId": null,
+                    "requiredTierName": null,
+                    "featureCode": null,
+                    "featureConfig": null,
+                    "status": "active",
+                    "createdAt": "2026-08-01T00:00:00Z",
+                    "updatedAt": "2026-08-01T00:00:00Z"
+                }
+            ],
+            "metadata": {
+                "page": 1,
+                "limit": 20,
+                "totalItems": 5,
+                "totalPages": 1
+            }
+        }
+    }
+    ```
 
 ### 2. Khách hàng xem thông tin chi tiết một đặc quyền đang active
 
@@ -236,14 +321,23 @@ Tài liệu thiết kế các API liên quan đến chương trình loyalty, tí
 - **Response:**
     - `201 Created`: Trả về thông tin đặc quyền vừa tạo `BrandBenefitRes`.
 
-### 6. Quản trị viên xem tất cả danh sách đặc quyền của nhãn hàng
+### 6. Quản trị viên xem danh sách đặc quyền của nhãn hàng
 
 - **Endpoint:** `GET /api/v1/brand-portal/brands/:brandId/benefits`
 - **Tác nhân (Actor):** Nhân viên hỗ trợ hoặc quản lý nhãn hàng (Brand staff).
-- **Đối tượng ảnh hưởng:** Đọc toàn bộ các đặc quyền `brand_benefits` thuộc nhãn hàng.
-- **Mô tả:** Trả về danh sách toàn bộ các ưu đãi đã thiết kế bao gồm cả các bản nháp hoặc đặc quyền đã hết hạn/lưu trữ.
+- **Đối tượng ảnh hưởng:** Đọc các đặc quyền `brand_benefits` đang active thuộc nhãn hàng.
+- **Mô tả:** Trả về danh sách các ưu đãi đang hoạt động. Hỗ trợ phân trang và lọc theo `unlockType` hoặc `benefitType`.
+- **Query Params:**
+
+    | Param | Type | Bắt buộc | Mặc định | Mô tả |
+    |---|---|---|---|---|
+    | `page` | int | Không | `1` | Số trang |
+    | `limit` | int | Không | `20` | Số item mỗi trang (tối đa 100) |
+    | `unlockType` | string | Không | - | Lọc theo loại mở khóa: `tier_privilege`, `point_redemption`, `manual_grant` |
+    | `benefitType` | string | Không | - | Lọc theo loại quyền lợi: `voucher`, `discount`, `gift`, `free_shipping`, `early_access`, `feature_access` |
+
 - **Response:**
-    - `200 OK`: Trả về mảng danh sách đặc quyền `BrandBenefitRes`.
+    - `200 OK`: Trả về danh sách đặc quyền phân trang `BrandBenefitListRes` (cùng format với Item 1).
 
 ### 7. Cập nhật trạng thái hoạt động của một đặc quyền
 
