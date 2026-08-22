@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"smart-wardrobe-be/internal/config"
 	uc_interfaces "smart-wardrobe-be/internal/modules/admin/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
@@ -14,29 +15,34 @@ import (
 
 type AuditCleanupWorker struct {
 	*worker.BaseWorker
-	auditLogUC uc_interfaces.IAuditLogUseCase
-	logger     logger.Interface
-	ticker     *time.Ticker
+	auditLogUC      uc_interfaces.IAuditLogUseCase
+	retentionMonths int
+	logger          logger.Interface
+	ticker          *time.Ticker
 }
 
 func NewAuditCleanupWorker(
 	auditLogUC uc_interfaces.IAuditLogUseCase,
+	cfg *config.Config,
 	l logger.Interface,
 ) *AuditCleanupWorker {
+	retentionMonths := cfg.Admin.AuditRetentionMonths
+	if retentionMonths <= 0 {
+		retentionMonths = 12
+	}
 	return &AuditCleanupWorker{
-		BaseWorker: worker.NewBaseWorker("admin_audit_cleanup"),
-		auditLogUC: auditLogUC,
-		logger:     l,
+		BaseWorker:      worker.NewBaseWorker("admin_audit_cleanup"),
+		auditLogUC:      auditLogUC,
+		retentionMonths: retentionMonths,
+		logger:          l,
 	}
 }
 
 func (w *AuditCleanupWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	// Run cleanup once every 24 hours
 	w.ticker = time.NewTicker(24 * time.Hour)
 
 	go func() {
-		// Run once on startup
 		w.runCleanup(ctx)
 
 		for {
@@ -52,8 +58,7 @@ func (w *AuditCleanupWorker) Start(ctx context.Context) {
 
 func (w *AuditCleanupWorker) runCleanup(ctx context.Context) {
 	run := workerlog.New("admin_audit_cleanup", workerlog.TriggerCron)
-	// Retain logs for 12 months (365 days)
-	cutoff := time.Now().AddDate(0, -12, 0)
+	cutoff := time.Now().AddDate(0, -w.retentionMonths, 0)
 
 	deletedCount, err := w.auditLogUC.DeleteOlderThan(ctx, cutoff)
 	if err != nil {

@@ -2,7 +2,9 @@ package shared
 
 import (
 	"smart-wardrobe-be/internal/shared/application/event"
+	sharedUcInterface "smart-wardrobe-be/internal/shared/application/interface/usecase"
 	"smart-wardrobe-be/internal/shared/application/sse"
+	sharedUsecase "smart-wardrobe-be/internal/shared/application/usecase"
 	infra_ai "smart-wardrobe-be/internal/shared/infrastructure/ai"
 	infra_caching "smart-wardrobe-be/internal/shared/infrastructure/caching"
 	infra_db "smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -26,8 +28,10 @@ var ProviderSet = wire.NewSet(
 	search.NewElasticsearchClient,
 	sse.NewSSEManager,
 	infra_db.NewOutboxListener,
+	sharedUsecase.NewOutboxUseCase,
 	sharedWorker.NewOutboxWorker,
 	wire.Bind(new(event.IMessageConsumer), new(*messaging.RabbitMQClient)),
 	wire.Bind(new(event.IEventPublisher), new(*messaging.RabbitMQClient)),
 	wire.Bind(new(sse.ISSEManager), new(*sse.SSEManager)),
+	wire.Bind(new(sharedUcInterface.IOutboxUseCase), new(*sharedUsecase.OutboxUseCase)),
 )

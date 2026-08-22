@@ -8,32 +8,27 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
-// IProcessingRecoveryWorker schedules scans that rescue stale wardrobe processing items.
-type IProcessingRecoveryWorker interface {
-	Start()
-	Stop()
-}
-
-// ProcessingRecoveryWorker runs the stale-processing recovery workflow on a cron schedule.
 type ProcessingRecoveryWorker struct {
+	*shared_worker.BaseWorker
 	useCase    uc_interfaces.IFashionWorkerUseCase
 	cronEngine *cron.Cron
 	log        logger.Interface
 	cfg        *config.Config
 }
 
-// NewProcessingRecoveryWorker builds the processing recovery scheduler.
 func NewProcessingRecoveryWorker(
 	cfg *config.Config,
 	useCase uc_interfaces.IFashionWorkerUseCase,
 	log logger.Interface,
-) IProcessingRecoveryWorker {
+) *ProcessingRecoveryWorker {
 	return &ProcessingRecoveryWorker{
+		BaseWorker: shared_worker.NewBaseWorker("processing_recovery"),
 		useCase:    useCase,
 		cronEngine: cron.New(cron.WithSeconds()),
 		log:        log,
@@ -41,8 +36,9 @@ func NewProcessingRecoveryWorker(
 	}
 }
 
-// Start begins the recovery scheduler and executes an initial scan.
-func (w *ProcessingRecoveryWorker) Start() {
+func (w *ProcessingRecoveryWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	go w.executeRecoveryJob(workerlog.TriggerStartup)
 
 	_, err := w.cronEngine.AddFunc(w.cfg.Wardrobe.RecoveryScanCron, func() {
@@ -56,11 +52,11 @@ func (w *ProcessingRecoveryWorker) Start() {
 	w.cronEngine.Start()
 }
 
-// Stop stops the recovery scheduler safely.
 func (w *ProcessingRecoveryWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *ProcessingRecoveryWorker) executeRecoveryJob(triggerType string) {

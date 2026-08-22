@@ -25,15 +25,15 @@ import (
 )
 
 type AppWorkers struct {
-	RenewalWorker               subWorker.ISubscriptionRenewalWorker
-	PaymentReconciliationWorker subWorker.IPaymentReconciliationWorker
-	WebhookInboxWorker          subWorker.IWebhookInboxWorker
-	AIUsageReconciliationWorker aiexecutorWorker.IAIUsageReconciliationWorker
-	LoyaltyPointExpiryWorker    brandWorker.ILoyaltyPointExpiryWorker
+	RenewalWorker               *subWorker.SubscriptionRenewalWorker
+	PaymentReconciliationWorker *subWorker.PaymentReconciliationWorker
+	WebhookInboxWorker          *subWorker.WebhookInboxWorker
+	AIUsageReconciliationWorker *aiexecutorWorker.AIUsageReconciliationWorker
+	LoyaltyPointExpiryWorker    *brandWorker.LoyaltyPointExpiryWorker
 	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
 	FashionInitWorker           *fashionWorker.FashionInitWorker
-	FailedItemsCleanupWorker    fashionWorker.IFailedItemsCleanupWorker
-	ProcessingRecoveryWorker    fashionWorker.IProcessingRecoveryWorker
+	FailedItemsCleanupWorker    *fashionWorker.FailedItemsCleanupWorker
+	ProcessingRecoveryWorker    *fashionWorker.ProcessingRecoveryWorker
 	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
 	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
 	DashboardAggregatorWorker   *dashboardWorker.DashboardAggregatorWorker
@@ -89,41 +89,22 @@ func (a *App) Run() error {
 
 	ctxWorker := context.Background()
 
-	a.Workers.RenewalWorker.Start()
-	a.Workers.PaymentReconciliationWorker.Start()
-	a.Workers.WebhookInboxWorker.Start()
-	a.Workers.AIUsageReconciliationWorker.Start()
-	a.Workers.LoyaltyPointExpiryWorker.Start()
-	a.Workers.FailedItemsCleanupWorker.Start()
-	a.Workers.ProcessingRecoveryWorker.Start()
-
-	if a.Workers.ESAsyncWorker != nil {
-		a.Workers.ESAsyncWorker.Start(ctxWorker)
-	}
-	if a.Workers.FashionInitWorker != nil {
-		a.Workers.FashionInitWorker.Start(ctxWorker)
-	}
-	if a.Workers.FashionAnalyzeWorker != nil {
-		a.Workers.FashionAnalyzeWorker.Start(ctxWorker)
-	}
-	if a.Workers.PlanChangedWorker != nil {
-		a.Workers.PlanChangedWorker.Start(ctxWorker)
-	}
-	if a.Workers.DashboardAggregatorWorker != nil {
-		a.Workers.DashboardAggregatorWorker.Start(ctxWorker)
-	}
-	if a.Workers.OutboxWorker != nil {
-		a.Workers.OutboxWorker.Start(ctxWorker)
-	}
-	if a.Workers.EmailWorker != nil {
-		a.Workers.EmailWorker.Start(ctxWorker)
-	}
-	if a.Workers.AuditLogConsumerWorker != nil {
-		a.Workers.AuditLogConsumerWorker.Start(ctxWorker)
-	}
-	if a.Workers.AuditCleanupWorker != nil {
-		a.Workers.AuditCleanupWorker.Start(ctxWorker)
-	}
+	a.Workers.RenewalWorker.Start(ctxWorker)
+	a.Workers.PaymentReconciliationWorker.Start(ctxWorker)
+	a.Workers.WebhookInboxWorker.Start(ctxWorker)
+	a.Workers.AIUsageReconciliationWorker.Start(ctxWorker)
+	a.Workers.LoyaltyPointExpiryWorker.Start(ctxWorker)
+	a.Workers.FailedItemsCleanupWorker.Start(ctxWorker)
+	a.Workers.ProcessingRecoveryWorker.Start(ctxWorker)
+	a.Workers.ESAsyncWorker.Start(ctxWorker)
+	a.Workers.FashionInitWorker.Start(ctxWorker)
+	a.Workers.FashionAnalyzeWorker.Start(ctxWorker)
+	a.Workers.PlanChangedWorker.Start(ctxWorker)
+	a.Workers.DashboardAggregatorWorker.Start(ctxWorker)
+	a.Workers.OutboxWorker.Start(ctxWorker)
+	a.Workers.EmailWorker.Start(ctxWorker)
+	a.Workers.AuditLogConsumerWorker.Start(ctxWorker)
+	a.Workers.AuditCleanupWorker.Start(ctxWorker)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -144,34 +125,15 @@ func (a *App) Run() error {
 	a.Workers.LoyaltyPointExpiryWorker.Stop()
 	a.Workers.FailedItemsCleanupWorker.Stop()
 	a.Workers.ProcessingRecoveryWorker.Stop()
-
-	if a.Workers.ESAsyncWorker != nil {
-		a.Workers.ESAsyncWorker.Stop()
-	}
-	if a.Workers.FashionInitWorker != nil {
-		a.Workers.FashionInitWorker.Stop()
-	}
-	if a.Workers.FashionAnalyzeWorker != nil {
-		a.Workers.FashionAnalyzeWorker.Stop()
-	}
-	if a.Workers.PlanChangedWorker != nil {
-		a.Workers.PlanChangedWorker.Stop()
-	}
-	if a.Workers.DashboardAggregatorWorker != nil {
-		a.Workers.DashboardAggregatorWorker.Stop()
-	}
-	if a.Workers.OutboxWorker != nil {
-		a.Workers.OutboxWorker.Stop()
-	}
-	if a.Workers.EmailWorker != nil {
-		a.Workers.EmailWorker.Stop()
-	}
-	if a.Workers.AuditLogConsumerWorker != nil {
-		a.Workers.AuditLogConsumerWorker.Stop()
-	}
-	if a.Workers.AuditCleanupWorker != nil {
-		a.Workers.AuditCleanupWorker.Stop()
-	}
+	a.Workers.ESAsyncWorker.Stop()
+	a.Workers.FashionInitWorker.Stop()
+	a.Workers.FashionAnalyzeWorker.Stop()
+	a.Workers.PlanChangedWorker.Stop()
+	a.Workers.DashboardAggregatorWorker.Stop()
+	a.Workers.OutboxWorker.Stop()
+	a.Workers.EmailWorker.Stop()
+	a.Workers.AuditLogConsumerWorker.Stop()
+	a.Workers.AuditCleanupWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

@@ -6,8 +6,8 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/application/interface/usecase"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
-	smart_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"go.uber.org/zap"
@@ -17,24 +17,21 @@ const outboxFallbackInterval = 10 * time.Second
 
 type OutboxWorker struct {
 	*BaseWorker
-	outboxRepo smart_msg.OutboxRepository
-	rabbitMQ   *smart_msg.RabbitMQClient
-	listener   *db.OutboxListener
-	logger     logger.Interface
-	cfg        config.OutboxConfig
+	outboxUC usecase.IOutboxUseCase
+	listener *db.OutboxListener
+	logger   logger.Interface
+	cfg      config.OutboxConfig
 }
 
 func NewOutboxWorker(
-	outboxRepo smart_msg.OutboxRepository,
-	rabbitMQ *smart_msg.RabbitMQClient,
+	outboxUC usecase.IOutboxUseCase,
 	listener *db.OutboxListener,
 	cfg *config.Config,
 	l logger.Interface,
 ) *OutboxWorker {
 	return &OutboxWorker{
 		BaseWorker: NewBaseWorker("outbox"),
-		outboxRepo: outboxRepo,
-		rabbitMQ:   rabbitMQ,
+		outboxUC:   outboxUC,
 		listener:   listener,
 		logger:     l,
 		cfg:        cfg.Outbox,
@@ -74,62 +71,32 @@ func (w *OutboxWorker) runLoop(ctx context.Context) {
 
 func (w *OutboxWorker) processBatch(ctx context.Context) {
 	retryAfter := time.Duration(w.cfg.RetryIntervalMinutes) * time.Minute
-	records, err := w.outboxRepo.ClaimToPublish(ctx, w.cfg.BatchSize, w.cfg.RetryMaxAttempts, retryAfter)
-	if err != nil {
-		w.logger.Error("[OutboxWorker] Failed to claim records ready to publish", zap.Error(err))
-		return
-	}
-	if len(records) == 0 {
-		return
-	}
 
 	run := workerlog.New("outbox", workerlog.TriggerCron)
-	run.AddTotal(len(records))
-
-	for _, record := range records {
-		err := w.rabbitMQ.PublishDirect(ctx, record.Topic, record.Payload)
-		if err != nil {
-			w.logger.Error("[OutboxWorker] Failed to publish outbox record",
-				zap.String("recordId", record.ID.String()),
-				zap.String("topic", record.Topic),
-				zap.Error(err),
-			)
-			if markErr := w.outboxRepo.MarkFailed(ctx, record.ID, err); markErr != nil {
-				w.logger.Error("[OutboxWorker] Failed to mark outbox record as failed",
-					zap.String("recordId", record.ID.String()),
-					zap.Error(markErr),
-				)
-			}
-			continue
-		}
-
-		if err := w.outboxRepo.MarkPublished(ctx, record.ID); err != nil {
-			w.logger.Error("[OutboxWorker] Failed to mark outbox record as published",
-				zap.String("recordId", record.ID.String()),
-				zap.Error(err),
-			)
-		}
-		run.AddSuccess(1)
+	publishedCount, err := w.outboxUC.PublishBatch(ctx, w.cfg.BatchSize, w.cfg.RetryMaxAttempts, retryAfter)
+	if err != nil {
+		run.LogFailure(w.logger, err)
+		return
 	}
 
+	run.AddTotal(publishedCount)
+	run.AddSuccess(publishedCount)
 	run.LogSuccessIfData(w.logger)
 }
 
 func (w *OutboxWorker) cleanupPublished(ctx context.Context) {
-	retention := time.Duration(w.cfg.CleanupRetentionDays) * 24 * time.Hour
-	since := time.Now().UTC().Add(-retention)
-	deleted, err := w.outboxRepo.DeletePublishedBefore(ctx, since)
+	run := workerlog.New("outbox_cleanup", workerlog.TriggerCron)
+	deleted, err := w.outboxUC.CleanupPublished(ctx, w.cfg.CleanupRetentionDays)
 	if err != nil {
-		w.logger.Error("[OutboxWorker] Failed to clean up old published records",
-			zap.Time("since", since),
-			zap.Error(err),
-		)
+		run.LogFailure(w.logger, err)
 		return
 	}
 	if deleted > 0 {
-		w.logger.Info("[OutboxWorker] Cleaned up old published records",
-			zap.Int64("count", deleted),
-			zap.Time("since", since),
-		)
+		run.AddSuccess(int(deleted))
+		run.LogSuccessIfData(w.logger, zap.Int64("deleted_rows", deleted))
 	}
+}
+
+func (w *OutboxWorker) Stop() {
+	w.BaseWorker.Stop()
 }

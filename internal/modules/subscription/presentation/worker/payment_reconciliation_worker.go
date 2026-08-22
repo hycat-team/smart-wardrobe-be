@@ -8,17 +8,14 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
-type IPaymentReconciliationWorker interface {
-	Start()
-	Stop()
-}
-
 type PaymentReconciliationWorker struct {
+	*shared_worker.BaseWorker
 	useCase usecase_interfaces.IPaymentReconciliationUseCase
 	cron    *cron.Cron
 	log     logger.Interface
@@ -29,16 +26,19 @@ func NewPaymentReconciliationWorker(
 	useCase usecase_interfaces.IPaymentReconciliationUseCase,
 	log logger.Interface,
 	cfg *config.Config,
-) IPaymentReconciliationWorker {
+) *PaymentReconciliationWorker {
 	return &PaymentReconciliationWorker{
-		useCase: useCase,
-		cron:    cron.New(cron.WithSeconds()),
-		log:     log,
-		cfg:     cfg,
+		BaseWorker: shared_worker.NewBaseWorker("payment_reconciliation"),
+		useCase:    useCase,
+		cron:       cron.New(cron.WithSeconds()),
+		log:        log,
+		cfg:        cfg,
 	}
 }
 
-func (w *PaymentReconciliationWorker) Start() {
+func (w *PaymentReconciliationWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	_, err := w.cron.AddFunc(w.cfg.PayOS.ReconciliationCron, w.run)
 	if err != nil {
 		w.log.Error("Failed to register payment reconciliation worker", zap.Error(err))
@@ -51,6 +51,7 @@ func (w *PaymentReconciliationWorker) Stop() {
 	if w.cron != nil {
 		w.cron.Stop()
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *PaymentReconciliationWorker) run() {

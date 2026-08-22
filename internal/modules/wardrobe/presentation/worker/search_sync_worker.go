@@ -2,9 +2,6 @@ package worker
 
 import (
 	"context"
-	"strings"
-	"sync/atomic"
-	"time"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
@@ -18,10 +15,9 @@ import (
 
 type SearchSyncWorker struct {
 	*worker.BaseWorker
-	eventConsumer   event.ISearchSyncEventConsumer
-	useCase         usecase_interfaces.ISearchSyncUseCase
-	logger          logger.Interface
-	initialSyncDone int32
+	eventConsumer event.ISearchSyncEventConsumer
+	useCase       usecase_interfaces.ISearchSyncUseCase
+	logger        logger.Interface
 }
 
 func NewSearchSyncWorker(
@@ -39,7 +35,7 @@ func NewSearchSyncWorker(
 
 func (w *SearchSyncWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	go w.manageInitialSyncAndRecovery(ctx)
+	go w.useCase.RunInitialSyncWithRetry(ctx, w.logger)
 	go w.startConsume(ctx)
 }
 
@@ -53,10 +49,7 @@ func (w *SearchSyncWorker) startConsume(ctx context.Context) {
 		)
 		err := w.useCase.ProcessSyncEvent(ctx, eventPayload, run)
 		if err != nil {
-			willRequeue := false
-			if containsOfflineError(err) {
-				willRequeue = true
-			}
+			willRequeue := w.useCase.IsOfflineError(err)
 			run.LogFailure(w.logger, err,
 				zap.String("itemId", eventPayload.ItemID.String()),
 				zap.String("userId", eventPayload.UserID.String()),
@@ -78,40 +71,6 @@ func (w *SearchSyncWorker) startConsume(ctx context.Context) {
 	}
 }
 
-func (w *SearchSyncWorker) manageInitialSyncAndRecovery(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	w.tryInitialSync(ctx)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if atomic.LoadInt32(&w.initialSyncDone) == 1 {
-				return
-			}
-			w.tryInitialSync(ctx)
-		}
-	}
-}
-
-func (w *SearchSyncWorker) tryInitialSync(ctx context.Context) {
-	run := workerlog.New("search_sync", workerlog.TriggerInitialSync)
-	done, err := w.useCase.TryInitialSync(ctx, run)
-	if err != nil {
-		run.LogFailure(w.logger, err)
-	}
-	if done {
-		run.LogSuccessIfData(w.logger)
-		atomic.StoreInt32(&w.initialSyncDone, 1)
-	}
-}
-
-func containsOfflineError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), "elasticsearch is offline")
+func (w *SearchSyncWorker) Stop() {
+	w.BaseWorker.Stop()
 }

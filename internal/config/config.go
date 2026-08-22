@@ -26,7 +26,12 @@ type Config struct {
 	Subscription       Subscription               `mapstructure:"subscription"`
 	Wardrobe           WardrobeProcessing         `mapstructure:"wardrobe"`
 	Outbox             OutboxConfig               `mapstructure:"outbox"`
+	Admin              AdminConfig                `mapstructure:"admin"`
 	BrandFeatureAccess BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
+}
+
+type AdminConfig struct {
+	AuditRetentionMonths int `mapstructure:"audit_retention_months"`
 }
 
 type OutboxConfig struct {

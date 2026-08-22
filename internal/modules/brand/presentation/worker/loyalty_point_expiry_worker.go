@@ -8,16 +8,13 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"go.uber.org/zap"
 )
 
-type ILoyaltyPointExpiryWorker interface {
-	Start()
-	Stop()
-}
-
 type LoyaltyPointExpiryWorker struct {
+	*shared_worker.BaseWorker
 	useCase uc_interfaces.IBrandLoyaltyUseCase
 	log     logger.Interface
 	cfg     *config.Config
@@ -28,16 +25,19 @@ func NewLoyaltyPointExpiryWorker(
 	useCase uc_interfaces.IBrandLoyaltyUseCase,
 	log logger.Interface,
 	cfg *config.Config,
-) ILoyaltyPointExpiryWorker {
+) *LoyaltyPointExpiryWorker {
 	return &LoyaltyPointExpiryWorker{
-		useCase: useCase,
-		log:     log,
-		cfg:     cfg,
-		stopCh:  make(chan struct{}),
+		BaseWorker: shared_worker.NewBaseWorker("loyalty_point_expiry"),
+		useCase:    useCase,
+		log:        log,
+		cfg:        cfg,
+		stopCh:     make(chan struct{}),
 	}
 }
 
-func (w *LoyaltyPointExpiryWorker) Start() {
+func (w *LoyaltyPointExpiryWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	if !w.cfg.Loyalty.ExpiryWorkerEnabled {
 		w.log.Info("Loyalty point expiry worker disabled")
 		return
@@ -51,6 +51,7 @@ func (w *LoyaltyPointExpiryWorker) Stop() {
 	default:
 		close(w.stopCh)
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *LoyaltyPointExpiryWorker) loop() {

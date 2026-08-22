@@ -2,21 +2,19 @@ package worker
 
 import (
 	"context"
+	"time"
+
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
-	"time"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
-type IFailedItemsCleanupWorker interface {
-	Start()
-	Stop()
-}
-
 type FailedItemsCleanupWorker struct {
+	*shared_worker.BaseWorker
 	useCase    uc_interfaces.IFashionWorkerUseCase
 	cronEngine *cron.Cron
 	log        logger.Interface
@@ -25,22 +23,25 @@ type FailedItemsCleanupWorker struct {
 func NewFailedItemsCleanupWorker(
 	useCase uc_interfaces.IFashionWorkerUseCase,
 	log logger.Interface,
-) IFailedItemsCleanupWorker {
+) *FailedItemsCleanupWorker {
 	return &FailedItemsCleanupWorker{
+		BaseWorker: shared_worker.NewBaseWorker("failed_items_cleanup"),
 		useCase:    useCase,
 		cronEngine: cron.New(cron.WithSeconds()),
 		log:        log,
 	}
 }
 
-func (w *FailedItemsCleanupWorker) Start() {
+func (w *FailedItemsCleanupWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	go w.executeCleanupJob(workerlog.TriggerStartup)
 
 	_, err := w.cronEngine.AddFunc("0 0 2 * * *", func() {
 		w.executeCleanupJob(workerlog.TriggerCron)
 	})
 	if err != nil {
-		w.log.Error("Failed to register scheduled failed items cleanup cron task", zap.Error(err))
+		w.log.Error("Failed to register failed items cleanup cron task", zap.Error(err))
 		return
 	}
 
@@ -51,6 +52,7 @@ func (w *FailedItemsCleanupWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *FailedItemsCleanupWorker) executeCleanupJob(triggerType string) {

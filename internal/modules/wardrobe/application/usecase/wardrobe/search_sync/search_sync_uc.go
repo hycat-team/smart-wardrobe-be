@@ -3,6 +3,9 @@ package search_sync
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync/atomic"
+	"time"
 
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
@@ -157,4 +160,44 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 	run.AddSuccess(successCount)
 	run.AddSummaryFields(zap.Int("indexedCount", successCount))
 	return true, nil
+}
+
+func (uc *SearchSyncUseCase) IsOfflineError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "elasticsearch is offline")
+}
+
+func (uc *SearchSyncUseCase) RunInitialSyncWithRetry(ctx context.Context, log logger.Interface) {
+	var initialSyncDone atomic.Int32
+
+	tryInitialSync := func() {
+		run := workerlog.New("search_sync", workerlog.TriggerInitialSync)
+		done, err := uc.TryInitialSync(ctx, run)
+		if err != nil {
+			run.LogFailure(log, err)
+		}
+		if done {
+			run.LogSuccessIfData(log)
+			initialSyncDone.Store(1)
+		}
+	}
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	tryInitialSync()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if initialSyncDone.Load() == 1 {
+				return
+			}
+			tryInitialSync()
+		}
+	}
 }

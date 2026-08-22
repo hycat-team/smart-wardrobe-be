@@ -100,6 +100,7 @@ import (
 	worker4 "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/sse"
+	usecase4 "smart-wardrobe-be/internal/shared/application/usecase"
 	"smart-wardrobe-be/internal/shared/infrastructure/ai"
 	"smart-wardrobe-be/internal/shared/infrastructure/caching"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
@@ -280,13 +281,13 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	}
 	rateLimitMiddleware := middleware3.NewRateLimitMiddleware(cfg)
 	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
-	iSubscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
+	subscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
-	iPaymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
+	paymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
 	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l, cfg)
-	iWebhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
-	iaiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
-	iLoyaltyPointExpiryWorker := worker3.NewLoyaltyPointExpiryWorker(iBrandLoyaltyUseCase, l, cfg)
+	webhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
+	aiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
+	loyaltyPointExpiryWorker := worker3.NewLoyaltyPointExpiryWorker(iBrandLoyaltyUseCase, l, cfg)
 	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, iFashionContract, l)
@@ -295,33 +296,34 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	fashionInitWorker := worker6.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
 	visionCategoryCache := worker5.NewVisionCategoryCache(cfg, iCategoryRepository, l)
 	iFashionWorkerUseCase := worker5.NewFashionWorkerUseCase(cfg, l, iWardrobeContract, visionCategoryCache, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionItemRepository, iBrandContract, sseManager, iUnitOfWork)
-	iFailedItemsCleanupWorker := worker6.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
-	iProcessingRecoveryWorker := worker6.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
+	failedItemsCleanupWorker := worker6.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
+	processingRecoveryWorker := worker6.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker6.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
 	iGrantUseCase := grant.NewGrantUseCase(iaiCostRepository, iaiModelConfigRepository)
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	iDashboardAggregatorUseCase := usecase2.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker7.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
+	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, l)
 	outboxListener, err := db.NewOutboxListener(cfg, l)
 	if err != nil {
 		return nil, nil, err
 	}
-	outboxWorker := worker8.NewOutboxWorker(outboxRepository, rabbitMQClient, outboxListener, cfg, l)
+	outboxWorker := worker8.NewOutboxWorker(outboxUseCase, outboxListener, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	iEmailUseCase := email.NewEmailUseCase(smtpSender)
 	emailWorker := worker9.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
 	auditLogConsumerWorker := worker10.NewAuditLogConsumerWorker(rabbitMQClient, iAuditLogUseCase, l)
-	auditCleanupWorker := worker10.NewAuditCleanupWorker(iAuditLogUseCase, l)
+	auditCleanupWorker := worker10.NewAuditCleanupWorker(iAuditLogUseCase, cfg, l)
 	appWorkers := &bootstrap.AppWorkers{
-		RenewalWorker:               iSubscriptionRenewalWorker,
-		PaymentReconciliationWorker: iPaymentReconciliationWorker,
-		WebhookInboxWorker:          iWebhookInboxWorker,
-		AIUsageReconciliationWorker: iaiUsageReconciliationWorker,
-		LoyaltyPointExpiryWorker:    iLoyaltyPointExpiryWorker,
+		RenewalWorker:               subscriptionRenewalWorker,
+		PaymentReconciliationWorker: paymentReconciliationWorker,
+		WebhookInboxWorker:          webhookInboxWorker,
+		AIUsageReconciliationWorker: aiUsageReconciliationWorker,
+		LoyaltyPointExpiryWorker:    loyaltyPointExpiryWorker,
 		ESAsyncWorker:               searchSyncWorker,
 		FashionInitWorker:           fashionInitWorker,
-		FailedItemsCleanupWorker:    iFailedItemsCleanupWorker,
-		ProcessingRecoveryWorker:    iProcessingRecoveryWorker,
+		FailedItemsCleanupWorker:    failedItemsCleanupWorker,
+		ProcessingRecoveryWorker:    processingRecoveryWorker,
 		FashionAnalyzeWorker:        fashionAnalyzeWorker,
 		PlanChangedWorker:           planChangedWorker,
 		DashboardAggregatorWorker:   dashboardAggregatorWorker,

@@ -7,17 +7,14 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
-type IWebhookInboxWorker interface {
-	Start()
-	Stop()
-}
-
 type WebhookInboxWorker struct {
+	*shared_worker.BaseWorker
 	useCase usecase_interfaces.IWebhookInboxUseCase
 	cron    *cron.Cron
 	log     logger.Interface
@@ -26,15 +23,18 @@ type WebhookInboxWorker struct {
 func NewWebhookInboxWorker(
 	useCase usecase_interfaces.IWebhookInboxUseCase,
 	log logger.Interface,
-) IWebhookInboxWorker {
+) *WebhookInboxWorker {
 	return &WebhookInboxWorker{
-		useCase: useCase,
-		cron:    cron.New(cron.WithSeconds()),
-		log:     log,
+		BaseWorker: shared_worker.NewBaseWorker("webhook_inbox"),
+		useCase:    useCase,
+		cron:       cron.New(cron.WithSeconds()),
+		log:        log,
 	}
 }
 
-func (w *WebhookInboxWorker) Start() {
+func (w *WebhookInboxWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	_, err := w.cron.AddFunc("30 */1 * * * *", w.run)
 	if err != nil {
 		w.log.Error("Failed to register webhook inbox worker", zap.Error(err))
@@ -47,6 +47,7 @@ func (w *WebhookInboxWorker) Stop() {
 	if w.cron != nil {
 		w.cron.Stop()
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *WebhookInboxWorker) run() {

@@ -5,18 +5,15 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
+	shared_worker "smart-wardrobe-be/internal/shared/presentation/worker"
 	"time"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )
 
-type ISubscriptionRenewalWorker interface {
-	Start()
-	Stop()
-}
-
 type SubscriptionRenewalWorker struct {
+	*shared_worker.BaseWorker
 	subUseCase usecase_interfaces.ISubscriptionUseCase
 	cronEngine *cron.Cron
 	log        logger.Interface
@@ -25,15 +22,18 @@ type SubscriptionRenewalWorker struct {
 func NewSubscriptionRenewalWorker(
 	subUseCase usecase_interfaces.ISubscriptionUseCase,
 	log logger.Interface,
-) ISubscriptionRenewalWorker {
+) *SubscriptionRenewalWorker {
 	return &SubscriptionRenewalWorker{
+		BaseWorker: shared_worker.NewBaseWorker("subscription_renewal"),
 		subUseCase: subUseCase,
 		cronEngine: cron.New(cron.WithSeconds()),
 		log:        log,
 	}
 }
 
-func (w *SubscriptionRenewalWorker) Start() {
+func (w *SubscriptionRenewalWorker) Start(ctx context.Context) {
+	w.BaseWorker.Start(ctx)
+
 	go w.executeRenewalJob(workerlog.TriggerStartup)
 
 	_, err := w.cronEngine.AddFunc("0 0 0 * * *", func() {
@@ -51,6 +51,7 @@ func (w *SubscriptionRenewalWorker) Stop() {
 	if w.cronEngine != nil {
 		w.cronEngine.Stop()
 	}
+	w.BaseWorker.Stop()
 }
 
 func (w *SubscriptionRenewalWorker) executeRenewalJob(triggerType string) {
