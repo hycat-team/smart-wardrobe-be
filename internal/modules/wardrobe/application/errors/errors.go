@@ -81,31 +81,7 @@ func ErrUpdateItemForbidden() *apperror.Error {
 }
 
 func ErrCategoryNotFound() *apperror.Error {
-	return apperror.NewBadRequest("Danh mục trang phục không tồn tại.")
-}
-
-func ErrCategoryNameAlreadyExists() *apperror.Error {
-	return apperror.NewConflict("Tên danh mục đã tồn tại trong hệ thống.")
-}
-
-func ErrCategorySlugAlreadyExists() *apperror.Error {
-	return apperror.NewConflict("Slug danh mục đã tồn tại trong hệ thống.")
-}
-
-func ErrCategoryLegacySlugForbidden() *apperror.Error {
-	return apperror.NewBadRequest("Slug danh mục 'vay' đã ngừng hỗ trợ. Vui lòng dùng 'dam' hoặc 'chan-vay'.")
-}
-
-func ErrCategoryOtherImmutable() *apperror.Error {
-	return apperror.NewBadRequest("Không thể xóa danh mục hệ thống 'other'.")
-}
-
-func ErrCategoryHasUserItems() *apperror.Error {
-	return apperror.NewBadRequest("Không thể xóa danh mục này vì vẫn còn trang phục của người dùng đang liên kết.")
-}
-
-func ErrFallbackCategoryNotFound() *apperror.Error {
-	return apperror.NewInternalError("Không tìm thấy danh mục hệ thống 'other' để chuyển dữ liệu.")
+	return apperror.NewNotFound("Không tìm thấy danh mục.")
 }
 
 func ErrProcessFashionTextFailed() *apperror.Error {

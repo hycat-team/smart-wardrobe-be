@@ -30,9 +30,11 @@ var ProviderSet = wire.NewSet(
 	fashion_item.NewFashionItemUseCase,
 	category.NewCategoryUseCase,
 	contract.NewFashionContract,
+	contract.NewCategoryContract,
 	contract.NewFashionDashboardReader,
 
 	handler.NewWardrobeAIHandler,
+	handler.NewCategoryHandler,
 	router.NewRouter,
 	presentation_worker.NewFailedItemsCleanupWorker,
 	presentation_worker.NewProcessingRecoveryWorker,

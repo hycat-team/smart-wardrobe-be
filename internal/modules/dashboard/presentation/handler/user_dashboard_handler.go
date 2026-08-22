@@ -10,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	msgUserGetWardrobeCategoryDistributionSuccess = "Lấy phân bổ danh mục tủ đồ thành công"
+	msgUserGetWardrobeInsightsSuccess             = "Lấy phân tích tủ đồ cá nhân thành công"
+)
+
 type UserDashboardHandler struct {
 	userUC uc_interfaces.IUserDashboardUseCase
 }
@@ -35,7 +40,7 @@ func (h *UserDashboardHandler) GetWardrobeCategoryDistribution(c *gin.Context) e
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân bổ danh mục tủ đồ thành công", res)
+	shared_pres.Success(c, msgUserGetWardrobeCategoryDistributionSuccess, res)
 	return nil
 }
 
@@ -56,6 +61,6 @@ func (h *UserDashboardHandler) GetWardrobeInsights(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân tích tủ đồ cá nhân thành công", res)
+	shared_pres.Success(c, msgUserGetWardrobeInsightsSuccess, res)
 	return nil
 }

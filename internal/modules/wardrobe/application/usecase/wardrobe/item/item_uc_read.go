@@ -31,17 +31,18 @@ import (
 )
 
 type WardrobeItemUseCase struct {
-	cfg             *config.Config
-	logger          logger.Interface
-	wardrobeRepo    repositories.IWardrobeItemRepository
-	outfitRepo      repositories.IOutfitRepository
-	searchEngine    search.IWardrobeSearchService
-	mediaService    media.IMediaService
-	aiService       aiexecutor_contract.IAIOrchestrator
-	userSubContract contract.IUserSubscriptionContract
-	eventPublisher  event.IEventPublisher
-	fashionContract fashion_contract.IFashionContract
-	uow             shared_repos.IUnitOfWork
+	cfg              *config.Config
+	logger           logger.Interface
+	wardrobeRepo     repositories.IWardrobeItemRepository
+	outfitRepo       repositories.IOutfitRepository
+	searchEngine     search.IWardrobeSearchService
+	mediaService     media.IMediaService
+	aiService        aiexecutor_contract.IAIOrchestrator
+	userSubContract  contract.IUserSubscriptionContract
+	eventPublisher   event.IEventPublisher
+	fashionContract  fashion_contract.IFashionContract
+	categoryContract fashion_contract.ICategoryContract
+	uow              shared_repos.IUnitOfWork
 }
 
 func NewWardrobeItemUseCase(
@@ -55,20 +56,22 @@ func NewWardrobeItemUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
+	categoryContract fashion_contract.ICategoryContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IWardrobeItemUseCase {
 	return &WardrobeItemUseCase{
-		cfg:             cfg,
-		logger:          l,
-		wardrobeRepo:    wardrobeRepo,
-		outfitRepo:      outfitRepo,
-		searchEngine:    searchEngine,
-		mediaService:    mediaService,
-		aiService:       aiService,
-		userSubContract: userSubContract,
-		eventPublisher:  eventPublisher,
-		fashionContract: fashionContract,
-		uow:             uow,
+		cfg:              cfg,
+		logger:           l,
+		wardrobeRepo:     wardrobeRepo,
+		outfitRepo:       outfitRepo,
+		searchEngine:     searchEngine,
+		mediaService:     mediaService,
+		aiService:        aiService,
+		userSubContract:  userSubContract,
+		eventPublisher:   eventPublisher,
+		fashionContract:  fashionContract,
+		categoryContract: categoryContract,
+		uow:              uow,
 	}
 }
 

@@ -1,19 +1,16 @@
 <!--
 Sync Impact Report:
-- Version change: 1.5.0 -> 1.6.0
+- Version change: 1.6.0 → 1.7.0 (MINOR — expanded allowed cross-module imports)
 - Modified principles:
-  - Access Control (RBAC): renamed "B2C Roles" to "Subscription tiers (PlanKind)"; clarified
-    system RoleSlug has only `admin`/`user` (users.role_slug); B2B Roles (owner/staff) & System Admin unchanged
-- Added sections:
-  - VII. Design Patterns & Conventions Compliance — MUST read docs/system-design/design-pattern.md
+  - §II Strict Module Boundaries & DTO Contracts: expanded allowed imports with rationale
+  - §IV Clean Architecture & Strict Layer Dependency: updated application layer rule
+- Added sections: None
 - Removed sections: None
 - Templates requiring updates:
   - .specify/templates/plan-template.md (✅ verified/no updates needed)
   - .specify/templates/spec-template.md (✅ verified/no updates needed)
   - .specify/templates/tasks-template.md (✅ verified/no updates needed)
-  - .specify/templates/constitution-template.md (✅ verified/no updates needed)
-- Follow-up TODOs:
-  - docs/system-design/architecture.md §"Individual Users (B2C Roles)" will be aligned in feature 012 (US10, task T053)
+- Follow-up TODOs: None
 -->
 
 # SmartWardrobe Backend Constitution
@@ -29,17 +26,27 @@ cross-module database joins/preloads on entities of other modules are strictly p
 
 ### II. Strict Module Boundaries & DTO Contracts
 Cross-module communication MUST go through the public service interfaces defined in
-`presentation/contract/` using DTOs, never domain entities. A module must never import another
-module's internal use case implementations, entities, repositories, or persistence structures.
-Cross-module data stitching must use `sliceutils.IndexBy` or `sliceutils.GroupBy` for O(1) lookups
-instead of nested loops.
+`presentation/contract/` using DTOs, never domain entities. Cross-module data stitching
+must use `sliceutils.IndexBy` or `sliceutils.GroupBy` for O(1) lookups instead of
+nested loops.
 
-**Exception — Domain constants**: A module MAY import another module's `domain/constants/`
-directly (e.g., `fashion` module importing `wardrobe/domain/constants/wardrobestatus`).
-These are pure enum/const values without behavior, and duplicating them across modules
-would cause maintenance overhead. However, the importing module MUST NOT **hardcode**
-the constant's value (e.g., writing `"active"` instead of `wardrobestatus.Active`) —
-always reference the constant symbol to avoid typo drift.
+**Allowed cross-module imports:**
+
+| Import Target | Allowed | Rationale |
+|---------------|---------|-----------|
+| `presentation/contract/` | ✅ | Application layer needs to call cross-module services. Contracts are the official interface boundary. |
+| `application/dto` | ✅ | DTOs are shared data shapes. Direct import avoids duplication and keeps type safety across module boundaries. |
+| `domain/constants/` | ✅ | Pure enum/const values without behavior. Duplicating them would cause maintenance overhead. Always reference the constant symbol — never hardcode the value. |
+
+**Prohibited cross-module imports (strictly enforced):**
+
+| Import Target | Prohibited | Rationale |
+|---------------|------------|-----------|
+| `domain/entities/` | ❌ | Preserves data ownership. Prevents tight coupling at the data layer and cross-module DB joins. |
+| `domain/repositories/` | ❌ | Repository interfaces belong to the owning module only. |
+| `infrastructure/persistence/` | ❌ | Implementation details must not leak across module boundaries. |
+
+**Rationale:** This project is a modular monolith where modules share the same deployment and business domain. Strict isolation via contracts-only would create excessive ceremony without practical benefit for intra-domain communication. The prohibition on importing entities, repositories, and persistence remains absolute to preserve data ownership and prevent tight coupling at the data layer.
 
 ### III. Asynchronous Event-Driven Processing
 RabbitMQ must be used to process resource-intensive or slow tasks (e.g., AI analysis, background
@@ -65,7 +72,8 @@ presentation → application → domain ← infrastructure
 - **presentation** (handlers, workers, contracts): depends on **application** (via use case
   interfaces). Never calls infrastructure or domain directly.
 - **application** (use cases, mappers, DTOs): depends on **domain** (via repository interfaces).
-  Orchestrates business logic. Never depends on infrastructure.
+  Orchestrates business logic. For cross-module communication, application MAY import
+  `presentation/contract/` of other modules. Never depends on infrastructure.
 - **domain** (entities, repository interfaces, constants): **innermost layer with ZERO
   dependencies** on any other layer. No imports to application, infrastructure, or presentation.
 - **infrastructure** (GORM repositories, caching, messaging, external API clients): depends on
@@ -110,8 +118,8 @@ governs implementation-level conventions.
 - **Goose Database Migrations**: All database schema changes MUST be implemented via Goose SQL
   migration files (`make migration-create` and `make migration-up`). Directly editing initial
   database scripts in `/init-db` is strictly prohibited.
-- **Core Tables**: `users`, `wardrobe_items`, `outfits`, `brands`, `brand_members`, `loyalty_points`,
-  `campaigns`, `digital_samples`, and `sample_votes`.
+- **Database Schema**: Core tables, schema-per-module separation, FK rules, and access matrix
+  are documented in `docs/system-design/architecture.md §VII`.
 
 ## Code Style, Naming & Language Standards
 - **Language Boundaries**: Swagger text, request validation errors, and all client-facing messages
@@ -157,4 +165,4 @@ governs implementation-level conventions.
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 1.6.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-17
+**Version**: 1.7.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-22

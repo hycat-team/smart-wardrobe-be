@@ -12,6 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	msgAdminGetKPICardsSuccess                 = "Lấy danh sách thẻ KPI Admin thành công"
+	msgAdminGetAIMarginSuccess                 = "Lấy thông tin biên lợi nhuận AI thành công"
+	msgAdminGetPayOSReconciliationSuccess      = "Lấy thông tin đối soát PayOS thành công"
+	msgAdminGetSubscriptionDistributionSuccess = "Lấy phân bổ subscription thành công"
+	msgAdminGetRevenueBreakdownSuccess         = "Lấy doanh thu subscription thành công"
+	msgAdminGetAIUsageByOperationSuccess       = "Lấy thống kê sử dụng AI thành công"
+	msgAdminGetAIErrorBreakdownSuccess         = "Lấy thống kê lỗi AI thành công"
+	msgAdminGetRenewalStatsSuccess             = "Lấy thống kê gia hạn subscription thành công"
+	msgAdminGetOverviewSuccess                 = "Lấy thông tin tổng quan hệ thống thành công"
+)
+
 type AdminDashboardHandler struct {
 	adminUC uc_interfaces.IAdminDashboardUseCase
 }
@@ -32,7 +44,7 @@ func (h *AdminDashboardHandler) GetKPICards(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy danh sách thẻ KPI Admin thành công", res)
+	shared_pres.Success(c, msgAdminGetKPICardsSuccess, res)
 	return nil
 }
 
@@ -71,7 +83,7 @@ func (h *AdminDashboardHandler) GetAIMargin(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thông tin biên lợi nhuận AI thành công", res)
+	shared_pres.Success(c, msgAdminGetAIMarginSuccess, res)
 	return nil
 }
 
@@ -87,7 +99,7 @@ func (h *AdminDashboardHandler) GetPayOSReconciliation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thông tin đối soát PayOS thành công", res)
+	shared_pres.Success(c, msgAdminGetPayOSReconciliationSuccess, res)
 	return nil
 }
 
@@ -103,7 +115,7 @@ func (h *AdminDashboardHandler) GetSubscriptionDistribution(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân bổ subscription thành công", res)
+	shared_pres.Success(c, msgAdminGetSubscriptionDistributionSuccess, res)
 	return nil
 }
 
@@ -142,7 +154,7 @@ func (h *AdminDashboardHandler) GetRevenueBreakdown(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy doanh thu subscription thành công", res)
+	shared_pres.Success(c, msgAdminGetRevenueBreakdownSuccess, res)
 	return nil
 }
 
@@ -181,7 +193,7 @@ func (h *AdminDashboardHandler) GetAIUsageByOperation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê sử dụng AI thành công", res)
+	shared_pres.Success(c, msgAdminGetAIUsageByOperationSuccess, res)
 	return nil
 }
 
@@ -197,7 +209,7 @@ func (h *AdminDashboardHandler) GetAIErrorBreakdown(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê lỗi AI thành công", res)
+	shared_pres.Success(c, msgAdminGetAIErrorBreakdownSuccess, res)
 	return nil
 }
 
@@ -213,7 +225,7 @@ func (h *AdminDashboardHandler) GetRenewalStats(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê gia hạn subscription thành công", res)
+	shared_pres.Success(c, msgAdminGetRenewalStatsSuccess, res)
 	return nil
 }
 
@@ -229,6 +241,6 @@ func (h *AdminDashboardHandler) GetOverview(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thông tin tổng quan hệ thống thành công", res)
+	shared_pres.Success(c, msgAdminGetOverviewSuccess, res)
 	return nil
 }

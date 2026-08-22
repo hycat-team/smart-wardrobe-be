@@ -5,11 +5,22 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	_ "smart-wardrobe-be/internal/shared/presentation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+)
+
+const (
+	msgBrandGetKPICardsSuccess                   = "Lấy thẻ KPI nhãn hàng thành công"
+	msgBrandGetPointsLiabilitySuccess            = "Lấy báo cáo nghĩa vụ điểm quy đổi thành công"
+	msgBrandGetCustomerAcquisitionSuccess        = "Lấy thống kê kênh thu hút khách hàng thành công"
+	msgBrandGetLoyaltyTierDistributionSuccess    = "Lấy phân bổ hạng loyalty thành công"
+	msgBrandGetPointExpiryForecastSuccess        = "Lấy dự báo điểm hết hạn thành công"
+	msgBrandGetBenefitRedemptionAnalyticsSuccess = "Lấy thống kê đổi benefit thành công"
+	msgBrandGetCatalogStatsSuccess               = "Lấy thống kê catalog thành công"
+	msgBrandGetCustomerSpendSegmentationSuccess  = "Lấy phân khúc chi tiêu thành công"
+	msgBrandGetDigitalSampleLabAnalyticsSuccess  = "Lấy phân tích mẫu thử thành công"
 )
 
 type BrandDashboardHandler struct {
@@ -42,7 +53,7 @@ func (h *BrandDashboardHandler) GetKPICards(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thẻ KPI nhãn hàng thành công", res)
+	shared_pres.Success(c, msgBrandGetKPICardsSuccess, res)
 	return nil
 }
 
@@ -76,7 +87,7 @@ func (h *BrandDashboardHandler) GetPointsLiability(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy báo cáo nghĩa vụ điểm quy đổi thành công", res)
+	shared_pres.Success(c, msgBrandGetPointsLiabilitySuccess, res)
 	return nil
 }
 
@@ -102,7 +113,7 @@ func (h *BrandDashboardHandler) GetCustomerAcquisition(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê kênh thu hút khách hàng thành công", res)
+	shared_pres.Success(c, msgBrandGetCustomerAcquisitionSuccess, res)
 	return nil
 }
 
@@ -128,7 +139,7 @@ func (h *BrandDashboardHandler) GetLoyaltyTierDistribution(c *gin.Context) error
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân bổ hạng loyalty thành công", res)
+	shared_pres.Success(c, msgBrandGetLoyaltyTierDistributionSuccess, res)
 	return nil
 }
 
@@ -154,7 +165,7 @@ func (h *BrandDashboardHandler) GetPointExpiryForecast(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy dự báo điểm hết hạn thành công", res)
+	shared_pres.Success(c, msgBrandGetPointExpiryForecastSuccess, res)
 	return nil
 }
 
@@ -180,7 +191,7 @@ func (h *BrandDashboardHandler) GetBenefitRedemptionAnalytics(c *gin.Context) er
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê đổi benefit thành công", res)
+	shared_pres.Success(c, msgBrandGetBenefitRedemptionAnalyticsSuccess, res)
 	return nil
 }
 
@@ -206,7 +217,7 @@ func (h *BrandDashboardHandler) GetCatalogStats(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy thống kê catalog thành công", res)
+	shared_pres.Success(c, msgBrandGetCatalogStatsSuccess, res)
 	return nil
 }
 
@@ -232,7 +243,7 @@ func (h *BrandDashboardHandler) GetCustomerSpendSegmentation(c *gin.Context) err
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân khúc chi tiêu thành công", res)
+	shared_pres.Success(c, msgBrandGetCustomerSpendSegmentationSuccess, res)
 	return nil
 }
 
@@ -263,6 +274,6 @@ func (h *BrandDashboardHandler) GetDigitalSampleLabAnalytics(c *gin.Context) err
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy phân tích mẫu thử thành công", res)
+	shared_pres.Success(c, msgBrandGetDigitalSampleLabAnalyticsSuccess, res)
 	return nil
 }

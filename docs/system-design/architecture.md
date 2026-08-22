@@ -2,7 +2,7 @@
 
 ## I. SYSTEM ARCHITECTURE PARADIGM
 
-The backend is implemented as a **pragmatic modular monolith** in Go with **clean layer boundaries where practical**, but not every module is shaped identically.
+The backend is implemented as a **pragmatic modular monolith** in Go with **strict clean layer boundaries** (detailed in Constitution §IV), but not every module is shaped identically.
 
 - **Single deployable application:** all modules run inside one Gin-based HTTP service started from `cmd/server/main.go`.
 - **Shared infrastructure:** Postgres, Redis, RabbitMQ, Cloudinary, external AI providers, and Elasticsearch are initialized once and reused across modules through DI.
@@ -10,6 +10,21 @@ The backend is implemented as a **pragmatic modular monolith** in Go with **clea
 - **No DDD aggregate/event model:** the codebase does not model aggregate roots, value objects, or domain events in a DDD sense. Cross-module integration is handled through contracts plus shared infrastructure.
 - **Module boundaries are real, but uneven:** every business domain lives in `internal/modules/<name>`. The exact provider wiring shape (layered vs flattened) may differ per module, but the folder convention is consistent.
 - **Archived modules:** a module removed from runtime keeps its source tree but is excluded from DI wiring, route registration, and Swagger generation. Git history is the authoritative record for what was removed and why.
+
+### Layer dependency graph
+
+Within each module, dependencies follow a strict inward-directed layering:
+
+```
+presentation → application → domain ← infrastructure
+```
+
+- **presentation** (handlers, workers, contracts) depends on **application** (via use case interfaces). Never calls infrastructure or domain directly.
+- **application** (use cases, mappers, DTOs) depends on **domain** (via repository interfaces). Never depends on infrastructure.
+- **domain** (entities, repository interfaces, constants) has **ZERO dependencies** on any other layer.
+- **infrastructure** (GORM repos, caching, messaging, AI clients) depends on **domain** (implements repository interfaces). Never called directly by presentation.
+
+For full details and strict rules, see Constitution §IV.
 
 ---
 
@@ -166,9 +181,40 @@ Modules expose their public service interfaces via a package under `presentation
 - Contracts expose **only DTOs** (defined in `application/dto/`), never domain entities.
 - Package `presentation/contract/` must define the contract interface and implement it.
 - The contract struct implementation must delegate execution to application use cases via usecase interfaces.
-- A module must **never import** another module's `domain/entities/`, `domain/repositories/`, or `infrastructure/persistence/`.
 - Workers call use cases through interfaces defined in `application/interface/usecase/`.
 - Repositories must not `.Preload()` or `.Joins()` entities from other modules.
+
+**Strictly prohibited — never import:**
+- Another module's `domain/entities/` (direct struct pointers or cross-module DB joins)
+- Another module's `domain/repositories/` (repository interfaces)
+- Another module's `infrastructure/persistence/` (repository implementations)
+
+**Allowed cross-module imports (with rationale):**
+
+| Import | Allowed | Rationale |
+|--------|---------|-----------|
+| `presentation/contract/` of other modules | ✅ | Application layer needs to call cross-module services. Contracts are the official interface boundary. |
+| `application/dto` of other modules | ✅ | DTOs are shared data shapes. Direct import avoids duplication and keeps type safety across module boundaries. |
+| `domain/constants/` of other modules | ✅ | Pure enum/const values without behavior. Duplicating them would cause maintenance overhead. Always reference the constant symbol — never hardcode the value. |
+
+**Rationale:** These patterns are accepted because the codebase is a modular monolith where modules share the same deployment and business domain. Strict isolation via contracts-only would create excessive ceremony without practical benefit for intra-domain communication. The prohibition on importing entities, repositories, and persistence remains absolute to preserve data ownership and prevent tight coupling at the data layer.
+
+### Non-standard directories
+
+The canonical layout covers the most common folders. The following extensions exist in the codebase and are valid:
+
+- `application/interface/` may contain sub-packages beyond `usecase/` (e.g., `caching/`, `event/`, `payment/`, `security/`) for external service interfaces.
+- `application/vo/` — value objects (e.g., `identity` module).
+- `application/validator/` — startup validation (e.g., `subscription` module).
+- `infrastructure/constants/` — infrastructure-level constants (e.g., `wardrobe` module).
+
+### Service-only modules
+
+Some modules do not follow the full canonical layout because they serve a different purpose. For example, `notification` is a service-only module — it has no DB entities, no HTTP handlers, and uses `infrastructure/communication/` (SMTP sender) instead of `infrastructure/persistence/`. This is a valid design pattern for modules that only provide outbound integrations.
+
+### Presentation provider variance
+
+The `presentation/provider.go` file is optional. Only `identity` uses the layered provider style (separate `wire.NewSet(...)` per layer). All other modules wire handlers and workers directly from the module-level `provider.go` (flattened style).
 
 ### Workers are first-class presentation adapters
 
@@ -316,3 +362,30 @@ Policy for protecting B2C user information when fashion brands extract data from
 ### 2. Opt-In / Opt-Out
 
 - Users have the right to choose not to share their virtual digital wardrobe or anonymized survey information at any time through privacy settings on the app.
+
+---
+
+## X. EVENT-DRIVEN ARCHITECTURE
+
+### Outbox pattern
+
+All cross-module event publishing MUST use the **transactional outbox pattern**. Events are written to the `outbox_records` table within the same database transaction as the business operation. A dedicated `OutboxWorker` asynchronously publishes events to RabbitMQ and marks them as published. This guarantees at-least-once delivery and prevents event loss during broker outages.
+
+- **Table:** `shared.outbox_records`
+- **Worker:** `internal/shared/presentation/worker/outbox_worker.go`
+- **Routing:** The `topic` field in the outbox record determines the RabbitMQ routing key, enabling a single outbox table and worker to serve all modules.
+
+### Event publishing preference
+
+Cross-module write side effects **must prefer event publishing** over direct contract calls. Direct calls are acceptable only when the caller and callee share the same database transaction (Unit of Work) and immediate consistency is required.
+
+### Current events
+
+| Event | Publisher | Consumer | Routing Key |
+|-------|-----------|----------|-------------|
+| `wardrobe.event.created/updated/deleted` | wardrobe | elasticsearch sync | `wardrobe.event.*` |
+| `fashion.event.init` | wardrobe | fashion init worker | `fashion.event.init` |
+| `fashion.event.analyze` | fashion | fashion analyze worker | `fashion.event.analyze` |
+| `subscription.plan.changed` | subscription | aiexecutor plan changed worker | `subscription.plan.changed` |
+
+For detailed event payloads and flow diagrams, see `docs/system-design/event-driven-design.md`.

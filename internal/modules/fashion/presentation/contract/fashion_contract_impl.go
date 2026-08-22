@@ -11,13 +11,11 @@ import (
 
 type FashionContract struct {
 	fashionItemUC uc_interfaces.IFashionItemUseCase
-	categoryUC    uc_interfaces.ICategoryUseCase
 }
 
-func NewFashionContract(fashionItemUC uc_interfaces.IFashionItemUseCase, categoryUC uc_interfaces.ICategoryUseCase) IFashionContract {
+func NewFashionContract(fashionItemUC uc_interfaces.IFashionItemUseCase) IFashionContract {
 	return &FashionContract{
 		fashionItemUC: fashionItemUC,
-		categoryUC:    categoryUC,
 	}
 }
 
@@ -58,52 +56,12 @@ func (c *FashionContract) UpdateFashionItemCategory(ctx context.Context, fashion
 	return c.fashionItemUC.UpdateFashionItemCategory(ctx, fashionItemID, categoryID)
 }
 
-func (c *FashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
-	return c.categoryUC.GetCategory(ctx, id)
-}
-
-func (c *FashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error) {
-	return c.categoryUC.ListCategories(ctx, ids)
-}
-
-func (c *FashionContract) GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error) {
-	return c.categoryUC.GetAllCategories(ctx)
-}
-
-func (c *FashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryRes, error) {
-	return c.categoryUC.GetCategoryBySlug(ctx, slug)
-}
-
-func (c *FashionContract) GetCategoryByName(ctx context.Context, name string) (*dto.CategoryRes, error) {
-	return c.categoryUC.GetCategoryByName(ctx, name)
-}
-
-func (c *FashionContract) CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error) {
-	return c.categoryUC.CreateCategory(ctx, input)
-}
-
-func (c *FashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error) {
-	return c.categoryUC.UpdateCategory(ctx, id, input)
-}
-
-func (c *FashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	return c.categoryUC.DeleteCategory(ctx, id)
-}
-
 func (c *FashionContract) GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error) {
 	return c.fashionItemUC.GetStaleProcessingInfo(ctx, fashionItemIDs)
 }
 
 func (c *FashionContract) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
 	return c.fashionItemUC.SearchFashionItemIDs(ctx, query, categorySlug)
-}
-
-func (c *FashionContract) GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error) {
-	return c.fashionItemUC.GetFashionItemIDsByCategory(ctx, categoryID)
-}
-
-func (c *FashionContract) ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error {
-	return c.fashionItemUC.ReassignCategoryForCatalogItems(ctx, fashionItemIDs, fromCategoryID, toCategoryID)
 }
 
 func (c *FashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {

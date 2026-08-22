@@ -2736,6 +2736,23 @@
         "User"
       ]
     },
+    "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes": {
       "properties": {
         "id": {
@@ -2788,6 +2805,27 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_fashion_application_dto.CreateCategoryReq": {
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "sortOrder": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
       "type": "object"
     },
     "smart-wardrobe-be_internal_modules_fashion_application_dto.CreateChatSessionReq": {
@@ -2993,6 +3031,27 @@
       },
       "required": [
         "content"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_fashion_application_dto.UpdateCategoryReq": {
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "sortOrder": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
       ],
       "type": "object"
     },
@@ -3770,6 +3829,17 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.SetAutoRenewReq": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_subscription_application_dto.SetPlanActiveReq": {
       "properties": {
         "isActive": {
@@ -4063,17 +4133,6 @@
         "AutoRefund"
       ]
     },
-    "smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq": {
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "enabled"
-      ],
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq": {
       "properties": {
         "items": {
@@ -4141,23 +4200,6 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "slug": {
-          "type": "string"
-        },
-        "sortOrder": {
-          "type": "integer"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq": {
       "properties": {
         "quantity": {
@@ -4168,27 +4210,6 @@
       },
       "required": [
         "quantity"
-      ],
-      "type": "object"
-    },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateCategoryReq": {
-      "properties": {
-        "name": {
-          "maxLength": 100,
-          "type": "string"
-        },
-        "slug": {
-          "maxLength": 100,
-          "type": "string"
-        },
-        "sortOrder": {
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "name",
-        "slug"
       ],
       "type": "object"
     },
@@ -4411,27 +4432,6 @@
           "type": "number"
         }
       },
-      "type": "object"
-    },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateCategoryReq": {
-      "properties": {
-        "name": {
-          "maxLength": 100,
-          "type": "string"
-        },
-        "slug": {
-          "maxLength": 100,
-          "type": "string"
-        },
-        "sortOrder": {
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "name",
-        "slug"
-      ],
       "type": "object"
     },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateSystemCatalogItemReq": {

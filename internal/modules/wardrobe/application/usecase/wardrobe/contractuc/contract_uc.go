@@ -355,3 +355,7 @@ func (uc *WardrobeContractUseCase) MarkProcessingNeedsReview(ctx context.Context
 func (uc *WardrobeContractUseCase) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
 	return uc.wardrobeRepo.CompleteProcessingSuccess(ctx, itemID, processingVersion, updates)
 }
+
+func (uc *WardrobeContractUseCase) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {
+	return uc.wardrobeRepo.CountItems(ctx, fashionItemIDs, itemtype.UserItem)
+}

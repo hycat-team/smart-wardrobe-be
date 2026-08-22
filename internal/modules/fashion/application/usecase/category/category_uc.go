@@ -2,21 +2,35 @@ package category
 
 import (
 	"context"
+	"regexp"
+	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	fashionerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
+	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	"github.com/google/uuid"
 )
 
 type CategoryUseCase struct {
-	categoryRepo repositories.ICategoryRepository
+	categoryRepo     repositories.ICategoryRepository
+	fashionItemRepo  repositories.IFashionItemRepository
+	wardrobeContract wardrobe_contract.IWardrobeContract
 }
 
-func NewCategoryUseCase(categoryRepo repositories.ICategoryRepository) uc_interfaces.ICategoryUseCase {
-	return &CategoryUseCase{categoryRepo: categoryRepo}
+func NewCategoryUseCase(
+	categoryRepo repositories.ICategoryRepository,
+	fashionItemRepo repositories.IFashionItemRepository,
+	wardrobeContract wardrobe_contract.IWardrobeContract,
+) uc_interfaces.ICategoryUseCase {
+	return &CategoryUseCase{
+		categoryRepo:     categoryRepo,
+		fashionItemRepo:  fashionItemRepo,
+		wardrobeContract: wardrobeContract,
+	}
 }
 
 func mapToCategoryRes(cat *entities.Category) *dto.CategoryRes {
@@ -80,9 +94,32 @@ func (uc *CategoryUseCase) GetCategoryByName(ctx context.Context, name string) (
 }
 
 func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error) {
+	normalizedName := strings.TrimSpace(input.Name)
+	normalizedSlug := normalizeCategorySlug(input.Slug)
+
+	if normalizedSlug == "vay" {
+		return nil, fashionerrors.ErrCategoryLegacySlugForbidden()
+	}
+
+	existingByName, err := uc.categoryRepo.GetByName(ctx, normalizedName)
+	if err != nil {
+		return nil, err
+	}
+	if existingByName != nil {
+		return nil, fashionerrors.ErrCategoryNameAlreadyExists()
+	}
+
+	existingBySlug, err := uc.categoryRepo.GetBySlug(ctx, normalizedSlug)
+	if err != nil {
+		return nil, err
+	}
+	if existingBySlug != nil {
+		return nil, fashionerrors.ErrCategorySlugAlreadyExists()
+	}
+
 	cat := &entities.Category{
-		Name:      input.Name,
-		Slug:      input.Slug,
+		Name:      normalizedName,
+		Slug:      normalizedSlug,
 		SortOrder: input.SortOrder,
 	}
 	if err := uc.categoryRepo.Create(ctx, cat); err != nil {
@@ -97,17 +134,40 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 		return nil, err
 	}
 	if cat == nil {
-		return nil, nil
+		return nil, fashionerrors.ErrCategoryNotFound()
 	}
+
 	if input.Name != nil {
-		cat.Name = *input.Name
+		normalizedName := strings.TrimSpace(*input.Name)
+		existingByName, err := uc.categoryRepo.GetByName(ctx, normalizedName)
+		if err != nil {
+			return nil, err
+		}
+		if existingByName != nil && existingByName.ID != id {
+			return nil, fashionerrors.ErrCategoryNameAlreadyExists()
+		}
+		cat.Name = normalizedName
 	}
+
 	if input.Slug != nil {
-		cat.Slug = *input.Slug
+		normalizedSlug := normalizeCategorySlug(*input.Slug)
+		if normalizedSlug == "vay" {
+			return nil, fashionerrors.ErrCategoryLegacySlugForbidden()
+		}
+		existingBySlug, err := uc.categoryRepo.GetBySlug(ctx, normalizedSlug)
+		if err != nil {
+			return nil, err
+		}
+		if existingBySlug != nil && existingBySlug.ID != id {
+			return nil, fashionerrors.ErrCategorySlugAlreadyExists()
+		}
+		cat.Slug = normalizedSlug
 	}
+
 	if input.SortOrder != nil {
 		cat.SortOrder = *input.SortOrder
 	}
+
 	if err := uc.categoryRepo.Update(ctx, cat); err != nil {
 		return nil, err
 	}
@@ -115,5 +175,45 @@ func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, inp
 }
 
 func (uc *CategoryUseCase) DeleteCategory(ctx context.Context, id uuid.UUID) error {
+	cat, err := uc.categoryRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if cat == nil {
+		return fashionerrors.ErrCategoryNotFound()
+	}
+	if cat.Slug == "other" {
+		return fashionerrors.ErrCategoryOtherImmutable()
+	}
+
+	fashionIDs, err := uc.fashionItemRepo.GetFashionItemIDsByCategory(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if len(fashionIDs) > 0 {
+		userItemCount, err := uc.wardrobeContract.CountItemsByFashionIDs(ctx, fashionIDs)
+		if err != nil {
+			return err
+		}
+		if userItemCount > 0 {
+			return fashionerrors.ErrCategoryHasUserItems()
+		}
+	}
+
 	return uc.categoryRepo.Delete(ctx, id)
+}
+
+func normalizeCategorySlug(input string) string {
+	slug := strings.TrimSpace(strings.ToLower(input))
+	slug = strings.ReplaceAll(slug, "_", "-")
+	slug = strings.Join(strings.Fields(slug), "-")
+
+	invalidChars := regexp.MustCompile(`[^a-z0-9-]+`)
+	slug = invalidChars.ReplaceAllString(slug, "-")
+
+	multiDashes := regexp.MustCompile(`-+`)
+	slug = multiDashes.ReplaceAllString(slug, "-")
+
+	return strings.Trim(slug, "-")
 }

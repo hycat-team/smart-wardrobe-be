@@ -11,21 +11,29 @@ import (
 )
 
 type Router struct {
-	aiHandler *fashion_handler.WardrobeAIHandler
-	auth      identity_contract.IAuthMiddleware
+	aiHandler       *fashion_handler.WardrobeAIHandler
+	categoryHandler *fashion_handler.CategoryHandler
+	auth            identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	aiHandler *fashion_handler.WardrobeAIHandler,
+	categoryHandler *fashion_handler.CategoryHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		aiHandler: aiHandler,
-		auth:      auth,
+		aiHandler:       aiHandler,
+		categoryHandler: categoryHandler,
+		auth:            auth,
 	}
 }
 
 func (r *Router) Init(group *gin.RouterGroup) {
+	publicApi := group.Group("")
+	{
+		publicApi.GET("/categories", shared_pres.WrapHandler(r.categoryHandler.GetCategories))
+	}
+
 	privateApi := group.Group("")
 	privateApi.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.User))
 
@@ -39,5 +47,17 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		aiApi.DELETE("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.DeleteChatSession))
 		aiApi.PATCH("/chat/sessions/:contextID", shared_pres.WrapHandler(r.aiHandler.UpdateChatSession))
 		aiApi.POST("/chat/sessions/:contextID/messages/stream", shared_pres.WrapHandler(r.aiHandler.StreamChatMessage))
+	}
+
+	admin := group.Group("/admin")
+	admin.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+
+	adminCategories := admin.Group("/categories")
+	{
+		adminCategories.GET("", shared_pres.WrapHandler(r.categoryHandler.GetCategoriesAdmin))
+		adminCategories.GET("/:id", shared_pres.WrapHandler(r.categoryHandler.GetCategoryByIDAdmin))
+		adminCategories.POST("", shared_pres.WrapHandler(r.categoryHandler.CreateCategoryAdmin))
+		adminCategories.PUT("/:id", shared_pres.WrapHandler(r.categoryHandler.UpdateCategoryAdmin))
+		adminCategories.DELETE("/:id", shared_pres.WrapHandler(r.categoryHandler.DeleteCategoryAdmin))
 	}
 }

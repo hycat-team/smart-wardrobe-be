@@ -74,3 +74,7 @@ func (c *WardrobeContract) MarkProcessingNeedsReview(ctx context.Context, itemID
 func (c *WardrobeContract) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
 	return c.wardrobeContractUC.CompleteProcessingSuccess(ctx, itemID, processingVersion, updates)
 }
+
+func (c *WardrobeContract) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {
+	return c.wardrobeContractUC.CountItemsByFashionIDs(ctx, fashionItemIDs)
+}

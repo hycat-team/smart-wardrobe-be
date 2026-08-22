@@ -11,23 +11,20 @@ import (
 )
 
 type Router struct {
-	itemHandler     *wardrobe_handler.WardrobeItemHandler
-	outfitHandler   *wardrobe_handler.OutfitHandler
-	categoryHandler *wardrobe_handler.CategoryHandler
-	auth            identity_contract.IAuthMiddleware
+	itemHandler   *wardrobe_handler.WardrobeItemHandler
+	outfitHandler *wardrobe_handler.OutfitHandler
+	auth          identity_contract.IAuthMiddleware
 }
 
 func NewRouter(
 	itemHandler *wardrobe_handler.WardrobeItemHandler,
 	outfitHandler *wardrobe_handler.OutfitHandler,
-	categoryHandler *wardrobe_handler.CategoryHandler,
 	auth identity_contract.IAuthMiddleware,
 ) *Router {
 	return &Router{
-		itemHandler:     itemHandler,
-		outfitHandler:   outfitHandler,
-		categoryHandler: categoryHandler,
-		auth:            auth,
+		itemHandler:   itemHandler,
+		outfitHandler: outfitHandler,
+		auth:          auth,
 	}
 }
 
@@ -35,11 +32,6 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	publicApi := group.Group("/system-catalog/wardrobe-items")
 	{
 		publicApi.GET("", shared_pres.WrapHandler(r.itemHandler.GetSystemCatalogWardrobeItems))
-	}
-
-	categoryApi := group.Group("/categories")
-	{
-		categoryApi.GET("", shared_pres.WrapHandler(r.categoryHandler.GetCategories))
 	}
 
 	privateApi := group.Group("")
@@ -89,14 +81,5 @@ func (r *Router) Init(group *gin.RouterGroup) {
 		adminWardrobe.DELETE("/:id", shared_pres.WrapHandler(r.itemHandler.DeleteCatalogItemAdmin))
 		adminWardrobe.GET("/upload-signature", shared_pres.WrapHandler(r.itemHandler.GetUploadSignature))
 		adminWardrobe.POST("/batch-upload", shared_pres.WrapHandler(r.itemHandler.BatchUploadWardrobeItems))
-	}
-
-	adminCategories := admin.Group("/categories")
-	{
-		adminCategories.GET("", shared_pres.WrapHandler(r.categoryHandler.GetCategoriesAdmin))
-		adminCategories.GET("/:id", shared_pres.WrapHandler(r.categoryHandler.GetCategoryByIDAdmin))
-		adminCategories.POST("", shared_pres.WrapHandler(r.categoryHandler.CreateCategoryAdmin))
-		adminCategories.PUT("/:id", shared_pres.WrapHandler(r.categoryHandler.UpdateCategoryAdmin))
-		adminCategories.DELETE("/:id", shared_pres.WrapHandler(r.categoryHandler.DeleteCategoryAdmin))
 	}
 }

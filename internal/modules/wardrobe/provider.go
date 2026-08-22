@@ -1,7 +1,6 @@
 package wardrobe
 
 import (
-	category_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/category"
 	outfit_uc "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
@@ -33,10 +32,8 @@ var ProviderSet = wire.NewSet(
 	search_sync.NewSearchSyncUseCase,
 
 	outfit_uc.NewOutfitUseCase,
-	category_uc.NewCategoryUseCase,
 	handler.NewWardrobeItemHandler,
 	handler.NewOutfitHandler,
-	handler.NewCategoryHandler,
 	router.NewRouter,
 	presentation_worker.NewSearchSyncWorker,
 )

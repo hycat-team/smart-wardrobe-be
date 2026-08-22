@@ -5,11 +5,15 @@ import (
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	_ "smart-wardrobe-be/internal/shared/application/dto"
-	_ "smart-wardrobe-be/internal/shared/presentation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
+)
+
+const (
+	msgAnalyticsExecuteDynamicQuerySuccess            = "Truy vấn dữ liệu tổng hợp thành công"
+	msgAnalyticsGetAIEventsDrillDownSuccess           = "Lấy chi tiết sự kiện AI thành công"
+	msgAnalyticsGetSampleLabFeedbacksDrillDownSuccess = "Lấy chi tiết đánh giá mẫu thử thành công"
 )
 
 type AnalyticsHandler struct {
@@ -55,7 +59,7 @@ func (h *AnalyticsHandler) ExecuteDynamicQuery(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Truy vấn dữ liệu tổng hợp thành công", res)
+	shared_pres.Success(c, msgAnalyticsExecuteDynamicQuerySuccess, res)
 	return nil
 }
 
@@ -79,7 +83,7 @@ func (h *AnalyticsHandler) GetAIEventsDrillDown(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chi tiết sự kiện AI thành công", res)
+	shared_pres.Success(c, msgAnalyticsGetAIEventsDrillDownSuccess, res)
 	return nil
 }
 
@@ -103,6 +107,6 @@ func (h *AnalyticsHandler) GetSampleLabFeedbacksDrillDown(c *gin.Context) error 
 	if err != nil {
 		return err
 	}
-	shared_pres.Success(c, "Lấy chi tiết đánh giá mẫu thử thành công", res)
+	shared_pres.Success(c, msgAnalyticsGetSampleLabFeedbacksDrillDownSuccess, res)
 	return nil
 }

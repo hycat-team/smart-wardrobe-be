@@ -634,7 +634,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Wardrobe"
+                    "Admin Category"
                 ],
                 "summary": "Lấy danh sách danh mục trang phục (Admin)",
                 "responses": {
@@ -651,7 +651,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes"
                                             }
                                         }
                                     }
@@ -670,7 +670,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Wardrobe"
+                    "Admin Category"
                 ],
                 "summary": "Tạo danh mục trang phục (Admin)",
                 "parameters": [
@@ -680,7 +680,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateCategoryReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CreateCategoryReq"
                         }
                     }
                 ],
@@ -696,7 +696,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes"
                                         }
                                     }
                                 }
@@ -713,7 +713,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Wardrobe"
+                    "Admin Category"
                 ],
                 "summary": "Lấy chi tiết danh mục trang phục (Admin)",
                 "parameters": [
@@ -737,7 +737,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes"
                                         }
                                     }
                                 }
@@ -755,7 +755,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Wardrobe"
+                    "Admin Category"
                 ],
                 "summary": "Cập nhật danh mục trang phục (Admin)",
                 "parameters": [
@@ -772,7 +772,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateCategoryReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.UpdateCategoryReq"
                         }
                     }
                 ],
@@ -788,7 +788,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes"
                                         }
                                     }
                                 }
@@ -803,7 +803,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Wardrobe"
+                    "Admin Category"
                 ],
                 "summary": "Xóa danh mục trang phục (Admin)",
                 "parameters": [
@@ -5981,7 +5981,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes"
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes"
                                             }
                                         }
                                     }
@@ -6927,7 +6927,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq"
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SetAutoRenewReq"
                         }
                     }
                 ],
@@ -10243,6 +10243,23 @@ const docTemplate = `{
                 "User"
             ]
         },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryAPIRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes": {
             "type": "object",
             "properties": {
@@ -10294,6 +10311,27 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.CreateCategoryReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -10500,6 +10538,27 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_fashion_application_dto.UpdateCategoryReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -11277,6 +11336,17 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.SetAutoRenewReq": {
+            "type": "object",
+            "required": [
+                "enabled"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_subscription_application_dto.SetPlanActiveReq": {
             "type": "object",
             "properties": {
@@ -11570,17 +11640,6 @@ const docTemplate = `{
                 "AutoRefund"
             ]
         },
-        "smart-wardrobe-be_internal_modules_subscription_presentation_dto.SetAutoRenewReq": {
-            "type": "object",
-            "required": [
-                "enabled"
-            ],
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                }
-            }
-        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq": {
             "type": "object",
             "required": [
@@ -11648,23 +11707,6 @@ const docTemplate = `{
                 }
             }
         },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryRes": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                }
-            }
-        },
         "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq": {
             "type": "object",
             "required": [
@@ -11675,27 +11717,6 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 1
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CreateCategoryReq": {
-            "type": "object",
-            "required": [
-                "name",
-                "slug"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "slug": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
                 }
             }
         },
@@ -11917,27 +11938,6 @@ const docTemplate = `{
                 },
                 "price": {
                     "type": "number"
-                }
-            }
-        },
-        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.UpdateCategoryReq": {
-            "type": "object",
-            "required": [
-                "name",
-                "slug"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "slug": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
                 }
             }
         },

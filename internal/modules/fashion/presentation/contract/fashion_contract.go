@@ -15,17 +15,7 @@ type IFashionContract interface {
 	CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error
 	BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error
 	UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error
-	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error)
-	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error)
-	GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error)
-	GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryRes, error)
-	GetCategoryByName(ctx context.Context, name string) (*dto.CategoryRes, error)
-	CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error)
-	UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error)
-	DeleteCategory(ctx context.Context, id uuid.UUID) error
 	GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error)
 	SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error)
-	GetFashionItemIDsByCategory(ctx context.Context, categoryID uuid.UUID) ([]uuid.UUID, error)
-	ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
 }

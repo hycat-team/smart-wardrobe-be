@@ -38,6 +38,10 @@ userID := contextutils.GetUserIdOptional(c)
 |---|---|
 | `BindJSON(c, &obj)` | Binds request body, normalizes Unicode NFC, returns structured `apperror` |
 | `BindQuery(c, &obj)` | Binds query params, returns structured `apperror` |
+| `BindURI(c, &obj)` | Binds path parameters (struct with `uri:` tags), returns structured `apperror` |
+| `GetUUIDParam(c, name)` | Extracts a UUID from path parameter with validation |
+| `GetStringParam(c, name)` | Extracts a string from path parameter with empty check |
+| `GetInt64Param(c, name)` | Extracts an int64 from path parameter with validation |
 
 Custom validators registered at startup via `validator` tags:
 - `username` — 4–20 alphanumeric, `.`, `_` without consecutive or leading/trailing separators
@@ -45,7 +49,7 @@ Custom validators registered at startup via `validator` tags:
 - `neqfield` — field must differ from another field
 - `nfcmax` — max rune count after NFC normalization
 
-**Guideline**: Always use `validation.BindJSON` / `validation.BindQuery` in handlers rather than raw `c.ShouldBindJSON` to get consistent Vietnamese error messages.
+**Guideline**: Always use `validation.BindJSON` / `validation.BindQuery` / `validation.BindURI` in handlers rather than raw `c.ShouldBindJSON` to get consistent Vietnamese error messages. For simple path parameter extraction, use `validation.GetUUIDParam`, `validation.GetStringParam`, or `validation.GetInt64Param`.
 
 ### `httputils` — HTTP client helpers
 
@@ -515,7 +519,7 @@ All operations inside `fn` share the same database transaction. If any returns a
 ```
 ┌─────────────────────────────────────────────┐
 │ presentation/handler/                        │
-│   - HTTP request/response (BindJSON, BindQuery)  │
+│   - HTTP request/response (BindJSON, BindQuery, BindURI) │
 │   - Calls use case, returns result via shared_pres │
 │   - Message constants at top of file          │
 ├─────────────────────────────────────────────┤
@@ -532,8 +536,18 @@ All operations inside `fn` share the same database transaction. If any returns a
 │   - Request/response structs                 │
 │   - Shared pagination DTOs                   │
 ├─────────────────────────────────────────────┤
+│ application/errors/                          │
+│   - Domain-specific error constructors       │
+│   - Composes shared apperror factories       │
+├─────────────────────────────────────────────┤
 │ application/interface/usecase/               │
 │   - Use case interface definitions           │
+├─────────────────────────────────────────────┤
+│ domain/constants/                            │
+│   - Module-specific enum/const values        │
+├─────────────────────────────────────────────┤
+│ domain/entities/                             │
+│   - Persistent GORM models (owned by module) │
 ├─────────────────────────────────────────────┤
 │ domain/repositories/                         │
 │   - Repository interfaces (Filter, ListResult) │
@@ -542,3 +556,79 @@ All operations inside `fn` share the same database transaction. If any returns a
 │   - Repository implementations (GORM)        │
 └─────────────────────────────────────────────┘
 ```
+
+For the full canonical module layout and directory structure, see `architecture.md §IV`.
+
+---
+
+## Cross-Module Contracts
+
+Modules communicate across boundaries through contract packages located at `presentation/contract/`. This section describes the implementation conventions. For architectural rules and constraints, see `architecture.md §IV`.
+
+### Contract location
+
+Contracts sit inside `presentation/contract/`, not at the module root or under `application/`. Example: `internal/modules/identity/presentation/contract/`.
+
+### Contract interface and implementation
+
+The contract package defines both the interface and its implementation:
+
+```go
+// Contract interface
+type INotificationContract interface {
+    SendEmail(ctx context.Context, input SendEmailInput) error
+}
+
+// Implementation (delegates to use case)
+type NotificationContract struct {
+    notificationUC usecase_interfaces.INotificationUseCase
+}
+
+func (c *NotificationContract) SendEmail(ctx context.Context, input SendEmailInput) error {
+    return c.notificationUC.SendEmail(ctx, input)
+}
+```
+
+### Rules
+
+- Contracts expose **only DTOs** (defined in `application/dto/`), never domain entities.
+- The contract struct implementation must delegate execution to application use cases via usecase interfaces.
+- A module must **never import** another module's `domain/entities/`, `domain/repositories/`, or `infrastructure/persistence/`.
+- Workers call use cases through interfaces defined in `application/interface/usecase/`.
+
+### Exception — Domain constants
+
+A module MAY import another module's `domain/constants/` directly (e.g., `fashion` module importing `wardrobe/domain/constants/wardrobestatus`). These are pure enum/const values without behavior. However, always reference the constant symbol — never hardcode the value.
+
+---
+
+## Worker Pattern
+
+Background workers are first-class presentation adapters. This section describes implementation conventions. For architectural placement rules, see `architecture.md §IV`.
+
+### Location
+
+Workers live in `presentation/worker/` within each module. They are resolved through DI and registered in `bootstrap.AppWorkers`.
+
+### Registration
+
+Workers are registered in `internal/bootstrap/app.go` as part of the `AppWorkers` struct:
+
+```go
+type AppWorkers struct {
+    OutboxWorker              *shared_worker.OutboxWorker
+    FashionInitWorker         *fashion_worker.FashionInitWorker
+    FashionAnalyzeWorker      *fashion_worker.FashionAnalyzeWorker
+    // ... more workers
+}
+```
+
+### Lifecycle
+
+Workers are started and stopped alongside the HTTP server in `bootstrap.App.go`. They coordinate gracefully with the app lifecycle.
+
+### Use cases
+
+- **Scheduled tasks:** renewal, expiry, reconciliation (e.g., `SubscriptionRenewalWorker`)
+- **Event consumers:** async AI processing, search indexing (e.g., `FashionInitWorker`)
+- **Background cleanup:** stale data removal (e.g., `FailedItemsCleanupWorker`)

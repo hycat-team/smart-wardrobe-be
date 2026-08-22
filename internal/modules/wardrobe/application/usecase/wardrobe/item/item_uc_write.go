@@ -150,7 +150,7 @@ func (uc *WardrobeItemUseCase) UpdateWardrobeItem(ctx context.Context, userID uu
 	}
 
 	if input.CategoryID != nil {
-		category, err := uc.fashionContract.GetCategory(ctx, *input.CategoryID)
+		category, err := uc.categoryContract.GetCategory(ctx, *input.CategoryID)
 		if err != nil {
 			return nil, err
 		}

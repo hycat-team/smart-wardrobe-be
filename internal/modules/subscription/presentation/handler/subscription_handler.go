@@ -1,10 +1,9 @@
 package handler
 
 import (
-	_ "smart-wardrobe-be/internal/modules/subscription/application/dto"
+	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	_ "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
-	req_dto "smart-wardrobe-be/internal/modules/subscription/presentation/dto"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
@@ -42,7 +41,7 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -72,7 +71,7 @@ func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.UserSubscriptionDTO} "Hạn ngạch sử dụng và thông tin gói hiện tại"
 // @Router /api/v1/subscriptions/me/daily-quota [get]
 func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -95,7 +94,7 @@ func (h *SubscriptionHandler) GetDailyQuota(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Param body body req_dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
+// @Param body body sub_dto.SetAutoRenewReq true "Trạng thái thiết lập tự động gia hạn"
 // @Success 200 {object} shared_pres.APIResponse "Trạng thái tự động gia hạn mới"
 // @Router /api/v1/subscriptions/me/auto-renew [put]
 func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
@@ -104,7 +103,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 		return err
 	}
 
-	var req req_dto.SetAutoRenewReq
+	var req sub_dto.SetAutoRenewReq
 	if err := validation.BindJSON(c, &req); err != nil {
 		return err
 	}
@@ -133,7 +132,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SubscriptionPlanDTO} "Danh sách gói cước"
+// @Success 200 {object} shared_pres.APIResponse{data=[]sub_dto.SubscriptionPlanDTO} "Danh sách gói cước"
 // @Router /api/v1/subscriptions/plans [get]
 func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())
