@@ -362,6 +362,9 @@ func (m *mockUserContract) GetByID(ctx context.Context, id uuid.UUID) (*identity
 func (m *mockUserContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserRes, error) {
 	return nil, nil
 }
+func (m *mockUserContract) GetBriefByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserBriefRes, error) {
+	return nil, nil
+}
 func (m *mockUserContract) GetByUsername(ctx context.Context, username string) (*identity_dto.UserRes, error) {
 	return nil, nil
 }

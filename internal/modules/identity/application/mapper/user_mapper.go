@@ -7,6 +7,51 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 )
 
+// MapToUserBrief maps user identity into a minimal display response DTO.
+// Lightweight: does not fetch subscription or body profile.
+func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
+	if user == nil {
+		return nil
+	}
+
+	var firstNameStr, lastNameStr string
+	var genderVal gender.Gender
+
+	if user.FirstName != nil {
+		firstNameStr = *user.FirstName
+	}
+	if user.LastName != nil {
+		lastNameStr = *user.LastName
+	}
+	if user.Gender != nil {
+		genderVal = *user.Gender
+	}
+
+	return &dto.UserBriefRes{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: firstNameStr,
+		LastName:  lastNameStr,
+		Gender:    genderVal,
+		AvatarUrl: user.AvatarUrl,
+	}
+}
+
+// MapToUserBriefs maps a batch of users into brief response DTOs preserving input order.
+func MapToUserBriefs(users []*entities.User) []*dto.UserBriefRes {
+	if len(users) == 0 {
+		return []*dto.UserBriefRes{}
+	}
+	res := make([]*dto.UserBriefRes, 0, len(users))
+	for _, user := range users {
+		if brief := MapToUserBrief(user); brief != nil {
+			res = append(res, brief)
+		}
+	}
+	return res
+}
+
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
 func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionOverviewDTO) *dto.UserRes {
 	if user == nil {

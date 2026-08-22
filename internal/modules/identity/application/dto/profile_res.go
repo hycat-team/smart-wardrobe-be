@@ -27,6 +27,16 @@ type UserRes struct {
 	AvatarUrl    *string               `json:"avatarUrl,omitempty"`
 }
 
+type UserBriefRes struct {
+	ID        uuid.UUID     `json:"id"`
+	Username  string        `json:"username"`
+	Email     string        `json:"email,omitempty"`
+	FirstName string        `json:"firstName"`
+	LastName  string        `json:"lastName,omitempty"`
+	Gender    gender.Gender `json:"gender"`
+	AvatarUrl *string       `json:"avatarUrl,omitempty"`
+}
+
 type UpdateAvatarReq struct {
 	AvatarUrl      string `json:"avatarUrl" binding:"required" label:"đường dẫn ảnh đại diện"`
 	AvatarPublicID string `json:"avatarPublicId" binding:"required" label:"mã ảnh đại diện"`
