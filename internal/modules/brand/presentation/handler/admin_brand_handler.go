@@ -56,7 +56,7 @@ type brandMemberUriParam struct {
 // @Tags Admin Brand
 // @Produce json
 // @Param brandId path string true "Brand ID"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandMemberRes}
 // @Router /api/v1/admin/brands/{brandId}/members [get]
 func (h *AdminBrandHandler) ListMembers(c *gin.Context) error {
 	var uri brandIDUriParam
@@ -85,7 +85,7 @@ func (h *AdminBrandHandler) ListMembers(c *gin.Context) error {
 // @Produce json
 // @Param brandId path string true "Brand ID"
 // @Param body body dto.AdminAddBrandStaffReq true "Thông tin người dùng"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
 // @Router /api/v1/admin/brands/{brandId}/members [post]
 func (h *AdminBrandHandler) AddStaff(c *gin.Context) error {
 	var uri brandIDUriParam
@@ -135,7 +135,7 @@ func (h *AdminBrandHandler) AddStaff(c *gin.Context) error {
 // @Param brandId path string true "Brand ID"
 // @Param memberId path string true "Member ID"
 // @Param body body dto.AdminUpdateBrandMemberReq true "Thông tin cập nhật"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandMemberRes}
 // @Router /api/v1/admin/brands/{brandId}/members/{memberId} [patch]
 func (h *AdminBrandHandler) UpdateMember(c *gin.Context) error {
 	var uri brandMemberUriParam

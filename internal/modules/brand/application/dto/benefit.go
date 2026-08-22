@@ -43,16 +43,23 @@ type BrandBenefitRes struct {
 type BrandBenefitListRes = shared_dto.PaginationResult[*BrandBenefitRes]
 
 type BenefitRedemptionRes struct {
-	ID              uuid.UUID  `json:"id"`
-	BenefitID       uuid.UUID  `json:"benefitId"`
-	BrandID         uuid.UUID  `json:"brandId"`
-	BrandCustomerID uuid.UUID  `json:"brandCustomerId"`
-	UserID          *uuid.UUID `json:"userId"`
-	PointsSpent     int        `json:"pointsSpent"`
-	Status          string     `json:"status"`
-	RedeemedAt      time.Time  `json:"redeemedAt"`
-	UsedAt          *time.Time `json:"usedAt"`
-	ExpiresAt       *time.Time `json:"expiresAt"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	ID              uuid.UUID      `json:"id"`
+	BenefitID       uuid.UUID      `json:"benefitId"`
+	Brand           *BrandBriefRes `json:"brand,omitempty"`
+	BrandCustomerID uuid.UUID      `json:"brandCustomerId"`
+	UserID          *uuid.UUID     `json:"userId"`
+	PointsSpent     int            `json:"pointsSpent"`
+	Status          string         `json:"status"`
+	RedeemedAt      time.Time      `json:"redeemedAt"`
+	UsedAt          *time.Time     `json:"usedAt"`
+	ExpiresAt       *time.Time     `json:"expiresAt"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
 }
+
+type ListBenefitRedemptionsQueryReq struct {
+	shared_dto.PaginationQuery
+	BrandID *string `form:"brandId" binding:"omitempty,uuid4" label:"mã thương hiệu"`
+}
+
+type BenefitRedemptionListRes = shared_dto.PaginationResult[*BenefitRedemptionRes]

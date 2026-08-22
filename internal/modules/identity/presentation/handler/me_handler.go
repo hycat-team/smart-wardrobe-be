@@ -5,11 +5,14 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	_ "smart-wardrobe-be/internal/shared/application/dto"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Ensure shared_dto is used (swagger type reference)
+var _ = (*shared_dto.UploadSignatureResult)(nil)
 
 const (
 	successGetProfile         = "Lấy thông tin cá nhân thành công"
@@ -145,7 +148,7 @@ func (h *MeHandler) ChangePassword(c *gin.Context) error {
 // @Description Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh đại diện lên
 // @Tags Me
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UploadSignatureResult} "Chữ ký và thông tin upload"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.UploadSignatureResult} "Chữ ký và thông tin upload"
 // @Router /api/v1/me/avatar-signature [get]
 func (h *MeHandler) GetAvatarSignature(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

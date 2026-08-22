@@ -290,6 +290,9 @@ func (m *mockRedemptionRepo) GetByBrandCustomerID(ctx context.Context, brandCust
 func (m *mockRedemptionRepo) GetByBrandCustomerIDs(ctx context.Context, brandCustomerIDs []uuid.UUID) ([]*entities.BenefitRedemption, error) {
 	return nil, nil
 }
+func (m *mockRedemptionRepo) GetByFilter(ctx context.Context, filter repositories.BenefitRedemptionFilter) (*repositories.BenefitRedemptionListResult, error) {
+	return &repositories.BenefitRedemptionListResult{}, nil
+}
 func (m *mockRedemptionRepo) GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error) {
 	for _, r := range m.redemptions {
 		if r.BrandCustomerID == brandCustomerID && r.Status == benefitredemptionstatus.Redeemed {

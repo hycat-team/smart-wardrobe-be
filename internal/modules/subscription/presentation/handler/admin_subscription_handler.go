@@ -53,7 +53,7 @@ func NewAdminSubscriptionHandler(
 // @Description Lấy toàn bộ danh sách gói cước trong hệ thống (bao gồm cả gói đang tắt).
 // @Tags Admin Subscription
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.SubscriptionPlanDTO}
 // @Router /api/v1/admin/subscriptions/plans [get]
 func (h *AdminSubscriptionHandler) ListPlans(c *gin.Context) error {
 	plans, err := h.planUseCase.ListAdminPlans(c.Request.Context())
@@ -71,7 +71,7 @@ func (h *AdminSubscriptionHandler) ListPlans(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateSubscriptionPlanReq true "Thông tin gói cước"
-// @Success 201 {object} shared_pres.APIResponse
+// @Success 201 {object} shared_pres.APIResponse{data=dto.SubscriptionPlanDTO}
 // @Router /api/v1/admin/subscriptions/plans [post]
 func (h *AdminSubscriptionHandler) CreatePlan(c *gin.Context) error {
 	var req dto.CreateSubscriptionPlanReq
@@ -113,7 +113,7 @@ type adminPlanIDParam struct {
 // @Produce json
 // @Param id path string true "ID gói cước"
 // @Param body body dto.UpdateSubscriptionPlanReq true "Thông tin cập nhật"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.SubscriptionPlanDTO}
 // @Router /api/v1/admin/subscriptions/plans/{id} [put]
 func (h *AdminSubscriptionHandler) UpdatePlan(c *gin.Context) error {
 	var params adminPlanIDParam
@@ -155,7 +155,7 @@ func (h *AdminSubscriptionHandler) UpdatePlan(c *gin.Context) error {
 // @Produce json
 // @Param id path string true "ID gói cước"
 // @Param body body dto.SetPlanActiveReq true "Trạng thái hoạt động"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.SubscriptionPlanDTO}
 // @Router /api/v1/admin/subscriptions/plans/{id}/status [patch]
 func (h *AdminSubscriptionHandler) SetPlanActive(c *gin.Context) error {
 	var params adminPlanIDParam

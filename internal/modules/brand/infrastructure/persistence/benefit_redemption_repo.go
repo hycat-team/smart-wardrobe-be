@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitredemptionstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_persist "smart-wardrobe-be/internal/shared/infrastructure/repositories"
 
 	"github.com/google/uuid"
@@ -44,6 +45,36 @@ func (r *BenefitRedemptionRepository) GetByBrandCustomerIDs(ctx context.Context,
 		return nil, err
 	}
 	return redemptions, nil
+}
+
+func (r *BenefitRedemptionRepository) GetByFilter(ctx context.Context, filter repositories.BenefitRedemptionFilter) (*repositories.BenefitRedemptionListResult, error) {
+	if len(filter.BrandCustomerIDs) == 0 {
+		return &repositories.BenefitRedemptionListResult{}, nil
+	}
+
+	db := r.GetQueryWithPreload(ctx).Where("brand_customer_id IN ?", filter.BrandCustomerIDs)
+
+	if filter.BrandID != nil {
+		db = db.Where("brand_id = ?", *filter.BrandID)
+	}
+
+	var totalCount int64
+	if err := db.Model(&entities.BenefitRedemption{}).Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
+
+	paginationQuery := shared_dto.PaginationQuery{Page: filter.Page, Limit: filter.Limit}
+	db = shared_persist.ApplyPagination(db, paginationQuery)
+
+	var items []*entities.BenefitRedemption
+	if err := db.Order("redeemed_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	return &repositories.BenefitRedemptionListResult{
+		Items:      items,
+		TotalCount: totalCount,
+	}, nil
 }
 
 func (r *BenefitRedemptionRepository) GetActiveRedemptionByFeature(ctx context.Context, brandCustomerID uuid.UUID, featureCode string, now time.Time) (*entities.BenefitRedemption, error) {

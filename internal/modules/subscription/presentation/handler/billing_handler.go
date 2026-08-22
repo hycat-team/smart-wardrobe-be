@@ -53,7 +53,7 @@ func NewBillingHandler(
 // @Tags Billing
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Số dư ví"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WalletDTO} "Số dư ví"
 // @Router /api/v1/subscriptions/me/wallet [get]
 // func (h *BillingHandler) GetWallet(c *gin.Context) error {
 func (h *BillingHandler) GetWallet(c *gin.Context) error {

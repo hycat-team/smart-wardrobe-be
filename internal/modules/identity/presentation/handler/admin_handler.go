@@ -45,7 +45,7 @@ func NewAdminHandler(
 // @Tags Admin User
 // @Produce json
 // @Param id path string true "ID người dùng"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminUserDetailRes}
 // @Router /api/v1/admin/users/{id} [get]
 func (h *AdminHandler) GetUserDetail(c *gin.Context) error {
 	targetUserID, err := validation.GetUUIDParam(c, "id")
@@ -69,7 +69,7 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateAdminUserReq true "Thông tin tài khoản mới"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes}
 // @Router /api/v1/admin/users [post]
 func (h *AdminHandler) CreateUser(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
@@ -113,7 +113,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) error {
 // @Produce json
 // @Param id path string true "ID người dùng"
 // @Param body body dto.UpdateUserRoleReq true "Vai trò mới"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes}
 // @Router /api/v1/admin/users/{id}/role [patch]
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
@@ -158,7 +158,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) error {
 // @Tags Admin User
 // @Produce json
 // @Param id path string true "ID người dùng"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes}
 // @Router /api/v1/admin/users/{id} [delete]
 func (h *AdminHandler) DeactivateUser(c *gin.Context) error {
 	adminUserID, err := contextutils.GetUserId(c)
@@ -198,7 +198,7 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) error {
 // @Tags Admin User
 // @Produce json
 // @Param id path string true "ID người dùng"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.UserSessionItemDTO}
 // @Router /api/v1/admin/users/{id}/sessions [get]
 func (h *AdminHandler) ListUserSessions(c *gin.Context) error {
 	targetUserID, err := validation.GetUUIDParam(c, "id")

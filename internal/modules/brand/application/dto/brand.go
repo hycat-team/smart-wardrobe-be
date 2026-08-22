@@ -34,6 +34,15 @@ type UpdateBrandStatusReq struct {
 	Status brandstatus.BrandStatus `json:"status" binding:"required" label:"trạng thái thương hiệu"`
 }
 
+type BrandBriefRes struct {
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Slug          string    `json:"slug"`
+	Description   *string   `json:"description"`
+	LogoURL       *string   `json:"logoUrl"`
+	BackgroundURL *string   `json:"backgroundUrl"`
+}
+
 type BrandRes struct {
 	ID               uuid.UUID               `json:"id"`
 	Slug             string                  `json:"slug"`

@@ -495,7 +495,7 @@ func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, bran
 func (m *mockBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID) ([]*dto.BenefitRedemptionRes, error) {
+func (m *mockBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID, brandID *uuid.UUID, page, limit int) (*dto.BenefitRedemptionListRes, error) {
 	return nil, nil
 }
 func (m *mockBenefitUseCase) RedeemBenefit(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BenefitRedemptionRes, error) {

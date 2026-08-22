@@ -62,6 +62,7 @@ func (w *AuditLogConsumerWorker) startConsume(ctx context.Context) {
 			return err
 		}
 
+		run.AddTotal(1)
 		run.AddSuccess(1)
 		run.LogSuccessIfData(w.logger,
 			zap.String("action", input.Action),

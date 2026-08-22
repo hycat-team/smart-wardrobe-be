@@ -112,7 +112,7 @@ type ListLoyaltyPointLotsQueryReq struct {
 
 type BrandLoyaltyRes struct {
 	BrandID                 uuid.UUID            `json:"brandId"`
-	Brand                   *BrandRes            `json:"brand,omitempty"`
+	Brand                   *BrandBriefRes       `json:"brand,omitempty"`
 	BrandCustomerID         uuid.UUID            `json:"brandCustomerId"`
 	LoyaltyAccountID        uuid.UUID            `json:"loyaltyAccountId"`
 	CurrentPoints           int                  `json:"currentPoints"`

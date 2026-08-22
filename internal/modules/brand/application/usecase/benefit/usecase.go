@@ -256,7 +256,7 @@ func (uc *BrandBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, user
 	return mapper.MapBrandBenefit(benefit), nil
 }
 
-func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID) ([]*dto.BenefitRedemptionRes, error) {
+func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context, userID uuid.UUID, brandID *uuid.UUID, page, limit int) (*dto.BenefitRedemptionListRes, error) {
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -268,15 +268,28 @@ func (uc *BrandBenefitUseCase) ListBenefitRedemptionsForUser(ctx context.Context
 		}
 		customerIDs = append(customerIDs, customer.ID)
 	}
-	redemptions, err := uc.redemptionRepo.GetByBrandCustomerIDs(ctx, customerIDs)
+
+	filter := repositories.BenefitRedemptionFilter{
+		BrandCustomerIDs: customerIDs,
+		BrandID:          brandID,
+		Page:             page,
+		Limit:            limit,
+	}
+
+	result, err := uc.redemptionRepo.GetByFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*dto.BenefitRedemptionRes, 0, len(redemptions))
-	for _, redemption := range redemptions {
-		res = append(res, mapper.MapBenefitRedemption(redemption))
+
+	items := make([]*dto.BenefitRedemptionRes, 0, len(result.Items))
+	for _, redemption := range result.Items {
+		items = append(items, mapper.MapBenefitRedemption(redemption))
 	}
-	return res, nil
+
+	return &dto.BenefitRedemptionListRes{
+		Items:    items,
+		Metadata: shared_dto.BuildPaginationMetadata(shared_dto.PaginationQuery{Page: filter.Page, Limit: filter.Limit}, result.TotalCount),
+	}, nil
 }
 
 func (uc *BrandBenefitUseCase) UpdateBenefitStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, benefitID uuid.UUID, status string) (*dto.BrandBenefitRes, error) {

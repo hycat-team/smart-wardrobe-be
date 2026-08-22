@@ -75,6 +75,9 @@ func (uc *AIAdminUseCase) UpdatePricing(ctx context.Context, id uuid.UUID, req d
 		config.USDToVND = *req.USDToVND
 	}
 	if req.EffectiveTo != nil {
+		if req.EffectiveTo.Before(config.EffectiveFrom) {
+			return nil, aierrors.ErrEffectiveToBeforeEffectiveFrom()
+		}
 		config.EffectiveTo = req.EffectiveTo
 	}
 

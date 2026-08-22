@@ -38,7 +38,7 @@ func MapBrandLoyalty(account *entities.LoyaltyAccount, customer *entities.BrandC
 	}
 	return &dto.BrandLoyaltyRes{
 		BrandID:                 account.BrandID,
-		Brand:                   MapBrand(brand, -1),
+		Brand:                   MapBrandBrief(brand),
 		BrandCustomerID:         customer.ID,
 		LoyaltyAccountID:        account.ID,
 		CurrentPoints:           account.CurrentPoints,

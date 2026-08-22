@@ -12,7 +12,7 @@ startup:
     retry_attempt_2_seconds: 15
     retry_attempt_3_seconds: 30
 logger:
-    log_level: debug
+    log_level: info
     file_path: ./logs/app.log
     log_to_file: false
 jwt:

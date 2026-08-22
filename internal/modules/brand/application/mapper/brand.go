@@ -11,6 +11,30 @@ import (
 	"github.com/google/uuid"
 )
 
+func MapBrandBrief(brand *entities.Brand) *dto.BrandBriefRes {
+	if brand == nil {
+		return nil
+	}
+	return &dto.BrandBriefRes{
+		ID:            brand.ID,
+		Name:          brand.Name,
+		Slug:          brand.Slug,
+		Description:   brand.Description,
+		LogoURL:       brand.LogoURL,
+		BackgroundURL: brand.BackgroundURL,
+	}
+}
+
+func MapBrandBriefs(brands []*entities.Brand) []*dto.BrandBriefRes {
+	res := make([]*dto.BrandBriefRes, 0, len(brands))
+	for _, brand := range brands {
+		if brief := MapBrandBrief(brand); brief != nil {
+			res = append(res, brief)
+		}
+	}
+	return res
+}
+
 func MapBrand(brand *entities.Brand, totalCustomer int) *dto.BrandRes {
 	if brand == nil {
 		return nil
@@ -253,7 +277,7 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 	return &dto.BenefitRedemptionRes{
 		ID:              red.ID,
 		BenefitID:       red.BenefitID,
-		BrandID:         red.BrandID,
+		Brand:           MapBrandBrief(red.Brand),
 		BrandCustomerID: red.BrandCustomerID,
 		UserID:          red.UserID,
 		PointsSpent:     red.PointsSpent,

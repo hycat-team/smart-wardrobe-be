@@ -44,6 +44,71 @@ definitions:
       metadata:
         $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
     type: object
+  smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO:
+    properties:
+      currency:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      inputUsdPerMillion:
+        type: number
+      model:
+        type: string
+      outputUsdPerMillion:
+        type: number
+      provider:
+        type: string
+      usdToVnd:
+        type: number
+      version:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO:
+    properties:
+      aiCostPolicyId:
+        type: string
+      createdAt:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIUsageItemDTO:
+    properties:
+      actualCostMicroVnd:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: string
+      model:
+        type: string
+      operation:
+        type: string
+      outputTokens:
+        type: integer
+      promptTokens:
+        type: integer
+      provider:
+        type: string
+      requestId:
+        type: string
+      status:
+        type: string
+      thinkingTokens:
+        type: integer
+      userId:
+        type: string
+    type: object
   smart-wardrobe-be_internal_modules_aiexecutor_application_dto.CreateAIGrantReq:
     properties:
       aiCostPolicyId:
@@ -138,13 +203,22 @@ definitions:
       status:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus'
     type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionListRes:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
+    type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes:
     properties:
       benefitId:
         type: string
+      brand:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes'
       brandCustomerId:
-        type: string
-      brandId:
         type: string
       createdAt:
         type: string
@@ -202,6 +276,21 @@ definitions:
       unlockType:
         type: string
       updatedAt:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes:
+    properties:
+      backgroundUrl:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      logoUrl:
+        type: string
+      name:
+        type: string
+      slug:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandConversationDetailRes:
@@ -396,7 +485,7 @@ definitions:
   smart-wardrobe-be_internal_modules_brand_application_dto.BrandLoyaltyRes:
     properties:
       brand:
-        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes'
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes'
       brandCustomerId:
         type: string
       brandId:
@@ -1952,6 +2041,12 @@ definitions:
     x-enum-varnames:
     - User
     - AI
+  smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserDetailRes:
+    properties:
+      subscription: {}
+      user:
+        $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+    type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes:
     properties:
       items:
@@ -2255,6 +2350,25 @@ definitions:
       subscription:
         $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes'
       username:
+        type: string
+    type: object
+  smart-wardrobe-be_internal_modules_identity_application_dto.UserSessionItemDTO:
+    properties:
+      createdAt:
+        type: string
+      deviceIp:
+        type: string
+      deviceName:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      isRevoked:
+        type: boolean
+      lastActiveAt:
+        type: string
+      userAgent:
         type: string
     type: object
   smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes:
@@ -2579,6 +2693,17 @@ definitions:
         type: string
       tierRank:
         type: integer
+    type: object
+  smart-wardrobe-be_internal_modules_subscription_application_dto.WalletDTO:
+    properties:
+      balance:
+        type: number
+      currency:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_currency.Currency'
+      updatedAt:
+        type: string
+      userID:
+        type: string
     type: object
   smart-wardrobe-be_internal_modules_subscription_application_dto.WalletStatementDTO:
     properties:
@@ -2929,6 +3054,13 @@ definitions:
       userId:
         type: string
     type: object
+  smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeStatsRes:
+    properties:
+      activeItemsCount:
+        type: integer
+      outfitsCount:
+        type: integer
+    type: object
   smart-wardrobe-be_internal_modules_wardrobe_domain_constants_outfitstatus.OutfitStatus:
     enum:
     - 0
@@ -2976,6 +3108,15 @@ definitions:
         type: integer
       totalPages:
         type: integer
+    type: object
+  ? smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_aiexecutor_application_dto_AIUsageItemDTO
+  : properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIUsageItemDTO'
+        type: array
+      metadata:
+        $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata'
     type: object
   ? smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_fashion_application_dto_ChatMessageRes
   : properties:
@@ -3043,6 +3184,14 @@ definitions:
     x-enum-varnames:
     - Admin
     - User
+  smart-wardrobe-be_internal_shared_domain_constants_shared_currency.Currency:
+    enum:
+    - vnd
+    - usd
+    type: string
+    x-enum-varnames:
+    - VND
+    - USD
   smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender:
     enum:
     - 0
@@ -3083,7 +3232,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO'
+                  type: array
+              type: object
       summary: Danh sách hạn mức chính sách AI của người dùng
       tags:
       - Admin AI
@@ -3105,7 +3261,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO'
+              type: object
       summary: Cấp chính sách hạn mức AI cho người dùng
       tags:
       - Admin AI
@@ -3119,7 +3280,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO'
+                  type: array
+              type: object
       summary: Danh sách cấu hình giá mô hình AI
       tags:
       - Admin AI
@@ -3147,7 +3315,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO'
+              type: object
       summary: Cập nhật cấu hình giá mô hình AI
       tags:
       - Admin AI
@@ -3182,7 +3355,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_aiexecutor_application_dto_AIUsageItemDTO'
+              type: object
       summary: Lịch sử sử dụng AI của người dùng
       tags:
       - Admin AI
@@ -3322,7 +3500,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
+                  type: array
+              type: object
       summary: Danh sách thành viên nhãn hàng
       tags:
       - Admin Brand
@@ -3348,7 +3533,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
+              type: object
       summary: Thêm nhân viên cho nhãn hàng
       tags:
       - Admin Brand
@@ -3405,7 +3595,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes'
+              type: object
       summary: Cập nhật vai trò/trạng thái thành viên
       tags:
       - Admin Brand
@@ -3917,7 +4112,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO'
+                  type: array
+              type: object
       summary: Danh sách tất cả gói cước
       tags:
       - Admin Subscription
@@ -3938,7 +4140,12 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO'
+              type: object
       summary: Tạo gói cước mới
       tags:
       - Admin Subscription
@@ -3965,7 +4172,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO'
+              type: object
       summary: Cập nhật thông tin gói cước
       tags:
       - Admin Subscription
@@ -3992,7 +4204,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO'
+              type: object
       summary: Bật hoặc tắt trạng thái hoạt động gói cước
       tags:
       - Admin Subscription
@@ -4217,7 +4434,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
       summary: Tạo tài khoản người dùng
       tags:
       - Admin User
@@ -4237,7 +4459,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
       summary: Vô hiệu hóa tài khoản người dùng
       tags:
       - Admin User
@@ -4255,7 +4482,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserDetailRes'
+              type: object
       summary: Chi tiết tài khoản người dùng
       tags:
       - Admin User
@@ -4283,7 +4515,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes'
+              type: object
       summary: Đổi vai trò tài khoản người dùng
       tags:
       - Admin User
@@ -4303,7 +4540,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSessionItemDTO'
+                  type: array
+              type: object
       summary: Danh sách phiên đăng nhập
       tags:
       - Admin User
@@ -5738,7 +5982,13 @@ paths:
         name: taskId
         required: true
         type: string
-      responses: {}
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE event stream
+          schema:
+            type: string
       summary: Đăng ký nhận thông báo realtime cho Brand Item Task ID qua SSE
       tags:
       - Brand Item
@@ -6622,14 +6872,7 @@ paths:
       - Brand Chat
   /api/v1/brands/{brandId}/items:
     get:
-      consumes:
-      - application/json
       parameters:
-      - description: ID brand
-        in: path
-        name: brandId
-        required: true
-        type: string
       - description: ID brand
         in: path
         name: brandId
@@ -6645,7 +6888,6 @@ paths:
         type: integer
       produces:
       - application/json
-      - application/json
       responses:
         "200":
           description: OK
@@ -6658,7 +6900,6 @@ paths:
               type: object
       summary: Lấy danh sách sản phẩm brand (public)
       tags:
-      - Brand
       - Brand
   /api/v1/brands/{brandId}/items/samples:
     get:
@@ -6916,6 +7157,21 @@ paths:
       - Me
   /api/v1/me/benefit-redemptions:
     get:
+      description: Lấy danh sách quyền lợi đã nhận của người dùng hiện tại, hỗ trợ
+        lọc theo brand
+      parameters:
+      - description: Lọc theo Brand ID
+        in: query
+        name: brandId
+        type: string
+      - description: Số trang
+        in: query
+        name: page
+        type: integer
+      - description: Số lượng mỗi trang
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -6926,9 +7182,7 @@ paths:
             - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes'
-                  type: array
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionListRes'
               type: object
       summary: Lấy danh sách quyền lợi đã nhận của tôi
       tags:
@@ -7197,7 +7451,12 @@ paths:
         "200":
           description: Lấy số liệu thống kê tủ đồ thành công
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeStatsRes'
+              type: object
       summary: Lấy số liệu thống kê tủ đồ
       tags:
       - Wardrobe
@@ -7474,7 +7733,12 @@ paths:
         "200":
           description: Số dư ví
           schema:
-            $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            allOf:
+            - $ref: '#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletDTO'
+              type: object
       summary: Lấy số dư ví người dùng
       tags:
       - Billing
@@ -7852,7 +8116,13 @@ paths:
         name: taskId
         required: true
         type: string
-      responses: {}
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE event stream
+          schema:
+            type: string
       summary: Đăng ký nhận thông báo realtime cho Task ID qua SSE
       tags:
       - Wardrobe

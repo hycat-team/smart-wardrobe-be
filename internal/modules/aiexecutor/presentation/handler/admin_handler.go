@@ -64,7 +64,7 @@ type adminUserGrantsQuery struct {
 // @Description Quản trị viên xem danh sách bảng giá các model AI của các nhà cung cấp.
 // @Tags Admin AI
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.AIModelConfigDTO}
 // @Router /api/v1/admin/ai/pricing [get]
 func (h *AdminHandler) ListPricing(c *gin.Context) error {
 	list, err := h.aiAdminUC.ListPricing(c.Request.Context())
@@ -83,7 +83,7 @@ func (h *AdminHandler) ListPricing(c *gin.Context) error {
 // @Produce json
 // @Param id path string true "Model Config ID"
 // @Param body body dto.UpdatePricingReq true "Thông tin cập nhật giá"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AIModelConfigDTO}
 // @Router /api/v1/admin/ai/pricing/{id} [put]
 func (h *AdminHandler) UpdatePricing(c *gin.Context) error {
 	var uri adminPricingIDUriParam
@@ -129,7 +129,7 @@ func (h *AdminHandler) UpdatePricing(c *gin.Context) error {
 // @Param toDate query string false "Đến ngày (YYYY-MM-DD)"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số bản ghi/trang"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.AIUsageItemDTO]}
 // @Router /api/v1/admin/ai/usage [get]
 func (h *AdminHandler) GetUserUsage(c *gin.Context) error {
 	var query adminUserUsageQuery
@@ -174,7 +174,7 @@ func (h *AdminHandler) GetUserUsage(c *gin.Context) error {
 // @Tags Admin AI
 // @Produce json
 // @Param userId query string true "User ID"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.AIPolicyGrantDTO}
 // @Router /api/v1/admin/ai/grants [get]
 func (h *AdminHandler) ListGrants(c *gin.Context) error {
 	var query adminUserGrantsQuery
@@ -203,7 +203,7 @@ func (h *AdminHandler) ListGrants(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateAIGrantReq true "Thông tin cấp chính sách"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.AIPolicyGrantDTO}
 // @Router /api/v1/admin/ai/grants [post]
 func (h *AdminHandler) CreateGrant(c *gin.Context) error {
 	var req dto.CreateAIGrantReq

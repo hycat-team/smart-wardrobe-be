@@ -9,7 +9,7 @@ type BaseWorker struct {
 	name         string
 	cancel       context.CancelFunc
 	running      atomic.Bool
-	restartCount int32
+	restartCount atomic.Int32
 	healthFn     func(context.Context) error
 }
 
@@ -44,7 +44,7 @@ func (w *BaseWorker) Name() string {
 }
 
 func (w *BaseWorker) RestartCount() int32 {
-	return atomic.LoadInt32(&w.restartCount)
+	return w.restartCount.Load()
 }
 
 func (w *BaseWorker) SetHealthCheck(fn func(context.Context) error) {

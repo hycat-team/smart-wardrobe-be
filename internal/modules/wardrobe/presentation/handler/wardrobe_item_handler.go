@@ -228,6 +228,8 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Description Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Task ID
 // @Tags Wardrobe
 // @Param taskId path string true "Mã Task ID"
+// @Success 200 {string} string "SSE event stream"
+// @Produce text/event-stream
 // @Router /api/v1/wardrobe-items/tasks/{taskId}/sse [get]
 func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
 	taskId, err := validation.GetStringParam(c, "taskId")
@@ -471,7 +473,7 @@ func (h *WardrobeItemHandler) DeleteLockedWardrobeItems(c *gin.Context) error {
 // @Description Trả về số lượng active items và outfits đã lưu của user
 // @Tags Wardrobe
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Lấy số liệu thống kê tủ đồ thành công"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeStatsRes} "Lấy số liệu thống kê tủ đồ thành công"
 // @Router /api/v1/me/wardrobe-items/stats [get]
 func (h *WardrobeItemHandler) GetWardrobeStats(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

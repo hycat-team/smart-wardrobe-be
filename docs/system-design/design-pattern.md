@@ -612,20 +612,62 @@ Workers live in `presentation/worker/` within each module. They are resolved thr
 
 ### Registration
 
-Workers are registered in `internal/bootstrap/app.go` as part of the `AppWorkers` struct:
+Workers are registered in `internal/bootstrap/app.go` as part of the `AppWorkers` struct. All worker fields must use concrete pointer types (not interfaces):
 
 ```go
 type AppWorkers struct {
     OutboxWorker              *shared_worker.OutboxWorker
     FashionInitWorker         *fashion_worker.FashionInitWorker
     FashionAnalyzeWorker      *fashion_worker.FashionAnalyzeWorker
-    // ... more workers
+    // ... more workers — all concrete pointer types
 }
 ```
 
 ### Lifecycle
 
 Workers are started and stopped alongside the HTTP server in `bootstrap.App.go`. They coordinate gracefully with the app lifecycle.
+
+#### `*BaseWorker` embedding
+
+Every worker MUST embed `*worker.BaseWorker` (from `internal/shared/presentation/worker/`) for lifecycle management:
+
+```go
+type SomeWorker struct {
+    *worker.BaseWorker    // REQUIRED
+    useCase ...
+    logger  ...
+}
+
+func NewSomeWorker(...) *SomeWorker {
+    return &SomeWorker{
+        BaseWorker: worker.NewBaseWorker("some_worker"),
+        ...
+    }
+}
+```
+
+#### `Start(ctx)` / `Stop()` signature
+
+Workers MUST accept `ctx context.Context` in `Start()` for graceful shutdown propagation:
+
+```go
+func (w *SomeWorker) Start(ctx context.Context) {
+    w.BaseWorker.Start(ctx)    // MUST call first
+    // ... start cron, register consumers, etc.
+}
+
+func (w *SomeWorker) Stop() {
+    // ... stop cron, close channels, etc.
+    w.BaseWorker.Stop()        // MUST call last
+}
+```
+
+### Rules
+
+- Workers MUST be **thin wrappers** — delegate business logic to use cases via interfaces in `application/interface/usecase/`.
+- Workers MUST NOT contain business logic directly. If a worker has complex logic (error classification, retry loops, orchestration), move it to the use case layer.
+- Workers MUST embed `*worker.BaseWorker` and call `w.BaseWorker.Start(ctx)` / `w.BaseWorker.Stop()`.
+- All workers in `AppWorkers` struct MUST use concrete pointer types — interfaces are not allowed for worker fields.
 
 ### Use cases
 

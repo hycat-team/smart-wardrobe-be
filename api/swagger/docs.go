@@ -38,7 +38,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -70,7 +85,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -90,7 +117,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -131,7 +173,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -184,7 +238,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_aiexecutor_application_dto_AIUsageItemDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -407,7 +473,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -446,7 +527,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -528,7 +621,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandMemberRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1281,7 +1386,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1313,7 +1433,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1354,7 +1486,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1395,7 +1539,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.SubscriptionPlanDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1816,7 +1972,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1845,7 +2013,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserDetailRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1872,7 +2052,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1913,7 +2105,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1942,7 +2146,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSessionItemDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -4040,6 +4259,9 @@ const docTemplate = `{
         "/api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse": {
             "get": {
                 "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Brand Item Task ID",
+                "produces": [
+                    "text/event-stream"
+                ],
                 "tags": [
                     "Brand Item"
                 ],
@@ -4060,7 +4282,14 @@ const docTemplate = `{
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "SSE event stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/brand-portal/brands/{brandId}/items/upload-signature": {
@@ -5755,26 +5984,14 @@ const docTemplate = `{
         },
         "/api/v1/brands/{brandId}/items": {
             "get": {
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "Brand",
                     "Brand"
                 ],
                 "summary": "Lấy danh sách sản phẩm brand (public)",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID brand",
-                        "name": "brandId",
-                        "in": "path",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "ID brand",
@@ -6197,6 +6414,7 @@ const docTemplate = `{
         },
         "/api/v1/me/benefit-redemptions": {
             "get": {
+                "description": "Lấy danh sách quyền lợi đã nhận của người dùng hiện tại, hỗ trợ lọc theo brand",
                 "produces": [
                     "application/json"
                 ],
@@ -6204,6 +6422,26 @@ const docTemplate = `{
                     "Brand Benefit"
                 ],
                 "summary": "Lấy danh sách quyền lợi đã nhận của tôi",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Lọc theo Brand ID",
+                        "name": "brandId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số trang",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Số lượng mỗi trang",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -6216,10 +6454,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes"
-                                            }
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionListRes"
                                         }
                                     }
                                 }
@@ -6669,7 +6904,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Lấy số liệu thống kê tủ đồ thành công",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeStatsRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -7072,7 +7319,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Số dư ví",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_subscription_application_dto.WalletDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -7452,6 +7711,9 @@ const docTemplate = `{
         "/api/v1/wardrobe-items/tasks/{taskId}/sse": {
             "get": {
                 "description": "Mở kết nối SSE để lắng nghe các cập nhật trạng thái phân tích ảnh của Task ID",
+                "produces": [
+                    "text/event-stream"
+                ],
                 "tags": [
                     "Wardrobe"
                 ],
@@ -7465,7 +7727,14 @@ const docTemplate = `{
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "SSE event stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/wardrobe-items/upload-signature": {
@@ -7760,6 +8029,105 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inputUsdPerMillion": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "outputUsdPerMillion": {
+                    "type": "number"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "usdToVnd": {
+                    "type": "number"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIPolicyGrantDTO": {
+            "type": "object",
+            "properties": {
+                "aiCostPolicyId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIUsageItemDTO": {
+            "type": "object",
+            "properties": {
+                "actualCostMicroVnd": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "outputTokens": {
+                    "type": "integer"
+                },
+                "promptTokens": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "thinkingTokens": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.CreateAIGrantReq": {
             "type": "object",
             "required": [
@@ -7903,16 +8271,30 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionListRes": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_brand_application_dto.BenefitRedemptionRes": {
             "type": "object",
             "properties": {
                 "benefitId": {
                     "type": "string"
                 },
-                "brandCustomerId": {
-                    "type": "string"
+                "brand": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes"
                 },
-                "brandId": {
+                "brandCustomerId": {
                     "type": "string"
                 },
                 "createdAt": {
@@ -7999,6 +8381,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes": {
+            "type": "object",
+            "properties": {
+                "backgroundUrl": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logoUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
                     "type": "string"
                 }
             }
@@ -8295,7 +8700,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandRes"
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.BrandBriefRes"
                 },
                 "brandCustomerId": {
                     "type": "string"
@@ -10582,6 +10987,15 @@ const docTemplate = `{
                 "AI"
             ]
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserDetailRes": {
+            "type": "object",
+            "properties": {
+                "subscription": {},
+                "user": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserRes"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.AdminUserListRes": {
             "type": "object",
             "properties": {
@@ -11039,6 +11453,35 @@ const docTemplate = `{
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.UserSubscriptionRes"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.UserSessionItemDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deviceIp": {
+                    "type": "string"
+                },
+                "deviceName": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isRevoked": {
+                    "type": "boolean"
+                },
+                "lastActiveAt": {
+                    "type": "string"
+                },
+                "userAgent": {
                     "type": "string"
                 }
             }
@@ -11528,6 +11971,23 @@ const docTemplate = `{
                 },
                 "tierRank": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_subscription_application_dto.WalletDTO": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "currency": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_domain_constants_shared_currency.Currency"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
                 }
             }
         },
@@ -12040,6 +12500,17 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeStatsRes": {
+            "type": "object",
+            "properties": {
+                "activeItemsCount": {
+                    "type": "integer"
+                },
+                "outfitsCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_wardrobe_domain_constants_outfitstatus.OutfitStatus": {
             "type": "integer",
             "format": "int32",
@@ -12099,6 +12570,20 @@ const docTemplate = `{
                 },
                 "totalPages": {
                     "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_shared_application_dto.PaginationResult-smart-wardrobe-be_internal_modules_aiexecutor_application_dto_AIUsageItemDTO": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIUsageItemDTO"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata"
                 }
             }
         },
@@ -12201,6 +12686,17 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "Admin",
                 "User"
+            ]
+        },
+        "smart-wardrobe-be_internal_shared_domain_constants_shared_currency.Currency": {
+            "type": "string",
+            "enum": [
+                "vnd",
+                "usd"
+            ],
+            "x-enum-varnames": [
+                "VND",
+                "USD"
             ]
         },
         "smart-wardrobe-be_internal_shared_domain_constants_shared_gender.Gender": {

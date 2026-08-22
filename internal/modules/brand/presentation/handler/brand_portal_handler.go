@@ -301,6 +301,8 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 // @Tags Brand Item
 // @Param brandId path string true "ID brand"
 // @Param taskId path string true "Mã Task ID"
+// @Success 200 {string} string "SSE event stream"
+// @Produce text/event-stream
 // @Router /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse [get]
 func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 	taskId, err := validation.GetStringParam(c, "taskId")
@@ -507,14 +509,6 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 	return nil
 }
 
-// ListBrandItemsForUser lists active brand items for consumers.
-// @Summary [User] Lấy danh sách sản phẩm hoặc mẫu thử hoạt động của Brand
-// @Tags Brand
-// @Accept json
-// @Produce json
-// @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BrandItemRes}
-// @Router /api/v1/brands/{brandId}/items [get]
 // ListBrandProducts lists active products for a brand (public, paginated).
 // @Summary Lấy danh sách sản phẩm brand (public)
 // @Tags Brand

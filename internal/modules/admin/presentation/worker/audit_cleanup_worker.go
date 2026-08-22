@@ -67,6 +67,7 @@ func (w *AuditCleanupWorker) runCleanup(ctx context.Context) {
 	}
 
 	if deletedCount > 0 {
+		run.AddTotal(int(deletedCount))
 		run.AddSuccess(int(deletedCount))
 		run.LogSuccessIfData(w.logger, zap.Int64("deleted_rows", deletedCount))
 	}

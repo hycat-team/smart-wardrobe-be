@@ -7,7 +7,10 @@ import (
 	"smart-wardrobe-be/internal/pkg/utils/validation"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type BrandLoyaltyHandler struct {
@@ -721,16 +724,37 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 
 // ListBenefitRedemptionsForUser lists current user's benefit redemptions.
 // @Summary Lấy danh sách quyền lợi đã nhận của tôi
+// @Description Lấy danh sách quyền lợi đã nhận của người dùng hiện tại, hỗ trợ lọc theo brand
 // @Tags Brand Benefit
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.BenefitRedemptionRes}
+// @Param brandId query string false "Lọc theo Brand ID"
+// @Param page query int false "Số trang"
+// @Param limit query int false "Số lượng mỗi trang"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BenefitRedemptionListRes}
 // @Router /api/v1/me/benefit-redemptions [get]
 func (h *BrandLoyaltyHandler) ListBenefitRedemptionsForUser(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
 	if err != nil {
 		return err
 	}
-	res, err := h.benefitUC.ListBenefitRedemptionsForUser(c.Request.Context(), userID)
+
+	var query dto.ListBenefitRedemptionsQueryReq
+	if err := validation.BindQuery(c, &query); err != nil {
+		return err
+	}
+
+	var brandID *uuid.UUID
+	if query.BrandID != nil {
+		id, err := uuid.Parse(*query.BrandID)
+		if err != nil {
+			return apperror.NewBadRequest("brandId không hợp lệ")
+		}
+		brandID = &id
+	}
+
+	normalized := query.PaginationQuery.Normalize()
+
+	res, err := h.benefitUC.ListBenefitRedemptionsForUser(c.Request.Context(), userID, brandID, normalized.Page, normalized.Limit)
 	if err != nil {
 		return err
 	}
