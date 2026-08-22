@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 func generateClaimToken() (string, error) {
@@ -26,7 +25,7 @@ func generateClaimToken() (string, error) {
 }
 
 func (uc *BrandClaimUseCase) checkClaimRateLimit(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) error {
-	if uc.redisClient == nil || uc.cfg == nil {
+	if uc.rateLimiter == nil || uc.cfg == nil {
 		return branderrors.ErrClaimRateLimitUnavailable()
 	}
 	tokenHash := sha256.Sum256([]byte(claimToken))
@@ -40,7 +39,7 @@ func (uc *BrandClaimUseCase) checkClaimRateLimit(ctx context.Context, userID uui
 	}
 	window := uc.cfg.ClaimRateLimit.WindowSeconds
 	for _, item := range limits {
-		allowed, err := uc.consumeClaimRateLimit(ctx, item.key, item.limit, window)
+		allowed, err := uc.rateLimiter.Allow(ctx, item.key, item.limit, window)
 		if err != nil {
 			return branderrors.ErrClaimRateLimitUnavailable()
 		}
@@ -49,22 +48,4 @@ func (uc *BrandClaimUseCase) checkClaimRateLimit(ctx context.Context, userID uui
 		}
 	}
 	return nil
-}
-
-func (uc *BrandClaimUseCase) consumeClaimRateLimit(ctx context.Context, key string, limit int, windowSeconds int) (bool, error) {
-	script := redis.NewScript(`
-local current = redis.call("INCR", KEYS[1])
-if current == 1 then
-  redis.call("EXPIRE", KEYS[1], ARGV[1])
-end
-if current > tonumber(ARGV[2]) then
-  return 0
-end
-return 1
-`)
-	res, err := script.Run(ctx, uc.redisClient, []string{key}, windowSeconds, limit).Int()
-	if err != nil {
-		return false, err
-	}
-	return res == 1, nil
 }

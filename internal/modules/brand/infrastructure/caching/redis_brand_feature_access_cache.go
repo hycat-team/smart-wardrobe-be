@@ -2,29 +2,29 @@ package caching
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
 
 	"smart-wardrobe-be/internal/config"
 	ucaching "smart-wardrobe-be/internal/modules/brand/application/interface/caching"
+	shared_caching "smart-wardrobe-be/internal/shared/infrastructure/caching"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type RedisBrandFeatureAccessCache struct {
-	redisClient *redis.Client
-	ttl         time.Duration
-	hitCount    atomic.Uint64
-	missCount   atomic.Uint64
+	cache     shared_caching.ICacheService
+	ttl       time.Duration
+	hitCount  atomic.Uint64
+	missCount atomic.Uint64
 }
 
-func NewRedisBrandFeatureAccessCache(client *redis.Client, cfg *config.Config) ucaching.IBrandFeatureAccessCache {
+func NewRedisBrandFeatureAccessCache(cache shared_caching.ICacheService, cfg *config.Config) ucaching.IBrandFeatureAccessCache {
 	return &RedisBrandFeatureAccessCache{
-		redisClient: client,
-		ttl:         cfg.BrandFeatureAccess.TTL,
+		cache: cache,
+		ttl:   cfg.BrandFeatureAccess.TTL,
 	}
 }
 
@@ -37,18 +37,18 @@ func (s *RedisBrandFeatureAccessCache) MissCount() uint64 {
 }
 
 func (s *RedisBrandFeatureAccessCache) Get(ctx context.Context, userID, brandID uuid.UUID) ([]string, error) {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		s.missCount.Add(1)
 		return nil, nil
 	}
 	key := featureAccessCacheKey(userID, brandID)
-	cached, err := s.redisClient.Get(ctx, key).Result()
-	if err != nil {
-		s.missCount.Add(1)
-		return nil, nil
-	}
 	var featureCodes []string
-	if err := json.Unmarshal([]byte(cached), &featureCodes); err != nil {
+	err := s.cache.Get(ctx, key, &featureCodes)
+	if err != nil {
+		if errors.Is(err, shared_caching.ErrKeyNotFound) {
+			s.missCount.Add(1)
+			return nil, nil
+		}
 		s.missCount.Add(1)
 		return nil, nil
 	}
@@ -57,25 +57,21 @@ func (s *RedisBrandFeatureAccessCache) Get(ctx context.Context, userID, brandID 
 }
 
 func (s *RedisBrandFeatureAccessCache) Set(ctx context.Context, userID, brandID uuid.UUID, featureCodes []string) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
-	data, err := json.Marshal(featureCodes)
-	if err != nil {
-		return err
-	}
-	return s.redisClient.Set(ctx, featureAccessCacheKey(userID, brandID), data, s.ttl).Err()
+	return s.cache.Set(ctx, featureAccessCacheKey(userID, brandID), featureCodes, s.ttl)
 }
 
 func (s *RedisBrandFeatureAccessCache) Invalidate(ctx context.Context, userID, brandID uuid.UUID) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
-	return s.redisClient.Del(ctx, featureAccessCacheKey(userID, brandID)).Err()
+	return s.cache.Del(ctx, featureAccessCacheKey(userID, brandID))
 }
 
 func (s *RedisBrandFeatureAccessCache) InvalidateByBrand(ctx context.Context, brandID uuid.UUID, userIDs []uuid.UUID) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
 	if len(userIDs) == 0 {
@@ -85,7 +81,7 @@ func (s *RedisBrandFeatureAccessCache) InvalidateByBrand(ctx context.Context, br
 	for _, uid := range userIDs {
 		keys = append(keys, featureAccessCacheKey(uid, brandID))
 	}
-	return s.redisClient.Del(ctx, keys...).Err()
+	return s.cache.Del(ctx, keys...)
 }
 
 func featureAccessCacheKey(userID, brandID uuid.UUID) string {

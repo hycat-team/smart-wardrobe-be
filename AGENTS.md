@@ -27,6 +27,7 @@
 
 ## 4. Core Principles
 
+- **Constitution Compliance (MANDATORY)**: For **every action** — whether it follows the Speckit workflow or not — you MUST read and comply with [`.specify/memory/constitution.md`](.specify/memory/constitution.md). This is the project's authoritative architectural document. It applies to all tasks: bug fixes, feature development, refactoring, config changes, doc edits, etc. In case of conflict between `constitution.md` and other docs, `constitution.md` takes precedence for architectural boundaries and principles.
 - **Conflict Resolution**: If docs and source code are inconsistent, STOP, explain the conflict, and ask the user which is authoritative. Never guess.
 - **Makefile**: Always prefer Makefile targets over manual commands if equivalent targets exist.
 - **Communication language**: Use Vietnamese when communicating with the developer.

@@ -2,7 +2,7 @@ package caching
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -10,22 +10,22 @@ import (
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/modules/brand/application/interface/caching"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
+	shared_caching "smart-wardrobe-be/internal/shared/infrastructure/caching"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type RedisBrandMembershipCache struct {
-	redisClient *redis.Client
-	ttl         time.Duration
-	hitCount    atomic.Uint64
-	missCount   atomic.Uint64
+	cache     shared_caching.ICacheService
+	ttl       time.Duration
+	hitCount  atomic.Uint64
+	missCount atomic.Uint64
 }
 
-func NewRedisBrandMembershipCache(client *redis.Client, cfg *config.Config) caching.IBrandMembershipCache {
+func NewRedisBrandMembershipCache(cache shared_caching.ICacheService, cfg *config.Config) caching.IBrandMembershipCache {
 	return &RedisBrandMembershipCache{
-		redisClient: client,
-		ttl:         cfg.BrandMembership.TTL,
+		cache: cache,
+		ttl:   cfg.BrandMembership.TTL,
 	}
 }
 
@@ -38,18 +38,18 @@ func (s *RedisBrandMembershipCache) MissCount() uint64 {
 }
 
 func (s *RedisBrandMembershipCache) Get(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]brandmemberrole.BrandMemberRole, error) {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		s.missCount.Add(1)
 		return nil, nil
 	}
 	key := brandMembershipCacheKey(userID)
-	cached, err := s.redisClient.Get(ctx, key).Result()
-	if err != nil {
-		s.missCount.Add(1)
-		return nil, nil // miss or backend unavailable -> caller falls back to DB
-	}
 	var raw map[string]string
-	if err := json.Unmarshal([]byte(cached), &raw); err != nil {
+	err := s.cache.Get(ctx, key, &raw)
+	if err != nil {
+		if errors.Is(err, shared_caching.ErrKeyNotFound) {
+			s.missCount.Add(1)
+			return nil, nil
+		}
 		s.missCount.Add(1)
 		return nil, nil
 	}
@@ -70,29 +70,25 @@ func (s *RedisBrandMembershipCache) Get(ctx context.Context, userID uuid.UUID) (
 }
 
 func (s *RedisBrandMembershipCache) Set(ctx context.Context, userID uuid.UUID, memberships map[uuid.UUID]brandmemberrole.BrandMemberRole) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
 	raw := make(map[string]string, len(memberships))
 	for brandID, role := range memberships {
 		raw[brandID.String()] = string(role)
 	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return err
-	}
-	return s.redisClient.Set(ctx, brandMembershipCacheKey(userID), data, s.ttl).Err()
+	return s.cache.Set(ctx, brandMembershipCacheKey(userID), raw, s.ttl)
 }
 
 func (s *RedisBrandMembershipCache) InvalidateByUserID(ctx context.Context, userID uuid.UUID) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
-	return s.redisClient.Del(ctx, brandMembershipCacheKey(userID)).Err()
+	return s.cache.Del(ctx, brandMembershipCacheKey(userID))
 }
 
 func (s *RedisBrandMembershipCache) InvalidateByBrandID(ctx context.Context, brandID uuid.UUID, memberUserIDs []uuid.UUID) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
 	if len(memberUserIDs) == 0 {
@@ -102,7 +98,7 @@ func (s *RedisBrandMembershipCache) InvalidateByBrandID(ctx context.Context, bra
 	for _, uid := range memberUserIDs {
 		keys = append(keys, brandMembershipCacheKey(uid))
 	}
-	return s.redisClient.Del(ctx, keys...).Err()
+	return s.cache.Del(ctx, keys...)
 }
 
 func brandMembershipCacheKey(userID uuid.UUID) string {

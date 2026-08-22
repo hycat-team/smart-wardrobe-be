@@ -2,51 +2,46 @@ package caching
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"time"
 
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_caching "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/caching"
-
-	"github.com/redis/go-redis/v9"
+	shared_caching "smart-wardrobe-be/internal/shared/infrastructure/caching"
 )
 
 type RedisPricingCacheService struct {
-	redisClient *redis.Client
+	cache shared_caching.ICacheService
 }
 
-func NewRedisPricingCacheService(client *redis.Client) aiexecutor_caching.IPricingCacheService {
+func NewRedisPricingCacheService(cache shared_caching.ICacheService) aiexecutor_caching.IPricingCacheService {
 	return &RedisPricingCacheService{
-		redisClient: client,
+		cache: cache,
 	}
 }
 
 func (s *RedisPricingCacheService) Get(ctx context.Context, provider string, model string) (*dto.PricingConfigDTO, error) {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil, nil
 	}
 	key := pricingCacheKey(provider, model)
-	cached, err := s.redisClient.Get(ctx, key).Result()
-	if err != nil {
-		return nil, err
-	}
 	var res dto.PricingConfigDTO
-	if err := json.Unmarshal([]byte(cached), &res); err != nil {
+	err := s.cache.Get(ctx, key, &res)
+	if err != nil {
+		if errors.Is(err, shared_caching.ErrKeyNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &res, nil
 }
 
 func (s *RedisPricingCacheService) Set(ctx context.Context, provider string, model string, pricing *dto.PricingConfigDTO, expiry time.Duration) error {
-	if s.redisClient == nil {
+	if s.cache == nil {
 		return nil
 	}
 	key := pricingCacheKey(provider, model)
-	data, err := json.Marshal(pricing)
-	if err != nil {
-		return err
-	}
-	return s.redisClient.Set(ctx, key, data, expiry).Err()
+	return s.cache.Set(ctx, key, pricing, expiry)
 }
 
 func pricingCacheKey(provider string, model string) string {

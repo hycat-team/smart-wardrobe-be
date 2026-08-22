@@ -110,7 +110,7 @@ type SearchWardrobeItemsQueryReq struct {
 }
 
 type UpdateWardrobeItemReq struct {
-	Price      *float64  `json:"price,omitempty"`
+	Price      *float64   `json:"price,omitempty"`
 	CategoryID *uuid.UUID `json:"categoryId,omitempty"`
 }
 

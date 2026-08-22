@@ -14,10 +14,10 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/mapper"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/internal/modules/brand/domain/repositories"
+	shared_caching "smart-wardrobe-be/internal/shared/application/interface/caching"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type BrandClaimUseCase struct {
@@ -26,7 +26,7 @@ type BrandClaimUseCase struct {
 	customerRepo repositories.IBrandCustomerRepository
 	accountRepo  repositories.ILoyaltyAccountRepository
 	claimRepo    repositories.IBrandCustomerClaimRepository
-	redisClient  *redis.Client
+	rateLimiter  shared_caching.IRateLimiter
 	uow          shared_repos.IUnitOfWork
 	cfg          *config.Config
 }
@@ -37,7 +37,7 @@ func NewBrandClaimUseCase(
 	customerRepo repositories.IBrandCustomerRepository,
 	accountRepo repositories.ILoyaltyAccountRepository,
 	claimRepo repositories.IBrandCustomerClaimRepository,
-	redisClient *redis.Client,
+	rateLimiter shared_caching.IRateLimiter,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 ) uc_interfaces.IBrandClaimUseCase {
@@ -47,7 +47,7 @@ func NewBrandClaimUseCase(
 		customerRepo: customerRepo,
 		accountRepo:  accountRepo,
 		claimRepo:    claimRepo,
-		redisClient:  redisClient,
+		rateLimiter:  rateLimiter,
 		uow:          uow,
 		cfg:          cfg,
 	}

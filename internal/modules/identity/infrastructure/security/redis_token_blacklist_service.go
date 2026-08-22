@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/modules/identity/application/interface/security"
+	shared_caching "smart-wardrobe-be/internal/shared/infrastructure/caching"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type RedisTokenBlacklistService struct {
-	redisClient *redis.Client
+	cache shared_caching.ICacheService
 }
 
 const (
@@ -19,9 +19,9 @@ const (
 	userBlacklistPrefix = "blacklist:user:"
 )
 
-func NewRedisTokenBlacklistService(client *redis.Client) security.ITokenBlacklistService {
+func NewRedisTokenBlacklistService(cache shared_caching.ICacheService) security.ITokenBlacklistService {
 	return &RedisTokenBlacklistService{
-		redisClient: client,
+		cache: cache,
 	}
 }
 
@@ -29,18 +29,13 @@ func (s *RedisTokenBlacklistService) BlacklistToken(ctx context.Context, token s
 	if expiry <= 0 {
 		return nil
 	}
-
 	key := blacklistPrefix + token
-	return s.redisClient.Set(ctx, key, "revoked", expiry).Err()
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
 }
 
 func (s *RedisTokenBlacklistService) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
 	key := blacklistPrefix + token
-	exists, err := s.redisClient.Exists(ctx, key).Result()
-	if err != nil {
-		return false, err
-	}
-	return exists > 0, nil
+	return s.cache.Exists(ctx, key)
 }
 
 func (s *RedisTokenBlacklistService) BlacklistTokenWithPrefix(ctx context.Context, token string, prefix string, expiry time.Duration) error {
@@ -48,58 +43,44 @@ func (s *RedisTokenBlacklistService) BlacklistTokenWithPrefix(ctx context.Contex
 		return nil
 	}
 	key := prefix + token
-	return s.redisClient.Set(ctx, key, "revoked", expiry).Err()
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
 }
 
 func (s *RedisTokenBlacklistService) IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error) {
 	key := prefix + token
-	exists, err := s.redisClient.Exists(ctx, key).Result()
-	if err != nil {
-		return false, err
-	}
-	return exists > 0, nil
+	return s.cache.Exists(ctx, key)
 }
 
 func (s *RedisTokenBlacklistService) BlacklistUser(ctx context.Context, userID uuid.UUID, expiry time.Duration) error {
 	if expiry <= 0 {
 		return nil
 	}
-
 	key := userBlacklistPrefix + userID.String()
-	return s.redisClient.Set(ctx, key, "revoked", expiry).Err()
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
 }
 
 func (s *RedisTokenBlacklistService) IsUserBlacklisted(ctx context.Context, userID uuid.UUID) (bool, error) {
 	key := userBlacklistPrefix + userID.String()
-	exists, err := s.redisClient.Exists(ctx, key).Result()
-	if err != nil {
-		return false, err
-	}
-	return exists > 0, nil
+	return s.cache.Exists(ctx, key)
 }
 
 func (s *RedisTokenBlacklistService) UnblacklistUser(ctx context.Context, userID uuid.UUID) error {
 	key := userBlacklistPrefix + userID.String()
-	return s.redisClient.Del(ctx, key).Err()
+	return s.cache.Del(ctx, key)
 }
 
 func (s *RedisTokenBlacklistService) CheckBlacklist(ctx context.Context, token string, userID uuid.UUID) (bool, bool, error) {
 	tokenKey := blacklistPrefix + token
 	userKey := userBlacklistPrefix + userID.String()
 
-	results, err := s.redisClient.MGet(ctx, tokenKey, userKey).Result()
+	tokenBlacklisted, err := s.cache.Exists(ctx, tokenKey)
 	if err != nil {
 		return false, false, err
 	}
 
-	tokenBlacklisted := false
-	userBlacklisted := false
-
-	if len(results) > 0 && results[0] != nil {
-		tokenBlacklisted = true
-	}
-	if len(results) > 1 && results[1] != nil {
-		userBlacklisted = true
+	userBlacklisted, err := s.cache.Exists(ctx, userKey)
+	if err != nil {
+		return false, false, err
 	}
 
 	return tokenBlacklisted, userBlacklisted, nil
