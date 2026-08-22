@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"strconv"
 	"time"
 
 	admin_dto "smart-wardrobe-be/internal/modules/admin/application/dto"
@@ -150,7 +149,7 @@ type adminGetTransactionParams struct {
 // @Router /api/v1/admin/subscriptions/transactions/{id} [get]
 func (h *AdminBillingHandler) GetTransaction(c *gin.Context) error {
 	var params adminGetTransactionParams
-	if err := c.ShouldBindUri(&params); err != nil {
+	if err := validation.BindURI(c, &params); err != nil {
 		return err
 	}
 	id, err := uuid.Parse(params.ID)
@@ -178,7 +177,7 @@ func (h *AdminBillingHandler) buildResolutionInput(c *gin.Context, req resolveRe
 	if err != nil {
 		return uc_interfaces.ManualPaymentResolutionInput{}, err
 	}
-	orderCode, err := strconv.ParseInt(c.Param("orderCode"), 10, 64)
+	orderCode, err := validation.GetInt64Param(c, "orderCode")
 	if err != nil {
 		return uc_interfaces.ManualPaymentResolutionInput{}, err
 	}

@@ -11,7 +11,6 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type AdminHandler struct {
@@ -49,7 +48,7 @@ func NewAdminHandler(
 // @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/users/{id} [get]
 func (h *AdminHandler) GetUserDetail(c *gin.Context) error {
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -122,7 +121,7 @@ func (h *AdminHandler) UpdateUserRole(c *gin.Context) error {
 		return err
 	}
 
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -167,7 +166,7 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) error {
 		return err
 	}
 
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -202,7 +201,7 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/admin/users/{id}/sessions [get]
 func (h *AdminHandler) ListUserSessions(c *gin.Context) error {
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -230,7 +229,7 @@ func (h *AdminHandler) RevokeUserSessions(c *gin.Context) error {
 		return err
 	}
 
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -268,7 +267,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) error {
 		return err
 	}
 
-	targetUserID, err := uuid.Parse(c.Param("id"))
+	targetUserID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}

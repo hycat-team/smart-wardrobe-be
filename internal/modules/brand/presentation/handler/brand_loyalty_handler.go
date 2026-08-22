@@ -8,7 +8,6 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type BrandLoyaltyHandler struct {
@@ -47,7 +46,7 @@ func (h *BrandLoyaltyHandler) AddBrandMember(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -76,7 +75,7 @@ func (h *BrandLoyaltyHandler) GetBrandMembers(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomers(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -136,11 +135,11 @@ func (h *BrandLoyaltyHandler) GetBrandCustomer(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	customerID, err := uuid.Parse(c.Param("customerId"))
+	customerID, err := validation.GetUUIDParam(c, "customerId")
 	if err != nil {
 		return err
 	}
@@ -169,7 +168,7 @@ func (h *BrandLoyaltyHandler) JoinLoyalty(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -196,7 +195,7 @@ func (h *BrandLoyaltyHandler) CreateOfflineCustomer(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -227,7 +226,7 @@ func (h *BrandLoyaltyHandler) GrantLoyaltyPoints(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -274,7 +273,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -298,7 +297,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) er
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -325,11 +324,11 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountTransactionsForStaff(c *gin.Conte
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	accountID, err := uuid.Parse(c.Param("accountId"))
+	accountID, err := validation.GetUUIDParam(c, "accountId")
 	if err != nil {
 		return err
 	}
@@ -359,7 +358,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyProgramForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -385,7 +384,7 @@ func (h *BrandLoyaltyHandler) UpsertLoyaltyProgram(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -415,7 +414,7 @@ func (h *BrandLoyaltyHandler) CreateLoyaltyTier(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -446,11 +445,11 @@ func (h *BrandLoyaltyHandler) UpdateLoyaltyTier(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	tierID, err := uuid.Parse(c.Param("tierId"))
+	tierID, err := validation.GetUUIDParam(c, "tierId")
 	if err != nil {
 		return err
 	}
@@ -478,7 +477,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTiersForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -503,11 +502,11 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForStaff(c *gin.Context) error
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	tierID, err := uuid.Parse(c.Param("tierId"))
+	tierID, err := validation.GetUUIDParam(c, "tierId")
 	if err != nil {
 		return err
 	}
@@ -528,11 +527,11 @@ func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForStaff(c *gin.Context) error
 // @Success 200 {object} shared_pres.APIResponse{data=dto.LoyaltyTierDetailRes}
 // @Router /api/v1/brands/{brandId}/loyalty/tiers/{tierId} [get]
 func (h *BrandLoyaltyHandler) GetLoyaltyTierDetailForUser(c *gin.Context) error {
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	tierID, err := uuid.Parse(c.Param("tierId"))
+	tierID, err := validation.GetUUIDParam(c, "tierId")
 	if err != nil {
 		return err
 	}
@@ -558,7 +557,7 @@ func (h *BrandLoyaltyHandler) CreateBrandBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -591,7 +590,7 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -622,11 +621,11 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	benefitID, err := uuid.Parse(c.Param("benefitId"))
+	benefitID, err := validation.GetUUIDParam(c, "benefitId")
 	if err != nil {
 		return err
 	}
@@ -655,7 +654,7 @@ func (h *BrandLoyaltyHandler) UpdateBenefitStatus(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandBenefitListRes}
 // @Router /api/v1/brands/{brandId}/benefits [get]
 func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -684,7 +683,7 @@ func (h *BrandLoyaltyHandler) RedeemBenefit(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	benefitID, err := uuid.Parse(c.Param("benefitId"))
+	benefitID, err := validation.GetUUIDParam(c, "benefitId")
 	if err != nil {
 		return err
 	}
@@ -708,7 +707,7 @@ func (h *BrandLoyaltyHandler) GetActiveBenefitForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	benefitID, err := uuid.Parse(c.Param("benefitId"))
+	benefitID, err := validation.GetUUIDParam(c, "benefitId")
 	if err != nil {
 		return err
 	}
@@ -754,11 +753,11 @@ func (h *BrandLoyaltyHandler) CreateClaimToken(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	customerID, err := uuid.Parse(c.Param("customerId"))
+	customerID, err := validation.GetUUIDParam(c, "customerId")
 	if err != nil {
 		return err
 	}
@@ -783,11 +782,11 @@ func (h *BrandLoyaltyHandler) ListClaimTokens(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	customerID, err := uuid.Parse(c.Param("customerId"))
+	customerID, err := validation.GetUUIDParam(c, "customerId")
 	if err != nil {
 		return err
 	}
@@ -815,15 +814,15 @@ func (h *BrandLoyaltyHandler) RevokeClaimToken(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	customerID, err := uuid.Parse(c.Param("customerId"))
+	customerID, err := validation.GetUUIDParam(c, "customerId")
 	if err != nil {
 		return err
 	}
-	claimID, err := uuid.Parse(c.Param("claimId"))
+	claimID, err := validation.GetUUIDParam(c, "claimId")
 	if err != nil {
 		return err
 	}
@@ -881,7 +880,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -914,11 +913,11 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountLotsForStaff(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	accountID, err := uuid.Parse(c.Param("accountId"))
+	accountID, err := validation.GetUUIDParam(c, "accountId")
 	if err != nil {
 		return err
 	}

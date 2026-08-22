@@ -2,7 +2,6 @@ package handler
 
 import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
@@ -10,7 +9,6 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 var _ shared_dto.PaginationQuery
@@ -96,10 +94,9 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 		return err
 	}
 
-	idStr := c.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat()
+		return err
 	}
 
 	var input dto.SaveOutfitReq
@@ -158,10 +155,9 @@ func (h *OutfitHandler) GetOutfitByID(c *gin.Context) error {
 		return err
 	}
 
-	idStr := c.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat()
+		return err
 	}
 
 	response, err := h.outfitUseCase.GetOutfitByID(c.Request.Context(), userID, id)
@@ -187,10 +183,9 @@ func (h *OutfitHandler) DeleteOutfit(c *gin.Context) error {
 		return err
 	}
 
-	idStr := c.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
-		return wardrobeerrors.ErrInvalidOutfitIDFormat()
+		return err
 	}
 
 	err = h.outfitUseCase.DeleteOutfit(c.Request.Context(), userID, id)

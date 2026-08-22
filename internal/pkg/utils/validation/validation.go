@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"regexp"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"strconv"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"golang.org/x/text/unicode/norm"
+	"github.com/google/uuid"
 )
 
 const (
@@ -39,66 +37,6 @@ const (
 	errMsgNumeric            = "%s chỉ được chứa các ký tự số"
 	errMsgDefault            = "%s: %s không hợp lệ"
 )
-
-func IsUserName(fl validator.FieldLevel) bool {
-	s := fl.Field().String()
-
-	reAllowed := regexp.MustCompile(`^[a-zA-Z0-9._]{4,20}$`)
-	if !reAllowed.MatchString(s) {
-		return false
-	}
-
-	reRepeat := regexp.MustCompile(`[_.]{2}`)
-	if reRepeat.MatchString(s) {
-		return false
-	}
-
-	if s[0] == '.' || s[0] == '_' || s[len(s)-1] == '.' || s[len(s)-1] == '_' {
-		return false
-	}
-
-	return true
-}
-
-func NotEqualField(fl validator.FieldLevel) bool {
-	field := fl.Field().String()
-	other := fl.Parent().FieldByName(fl.Param()).String()
-	return field != other
-}
-
-func IsPasswordComplex(fl validator.FieldLevel) bool {
-	s := fl.Field().String()
-	if len(s) < 8 {
-		return false
-	}
-	var (
-		hasUpper   = false
-		hasLower   = false
-		hasDigit   = false
-		hasSpecial = false
-	)
-	for _, char := range s {
-		switch {
-		case unicode.IsUpper(char):
-			hasUpper = true
-		case unicode.IsLower(char):
-			hasLower = true
-		case unicode.IsDigit(char):
-			hasDigit = true
-		case unicode.IsPunct(char) || unicode.IsSymbol(char):
-			hasSpecial = true
-		}
-	}
-	return hasUpper && hasLower && hasDigit && hasSpecial
-}
-
-func NFCMax(fl validator.FieldLevel) bool {
-	limit, err := strconv.Atoi(fl.Param())
-	if err != nil || limit < 0 {
-		return false
-	}
-	return utf8.RuneCountInString(norm.NFC.String(fl.Field().String())) <= limit
-}
 
 func init() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
@@ -190,6 +128,44 @@ func lowerCamelCase(name string) string {
 	return strings.ToLower(name[:1]) + name[1:]
 }
 
+func validationMessage(fe validator.FieldError, fieldName, paramName string) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf(errMsgRequired, fieldName)
+	case "email":
+		return errMsgEmail
+	case "username":
+		return errMsgUsername
+	case "password_complexity":
+		return fmt.Sprintf(errMsgPasswordComplexity, fieldName)
+	case "eqfield":
+		return fmt.Sprintf(errMsgEqField, fieldName, paramName)
+	case "nefield":
+		return fmt.Sprintf(errMsgNeField, fieldName, paramName)
+	case "len":
+		return fmt.Sprintf(errMsgLen, fieldName, paramName)
+	case "gt":
+		return fmt.Sprintf(errMsgGt, fieldName, paramName)
+	case "min":
+		return fmt.Sprintf(errMsgMin, fieldName, paramName)
+	case "max":
+		if fe.Kind().String() == "int32" || fe.Kind().String() == "int" {
+			return fmt.Sprintf(errMsgMaxInt, fieldName, paramName)
+		}
+		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
+	case "nfcmax":
+		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
+	case "datetime":
+		return fmt.Sprintf(errMsgDateTime, fieldName, paramName)
+	case "oneof":
+		return fmt.Sprintf(errMsgOneOf, fieldName, paramName)
+	case "numeric":
+		return fmt.Sprintf(errMsgNumeric, fieldName)
+	default:
+		return fmt.Sprintf(errMsgDefault, fieldName, fe.Tag())
+	}
+}
+
 func TranslateValidationError(err error) *apperror.Error {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
@@ -239,44 +215,6 @@ func TranslateValidationError(err error) *apperror.Error {
 	return apperror.NewBadRequest(err.Error())
 }
 
-func validationMessage(fe validator.FieldError, fieldName, paramName string) string {
-	switch fe.Tag() {
-	case "required":
-		return fmt.Sprintf(errMsgRequired, fieldName)
-	case "email":
-		return errMsgEmail
-	case "username":
-		return errMsgUsername
-	case "password_complexity":
-		return fmt.Sprintf(errMsgPasswordComplexity, fieldName)
-	case "eqfield":
-		return fmt.Sprintf(errMsgEqField, fieldName, paramName)
-	case "nefield":
-		return fmt.Sprintf(errMsgNeField, fieldName, paramName)
-	case "len":
-		return fmt.Sprintf(errMsgLen, fieldName, paramName)
-	case "gt":
-		return fmt.Sprintf(errMsgGt, fieldName, paramName)
-	case "min":
-		return fmt.Sprintf(errMsgMin, fieldName, paramName)
-	case "max":
-		if fe.Kind().String() == "int32" || fe.Kind().String() == "int" {
-			return fmt.Sprintf(errMsgMaxInt, fieldName, paramName)
-		}
-		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
-	case "nfcmax":
-		return fmt.Sprintf(errMsgMaxStr, fieldName, paramName)
-	case "datetime":
-		return fmt.Sprintf(errMsgDateTime, fieldName, paramName)
-	case "oneof":
-		return fmt.Sprintf(errMsgOneOf, fieldName, paramName)
-	case "numeric":
-		return fmt.Sprintf(errMsgNumeric, fieldName)
-	default:
-		return fmt.Sprintf(errMsgDefault, fieldName, fe.Tag())
-	}
-}
-
 func BindJSON(c *gin.Context, obj any) error {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		return TranslateValidationError(err)
@@ -285,36 +223,48 @@ func BindJSON(c *gin.Context, obj any) error {
 	return nil
 }
 
-func normalizeNFC(value reflect.Value) {
-	if !value.IsValid() {
-		return
-	}
-	if value.Kind() == reflect.Pointer {
-		if value.IsNil() {
-			return
-		}
-		normalizeNFC(value.Elem())
-		return
-	}
-	switch value.Kind() {
-	case reflect.Struct:
-		for i := 0; i < value.NumField(); i++ {
-			normalizeNFC(value.Field(i))
-		}
-	case reflect.String:
-		if value.CanSet() {
-			value.SetString(norm.NFC.String(value.String()))
-		}
-	case reflect.Slice, reflect.Array:
-		for i := 0; i < value.Len(); i++ {
-			normalizeNFC(value.Index(i))
-		}
-	}
-}
-
 func BindQuery(c *gin.Context, obj any) error {
 	if err := c.ShouldBindQuery(obj); err != nil {
 		return TranslateValidationError(err)
 	}
 	return nil
+}
+
+func BindURI(c *gin.Context, obj any) error {
+	if err := c.ShouldBindUri(obj); err != nil {
+		return TranslateValidationError(err)
+	}
+	return nil
+}
+
+func GetUUIDParam(c *gin.Context, name string) (uuid.UUID, error) {
+	raw := c.Param(name)
+	if raw == "" {
+		return uuid.Nil, apperror.NewBadRequest(fmt.Sprintf("Thiếu tham số %s", name))
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, apperror.NewBadRequest(fmt.Sprintf("Tham số %s không hợp lệ", name))
+	}
+	return id, nil
+}
+
+func GetStringParam(c *gin.Context, name string) (string, error) {
+	raw := c.Param(name)
+	if raw == "" {
+		return "", apperror.NewBadRequest(fmt.Sprintf("Thiếu tham số %s", name))
+	}
+	return raw, nil
+}
+
+func GetInt64Param(c *gin.Context, name string) (int64, error) {
+	raw := c.Param(name)
+	if raw == "" {
+		return 0, apperror.NewBadRequest(fmt.Sprintf("Thiếu tham số %s", name))
+	}
+	val, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, apperror.NewBadRequest(fmt.Sprintf("Tham số %s không hợp lệ", name))
+	}
+	return val, nil
 }

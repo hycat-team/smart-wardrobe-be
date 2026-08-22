@@ -6,13 +6,11 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/sse"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 var _ shared_dto.PaginationQuery
@@ -113,7 +111,7 @@ func (h *WardrobeItemHandler) GetWardrobeItemByID(c *gin.Context) error {
 		return err
 	}
 
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -143,7 +141,7 @@ func (h *WardrobeItemHandler) CloneWardrobeItem(c *gin.Context) error {
 		return err
 	}
 
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -231,9 +229,9 @@ func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 // @Param taskId path string true "Mã Task ID"
 // @Router /api/v1/wardrobe-items/tasks/{taskId}/sse [get]
 func (h *WardrobeItemHandler) SubscribeTaskSSE(c *gin.Context) error {
-	taskId := c.Param("taskId")
-	if taskId == "" {
-		return apperror.NewBadRequest("Mã Task ID không được để trống")
+	taskId, err := validation.GetStringParam(c, "taskId")
+	if err != nil {
+		return err
 	}
 
 	shared_pres.InitSSE(c)
@@ -296,7 +294,7 @@ func (h *WardrobeItemHandler) UpdateWardrobeItem(c *gin.Context) error {
 		return err
 	}
 
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -329,7 +327,7 @@ func (h *WardrobeItemHandler) RetryWardrobeAnalysis(c *gin.Context) error {
 		return err
 	}
 
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -377,7 +375,7 @@ func (h *WardrobeItemHandler) GetCatalogItemsAdmin(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Thông tin trang phục mẫu sau cập nhật"
 // @Router /api/v1/admin/wardrobe-items/{id} [put]
 func (h *WardrobeItemHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -405,7 +403,7 @@ func (h *WardrobeItemHandler) UpdateCatalogItemAdmin(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse "Xóa thành công"
 // @Router /api/v1/admin/wardrobe-items/{id} [delete]
 func (h *WardrobeItemHandler) DeleteCatalogItemAdmin(c *gin.Context) error {
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}

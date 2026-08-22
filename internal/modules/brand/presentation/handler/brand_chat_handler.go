@@ -34,7 +34,7 @@ func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (h *BrandChatHandler) SendUserMessage(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (h *BrandChatHandler) ListBrandConversations(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -121,11 +121,11 @@ func (h *BrandChatHandler) ListConversationMessages(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	conversationID, err := uuid.Parse(c.Param("conversationId"))
+	conversationID, err := validation.GetUUIDParam(c, "conversationId")
 	if err != nil {
 		return err
 	}
@@ -156,11 +156,11 @@ func (h *BrandChatHandler) SendStaffMessage(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	conversationID, err := uuid.Parse(c.Param("conversationId"))
+	conversationID, err := validation.GetUUIDParam(c, "conversationId")
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (h *BrandChatHandler) MarkUserConversationRead(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}

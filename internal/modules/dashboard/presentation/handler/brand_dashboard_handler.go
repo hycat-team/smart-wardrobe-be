@@ -254,7 +254,7 @@ func (h *BrandDashboardHandler) GetDigitalSampleLabAnalytics(c *gin.Context) err
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}

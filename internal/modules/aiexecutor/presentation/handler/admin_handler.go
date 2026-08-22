@@ -87,7 +87,7 @@ func (h *AdminHandler) ListPricing(c *gin.Context) error {
 // @Router /api/v1/admin/ai/pricing/{id} [put]
 func (h *AdminHandler) UpdatePricing(c *gin.Context) error {
 	var uri adminPricingIDUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	id, err := uuid.Parse(uri.ID)

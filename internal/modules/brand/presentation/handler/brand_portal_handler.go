@@ -6,12 +6,10 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"smart-wardrobe-be/internal/shared/application/sse"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type BrandPortalHandler struct {
@@ -96,7 +94,7 @@ func (h *BrandPortalHandler) UpdateBrandStatusAdmin(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -163,7 +161,7 @@ func (h *BrandPortalHandler) GetActiveBrands(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandRes}
 // @Router /api/v1/brands/{brandId} [get]
 func (h *BrandPortalHandler) GetActiveBrand(c *gin.Context) error {
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -227,7 +225,7 @@ func (h *BrandPortalHandler) UpdateBrandImages(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -255,7 +253,7 @@ func (h *BrandPortalHandler) GetBrandForPortal(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -281,7 +279,7 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -305,9 +303,9 @@ func (h *BrandPortalHandler) CreateBrandItem(c *gin.Context) error {
 // @Param taskId path string true "Mã Task ID"
 // @Router /api/v1/brand-portal/brands/{brandId}/items/tasks/{taskId}/sse [get]
 func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
-	taskId := c.Param("taskId")
-	if taskId == "" {
-		return apperror.NewBadRequest("Mã Task ID không được để trống")
+	taskId, err := validation.GetStringParam(c, "taskId")
+	if err != nil {
+		return err
 	}
 
 	shared_pres.InitSSE(c)
@@ -344,7 +342,7 @@ func (h *BrandPortalHandler) GetBrandItemsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -368,7 +366,7 @@ func (h *BrandPortalHandler) GetBrandItemUploadSignature(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -393,11 +391,11 @@ func (h *BrandPortalHandler) GetBrandItemForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}
@@ -424,11 +422,11 @@ func (h *BrandPortalHandler) UpdateBrandItem(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}
@@ -459,11 +457,11 @@ func (h *BrandPortalHandler) UpdateBrandItemStatus(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}
@@ -493,11 +491,11 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}
@@ -527,7 +525,7 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListRes}
 // @Router /api/v1/brands/{brandId}/items [get]
 func (h *BrandPortalHandler) ListBrandProducts(c *gin.Context) error {
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -557,7 +555,7 @@ func (h *BrandPortalHandler) ListBrandSamples(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	brandID, err := uuid.Parse(c.Param("brandId"))
+	brandID, err := validation.GetUUIDParam(c, "brandId")
 	if err != nil {
 		return err
 	}
@@ -582,7 +580,7 @@ func (h *BrandPortalHandler) ListBrandSamples(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes}
 // @Router /api/v1/brand-items/{itemId} [get]
 func (h *BrandPortalHandler) GetBrandItemForUser(c *gin.Context) error {
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}
@@ -609,7 +607,7 @@ func (h *BrandPortalHandler) SubmitSampleFeedback(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	itemID, err := uuid.Parse(c.Param("itemId"))
+	itemID, err := validation.GetUUIDParam(c, "itemId")
 	if err != nil {
 		return err
 	}

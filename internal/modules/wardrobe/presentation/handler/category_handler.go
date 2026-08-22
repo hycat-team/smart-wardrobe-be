@@ -7,7 +7,6 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 const (
@@ -65,7 +64,7 @@ func (h *CategoryHandler) GetCategoriesAdmin(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.CategoryRes} "Thông tin danh mục"
 // @Router /api/v1/admin/categories/{id} [get]
 func (h *CategoryHandler) GetCategoryByIDAdmin(c *gin.Context) error {
-	categoryID, err := uuid.Parse(c.Param("id"))
+	categoryID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -114,7 +113,7 @@ func (h *CategoryHandler) CreateCategoryAdmin(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse{data=dto.CategoryRes} "Thông tin danh mục sau khi cập nhật"
 // @Router /api/v1/admin/categories/{id} [put]
 func (h *CategoryHandler) UpdateCategoryAdmin(c *gin.Context) error {
-	categoryID, err := uuid.Parse(c.Param("id"))
+	categoryID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}
@@ -142,7 +141,7 @@ func (h *CategoryHandler) UpdateCategoryAdmin(c *gin.Context) error {
 // @Success 200 {object} shared_pres.APIResponse "Xóa danh mục thành công"
 // @Router /api/v1/admin/categories/{id} [delete]
 func (h *CategoryHandler) DeleteCategoryAdmin(c *gin.Context) error {
-	categoryID, err := uuid.Parse(c.Param("id"))
+	categoryID, err := validation.GetUUIDParam(c, "id")
 	if err != nil {
 		return err
 	}

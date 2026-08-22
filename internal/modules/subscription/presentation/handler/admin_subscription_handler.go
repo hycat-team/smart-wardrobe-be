@@ -117,7 +117,7 @@ type adminPlanIDParam struct {
 // @Router /api/v1/admin/subscriptions/plans/{id} [put]
 func (h *AdminSubscriptionHandler) UpdatePlan(c *gin.Context) error {
 	var params adminPlanIDParam
-	if err := c.ShouldBindUri(&params); err != nil {
+	if err := validation.BindURI(c, &params); err != nil {
 		return err
 	}
 	id, err := uuid.Parse(params.ID)
@@ -159,7 +159,7 @@ func (h *AdminSubscriptionHandler) UpdatePlan(c *gin.Context) error {
 // @Router /api/v1/admin/subscriptions/plans/{id}/status [patch]
 func (h *AdminSubscriptionHandler) SetPlanActive(c *gin.Context) error {
 	var params adminPlanIDParam
-	if err := c.ShouldBindUri(&params); err != nil {
+	if err := validation.BindURI(c, &params); err != nil {
 		return err
 	}
 	id, err := uuid.Parse(params.ID)

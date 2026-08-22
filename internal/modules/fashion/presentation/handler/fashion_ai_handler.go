@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
-	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/streamutils"
@@ -15,7 +14,6 @@ import (
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 var _ shared_dto.PaginationQuery
@@ -150,9 +148,9 @@ func (h *WardrobeAIHandler) GetChatMessages(c *gin.Context) error {
 		return err
 	}
 
-	contextID, err := uuid.Parse(c.Param("contextID"))
+	contextID, err := validation.GetUUIDParam(c, "contextID")
 	if err != nil {
-		return fashioerrors.ErrInvalidChatIDFormat()
+		return err
 	}
 
 	var query dto.GetChatMessagesQueryReq
@@ -184,9 +182,9 @@ func (h *WardrobeAIHandler) ArchiveChatSession(c *gin.Context) error {
 		return err
 	}
 
-	contextID, err := uuid.Parse(c.Param("contextID"))
+	contextID, err := validation.GetUUIDParam(c, "contextID")
 	if err != nil {
-		return fashioerrors.ErrInvalidChatIDFormat()
+		return err
 	}
 
 	if err := h.chatUseCase.ArchiveChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -212,9 +210,9 @@ func (h *WardrobeAIHandler) DeleteChatSession(c *gin.Context) error {
 		return err
 	}
 
-	contextID, err := uuid.Parse(c.Param("contextID"))
+	contextID, err := validation.GetUUIDParam(c, "contextID")
 	if err != nil {
-		return fashioerrors.ErrInvalidChatIDFormat()
+		return err
 	}
 
 	if err := h.chatUseCase.DeleteChatSession(c.Request.Context(), userID, contextID); err != nil {
@@ -241,9 +239,9 @@ func (h *WardrobeAIHandler) UpdateChatSession(c *gin.Context) error {
 		return err
 	}
 
-	contextID, err := uuid.Parse(c.Param("contextID"))
+	contextID, err := validation.GetUUIDParam(c, "contextID")
 	if err != nil {
-		return fashioerrors.ErrInvalidChatIDFormat()
+		return err
 	}
 
 	var input dto.UpdateChatSessionReq
@@ -280,9 +278,9 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 		return err
 	}
 
-	contextID, err := uuid.Parse(c.Param("contextID"))
+	contextID, err := validation.GetUUIDParam(c, "contextID")
 	if err != nil {
-		return fashioerrors.ErrInvalidChatIDFormat()
+		return err
 	}
 
 	var input dto.SendChatMessageReq

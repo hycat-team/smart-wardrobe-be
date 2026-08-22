@@ -60,7 +60,7 @@ type brandMemberUriParam struct {
 // @Router /api/v1/admin/brands/{brandId}/members [get]
 func (h *AdminBrandHandler) ListMembers(c *gin.Context) error {
 	var uri brandIDUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	brandID, err := uuid.Parse(uri.BrandID)
@@ -89,7 +89,7 @@ func (h *AdminBrandHandler) ListMembers(c *gin.Context) error {
 // @Router /api/v1/admin/brands/{brandId}/members [post]
 func (h *AdminBrandHandler) AddStaff(c *gin.Context) error {
 	var uri brandIDUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	brandID, err := uuid.Parse(uri.BrandID)
@@ -139,7 +139,7 @@ func (h *AdminBrandHandler) AddStaff(c *gin.Context) error {
 // @Router /api/v1/admin/brands/{brandId}/members/{memberId} [patch]
 func (h *AdminBrandHandler) UpdateMember(c *gin.Context) error {
 	var uri brandMemberUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	brandID, err := uuid.Parse(uri.BrandID)
@@ -191,7 +191,7 @@ func (h *AdminBrandHandler) UpdateMember(c *gin.Context) error {
 // @Router /api/v1/admin/brands/{brandId}/members/{memberId} [delete]
 func (h *AdminBrandHandler) RemoveMember(c *gin.Context) error {
 	var uri brandMemberUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	brandID, err := uuid.Parse(uri.BrandID)
@@ -236,7 +236,7 @@ func (h *AdminBrandHandler) RemoveMember(c *gin.Context) error {
 // @Router /api/v1/admin/brands/{brandId}/transfer-ownership [post]
 func (h *AdminBrandHandler) TransferOwnership(c *gin.Context) error {
 	var uri brandIDUriParam
-	if err := c.ShouldBindUri(&uri); err != nil {
+	if err := validation.BindURI(c, &uri); err != nil {
 		return err
 	}
 	brandID, err := uuid.Parse(uri.BrandID)
