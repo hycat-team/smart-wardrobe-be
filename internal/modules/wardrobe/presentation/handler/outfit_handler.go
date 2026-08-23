@@ -119,7 +119,7 @@ func (h *OutfitHandler) UpdateOutfit(c *gin.Context) error {
 // @Tags Outfits
 // @Produce json
 // @Param query query dto.GetOutfitsQueryReq false "Bộ lọc phân trang danh sách bộ phối đồ"
-// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.OutfitRes]} "Danh sách bộ phối đồ"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.OutfitBriefRes]} "Danh sách bộ phối đồ"
 // @Router /api/v1/me/outfits [get]
 func (h *OutfitHandler) GetOutfits(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

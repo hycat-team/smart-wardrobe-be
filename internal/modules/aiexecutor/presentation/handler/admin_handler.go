@@ -203,7 +203,7 @@ func (h *AdminHandler) ListGrants(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.CreateAIGrantReq true "Thông tin cấp chính sách"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.AIPolicyGrantDTO}
+// @Success 201 {object} shared_pres.APIResponse{data=dto.AIPolicyGrantDTO}
 // @Router /api/v1/admin/ai/grants [post]
 func (h *AdminHandler) CreateGrant(c *gin.Context) error {
 	var req dto.CreateAIGrantReq
@@ -230,6 +230,6 @@ func (h *AdminHandler) CreateGrant(c *gin.Context) error {
 		RequestIP: &clientIP,
 	})
 
-	shared_pres.Success(c, successAdminCreateGrant, grant)
+	shared_pres.Created(c, successAdminCreateGrant, grant)
 	return nil
 }

@@ -54,7 +54,7 @@ func NewBrandChatUseCase(
 	}
 }
 
-func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationDetailRes, error) {
+func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationUserDetailRes, error) {
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err
@@ -81,10 +81,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 
 	user, _ := uc.userContract.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
-	convRes, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, customer.CustomerName, &userDisp)
-	if err != nil {
-		return nil, err
-	}
+	convRes := mapper.MapBrandConversationUser(conv, brand, customer.ID, customer.CustomerName, &userDisp, 0)
 
 	msgResult, err := uc.msgRepo.GetByConversationIDPaginated(ctx, repositories.BrandConversationMessageFilter{
 		ConversationID: conv.ID,
@@ -95,10 +92,34 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	return &dto.BrandConversationDetailRes{
-		BrandConversationRes: *convRes,
-		Messages:             mapper.MapBrandConversationMessages(msgResult.Messages),
-		Metadata:             shared_dto.BuildPaginationMetadata(query.PaginationQuery, msgResult.TotalCount),
+	senderIDs := make([]uuid.UUID, 0)
+	for _, msg := range msgResult.Messages {
+		if msg.SenderUserID != nil {
+			senderIDs = append(senderIDs, *msg.SenderUserID)
+		}
+	}
+	senderIDs = sliceutils.UniqueUUIDs(senderIDs)
+	senderMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
+	if len(senderIDs) > 0 {
+		senderUsers, _ := uc.userContract.GetBriefByIDs(ctx, senderIDs)
+		for _, u := range senderUsers {
+			senderMap[u.ID] = u
+		}
+	}
+
+	messages := make([]*dto.BrandConversationMessageRes, len(msgResult.Messages))
+	for i, msg := range msgResult.Messages {
+		var sender *identity_dto.UserBriefRes
+		if msg.SenderUserID != nil {
+			sender = senderMap[*msg.SenderUserID]
+		}
+		messages[i] = mapper.MapBrandConversationMessageWithUser(msg, sender)
+	}
+
+	return &dto.BrandConversationUserDetailRes{
+		BrandConversationUserRes: *convRes,
+		Messages:                 messages,
+		Metadata:                 shared_dto.BuildPaginationMetadata(query.PaginationQuery, msgResult.TotalCount),
 	}, nil
 }
 
@@ -166,6 +187,17 @@ func (uc *BrandChatUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 	if err != nil {
 		return nil, err
 	}
+
+	if messageRes == nil {
+		return nil, branderrors.ErrBrandNotFound()
+	}
+
+	if uc.userContract != nil {
+		senderBrief, _ := uc.userContract.GetBriefByIDs(ctx, []uuid.UUID{userID})
+		if len(senderBrief) > 0 {
+			messageRes.Sender = senderBrief[0]
+		}
+	}
 	return messageRes, nil
 }
 
@@ -199,7 +231,25 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 		}
 	}
 
-	var res []*dto.BrandConversationRes
+	convIDs := make([]uuid.UUID, 0, len(conversations))
+	userLastReadByConv := make(map[uuid.UUID]*time.Time, len(conversations))
+	staffLastReadByConv := make(map[uuid.UUID]*time.Time, len(conversations))
+	for _, conv := range conversations {
+		convIDs = append(convIDs, conv.ID)
+		userLastReadByConv[conv.ID] = conv.UserLastReadAt
+		staffLastReadByConv[conv.ID] = conv.StaffLastReadAt
+	}
+
+	userUnreadMap, err := uc.msgRepo.CountUnreadBatch(ctx, convIDs, string(senderrole.BrandStaff), userLastReadByConv)
+	if err != nil {
+		return nil, err
+	}
+	staffUnreadMap, err := uc.msgRepo.CountUnreadBatch(ctx, convIDs, string(senderrole.Customer), staffLastReadByConv)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*dto.BrandConversationRes, 0, len(conversations))
 	for _, conv := range conversations {
 		customer := customerByUserID[conv.UserID]
 		if customer == nil {
@@ -207,10 +257,12 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 		}
 		user := userMap[conv.UserID]
 		userDisp := getUserDisplayNameFromDTO(user)
-		mapped, err := uc.mapBrandConversationWithUnread(ctx, conv, customer.ID, customer.CustomerName, &userDisp)
-		if err != nil {
-			return nil, err
+		mapped := mapper.MapBrandConversation(conv, customer.ID, customer.CustomerName, &userDisp)
+		if mapped == nil {
+			continue
 		}
+		mapped.UserUnreadCount = userUnreadMap[conv.ID]
+		mapped.StaffUnreadCount = staffUnreadMap[conv.ID]
 		res = append(res, mapped)
 	}
 

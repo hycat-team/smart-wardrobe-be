@@ -53,12 +53,20 @@ type AIUsageItemDTO struct {
 }
 
 type AIPolicyGrantDTO struct {
-	ID             uuid.UUID  `json:"id"`
-	UserID         uuid.UUID  `json:"userId"`
-	AICostPolicyID uuid.UUID  `json:"aiCostPolicyId"`
-	EffectiveFrom  time.Time  `json:"effectiveFrom"`
-	EffectiveTo    *time.Time `json:"effectiveTo,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt"`
+	ID             uuid.UUID             `json:"id"`
+	UserID         uuid.UUID             `json:"userId"`
+	AICostPolicy   *AICostPolicyBriefRes `json:"aiCostPolicy,omitempty"`
+	AICostPolicyID uuid.UUID             `json:"aiCostPolicyId"`
+	EffectiveFrom  time.Time             `json:"effectiveFrom"`
+	EffectiveTo    *time.Time            `json:"effectiveTo,omitempty"`
+	CreatedAt      time.Time             `json:"createdAt"`
+}
+
+type AICostPolicyBriefRes struct {
+	ID      uuid.UUID `json:"id"`
+	Code    string    `json:"code"`
+	Name    string    `json:"name"`
+	Version int64     `json:"version"`
 }
 
 type AIUsageListRes = shared_dto.PaginationResult[*AIUsageItemDTO]

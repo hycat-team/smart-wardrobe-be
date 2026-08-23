@@ -42,19 +42,33 @@ type BrandBenefitRes struct {
 
 type BrandBenefitListRes = shared_dto.PaginationResult[*BrandBenefitRes]
 
+type BenefitBriefRes struct {
+	ID               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	Description      *string   `json:"description"`
+	BenefitType      string    `json:"benefitType"`
+	UnlockType       string    `json:"unlockType"`
+	RequiredPoints   *int      `json:"requiredPoints"`
+	RequiredTierName *string   `json:"requiredTierName,omitempty"`
+	FeatureCode      *string   `json:"featureCode"`
+	FeatureConfig    any       `json:"featureConfig"`
+	Status           string    `json:"status"`
+}
+
 type BenefitRedemptionRes struct {
-	ID              uuid.UUID      `json:"id"`
-	BenefitID       uuid.UUID      `json:"benefitId"`
-	Brand           *BrandBriefRes `json:"brand,omitempty"`
-	BrandCustomerID uuid.UUID      `json:"brandCustomerId"`
-	UserID          *uuid.UUID     `json:"userId"`
-	PointsSpent     int            `json:"pointsSpent"`
-	Status          string         `json:"status"`
-	RedeemedAt      time.Time      `json:"redeemedAt"`
-	UsedAt          *time.Time     `json:"usedAt"`
-	ExpiresAt       *time.Time     `json:"expiresAt"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	UpdatedAt       time.Time      `json:"updatedAt"`
+	ID              uuid.UUID        `json:"id"`
+	BenefitID       uuid.UUID        `json:"benefitId"`
+	Benefit         *BenefitBriefRes `json:"benefit,omitempty"`
+	Brand           *BrandBriefRes   `json:"brand,omitempty"`
+	BrandCustomerID uuid.UUID        `json:"brandCustomerId"`
+	UserID          *uuid.UUID       `json:"userId"`
+	PointsSpent     int              `json:"pointsSpent"`
+	Status          string           `json:"status"`
+	RedeemedAt      time.Time        `json:"redeemedAt"`
+	UsedAt          *time.Time       `json:"usedAt"`
+	ExpiresAt       *time.Time       `json:"expiresAt"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
 }
 
 type ListBenefitRedemptionsQueryReq struct {

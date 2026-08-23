@@ -37,8 +37,10 @@ func (c *FashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.
 		res[i] = &dto.FashionItemBriefRes{
 			ID:       item.ID,
 			ImageUrl: item.ImageUrl,
+			Color:    item.Color,
 			ColorHex: item.ColorHex,
 			Category: item.Category,
+			Style:    item.Style,
 		}
 	}
 	return res, nil

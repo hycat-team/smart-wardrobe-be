@@ -6,6 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -35,12 +37,13 @@ type UpdateBrandStatusReq struct {
 }
 
 type BrandBriefRes struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Slug          string    `json:"slug"`
-	Description   *string   `json:"description"`
-	LogoURL       *string   `json:"logoUrl"`
-	BackgroundURL *string   `json:"backgroundUrl"`
+	ID            uuid.UUID               `json:"id"`
+	Name          string                  `json:"name"`
+	Slug          string                  `json:"slug"`
+	Description   *string                 `json:"description"`
+	LogoURL       *string                 `json:"logoUrl"`
+	BackgroundURL *string                 `json:"backgroundUrl"`
+	Status        brandstatus.BrandStatus `json:"status"`
 }
 
 type BrandRes struct {
@@ -94,11 +97,14 @@ type BrandMemberRes struct {
 	UserID       uuid.UUID                           `json:"userId"`
 	UserFullName string                              `json:"userFullName,omitempty"`
 	UserEmail    string                              `json:"userEmail,omitempty"`
+	User         *identity_dto.UserBriefRes          `json:"user,omitempty"`
 	Role         brandmemberrole.BrandMemberRole     `json:"role"`
 	Status       brandmemberstatus.BrandMemberStatus `json:"status"`
 	CreatedAt    time.Time                           `json:"createdAt"`
 	UpdatedAt    time.Time                           `json:"updatedAt"`
 }
+
+type PublicBrandBriefListRes = shared_dto.PaginationResult[*BrandBriefRes]
 
 type AdminAddBrandStaffReq struct {
 	UserID uuid.UUID `json:"userId" binding:"required" label:"mã người dùng"`

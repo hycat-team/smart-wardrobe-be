@@ -62,3 +62,17 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 		Items:         itemDTOs,
 	}
 }
+
+func MapToOutfitBrief(outfit *entities.Outfit) *dto.OutfitBriefRes {
+	if outfit == nil {
+		return nil
+	}
+	return &dto.OutfitBriefRes{
+		ID:            outfit.ID,
+		Name:          outfit.Name,
+		Description:   outfit.Description,
+		CoverImageUrl: outfit.CoverImageUrl,
+		Status:        outfit.Status,
+		CreatedAt:     outfit.CreatedAt,
+	}
+}

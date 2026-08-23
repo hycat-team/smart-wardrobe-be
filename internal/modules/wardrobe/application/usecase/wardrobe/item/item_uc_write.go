@@ -24,7 +24,7 @@ import (
 const manualRetryCooldown = 15 * time.Second
 const processingFailureMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
 
-func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemBriefRes, error) {
 	if quantity < 1 || quantity > 5 {
 		return nil, wardrobeerrors.ErrInvalidCloneQuantity()
 	}
@@ -114,19 +114,48 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 
-	fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+	fashionBriefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 	if err != nil {
 		return nil, err
 	}
-	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+	fashionBriefMap := make(map[uuid.UUID]*fashion_dto.FashionItemBriefRes, len(fashionBriefs))
+	for _, b := range fashionBriefs {
+		fashionBriefMap[b.ID] = b
+	}
 
-	resList := make([]*dto.WardrobeItemRes, quantity)
-	for i := range quantity {
-		var fi *fashion_dto.FashionItemRes
-		if clonedItems[i].FashionItemID != nil {
-			fi = fashionMap[*clonedItems[i].FashionItemID]
+	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	if len(fashionIDs) > 0 && uc.brandContract != nil {
+		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, bi := range brandItems {
+				var brandName string
+				if bi.Brand != nil {
+					brandName = bi.Brand.Name
+				}
+				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+					ID:        bi.ID,
+					BrandID:   bi.Brand.ID,
+					BrandName: brandName,
+					Name:      bi.Name,
+					Price:     bi.Price,
+					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
+				}
+			}
 		}
-		resList[i] = mapper.MapToWardrobeItemRes(clonedItems[i], fi)
+	}
+
+	resList := make([]*dto.WardrobeItemBriefRes, quantity)
+	for i := range quantity {
+		var fiBrief *fashion_dto.FashionItemBriefRes
+		if clonedItems[i].FashionItemID != nil {
+			fiBrief = fashionBriefMap[*clonedItems[i].FashionItemID]
+		}
+		var brandItem *dto.BrandItemBriefRes
+		if clonedItems[i].FashionItemID != nil {
+			brandItem = brandItemMap[*clonedItems[i].FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemBrief(clonedItems[i], fiBrief, brandItem)
 		resList[i].IsLocked = false
 	}
 
@@ -353,7 +382,7 @@ func (uc *WardrobeItemUseCase) DeleteLockedWardrobeItems(ctx context.Context, us
 	return nil
 }
 
-func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemBriefRes, error) {
 	if len(input.Items) == 0 {
 		return nil, wardrobeerrors.ErrUploadImagesEmpty()
 	}
@@ -435,9 +464,9 @@ func (uc *WardrobeItemUseCase) BatchUploadWardrobeItems(ctx context.Context, use
 		return nil, err
 	}
 
-	resList := make([]*dto.WardrobeItemRes, len(newItems))
+	resList := make([]*dto.WardrobeItemBriefRes, len(newItems))
 	for i, item := range newItems {
-		resList[i] = mapper.MapToWardrobeItemRes(item, nil)
+		resList[i] = mapper.MapToWardrobeItemBrief(item, nil, nil)
 		resList[i].IsLocked = false
 	}
 

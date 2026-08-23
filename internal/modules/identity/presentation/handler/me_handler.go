@@ -172,7 +172,7 @@ func (h *MeHandler) GetAvatarSignature(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.UpdateAvatarReq true "Thông tin ảnh đại diện mới"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.UserRes} "Thông tin người dùng sau khi cập nhật"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.UserBriefRes} "Thông tin người dùng sau khi cập nhật"
 // @Router /api/v1/me/avatar [put]
 func (h *MeHandler) UpdateAvatar(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

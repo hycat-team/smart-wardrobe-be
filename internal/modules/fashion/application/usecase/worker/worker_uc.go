@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
@@ -319,7 +320,7 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		if brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
 			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, analyzetaskstatus.Failed, brandItem, err.Error())
+			uc.publishSSEEvent(job, analyzetaskstatus.Failed, mapBrandItemToBrief(brandItem), err.Error())
 		}
 		return
 	}
@@ -329,7 +330,7 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.Failed)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.Failed, items[0], err.Error())
+		uc.publishSSEEvent(job, analyzetaskstatus.Failed, mapWardrobeItemToBrief(items[0]), err.Error())
 	}
 }
 
@@ -402,7 +403,7 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 		if brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
 			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, brandItem, "")
+			uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, mapBrandItemToBrief(brandItem), "")
 		}
 		return
 	}
@@ -412,7 +413,7 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.NeedsReview)
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, items[0], "")
+		uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, mapWardrobeItemToBrief(items[0]), "")
 	}
 }
 
@@ -458,7 +459,7 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		if err == nil && brandItem != nil {
 			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Active)
 			brandItem.Status = branditemstatus.Active
-			uc.publishSSEEvent(job, analyzetaskstatus.Completed, brandItem, "")
+			uc.publishSSEEvent(job, analyzetaskstatus.Completed, mapBrandItemToBrief(brandItem), "")
 		}
 		return nil
 	}
@@ -493,7 +494,7 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 
 	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
 	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.Completed, items[0], "")
+		uc.publishSSEEvent(job, analyzetaskstatus.Completed, mapWardrobeItemToBrief(items[0]), "")
 	}
 	return nil
 }
@@ -586,4 +587,31 @@ func (uc *FashionWorkerUseCase) publishSSEEvent(job dto.FashionAnalyzeJobDTO, st
 		return
 	}
 	uc.sseManager.Publish(job.TaskID, bytes)
+}
+
+func mapBrandItemToBrief(item *brand_dto.BrandItemRes) *brand_dto.BrandItemBriefRes {
+	if item == nil {
+		return nil
+	}
+	return &brand_dto.BrandItemBriefRes{
+		ID:       item.ID,
+		Name:     item.Name,
+		Price:    item.Price,
+		ItemType: item.ItemType,
+		Status:   item.Status,
+	}
+}
+
+func mapWardrobeItemToBrief(item *wardrobeDto.WardrobeItemRes) *wardrobeDto.WardrobeItemBriefRes {
+	if item == nil {
+		return nil
+	}
+	return &wardrobeDto.WardrobeItemBriefRes{
+		ID:         item.ID,
+		Price:      item.Price,
+		Status:     item.Status,
+		IsLocked:   item.IsLocked,
+		LastUsedAt: item.LastUsedAt,
+		TaskID:     item.TaskID,
+	}
 }

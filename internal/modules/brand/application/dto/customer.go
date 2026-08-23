@@ -5,7 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
-	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -29,18 +29,18 @@ type BrandCustomerRes struct {
 	CreatedByMemberID    *uuid.UUID                                          `json:"createdByMemberId"`
 	CreatedAt            time.Time                                           `json:"createdAt"`
 	UpdatedAt            time.Time                                           `json:"updatedAt"`
-	User                 *BrandCustomerUserRes                               `json:"user,omitempty"`
+	User                 *identity_dto.UserBriefRes                          `json:"user,omitempty"`
 	LoyaltyAccount       *CustomerLoyaltyAccountRes                          `json:"loyaltyAccount,omitempty"`
 }
 
-type BrandCustomerUserRes struct {
-	ID        uuid.UUID     `json:"id"`
-	Username  string        `json:"username"`
-	Email     string        `json:"email,omitempty"`
-	FirstName string        `json:"firstName"`
-	LastName  string        `json:"lastName,omitempty"`
-	Gender    gender.Gender `json:"gender"`
-	AvatarUrl *string       `json:"avatarUrl,omitempty"`
+type BrandCustomerBriefRes struct {
+	ID             uuid.UUID                                           `json:"id"`
+	CustomerName   *string                                             `json:"customerName"`
+	JoinedSource   brandcustomerjoinedsource.BrandCustomerJoinedSource `json:"joinedSource"`
+	Status         brandcustomerstatus.BrandCustomerStatus             `json:"status"`
+	JoinedAt       time.Time                                           `json:"joinedAt"`
+	LoyaltyAccount *CustomerLoyaltyAccountRes                          `json:"loyaltyAccount,omitempty"`
+	User           *identity_dto.UserBriefRes                          `json:"user,omitempty"`
 }
 
 type CustomerLoyaltyAccountRes struct {

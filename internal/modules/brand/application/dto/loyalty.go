@@ -140,3 +140,16 @@ type LoyaltyPointTransactionDetailRes struct {
 	CreatedByUserID  *uuid.UUID `json:"createdByUserId"`
 	CreatedAt        time.Time  `json:"createdAt"`
 }
+
+type LoyaltyPointTransactionBriefRes struct {
+	ID              uuid.UUID  `json:"id"`
+	PointsDelta     int        `json:"pointsDelta"`
+	BalanceAfter    int        `json:"balanceAfter"`
+	TransactionType string     `json:"transactionType"`
+	Reason          *string    `json:"reason"`
+	SpendAmount     *float64   `json:"spendAmount"`
+	ReferenceType   *string    `json:"referenceType"`
+	ReferenceID     *uuid.UUID `json:"referenceId"`
+	ExpiresAt       *time.Time `json:"expiresAt"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}

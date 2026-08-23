@@ -54,3 +54,11 @@ func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID u
 func (c *BrandContract) GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {
 	return c.itemUC.GetBrandItemByIDDirect(ctx, brandItemID)
 }
+
+func (c *BrandContract) GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error) {
+	return c.itemUC.GetBrandItemsByFashionItemIDs(ctx, fashionItemIDs)
+}
+
+func (c *BrandContract) GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemRes, error) {
+	return c.itemUC.GetBrandItemsByIDs(ctx, brandItemIDs)
+}

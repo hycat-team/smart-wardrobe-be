@@ -87,6 +87,20 @@ type SubscriptionPlanDTO struct {
 	IsActive           bool              `json:"isActive"`
 }
 
+type SubscriptionPlanBriefRes struct {
+	ID                 uuid.UUID         `json:"id"`
+	Slug               string            `json:"slug"`
+	Name               string            `json:"name"`
+	Price              float64           `json:"price"`
+	MaxWardrobeItems   int               `json:"maxWardrobeItems"`
+	MaxOutfits         int               `json:"maxOutfits"`
+	AiOutfitDailyQuota int               `json:"aiOutfitDailyQuota"`
+	AiChatDailyQuota   int               `json:"aiChatDailyQuota"`
+	DurationDays       *int              `json:"durationDays,omitempty"`
+	PlanKind           plankind.PlanKind `json:"planKind"`
+	TierRank           int               `json:"tierRank"`
+}
+
 type CreateSubscriptionPlanReq struct {
 	Slug               string            `json:"slug" binding:"required" label:"mã định danh gói"`
 	Name               string            `json:"name" binding:"required" label:"tên gói"`
@@ -136,4 +150,9 @@ type DepositTransactionRes struct {
 	NextReconciliationAt *time.Time                  `json:"nextReconciliationAt,omitempty"`
 	CreatedAt            time.Time                   `json:"createdAt"`
 	UpdatedAt            time.Time                   `json:"updatedAt"`
+}
+
+// PurchaseWithWalletReq dùng cho endpoint mua gói bằng ví nội bộ
+type PurchaseWithWalletReq struct {
+	PlanSlug string `json:"planSlug" binding:"required" label:"gói hội viên"`
 }

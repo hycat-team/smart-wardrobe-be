@@ -80,13 +80,13 @@ func (uc *SubscriptionUseCase) GetDailyQuota(ctx context.Context, userID uuid.UU
 	return uc.quotaUseCase.GetAndResetDailyQuota(ctx, userID)
 }
 
-func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
+func (uc *SubscriptionUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanBriefRes, error) {
 	plans, err := uc.planRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return mapper.MapToSubscriptionPlanDTOList(plans), nil
+	return mapper.MapToSubscriptionPlanBriefList(plans), nil
 }
 
 func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uuid.UUID, enable bool) (bool, error) {

@@ -1,8 +1,6 @@
 package dto
 
 import (
-	"time"
-
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/feedbacksentiment"
 
 	"github.com/google/uuid"
@@ -13,16 +11,14 @@ type GetBrandDashboardQueryReq struct {
 }
 
 type BrandKPICardsRes struct {
-	BrandID                 uuid.UUID `json:"brandId"`
-	TotalMembers            int       `json:"totalMembers"`
-	PointsIssued            int       `json:"pointsIssued"`
-	PointsRedeemed          int       `json:"pointsRedeemed"`
-	ActiveVouchers          int       `json:"activeVouchers"`
-	VouchersRedeemed        int       `json:"vouchersRedeemed"`
-	DigitalSampleVotesCount int       `json:"digitalSampleVotesCount"`
-	DigitalSampleAvgRating  float64   `json:"digitalSampleAvgRating"`
-	OpenCSTickets           int       `json:"openCsTickets"`
-	UpdatedAt               time.Time `json:"updatedAt"`
+	TotalMembers            int     `json:"totalMembers"`
+	PointsIssued            int     `json:"pointsIssued"`
+	PointsRedeemed          int     `json:"pointsRedeemed"`
+	ActiveVouchers          int     `json:"activeVouchers"`
+	VouchersRedeemed        int     `json:"vouchersRedeemed"`
+	DigitalSampleVotesCount int     `json:"digitalSampleVotesCount"`
+	DigitalSampleAvgRating  float64 `json:"digitalSampleAvgRating"`
+	OpenCSTickets           int     `json:"openCsTickets"`
 }
 
 type BrandPointsLiabilityRes struct {
@@ -38,6 +34,9 @@ type PairedCategoryStat struct {
 
 type DigitalSampleLabAnalyticsRes struct {
 	ItemID              uuid.UUID                           `json:"itemId"`
+	BrandItemID         *uuid.UUID                          `json:"brandItemId,omitempty"`
+	BrandItemName       *string                             `json:"brandItemName,omitempty"`
+	BrandItemImageURL   *string                             `json:"brandItemImageUrl,omitempty"`
 	VotesCount          int                                 `json:"votesCount"`
 	AvgRating           float64                             `json:"avgRating"`
 	FeedbackSentiment   feedbacksentiment.FeedbackSentiment `json:"feedbackSentiment"`

@@ -68,3 +68,34 @@ func (r *BrandConversationMessageRepository) CountUnread(ctx context.Context, co
 	}
 	return int(count), nil
 }
+
+func (r *BrandConversationMessageRepository) CountUnreadBatch(ctx context.Context, conversationIDs []uuid.UUID, senderRole string, sinceByConv map[uuid.UUID]*time.Time) (map[uuid.UUID]int, error) {
+	if len(conversationIDs) == 0 {
+		return nil, nil
+	}
+	result := make(map[uuid.UUID]int, len(conversationIDs))
+	for _, cid := range conversationIDs {
+		result[cid] = 0
+	}
+
+	var msgs []struct {
+		ConversationID uuid.UUID `gorm:"column:conversation_id"`
+		CreatedAt      time.Time `gorm:"column:created_at"`
+	}
+	err := r.GetDB(ctx).
+		Select("conversation_id, created_at").
+		Where("conversation_id IN ? AND sender_role = ?", conversationIDs, senderRole).
+		Find(&msgs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, msg := range msgs {
+		since, ok := sinceByConv[msg.ConversationID]
+		if ok && since != nil && !msg.CreatedAt.After(*since) {
+			continue
+		}
+		result[msg.ConversationID]++
+	}
+	return result, nil
+}

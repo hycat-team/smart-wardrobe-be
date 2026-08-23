@@ -350,6 +350,8 @@ func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, user
 		return false, err
 	}
 
+	account, _ := uc.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
+
 	now := time.Now().UTC()
 	var grantedCodes []string
 	for _, benefit := range benefits {
@@ -362,7 +364,7 @@ func (uc *BrandBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, user
 			continue
 		}
 
-		hasAccess, err := strategy.CheckAccess(ctx, benefit, customer, now)
+		hasAccess, err := strategy.CheckAccess(ctx, benefit, customer, account, now)
 		if err != nil {
 			return false, err
 		}

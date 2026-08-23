@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
@@ -39,6 +40,7 @@ type WardrobeItemUseCase struct {
 	mediaService     media.IMediaService
 	aiService        aiexecutor_contract.IAIOrchestrator
 	userSubContract  contract.IUserSubscriptionContract
+	brandContract    brand_contract.IBrandContract
 	eventPublisher   event.IEventPublisher
 	fashionContract  fashion_contract.IFashionContract
 	categoryContract fashion_contract.ICategoryContract
@@ -54,6 +56,7 @@ func NewWardrobeItemUseCase(
 	mediaService media.IMediaService,
 	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
+	brandContract brand_contract.IBrandContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
 	categoryContract fashion_contract.ICategoryContract,
@@ -68,6 +71,7 @@ func NewWardrobeItemUseCase(
 		mediaService:     mediaService,
 		aiService:        aiService,
 		userSubContract:  userSubContract,
+		brandContract:    brandContract,
 		eventPublisher:   eventPublisher,
 		fashionContract:  fashionContract,
 		categoryContract: categoryContract,
@@ -86,7 +90,7 @@ func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context) (*shared_
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
 
-func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemRes], error) {
+func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemBriefRes], error) {
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -147,26 +151,54 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			for _, b := range briefs {
+				fashionBriefMap[b.ID] = b
+			}
 		}
 	}
 
-	resList := make([]*dto.WardrobeItemRes, len(items))
-	for idx, item := range items {
-		var fi *fashion_dto.FashionItemRes
-		if item.FashionItemID != nil {
-			fi = fashionMap[*item.FashionItemID]
+	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	if len(fashionIDs) > 0 && uc.brandContract != nil {
+		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, bi := range brandItems {
+				var brandName string
+				if bi.Brand != nil {
+					brandName = bi.Brand.Name
+				}
+				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+					ID:        bi.ID,
+					BrandID:   bi.Brand.ID,
+					BrandName: brandName,
+					Name:      bi.Name,
+					Price:     bi.Price,
+					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
+				}
+			}
 		}
-		res := mapper.MapToWardrobeItemRes(item, fi)
+	}
+
+	resList := make([]*dto.WardrobeItemBriefRes, len(items))
+	for idx, item := range items {
+		var fiBrief *fashion_dto.FashionItemBriefRes
+		if item.FashionItemID != nil {
+			fiBrief = fashionBriefMap[*item.FashionItemID]
+		}
+		var brandItem *dto.BrandItemBriefRes
+		if item.FashionItemID != nil {
+			brandItem = brandItemMap[*item.FashionItemID]
+		}
+		res := mapper.MapToWardrobeItemBrief(item, fiBrief, brandItem)
 		res.IsLocked = lockedMap[item.ID]
 		resList[idx] = res
 	}
 
-	return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
+	return &shared_dto.PaginationResult[*dto.WardrobeItemBriefRes]{
 		Items:    resList,
 		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
@@ -252,20 +284,22 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			return nil, err
 		}
 
-		fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+		fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 		if len(fashionIDs) > 0 {
-			fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+			briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 			if err == nil {
-				fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+				for _, b := range briefs {
+					fashionBriefMap[b.ID] = b
+				}
 			}
 		}
 		results = make([]*dto.SearchWardrobeItemRes, len(dbItems))
 		for idx, item := range dbItems {
-			var fi *fashion_dto.FashionItemRes
+			var fiBrief *fashion_dto.FashionItemBriefRes
 			if item.FashionItemID != nil {
-				fi = fashionMap[*item.FashionItemID]
+				fiBrief = fashionBriefMap[*item.FashionItemID]
 			}
-			results[idx] = mapper.MapToSearchWardrobeItemRes(item, fi)
+			results[idx] = mapper.MapToSearchWardrobeItemRes(item, fiBrief)
 		}
 	}
 

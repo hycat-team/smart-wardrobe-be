@@ -36,9 +36,11 @@ type FashionItemRes struct {
 
 type FashionItemBriefRes struct {
 	ID       uuid.UUID         `json:"id"`
-	ImageUrl string            `json:"imageUrl"`
-	ColorHex *string           `json:"colorHex,omitempty"`
 	Category *CategoryBriefRes `json:"category,omitempty"`
+	ImageUrl string            `json:"imageUrl,omitempty"`
+	Color    *string           `json:"color,omitempty"`
+	ColorHex *string           `json:"colorHex,omitempty"`
+	Style    *string           `json:"style,omitempty"`
 }
 
 type FashionProcessingInfoDTO struct {

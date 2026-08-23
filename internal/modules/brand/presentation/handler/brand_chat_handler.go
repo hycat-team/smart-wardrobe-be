@@ -27,7 +27,7 @@ func NewBrandChatHandler(chatUC usecase_interfaces.IBrandChatUseCase) *BrandChat
 // @Param brandId path string true "ID brand"
 // @Param page query int false "Trang hiện tại (mặc định: 1)"
 // @Param limit query int false "Số lượng tin nhắn mỗi trang (mặc định: 20)"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationDetailRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandConversationUserDetailRes}
 // @Router /api/v1/brands/{brandId}/conversation [get]
 func (h *BrandChatHandler) GetUserConversation(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

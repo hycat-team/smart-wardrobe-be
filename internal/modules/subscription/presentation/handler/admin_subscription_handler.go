@@ -97,7 +97,7 @@ func (h *AdminSubscriptionHandler) CreatePlan(c *gin.Context) error {
 		RequestIP: &clientIP,
 	})
 
-	shared_pres.Success(c, successAdminCreatePlan, created)
+	shared_pres.Created(c, successAdminCreatePlan, created)
 	return nil
 }
 
@@ -207,7 +207,7 @@ type adminListSubscriptionsQuery struct {
 // @Param status query string false "Trạng thái (active, expired)"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số bản ghi/trang"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.AdminUserSubscriptionListRes}
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.AdminUserSubscriptionItemDTO]}
 // @Router /api/v1/admin/subscriptions [get]
 func (h *AdminSubscriptionHandler) ListSubscriptions(c *gin.Context) error {
 	var req adminListSubscriptionsQuery

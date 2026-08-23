@@ -114,6 +114,32 @@ func MapLoyaltyTransactions(transactions []*entities.LoyaltyPointTransaction) []
 	return res
 }
 
+func MapLoyaltyPointTransactionBrief(tx *entities.LoyaltyPointTransaction) *dto.LoyaltyPointTransactionBriefRes {
+	if tx == nil {
+		return nil
+	}
+	return &dto.LoyaltyPointTransactionBriefRes{
+		ID:              tx.ID,
+		PointsDelta:     tx.PointsDelta,
+		BalanceAfter:    tx.BalanceAfter,
+		TransactionType: string(tx.TransactionType),
+		Reason:          tx.Reason,
+		SpendAmount:     tx.SpendAmount,
+		ReferenceType:   tx.ReferenceType,
+		ReferenceID:     tx.ReferenceID,
+		ExpiresAt:       tx.ExpiresAt,
+		CreatedAt:       tx.CreatedAt,
+	}
+}
+
+func MapLoyaltyPointTransactionsBrief(transactions []*entities.LoyaltyPointTransaction) []*dto.LoyaltyPointTransactionBriefRes {
+	res := make([]*dto.LoyaltyPointTransactionBriefRes, len(transactions))
+	for i, tx := range transactions {
+		res[i] = MapLoyaltyPointTransactionBrief(tx)
+	}
+	return res
+}
+
 func MapLoyaltyProgram(program *entities.LoyaltyProgram) *dto.LoyaltyProgramRes {
 	if program == nil {
 		return nil

@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
@@ -30,12 +31,13 @@ type BrandConversationRes struct {
 }
 
 type BrandConversationMessageRes struct {
-	ID             uuid.UUID  `json:"id"`
-	ConversationID uuid.UUID  `json:"conversationId"`
-	SenderRole     string     `json:"senderRole"`
-	SenderUserID   *uuid.UUID `json:"senderUserId"`
-	Message        string     `json:"message"`
-	CreatedAt      time.Time  `json:"createdAt"`
+	ID             uuid.UUID                  `json:"id"`
+	ConversationID uuid.UUID                  `json:"conversationId"`
+	SenderRole     string                     `json:"senderRole"`
+	SenderUserID   *uuid.UUID                 `json:"senderUserId"`
+	Sender         *identity_dto.UserBriefRes `json:"sender,omitempty"`
+	Message        string                     `json:"message"`
+	CreatedAt      time.Time                  `json:"createdAt"`
 }
 
 type GetConversationMessagesQueryReq struct {
@@ -48,4 +50,21 @@ type BrandConversationDetailRes struct {
 	BrandConversationRes
 	Messages []*BrandConversationMessageRes `json:"messages"`
 	Metadata shared_dto.PaginationMetadata  `json:"metadata"`
+}
+
+type BrandConversationUserDetailRes struct {
+	BrandConversationUserRes
+	Messages []*BrandConversationMessageRes `json:"messages"`
+	Metadata shared_dto.PaginationMetadata  `json:"metadata"`
+}
+
+type BrandConversationUserRes struct {
+	ID              uuid.UUID      `json:"id"`
+	Brand           *BrandBriefRes `json:"brand,omitempty"`
+	CustomerName    *string        `json:"customerName,omitempty"`
+	UserDisplayName *string        `json:"userDisplayName,omitempty"`
+	Status          string         `json:"status"`
+	LastMessageAt   *time.Time     `json:"lastMessageAt,omitempty"`
+	UserLastReadAt  *time.Time     `json:"userLastReadAt,omitempty"`
+	UserUnreadCount int            `json:"userUnreadCount"`
 }

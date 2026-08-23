@@ -47,6 +47,7 @@ type BrandItemBriefRes struct {
 	ItemType  string    `json:"itemType"`
 	Name      string    `json:"name"`
 	Price     *float64  `json:"price,omitempty"`
+	Status    string    `json:"status"`
 }
 
 type WardrobeItemRes struct {
@@ -61,6 +62,17 @@ type WardrobeItemRes struct {
 	CreatedAt   time.Time                         `json:"createdAt"`
 	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
 	IsDeleted   bool                              `json:"isDeleted"`
+	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
+}
+
+type WardrobeItemBriefRes struct {
+	ID          uuid.UUID                         `json:"id"`
+	Price       *float64                          `json:"price,omitempty"`
+	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked    bool                              `json:"isLocked"`
+	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
+	FashionItem *FashionItemBriefRes              `json:"fashionItem,omitempty"`
+	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
 	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
@@ -91,10 +103,10 @@ type WardrobeEventPayload struct {
 }
 
 type SearchWardrobeItemRes struct {
-	ID          uuid.UUID       `json:"id"`
-	Price       *float64        `json:"price,omitempty"`
-	IsSystem    bool            `json:"isSystem"`
-	FashionItem *FashionItemRes `json:"fashionItem,omitempty"`
+	ID          uuid.UUID            `json:"id"`
+	Price       *float64             `json:"price,omitempty"`
+	IsSystem    bool                 `json:"isSystem"`
+	FashionItem *FashionItemBriefRes `json:"fashionItem,omitempty"`
 }
 
 type GetWardrobeItemsQueryReq struct {
@@ -143,3 +155,6 @@ type WardrobeStatsRes struct {
 	ActiveItemsCount int `json:"activeItemsCount"`
 	OutfitsCount     int `json:"outfitsCount"`
 }
+
+type WardrobeItemListBriefDTO = shared_dto.PaginationResult[*WardrobeItemBriefRes]
+type OutfitListBriefDTO = shared_dto.PaginationResult[*OutfitBriefRes]

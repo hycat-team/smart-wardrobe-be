@@ -4,27 +4,35 @@ import (
 	"context"
 
 	aiContract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
-	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
 
 type DrillDownUseCase struct {
-	aiCostReader aiContract.IAICostDashboardReader
-	brandReader  brandContract.IBrandDashboardReader
+	aiCostReader  aiContract.IAICostDashboardReader
+	brandReader   brand_contract.IBrandDashboardReader
+	userContract  identity_contract.IUserContract
+	brandContract brand_contract.IBrandContract
 }
 
 func NewDrillDownUseCase(
 	aiCostReader aiContract.IAICostDashboardReader,
-	brandReader brandContract.IBrandDashboardReader,
+	brandReader brand_contract.IBrandDashboardReader,
+	userContract identity_contract.IUserContract,
+	brandContract brand_contract.IBrandContract,
 ) uc_interfaces.IDrillDownUseCase {
 	return &DrillDownUseCase{
-		aiCostReader: aiCostReader,
-		brandReader:  brandReader,
+		aiCostReader:  aiCostReader,
+		brandReader:   brandReader,
+		userContract:  userContract,
+		brandContract: brandContract,
 	}
 }
 
@@ -68,15 +76,48 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 		return nil, err
 	}
 
+	userIDs := make([]uuid.UUID, 0, len(rawItems))
+	brandItemIDs := make([]uuid.UUID, 0, len(rawItems))
+	for _, item := range rawItems {
+		userIDs = append(userIDs, item.UserID)
+		brandItemIDs = append(brandItemIDs, item.ItemID)
+	}
+
+	userBriefs := make([]*identity_dto.UserBriefRes, 0)
+	if uc.userContract != nil {
+		userBriefs, _ = uc.userContract.GetBriefByIDs(ctx, userIDs)
+	}
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
+	for _, ub := range userBriefs {
+		userMap[ub.ID] = ub
+	}
+
+	brandItemNameMap := make(map[uuid.UUID]*string)
+	brandItemImageMap := make(map[uuid.UUID]*string)
+	if len(brandItemIDs) > 0 && uc.brandContract != nil {
+		brandItems, _ := uc.brandContract.GetBrandItemsByIDs(ctx, brandItemIDs)
+		for _, bi := range brandItems {
+			name := bi.Name
+			brandItemNameMap[bi.ID] = &name
+			if bi.FashionItem != nil {
+				img := bi.FashionItem.ImageUrl
+				brandItemImageMap[bi.ID] = &img
+			}
+		}
+	}
+
 	items := make([]dto.DrillDownSampleFeedbackDTO, 0, len(rawItems))
 	for _, item := range rawItems {
 		items = append(items, dto.DrillDownSampleFeedbackDTO{
-			FeedbackID: item.FeedbackID,
-			ItemID:     item.ItemID,
-			UserID:     item.UserID,
-			Rating:     item.Rating,
-			Comment:    item.Comment,
-			CreatedAt:  item.CreatedAt,
+			FeedbackID:        item.FeedbackID,
+			ItemID:            item.ItemID,
+			UserID:            item.UserID,
+			Rating:            item.Rating,
+			Comment:           item.Comment,
+			CreatedAt:         item.CreatedAt,
+			User:              userMap[item.UserID],
+			BrandItemName:     brandItemNameMap[item.ItemID],
+			BrandItemImageURL: brandItemImageMap[item.ItemID],
 		})
 	}
 

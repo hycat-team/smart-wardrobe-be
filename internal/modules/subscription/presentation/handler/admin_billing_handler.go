@@ -145,7 +145,7 @@ type adminGetTransactionParams struct {
 // @Tags Admin Billing
 // @Produce json
 // @Param id path string true "ID giao dịch"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=subscription_dto.DepositTransactionRes}
 // @Router /api/v1/admin/subscriptions/transactions/{id} [get]
 func (h *AdminBillingHandler) GetTransaction(c *gin.Context) error {
 	var params adminGetTransactionParams

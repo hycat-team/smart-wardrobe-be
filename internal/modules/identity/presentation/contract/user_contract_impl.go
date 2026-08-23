@@ -25,6 +25,10 @@ func (c *UserContract) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dt
 	return c.userUC.GetByIDs(ctx, userIDs)
 }
 
+func (c *UserContract) GetBriefByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefRes, error) {
+	return c.userUC.GetBriefByIDs(ctx, userIDs)
+}
+
 func (c *UserContract) GetByUsername(ctx context.Context, username string) (*dto.UserRes, error) {
 	return c.userUC.GetByUsername(ctx, username)
 }

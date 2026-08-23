@@ -28,7 +28,7 @@ func NewSubscriptionPlanUseCase(
 }
 
 // GetPlans retrieves all active subscription plans for public consumption
-func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanDTO, error) {
+func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.SubscriptionPlanBriefRes, error) {
 	plans, err := uc.planRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (uc *SubscriptionPlanUseCase) GetPlans(ctx context.Context) ([]*dto.Subscri
 		}
 	}
 
-	return mapper.MapToSubscriptionPlanDTOList(activePlans), nil
+	return mapper.MapToSubscriptionPlanBriefList(activePlans), nil
 }
 
 // ListAdminPlans retrieves all subscription plans (including inactive) for admin

@@ -186,7 +186,7 @@ func (h *BillingHandler) CreateDirectPurchase(c *gin.Context) error {
 // @Tags Billing
 // @Accept json
 // @Produce json
-// @Param body body dto.DirectPurchaseReq false "Thông tin gói cước (chỉ cần planSlug)"
+// @Param body body dto.PurchaseWithWalletReq true "Thông tin gói cước"
 // @Success 200 {object} shared_pres.APIResponse "Kết quả đăng ký"
 // @Router /api/v1/subscriptions/me/purchase-with-wallet [post]
 func (h *BillingHandler) PurchasePlanWithWallet(c *gin.Context) error {

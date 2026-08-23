@@ -62,7 +62,7 @@ func TestDrillDown_GetAIEvents(t *testing.T) {
 		total: 2,
 	}
 
-	uc := NewDrillDownUseCase(aiReader, &mockDrillDownBrandReader{})
+	uc := NewDrillDownUseCase(aiReader, &mockDrillDownBrandReader{}, nil, nil)
 	res, err := uc.GetAIEventsDrillDown(context.Background(), &dto.DrillDownAIEventQueryReq{
 		Status: "FAILED",
 	})
@@ -88,7 +88,7 @@ func TestDrillDown_GetAIEvents_NoData(t *testing.T) {
 		events: nil,
 		total:  0,
 	}
-	uc := NewDrillDownUseCase(aiReader, &mockDrillDownBrandReader{})
+	uc := NewDrillDownUseCase(aiReader, &mockDrillDownBrandReader{}, nil, nil)
 	res, err := uc.GetAIEventsDrillDown(context.Background(), &dto.DrillDownAIEventQueryReq{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -117,7 +117,7 @@ func TestDrillDown_GetSampleLabFeedbacks(t *testing.T) {
 		total: 1,
 	}
 
-	uc := NewDrillDownUseCase(&mockDrillDownAIReader{}, brandReader)
+	uc := NewDrillDownUseCase(&mockDrillDownAIReader{}, brandReader, nil, nil)
 	res, err := uc.GetSampleLabFeedbacksDrillDown(context.Background(), &dto.DrillDownSampleFeedbackQueryReq{
 		ItemID: itemID.String(),
 	})

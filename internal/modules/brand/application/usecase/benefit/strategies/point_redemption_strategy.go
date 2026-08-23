@@ -36,7 +36,7 @@ func NewPointRedemptionStrategy(
 	}
 }
 
-func (s *PointRedemptionStrategy) CheckAccess(ctx context.Context, benefit *entities.BrandBenefit, customer *entities.BrandCustomer, now time.Time) (bool, error) {
+func (s *PointRedemptionStrategy) CheckAccess(ctx context.Context, benefit *entities.BrandBenefit, customer *entities.BrandCustomer, account *entities.LoyaltyAccount, now time.Time) (bool, error) {
 	featureCode := ""
 	if benefit.FeatureCode != nil {
 		featureCode = string(*benefit.FeatureCode)

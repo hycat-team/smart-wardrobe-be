@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
@@ -26,6 +27,7 @@ import (
 type WardrobeCatalogUseCase struct {
 	wardrobeRepo    repositories.IWardrobeItemRepository
 	userSubContract contract.IUserSubscriptionContract
+	brandContract   brand_contract.IBrandContract
 	eventPublisher  event.IEventPublisher
 	fashionContract fashion_contract.IFashionContract
 	uow             shared_repos.IUnitOfWork
@@ -34,6 +36,7 @@ type WardrobeCatalogUseCase struct {
 func NewWardrobeCatalogUseCase(
 	wardrobeRepo repositories.IWardrobeItemRepository,
 	userSubContract contract.IUserSubscriptionContract,
+	brandContract brand_contract.IBrandContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
 	uow shared_repos.IUnitOfWork,
@@ -41,6 +44,7 @@ func NewWardrobeCatalogUseCase(
 	return &WardrobeCatalogUseCase{
 		wardrobeRepo:    wardrobeRepo,
 		userSubContract: userSubContract,
+		brandContract:   brandContract,
 		eventPublisher:  eventPublisher,
 		fashionContract: fashionContract,
 		uow:             uow,
@@ -110,7 +114,7 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 	}, nil
 }
 
-func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemBriefRes, error) {
 	if len(catalogItemIDs) == 0 {
 		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty()
 	}
@@ -164,21 +168,49 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			for _, b := range briefs {
+				fashionBriefMap[b.ID] = b
+			}
 		}
 	}
 
-	resList := make([]*dto.WardrobeItemRes, len(newItems))
-	for i := range newItems {
-		var fi *fashion_dto.FashionItemRes
-		if newItems[i].FashionItemID != nil {
-			fi = fashionMap[*newItems[i].FashionItemID]
+	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	if len(fashionIDs) > 0 && uc.brandContract != nil {
+		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, bi := range brandItems {
+				var brandName string
+				if bi.Brand != nil {
+					brandName = bi.Brand.Name
+				}
+				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+					ID:        bi.ID,
+					BrandID:   bi.Brand.ID,
+					BrandName: brandName,
+					Name:      bi.Name,
+					Price:     bi.Price,
+					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
+				}
+			}
 		}
-		resList[i] = mapper.MapToWardrobeItemRes(newItems[i], fi)
+	}
+
+	resList := make([]*dto.WardrobeItemBriefRes, len(newItems))
+	for i := range newItems {
+		var fiBrief *fashion_dto.FashionItemBriefRes
+		if newItems[i].FashionItemID != nil {
+			fiBrief = fashionBriefMap[*newItems[i].FashionItemID]
+		}
+		var brandItem *dto.BrandItemBriefRes
+		if newItems[i].FashionItemID != nil {
+			brandItem = brandItemMap[*newItems[i].FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemBrief(newItems[i], fiBrief, brandItem)
 		resList[i].IsLocked = false
 	}
 

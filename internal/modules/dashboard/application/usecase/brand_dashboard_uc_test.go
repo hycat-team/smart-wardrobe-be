@@ -162,7 +162,7 @@ func TestBrandGetKPICards_FromSnapshot(t *testing.T) {
 			OpenCSTickets:           10,
 		},
 	}
-	uc := NewBrandDashboardUseCase(repo, &mockBrandReader{}, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
+	uc := NewBrandDashboardUseCase(repo, &mockBrandReader{}, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{}, nil)
 	res, err := uc.GetBrandKPICards(context.Background(), brandID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -194,7 +194,7 @@ func TestBrandGetPointsLiability_OwnerSeesFinancial(t *testing.T) {
 	reader := &mockBrandReader{
 		role: brandmemberrole.Owner,
 	}
-	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
+	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{}, nil)
 	res, err := uc.GetPointsLiability(context.Background(), userID, brandID, brandmemberrole.Owner)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -220,7 +220,7 @@ func TestBrandGetPointsLiability_StaffSeesRedacted(t *testing.T) {
 	reader := &mockBrandReader{
 		role: brandmemberrole.Staff,
 	}
-	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{})
+	uc := NewBrandDashboardUseCase(repo, reader, &mockWardrobeReaderForBrand{}, &mockFashionContractForBrand{}, nil)
 	res, err := uc.GetPointsLiability(context.Background(), userID, brandID, brandmemberrole.Staff)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

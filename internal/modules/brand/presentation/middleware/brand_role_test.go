@@ -41,7 +41,7 @@ func (m *mockBrandUseCase) UpdateBrandStatus(ctx context.Context, adminID uuid.U
 func (m *mockBrandUseCase) GetBrandsForAdmin(ctx context.Context, query dto.GetBrandsAdminQueryReq) (*dto.AdminBrandListRes, error) {
 	return nil, nil
 }
-func (m *mockBrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActiveBrandsQueryReq) (*dto.PublicBrandListRes, error) {
+func (m *mockBrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActiveBrandsQueryReq) (*dto.PublicBrandBriefListRes, error) {
 	return nil, nil
 }
 func (m *mockBrandUseCase) GetActiveBrand(ctx context.Context, brandID uuid.UUID) (*dto.BrandRes, error) {

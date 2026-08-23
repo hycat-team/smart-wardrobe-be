@@ -21,6 +21,7 @@ import (
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/domain/constants/fashionitemtype"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
@@ -434,14 +435,26 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 	if err != nil {
 		return nil, err
 	}
+	userIDs := make([]uuid.UUID, 0, len(feedbacks))
+	for _, f := range feedbacks {
+		userIDs = append(userIDs, f.UserID)
+	}
+	userBriefs := make([]*identity_dto.UserBriefRes, 0)
+	if uc.userContract != nil {
+		userBriefs, _ = uc.userContract.GetBriefByIDs(ctx, userIDs)
+	}
+	userBriefMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
+	for _, ub := range userBriefs {
+		userBriefMap[ub.ID] = ub
+	}
 	res := make([]*dto.DigitalSampleResponseRes, len(feedbacks))
 	for i, f := range feedbacks {
-		res[i] = mapper.MapToDigitalSampleResponseRes(f)
+		res[i] = mapper.MapDigitalSampleResponseWithUser(f, userBriefMap[f.UserID])
 	}
 	return res, nil
 }
 
-func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error) {
 	productType := branditemtype.Product
 	filter := repositories.BrandItemFilter{
 		BrandID:  brandID,
@@ -454,14 +467,14 @@ func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, br
 	if err != nil {
 		return nil, err
 	}
-	items := uc.mapSliceToRes(ctx, result.Items)
-	return &dto.BrandItemListRes{
+	items := uc.mapSliceToBriefRes(ctx, result.Items)
+	return &dto.BrandItemListBriefRes{
 		Items:    items,
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
 
-func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error) {
 	hasAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, benefitfeaturecode.SampleMixAccess)
 	if err != nil {
 		return nil, err
@@ -481,8 +494,8 @@ func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, use
 	if err != nil {
 		return nil, err
 	}
-	items := uc.mapSliceToRes(ctx, result.Items)
-	return &dto.BrandItemListRes{
+	items := uc.mapSliceToBriefRes(ctx, result.Items)
+	return &dto.BrandItemListBriefRes{
 		Items:    items,
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
@@ -563,4 +576,33 @@ func (uc *BrandItemUseCase) GetBrandItemByIDDirect(ctx context.Context, brandIte
 		return nil, nil
 	}
 	return uc.mapToRes(ctx, item), nil
+}
+
+func (uc *BrandItemUseCase) GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error) {
+	if len(fashionItemIDs) == 0 {
+		return []*dto.BrandItemBriefRes{}, nil
+	}
+	items, err := uc.brandItemRepo.GetByFashionItemIDs(ctx, fashionItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	activeStatus := branditemstatus.Active
+	filtered := make([]*entities.BrandItem, 0, len(items))
+	for _, item := range items {
+		if item.Status == activeStatus {
+			filtered = append(filtered, item)
+		}
+	}
+	return uc.mapSliceToBriefRes(ctx, filtered), nil
+}
+
+func (uc *BrandItemUseCase) GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemRes, error) {
+	if len(brandItemIDs) == 0 {
+		return []*dto.BrandItemRes{}, nil
+	}
+	items, err := uc.brandItemRepo.GetByIDs(ctx, brandItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	return uc.mapSliceToRes(ctx, items), nil
 }

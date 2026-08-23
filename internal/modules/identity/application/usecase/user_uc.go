@@ -232,6 +232,36 @@ func (uc *UserUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dt
 	return result, nil
 }
 
+func (uc *UserUseCase) GetBriefByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefRes, error) {
+	if len(userIDs) == 0 {
+		return []*dto.UserBriefRes{}, nil
+	}
+
+	users, err := uc.userRepo.GetByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	usersByID := make(map[uuid.UUID]*entities.User, len(users))
+	for _, user := range users {
+		if user == nil || user.IsDeleted {
+			continue
+		}
+		usersByID[user.ID] = user
+	}
+
+	result := make([]*dto.UserBriefRes, 0, len(userIDs))
+	for _, userID := range userIDs {
+		user := usersByID[userID]
+		if user == nil {
+			continue
+		}
+		result = append(result, mapper.MapToUserBrief(user))
+	}
+
+	return result, nil
+}
+
 func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByUsername(ctx, username)
 	if err != nil {
@@ -297,7 +327,7 @@ func (uc *UserUseCase) GetAvatarSignature(ctx context.Context, userID uuid.UUID)
 	return uc.mediaService.GenerateUploadSignature(ctx, params)
 }
 
-func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserRes, error) {
+func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input dto.UpdateAvatarReq) (*dto.UserBriefRes, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -312,12 +342,7 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 
-	sub, err := uc.subscriptionContract.GetUserSubscriptionOverview(ctx, userID)
-	if err != nil {
-		sub = nil
-	}
-
-	return mapper.MapToUserRes(user, sub), nil
+	return mapper.MapToUserBrief(user), nil
 }
 
 func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error) {

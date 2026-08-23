@@ -2,7 +2,6 @@ package mapper
 
 import (
 	"encoding/json"
-	"strings"
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/brand/domain/entities"
@@ -22,6 +21,7 @@ func MapBrandBrief(brand *entities.Brand) *dto.BrandBriefRes {
 		Description:   brand.Description,
 		LogoURL:       brand.LogoURL,
 		BackgroundURL: brand.BackgroundURL,
+		Status:        brand.Status,
 	}
 }
 
@@ -128,23 +128,37 @@ func MapBrandMembers(members []*entities.BrandMember) []*dto.BrandMemberRes {
 	return res
 }
 
-func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserRes) *dto.BrandMemberRes {
+func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserBriefRes) *dto.BrandMemberRes {
 	if member == nil {
 		return nil
 	}
 	res := MapBrandMember(member)
 	if user != nil {
-		fullName := strings.TrimSpace(user.FirstName + " " + user.LastName)
-		res.UserFullName = fullName
-		res.UserEmail = user.Email
+		res.User = user
 	}
 	return res
 }
 
-func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserRes) []*dto.BrandMemberRes {
+func UserResToBrief(u *identity_dto.UserRes) *identity_dto.UserBriefRes {
+	if u == nil {
+		return nil
+	}
+	return &identity_dto.UserBriefRes{
+		ID:        u.ID,
+		Username:  u.Username,
+		Email:     u.Email,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Gender:    u.Gender,
+		Status:    u.Status,
+		AvatarUrl: u.AvatarUrl,
+	}
+}
+
+func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandMemberRes {
 	res := make([]*dto.BrandMemberRes, len(members))
 	for idx, member := range members {
-		var user *identity_dto.UserRes
+		var user *identity_dto.UserBriefRes
 		if u, ok := userMap[member.UserID]; ok {
 			user = u
 		}
@@ -153,22 +167,9 @@ func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.
 	return res
 }
 
-func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserRes) *dto.BrandCustomerRes {
+func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserBriefRes) *dto.BrandCustomerRes {
 	if customer == nil {
 		return nil
-	}
-
-	var customerUser *dto.BrandCustomerUserRes
-	if user != nil {
-		customerUser = &dto.BrandCustomerUserRes{
-			ID:        user.ID,
-			Username:  user.Username,
-			Email:     user.Email,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Gender:    user.Gender,
-			AvatarUrl: user.AvatarUrl,
-		}
 	}
 
 	var loyaltyAccount *dto.CustomerLoyaltyAccountRes
@@ -202,7 +203,7 @@ func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserR
 		CreatedByMemberID:    customer.CreatedByMemberID,
 		CreatedAt:            customer.CreatedAt,
 		UpdatedAt:            customer.UpdatedAt,
-		User:                 customerUser,
+		User:                 user,
 		LoyaltyAccount:       loyaltyAccount,
 	}
 }
@@ -215,10 +216,10 @@ func MapBrandCustomers(customers []*entities.BrandCustomer) []*dto.BrandCustomer
 	return res
 }
 
-func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserRes) []*dto.BrandCustomerRes {
+func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandCustomerRes {
 	res := make([]*dto.BrandCustomerRes, 0, len(customers))
 	for _, customer := range customers {
-		var user *identity_dto.UserRes
+		var user *identity_dto.UserBriefRes
 		if customer.UserID != nil {
 			user = userMap[*customer.UserID]
 		}
@@ -277,6 +278,7 @@ func MapBenefitRedemption(red *entities.BenefitRedemption) *dto.BenefitRedemptio
 	return &dto.BenefitRedemptionRes{
 		ID:              red.ID,
 		BenefitID:       red.BenefitID,
+		Benefit:         MapBenefitBrief(red.Benefit),
 		Brand:           MapBrandBrief(red.Brand),
 		BrandCustomerID: red.BrandCustomerID,
 		UserID:          red.UserID,
@@ -330,4 +332,91 @@ func MapBrandConversationMessages(messages []*entities.BrandConversationMessage)
 		res[idx] = MapBrandConversationMessage(msg)
 	}
 	return res
+}
+
+func MapBenefitBrief(benefit *entities.BrandBenefit) *dto.BenefitBriefRes {
+	if benefit == nil {
+		return nil
+	}
+	var rawConfig any
+	if len(benefit.FeatureConfig) > 0 {
+		_ = json.Unmarshal(benefit.FeatureConfig, &rawConfig)
+	}
+	var featCode *string
+	if benefit.FeatureCode != nil {
+		str := string(*benefit.FeatureCode)
+		featCode = &str
+	}
+	var requiredTierName *string
+	if benefit.RequiredTier != nil {
+		requiredTierName = &benefit.RequiredTier.Name
+	}
+	return &dto.BenefitBriefRes{
+		ID:               benefit.ID,
+		Name:             benefit.Name,
+		Description:      benefit.Description,
+		BenefitType:      string(benefit.BenefitType),
+		UnlockType:       string(benefit.UnlockType),
+		RequiredPoints:   benefit.RequiredPoints,
+		RequiredTierName: requiredTierName,
+		FeatureCode:      featCode,
+		FeatureConfig:    rawConfig,
+		Status:           string(benefit.Status),
+	}
+}
+
+func MapBrandCustomerBrief(customer *entities.BrandCustomer, userBrief *identity_dto.UserBriefRes) *dto.BrandCustomerBriefRes {
+	if customer == nil {
+		return nil
+	}
+	var loyaltyAccount *dto.CustomerLoyaltyAccountRes
+	if customer.LoyaltyAccount != nil {
+		loyaltyAccount = &dto.CustomerLoyaltyAccountRes{
+			ID:             customer.LoyaltyAccount.ID,
+			CurrentPoints:  customer.LoyaltyAccount.CurrentPoints,
+			LifetimePoints: customer.LoyaltyAccount.LifetimePoints,
+			TotalSpend:     customer.LoyaltyAccount.TotalSpend,
+			CurrentTier:    MapLoyaltyTierBrief(customer.LoyaltyAccount.CurrentTier),
+		}
+	}
+	return &dto.BrandCustomerBriefRes{
+		ID:             customer.ID,
+		CustomerName:   customer.CustomerName,
+		JoinedSource:   customer.JoinedSource,
+		Status:         customer.Status,
+		JoinedAt:       customer.JoinedAt,
+		LoyaltyAccount: loyaltyAccount,
+		User:           userBrief,
+	}
+}
+
+func MapBrandConversationUser(conv *entities.BrandConversation, brand *entities.Brand, customerId uuid.UUID, customerName *string, userDisplayName *string, userUnreadCount int) *dto.BrandConversationUserRes {
+	if conv == nil {
+		return nil
+	}
+	return &dto.BrandConversationUserRes{
+		ID:              conv.ID,
+		Brand:           MapBrandBrief(brand),
+		CustomerName:    customerName,
+		UserDisplayName: userDisplayName,
+		Status:          string(conv.Status),
+		LastMessageAt:   conv.LastMessageAt,
+		UserLastReadAt:  conv.UserLastReadAt,
+		UserUnreadCount: userUnreadCount,
+	}
+}
+
+func MapBrandConversationMessageWithUser(msg *entities.BrandConversationMessage, sender *identity_dto.UserBriefRes) *dto.BrandConversationMessageRes {
+	if msg == nil {
+		return nil
+	}
+	return &dto.BrandConversationMessageRes{
+		ID:             msg.ID,
+		ConversationID: msg.ConversationID,
+		SenderRole:     string(msg.SenderRole),
+		SenderUserID:   msg.SenderUserID,
+		Sender:         sender,
+		Message:        msg.Message,
+		CreatedAt:      msg.CreatedAt,
+	}
 }
