@@ -25,32 +25,32 @@ import (
 )
 
 type BrandChatUseCase struct {
-	brandRepo    repositories.IBrandRepository
-	memberRepo   repositories.IBrandMemberRepository
-	customerRepo repositories.IBrandCustomerRepository
-	userContract identity_contract.IUserContract
-	convRepo     repositories.IBrandConversationRepository
-	msgRepo      repositories.IBrandConversationMessageRepository
-	uow          shared_repos.IUnitOfWork
+	brandRepo         repositories.IBrandRepository
+	memberRepo        repositories.IBrandMemberRepository
+	customerRepo      repositories.IBrandCustomerRepository
+	userBriefContract identity_contract.IUserBriefContract
+	convRepo          repositories.IBrandConversationRepository
+	msgRepo           repositories.IBrandConversationMessageRepository
+	uow               shared_repos.IUnitOfWork
 }
 
 func NewBrandChatUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	convRepo repositories.IBrandConversationRepository,
 	msgRepo repositories.IBrandConversationMessageRepository,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandChatUseCase {
 	return &BrandChatUseCase{
-		brandRepo:    brandRepo,
-		memberRepo:   memberRepo,
-		customerRepo: customerRepo,
-		userContract: userContract,
-		convRepo:     convRepo,
-		msgRepo:      msgRepo,
-		uow:          uow,
+		brandRepo:         brandRepo,
+		memberRepo:        memberRepo,
+		customerRepo:      customerRepo,
+		userBriefContract: userBriefContract,
+		convRepo:          convRepo,
+		msgRepo:           msgRepo,
+		uow:               uow,
 	}
 }
 
@@ -79,7 +79,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	user, _ := uc.userContract.GetByID(ctx, userID)
+	user, _ := uc.userBriefContract.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
 	convRes := mapper.MapBrandConversationUser(conv, brand, customer.ID, customer.CustomerName, &userDisp, 0)
 
@@ -101,7 +101,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 	senderIDs = sliceutils.UniqueUUIDs(senderIDs)
 	senderMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
 	if len(senderIDs) > 0 {
-		senderUsers, _ := uc.userContract.GetBriefByIDs(ctx, senderIDs)
+		senderUsers, _ := uc.userBriefContract.GetByIDs(ctx, senderIDs)
 		for _, u := range senderUsers {
 			senderMap[u.ID] = u
 		}
@@ -192,8 +192,8 @@ func (uc *BrandChatUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	if uc.userContract != nil {
-		senderBrief, _ := uc.userContract.GetBriefByIDs(ctx, []uuid.UUID{userID})
+	if uc.userBriefContract != nil {
+		senderBrief, _ := uc.userBriefContract.GetByIDs(ctx, []uuid.UUID{userID})
 		if len(senderBrief) > 0 {
 			messageRes.Sender = senderBrief[0]
 		}
@@ -223,11 +223,11 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 			userIDs = append(userIDs, conv.UserID)
 		}
 	}
-	userMap := map[uuid.UUID]*identity_dto.UserRes{}
+	userMap := map[uuid.UUID]*identity_dto.UserBriefRes{}
 	if len(userIDs) > 0 {
-		users, err := uc.userContract.GetByIDs(ctx, userIDs)
+		users, err := uc.userBriefContract.GetByIDs(ctx, userIDs)
 		if err == nil {
-			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserRes) uuid.UUID { return u.ID })
+			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserBriefRes) uuid.UUID { return u.ID })
 		}
 	}
 
@@ -357,7 +357,7 @@ func (uc *BrandChatUseCase) MarkUserConversationRead(ctx context.Context, userID
 		return nil, err
 	}
 	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
-	user, _ := uc.userContract.GetByID(ctx, userID)
+	user, _ := uc.userBriefContract.GetByID(ctx, userID)
 	userDisp := getUserDisplayName(user)
 	var custName *string
 	if customer != nil {
@@ -419,7 +419,7 @@ func (uc *BrandChatUseCase) ReopenBrandConversation(ctx context.Context, staffUs
 
 func (uc *BrandChatUseCase) mapStaffConversation(ctx context.Context, conv *entities.BrandConversation) (*dto.BrandConversationRes, error) {
 	customer, _ := uc.customerRepo.GetByBrandAndUser(ctx, conv.BrandID, conv.UserID)
-	user, _ := uc.userContract.GetByID(ctx, conv.UserID)
+	user, _ := uc.userBriefContract.GetByID(ctx, conv.UserID)
 	userDisp := getUserDisplayName(user)
 	var custName *string
 	if customer != nil {
@@ -446,7 +446,7 @@ func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, 
 	return res, nil
 }
 
-func getUserDisplayName(u *identity_dto.UserRes) string {
+func getUserDisplayName(u *identity_dto.UserBriefRes) string {
 	if u == nil {
 		return ""
 	}
@@ -464,7 +464,7 @@ func getUserDisplayName(u *identity_dto.UserRes) string {
 	return name
 }
 
-func getUserDisplayNameFromDTO(u *identity_dto.UserRes) string {
+func getUserDisplayNameFromDTO(u *identity_dto.UserBriefRes) string {
 	if u == nil {
 		return ""
 	}

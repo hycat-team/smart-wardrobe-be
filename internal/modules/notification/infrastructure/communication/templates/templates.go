@@ -22,3 +22,6 @@ var RenewalFailedTemplate string
 
 //go:embed WalletWarning.html
 var WalletWarningTemplate string
+
+//go:embed WalletPurchaseSuccess.html
+var WalletPurchaseSuccessTemplate string

@@ -32,7 +32,7 @@ type BrandUseCase struct {
 	customerRepo          repositories.IBrandCustomerRepository
 	feedbackRepo          repositories.IDigitalSampleResponseRepository
 	benefitRedemptionRepo repositories.IBenefitRedemptionRepository
-	userContract          identity_contract.IUserContract
+	userBriefContract     identity_contract.IUserBriefContract
 	mediaService          media.IMediaService
 	uow                   shared_repos.IUnitOfWork
 	cfg                   *config.Config
@@ -45,7 +45,7 @@ func NewBrandUseCase(
 	customerRepo repositories.IBrandCustomerRepository,
 	feedbackRepo repositories.IDigitalSampleResponseRepository,
 	benefitRedemptionRepo repositories.IBenefitRedemptionRepository,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	mediaService media.IMediaService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
@@ -57,7 +57,7 @@ func NewBrandUseCase(
 		customerRepo:          customerRepo,
 		feedbackRepo:          feedbackRepo,
 		benefitRedemptionRepo: benefitRedemptionRepo,
-		userContract:          userContract,
+		userBriefContract:     userBriefContract,
 		mediaService:          mediaService,
 		uow:                   uow,
 		cfg:                   cfg,
@@ -303,12 +303,12 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		}
 	}
 
-	fetchedUsers, err := uc.userContract.GetByUsernamesOrEmails(ctx, identifiersToFetch)
+	fetchedUsers, err := uc.userBriefContract.GetByUsernamesOrEmails(ctx, identifiersToFetch)
 	if err != nil {
 		return nil, err
 	}
 
-	userByIdentifier := make(map[string]*identity_dto.UserRes, len(fetchedUsers)*2)
+	userByIdentifier := make(map[string]*identity_dto.UserBriefRes, len(fetchedUsers)*2)
 	for _, u := range fetchedUsers {
 		if u == nil {
 			continue
@@ -460,7 +460,7 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 		for i, m := range members {
 			userIDs[i] = m.UserID
 		}
-		users, err := uc.userContract.GetBriefByIDs(ctx, userIDs)
+		users, err := uc.userBriefContract.GetByIDs(ctx, userIDs)
 		if err == nil {
 			for _, u := range users {
 				userMap[u.ID] = u

@@ -20,26 +20,26 @@ import (
 )
 
 type BrandAdminUseCase struct {
-	brandRepo       repositories.IBrandRepository
-	brandMemberRepo repositories.IBrandMemberRepository
-	membershipCache caching.IBrandMembershipCache
-	userContract    identity_contract.IUserContract
-	uow             shared_repos.IUnitOfWork
+	brandRepo         repositories.IBrandRepository
+	brandMemberRepo   repositories.IBrandMemberRepository
+	membershipCache   caching.IBrandMembershipCache
+	userBriefContract identity_contract.IUserBriefContract
+	uow               shared_repos.IUnitOfWork
 }
 
 func NewBrandAdminUseCase(
 	brandRepo repositories.IBrandRepository,
 	brandMemberRepo repositories.IBrandMemberRepository,
 	membershipCache caching.IBrandMembershipCache,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandAdminUseCase {
 	return &BrandAdminUseCase{
-		brandRepo:       brandRepo,
-		brandMemberRepo: brandMemberRepo,
-		membershipCache: membershipCache,
-		userContract:    userContract,
-		uow:             uow,
+		brandRepo:         brandRepo,
+		brandMemberRepo:   brandMemberRepo,
+		membershipCache:   membershipCache,
+		userBriefContract: userBriefContract,
+		uow:               uow,
 	}
 }
 
@@ -62,7 +62,7 @@ func (uc *BrandAdminUseCase) ListMembers(ctx context.Context, brandID uuid.UUID)
 		userIDs = append(userIDs, m.UserID)
 	}
 
-	users, err := uc.userContract.GetBriefByIDs(ctx, userIDs)
+	users, err := uc.userBriefContract.GetByIDs(ctx, userIDs)
 	if err != nil {
 		users = nil
 	}
@@ -84,7 +84,7 @@ func (uc *BrandAdminUseCase) AddStaff(ctx context.Context, brandID uuid.UUID, re
 		return nil, branderrors.ErrBrandNotFound()
 	}
 
-	user, err := uc.userContract.GetByID(ctx, req.UserID)
+	user, err := uc.userBriefContract.GetByID(ctx, req.UserID)
 	if err != nil || user == nil {
 		return nil, branderrors.ErrUserNotFoundOrInactive()
 	}
@@ -110,7 +110,7 @@ func (uc *BrandAdminUseCase) AddStaff(ctx context.Context, brandID uuid.UUID, re
 
 	_ = uc.membershipCache.InvalidateByUserID(ctx, req.UserID)
 
-	return mapper.MapBrandMemberWithUser(member, mapper.UserResToBrief(user)), nil
+	return mapper.MapBrandMemberWithUser(member, user), nil
 }
 
 func (uc *BrandAdminUseCase) UpdateMember(ctx context.Context, brandID uuid.UUID, memberID uuid.UUID, req dto.AdminUpdateBrandMemberReq) (*dto.BrandMemberRes, error) {
@@ -155,8 +155,8 @@ func (uc *BrandAdminUseCase) UpdateMember(ctx context.Context, brandID uuid.UUID
 
 	_ = uc.membershipCache.InvalidateByUserID(ctx, member.UserID)
 
-	user, _ := uc.userContract.GetByID(ctx, member.UserID)
-	return mapper.MapBrandMemberWithUser(member, mapper.UserResToBrief(user)), nil
+	user, _ := uc.userBriefContract.GetByID(ctx, member.UserID)
+	return mapper.MapBrandMemberWithUser(member, user), nil
 }
 
 func (uc *BrandAdminUseCase) RemoveMember(ctx context.Context, brandID uuid.UUID, memberID uuid.UUID) error {

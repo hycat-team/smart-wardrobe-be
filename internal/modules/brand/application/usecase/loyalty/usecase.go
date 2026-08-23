@@ -32,26 +32,26 @@ import (
 )
 
 type BrandLoyaltyUseCase struct {
-	brandRepo    repositories.IBrandRepository
-	memberRepo   repositories.IBrandMemberRepository
-	customerRepo repositories.IBrandCustomerRepository
-	userContract identity_contract.IUserContract
-	programRepo  repositories.ILoyaltyProgramRepository
-	tierRepo     repositories.ILoyaltyTierRepository
-	accountRepo  repositories.ILoyaltyAccountRepository
-	txRepo       repositories.ILoyaltyPointTransactionRepository
-	lotRepo      repositories.ILoyaltyPointLotRepository
-	benefitRepo  repositories.IBrandBenefitRepository
-	uow          shared_repos.IUnitOfWork
-	cfg          *config.Config
-	logger       logger.Interface
+	brandRepo         repositories.IBrandRepository
+	memberRepo        repositories.IBrandMemberRepository
+	customerRepo      repositories.IBrandCustomerRepository
+	userBriefContract identity_contract.IUserBriefContract
+	programRepo       repositories.ILoyaltyProgramRepository
+	tierRepo          repositories.ILoyaltyTierRepository
+	accountRepo       repositories.ILoyaltyAccountRepository
+	txRepo            repositories.ILoyaltyPointTransactionRepository
+	lotRepo           repositories.ILoyaltyPointLotRepository
+	benefitRepo       repositories.IBrandBenefitRepository
+	uow               shared_repos.IUnitOfWork
+	cfg               *config.Config
+	logger            logger.Interface
 }
 
 func NewBrandLoyaltyUseCase(
 	brandRepo repositories.IBrandRepository,
 	memberRepo repositories.IBrandMemberRepository,
 	customerRepo repositories.IBrandCustomerRepository,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	programRepo repositories.ILoyaltyProgramRepository,
 	tierRepo repositories.ILoyaltyTierRepository,
 	accountRepo repositories.ILoyaltyAccountRepository,
@@ -63,19 +63,19 @@ func NewBrandLoyaltyUseCase(
 	l logger.Interface,
 ) uc_interfaces.IBrandLoyaltyUseCase {
 	return &BrandLoyaltyUseCase{
-		brandRepo:    brandRepo,
-		memberRepo:   memberRepo,
-		customerRepo: customerRepo,
-		userContract: userContract,
-		programRepo:  programRepo,
-		tierRepo:     tierRepo,
-		accountRepo:  accountRepo,
-		txRepo:       txRepo,
-		lotRepo:      lotRepo,
-		benefitRepo:  benefitRepo,
-		uow:          uow,
-		cfg:          cfg,
-		logger:       l,
+		brandRepo:         brandRepo,
+		memberRepo:        memberRepo,
+		customerRepo:      customerRepo,
+		userBriefContract: userBriefContract,
+		programRepo:       programRepo,
+		tierRepo:          tierRepo,
+		accountRepo:       accountRepo,
+		txRepo:            txRepo,
+		lotRepo:           lotRepo,
+		benefitRepo:       benefitRepo,
+		uow:               uow,
+		cfg:               cfg,
+		logger:            l,
 	}
 }
 
@@ -108,7 +108,7 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uui
 			}
 		}
 		if len(userIDs) > 0 {
-			users, err := uc.userContract.GetBriefByIDs(ctx, userIDs)
+			users, err := uc.userBriefContract.GetByIDs(ctx, userIDs)
 			if err == nil {
 				for _, u := range users {
 					userMap[u.ID] = u
@@ -133,9 +133,9 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid
 	}
 	var user *identity_dto.UserBriefRes
 	if customer.UserID != nil {
-		u, err := uc.userContract.GetByID(ctx, *customer.UserID)
+		u, err := uc.userBriefContract.GetByID(ctx, *customer.UserID)
 		if err == nil {
-			user = mapper.UserResToBrief(u)
+			user = u
 		}
 	}
 	return mapper.MapBrandCustomer(customer, user), nil

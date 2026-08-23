@@ -165,8 +165,8 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 			continue
 		}
 
-		email, err := uc.userContactRepo.GetEmailByUserID(ctx, sub.UserID)
-		if err != nil || email == "" {
+		user, userErr := uc.userBriefContract.GetByID(ctx, sub.UserID)
+		if userErr != nil || user == nil || user.Email == "" {
 			continue
 		}
 
@@ -179,7 +179,7 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 			"DaysRemaining":  daysRemaining,
 			"Balance":        sharedmoney.ToFloat(wallet.Balance),
 			"RequiredAmount": sharedmoney.ToFloat(sub.SubscriptionPlan.Price),
-		}, email)
+		}, user.Email)
 	}
 	return nil
 }
@@ -328,7 +328,7 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		zap.String("reason", reason),
 	)
 
-	if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, lockedSub.UserID); emailErr == nil && userEmail != "" {
+	if user, userErr := uc.userBriefContract.GetByID(txCtx, lockedSub.UserID); userErr == nil && user != nil && user.Email != "" {
 		planName := ""
 		if lockedSub.SubscriptionPlan != nil {
 			planName = lockedSub.SubscriptionPlan.Name
@@ -336,7 +336,7 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalFailed, map[string]any{
 			"PlanName": planName,
 			"Reason":   reason,
-		}, userEmail)
+		}, user.Email)
 	}
 
 	result.Status = renewalStatusDowngraded
@@ -426,12 +426,12 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 		zap.String("reason", result.Reason),
 	)
 
-	if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, lockedSub.UserID); emailErr == nil && userEmail != "" {
+	if user, userErr := uc.userBriefContract.GetByID(txCtx, lockedSub.UserID); userErr == nil && user != nil && user.Email != "" {
 		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalSuccess, map[string]any{
 			"PlanName":     plan.Name,
 			"Amount":       sharedmoney.ToFloat(plan.Price),
 			"NewExpiresAt": lockedSub.ExpiresAt.Format("02/01/2006"),
-		}, userEmail)
+		}, user.Email)
 	}
 
 	result.Status = renewalStatusRenewed

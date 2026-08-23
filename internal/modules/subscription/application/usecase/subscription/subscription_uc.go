@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
@@ -34,10 +35,10 @@ type SubscriptionUseCase struct {
 	log                logger.Interface
 	stateSupport       *SubscriptionStateSupport
 
-	planUseCase     uc_interfaces.ISubscriptionPlanUseCase
-	quotaUseCase    uc_interfaces.IUserQuotaUseCase
-	notifContract   notificationContract.INotificationContract
-	userContactRepo repositories.IUserContactRepository
+	planUseCase       uc_interfaces.ISubscriptionPlanUseCase
+	quotaUseCase      uc_interfaces.IUserQuotaUseCase
+	notifContract     notificationContract.INotificationContract
+	userBriefContract identity_contract.IUserBriefContract
 }
 
 // NewSubscriptionUseCase builds the subscription application service and its state helpers.
@@ -55,7 +56,7 @@ func NewSubscriptionUseCase(
 	planUseCase uc_interfaces.ISubscriptionPlanUseCase,
 	quotaUseCase uc_interfaces.IUserQuotaUseCase,
 	notifContract notificationContract.INotificationContract,
-	userContactRepo repositories.IUserContactRepository,
+	userBriefContract identity_contract.IUserBriefContract,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:                uow,
@@ -72,7 +73,7 @@ func NewSubscriptionUseCase(
 		planUseCase:        planUseCase,
 		quotaUseCase:       quotaUseCase,
 		notifContract:      notifContract,
-		userContactRepo:    userContactRepo,
+		userBriefContract:  userBriefContract,
 	}
 }
 

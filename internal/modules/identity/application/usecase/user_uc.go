@@ -232,36 +232,6 @@ func (uc *UserUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dt
 	return result, nil
 }
 
-func (uc *UserUseCase) GetBriefByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefRes, error) {
-	if len(userIDs) == 0 {
-		return []*dto.UserBriefRes{}, nil
-	}
-
-	users, err := uc.userRepo.GetByIDs(ctx, userIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	usersByID := make(map[uuid.UUID]*entities.User, len(users))
-	for _, user := range users {
-		if user == nil || user.IsDeleted {
-			continue
-		}
-		usersByID[user.ID] = user
-	}
-
-	result := make([]*dto.UserBriefRes, 0, len(userIDs))
-	for _, userID := range userIDs {
-		user := usersByID[userID]
-		if user == nil {
-			continue
-		}
-		result = append(result, mapper.MapToUserBrief(user))
-	}
-
-	return result, nil
-}
-
 func (uc *UserUseCase) GetByUsername(ctx context.Context, username string) (*dto.UserRes, error) {
 	user, err := uc.userRepo.GetByUsername(ctx, username)
 	if err != nil {

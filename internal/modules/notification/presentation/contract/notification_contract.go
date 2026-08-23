@@ -11,12 +11,13 @@ const (
 type TemplateEnum string
 
 const (
-	TemplateOtp            TemplateEnum = "otp"
-	TemplatePaymentSuccess TemplateEnum = "payment_success"
-	TemplateTopupSuccess   TemplateEnum = "topup_success"
-	TemplateRenewalSuccess TemplateEnum = "renewal_success"
-	TemplateRenewalFailed  TemplateEnum = "renewal_failed"
-	TemplateWalletWarning  TemplateEnum = "wallet_warning"
+	TemplateOtp                   TemplateEnum = "otp"
+	TemplatePaymentSuccess        TemplateEnum = "payment_success"
+	TemplateTopupSuccess          TemplateEnum = "topup_success"
+	TemplateRenewalSuccess        TemplateEnum = "renewal_success"
+	TemplateRenewalFailed         TemplateEnum = "renewal_failed"
+	TemplateWalletWarning         TemplateEnum = "wallet_warning"
+	TemplateWalletPurchaseSuccess TemplateEnum = "wallet_purchase_success"
 )
 
 type INotificationContract interface {

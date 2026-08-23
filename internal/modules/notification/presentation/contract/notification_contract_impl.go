@@ -20,12 +20,13 @@ type notificationContractImpl struct {
 
 func NewNotificationContract(outboxRepo messaging.OutboxRepository) INotificationContract {
 	tmplCache := map[TemplateEnum]*template.Template{
-		TemplateOtp:            template.Must(template.New("otp").Parse(templates.OtpTemplate)),
-		TemplatePaymentSuccess: template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
-		TemplateTopupSuccess:   template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
-		TemplateRenewalSuccess: template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
-		TemplateRenewalFailed:  template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
-		TemplateWalletWarning:  template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
+		TemplateOtp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
+		TemplatePaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
+		TemplateTopupSuccess:          template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
+		TemplateRenewalSuccess:        template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
+		TemplateRenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
+		TemplateWalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
+		TemplateWalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 	}
 	return &notificationContractImpl{
 		outboxRepo: outboxRepo,
@@ -43,7 +44,7 @@ func (c *notificationContractImpl) Send(ctx context.Context, channel ChannelEnum
 		return fmt.Errorf("unknown template: %s", tmplEnum)
 	}
 
-	subject := c.resolveSubject(tmplEnum, params)
+	subject := c.resolveSubject(tmplEnum)
 
 	var bodyBuf bytes.Buffer
 	if err := tmpl.Execute(&bodyBuf, params); err != nil {
@@ -74,7 +75,7 @@ func (c *notificationContractImpl) Send(ctx context.Context, channel ChannelEnum
 	return c.outboxRepo.Create(ctx, record)
 }
 
-func (c *notificationContractImpl) resolveSubject(tmplEnum TemplateEnum, params map[string]any) string {
+func (c *notificationContractImpl) resolveSubject(tmplEnum TemplateEnum) string {
 	switch tmplEnum {
 	case TemplateOtp:
 		return "Mã xác thực OTP"
@@ -88,6 +89,8 @@ func (c *notificationContractImpl) resolveSubject(tmplEnum TemplateEnum, params 
 		return "Gia hạn gói thất bại"
 	case TemplateWalletWarning:
 		return "Cảnh báo số dư ví không đủ"
+	case TemplateWalletPurchaseSuccess:
+		return "Mua gói thành công qua ví nội bộ"
 	default:
 		return "Thông báo từ SmartWardrobe"
 	}

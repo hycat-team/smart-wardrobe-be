@@ -108,7 +108,7 @@ func (uc *BrandLoyaltyUseCase) ensureLoyaltyAccount(ctx context.Context, custome
 
 func (uc *BrandLoyaltyUseCase) resolveBrandCustomerForPoints(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.GrantLoyaltyPointsReq) (*entities.BrandCustomer, error) {
 	if input.UserID != nil {
-		user, err := uc.userContract.GetByID(ctx, *input.UserID)
+		user, err := uc.userBriefContract.GetByID(ctx, *input.UserID)
 		if err != nil {
 			return nil, err
 		}

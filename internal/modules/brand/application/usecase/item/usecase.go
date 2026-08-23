@@ -36,17 +36,17 @@ import (
 var activeStatus = branditemstatus.Active
 
 type BrandItemUseCase struct {
-	brandRepo       repositories.IBrandRepository
-	memberRepo      repositories.IBrandMemberRepository
-	customerRepo    repositories.IBrandCustomerRepository
-	brandItemRepo   repositories.IBrandItemRepository
-	feedbackRepo    repositories.IDigitalSampleResponseRepository
-	userContract    identity_contract.IUserContract
-	fashionContract fashion_contract.IFashionContract
-	eventPublisher  event.IEventPublisher
-	mediaService    media.IMediaService
-	benefitUC       uc_interfaces.IBrandBenefitUseCase
-	uow             shared_repos.IUnitOfWork
+	brandRepo         repositories.IBrandRepository
+	memberRepo        repositories.IBrandMemberRepository
+	customerRepo      repositories.IBrandCustomerRepository
+	brandItemRepo     repositories.IBrandItemRepository
+	feedbackRepo      repositories.IDigitalSampleResponseRepository
+	userBriefContract identity_contract.IUserBriefContract
+	fashionContract   fashion_contract.IFashionContract
+	eventPublisher    event.IEventPublisher
+	mediaService      media.IMediaService
+	benefitUC         uc_interfaces.IBrandBenefitUseCase
+	uow               shared_repos.IUnitOfWork
 }
 
 func NewBrandItemUseCase(
@@ -55,7 +55,7 @@ func NewBrandItemUseCase(
 	customerRepo repositories.IBrandCustomerRepository,
 	brandItemRepo repositories.IBrandItemRepository,
 	feedbackRepo repositories.IDigitalSampleResponseRepository,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	fashionContract fashion_contract.IFashionContract,
 	eventPublisher event.IEventPublisher,
 	mediaService media.IMediaService,
@@ -63,17 +63,17 @@ func NewBrandItemUseCase(
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IBrandItemUseCase {
 	return &BrandItemUseCase{
-		brandRepo:       brandRepo,
-		memberRepo:      memberRepo,
-		customerRepo:    customerRepo,
-		brandItemRepo:   brandItemRepo,
-		feedbackRepo:    feedbackRepo,
-		userContract:    userContract,
-		fashionContract: fashionContract,
-		eventPublisher:  eventPublisher,
-		mediaService:    mediaService,
-		benefitUC:       benefitUC,
-		uow:             uow,
+		brandRepo:         brandRepo,
+		memberRepo:        memberRepo,
+		customerRepo:      customerRepo,
+		brandItemRepo:     brandItemRepo,
+		feedbackRepo:      feedbackRepo,
+		userBriefContract: userBriefContract,
+		fashionContract:   fashionContract,
+		eventPublisher:    eventPublisher,
+		mediaService:      mediaService,
+		benefitUC:         benefitUC,
+		uow:               uow,
 	}
 }
 
@@ -84,7 +84,7 @@ func (uc *BrandItemUseCase) GetBrandItemUploadSignature(ctx context.Context, use
 }
 
 func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemRes, error) {
-	user, err := uc.userContract.GetByID(ctx, userID)
+	user, err := uc.userBriefContract.GetByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -182,7 +182,7 @@ func (uc *BrandItemUseCase) ListEligibleBrandItemsForStyling(ctx context.Context
 }
 
 func (uc *BrandItemUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_dto.FashionItemRes, error) {
-	user, err := uc.userContract.GetByID(ctx, userID)
+	user, err := uc.userBriefContract.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -440,8 +440,8 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 		userIDs = append(userIDs, f.UserID)
 	}
 	userBriefs := make([]*identity_dto.UserBriefRes, 0)
-	if uc.userContract != nil {
-		userBriefs, _ = uc.userContract.GetBriefByIDs(ctx, userIDs)
+	if uc.userBriefContract != nil {
+		userBriefs, _ = uc.userBriefContract.GetByIDs(ctx, userIDs)
 	}
 	userBriefMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
 	for _, ub := range userBriefs {

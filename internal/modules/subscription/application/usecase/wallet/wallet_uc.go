@@ -2,10 +2,10 @@ package wallet
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/payosdescription"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/pkg/utils/errorutils"
@@ -27,14 +28,14 @@ import (
 )
 
 type WalletUseCase struct {
-	walletRepo      repositories.IUserWalletRepository
-	depositTxRepo   repositories.IDepositTransactionRepository
-	statementRepo   repositories.IWalletStatementRepository
-	paymentGateway  payment.IPaymentGatewayService
-	uow             shared_repos.IUnitOfWork
-	cfg             *config.Config
-	notifContract   notificationContract.INotificationContract
-	userContactRepo repositories.IUserContactRepository
+	walletRepo        repositories.IUserWalletRepository
+	depositTxRepo     repositories.IDepositTransactionRepository
+	statementRepo     repositories.IWalletStatementRepository
+	paymentGateway    payment.IPaymentGatewayService
+	uow               shared_repos.IUnitOfWork
+	cfg               *config.Config
+	notifContract     notificationContract.INotificationContract
+	userBriefContract identity_contract.IUserBriefContract
 }
 
 func NewWalletUseCase(
@@ -45,17 +46,17 @@ func NewWalletUseCase(
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 	notifContract notificationContract.INotificationContract,
-	userContactRepo repositories.IUserContactRepository,
+	userBriefContract identity_contract.IUserBriefContract,
 ) uc_interfaces.IWalletUseCase {
 	return &WalletUseCase{
-		walletRepo:      walletRepo,
-		depositTxRepo:   depositTxRepo,
-		statementRepo:   statementRepo,
-		paymentGateway:  paymentGateway,
-		uow:             uow,
-		cfg:             cfg,
-		notifContract:   notifContract,
-		userContactRepo: userContactRepo,
+		walletRepo:        walletRepo,
+		depositTxRepo:     depositTxRepo,
+		statementRepo:     statementRepo,
+		paymentGateway:    paymentGateway,
+		uow:               uow,
+		cfg:               cfg,
+		notifContract:     notifContract,
+		userBriefContract: userBriefContract,
 	}
 }
 
@@ -168,11 +169,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 	if cancelURL == "" {
 		cancelURL = uc.cfg.PayOS.CancelUrl
 	}
-	amountVND, err := sharedmoney.ToMinorUnits(tx.Amount, currency.VND)
-	if err != nil {
-		return nil, subscriptionerrors.ErrDepositMustBeInteger()
-	}
-	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: fmt.Sprintf("Nạp vào ví %d VNĐ", amountVND), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
+	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: payosdescription.FormatWalletTopup(tx.OrderCode, payosdescription.FormatAmountShort(tx.Amount)), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
 	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, tx.OrderCode)
 		if err != nil || locked == nil {
@@ -190,12 +187,6 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 		}
 		if err := uc.depositTxRepo.Update(txCtx, locked); err != nil {
 			return err
-		}
-		if userEmail, emailErr := uc.userContactRepo.GetEmailByUserID(txCtx, userID); emailErr == nil && userEmail != "" {
-			_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateTopupSuccess, map[string]any{
-				"Amount":     sharedmoney.ToFloat(amount),
-				"NewBalance": sharedmoney.ToFloat(sharedmoney.Zero),
-			}, userEmail)
 		}
 		return nil
 	}); err != nil {

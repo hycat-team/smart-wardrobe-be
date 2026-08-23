@@ -369,24 +369,15 @@ func (m *mockDigitalSampleResponseRepo) GetByIDs(ctx context.Context, ids []uuid
 	return nil, nil
 }
 
-type mockUserContract struct{}
+type mockUserBriefContract struct{}
 
-func (m *mockUserContract) GetByID(ctx context.Context, id uuid.UUID) (*identity_dto.UserRes, error) {
-	return &identity_dto.UserRes{ID: id, Username: "test_user"}, nil
+func (m *mockUserBriefContract) GetByID(ctx context.Context, id uuid.UUID) (*identity_dto.UserBriefRes, error) {
+	return &identity_dto.UserBriefRes{ID: id, Username: "test_user"}, nil
 }
-func (m *mockUserContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserRes, error) {
+func (m *mockUserBriefContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserBriefRes, error) {
 	return nil, nil
 }
-func (m *mockUserContract) GetBriefByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserBriefRes, error) {
-	return nil, nil
-}
-func (m *mockUserContract) GetByUsername(ctx context.Context, username string) (*identity_dto.UserRes, error) {
-	return nil, nil
-}
-func (m *mockUserContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserRes, error) {
-	return nil, nil
-}
-func (m *mockUserContract) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*identity_dto.UserStyleProfileRes, error) {
+func (m *mockUserBriefContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserBriefRes, error) {
 	return nil, nil
 }
 
@@ -579,12 +570,12 @@ func TestListEligibleBrandItemsForStyling(t *testing.T) {
 	}}
 
 	uc := &BrandItemUseCase{
-		brandRepo:       brandRepo,
-		customerRepo:    customerRepo,
-		brandItemRepo:   brandItemRepo,
-		userContract:    &mockUserContract{},
-		fashionContract: &mockFashionContract{},
-		benefitUC:       &mockBenefitUseCase{hasAccess: true}, // Has access to samples
+		brandRepo:         brandRepo,
+		customerRepo:      customerRepo,
+		brandItemRepo:     brandItemRepo,
+		userBriefContract: &mockUserBriefContract{},
+		fashionContract:   &mockFashionContract{},
+		benefitUC:         &mockBenefitUseCase{hasAccess: true}, // Has access to samples
 	}
 
 	dtos, fashionItems, err := uc.ListEligibleBrandItemsForStyling(context.Background(), userID, &dto.ListEligibleBrandItemsReq{})

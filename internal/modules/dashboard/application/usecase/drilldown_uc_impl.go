@@ -16,23 +16,23 @@ import (
 )
 
 type DrillDownUseCase struct {
-	aiCostReader  aiContract.IAICostDashboardReader
-	brandReader   brand_contract.IBrandDashboardReader
-	userContract  identity_contract.IUserContract
-	brandContract brand_contract.IBrandContract
+	aiCostReader      aiContract.IAICostDashboardReader
+	brandReader       brand_contract.IBrandDashboardReader
+	userBriefContract identity_contract.IUserBriefContract
+	brandContract     brand_contract.IBrandContract
 }
 
 func NewDrillDownUseCase(
 	aiCostReader aiContract.IAICostDashboardReader,
 	brandReader brand_contract.IBrandDashboardReader,
-	userContract identity_contract.IUserContract,
+	userBriefContract identity_contract.IUserBriefContract,
 	brandContract brand_contract.IBrandContract,
 ) uc_interfaces.IDrillDownUseCase {
 	return &DrillDownUseCase{
-		aiCostReader:  aiCostReader,
-		brandReader:   brandReader,
-		userContract:  userContract,
-		brandContract: brandContract,
+		aiCostReader:      aiCostReader,
+		brandReader:       brandReader,
+		userBriefContract: userBriefContract,
+		brandContract:     brandContract,
 	}
 }
 
@@ -84,8 +84,8 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 	}
 
 	userBriefs := make([]*identity_dto.UserBriefRes, 0)
-	if uc.userContract != nil {
-		userBriefs, _ = uc.userContract.GetBriefByIDs(ctx, userIDs)
+	if uc.userBriefContract != nil {
+		userBriefs, _ = uc.userBriefContract.GetByIDs(ctx, userIDs)
 	}
 	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
 	for _, ub := range userBriefs {

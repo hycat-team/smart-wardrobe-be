@@ -139,22 +139,6 @@ func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.Use
 	return res
 }
 
-func UserResToBrief(u *identity_dto.UserRes) *identity_dto.UserBriefRes {
-	if u == nil {
-		return nil
-	}
-	return &identity_dto.UserBriefRes{
-		ID:        u.ID,
-		Username:  u.Username,
-		Email:     u.Email,
-		FirstName: u.FirstName,
-		LastName:  u.LastName,
-		Gender:    u.Gender,
-		Status:    u.Status,
-		AvatarUrl: u.AvatarUrl,
-	}
-}
-
 func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandMemberRes {
 	res := make([]*dto.BrandMemberRes, len(members))
 	for idx, member := range members {

@@ -16,7 +16,6 @@ type IUserUseCase interface {
 	UpdateBodyProfile(ctx context.Context, userID uuid.UUID, input dto.UpdateBodyProfileReq) (*dto.UserRes, error)
 	GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserRes, error)
 	GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserRes, error)
-	GetBriefByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefRes, error)
 	GetByUsername(ctx context.Context, username string) (*dto.UserRes, error)
 	GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserRes, error)
 	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error)

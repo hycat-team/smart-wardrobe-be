@@ -9,7 +9,8 @@ import (
 
 var ProviderSet = wire.NewSet(
 	usecase.NewUserUseCase,
-	contract.NewUserContract,
+	usecase.NewUserBriefUseCase,
+	contract.NewUserBriefContract,
 
 	usecase.NewRegisterUseCase,
 	usecase.NewSessionUseCase,
