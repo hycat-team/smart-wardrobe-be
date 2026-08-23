@@ -16,7 +16,7 @@ func NewManualGrantStrategy() *ManualGrantStrategy {
 	return &ManualGrantStrategy{}
 }
 
-func (s *ManualGrantStrategy) CheckAccess(_ context.Context, _ *entities.BrandBenefit, _ *entities.BrandCustomer, _ time.Time) (bool, error) {
+func (s *ManualGrantStrategy) CheckAccess(_ context.Context, _ *entities.BrandBenefit, _ *entities.BrandCustomer, _ *entities.LoyaltyAccount, _ time.Time) (bool, error) {
 	return false, nil
 }
 

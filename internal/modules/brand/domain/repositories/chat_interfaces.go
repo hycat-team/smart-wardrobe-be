@@ -33,4 +33,5 @@ type IBrandConversationMessageRepository interface {
 	GetByConversationID(ctx context.Context, conversationID uuid.UUID) ([]*entities.BrandConversationMessage, error)
 	GetByConversationIDPaginated(ctx context.Context, filter BrandConversationMessageFilter) (*BrandConversationMessageListResult, error)
 	CountUnread(ctx context.Context, conversationID uuid.UUID, senderRole string, since *time.Time) (int, error)
+	CountUnreadBatch(ctx context.Context, conversationIDs []uuid.UUID, senderRole string, sinceByConv map[uuid.UUID]*time.Time) (map[uuid.UUID]int, error)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type IBrandChatUseCase interface {
-	GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationDetailRes, error)
+	GetUserConversation(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationUserDetailRes, error)
 	SendUserMessage(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.SendBrandChatMessageReq) (*dto.BrandConversationMessageRes, error)
 	ListBrandConversations(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandConversationRes, error)
 	ListConversationMessages(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, conversationID uuid.UUID, query dto.GetConversationMessagesQueryReq) (*dto.BrandConversationMessageListRes, error)

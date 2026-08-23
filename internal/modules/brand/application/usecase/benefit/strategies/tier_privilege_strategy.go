@@ -30,13 +30,12 @@ func NewTierPrivilegeStrategy(
 	}
 }
 
-func (s *TierPrivilegeStrategy) CheckAccess(ctx context.Context, benefit *entities.BrandBenefit, customer *entities.BrandCustomer, now time.Time) (bool, error) {
+func (s *TierPrivilegeStrategy) CheckAccess(ctx context.Context, benefit *entities.BrandBenefit, customer *entities.BrandCustomer, account *entities.LoyaltyAccount, now time.Time) (bool, error) {
 	if benefit.RequiredTierID == nil {
 		return false, nil
 	}
 
-	account, err := s.accountRepo.GetByBrandCustomerID(ctx, customer.ID)
-	if err != nil || account == nil || account.CurrentTierID == nil {
+	if account == nil || account.CurrentTierID == nil {
 		return false, nil
 	}
 

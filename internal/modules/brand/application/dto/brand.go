@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -99,6 +100,8 @@ type BrandMemberRes struct {
 	CreatedAt    time.Time                           `json:"createdAt"`
 	UpdatedAt    time.Time                           `json:"updatedAt"`
 }
+
+type PublicBrandBriefListRes = shared_dto.PaginationResult[*BrandBriefRes]
 
 type AdminAddBrandStaffReq struct {
 	UserID uuid.UUID `json:"userId" binding:"required" label:"mã người dùng"`

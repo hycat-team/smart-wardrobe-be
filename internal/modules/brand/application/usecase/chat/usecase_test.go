@@ -78,6 +78,9 @@ func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Br
 func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (m *mockBrandRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Brand, error) {
+	return nil, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -124,6 +127,9 @@ func (m *mockMemberRepo) BatchUpdate(ctx context.Context, members []*entities.Br
 }
 func (m *mockMemberRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockMemberRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandMember, error) {
+	return nil, nil
 }
 
 type mockCustomerRepo struct {
@@ -188,6 +194,9 @@ func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities
 func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (m *mockCustomerRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandCustomer, error) {
+	return nil, nil
+}
 
 type mockConvRepo struct {
 	conversations map[string]*entities.BrandConversation
@@ -236,6 +245,9 @@ func (m *mockConvRepo) BatchUpdate(ctx context.Context, entities []*entities.Bra
 }
 func (m *mockConvRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockConvRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandConversation, error) {
+	return nil, nil
 }
 
 type mockMsgRepo struct {
@@ -297,6 +309,12 @@ func (m *mockMsgRepo) BatchUpdate(ctx context.Context, entities []*entities.Bran
 }
 func (m *mockMsgRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockMsgRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandConversationMessage, error) {
+	return nil, nil
+}
+func (m *mockMsgRepo) CountUnreadBatch(ctx context.Context, conversationIDs []uuid.UUID, senderRole string, sinceByConv map[uuid.UUID]*time.Time) (map[uuid.UUID]int, error) {
+	return nil, nil
 }
 
 func TestSendUserMessage_AutoCreateAndReopen(t *testing.T) {

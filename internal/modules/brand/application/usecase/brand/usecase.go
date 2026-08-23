@@ -176,7 +176,7 @@ func (uc *BrandUseCase) GetBrandsForAdmin(ctx context.Context, query dto.GetBran
 	}, nil
 }
 
-func (uc *BrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActiveBrandsQueryReq) (*dto.PublicBrandListRes, error) {
+func (uc *BrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActiveBrandsQueryReq) (*dto.PublicBrandBriefListRes, error) {
 	filter := repositories.BrandFilter{
 		Query: query.Query,
 		Page:  query.Page,
@@ -188,23 +188,10 @@ func (uc *BrandUseCase) GetActiveBrands(ctx context.Context, query dto.GetActive
 		return nil, err
 	}
 
-	brandIDs := make([]uuid.UUID, len(result.Brands))
-	for i, b := range result.Brands {
-		brandIDs[i] = b.ID
-	}
-	counts, err := uc.customerRepo.CountByBrandIDs(ctx, brandIDs)
-	if err != nil {
-		return nil, err
-	}
-	totalCustomerByBrandID := make(map[uuid.UUID]int, len(counts))
-	for id, cnt := range counts {
-		totalCustomerByBrandID[id] = int(cnt)
-	}
-
-	mappedItems := mapper.MapBrands(result.Brands, totalCustomerByBrandID)
+	mappedItems := mapper.MapBrandBriefs(result.Brands)
 	metadata := shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount)
 
-	return &shared_dto.PaginationResult[*dto.BrandRes]{
+	return &shared_dto.PaginationResult[*dto.BrandBriefRes]{
 		Items:    mappedItems,
 		Metadata: metadata,
 	}, nil

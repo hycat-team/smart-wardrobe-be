@@ -441,7 +441,7 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 	return res, nil
 }
 
-func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error) {
 	productType := branditemtype.Product
 	filter := repositories.BrandItemFilter{
 		BrandID:  brandID,
@@ -454,14 +454,14 @@ func (uc *BrandItemUseCase) ListBrandProductsForCustomer(ctx context.Context, br
 	if err != nil {
 		return nil, err
 	}
-	items := uc.mapSliceToRes(ctx, result.Items)
-	return &dto.BrandItemListRes{
+	items := uc.mapSliceToBriefRes(ctx, result.Items)
+	return &dto.BrandItemListBriefRes{
 		Items:    items,
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil
 }
 
-func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListRes, error) {
+func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error) {
 	hasAccess, err := uc.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, benefitfeaturecode.SampleMixAccess)
 	if err != nil {
 		return nil, err
@@ -481,8 +481,8 @@ func (uc *BrandItemUseCase) ListBrandSamplesForCustomer(ctx context.Context, use
 	if err != nil {
 		return nil, err
 	}
-	items := uc.mapSliceToRes(ctx, result.Items)
-	return &dto.BrandItemListRes{
+	items := uc.mapSliceToBriefRes(ctx, result.Items)
+	return &dto.BrandItemListBriefRes{
 		Items:    items,
 		Metadata: shared_dto.BuildPaginationMetadata(query.PaginationQuery, result.TotalCount),
 	}, nil

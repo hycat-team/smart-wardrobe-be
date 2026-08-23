@@ -73,6 +73,7 @@ type ILoyaltyPointLotRepository interface {
 	UpdateLotRemainingAndStatus(ctx context.Context, lotID uuid.UUID, remainingPoints int, status loyaltypointlotstatus.LoyaltyPointLotStatus) error
 	ListAccountsWithExpiredLots(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
 	GetNearestExpiringActiveLot(ctx context.Context, loyaltyAccountID uuid.UUID, now time.Time) (*entities.LoyaltyPointLot, error)
+	GetNearestExpiringActiveLots(ctx context.Context, loyaltyAccountIDs []uuid.UUID, now time.Time) (map[uuid.UUID]*entities.LoyaltyPointLot, error)
 	ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error)
 	SumExpiringPointsByMonth(ctx context.Context, brandID uuid.UUID, status loyaltypointlotstatus.LoyaltyPointLotStatus) ([]MonthPointSum, error)
 }

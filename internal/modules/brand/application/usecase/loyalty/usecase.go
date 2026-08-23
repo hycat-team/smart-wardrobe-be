@@ -141,7 +141,7 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid
 	return mapper.MapBrandCustomer(customer, user), nil
 }
 
-func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, brandID uuid.UUID) (*dto.BrandCustomerRes, error) {
+func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, brandID uuid.UUID) (*dto.BrandCustomerBriefRes, error) {
 	if currentRole != roleslug.User {
 		return nil, branderrors.ErrBrandPortalForbidden()
 	}
@@ -161,7 +161,7 @@ func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID
 		if err := uc.ensureLoyaltyAccount(ctx, existing); err != nil {
 			return nil, err
 		}
-		return mapper.MapBrandCustomer(existing, nil), nil
+		return mapper.MapBrandCustomerBrief(existing, nil), nil
 	}
 
 	customer := &entities.BrandCustomer{
@@ -179,7 +179,7 @@ func (uc *BrandLoyaltyUseCase) JoinLoyalty(ctx context.Context, userID uuid.UUID
 	}); err != nil {
 		return nil, err
 	}
-	return mapper.MapBrandCustomer(customer, nil), nil
+	return mapper.MapBrandCustomerBrief(customer, nil), nil
 }
 
 func (uc *BrandLoyaltyUseCase) CreateOfflineCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, input dto.CreateOfflineBrandCustomerReq) (*dto.BrandCustomerRes, error) {
@@ -378,17 +378,22 @@ func (uc *BrandLoyaltyUseCase) ListUserBrandLoyalties(ctx context.Context, userI
 		accountByCustomerID[account.BrandCustomerID] = account
 	}
 
+	accountIDs := make([]uuid.UUID, 0, len(accounts))
+	for _, account := range accounts {
+		accountIDs = append(accountIDs, account.ID)
+	}
+	lotMap, err := uc.lotRepo.GetNearestExpiringActiveLots(ctx, accountIDs, time.Now().UTC())
+	if err != nil {
+		return nil, err
+	}
+
 	res := make([]*dto.BrandLoyaltyRes, 0, len(customers))
 	for _, customer := range activeCustomers {
 		account := accountByCustomerID[customer.ID]
 		if account == nil {
 			continue
 		}
-		lot, err := uc.lotRepo.GetNearestExpiringActiveLot(ctx, account.ID, time.Now().UTC())
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, mapper.MapBrandLoyalty(account, customer, customer.Brand, lot))
+		res = append(res, mapper.MapBrandLoyalty(account, customer, customer.Brand, lotMap[account.ID]))
 	}
 	return res, nil
 }
@@ -419,7 +424,7 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyalty(ctx context.Context, userID u
 	return mapper.MapBrandLoyalty(account, customer, brand, lot), nil
 }
 
-func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyPointTransactionDetailRes, error) {
+func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) ([]*dto.LoyaltyPointTransactionBriefRes, error) {
 	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {
 		return nil, err
@@ -432,13 +437,13 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Conte
 		return nil, err
 	}
 	if account == nil {
-		return []*dto.LoyaltyPointTransactionDetailRes{}, nil
+		return []*dto.LoyaltyPointTransactionBriefRes{}, nil
 	}
 	transactions, err := uc.txRepo.GetByLoyaltyAccountID(ctx, account.ID)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapLoyaltyTransactions(transactions), nil
+	return mapper.MapLoyaltyPointTransactionsBrief(transactions), nil
 }
 
 func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {

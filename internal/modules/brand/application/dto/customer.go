@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerjoinedsource"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandcustomerstatus"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 
 	"github.com/google/uuid"
@@ -31,6 +32,16 @@ type BrandCustomerRes struct {
 	UpdatedAt            time.Time                                           `json:"updatedAt"`
 	User                 *BrandCustomerUserRes                               `json:"user,omitempty"`
 	LoyaltyAccount       *CustomerLoyaltyAccountRes                          `json:"loyaltyAccount,omitempty"`
+}
+
+type BrandCustomerBriefRes struct {
+	ID             uuid.UUID                                           `json:"id"`
+	CustomerName   *string                                             `json:"customerName"`
+	JoinedSource   brandcustomerjoinedsource.BrandCustomerJoinedSource `json:"joinedSource"`
+	Status         brandcustomerstatus.BrandCustomerStatus             `json:"status"`
+	JoinedAt       time.Time                                           `json:"joinedAt"`
+	LoyaltyAccount *CustomerLoyaltyAccountRes                          `json:"loyaltyAccount,omitempty"`
+	User           *identity_dto.UserBriefRes                          `json:"user,omitempty"`
 }
 
 type BrandCustomerUserRes struct {

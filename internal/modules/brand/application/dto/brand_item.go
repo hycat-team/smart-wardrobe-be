@@ -78,3 +78,15 @@ type GetBrandItemsQueryReq struct {
 }
 
 type BrandItemListRes = shared_dto.PaginationResult[*BrandItemRes]
+
+type BrandItemListBriefRes = shared_dto.PaginationResult[*BrandItemBriefRes]
+
+type BrandItemBriefRes struct {
+	ID          uuid.UUID                       `json:"id"`
+	Brand       *BrandBriefRes                  `json:"brand,omitempty"`
+	Name        string                          `json:"name"`
+	Price       *float64                        `json:"price,omitempty"`
+	ItemType    branditemtype.BrandItemType     `json:"itemType"`
+	Status      branditemstatus.BrandItemStatus `json:"status"`
+	FashionItem *fashion_dto.FashionItemBriefRes `json:"fashionItem,omitempty"`
+}

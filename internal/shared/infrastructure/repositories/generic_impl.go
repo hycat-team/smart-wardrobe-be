@@ -98,6 +98,16 @@ func (r *GenericRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, erro
 	return &entity, nil
 }
 
+func (r *GenericRepository[T, ID]) GetByIDs(ctx context.Context, ids []ID) ([]*T, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var entities []*T
+	query := r.GetQueryWithPreload(ctx)
+	err := query.Where("id IN ?", ids).Find(&entities).Error
+	return entities, err
+}
+
 func (r *GenericRepository[T, ID]) GetAll(ctx context.Context) ([]*T, error) {
 	var entities []*T
 	query := r.GetQueryWithPreload(ctx)

@@ -83,6 +83,9 @@ func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Br
 func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (m *mockBrandRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Brand, error) {
+	return nil, nil
+}
 
 type mockMemberRepo struct {
 	members map[string]*entities.BrandMember
@@ -129,6 +132,9 @@ func (m *mockMemberRepo) BatchUpdate(ctx context.Context, members []*entities.Br
 }
 func (m *mockMemberRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockMemberRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandMember, error) {
+	return nil, nil
 }
 
 type mockCustomerRepo struct {
@@ -192,6 +198,9 @@ func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities
 }
 func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockCustomerRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandCustomer, error) {
+	return nil, nil
 }
 
 type mockBrandItemRepo struct {
@@ -306,6 +315,9 @@ func (m *mockBrandItemRepo) BatchUpdate(ctx context.Context, entities []*entitie
 func (m *mockBrandItemRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (m *mockBrandItemRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandItem, error) {
+	return nil, nil
+}
 
 type mockDigitalSampleResponseRepo struct {
 	feedbacks map[uuid.UUID]*entities.DigitalSampleResponse
@@ -352,6 +364,9 @@ func (m *mockDigitalSampleResponseRepo) BatchUpdate(ctx context.Context, entitie
 }
 func (m *mockDigitalSampleResponseRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockDigitalSampleResponseRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.DigitalSampleResponse, error) {
+	return nil, nil
 }
 
 type mockUserContract struct{}

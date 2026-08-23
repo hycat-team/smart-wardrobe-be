@@ -86,6 +86,29 @@ func (r *LoyaltyPointLotRepository) GetNearestExpiringActiveLot(ctx context.Cont
 	return &lot, nil
 }
 
+func (r *LoyaltyPointLotRepository) GetNearestExpiringActiveLots(ctx context.Context, loyaltyAccountIDs []uuid.UUID, now time.Time) (map[uuid.UUID]*entities.LoyaltyPointLot, error) {
+	if len(loyaltyAccountIDs) == 0 {
+		return nil, nil
+	}
+	var lots []*entities.LoyaltyPointLot
+	err := r.GetDB(ctx).
+		Where("loyalty_account_id IN ? AND status = ? AND remaining_points > 0 AND expires_at IS NOT NULL AND expires_at > ?", loyaltyAccountIDs, loyaltypointlotstatus.Active, now).
+		Order("expires_at ASC, created_at ASC").
+		Find(&lots).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]*entities.LoyaltyPointLot, len(loyaltyAccountIDs))
+	seen := make(map[uuid.UUID]bool, len(loyaltyAccountIDs))
+	for _, lot := range lots {
+		if !seen[lot.LoyaltyAccountID] {
+			result[lot.LoyaltyAccountID] = lot
+			seen[lot.LoyaltyAccountID] = true
+		}
+	}
+	return result, nil
+}
+
 func (r *LoyaltyPointLotRepository) ListByAccountID(ctx context.Context, loyaltyAccountID uuid.UUID, status *loyaltypointlotstatus.LoyaltyPointLotStatus, expiresAt *time.Time, page int, limit int) ([]*entities.LoyaltyPointLot, error) {
 	if page <= 0 {
 		page = 1

@@ -68,6 +68,9 @@ func (m *mockBrandRepo) BatchUpdate(ctx context.Context, entities []*entities.Br
 func (m *mockBrandRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
 }
+func (m *mockBrandRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.Brand, error) {
+	return nil, nil
+}
 
 type mockCustomerRepo struct{}
 
@@ -122,6 +125,9 @@ func (m *mockCustomerRepo) BatchUpdate(ctx context.Context, entities []*entities
 }
 func (m *mockCustomerRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, values map[string]any) error {
 	return nil
+}
+func (m *mockCustomerRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.BrandCustomer, error) {
+	return nil, nil
 }
 
 func TestGetBrandsForAdmin(t *testing.T) {

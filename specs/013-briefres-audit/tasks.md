@@ -64,22 +64,22 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Brand)
 
-- [ ] T019 [P] [US4] Tạo struct BenefitBriefRes tại internal/modules/brand/application/dto/benefit.go (B1)
-- [ ] T020 [P] [US4] Tạo struct BrandItemBriefRes tại internal/modules/brand/application/dto/brand_item.go (B2, reconcile với wardrobe)
-- [ ] T021 [P] [US4] Tạo struct LoyaltyPointTransactionBriefRes tại internal/modules/brand/application/dto/loyalty.go (B6)
-- [ ] T022 [P] [US4] Tạo struct BrandCustomerBriefRes tại internal/modules/brand/application/dto/customer.go (B4)
-- [ ] T023 [P] [US4] Tạo struct BrandConversationUserRes tại internal/modules/brand/application/dto/chat.go (B5)
-- [ ] T024 [P] [US4] Tạo mappers tương ứng trong internal/modules/brand/application/mapper/brand.go (MapBenefitBrief, MapBrandItemBrief, MapLoyaltyPointTransactionBrief, MapBrandCustomerBrief, MapBrandConversationUser)
-- [ ] T025 [US4] Cập nhật BenefitRedemptionRes: bỏ benefitId, thêm benefit \*BenefitBriefRes tại internal/modules/brand/application/dto/benefit.go + internal/modules/brand/application/mapper/brand.go (reports/brand.md §Underdelivery #1)
-- [ ] T026 [US4] Cập nhật handler + mapper: GET /brands + GET /brands/:brandId trả BrandBriefRes (bỏ BrandRes public) tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand.go
-- [ ] T027 [US4] Cập nhật handler + mapper: list brand items public/user dùng BrandItemBriefRes + FashionItemBriefRes (thay FashionItemRes) tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand_item.go
-- [ ] T028 [US4] Cập nhật handler + mapper: POST /brand-benefits/:benefitId/redeem + GET /me/benefit-redemptions trả benefit \*BenefitBriefRes tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/brand.go
-- [ ] T029 [US4] Cập nhật handler + mapper: POST /brands/:brandId/join-loyalty + POST /brands/claim trả BrandCustomerBriefRes (bỏ phoneE164 PII) tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/brand.go
-- [ ] T030 [US4] Cập nhật handler + mapper: GET /me/brand-loyalties/:brandId/transactions trả LoyaltyPointTransactionBriefRes (bỏ idempotencyKey — bảo mật) tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/loyalty.go
-- [ ] T031 [US4] Cập nhật handler + mapper: conversation user dùng BrandConversationUserRes + sender \*UserBriefRes (thêm vào BrandConversationMessageRes) tại internal/modules/brand/presentation/handler/brand_chat_handler.go + internal/modules/brand/application/mapper/brand.go
-- [ ] T032 [US4] Cập nhật handler + mapper: DigitalSampleResponseRes thêm user \*UserBriefRes cho staff feedback list tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand.go
-- [ ] T033 [P] [US4] Cập nhật swagger annotations cho các handler brand thay đổi trong internal/modules/brand/presentation/handler/
-- [ ] T034 [US4] Chạy make check + make test — verify brand refactor không break admin/portal endpoints
+- [x] T019 [P] [US4] Tạo struct BenefitBriefRes tại internal/modules/brand/application/dto/benefit.go (B1)
+- [x] T020 [P] [US4] Tạo struct BrandItemBriefRes tại internal/modules/brand/application/dto/brand_item.go (B2, reconcile với wardrobe)
+- [x] T021 [P] [US4] Tạo struct LoyaltyPointTransactionBriefRes tại internal/modules/brand/application/dto/loyalty.go (B6)
+- [x] T022 [P] [US4] Tạo struct BrandCustomerBriefRes tại internal/modules/brand/application/dto/customer.go (B4)
+- [x] T023 [P] [US4] Tạo struct BrandConversationUserRes tại internal/modules/brand/application/dto/chat.go (B5)
+- [x] T024 [P] [US4] Tạo mappers tương ứng trong internal/modules/brand/application/mapper/brand.go (MapBenefitBrief, MapBrandItemBrief, MapLoyaltyPointTransactionBrief, MapBrandCustomerBrief, MapBrandConversationUser)
+- [x] T025 [US4] Cập nhật BenefitRedemptionRes: bỏ benefitId, thêm benefit \*BenefitBriefRes tại internal/modules/brand/application/dto/benefit.go + internal/modules/brand/application/mapper/brand.go (reports/brand.md §Underdelivery #1)
+- [x] T026 [US4] Cập nhật handler + mapper: GET /brands + GET /brands/:brandId trả BrandBriefRes (bỏ BrandRes public) tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand.go
+- [x] T027 [US4] Cập nhật handler + mapper: list brand items public/user dùng BrandItemBriefRes + FashionItemBriefRes (thay FashionItemRes) tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand_item.go
+- [x] T028 [US4] Cập nhật handler + mapper: POST /brand-benefits/:benefitId/redeem + GET /me/benefit-redemptions trả benefit \*BenefitBriefRes tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/brand.go
+- [x] T029 [US4] Cập nhật handler + mapper: POST /brands/:brandId/join-loyalty + POST /brands/claim trả BrandCustomerBriefRes (bỏ phoneE164 PII) tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/brand.go
+- [x] T030 [US4] Cập nhật handler + mapper: GET /me/brand-loyalties/:brandId/transactions trả LoyaltyPointTransactionBriefRes (bỏ idempotencyKey — bảo mật) tại internal/modules/brand/presentation/handler/brand_loyalty_handler.go + internal/modules/brand/application/mapper/loyalty.go
+- [x] T031 [US4] Cập nhật handler + mapper: conversation user dùng BrandConversationUserRes + sender \*UserBriefRes (thêm vào BrandConversationMessageRes) tại internal/modules/brand/presentation/handler/brand_chat_handler.go + internal/modules/brand/application/mapper/brand.go
+- [x] T032 [US4] Cập nhật handler + mapper: DigitalSampleResponseRes thêm user \*UserBriefRes cho staff feedback list tại internal/modules/brand/presentation/handler/brand_portal_handler.go + internal/modules/brand/application/mapper/brand.go
+- [x] T033 [P] [US4] Cập nhật swagger annotations cho các handler brand thay đổi trong internal/modules/brand/presentation/handler/
+- [x] T034 [US4] Chạy make check + make test — verify brand refactor không break admin/portal endpoints
 
 **Checkpoint**: Brand module refactor hoàn tất — MVP (giảm payload lớn nhất + vá bảo mật idempotencyKey/phoneE164/audit fields)
 

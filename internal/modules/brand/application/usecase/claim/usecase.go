@@ -143,7 +143,7 @@ func (uc *BrandClaimUseCase) RevokeBrandCustomerClaim(ctx context.Context, staff
 	return mapper.MapClaimToken(claim), nil
 }
 
-func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) (*dto.BrandCustomerRes, error) {
+func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid.UUID, claimToken string, clientIP string) (*dto.BrandCustomerBriefRes, error) {
 	token := strings.TrimSpace(claimToken)
 	if token == "" {
 		return nil, branderrors.ErrInvalidToken()
@@ -226,5 +226,5 @@ func (uc *BrandClaimUseCase) ClaimBrandCustomer(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	return mapper.MapBrandCustomer(updatedCustomer, nil), nil
+	return mapper.MapBrandCustomerBrief(updatedCustomer, nil), nil
 }
