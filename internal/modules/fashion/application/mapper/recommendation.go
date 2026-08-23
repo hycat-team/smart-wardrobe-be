@@ -45,44 +45,11 @@ func parseAliasIndex(alias string) (int, bool) {
 	return -1, false
 }
 
-func MapToRecommendedItemResFromWardrobe(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes) *dto.RecommendedItemRes {
-	if item == nil {
-		return nil
-	}
-	var fRes *dto.RecommendedFashionItemRes
-	if fi != nil {
-		var category *wardrobeDto.CategoryBriefRes
-		if fi.Category != nil {
-			category = &wardrobeDto.CategoryBriefRes{
-				ID:   fi.Category.ID,
-				Name: fi.Category.Name,
-				Slug: fi.Category.Slug,
-			}
-		}
-		fRes = &dto.RecommendedFashionItemRes{
-			ID:       fi.ID,
-			Category: category,
-			ImageUrl: fi.ImageUrl,
-			Color:    fi.Color,
-			ColorHex: fi.ColorHex,
-			Style:    fi.Style,
-			Material: fi.Material,
-			Pattern:  fi.Pattern,
-			Fit:      fi.Fit,
-		}
-	}
-	return &dto.RecommendedItemRes{
-		ID:          item.ID,
-		ItemContext: string(outfititemcontext.UserWardrobe),
-		FashionItem: fRes,
-	}
-}
-
 func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
 	if item == nil {
 		return nil
 	}
-	var fRes *dto.RecommendedFashionItemRes
+	var fRes *dto.RecommendedFashionItemBriefRes
 	if fi != nil {
 		var category *wardrobeDto.CategoryBriefRes
 		if fi.Category != nil {
@@ -92,16 +59,13 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionI
 				Slug: fi.Category.Slug,
 			}
 		}
-		fRes = &dto.RecommendedFashionItemRes{
+		fRes = &dto.RecommendedFashionItemBriefRes{
 			ID:       fi.ID,
 			Category: category,
 			ImageUrl: fi.ImageUrl,
 			Color:    fi.Color,
 			ColorHex: fi.ColorHex,
 			Style:    fi.Style,
-			Material: fi.Material,
-			Pattern:  fi.Pattern,
-			Fit:      fi.Fit,
 		}
 	}
 	res := &dto.RecommendedItemRes{

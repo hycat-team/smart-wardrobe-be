@@ -418,3 +418,15 @@ func (r *AICostRepository) ListGrantsByUser(ctx context.Context, userID uuid.UUI
 	}
 	return grants, nil
 }
+
+func (r *AICostRepository) GetPolicyByID(ctx context.Context, policyID uuid.UUID) (*aiexecutor_entities.AICostPolicy, error) {
+	var policy aiexecutor_entities.AICostPolicy
+	err := r.GetDB(ctx).Where("id = ?", policyID).First(&policy).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &policy, nil
+}

@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberrole"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandmemberstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/brandstatus"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
@@ -95,6 +96,7 @@ type BrandMemberRes struct {
 	UserID       uuid.UUID                           `json:"userId"`
 	UserFullName string                              `json:"userFullName,omitempty"`
 	UserEmail    string                              `json:"userEmail,omitempty"`
+	User         *identity_dto.UserBriefRes          `json:"user,omitempty"`
 	Role         brandmemberrole.BrandMemberRole     `json:"role"`
 	Status       brandmemberstatus.BrandMemberStatus `json:"status"`
 	CreatedAt    time.Time                           `json:"createdAt"`

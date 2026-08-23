@@ -143,11 +143,33 @@ func (uc *AIAdminUseCase) ListGrants(ctx context.Context, userID uuid.UUID) ([]*
 		return nil, err
 	}
 
+	policyIDs := make(map[uuid.UUID]bool)
+	for _, g := range grants {
+		policyIDs[g.PolicyID] = true
+	}
+	policyMap := make(map[uuid.UUID]*entities.AICostPolicy)
+	for pid := range policyIDs {
+		policy, _ := uc.aiCostRepo.GetPolicyByID(ctx, pid)
+		if policy != nil {
+			policyMap[pid] = policy
+		}
+	}
+
 	res := make([]*dto.AIPolicyGrantDTO, len(grants))
 	for idx, g := range grants {
+		var policyBrief *dto.AICostPolicyBriefRes
+		if policy, ok := policyMap[g.PolicyID]; ok {
+			policyBrief = &dto.AICostPolicyBriefRes{
+				ID:      policy.ID,
+				Code:    policy.Code,
+				Name:    policy.Name,
+				Version: policy.Version,
+			}
+		}
 		res[idx] = &dto.AIPolicyGrantDTO{
 			ID:             g.ID,
 			UserID:         g.UserID,
+			AICostPolicy:   policyBrief,
 			AICostPolicyID: g.PolicyID,
 			EffectiveFrom:  g.EffectiveFrom,
 			EffectiveTo:    g.EffectiveTo,

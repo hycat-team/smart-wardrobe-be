@@ -7,6 +7,7 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
@@ -39,6 +40,7 @@ type WardrobeItemUseCase struct {
 	mediaService     media.IMediaService
 	aiService        aiexecutor_contract.IAIOrchestrator
 	userSubContract  contract.IUserSubscriptionContract
+	brandContract    brand_contract.IBrandContract
 	eventPublisher   event.IEventPublisher
 	fashionContract  fashion_contract.IFashionContract
 	categoryContract fashion_contract.ICategoryContract
@@ -54,6 +56,7 @@ func NewWardrobeItemUseCase(
 	mediaService media.IMediaService,
 	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
+	brandContract brand_contract.IBrandContract,
 	eventPublisher event.IEventPublisher,
 	fashionContract fashion_contract.IFashionContract,
 	categoryContract fashion_contract.ICategoryContract,
@@ -68,6 +71,7 @@ func NewWardrobeItemUseCase(
 		mediaService:     mediaService,
 		aiService:        aiService,
 		userSubContract:  userSubContract,
+		brandContract:    brandContract,
 		eventPublisher:   eventPublisher,
 		fashionContract:  fashionContract,
 		categoryContract: categoryContract,
@@ -157,13 +161,38 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		}
 	}
 
+	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	if len(fashionIDs) > 0 && uc.brandContract != nil {
+		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, bi := range brandItems {
+				var brandName string
+				if bi.Brand != nil {
+					brandName = bi.Brand.Name
+				}
+				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+					ID:        bi.ID,
+					BrandID:   bi.Brand.ID,
+					BrandName: brandName,
+					Name:      bi.Name,
+					Price:     bi.Price,
+					ItemType:  string(bi.ItemType),
+				}
+			}
+		}
+	}
+
 	resList := make([]*dto.WardrobeItemBriefRes, len(items))
 	for idx, item := range items {
 		var fiBrief *fashion_dto.FashionItemBriefRes
 		if item.FashionItemID != nil {
 			fiBrief = fashionBriefMap[*item.FashionItemID]
 		}
-		res := mapper.MapToWardrobeItemBrief(item, fiBrief, nil)
+		var brandItem *dto.BrandItemBriefRes
+		if item.FashionItemID != nil {
+			brandItem = brandItemMap[*item.FashionItemID]
+		}
+		res := mapper.MapToWardrobeItemBrief(item, fiBrief, brandItem)
 		res.IsLocked = lockedMap[item.ID]
 		resList[idx] = res
 	}

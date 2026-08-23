@@ -19,4 +19,6 @@ type IBrandContract interface {
 	SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error
 	UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error
 	GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error)
+	GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error)
+	GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemRes, error)
 }

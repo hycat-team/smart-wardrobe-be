@@ -24,6 +24,7 @@ type BrandDashboardUseCase struct {
 	brandReader     brandContract.IBrandDashboardReader
 	wardrobeReader  wardrobeContract.IWardrobeDashboardReader
 	fashionContract fashionContract.IFashionContract
+	brandItem       brandContract.IBrandContract
 }
 
 func NewBrandDashboardUseCase(
@@ -31,12 +32,14 @@ func NewBrandDashboardUseCase(
 	brandReader brandContract.IBrandDashboardReader,
 	wardrobeReader wardrobeContract.IWardrobeDashboardReader,
 	fashionContract fashionContract.IFashionContract,
+	brandItem brandContract.IBrandContract,
 ) uc_interfaces.IBrandDashboardUseCase {
 	return &BrandDashboardUseCase{
 		dashboardRepo:   dashboardRepo,
 		brandReader:     brandReader,
 		wardrobeReader:  wardrobeReader,
 		fashionContract: fashionContract,
+		brandItem:       brandItem,
 	}
 }
 
@@ -53,7 +56,6 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 		}
 		if stats != nil {
 			return &dto.BrandKPICardsRes{
-				BrandID:                 brandID,
 				TotalMembers:            stats.TotalMembers,
 				PointsIssued:            stats.PointsIssued,
 				PointsRedeemed:          stats.PointsRedeemed,
@@ -62,17 +64,12 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 				DigitalSampleVotesCount: stats.DigitalSampleVotesCount,
 				DigitalSampleAvgRating:  stats.DigitalSampleAvgRating,
 				OpenCSTickets:           stats.OpenCSTickets,
-				UpdatedAt:               time.Now(),
 			}, nil
 		}
-		return &dto.BrandKPICardsRes{
-			BrandID:   brandID,
-			UpdatedAt: time.Now(),
-		}, nil
+		return &dto.BrandKPICardsRes{}, nil
 	}
 
 	return &dto.BrandKPICardsRes{
-		BrandID:                 latest.BrandID,
 		TotalMembers:            latest.TotalMembers,
 		PointsIssued:            latest.PointsIssued,
 		PointsRedeemed:          latest.PointsRedeemed,
@@ -81,7 +78,6 @@ func (uc *BrandDashboardUseCase) GetBrandKPICards(ctx context.Context, brandID u
 		DigitalSampleVotesCount: latest.DigitalSampleVotesCount,
 		DigitalSampleAvgRating:  latest.DigitalSampleAvgRating,
 		OpenCSTickets:           latest.OpenCSTickets,
-		UpdatedAt:               latest.UpdatedAt,
 	}, nil
 }
 
@@ -385,8 +381,25 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 		}
 	}
 
+	var brandItemName *string
+	var brandItemImageURL *string
+	brandItemID := &itemID
+	if uc.brandItem != nil {
+		if bi, err := uc.brandItem.GetBrandItemByID(ctx, itemID); err == nil && bi != nil {
+			name := bi.Name
+			brandItemName = &name
+			if bi.FashionItem != nil {
+				img := bi.FashionItem.ImageUrl
+				brandItemImageURL = &img
+			}
+		}
+	}
+
 	return &dto.DigitalSampleLabAnalyticsRes{
 		ItemID:              itemID,
+		BrandItemID:         brandItemID,
+		BrandItemName:       brandItemName,
+		BrandItemImageURL:   brandItemImageURL,
 		VotesCount:          feedback.VotesCount,
 		AvgRating:           feedback.AvgRating,
 		FeedbackSentiment:   feedbacksentiment.FeedbackSentiment(feedback.FeedbackSentiment),

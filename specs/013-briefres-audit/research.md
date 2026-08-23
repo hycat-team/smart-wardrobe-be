@@ -97,26 +97,29 @@ eports/. Nội dung dưới đây tổng hợp quyết định và phát hiện 
 
 ---
 
-## 5. Open questions (chuyển cho plan/dev quyết định)
+## 5. Open questions — ĐÃ GIẢI QUYẾT (Phase 2 + Phase 3-9)
 
-> Mỗi câu hỏi kèm **Default Answer** — dev có thể xác nhận hoặc thay đổi tại T011-T015 (Phase 2). Nếu không phản đối, implement theo default để tránh rework.
+> Tất cả open questions đã được resolve trong Phase 2 (T011-T015) và implement trong Phase 3-9.
 
-1. **Breaking change contract identity**: đổi IUserContract.GetByID về UserBriefRes hay thêm method GetBriefByIDs giữ UserRes? (ảnh hưởng scope brand)
-    - **Default**: Thêm method mới `GetBriefByIDs` trả `*UserBriefRes`, GIỮ `GetByID` trả `*UserRes` (vì brand admin vẫn cần full UserRes). Áp dụng cho các lookup display (member/customer/chat).
-    - **✅ QUYẾT ĐỊNH (T011)**: Chọn Option A — thêm `GetBriefByIDs`/`GetBriefByUsernamesOrEmails` trả `*UserBriefRes`, giữ nguyên `GetByID` trả `*UserRes`. **Bổ sung**: rà soát tất cả nơi gọi hàm cũ (brand, dashboard, identity) để xác định nơi nào nên chuyển sang `GetBrief...` (display context) và nơi nào giữ nguyên (admin/full context).
-2. **SSE completed**: đổi nguồn phát để data là brief (bỏ `any`)? — cross-module wardrobe contract
-    - **Default**: Đổi nguồn phát SSE `completed` sang struct brief (id, imageUrl, colorHex, category, price, status); bỏ `any`.
-    - **✅ QUYẾT ĐỊNH (T012)**: Giữ `Data any` trong `SSEEventPayload` (do event dùng chung cho cả wardrobe item lẫn brand item — cấu trúc khác nhau, không ép 1 struct). Đổi NỘI DUNG tại nguồn phát: wardrobe item truyền `WardrobeItemBriefRes` (giữ format như cũ: nested brandItem/fashionItem, chỉ bỏ field thừa userId/isDeleted/taskId/createdAt + HSL/material/pattern/fit/seasonality/description/timestamps), brand item truyền `BrandItemBriefRes`. Frontend parse như cũ, chỉ ít field hơn. Không dùng generics (SSEEventPayload là DTO, `any` đủ cho trường hợp 2 loại payload).
-3. **WardrobeItemRes là contract nội bộ** wardrobe↔fashion — xác nhận không co nhỏ, chỉ thêm WardrobeItemBriefRes cho HTTP?
-    - **Default**: Không co nhỏ `WardrobeItemRes` (AI pipeline cần full fields); thêm `WardrobeItemBriefRes` cho HTTP display.
-    - **✅ QUYẾT ĐỊNH (T013)**: Chọn Option A — KHÔNG co nhỏ `WardrobeItemRes`/`FashionItemRes` (AI pipeline ranking HSL + chat prompt dùng full fields). Thêm `WardrobeItemBriefRes` riêng cho HTTP display (grid/list). Lưu ý: wardrobe có bản copy `FashionItemRes` (wardrobe.go:24) trùng fashion canonical — giữ nguyên trong scope này (dọn nợ riêng, không thuộc phạm vi BriefRes).
-4. **Batch-upload**: thêm taskId vào WardrobeItemBriefRes hay struct riêng?
-    - **Default**: Thêm `TaskID *uuid.UUID json:"taskId,omitempty"` vào `WardrobeItemBriefRes` (frontend cần subscribe SSE cho batch-upload).
-    - **✅ QUYẾT ĐỊNH (T014)**: Chọn Option A — thêm `TaskID *uuid.UUID json:"taskId,omitempty"` vào `WardrobeItemBriefRes`. Dùng chung 1 struct; `taskId` chỉ xuất hiện ở batch-upload, các list/grid thường trả null (omitempty).
-5. **FashionItemRes canonical**: chỉnh ở mapper display hay để nguyên (chuyển cho consumer)?
-    - **Default**: Giữ nguyên struct canonical; consumer list (wardrobe/brand) dùng `FashionItemBriefRes` ở mapper display — không sửa struct chung.
-    - **✅ QUYẾT ĐỊNH (T015)**: 5a — giữ nguyên `FashionItemRes` canonical, consumer list dùng `FashionItemBriefRes` ở mapper. 5b — `OutfitBriefRes` giữ `createdAt` (UI hiển thị ngày tạo outfit list). 5c — `PUT /api/v1/me/avatar` trả `UserBriefRes` thay `UserRes`.
-6. **GET /me/outfits**: OutfitBriefRes có cần createdAt?
-    - **Default**: Có — giữ `createdAt` trong `OutfitBriefRes` (UI hiển thị ngày tạo outfit list).
-7. **/me/avatar**: trả UserBriefRes hay giữ UserRes?
-    - **Default**: Trả `UserBriefRes` (client vừa set avatar, không cần full profile).
+1. **Breaking change contract identity** → **✅ ĐÃ IMPLEMENT (T011, T016-T018)**
+   Thêm `GetBriefByIDs`/`GetBriefByUsernamesOrEmails` trả `*UserBriefRes`, giữ `GetByID` trả `*UserRes`. Brand member/customer/chat dùng `GetBriefByIDs`.
+
+2. **SSE completed brief** → **✅ ĐÃ IMPLEMENT (T061, Option A)**
+   Giữ `Data any` trong SSEEventPayload. Nguồn phát map sang brief trước khi publish:
+   - Brand item: `mapBrandItemToBrief()` (worker_uc.go)
+   - Wardrobe item: `mapWardrobeItemToBrief()` (worker_uc.go)
+
+3. **WardrobeItemRes contract** → **✅ ĐÃ IMPLEMENT (T013, Phase 4)**
+   Không co nhỏ `WardrobeItemRes`/`FashionItemRes` (AI pipeline). Thêm `WardrobeItemBriefRes` cho HTTP list/grid.
+
+4. **Batch-upload taskId** → **✅ ĐÃ IMPLEMENT (T014, Phase 4)**
+   Thêm `TaskID *uuid.UUID json:"taskId,omitempty"` vào `WardrobeItemBriefRes`.
+
+5. **FashionItemRes canonical** → **✅ ĐÃ IMPLEMENT (T015, Phase 4)**
+   Giữ nguyên canonical, consumer list dùng `FashionItemBriefRes`. `OutfitBriefRes` giữ `createdAt`. `PUT /me/avatar` trả `UserBriefRes`.
+
+6. **GET /me/outfits createdAt** → **✅ ĐÃ IMPLEMENT (T043)**
+   `OutfitBriefRes` giữ `createdAt`.
+
+7. **/me/avatar** → **✅ ĐÃ IMPLEMENT (T047)**
+   Trả `UserBriefRes` thay `UserRes`.

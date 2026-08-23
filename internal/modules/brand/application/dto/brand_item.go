@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemtype"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
@@ -60,14 +61,15 @@ type SubmitSampleFeedbackReq struct {
 }
 
 type DigitalSampleResponseRes struct {
-	ID           uuid.UUID  `json:"id"`
-	BrandItemID  uuid.UUID  `json:"brandItemId"`
-	UserID       uuid.UUID  `json:"userId"`
-	OutfitID     *uuid.UUID `json:"outfitId"`
-	VoteType     *string    `json:"voteType"`
-	Rating       *int       `json:"rating"`
-	FeedbackText *string    `json:"feedbackText"`
-	CreatedAt    time.Time  `json:"createdAt"`
+	ID           uuid.UUID                  `json:"id"`
+	BrandItemID  uuid.UUID                  `json:"brandItemId"`
+	UserID       uuid.UUID                  `json:"userId"`
+	OutfitID     *uuid.UUID                 `json:"outfitId"`
+	VoteType     *string                    `json:"voteType"`
+	Rating       *int                       `json:"rating"`
+	FeedbackText *string                    `json:"feedbackText"`
+	User         *identity_dto.UserBriefRes `json:"user,omitempty"`
+	CreatedAt    time.Time                  `json:"createdAt"`
 }
 
 type ListEligibleBrandItemsReq struct {
@@ -82,11 +84,12 @@ type BrandItemListRes = shared_dto.PaginationResult[*BrandItemRes]
 type BrandItemListBriefRes = shared_dto.PaginationResult[*BrandItemBriefRes]
 
 type BrandItemBriefRes struct {
-	ID          uuid.UUID                       `json:"id"`
-	Brand       *BrandBriefRes                  `json:"brand,omitempty"`
-	Name        string                          `json:"name"`
-	Price       *float64                        `json:"price,omitempty"`
-	ItemType    branditemtype.BrandItemType     `json:"itemType"`
-	Status      branditemstatus.BrandItemStatus `json:"status"`
-	FashionItem *fashion_dto.FashionItemBriefRes `json:"fashionItem,omitempty"`
+	ID            uuid.UUID                        `json:"id"`
+	FashionItemID uuid.UUID                        `json:"-"`
+	Brand         *BrandBriefRes                   `json:"brand,omitempty"`
+	Name          string                           `json:"name"`
+	Price         *float64                         `json:"price,omitempty"`
+	ItemType      branditemtype.BrandItemType      `json:"itemType"`
+	Status        branditemstatus.BrandItemStatus  `json:"status"`
+	FashionItem   *fashion_dto.FashionItemBriefRes `json:"fashionItem,omitempty"`
 }

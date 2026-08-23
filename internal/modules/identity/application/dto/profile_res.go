@@ -53,12 +53,6 @@ type UserSubscriptionRes struct {
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
 }
 
-type UserQuotaRes struct {
-	OutfitRecommendCount int       `json:"outfitRecommendCount"`
-	AiUsageCount         int       `json:"aiUsageCount"`
-	LastResetDate        time.Time `json:"lastResetDate"`
-}
-
 type UserStyleProfileRes struct {
 	UserID          uuid.UUID                 `json:"userId"`
 	TasteEmbedding  entities.Vector           `json:"tasteEmbedding,omitempty"`

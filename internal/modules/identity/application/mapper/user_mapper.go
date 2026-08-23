@@ -38,20 +38,6 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
 	}
 }
 
-// MapToUserBriefs maps a batch of users into brief response DTOs preserving input order.
-func MapToUserBriefs(users []*entities.User) []*dto.UserBriefRes {
-	if len(users) == 0 {
-		return []*dto.UserBriefRes{}
-	}
-	res := make([]*dto.UserBriefRes, 0, len(users))
-	for _, user := range users {
-		if brief := MapToUserBrief(user); brief != nil {
-			res = append(res, brief)
-		}
-	}
-	return res
-}
-
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
 func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionOverviewDTO) *dto.UserRes {
 	if user == nil {

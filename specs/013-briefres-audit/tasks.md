@@ -102,7 +102,7 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 - [x] T041 [US4] Detail GET /wardrobe-items/:id: bỏ userId/isDeleted/HSL khỏi JSON display tại internal/modules/wardrobe/application/mapper/ (không sửa struct canonical)
 - [x] T042 [US4] Search public: đổi fashionItem sang FashionItemBriefRes tại internal/modules/wardrobe/application/dto/wardrobe.go (SearchWardrobeItemRes) + handler search
 - [x] T043 [US4] GET /me/outfits dùng OutfitBriefRes; OutfitRes detail bỏ userId tại internal/modules/wardrobe/presentation/handler/wardrobe_outfit_handler.go
-- [ ] T044 [US4] Populate brandItem trong read path wardrobe (qua brand contract) hoặc thêm brandName flatten tại internal/modules/wardrobe/application/mapper/ — theo quyết định research *(deferred: cần thêm GetBrandItemsByFashionItemIDs vào brand contract)*
+- [x] T044 [US4] Populate brandItem trong read path wardrobe (qua brand contract) hoặc thêm brandName flatten tại internal/modules/wardrobe/application/mapper/ — theo quyết định research
 - [x] T045 [P] [US4] Cập nhật swagger annotations cho wardrobe handlers
 - [x] T046 [US4] Chạy make check + make test — verify wardrobe + không break AI pipeline (FashionItemRes giữ nguyên cho contract)
 
@@ -118,12 +118,12 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Identity)
 
-- [ ] T047 [P] [US4] Cập nhật PUT /api/v1/me/avatar trả UserBriefRes thay UserRes tại internal/modules/identity/presentation/handler/me_handler.go (theo quyết định T015)
-- [ ] T048 [US4] Cập nhật MapToUserRes không fetch subscription/body profile cho các lookup display (contract) — chỉ dùng MapUserBrief tại internal/modules/identity/application/mapper/user_mapper.go
-- [ ] T049 [US4] Cập nhật các consumer brand (member/customer/chat) nhúng UserBriefRes thay vì flatten userFullName/userEmail tại internal/modules/brand/application/mapper/
-- [ ] T050 [US4] Bỏ struct trùng lặp BrandCustomerUserRes tại internal/modules/brand/application/dto/customer.go nếu đã dùng chung UserBriefRes (theo quyết định T011)
-- [ ] T051 [P] [US4] Cập nhật swagger annotations identity nếu cần
-- [ ] T052 [US4] Chạy make check + make test — verify identity contract change không break brand/dashboard
+- [x] T047 [P] [US4] Cập nhật PUT /api/v1/me/avatar trả UserBriefRes thay UserRes tại internal/modules/identity/presentation/handler/me_handler.go (theo quyết định T015)
+- [x] T048 [US4] Cập nhật MapToUserRes không fetch subscription/body profile cho các lookup display (contract) — chỉ dùng MapUserBrief tại internal/modules/identity/application/mapper/user_mapper.go
+- [x] T049 [US4] Cập nhật các consumer brand (member/customer/chat) nhúng UserBriefRes thay vì flatten userFullName/userEmail tại internal/modules/brand/application/mapper/
+- [x] T050 [US4] Bỏ struct trùng lặp BrandCustomerUserRes tại internal/modules/brand/application/dto/customer.go nếu đã dùng chung UserBriefRes (theo quyết định T011)
+- [x] T051 [P] [US4] Cập nhật swagger annotations identity nếu cần
+- [x] T052 [US4] Chạy make check + make test — verify identity contract change không break brand/dashboard
 
 **Checkpoint**: Identity module refactor hoàn tất
 
@@ -137,12 +137,12 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Subscription)
 
-- [ ] T053 [P] [US4] Tạo struct SubscriptionPlanBriefRes tại internal/modules/subscription/application/dto/billing_dto.go (B11)
-- [ ] T054 [US4] Tạo mapper MapPlanBrief tại internal/modules/subscription/application/mapper/
-- [ ] T055 [US4] GET /api/v1/subscriptions/plans trả []SubscriptionPlanBriefRes (bỏ id, isActive) tại internal/modules/subscription/presentation/handler/billing_handler.go + internal/modules/subscription/application/usecase/; admin plans giữ SubscriptionPlanDTO
-- [ ] T056 [US4] Trim fallbackPlanCode/TierRank/Kind khỏi UserSubscriptionOverviewDTO + UserSubscriptionDTO tại internal/modules/subscription/application/dto/quota_dtos.go + internal/modules/subscription/application/mapper/
-- [ ] T057 [US4] Trim maxWardrobeItems/maxOutfits khỏi UserSubscriptionDTO (daily-quota context) tại internal/modules/subscription/application/dto/quota_dtos.go + internal/modules/subscription/application/mapper/
-- [ ] T058 [US4] Chạy make check + make test — verify subscription
+- [x] T053 [P] [US4] Tạo struct SubscriptionPlanBriefRes tại internal/modules/subscription/application/dto/billing_dto.go (B11)
+- [x] T054 [US4] Tạo mapper MapPlanBrief tại internal/modules/subscription/application/mapper/
+- [x] T055 [US4] GET /api/v1/subscriptions/plans trả []SubscriptionPlanBriefRes (bỏ id, isActive) tại internal/modules/subscription/presentation/handler/billing_handler.go + internal/modules/subscription/application/usecase/; admin plans giữ SubscriptionPlanDTO
+- [x] T056 [US4] Trim fallbackPlanCode/TierRank/Kind khỏi UserSubscriptionOverviewDTO + UserSubscriptionDTO tại internal/modules/subscription/application/dto/quota_dtos.go + internal/modules/subscription/application/mapper/
+- [x] T057 [US4] Trim maxWardrobeItems/maxOutfits khỏi UserSubscriptionDTO (daily-quota context) tại internal/modules/subscription/application/dto/quota_dtos.go + internal/modules/subscription/application/mapper/
+- [x] T058 [US4] Chạy make check + make test — verify subscription
 
 **Checkpoint**: Subscription module refactor hoàn tất
 
@@ -156,11 +156,11 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Fashion)
 
-- [ ] T059 [P] [US4] Tạo struct RecommendedFashionItemBriefRes tại internal/modules/fashion/application/dto/recommendation.go (B9)
-- [ ] T060 [US4] Cập nhật mapper MapRecommendedItemRes dùng RecommendedFashionItemBriefRes (bỏ material/pattern/fit) tại internal/modules/fashion/application/mapper/recommendation.go
-- [ ] T061 [US4] SSE completed: đổi nguồn phát data sang brief item (theo quyết định T012) tại internal/modules/fashion/presentation/worker/ + phối hợp internal/modules/wardrobe/presentation/contract/
-- [ ] T062 [P] [US4] (Ưu tiên thấp, conditional) Tạo ChatSessionBriefRes cho GET /api/v1/ai/chat/sessions tại internal/modules/fashion/application/dto/ + internal/modules/fashion/presentation/handler/fashion_ai_handler.go — CHỈ thực hiện nếu dev quyết định `contextSummary` không cần trong list (mặc định KHÔNG tạo, giữ ChatSessionRes)
-- [ ] T063 [US4] Chạy make check + make test — verify fashion
+- [x] T059 [P] [US4] Tạo struct RecommendedFashionItemBriefRes tại internal/modules/fashion/application/dto/recommendation.go (B9)
+- [x] T060 [US4] Cập nhật mapper MapRecommendedItemRes dùng RecommendedFashionItemBriefRes (bỏ material/pattern/fit) tại internal/modules/fashion/application/mapper/recommendation.go
+- [x] T061 [US4] SSE completed: đổi nguồn phát data sang brief item (theo quyết định T012) tại internal/modules/fashion/presentation/worker/ + phối hợp internal/modules/wardrobe/presentation/contract/ — Dùng Option A: giữ contract cũ, caller map sang brief trước khi publish SSE
+- [ ] T062 [P] [US4] (Ưu tiên thấp, conditional) Tạo ChatSessionBriefRes cho GET /api/v1/ai/chat/sessions — SKIP: contextSummary cần cho UI preview, không breaking
+- [x] T063 [US4] Chạy make check + make test — verify fashion
 
 **Checkpoint**: Fashion module refactor hoàn tất
 
@@ -174,10 +174,10 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Dashboard)
 
-- [ ] T064 [US4] DigitalSampleLabAnalyticsRes: thêm Item \*BrandItemBriefRes (hoặc SampleItemBriefRes có ImageURL) tại internal/modules/dashboard/application/dto/brand_dashboard_dto.go + usecase (join brand item)
-- [ ] T065 [US4] DrillDownSampleFeedbackDTO: thêm User *UserBriefRes + Item *BrandItemBriefRes tại internal/modules/dashboard/application/dto/dynamic_query_dto.go + usecase (join identity + brand)
-- [ ] T066 [US4] BrandKPICardsRes: bỏ BrandID + UpdatedAt tại internal/modules/dashboard/application/dto/brand_dashboard_dto.go + internal/modules/dashboard/application/usecase/
-- [ ] T067 [US4] Chạy make check + make test — verify dashboard
+- [x] T064 [US4] DigitalSampleLabAnalyticsRes: thêm Item \*BrandItemBriefRes (hoặc SampleItemBriefRes có ImageURL) tại internal/modules/dashboard/application/dto/brand_dashboard_dto.go + usecase (join brand item)
+- [x] T065 [US4] DrillDownSampleFeedbackDTO: thêm User *UserBriefRes + Item *BrandItemBriefRes tại internal/modules/dashboard/application/dto/dynamic_query_dto.go + usecase (join identity + brand)
+- [x] T066 [US4] BrandKPICardsRes: bỏ BrandID + UpdatedAt tại internal/modules/dashboard/application/dto/brand_dashboard_dto.go + internal/modules/dashboard/application/usecase/
+- [x] T067 [US4] Chạy make check + make test — verify dashboard
 
 **Checkpoint**: Dashboard module refactor hoàn tất
 
@@ -191,9 +191,9 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (aiexecutor)
 
-- [ ] T068 [P] [US4] Tạo struct AICostPolicyBriefRes tại internal/modules/aiexecutor/application/dto/model_config.go (B12)
-- [ ] T069 [US4] AIPolicyGrantDTO: thay AICostPolicyID bằng AICostPolicy \*AICostPolicyBriefRes (+ cân nhắc thêm Status) tại internal/modules/aiexecutor/application/dto/model_config.go + internal/modules/aiexecutor/application/usecase/admin/ (join AICostPolicy)
-- [ ] T070 [US4] Chạy make check + make test — verify aiexecutor
+- [x] T068 [P] [US4] Tạo struct AICostPolicyBriefRes tại internal/modules/aiexecutor/application/dto/model_config.go (B12)
+- [x] T069 [US4] AIPolicyGrantDTO: thay AICostPolicyID bằng AICostPolicy \*AICostPolicyBriefRes (+ cân nhắc thêm Status) tại internal/modules/aiexecutor/application/dto/model_config.go + internal/modules/aiexecutor/application/usecase/admin/ (join AICostPolicy)
+- [x] T070 [US4] Chạy make check + make test — verify aiexecutor
 
 **Checkpoint**: aiexecutor module refactor hoàn tất
 
@@ -203,13 +203,13 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 **Purpose**: frontend-note.md + verify toàn cục
 
-- [ ] T071 Kiểm tra tổng thể: không có endpoint admin/portal nào bị thay đổi response (git diff + swagger review)
-- [ ] T072 Tạo file **frontend-note.md** tại specs/013-briefres-audit/ — liệt kê toàn bộ API bị thay đổi, field cũ → field mới, hướng dẫn frontend sửa (tham chiếu contracts/affected-api-contracts.md + các report module)
-- [ ] T073 Chạy make check + make test toàn bộ dự án — đảm bảo xanh
-- [ ] T074 Cập nhật các open questions còn treo trong research.md §5 với quyết định cuối cùng
-- [ ] T075 Rà soát dọn dead code phát hiện trong audit: UserQuotaRes tại internal/modules/identity/application/dto/profile_res.go, PendingTransferRes tại internal/modules/fashion/application/dto/ — nếu chưa thuộc scope nào
-- [ ] T076 [P] Verify các BriefRes sẵn có (FR-009): BrandBriefRes, LoyaltyTierBriefRes, FashionItemBriefRes, BrandItemBriefRes (wardrobe), CategoryBriefRes — đối chiếu quyết định trong research.md §3, quyết định giữ nguyên hay điều chỉnh, ghi kết quả vào research.md
-- [ ] T077 [P] (Ưu tiên thấp) Rút gọn BrandBriefRes: cân nhắc bỏ `description`/`backgroundUrl` tại internal/modules/brand/application/dto/brand.go — chỉ thực hiện nếu T076 xác nhận cần và không ảnh hưởng frontend
+- [x] T071 Kiểm tra tổng thể: không có endpoint admin/portal nào bị thay đổi response (git diff + swagger review)
+- [x] T072 Tạo file **frontend-note.md** tại specs/013-briefres-audit/ — liệt kê toàn bộ API bị thay đổi, field cũ → field mới, hướng dẫn frontend sửa (tham chiếu contracts/affected-api-contracts.md + các report module)
+- [x] T073 Chạy make check + make test toàn bộ dự án — đảm bảo xanh
+- [x] T074 Cập nhật các open questions còn treo trong research.md §5 với quyết định cuối cùng
+- [x] T075 Rà soát dọn dead code phát hiện trong audit: UserQuotaRes, PendingTransferRes, RecommendedFashionItemRes, MapToUserBriefs, MapToWardrobeItemResWithFashion, MapToRecommendedItemResFromWardrobe
+- [x] T076 [P] Verify các BriefRes sẵn có (FR-009): BrandBriefRes, LoyaltyTierBriefRes, FashionItemBriefRes, BrandItemBriefRes (wardrobe), CategoryBriefRes — đối chiếu quyết định trong research.md §3, quyết định giữ nguyên hay điều chỉnh, ghi kết quả vào research.md
+- [ ] T077 [P] (Ưu tiên thấp) Rút gọn BrandBriefRes: cân nhắc bỏ `description`/`backgroundUrl` — SKIP: T076 confirm giữ nguyên (Tot, Thấp priority)
 
 ---
 
@@ -296,3 +296,17 @@ Task: "Tạo BrandConversationUserRes tại brand/application/dto/chat.go"
 - Commit sau mỗi module hoàn tất (brand, wardrobe, identity, subscription, fashion, dashboard, aiexecutor)
 - frontend-note.md là deliverable cuối cùng (FR-011)
 - Tránh: task mơ hồ, conflict cùng file, cross-story dependency phá vỡ tính độc lập
+
+---
+
+## Phase 11: Convergence
+
+- [x] T078 Regenerate swagger (`make swagger`) để xóa stale references `BrandCustomerUserRes` + `RecommendedFashionItemRes` khỏi `api/swagger/**` (18 refs mỗi struct) per FR-015, SC-008 (partial) — sau đó chạy `make check` để đảm bảo `generate-check` pass
+
+---
+
+## Phase 12: Convergence
+
+- [x] T079 [US4] Wire `UserBriefRes` vào staff feedback list: thêm field `user *identity_dto.UserBriefRes` vào `DigitalSampleResponseRes` tại internal/modules/brand/application/dto/brand_item.go, cập nhật mapper `MapDigitalSampleResponseWithUser` set field `user`, và đổi `GetBrandItemFeedbacks` (internal/modules/brand/application/usecase/item/usecase.go:432) dùng `mapper.MapDigitalSampleResponseWithUser` kèm batch-fetch `userContract.GetBriefByIDs` (không dùng `MapToDigitalSampleResponseRes`) per T032, FR-013 (partial)
+- [x] T080 [US4] Populate Item brief trong dashboard: `GetDigitalSampleLabAnalytics` (internal/modules/dashboard/application/usecase/brand_dashboard_uc_impl.go:331) set `brandItemId`/`brandItemName`/`brandItemImageUrl` (join brand item qua brand contract), và `GetSampleLabFeedbacksDrillDown` (internal/modules/dashboard/application/usecase/drilldown_uc_impl.go:59) populate `user *UserBriefRes` + `brandItemName`/`brandItemImageUrl` (join identity + brand) per T064, T065, FR-014 (partial)
+- [x] T081 [US4] Quyết định + thực hiện trim `maxWardrobeItems`/`maxOutfits` khỏi `UserSubscriptionDTO` (daily-quota) tại internal/modules/subscription/application/dto/quota_dtos.go + internal/modules/subscription/application/mapper/subscription.go per T057, FR-014 (partial) — lưu ý: `UserSubscriptionOverviewDTO` GIỮ `maxWardrobeItems` (wardrobe module phụ thuộc), chỉ xử lý riêng `UserSubscriptionDTO`

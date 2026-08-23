@@ -76,7 +76,7 @@ func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
 // @Tags Wardrobe
 // @Produce json
 // @Param query query dto.GetWardrobeItemsQueryReq false "Bộ lọc danh sách trang phục. Có thể truyền status như all, usable, inWardrobe, pending, processing, failed, needsReview, selling, sold."
-// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemRes]} "Danh sách trang phục"
+// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.PaginationResult[dto.WardrobeItemBriefRes]} "Danh sách trang phục"
 // @Router /api/v1/me/wardrobe-items [get]
 func (h *WardrobeItemHandler) GetWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

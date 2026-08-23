@@ -454,13 +454,13 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 		return nil, err
 	}
 
-	userMap := make(map[uuid.UUID]*identity_dto.UserRes)
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
 	if len(members) > 0 {
 		userIDs := make([]uuid.UUID, len(members))
 		for i, m := range members {
 			userIDs[i] = m.UserID
 		}
-		users, err := uc.userContract.GetByIDs(ctx, userIDs)
+		users, err := uc.userContract.GetBriefByIDs(ctx, userIDs)
 		if err == nil {
 			for _, u := range users {
 				userMap[u.ID] = u

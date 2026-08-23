@@ -123,13 +123,38 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		fashionBriefMap[b.ID] = b
 	}
 
+	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	if len(fashionIDs) > 0 && uc.brandContract != nil {
+		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
+		if err == nil {
+			for _, bi := range brandItems {
+				var brandName string
+				if bi.Brand != nil {
+					brandName = bi.Brand.Name
+				}
+				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+					ID:        bi.ID,
+					BrandID:   bi.Brand.ID,
+					BrandName: brandName,
+					Name:      bi.Name,
+					Price:     bi.Price,
+					ItemType:  string(bi.ItemType),
+				}
+			}
+		}
+	}
+
 	resList := make([]*dto.WardrobeItemBriefRes, quantity)
 	for i := range quantity {
 		var fiBrief *fashion_dto.FashionItemBriefRes
 		if clonedItems[i].FashionItemID != nil {
 			fiBrief = fashionBriefMap[*clonedItems[i].FashionItemID]
 		}
-		resList[i] = mapper.MapToWardrobeItemBrief(clonedItems[i], fiBrief, nil)
+		var brandItem *dto.BrandItemBriefRes
+		if clonedItems[i].FashionItemID != nil {
+			brandItem = brandItemMap[*clonedItems[i].FashionItemID]
+		}
+		resList[i] = mapper.MapToWardrobeItemBrief(clonedItems[i], fiBrief, brandItem)
 		resList[i].IsLocked = false
 	}
 

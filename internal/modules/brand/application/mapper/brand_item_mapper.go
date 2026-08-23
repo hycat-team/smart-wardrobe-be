@@ -64,14 +64,19 @@ func MapBrandItemBrief(item *entities.BrandItem, brand *entities.Brand, fi *fash
 	if item == nil {
 		return nil
 	}
+	var fiID uuid.UUID
+	if item.FashionItemID != nil {
+		fiID = *item.FashionItemID
+	}
 	return &dto.BrandItemBriefRes{
-		ID:          item.ID,
-		Brand:       MapBrandBrief(brand),
-		Name:        item.Name,
-		Price:       item.Price,
-		ItemType:    item.ItemType,
-		Status:      item.Status,
-		FashionItem: fi,
+		ID:            item.ID,
+		FashionItemID: fiID,
+		Brand:         MapBrandBrief(brand),
+		Name:          item.Name,
+		Price:         item.Price,
+		ItemType:      item.ItemType,
+		Status:        item.Status,
+		FashionItem:   fi,
 	}
 }
 
@@ -92,6 +97,7 @@ func MapDigitalSampleResponseWithUser(res *entities.DigitalSampleResponse, userB
 		VoteType:     voteStr,
 		Rating:       res.Rating,
 		FeedbackText: res.FeedbackText,
+		User:         userBrief,
 		CreatedAt:    res.CreatedAt,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/granularity"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/metrickey"
 	"smart-wardrobe-be/internal/modules/dashboard/domain/constants/targetdashboard"
+	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
@@ -67,12 +68,15 @@ type DrillDownSampleFeedbackQueryReq struct {
 }
 
 type DrillDownSampleFeedbackDTO struct {
-	FeedbackID string    `json:"feedbackId"`
-	ItemID     uuid.UUID `json:"itemId"`
-	UserID     uuid.UUID `json:"userId"`
-	Rating     float64   `json:"rating"`
-	Comment    string    `json:"comment"`
-	CreatedAt  time.Time `json:"createdAt"`
+	FeedbackID        string                     `json:"feedbackId"`
+	ItemID            uuid.UUID                  `json:"itemId"`
+	UserID            uuid.UUID                  `json:"userId"`
+	Rating            float64                    `json:"rating"`
+	Comment           string                     `json:"comment"`
+	CreatedAt         time.Time                  `json:"createdAt"`
+	User              *identity_dto.UserBriefRes `json:"user,omitempty"`
+	BrandItemName     *string                    `json:"brandItemName,omitempty"`
+	BrandItemImageURL *string                    `json:"brandItemImageUrl,omitempty"`
 }
 
 type DrillDownSampleFeedbackListRes = shared_dto.PaginationResult[DrillDownSampleFeedbackDTO]

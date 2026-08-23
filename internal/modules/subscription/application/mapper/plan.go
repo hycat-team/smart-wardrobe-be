@@ -37,3 +37,31 @@ func MapToSubscriptionPlanDTOList(plans []*entities.SubscriptionPlan) []*dto.Sub
 	}
 	return result
 }
+
+func MapToSubscriptionPlanBrief(plan *entities.SubscriptionPlan) *dto.SubscriptionPlanBriefRes {
+	if plan == nil {
+		return nil
+	}
+	return &dto.SubscriptionPlanBriefRes{
+		Slug:               plan.Slug,
+		Name:               plan.Name,
+		Price:              sharedmoney.ToFloat(plan.Price),
+		MaxWardrobeItems:   plan.MaxWardrobeItems,
+		MaxOutfits:         plan.MaxOutfits,
+		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
+		AiChatDailyQuota:   plan.AiChatDailyQuota,
+		DurationDays:       plan.DurationDays,
+		PlanKind:           plan.PlanKind,
+		TierRank:           plan.TierRank,
+	}
+}
+
+func MapToSubscriptionPlanBriefList(plans []*entities.SubscriptionPlan) []*dto.SubscriptionPlanBriefRes {
+	result := make([]*dto.SubscriptionPlanBriefRes, 0, len(plans))
+	for _, plan := range plans {
+		if plan != nil {
+			result = append(result, MapToSubscriptionPlanBrief(plan))
+		}
+	}
+	return result
+}
