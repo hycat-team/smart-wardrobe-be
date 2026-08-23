@@ -139,6 +139,7 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 					Name:      bi.Name,
 					Price:     bi.Price,
 					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
 				}
 			}
 		}

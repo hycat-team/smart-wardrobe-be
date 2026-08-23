@@ -134,7 +134,7 @@ func (h *WardrobeItemHandler) GetWardrobeItemByID(c *gin.Context) error {
 // @Produce json
 // @Param id path string true "ID trang phục gốc"
 // @Param body body dto.CloneWardrobeItemReq true "Số lượng nhân bản"
-// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục được nhân bản"
+// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemBriefRes} "Danh sách trang phục được nhân bản"
 // @Router /api/v1/wardrobe-items/{id}/clone [post]
 func (h *WardrobeItemHandler) CloneWardrobeItem(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -168,7 +168,7 @@ func (h *WardrobeItemHandler) CloneWardrobeItem(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.InitClosetFromCatalogReq true "Danh sách ID trang phục mẫu"
-// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục cá nhân được tạo"
+// @Success 201 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemBriefRes} "Danh sách trang phục cá nhân được tạo"
 // @Router /api/v1/wardrobe-items/catalog-init [post]
 func (h *WardrobeItemHandler) InitClosetFromCatalog(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -197,7 +197,7 @@ func (h *WardrobeItemHandler) InitClosetFromCatalog(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.BatchUploadWardrobeItemsReq true "Danh sách ảnh trang phục"
-// @Success 202 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemRes} "Danh sách trang phục đang được xử lý ngầm với Task ID"
+// @Success 202 {object} shared_pres.APIResponse{data=[]dto.WardrobeItemBriefRes} "Danh sách trang phục đang được xử lý ngầm với Task ID"
 // @Router /api/v1/wardrobe-items/batch-upload [post]
 func (h *WardrobeItemHandler) BatchUploadWardrobeItems(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

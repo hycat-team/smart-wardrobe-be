@@ -43,6 +43,7 @@ func MapToSubscriptionPlanBrief(plan *entities.SubscriptionPlan) *dto.Subscripti
 		return nil
 	}
 	return &dto.SubscriptionPlanBriefRes{
+		ID:                 plan.ID,
 		Slug:               plan.Slug,
 		Name:               plan.Name,
 		Price:              sharedmoney.ToFloat(plan.Price),

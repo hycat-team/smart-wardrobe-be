@@ -160,7 +160,7 @@ func (h *BrandLoyaltyHandler) GetBrandCustomer(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
+// @Success 201 {object} shared_pres.APIResponse{data=dto.BrandCustomerBriefRes}
 // @Router /api/v1/brands/{brandId}/join-loyalty [post]
 func (h *BrandLoyaltyHandler) JoinLoyalty(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -293,7 +293,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyalty(c *gin.Context) error {
 // @Tags Brand Loyalty
 // @Produce json
 // @Param brandId path string true "ID brand"
-// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointTransactionDetailRes}
+// @Success 200 {object} shared_pres.APIResponse{data=[]dto.LoyaltyPointTransactionBriefRes}
 // @Router /api/v1/me/brand-loyalties/{brandId}/transactions [get]
 func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyTransactions(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
@@ -869,7 +869,7 @@ func (h *BrandLoyaltyHandler) RevokeClaimToken(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.ClaimOfflineAccountReq true "Mã claim"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandCustomerRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandCustomerBriefRes}
 // @Router /api/v1/brands/claim [post]
 func (h *BrandLoyaltyHandler) ClaimOfflineAccount(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

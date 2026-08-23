@@ -47,6 +47,7 @@ type BrandItemBriefRes struct {
 	ItemType  string    `json:"itemType"`
 	Name      string    `json:"name"`
 	Price     *float64  `json:"price,omitempty"`
+	Status    string    `json:"status"`
 }
 
 type WardrobeItemRes struct {

@@ -34,6 +34,7 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
 		FirstName: firstNameStr,
 		LastName:  lastNameStr,
 		Gender:    genderVal,
+		Status:    user.Status,
 		AvatarUrl: user.AvatarUrl,
 	}
 }

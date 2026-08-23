@@ -88,6 +88,7 @@ type SubscriptionPlanDTO struct {
 }
 
 type SubscriptionPlanBriefRes struct {
+	ID                 uuid.UUID         `json:"id"`
 	Slug               string            `json:"slug"`
 	Name               string            `json:"name"`
 	Price              float64           `json:"price"`
@@ -149,4 +150,9 @@ type DepositTransactionRes struct {
 	NextReconciliationAt *time.Time                  `json:"nextReconciliationAt,omitempty"`
 	CreatedAt            time.Time                   `json:"createdAt"`
 	UpdatedAt            time.Time                   `json:"updatedAt"`
+}
+
+// PurchaseWithWalletReq dùng cho endpoint mua gói bằng ví nội bộ
+type PurchaseWithWalletReq struct {
+	PlanSlug string `json:"planSlug" binding:"required" label:"gói hội viên"`
 }

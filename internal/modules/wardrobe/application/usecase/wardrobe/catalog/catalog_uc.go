@@ -194,6 +194,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 					Name:      bi.Name,
 					Price:     bi.Price,
 					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
 				}
 			}
 		}

@@ -11,17 +11,17 @@
 
 | Endpoint                                               | Method | Context | Thay đổi thực tế                                                                             | Ưu tiên    |
 | ------------------------------------------------------ | ------ | ------- | -------------------------------------------------------------------------------------------- | ---------- |
-| `/api/v1/brands`                                       | GET    | Public  | `BrandRes` (13f) → `BrandBriefRes` (6f)                                                      | Cao        |
+| `/api/v1/brands`                                       | GET    | Public  | `BrandRes` (13f) → `BrandBriefRes` (7f)                                                      | Cao        |
 | `/api/v1/brands/:brandId`                              | GET    | Public  | **KHÔNG đổi** — vẫn `BrandRes` (detail giữ full)                                              | —          |
 | `/api/v1/brands/:brandId/items`                        | GET    | Public  | `BrandItemRes` + `FashionItemRes` → `BrandItemBriefRes` + `FashionItemBriefRes`              | Cao        |
 | `/api/v1/brands/:brandId/items/samples`                | GET    | User    | `BrandItemRes` + `FashionItemRes` → `BrandItemBriefRes` + `FashionItemBriefRes`              | Cao        |
 | `/api/v1/brand-items/:itemId`                          | GET    | Public  | **KHÔNG đổi** — vẫn `BrandItemRes` + `FashionItemRes` (detail giữ full)                      | —          |
 | `/api/v1/brands/:brandId/benefits`                     | GET    | Public  | **KHÔNG đổi** — vẫn `BrandBenefitRes`                                                        | —          |
 | `/api/v1/brand-benefits/:benefitId`                    | GET    | User    | **KHÔNG đổi**                                                                                | —          |
-| `POST /brand-benefits/:benefitId/redeem`               | POST   | User    | Thêm `benefit *BenefitBriefRes` (giữ `benefitId`)                                            | Cao        |
-| `GET /api/v1/me/benefit-redemptions`                   | GET    | User    | Thêm `benefit *BenefitBriefRes` (giữ `benefitId`)                                            | Cao        |
-| `POST /api/v1/brands/:brandId/join-loyalty`            | POST   | User    | `BrandCustomerRes` (14f) → `BrandCustomerBriefRes` (7f)                                      | Trung bình |
-| `POST /api/v1/brands/claim`                            | POST   | User    | `BrandCustomerRes` → `BrandCustomerBriefRes`                                                 | Trung bình |
+| `POST /brand-benefits/:benefitId/redeem`               | POST   | User    | Thêm `benefit *BenefitBriefRes` + `brand *BrandBriefRes` (giữ `benefitId`)                   | Cao        |
+| `GET /api/v1/me/benefit-redemptions`                   | GET    | User    | Thêm `benefit *BenefitBriefRes` + `brand *BrandBriefRes` (giữ `benefitId`)                   | Cao        |
+| `POST /api/v1/brands/:brandId/join-loyalty`            | POST   | User    | **CHƯA ĐỔI** — code vẫn trả `BrandCustomerRes` (DTO BriefRes đã tạo nhưng chưa map)          | Thấp       |
+| `POST /api/v1/brands/claim`                            | POST   | User    | **CHƯA ĐỔI** — code vẫn trả `BrandCustomerRes` (DTO BriefRes đã tạo nhưng chưa map)          | Thấp       |
 | `GET /api/v1/brands/:brandId/conversation`             | GET    | User    | `BrandConversationDetailRes` → `BrandConversationUserRes` + msgs (sender brief)              | Trung bình |
 | `POST /api/v1/brands/:brandId/conversation/read`       | POST   | User    | **KHÔNG đổi** — vẫn `BrandConversationRes`                                                   | —          |
 | `GET /api/v1/me/brand-loyalties`                       | GET    | User    | **KHÔNG đổi**                                                                                | —          |
@@ -44,13 +44,13 @@
 | `POST /ai/outfit-recommendations`                      | POST   | User    | `RecommendedFashionItemRes` (8f) → `RecommendedFashionItemBriefRes` (6f)                     | Cao        |
 | SSE batch upload completed                             | SSE    | User    | `data` = full item → brief item                                                              | Cao        |
 | `GET /api/v1/ai/chat/sessions`                         | GET    | User    | **KHÔNG đổi** — giữ `ChatSessionRes` (skip T062)                                             | —          |
-| `GET /api/v1/subscriptions/me`                         | GET    | User    | Bỏ 3 field `fallback*` + `planKind`/`tierRank`                                               | Cao        |
-| `GET /subscriptions/me/daily-quota`                    | GET    | User    | Bỏ `fallback*` + `planKind`/`tierRank` (giữ `maxWardrobeItems`/`maxOutfits`)                 | Cao        |
-| `GET /api/v1/subscriptions/plans`                      | GET    | Public  | `SubscriptionPlanDTO` (12f) → `SubscriptionPlanBriefRes` (10f)                               | Trung bình |
+| `GET /api/v1/subscriptions/me`                         | GET    | User    | Bỏ 3 field `fallback*` (giữ `planKind`/`tierRank`)                                           | Cao        |
+| `GET /subscriptions/me/daily-quota`                    | GET    | User    | Bỏ 3 field `fallback*` (giữ `planKind`/`tierRank`, KHÔNG có `maxWardrobeItems`/`maxOutfits`)  | Cao        |
+| `GET /api/v1/subscriptions/plans`                      | GET    | Public  | `SubscriptionPlanDTO` (12f) → `SubscriptionPlanBriefRes` (11f)                               | Trung bình |
 | `GET /subscriptions/me/wallet`                         | GET    | User    | **KHÔNG đổi**                                                                                | —          |
 | `GET /brand/dashboard/.../digital-sample-lab/{itemId}` | GET    | Brand   | Thêm `brandItemId`/`brandItemName`/`brandItemImageUrl` (đã populate)                       | Trung bình |
 | `GET /brand/dashboard/drilldown/sample-lab-feedbacks`  | GET    | Brand   | Thêm `user`/`brandItemName`/`brandItemImageUrl` (đã populate)                               | Trung bình |
-| `GET /api/v1/brand/dashboard/kpi-cards`                | GET    | Brand   | Bỏ `BrandID`, `UpdatedAt`                                                                    | Thấp       |
+| `GET /api/v1/brand/dashboard/kpi-cards`                | GET    | Brand   | Response chỉ có 8 metric KPI (không có `BrandID`/`UpdatedAt` từ trước)                        | Thấp       |
 | `GET /api/v1/admin/ai/grants`                          | GET    | Admin   | Thêm `aiCostPolicy *AICostPolicyBriefRes` (giữ `aiCostPolicyId`)                             | Trung bình |
 
 ---
@@ -62,17 +62,17 @@
 #### `GET /api/v1/brands`
 
 - **Cũ**: `BrandRes` — 13 fields (`id`, `slug`, `name`, `description`, `logoUrl`, `backgroundUrl`, `status`, `totalCustomer`, `createdByUserId`, `approvedByUserId`, `approvedAt`, `createdAt`, `updatedAt`)
-- **Mới**: `BrandBriefRes` — 6 fields (`id`, `slug`, `name`, `description`, `logoUrl`, `backgroundUrl`)
-- **Bỏ**: `status`, `totalCustomer`, `createdByUserId`, `approvedByUserId`, `approvedAt`, `createdAt`, `updatedAt`
+- **Mới**: `BrandBriefRes` — 7 fields (`id`, `slug`, `name`, `description`, `logoUrl`, `backgroundUrl`, `status`)
+- **Bỏ**: `totalCustomer`, `createdByUserId`, `approvedByUserId`, `approvedAt`, `createdAt`, `updatedAt`
 
-> **Lưu ý**: `GET /api/v1/brands/:brandId` (detail) **KHÔNG đổi** — vẫn trả `BrandRes` đầy đủ.
+> **Lưu ý**: `GET /api/v1/brands/:brandId` (detail) **KHÔNG đổi** — vẫn trả `BrandRes` đầy đủ (có `totalCustomer`).
 
 ```json
 // Cũ
 { "id": "...", "slug": "...", "name": "...", "status": "active", "totalCustomer": 120, "createdByUserId": "...", ... }
 
 // Mới (chỉ list)
-{ "id": "...", "slug": "...", "name": "...", "description": "...", "logoUrl": "...", "backgroundUrl": "..." }
+{ "id": "...", "slug": "...", "name": "...", "description": "...", "logoUrl": "...", "backgroundUrl": "...", "status": "active" }
 ```
 
 #### `GET /api/v1/brands/:brandId/items` và `/items/samples`
@@ -94,15 +94,15 @@
 #### `POST /brand-benefits/:benefitId/redeem` và `GET /me/benefit-redemptions`
 
 - **Cũ**: `BenefitRedemptionRes` — chỉ trả `benefitId` (UUID thuần)
-- **Mới**: **Thêm** `benefit *BenefitBriefRes` (có `id`, `name`, `description`, `benefitType`, `unlockType`, `requiredPoints`, `featureCode`, `featureConfig`, `status`)
-- **Giữ nguyên**: `benefitId`, `brandCustomerId`, `userId`, `createdAt`, `updatedAt` — chỉ THÊM `benefit`, không bỏ gì.
+- **Mới**: **Thêm** `benefit *BenefitBriefRes` (có `id`, `name`, `description`, `benefitType`, `unlockType`, `requiredPoints`, `featureCode`, `featureConfig`, `status`) + `brand *BrandBriefRes`
+- **Giữ nguyên**: `benefitId`, `brandCustomerId`, `userId`, `pointsSpent`, `status`, `redeemedAt`, `usedAt`, `expiresAt`, `createdAt`, `updatedAt` — chỉ THÊM `benefit` và `brand`, không bỏ gì.
 
 #### `POST /brands/:brandId/join-loyalty` và `POST /brands/claim`
 
-- **Cũ**: `BrandCustomerRes` (14f, có `phoneE164`)
-- **Mới**: `BrandCustomerBriefRes` (7f)
-- **Giữ**: `id`, `customerName`, `joinedSource`, `status`, `joinedAt`, `user` (UserBriefRes), `loyaltyAccount`
-- **Bỏ**: `phoneE164` (PII), `externalCustomerCode`, `claimedAt`, `createdByMemberId`, `createdAt`, `updatedAt`, `brandId`
+- **Hiện tại**: code vẫn trả `BrandCustomerRes` (14f) — DTO `BrandCustomerBriefRes` đã tạo nhưng **chưa được map trong usecase**
+- **Khi đổi sang BriefRes**: `BrandCustomerRes` (14f) → `BrandCustomerBriefRes` (7f)
+  - **Giữ**: `id`, `customerName`, `joinedSource`, `status`, `joinedAt`, `user` (UserBriefRes), `loyaltyAccount`
+  - **Bỏ**: `phoneE164` (PII), `externalCustomerCode`, `claimedAt`, `createdByMemberId`, `createdAt`, `updatedAt`, `brandId`
 
 #### `GET /brands/:brandId/conversation` (User)
 
@@ -140,9 +140,9 @@
 #### `PUT /api/v1/me/avatar`
 
 - **Cũ**: `UserRes` (14f + subscription 8f + bodyProfile 6f = ~26 leaf fields)
-- **Mới**: `UserBriefRes` (7f)
-- **Giữ**: `id`, `username`, `email` (omitempty), `firstName`, `lastName`, `gender`, `avatarUrl`
-- **Bỏ**: `roleSlug`, `dateOfBirth`, `address`, `status`, `createdAt`, `subscription`, `bodyProfile`
+- **Mới**: `UserBriefRes` (8f)
+- **Giữ**: `id`, `username`, `email` (omitempty), `firstName`, `lastName`, `gender`, `status`, `avatarUrl`
+- **Bỏ**: `roleSlug`, `dateOfBirth`, `address`, `createdAt`, `subscription`, `bodyProfile`
 
 ```json
 // Mới
@@ -152,6 +152,7 @@
     "firstName": "...",
     "lastName": "...",
     "gender": "male",
+    "status": "active",
     "avatarUrl": "..."
 }
 ```
@@ -230,28 +231,28 @@
 
 #### `GET /api/v1/subscriptions/me`
 
-- **Cũ**: `UserSubscriptionOverviewDTO` (14f)
-- **Mới**: 11 fields — bỏ `fallbackPlanCode`, `fallbackTierRank`, `fallbackPlanKind`, `planKind`, `tierRank`
+- **Cũ**: `UserSubscriptionOverviewDTO` — có field `fallbackPlanCode`, `fallbackTierRank`, `fallbackPlanKind`
+- **Mới**: Bỏ 3 field `fallback*` — giữ nguyên `planID`, `planName`, `planSlug`, `expiresAt`, `isAutoRenewEnabled`, `planKind`, `tierRank`, `maxWardrobeItems`, `maxOutfits`, `aiOutfitDailyQuota`, `aiChatDailyQuota`
 
 #### `GET /api/v1/subscriptions/me/daily-quota`
 
-- **Cũ**: `UserSubscriptionDTO` (17f)
-- **Mới**: 15 fields — bỏ `fallbackPlanCode`, `fallbackTierRank`, `fallbackPlanKind`, `planKind`, `tierRank`
-- **Giữ nguyên**: `maxWardrobeItems`, `maxOutfits`, `aiOutfitDailyQuota`, `aiChatDailyQuota`, `outfitRecommendCount`, `aiUsageCount`, `lastResetDate`
+- **Cũ**: `UserSubscriptionDTO` — có field `fallbackPlanCode`, `fallbackTierRank`, `fallbackPlanKind`
+- **Mới**: Bỏ 3 field `fallback*` — giữ nguyên `planID`, `planName`, `planSlug`, `expiresAt`, `isAutoRenewEnabled`, `planKind`, `tierRank`, `aiOutfitDailyQuota`, `aiChatDailyQuota`, `outfitRecommendCount`, `aiUsageCount`, `lastResetDate`
+- **Lưu ý**: DTO này **KHÔNG có** `maxWardrobeItems`/`maxOutfits` (chỉ `UserSubscriptionOverviewDTO` mới có)
 
 ```json
 // Cũ
-{ "planID": "...", "planName": "Pro", "planSlug": "pro", "fallbackPlanCode": "free", "fallbackTierRank": 0, "fallbackPlanKind": "free", "planKind": "premium", "tierRank": 2, "maxWardrobeItems": 100, "maxOutfits": 50, "aiOutfitDailyQuota": 10, ... }
+{ "planID": "...", "planName": "Pro", "planSlug": "pro", "fallbackPlanCode": "free", "fallbackTierRank": 0, "fallbackPlanKind": "free", "planKind": "premium", "tierRank": 2, "aiOutfitDailyQuota": 10, ... }
 
 // Mới
-{ "planID": "...", "planName": "Pro", "planSlug": "pro", "expiresAt": "...", "isAutoRenewEnabled": true, "maxWardrobeItems": 100, "maxOutfits": 50, "aiOutfitDailyQuota": 10, "aiChatDailyQuota": 20, "outfitRecommendCount": 3, "aiUsageCount": 1, "lastResetDate": "..." }
+{ "planID": "...", "planName": "Pro", "planSlug": "pro", "expiresAt": "...", "isAutoRenewEnabled": true, "planKind": "premium", "tierRank": 2, "aiOutfitDailyQuota": 10, "aiChatDailyQuota": 20, "outfitRecommendCount": 3, "aiUsageCount": 1, "lastResetDate": "..." }
 ```
 
 #### `GET /api/v1/subscriptions/plans` (public)
 
 - **Cũ**: `[]SubscriptionPlanDTO` (12f)
-- **Mới**: `[]SubscriptionPlanBriefRes` (10f)
-- **Bỏ**: `id` (frontend mua theo `slug`), `isActive` (field admin)
+- **Mới**: `[]SubscriptionPlanBriefRes` (11f)
+- **Bỏ**: `isActive` (field admin)
 
 #### `GET /api/v1/subscriptions/me/wallet`
 
@@ -264,7 +265,6 @@
 #### `GET /brand/dashboard/.../digital-sample-lab/{itemId}`
 
 - Thêm field `brandItemId`, `brandItemName`, `brandItemImageUrl` vào response
-- `PairedCategoryStat` thêm `CategoryID`
 
 #### `GET /brand/dashboard/drilldown/sample-lab-feedbacks`
 
@@ -272,7 +272,7 @@
 
 #### `GET /api/v1/brand/dashboard/kpi-cards`
 
-- Bỏ `BrandID` và `UpdatedAt` (giữ 8 metric KPI)
+- Response chỉ có 8 metric KPI (`totalMembers`, `pointsIssued`, `pointsRedeemed`, `activeVouchers`, `vouchersRedeemed`, `digitalSampleVotesCount`, `digitalSampleAvgRating`, `openCsTickets`) — không có `BrandID` hay `UpdatedAt`
 
 ---
 
@@ -308,8 +308,7 @@
 | `loyaltyTransaction.idempotencyKey`           | ❌ Xóa — không hiển thị                                                       |
 | `customer.phoneE164`                          | ❌ Xóa — không trả lại cho user                                               |
 | `subscription.fallbackPlanCode`               | ❌ Xóa                                                                        |
-| `subscription.planKind`/`tierRank`            | ❌ Xóa (subscription overview + daily-quota)                                  |
-| `plan.id` (plans list)                        | Dùng `plan.slug` để mua                                                       |
+| `subscription.fallback*`                            | ❌ Xóa (3 fields: `fallbackPlanCode`, `fallbackTierRank`, `fallbackPlanKind`)                |
 | `plan.isActive` (plans list)                  | ❌ Xóa — field admin                                                          |
 | `outfit.userId` (list)                        | ❌ Xóa — list dùng `OutfitBriefRes`                                           |
 | `wardrobeItem.userId`/`isDeleted` (list)      | ❌ Xóa — list dùng `WardrobeItemBriefRes` (detail vẫn có)                     |
@@ -322,7 +321,7 @@
 | `BrandBriefRes`                   | brand module (đã có)  | brand items list, conversation                           |
 | `BenefitBriefRes`                 | brand module          | redemption nested (redeem, benefit-redemptions)          |
 | `BrandItemBriefRes`               | brand/wardrobe module | brand items list, wardrobe list brandItem                |
-| `BrandCustomerBriefRes`           | brand module          | join-loyalty, claim                                  |
+| `BrandCustomerBriefRes`           | brand module          | join-loyalty, claim (**chưa map trong usecase**)  |
 | `BrandConversationUserRes`        | brand module          | conversation endpoints                               |
 | `LoyaltyPointTransactionBriefRes` | brand module          | transactions list                                    |
 | `WardrobeItemBriefRes`            | wardrobe module       | wardrobe list, clone, batch                          |
@@ -350,14 +349,19 @@
 - **Brand loyalty lots**: `GET /me/brand-loyalties/:id/lots` — vẫn `LoyaltyPointLotRes`.
 - **Brand loyalty tiers**: `GET /brands/:id/loyalty/tiers/:id` — vẫn full.
 - **Brand chat staff**: `POST /brands/:id/conversation/read` — vẫn `BrandConversationRes`.
+- **Brand chat endpoints**: `GET /brand-portal/.../conversations`, `POST .../messages`, `POST .../close`, `POST .../reopen` — giữ nguyên.
+- **Brand loyalty staff endpoints**: `GET /brand-portal/.../customers`, `POST .../offline-purchase`, `POST .../loyalty/points`, `GET/PUT .../loyalty/program`, `GET/POST/PUT .../loyalty/tiers` — giữ nguyên.
+- **Brand benefit staff endpoints**: `GET/POST /brand-portal/.../benefits`, `PATCH .../benefits/{id}/status` — giữ nguyên.
 - **Module notification**: service-only, không có API response.
 - **User dashboard endpoints**: `GET /me/dashboard/*` — giữ nguyên.
-- **Auth endpoints**: `POST /auth/login`, `POST /auth/refresh-token` — không đổi.
+- **Auth endpoints**: `POST /auth/login`, `POST /auth/refresh-token`, `POST /auth/register`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/logout` — không đổi.
 - **Identity profile**: `GET /me`, `PUT /me`, `PUT /me/body-profile` — giữ `UserRes` đầy đủ.
-- **Payment endpoints**: `POST /me/wallet/topup`, `POST /me/purchase` — không đổi.
+- **Subscription endpoints**: `PUT /me/auto-renew`, `GET /me/wallet`, `GET /me/wallet/statements`, `POST /me/wallet/topup`, `POST /me/purchase`, `POST /me/purchase-with-wallet`, `POST /payos-webhook` — không đổi.
 - **Category endpoints**: `GET /categories`, admin categories — không đổi.
 - **Chat messages**: `GET /ai/chat/sessions/{id}/messages` — không đổi.
 - **Wardrobe item detail**: `PATCH /wardrobe-items/{id}`, `POST .../retry-analysis`, `GET /wardrobe-items/{id}` — vẫn `WardrobeItemRes` (chỉ HSL không populate).
+- **Wardrobe admin endpoints**: `GET /admin/wardrobe-items/*` — giữ nguyên.
+- **Outfit endpoints**: `POST/PUT/GET/DELETE /outfits[/{id}]` — giữ nguyên `OutfitRes` full.
 
 ---
 

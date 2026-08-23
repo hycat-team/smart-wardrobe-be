@@ -21,6 +21,7 @@ func MapBrandBrief(brand *entities.Brand) *dto.BrandBriefRes {
 		Description:   brand.Description,
 		LogoURL:       brand.LogoURL,
 		BackgroundURL: brand.BackgroundURL,
+		Status:        brand.Status,
 	}
 }
 
@@ -149,6 +150,7 @@ func UserResToBrief(u *identity_dto.UserRes) *identity_dto.UserBriefRes {
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		Gender:    u.Gender,
+		Status:    u.Status,
 		AvatarUrl: u.AvatarUrl,
 	}
 }

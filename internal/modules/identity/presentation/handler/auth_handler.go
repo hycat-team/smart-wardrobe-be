@@ -239,7 +239,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=map[string]string} "accessToken trong dữ liệu"
+// @Success 200 {object} shared_pres.APIResponse "Xoay vòng token thành công. Token mới được set qua Set-Cookie headers (accessToken, refreshToken)."
 // @Router /api/v1/auth/refresh-token [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)

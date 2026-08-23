@@ -84,6 +84,7 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionI
 			ItemType:  string(cand.BrandItem.ItemType),
 			Name:      cand.BrandItem.Name,
 			Price:     cand.BrandItem.Price,
+			Status:    string(cand.BrandItem.Status),
 		}
 	}
 	return res

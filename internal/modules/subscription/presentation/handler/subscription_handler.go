@@ -132,7 +132,7 @@ func (h *SubscriptionHandler) SetAutoRenewStatus(c *gin.Context) error {
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=[]sub_dto.SubscriptionPlanDTO} "Danh sách gói cước"
+// @Success 200 {object} shared_pres.APIResponse{data=[]sub_dto.SubscriptionPlanBriefRes} "Danh sách gói cước"
 // @Router /api/v1/subscriptions/plans [get]
 func (h *SubscriptionHandler) GetPlans(c *gin.Context) error {
 	plans, err := h.subscriptionUseCase.GetPlans(c.Request.Context())

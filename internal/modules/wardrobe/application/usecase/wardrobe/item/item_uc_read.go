@@ -177,6 +177,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 					Name:      bi.Name,
 					Price:     bi.Price,
 					ItemType:  string(bi.ItemType),
+					Status:    string(bi.Status),
 				}
 			}
 		}

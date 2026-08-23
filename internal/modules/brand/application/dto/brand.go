@@ -37,12 +37,13 @@ type UpdateBrandStatusReq struct {
 }
 
 type BrandBriefRes struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	Slug          string    `json:"slug"`
-	Description   *string   `json:"description"`
-	LogoURL       *string   `json:"logoUrl"`
-	BackgroundURL *string   `json:"backgroundUrl"`
+	ID            uuid.UUID               `json:"id"`
+	Name          string                  `json:"name"`
+	Slug          string                  `json:"slug"`
+	Description   *string                 `json:"description"`
+	LogoURL       *string                 `json:"logoUrl"`
+	BackgroundURL *string                 `json:"backgroundUrl"`
+	Status        brandstatus.BrandStatus `json:"status"`
 }
 
 type BrandRes struct {

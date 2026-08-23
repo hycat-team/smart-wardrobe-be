@@ -138,7 +138,7 @@ func (h *BrandPortalHandler) GetBrandsAdmin(c *gin.Context) error {
 // @Tags Brand
 // @Produce json
 // @Param query query dto.GetActiveBrandsQueryReq false "Active brand filters"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.PublicBrandListRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.PublicBrandBriefListRes}
 // @Router /api/v1/brands [get]
 func (h *BrandPortalHandler) GetActiveBrands(c *gin.Context) error {
 	var query dto.GetActiveBrandsQueryReq
@@ -516,7 +516,7 @@ func (h *BrandPortalHandler) GetBrandItemFeedbacks(c *gin.Context) error {
 // @Param brandId path string true "ID brand"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số lượng"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListBriefRes}
 // @Router /api/v1/brands/{brandId}/items [get]
 func (h *BrandPortalHandler) ListBrandProducts(c *gin.Context) error {
 	brandID, err := validation.GetUUIDParam(c, "brandId")
@@ -542,7 +542,7 @@ func (h *BrandPortalHandler) ListBrandProducts(c *gin.Context) error {
 // @Param brandId path string true "ID brand"
 // @Param page query int false "Trang"
 // @Param limit query int false "Số lượng"
-// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListRes}
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemListBriefRes}
 // @Router /api/v1/brands/{brandId}/items/samples [get]
 func (h *BrandPortalHandler) ListBrandSamples(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)
