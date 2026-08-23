@@ -110,7 +110,7 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 	}, nil
 }
 
-func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, userID uuid.UUID, catalogItemIDs []uuid.UUID) ([]*dto.WardrobeItemBriefRes, error) {
 	if len(catalogItemIDs) == 0 {
 		return nil, wardrobeerrors.ErrCatalogItemIDsEmpty()
 	}
@@ -164,21 +164,23 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
 	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
+		briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			for _, b := range briefs {
+				fashionBriefMap[b.ID] = b
+			}
 		}
 	}
 
-	resList := make([]*dto.WardrobeItemRes, len(newItems))
+	resList := make([]*dto.WardrobeItemBriefRes, len(newItems))
 	for i := range newItems {
-		var fi *fashion_dto.FashionItemRes
+		var fiBrief *fashion_dto.FashionItemBriefRes
 		if newItems[i].FashionItemID != nil {
-			fi = fashionMap[*newItems[i].FashionItemID]
+			fiBrief = fashionBriefMap[*newItems[i].FashionItemID]
 		}
-		resList[i] = mapper.MapToWardrobeItemRes(newItems[i], fi)
+		resList[i] = mapper.MapToWardrobeItemBrief(newItems[i], fiBrief, nil)
 		resList[i].IsLocked = false
 	}
 

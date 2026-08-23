@@ -64,6 +64,17 @@ type WardrobeItemRes struct {
 	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
+type WardrobeItemBriefRes struct {
+	ID          uuid.UUID                         `json:"id"`
+	Price       *float64                          `json:"price,omitempty"`
+	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked    bool                              `json:"isLocked"`
+	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
+	FashionItem *FashionItemBriefRes              `json:"fashionItem,omitempty"`
+	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
+}
+
 type CloneWardrobeItemReq struct {
 	Quantity int `json:"quantity" binding:"required,min=1,max=5" label:"số lượng bản sao"`
 }
@@ -91,10 +102,10 @@ type WardrobeEventPayload struct {
 }
 
 type SearchWardrobeItemRes struct {
-	ID          uuid.UUID       `json:"id"`
-	Price       *float64        `json:"price,omitempty"`
-	IsSystem    bool            `json:"isSystem"`
-	FashionItem *FashionItemRes `json:"fashionItem,omitempty"`
+	ID          uuid.UUID            `json:"id"`
+	Price       *float64             `json:"price,omitempty"`
+	IsSystem    bool                 `json:"isSystem"`
+	FashionItem *FashionItemBriefRes `json:"fashionItem,omitempty"`
 }
 
 type GetWardrobeItemsQueryReq struct {
@@ -143,3 +154,6 @@ type WardrobeStatsRes struct {
 	ActiveItemsCount int `json:"activeItemsCount"`
 	OutfitsCount     int `json:"outfitsCount"`
 }
+
+type WardrobeItemListBriefDTO = shared_dto.PaginationResult[*WardrobeItemBriefRes]
+type OutfitListBriefDTO = shared_dto.PaginationResult[*OutfitBriefRes]

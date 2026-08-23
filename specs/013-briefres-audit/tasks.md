@@ -93,18 +93,18 @@ Single project (backend): internal/modules/<name>/... tại repository root.
 
 ### Implementation for User Story 4 (Wardrobe)
 
-- [ ] T035 [P] [US4] Tạo struct WardrobeItemBriefRes tại internal/modules/wardrobe/application/dto/wardrobe.go (B7)
-- [ ] T036 [P] [US4] Tạo struct OutfitBriefRes tại internal/modules/wardrobe/application/dto/outfit.go (B8)
-- [ ] T037 [US4] Tạo mapper MapToWardrobeItemBrief tại internal/modules/wardrobe/application/mapper/ (dùng FashionItemBriefRes + BrandItemBriefRes)
-- [ ] T038 [US4] Tạo mapper MapToOutfitBrief tại internal/modules/wardrobe/application/mapper/outfit.go
-- [ ] T039 [US4] Đổi list/grid endpoints sang WardrobeItemBriefRes: GET /me/wardrobe-items, clone, catalog-init, retry-analysis tại internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go + internal/modules/wardrobe/application/usecase/
-- [ ] T040 [US4] Batch-upload: dùng WardrobeItemBriefRes + giữ taskId (theo quyết định T014) tại internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go
-- [ ] T041 [US4] Detail GET /wardrobe-items/:id: bỏ userId/isDeleted/HSL khỏi JSON display tại internal/modules/wardrobe/application/mapper/ (không sửa struct canonical)
-- [ ] T042 [US4] Search public: đổi fashionItem sang FashionItemBriefRes tại internal/modules/wardrobe/application/dto/wardrobe.go (SearchWardrobeItemRes) + handler search
-- [ ] T043 [US4] GET /me/outfits dùng OutfitBriefRes; OutfitRes detail bỏ userId tại internal/modules/wardrobe/presentation/handler/wardrobe_outfit_handler.go
-- [ ] T044 [US4] Populate brandItem trong read path wardrobe (qua brand contract) hoặc thêm brandName flatten tại internal/modules/wardrobe/application/mapper/ — theo quyết định research
-- [ ] T045 [P] [US4] Cập nhật swagger annotations cho wardrobe handlers
-- [ ] T046 [US4] Chạy make check + make test — verify wardrobe + không break AI pipeline (FashionItemRes giữ nguyên cho contract)
+- [x] T035 [P] [US4] Tạo struct WardrobeItemBriefRes tại internal/modules/wardrobe/application/dto/wardrobe.go (B7)
+- [x] T036 [P] [US4] Tạo struct OutfitBriefRes tại internal/modules/wardrobe/application/dto/outfit.go (B8)
+- [x] T037 [US4] Tạo mapper MapToWardrobeItemBrief tại internal/modules/wardrobe/application/mapper/ (dùng FashionItemBriefRes + BrandItemBriefRes)
+- [x] T038 [US4] Tạo mapper MapToOutfitBrief tại internal/modules/wardrobe/application/mapper/outfit.go
+- [x] T039 [US4] Đổi list/grid endpoints sang WardrobeItemBriefRes: GET /me/wardrobe-items, clone, catalog-init, retry-analysis tại internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go + internal/modules/wardrobe/application/usecase/
+- [x] T040 [US4] Batch-upload: dùng WardrobeItemBriefRes + giữ taskId (theo quyết định T014) tại internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go
+- [x] T041 [US4] Detail GET /wardrobe-items/:id: bỏ userId/isDeleted/HSL khỏi JSON display tại internal/modules/wardrobe/application/mapper/ (không sửa struct canonical)
+- [x] T042 [US4] Search public: đổi fashionItem sang FashionItemBriefRes tại internal/modules/wardrobe/application/dto/wardrobe.go (SearchWardrobeItemRes) + handler search
+- [x] T043 [US4] GET /me/outfits dùng OutfitBriefRes; OutfitRes detail bỏ userId tại internal/modules/wardrobe/presentation/handler/wardrobe_outfit_handler.go
+- [ ] T044 [US4] Populate brandItem trong read path wardrobe (qua brand contract) hoặc thêm brandName flatten tại internal/modules/wardrobe/application/mapper/ — theo quyết định research *(deferred: cần thêm GetBrandItemsByFashionItemIDs vào brand contract)*
+- [x] T045 [P] [US4] Cập nhật swagger annotations cho wardrobe handlers
+- [x] T046 [US4] Chạy make check + make test — verify wardrobe + không break AI pipeline (FashionItemRes giữ nguyên cho contract)
 
 **Checkpoint**: Wardrobe module refactor hoàn tất
 

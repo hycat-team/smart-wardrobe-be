@@ -307,7 +307,7 @@ func (uc *OutfitUseCase) UpdateOutfit(ctx context.Context, userID uuid.UUID, id 
 	return mapper.MapToOutfitRes(outfit, outfitItems, fashionMap, nil), nil
 }
 
-func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitRes], error) {
+func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query dto.GetOutfitsQueryReq) (*shared_dto.PaginationResult[*dto.OutfitBriefRes], error) {
 	page := query.Page
 	if page <= 0 {
 		page = 1
@@ -332,12 +332,12 @@ func (uc *OutfitUseCase) GetOutfits(ctx context.Context, userID uuid.UUID, query
 		return nil, err
 	}
 
-	resList := make([]*dto.OutfitRes, len(outfits))
+	resList := make([]*dto.OutfitBriefRes, len(outfits))
 	for idx, outfit := range outfits {
-		resList[idx] = mapper.MapToOutfitRes(outfit, nil, nil, nil)
+		resList[idx] = mapper.MapToOutfitBrief(outfit)
 	}
 
-	return &shared_dto.PaginationResult[*dto.OutfitRes]{
+	return &shared_dto.PaginationResult[*dto.OutfitBriefRes]{
 		Items:    resList,
 		Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, totalItems),
 	}, nil
