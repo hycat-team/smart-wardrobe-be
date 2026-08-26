@@ -278,13 +278,11 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
           "index": 0,
           "data": {
             "id": "e5b8d2a6-b5d7-4b4d-b8d4-f655845c43d9",
-            "brandId": "b7b6a0f1-15e7-4897-951f-52afc8a11111",
-            "name": "Áo Khoác Gió Thu Đông 2026",
-            "imageUrl": "https://res.cloudinary.com/closy/image/upload/v12345/jacket.png",
             "productCode": "JACKET-001",
+            "name": "Áo Khoác Gió Thu Đông 2026",
             "price": 620000,
-            "status": "active",
             "itemType": "product",
+            "status": "active",
             "fashionItem": {
               "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
               "category": {
@@ -295,7 +293,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
               "imageUrl": "https://res.cloudinary.com/closy/image/upload/v12345/jacket.png",
               "color": "Màu xanh rêu",
               "colorHex": "#4B5320",
-              "..."
+              "style": "Casual"
             }
           }
         }

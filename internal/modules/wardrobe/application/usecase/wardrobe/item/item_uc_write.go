@@ -133,13 +133,14 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 					brandName = bi.Brand.Name
 				}
 				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
-					ID:        bi.ID,
-					BrandID:   bi.Brand.ID,
-					BrandName: brandName,
-					Name:      bi.Name,
-					Price:     bi.Price,
-					ItemType:  string(bi.ItemType),
-					Status:    string(bi.Status),
+					ID:          bi.ID,
+					BrandID:     bi.Brand.ID,
+					BrandName:   brandName,
+					ProductCode: bi.ProductCode,
+					Name:        bi.Name,
+					Price:       bi.Price,
+					ItemType:    string(bi.ItemType),
+					Status:      string(bi.Status),
 				}
 			}
 		}

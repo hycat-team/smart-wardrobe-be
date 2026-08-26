@@ -78,13 +78,14 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionI
 	}
 	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
 		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
-			ID:        cand.BrandItem.ID,
-			BrandID:   cand.BrandItem.BrandID,
-			BrandName: cand.BrandItem.BrandName,
-			ItemType:  string(cand.BrandItem.ItemType),
-			Name:      cand.BrandItem.Name,
-			Price:     cand.BrandItem.Price,
-			Status:    string(cand.BrandItem.Status),
+			ID:          cand.BrandItem.ID,
+			BrandID:     cand.BrandItem.BrandID,
+			BrandName:   cand.BrandItem.BrandName,
+			ProductCode: cand.BrandItem.ProductCode,
+			ItemType:    string(cand.BrandItem.ItemType),
+			Name:        cand.BrandItem.Name,
+			Price:       cand.BrandItem.Price,
+			Status:      string(cand.BrandItem.Status),
 		}
 	}
 	return res

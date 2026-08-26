@@ -87,6 +87,7 @@ type BrandItemBriefRes struct {
 	ID            uuid.UUID                        `json:"id"`
 	FashionItemID uuid.UUID                        `json:"-"`
 	Brand         *BrandBriefRes                   `json:"brand,omitempty"`
+	ProductCode   *string                          `json:"productCode,omitempty"`
 	Name          string                           `json:"name"`
 	Price         *float64                         `json:"price,omitempty"`
 	ItemType      branditemtype.BrandItemType      `json:"itemType"`

@@ -72,6 +72,7 @@ func MapBrandItemBrief(item *entities.BrandItem, brand *entities.Brand, fi *fash
 		ID:            item.ID,
 		FashionItemID: fiID,
 		Brand:         MapBrandBrief(brand),
+		ProductCode:   item.ProductCode,
 		Name:          item.Name,
 		Price:         item.Price,
 		ItemType:      item.ItemType,

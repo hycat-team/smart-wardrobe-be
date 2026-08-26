@@ -41,13 +41,14 @@ type FashionItemRes struct {
 }
 
 type BrandItemBriefRes struct {
-	ID        uuid.UUID `json:"id"`
-	BrandID   uuid.UUID `json:"brandId"`
-	BrandName string    `json:"brandName"`
-	ItemType  string    `json:"itemType"`
-	Name      string    `json:"name"`
-	Price     *float64  `json:"price,omitempty"`
-	Status    string    `json:"status"`
+	ID          uuid.UUID `json:"id"`
+	BrandID     uuid.UUID `json:"brandId"`
+	BrandName   string    `json:"brandName"`
+	ProductCode *string   `json:"productCode,omitempty"`
+	ItemType    string    `json:"itemType"`
+	Name        string    `json:"name"`
+	Price       *float64  `json:"price,omitempty"`
+	Status      string    `json:"status"`
 }
 
 type WardrobeItemRes struct {

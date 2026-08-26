@@ -8698,6 +8698,9 @@ const docTemplate = `{
                 "price": {
                     "type": "number"
                 },
+                "productCode": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
                 }
@@ -12298,6 +12301,9 @@ const docTemplate = `{
                 },
                 "price": {
                     "type": "number"
+                },
+                "productCode": {
+                    "type": "string"
                 },
                 "status": {
                     "type": "string"

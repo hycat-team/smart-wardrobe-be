@@ -69,6 +69,7 @@ func (uc *BrandFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context, p
 
 	brief := &dto.BrandItemBriefRes{
 		ID:          item.ID,
+		ProductCode: item.ProductCode,
 		Name:        item.Name,
 		Price:       item.Price,
 		ItemType:    item.ItemType,
@@ -125,6 +126,7 @@ func (uc *BrandFashionEventUseCase) HandleFashionFailed(ctx context.Context, pay
 
 	brief := &dto.BrandItemBriefRes{
 		ID:          item.ID,
+		ProductCode: item.ProductCode,
 		Name:        item.Name,
 		Price:       item.Price,
 		ItemType:    item.ItemType,

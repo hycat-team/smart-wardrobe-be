@@ -830,6 +830,9 @@
         "price": {
           "type": "number"
         },
+        "productCode": {
+          "type": "string"
+        },
         "status": {
           "$ref": "#/definitions/smart-wardrobe-be_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
         }
@@ -4430,6 +4433,9 @@
         },
         "price": {
           "type": "number"
+        },
+        "productCode": {
+          "type": "string"
         },
         "status": {
           "type": "string"
