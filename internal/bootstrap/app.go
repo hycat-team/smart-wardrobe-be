@@ -41,6 +41,8 @@ type AppWorkers struct {
 	EmailWorker                 *notificationWorker.EmailWorker
 	AuditLogConsumerWorker      *adminWorker.AuditLogConsumerWorker
 	AuditCleanupWorker          *adminWorker.AuditCleanupWorker
+	WardrobeFashionEventWorker  *wardrobeWorker.WardrobeFashionEventWorker
+	BrandFashionEventWorker     *brandWorker.BrandFashionEventWorker
 }
 
 type App struct {
@@ -105,6 +107,8 @@ func (a *App) Run() error {
 	a.Workers.EmailWorker.Start(ctxWorker)
 	a.Workers.AuditLogConsumerWorker.Start(ctxWorker)
 	a.Workers.AuditCleanupWorker.Start(ctxWorker)
+	a.Workers.WardrobeFashionEventWorker.Start(ctxWorker)
+	a.Workers.BrandFashionEventWorker.Start(ctxWorker)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -134,6 +138,8 @@ func (a *App) Run() error {
 	a.Workers.EmailWorker.Stop()
 	a.Workers.AuditLogConsumerWorker.Stop()
 	a.Workers.AuditCleanupWorker.Stop()
+	a.Workers.WardrobeFashionEventWorker.Stop()
+	a.Workers.BrandFashionEventWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

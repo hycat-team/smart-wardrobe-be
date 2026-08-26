@@ -11,6 +11,8 @@ const (
 	// Fashion Events
 	TopicFashionInit       = "fashion.event.init"
 	TopicFashionAnalyze    = "fashion.event.analyze"
+	TopicFashionAnalyzed   = "fashion.event.analyzed"
+	TopicFashionFailed     = "fashion.event.failed"
 	TopicNotificationEmail = "notification.email"
 
 	TopicAuditLog = "admin.audit.log"

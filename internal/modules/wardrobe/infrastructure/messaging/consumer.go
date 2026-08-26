@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobe_event "smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
 	"smart-wardrobe-be/internal/pkg/logger"
@@ -46,5 +47,39 @@ func (c *SearchSyncEventConsumer) ConsumeEvents(ctx context.Context, handler fun
 
 	c.messageClient.RegisterConsumer(shared_msg.QueueElasticsearchSync, wrappedHandler)
 	c.logger.Info("[SearchSyncEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueElasticsearchSync))
+	return nil
+}
+
+type WardrobeFashionAnalyzedEventConsumer struct {
+	messageClient shared_event.IMessageConsumer
+	logger        logger.Interface
+}
+
+func NewWardrobeFashionAnalyzedEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.IWardrobeFashionAnalyzedEventConsumer {
+	return &WardrobeFashionAnalyzedEventConsumer{messageClient: messageClient, logger: l}
+}
+
+func (c *WardrobeFashionAnalyzedEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashionDto.FashionAnalyzedEventPayload) error) error {
+	wrappedHandler := func(msg shared_event.Message) error {
+		var eventPayload fashionDto.FashionAnalyzedEventPayload
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
+			c.logger.Error("[WardrobeFashionAnalyzedEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+
+		// Only process wardrobe items
+		if eventPayload.ItemType != "" && eventPayload.ItemType != "wardrobe" {
+			return nil
+		}
+
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[WardrobeFashionAnalyzedEventConsumer] Error processing fashion analyzed event", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+
+	c.messageClient.RegisterConsumer(shared_msg.QueueWardrobeFashionAnalyzed, wrappedHandler)
+	c.logger.Info("[WardrobeFashionAnalyzedEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueWardrobeFashionAnalyzed))
 	return nil
 }

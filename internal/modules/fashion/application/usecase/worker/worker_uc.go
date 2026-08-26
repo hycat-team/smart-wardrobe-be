@@ -8,9 +8,6 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
-	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
-	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/worker/shared"
@@ -30,7 +27,6 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
-	"smart-wardrobe-be/internal/shared/application/sse"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
@@ -54,8 +50,6 @@ type FashionWorkerUseCase struct {
 	userSubContract  contract.IUserSubscriptionContract
 	eventPublisher   event.IEventPublisher
 	fashionItemRepo  repositories.IFashionItemRepository
-	brandContract    brand_contract.IBrandContract
-	sseManager       sse.ISSEManager
 	uow              shared_repos.IUnitOfWork
 }
 
@@ -70,8 +64,6 @@ func NewFashionWorkerUseCase(
 	userSubContract contract.IUserSubscriptionContract,
 	eventPublisher event.IEventPublisher,
 	fashionItemRepo repositories.IFashionItemRepository,
-	brandContract brand_contract.IBrandContract,
-	sseManager sse.ISSEManager,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IFashionWorkerUseCase {
 	return &FashionWorkerUseCase{
@@ -84,8 +76,6 @@ func NewFashionWorkerUseCase(
 		userSubContract:  userSubContract,
 		eventPublisher:   eventPublisher,
 		fashionItemRepo:  fashionItemRepo,
-		brandContract:    brandContract,
-		sseManager:       sseManager,
 		uow:              uow,
 	}
 }
@@ -312,60 +302,46 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		zap.Int("retryCount", job.RetryCount),
 		zap.Error(err),
 	)
-	if job.ItemType == fashionitemtype.Brand {
-		if job.FashionItemID != nil {
-			_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
-		}
-		brandItem, _ := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
-		if brandItem != nil {
-			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
-			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, analyzetaskstatus.Failed, mapBrandItemToBrief(brandItem), err.Error())
-		}
-		return
-	}
 	if job.FashionItemID != nil {
 		_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
 	}
-	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.Failed)
-	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
-	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.Failed, mapWardrobeItemToBrief(items[0]), err.Error())
+
+	payload := dto.FashionAnalyzedEventPayload{
+		TaskID:        job.TaskID,
+		ItemID:        job.ItemID,
+		ItemType:      job.ItemType,
+		FashionItemID: job.FashionItemID,
+		Status:        analyzetaskstatus.Failed,
+		Total:         job.Total,
+		Index:         job.Index,
+		Error:         err.Error(),
 	}
+	_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionFailed, payload)
+	})
 }
 
 func (uc *FashionWorkerUseCase) loadProcessableItem(ctx context.Context, job dto.FashionAnalyzeJobDTO, run *workerlog.Run) (any, error) {
-	if job.ItemType == fashionitemtype.Brand {
-		item, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
-		if err != nil {
-			return nil, err
-		}
-		if item == nil || item.FashionItemID == uuid.Nil {
-			run.ChildWarn(uc.logger, "Skipped brand item analyze job because item is not processable",
-				zap.String("itemId", job.ItemID.String()),
-				zap.Int("processingVersion", job.ProcessingVersion),
-			)
-			return nil, nil
-		}
-		return item, nil
-	}
-
-	items, err := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
-	if err != nil {
-		return nil, err
-	}
-	var item *wardrobeDto.WardrobeItemRes
-	if len(items) > 0 {
-		item = items[0]
-	}
-	if item == nil || item.FashionItem == nil || item.Status != wardrobestatus.Processing {
-		run.ChildWarn(uc.logger, "Skipped wardrobe batch upload job because item is not processable",
+	if job.FashionItemID == nil {
+		run.ChildWarn(uc.logger, "Skipped analyze job because fashionItemId is nil",
 			zap.String("itemId", job.ItemID.String()),
 			zap.Int("processingVersion", job.ProcessingVersion),
 		)
 		return nil, nil
 	}
-	return item, nil
+
+	fi, err := uc.fashionItemRepo.GetByID(ctx, *job.FashionItemID)
+	if err != nil {
+		return nil, err
+	}
+	if fi == nil || fi.ProcessingVersion != job.ProcessingVersion {
+		run.ChildWarn(uc.logger, "Skipped analyze job because item not found or processing version mismatch",
+			zap.String("itemId", job.ItemID.String()),
+			zap.Int("processingVersion", job.ProcessingVersion),
+		)
+		return nil, nil
+	}
+	return fi, nil
 }
 
 func (uc *FashionWorkerUseCase) analyzeWardrobeImage(
@@ -397,24 +373,33 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 	if reviewReason == "" {
 		reviewReason = "uncertain_category"
 	}
-	if job.ItemType == fashionitemtype.Brand && job.FashionItemID != nil {
-		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, *job.FashionItemID, job.ProcessingVersion, reviewReason)
-		brandItem, _ := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
-		if brandItem != nil {
-			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Draft)
-			brandItem.Status = branditemstatus.Draft
-			uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, mapBrandItemToBrief(brandItem), "")
-		}
-		return
-	}
 	if job.FashionItemID != nil {
 		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, *job.FashionItemID, job.ProcessingVersion, reviewReason)
 	}
-	_ = uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.NeedsReview)
-	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
-	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.NeedsReview, mapWardrobeItemToBrief(items[0]), "")
+
+	var fashionBrief *dto.FashionItemBriefRes
+	if job.FashionItemID != nil {
+		if fi, _ := uc.fashionItemRepo.GetByID(ctx, *job.FashionItemID); fi != nil {
+			fashionBrief = &dto.FashionItemBriefRes{
+				ID:       fi.ID,
+				ImageUrl: fi.ImageUrl,
+			}
+		}
 	}
+
+	payload := dto.FashionAnalyzedEventPayload{
+		TaskID:        job.TaskID,
+		ItemID:        job.ItemID,
+		ItemType:      job.ItemType,
+		FashionItemID: job.FashionItemID,
+		Status:        analyzetaskstatus.NeedsReview,
+		Total:         job.Total,
+		Index:         job.Index,
+		FashionBrief:  fashionBrief,
+	}
+	_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
+	})
 }
 
 func (uc *FashionWorkerUseCase) buildCompletedItemUpdate(
@@ -447,56 +432,66 @@ func (uc *FashionWorkerUseCase) buildCompletedItemUpdate(
 }
 
 func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job dto.FashionAnalyzeJobDTO, updateMap map[string]any) error {
-	if job.ItemType == fashionitemtype.Brand && job.FashionItemID != nil {
-		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
-		if err != nil {
-			return err
-		}
-		if !completed {
-			return nil
-		}
-		brandItem, err := uc.brandContract.GetBrandItemByID(ctx, job.ItemID)
-		if err == nil && brandItem != nil {
-			_ = uc.brandContract.UpdateBrandItemStatus(ctx, job.ItemID, branditemstatus.Active)
-			brandItem.Status = branditemstatus.Active
-			uc.publishSSEEvent(job, analyzetaskstatus.Completed, mapBrandItemToBrief(brandItem), "")
-		}
+	if job.FashionItemID == nil {
 		return nil
 	}
 
-	// Wardrobe item: fashion module sở hữu fashion_items (metadata + embedding),
-	// wardrobe module sở hữu wardrobe_items (chỉ đổi status qua contract).
-	if job.FashionItemID != nil {
-		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
-		if err != nil {
-			return err
-		}
-		if !completed {
-			return nil
-		}
-	}
-
-	if err := uc.wardrobeContract.UpdateItemStatus(ctx, job.ItemID, wardrobestatus.InWardrobe); err != nil {
-		return err
-	}
-
-	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		payload := wardrobeDto.WardrobeEventPayload{
-			ItemID: job.ItemID,
-			UserID: job.UserID,
-			Action: eventconstants.ActionCreated,
-		}
-		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeCreated, payload)
-	})
+	completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
 	if err != nil {
 		return err
 	}
-
-	items, getErr := uc.wardrobeContract.GetItemsByIDs(ctx, []uuid.UUID{job.ItemID})
-	if getErr == nil && len(items) > 0 {
-		uc.publishSSEEvent(job, analyzetaskstatus.Completed, mapWardrobeItemToBrief(items[0]), "")
+	if !completed {
+		return nil
 	}
-	return nil
+
+	fi, err := uc.fashionItemRepo.GetByID(ctx, *job.FashionItemID)
+	if err != nil || fi == nil {
+		return err
+	}
+
+	var categoryBrief *dto.CategoryBriefRes
+	if fi.CategoryID != nil {
+		if snapshot, err := uc.categoryCache.Get(ctx); err == nil {
+			if name, ok := snapshot.CategoryNameMap[*fi.CategoryID]; ok {
+				slug := ""
+				for s, id := range snapshot.CategoryMap {
+					if id == *fi.CategoryID {
+						slug = s
+						break
+					}
+				}
+				categoryBrief = &dto.CategoryBriefRes{
+					ID:   *fi.CategoryID,
+					Name: name,
+					Slug: slug,
+				}
+			}
+		}
+	}
+
+	fashionBrief := &dto.FashionItemBriefRes{
+		ID:       fi.ID,
+		Category: categoryBrief,
+		ImageUrl: fi.ImageUrl,
+		Color:    fi.Color,
+		ColorHex: fi.ColorHex,
+		Style:    fi.Style,
+	}
+
+	payload := dto.FashionAnalyzedEventPayload{
+		TaskID:        job.TaskID,
+		ItemID:        job.ItemID,
+		ItemType:      job.ItemType,
+		FashionItemID: job.FashionItemID,
+		Status:        analyzetaskstatus.Completed,
+		Total:         job.Total,
+		Index:         job.Index,
+		FashionBrief:  fashionBrief,
+	}
+
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
+	})
 }
 
 func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, itemID uuid.UUID, fashionItemID *uuid.UUID, userID uuid.UUID) error {
@@ -567,51 +562,4 @@ func applyResolvedColor(updateMap map[string]any, aiMeta *dto.FashionMetadataRes
 	updateMap["color_hue"] = nil
 	updateMap["color_saturation"] = nil
 	updateMap["color_lightness"] = nil
-}
-
-func (uc *FashionWorkerUseCase) publishSSEEvent(job dto.FashionAnalyzeJobDTO, status analyzetaskstatus.AnalyzeTaskStatus, data any, errMsg string) {
-	if job.TaskID == "" {
-		return
-	}
-	payload := dto.SSEEventPayload{
-		ItemID: job.ItemID,
-		Status: status,
-		Total:  job.Total,
-		Index:  job.Index,
-		Data:   data,
-		Error:  errMsg,
-	}
-	bytes, err := json.Marshal(payload)
-	if err != nil {
-		uc.logger.Error("Failed to marshal SSE payload", zap.Error(err))
-		return
-	}
-	uc.sseManager.Publish(job.TaskID, bytes)
-}
-
-func mapBrandItemToBrief(item *brand_dto.BrandItemRes) *brand_dto.BrandItemBriefRes {
-	if item == nil {
-		return nil
-	}
-	return &brand_dto.BrandItemBriefRes{
-		ID:       item.ID,
-		Name:     item.Name,
-		Price:    item.Price,
-		ItemType: item.ItemType,
-		Status:   item.Status,
-	}
-}
-
-func mapWardrobeItemToBrief(item *wardrobeDto.WardrobeItemRes) *wardrobeDto.WardrobeItemBriefRes {
-	if item == nil {
-		return nil
-	}
-	return &wardrobeDto.WardrobeItemBriefRes{
-		ID:         item.ID,
-		Price:      item.Price,
-		Status:     item.Status,
-		IsLocked:   item.IsLocked,
-		LastUsedAt: item.LastUsedAt,
-		TaskID:     item.TaskID,
-	}
 }

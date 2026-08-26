@@ -93,6 +93,30 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return err
 	}
 
+	// 8. Declare and Bind Wardrobe Fashion Analyzed Queue
+	if err := r.DeclareAndBindQueue(QueueWardrobeFashionAnalyzed, RoutingKeyFashionAnalyzed); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+	if err := r.DeclareAndBindQueue(QueueWardrobeFashionAnalyzed, RoutingKeyFashionFailed); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 9. Declare and Bind Brand Fashion Analyzed Queue
+	if err := r.DeclareAndBindQueue(QueueBrandFashionAnalyzed, RoutingKeyFashionAnalyzed); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+	if err := r.DeclareAndBindQueue(QueueBrandFashionAnalyzed, RoutingKeyFashionFailed); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
 
 	// 4. Register to listen to NotifyClose for auto-reconnection in the background upon disconnection

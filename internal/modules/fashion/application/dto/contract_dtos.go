@@ -110,3 +110,15 @@ type SSEEventPayload struct {
 	Data   any                                 `json:"data,omitempty"`
 	Error  string                              `json:"error,omitempty"`
 }
+
+type FashionAnalyzedEventPayload struct {
+	TaskID        string                              `json:"taskId"`
+	ItemID        uuid.UUID                           `json:"itemId"`
+	ItemType      string                              `json:"itemType"` // "wardrobe" | "brand"
+	FashionItemID *uuid.UUID                          `json:"fashionItemId,omitempty"`
+	Status        analyzetaskstatus.AnalyzeTaskStatus `json:"status"` // "completed" | "needs_review" | "failed"
+	Total         int                                 `json:"total"`
+	Index         int                                 `json:"index"`
+	FashionBrief  *FashionItemBriefRes                `json:"fashionBrief,omitempty"`
+	Error         string                              `json:"error,omitempty"`
+}

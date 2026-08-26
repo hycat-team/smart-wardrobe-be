@@ -36,7 +36,14 @@ func (m *mockFashionItemRepoForWorker) CompleteProcessingSuccess(ctx context.Con
 }
 
 func (m *mockFashionItemRepoForWorker) GetByID(ctx context.Context, itemID uuid.UUID) (*entities.FashionItem, error) {
-	return m.getByIDFn(ctx, itemID)
+	if m.getByIDFn != nil {
+		return m.getByIDFn(ctx, itemID)
+	}
+	fi := &entities.FashionItem{
+		ImageUrl: "https://example.com/item.jpg",
+	}
+	fi.ID = itemID
+	return fi, nil
 }
 
 func (m *mockFashionItemRepoForWorker) IncrementProcessingRetryCount(ctx context.Context, itemID uuid.UUID) error {
@@ -84,15 +91,14 @@ func (m *mockUOWForWorker) Execute(ctx context.Context, fn func(ctx context.Cont
 	return m.executeFn(ctx, fn)
 }
 
-// TestCompleteProcessedItemCallsBothSides verifies the wardrobe-item completion path:
-// fashion module updates fashion_items via its own repo, and wardrobe_items status
-// changes only through the wardrobe contract (no cross-module raw access).
-func TestCompleteProcessedItemCallsBothSides(t *testing.T) {
+// TestCompleteProcessedItemPublishesEvent verifies that when an item completes analysis,
+// FashionWorkerUseCase updates fashion_items via its repo and publishes TopicFashionAnalyzed event.
+func TestCompleteProcessedItemPublishesEvent(t *testing.T) {
 	itemID := uuid.New()
 	fashionItemID := uuid.New()
 
 	fashionRepoCalled := false
-	wardrobeStatusUpdated := false
+	eventPublished := false
 
 	uc := &FashionWorkerUseCase{
 		fashionItemRepo: &mockFashionItemRepoForWorker{
@@ -109,24 +115,20 @@ func TestCompleteProcessedItemCallsBothSides(t *testing.T) {
 				fashionRepoCalled = true
 				return true, nil
 			},
-		},
-		wardrobeContract: &mockWardrobeContractForWorker{
-			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
-				if id != itemID {
-					t.Fatalf("expected wardrobe item id %s, got %s", itemID, id)
-				}
-				if status != wardrobestatus.InWardrobe {
-					t.Fatalf("expected InWardrobe status, got %v", status)
-				}
-				wardrobeStatusUpdated = true
-				return nil
-			},
-			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{ID: itemID}}, nil
+			getByIDFn: func(ctx context.Context, itemID uuid.UUID) (*entities.FashionItem, error) {
+				return &entities.FashionItem{
+					AuditableEntity: entities.AuditableEntity{
+						BaseEntity: entities.BaseEntity{ID: fashionItemID},
+					},
+					ImageUrl: "https://example.com/item.jpg",
+				}, nil
 			},
 		},
 		eventPublisher: &mockEventPublisherForWorker{
 			publishFn: func(ctx context.Context, topic string, payload any) error {
+				if topic == eventconstants.TopicFashionAnalyzed {
+					eventPublished = true
+				}
 				return nil
 			},
 		},
@@ -152,64 +154,8 @@ func TestCompleteProcessedItemCallsBothSides(t *testing.T) {
 	if !fashionRepoCalled {
 		t.Fatal("expected fashionItemRepo.CompleteProcessingSuccess to be called")
 	}
-	if !wardrobeStatusUpdated {
-		t.Fatal("expected wardrobeContract.UpdateItemStatus to be called")
-	}
-}
-
-// TestCompleteProcessedItemSkipsFashionWhenNoFashionItemID verifies that when a
-// wardrobe item has no fashion_item_id, the fashion update is skipped but the
-// wardrobe status is still updated.
-func TestCompleteProcessedItemSkipsFashionWhenNoFashionItemID(t *testing.T) {
-	itemID := uuid.New()
-
-	fashionRepoCalled := false
-	wardrobeStatusUpdated := false
-
-	uc := &FashionWorkerUseCase{
-		fashionItemRepo: &mockFashionItemRepoForWorker{
-			completeSuccessFn: func(ctx context.Context, id uuid.UUID, version int, updates map[string]any) (bool, error) {
-				fashionRepoCalled = true
-				return true, nil
-			},
-		},
-		wardrobeContract: &mockWardrobeContractForWorker{
-			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
-				wardrobeStatusUpdated = true
-				return nil
-			},
-			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{ID: itemID}}, nil
-			},
-		},
-		eventPublisher: &mockEventPublisherForWorker{
-			publishFn: func(ctx context.Context, topic string, payload any) error {
-				return nil
-			},
-		},
-		uow: &mockUOWForWorker{
-			executeFn: func(ctx context.Context, fn func(ctx context.Context) error) error {
-				return fn(ctx)
-			},
-		},
-	}
-
-	job := dto.FashionAnalyzeJobDTO{
-		ItemID:            itemID,
-		ItemType:          "wardrobe",
-		UserID:            uuid.New(),
-		ProcessingVersion: 1,
-	}
-
-	err := uc.completeProcessedItem(context.Background(), job, map[string]any{"embedding": []float32{1.0}})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if fashionRepoCalled {
-		t.Fatal("expected fashionItemRepo NOT to be called when fashion_item_id is nil")
-	}
-	if !wardrobeStatusUpdated {
-		t.Fatal("expected wardrobeContract.UpdateItemStatus to be called")
+	if !eventPublished {
+		t.Fatal("expected TopicFashionAnalyzed event to be published")
 	}
 }
 

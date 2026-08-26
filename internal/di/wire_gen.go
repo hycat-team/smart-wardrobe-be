@@ -35,6 +35,7 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/item"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/loyalty"
 	caching4 "smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
+	messaging3 "smart-wardrobe-be/internal/modules/brand/infrastructure/messaging"
 	persistence5 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	contract7 "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	handler5 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
@@ -87,6 +88,7 @@ import (
 	router2 "smart-wardrobe-be/internal/modules/subscription/presentation/router"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/outfit"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	item2 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
@@ -295,7 +297,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iFashionInitUseCase := worker5.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iWardrobeContract, iBrandContract, iUnitOfWork)
 	fashionInitWorker := worker6.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
 	visionCategoryCache := worker5.NewVisionCategoryCache(cfg, iCategoryRepository, l)
-	iFashionWorkerUseCase := worker5.NewFashionWorkerUseCase(cfg, l, iWardrobeContract, visionCategoryCache, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionItemRepository, iBrandContract, sseManager, iUnitOfWork)
+	iFashionWorkerUseCase := worker5.NewFashionWorkerUseCase(cfg, l, iWardrobeContract, visionCategoryCache, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionItemRepository, iUnitOfWork)
 	failedItemsCleanupWorker := worker6.NewFailedItemsCleanupWorker(iFashionWorkerUseCase, l)
 	processingRecoveryWorker := worker6.NewProcessingRecoveryWorker(cfg, iFashionWorkerUseCase, l)
 	fashionAnalyzeWorker := worker6.NewFashionAnalyzeWorker(rabbitMQClient, iFashionWorkerUseCase, l)
@@ -314,6 +316,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	emailWorker := worker9.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
 	auditLogConsumerWorker := worker10.NewAuditLogConsumerWorker(rabbitMQClient, iAuditLogUseCase, l)
 	auditCleanupWorker := worker10.NewAuditCleanupWorker(iAuditLogUseCase, cfg, l)
+	iWardrobeFashionAnalyzedEventConsumer := messaging2.NewWardrobeFashionAnalyzedEventConsumer(rabbitMQClient, l)
+	iWardrobeFashionEventUseCase := wardrobe.NewWardrobeFashionEventUseCase(iWardrobeItemRepository, sseManager, rabbitMQClient, iUnitOfWork, l)
+	wardrobeFashionEventWorker := worker4.NewWardrobeFashionEventWorker(iWardrobeFashionAnalyzedEventConsumer, iWardrobeFashionEventUseCase, l)
+	iBrandFashionAnalyzedEventConsumer := messaging3.NewBrandFashionAnalyzedEventConsumer(rabbitMQClient, l)
+	iBrandFashionEventUseCase := item.NewBrandFashionEventUseCase(iBrandItemRepository, sseManager, l)
+	brandFashionEventWorker := worker3.NewBrandFashionEventWorker(iBrandFashionAnalyzedEventConsumer, iBrandFashionEventUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:               subscriptionRenewalWorker,
 		PaymentReconciliationWorker: paymentReconciliationWorker,
@@ -331,6 +339,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		EmailWorker:                 emailWorker,
 		AuditLogConsumerWorker:      auditLogConsumerWorker,
 		AuditCleanupWorker:          auditCleanupWorker,
+		WardrobeFashionEventWorker:  wardrobeFashionEventWorker,
+		BrandFashionEventWorker:     brandFashionEventWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
 	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)

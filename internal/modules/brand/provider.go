@@ -26,4 +26,5 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(contract.IBrandRoleMiddleware), new(*middleware.BrandRoleMiddleware)),
 	router.NewRouter,
 	worker.NewLoyaltyPointExpiryWorker,
+	worker.NewBrandFashionEventWorker,
 )

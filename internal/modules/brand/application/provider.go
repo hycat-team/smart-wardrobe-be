@@ -20,5 +20,6 @@ var ProviderSet = wire.NewSet(
 	chat.NewBrandChatUseCase,
 	claim.NewBrandClaimUseCase,
 	item.NewBrandItemUseCase,
+	item.NewBrandFashionEventUseCase,
 	loyalty.NewBrandLoyaltyUseCase,
 )

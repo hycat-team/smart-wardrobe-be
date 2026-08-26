@@ -32,3 +32,8 @@ type IBrandItemUseCase interface {
 	GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error)
 	GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemRes, error)
 }
+
+type IBrandFashionEventUseCase interface {
+	HandleFashionAnalyzed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
+	HandleFashionFailed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
+}
