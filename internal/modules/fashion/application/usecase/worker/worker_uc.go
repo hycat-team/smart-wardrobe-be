@@ -16,7 +16,6 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"smart-wardrobe-be/internal/modules/subscription/presentation/contract"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
@@ -182,9 +181,6 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 			}
 
 			err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-				if err := uc.wardrobeContract.DeleteWardrobeItem(txCtx, item.ID); err != nil {
-					return err
-				}
 				payload := wardrobeDto.WardrobeEventPayload{
 					ItemID: item.ID,
 					UserID: item.UserID,
@@ -251,8 +247,19 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 			continue
 		}
 		if fi.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
-			if _, err := uc.fashionItemRepo.MarkProcessingFailed(ctx, fi.ID, fi.ProcessingVersion, autoRetryExceededMessage, nil); err == nil {
-				_ = uc.wardrobeContract.UpdateItemStatus(ctx, item.ID, wardrobestatus.Failed)
+			payload := dto.FashionProcessingExhaustedPayload{
+				WardrobeItemID: item.ID,
+				FashionItemID:  fi.ID,
+				Reason:         autoRetryExceededMessage,
+				UserID:         item.UserID,
+			}
+			err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+				if _, err := uc.fashionItemRepo.MarkProcessingFailed(txCtx, fi.ID, fi.ProcessingVersion, autoRetryExceededMessage, nil); err != nil {
+					return err
+				}
+				return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionProcessingExhausted, payload)
+			})
+			if err == nil {
 				markedFailedCount++
 			}
 			run.ChildInfo(uc.logger, "Stale processing item marked failed after retries exhausted",
@@ -313,8 +320,9 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		)
 		run.AddRetry(1)
 
-		publishCtx := context.Background()
-		if republishErr := uc.eventPublisher.Publish(publishCtx, topic, job); republishErr != nil {
+		if republishErr := uc.uow.Execute(context.Background(), func(txCtx context.Context) error {
+			return uc.eventPublisher.Publish(txCtx, topic, job)
+		}); republishErr != nil {
 			run.ChildError(uc.logger, "Failed to republish analyze item retry job",
 				zap.String("itemId", job.ItemID.String()),
 				zap.Int("retryCount", job.RetryCount),
@@ -329,10 +337,6 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		zap.Int("retryCount", job.RetryCount),
 		zap.Error(err),
 	)
-	if job.FashionItemID != nil {
-		_, _ = uc.fashionItemRepo.MarkProcessingFailed(ctx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil)
-	}
-
 	payload := dto.FashionAnalyzedEventPayload{
 		TaskID:        job.TaskID,
 		ItemID:        job.ItemID,
@@ -344,6 +348,11 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		Error:         err.Error(),
 	}
 	_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if job.FashionItemID != nil {
+			if _, err := uc.fashionItemRepo.MarkProcessingFailed(txCtx, *job.FashionItemID, job.ProcessingVersion, processingFailureReasonMessage, nil); err != nil {
+				return err
+			}
+		}
 		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionFailed, payload)
 	})
 }
@@ -400,10 +409,6 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 	if reviewReason == "" {
 		reviewReason = "uncertain_category"
 	}
-	if job.FashionItemID != nil {
-		_, _ = uc.fashionItemRepo.MarkProcessingNeedsReview(ctx, *job.FashionItemID, job.ProcessingVersion, reviewReason)
-	}
-
 	var fashionBrief *dto.FashionItemBriefRes
 	if job.FashionItemID != nil {
 		if fi, _ := uc.fashionItemRepo.GetByID(ctx, *job.FashionItemID); fi != nil {
@@ -425,6 +430,11 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 		FashionBrief:  fashionBrief,
 	}
 	_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if job.FashionItemID != nil {
+			if _, err := uc.fashionItemRepo.MarkProcessingNeedsReview(txCtx, *job.FashionItemID, job.ProcessingVersion, reviewReason); err != nil {
+				return err
+			}
+		}
 		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
 	})
 }
@@ -463,62 +473,69 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 		return nil
 	}
 
-	completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(ctx, *job.FashionItemID, job.ProcessingVersion, updateMap)
-	if err != nil {
-		return err
-	}
-	if !completed {
-		return nil
-	}
+	var fashionBrief *dto.FashionItemBriefRes
+	var payload dto.FashionAnalyzedEventPayload
+	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		completed, err := uc.fashionItemRepo.CompleteProcessingSuccess(txCtx, *job.FashionItemID, job.ProcessingVersion, updateMap)
+		if err != nil {
+			return err
+		}
+		if !completed {
+			return nil
+		}
 
-	fi, err := uc.fashionItemRepo.GetByID(ctx, *job.FashionItemID)
-	if err != nil || fi == nil {
-		return err
-	}
+		fi, err := uc.fashionItemRepo.GetByID(txCtx, *job.FashionItemID)
+		if err != nil || fi == nil {
+			return err
+		}
 
-	var categoryBrief *dto.CategoryBriefRes
-	if fi.CategoryID != nil {
-		if snapshot, err := uc.categoryCache.Get(ctx); err == nil {
-			if name, ok := snapshot.CategoryNameMap[*fi.CategoryID]; ok {
-				slug := ""
-				for s, id := range snapshot.CategoryMap {
-					if id == *fi.CategoryID {
-						slug = s
-						break
+		var categoryBrief *dto.CategoryBriefRes
+		if fi.CategoryID != nil {
+			if snapshot, err := uc.categoryCache.Get(txCtx); err == nil {
+				if name, ok := snapshot.CategoryNameMap[*fi.CategoryID]; ok {
+					slug := ""
+					for s, id := range snapshot.CategoryMap {
+						if id == *fi.CategoryID {
+							slug = s
+							break
+						}
 					}
-				}
-				categoryBrief = &dto.CategoryBriefRes{
-					ID:   *fi.CategoryID,
-					Name: name,
-					Slug: slug,
+					categoryBrief = &dto.CategoryBriefRes{
+						ID:   *fi.CategoryID,
+						Name: name,
+						Slug: slug,
+					}
 				}
 			}
 		}
-	}
 
-	fashionBrief := &dto.FashionItemBriefRes{
-		ID:       fi.ID,
-		Category: categoryBrief,
-		ImageUrl: fi.ImageUrl,
-		Color:    fi.Color,
-		ColorHex: fi.ColorHex,
-		Style:    fi.Style,
-	}
+		fashionBrief = &dto.FashionItemBriefRes{
+			ID:       fi.ID,
+			Category: categoryBrief,
+			ImageUrl: fi.ImageUrl,
+			Color:    fi.Color,
+			ColorHex: fi.ColorHex,
+			Style:    fi.Style,
+		}
 
-	payload := dto.FashionAnalyzedEventPayload{
-		TaskID:        job.TaskID,
-		ItemID:        job.ItemID,
-		ItemType:      job.ItemType,
-		FashionItemID: job.FashionItemID,
-		Status:        analyzetaskstatus.Completed,
-		Total:         job.Total,
-		Index:         job.Index,
-		FashionBrief:  fashionBrief,
-	}
+		payload = dto.FashionAnalyzedEventPayload{
+			TaskID:        job.TaskID,
+			ItemID:        job.ItemID,
+			ItemType:      job.ItemType,
+			FashionItemID: job.FashionItemID,
+			Status:        analyzetaskstatus.Completed,
+			Total:         job.Total,
+			Index:         job.Index,
+			FashionBrief:  fashionBrief,
+		}
 
-	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
 	})
+	// If CompleteProcessingSuccess returned false (version mismatch), no publish was done; return nil
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (uc *FashionWorkerUseCase) publishProcessingRetry(ctx context.Context, itemID uuid.UUID, fashionItemID *uuid.UUID, userID uuid.UUID) error {

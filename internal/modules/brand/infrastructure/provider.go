@@ -27,4 +27,5 @@ var ProviderSet = wire.NewSet(
 	caching.NewRedisBrandMembershipCache,
 	caching.NewRedisBrandFeatureAccessCache,
 	messaging.NewBrandFashionAnalyzedEventConsumer,
+	messaging.NewBrandFashionBindEventConsumer,
 )

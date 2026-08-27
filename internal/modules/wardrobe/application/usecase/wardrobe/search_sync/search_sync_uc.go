@@ -162,6 +162,40 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 	return true, nil
 }
 
+func (uc *SearchSyncUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashion_dto.FashionProcessingExhaustedPayload, run *workerlog.Run) error {
+	run.AddTotal(1)
+	item, err := uc.wardrobeRepo.GetByID(ctx, payload.WardrobeItemID)
+	if err != nil {
+		return err
+	}
+	if item == nil {
+		run.AddSkipped(1)
+		return nil
+	}
+	if item.ItemType != itemtype.SystemCatalogItem {
+		run.AddSkipped(1)
+		return nil
+	}
+	var fashionItem *fashion_dto.FashionItemRes
+	if item.FashionItemID != nil {
+		fashionItem, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
+	}
+	doc := mapper.MapToSearchDocumentDTO(item, fashionItem)
+	if err := uc.searchIndex.IndexItem(ctx, doc); err != nil {
+		run.ChildWarn(uc.logger, "Failed to re-index item for processing exhausted",
+			zap.String("itemId", item.ID.String()),
+			zap.Error(err),
+		)
+		if !uc.searchIndex.IsHealthy() {
+			run.AddRetry(1)
+			return fmt.Errorf("elasticsearch is offline: %w", err)
+		}
+		return nil
+	}
+	run.AddSuccess(1)
+	return nil
+}
+
 func (uc *SearchSyncUseCase) IsOfflineError(err error) bool {
 	if err == nil {
 		return false

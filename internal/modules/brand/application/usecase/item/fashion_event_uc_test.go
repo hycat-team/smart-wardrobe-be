@@ -200,3 +200,52 @@ func TestBrandHandleFashionFailed(t *testing.T) {
 		t.Fatalf("expected SSE published to task %s, got %s", taskID, sseMgr.publishedTaskID)
 	}
 }
+
+func TestBrandHandleFashionItemCreated_SetsID(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.BrandItem{Name: "Brand Shirt", ItemType: branditemtype.Product, Status: branditemstatus.Draft}
+	item.ID = itemID
+	updateCalled := false
+	repo := &mockBrandItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.BrandItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.BrandItem) error {
+			updateCalled = true
+			if updated.FashionItemID == nil || *updated.FashionItemID != fashionItemID {
+				t.Fatalf("expected FashionItemID %s", fashionItemID)
+			}
+			return nil
+		},
+	}
+	uc := NewBrandFashionEventUseCase(repo, &mockBrandSSEManagerForEvent{}, &mockBrandLoggerForEvent{})
+	payload := fashion_dto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
+	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !updateCalled {
+		t.Fatal("expected Update to be called")
+	}
+}
+
+func TestBrandHandleFashionItemCreated_Idempotent(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.BrandItem{Name: "Brand Shirt", ItemType: branditemtype.Product, Status: branditemstatus.Draft, FashionItemID: &fashionItemID}
+	item.ID = itemID
+	repo := &mockBrandItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.BrandItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.BrandItem) error {
+			t.Fatal("expected no Update when already set")
+			return nil
+		},
+	}
+	uc := NewBrandFashionEventUseCase(repo, &mockBrandSSEManagerForEvent{}, &mockBrandLoggerForEvent{})
+	payload := fashion_dto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
+	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

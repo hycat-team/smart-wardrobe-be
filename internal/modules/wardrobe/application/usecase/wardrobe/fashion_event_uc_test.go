@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
@@ -21,6 +22,7 @@ type mockWardrobeItemRepoForEvent struct {
 	repositories.IWardrobeItemRepository
 	getByIDFn func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error)
 	updateFn  func(ctx context.Context, item *entities.WardrobeItem) error
+	deleteFn  func(ctx context.Context, id uuid.UUID) error
 }
 
 func (m *mockWardrobeItemRepoForEvent) GetByID(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
@@ -28,7 +30,17 @@ func (m *mockWardrobeItemRepoForEvent) GetByID(ctx context.Context, id uuid.UUID
 }
 
 func (m *mockWardrobeItemRepoForEvent) Update(ctx context.Context, item *entities.WardrobeItem) error {
-	return m.updateFn(ctx, item)
+	if m.updateFn != nil {
+		return m.updateFn(ctx, item)
+	}
+	return nil
+}
+
+func (m *mockWardrobeItemRepoForEvent) Delete(ctx context.Context, id uuid.UUID) error {
+	if m.deleteFn != nil {
+		return m.deleteFn(ctx, id)
+	}
+	return nil
 }
 
 type mockSSEManagerForEvent struct {
@@ -230,4 +242,173 @@ func TestHandleFashionFailed(t *testing.T) {
 	if sseMgr.publishedTaskID != taskID {
 		t.Fatalf("expected SSE published to task %s, got %s", taskID, sseMgr.publishedTaskID)
 	}
+}
+
+func TestHandleFashionItemCreated_SetsID(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.WardrobeItem{}
+	item.ID = itemID
+	updateCalled := false
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.WardrobeItem) error {
+			updateCalled = true
+			if updated.FashionItemID == nil || *updated.FashionItemID != fashionItemID {
+				t.Fatalf("expected FashionItemID %s", fashionItemID)
+			}
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	payload := fashionDto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
+	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !updateCalled {
+		t.Fatal("expected Update to be called")
+	}
+}
+
+func TestHandleFashionItemCreated_Idempotent(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.WardrobeItem{FashionItemID: &fashionItemID}
+	item.ID = itemID
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.WardrobeItem) error {
+			t.Fatal("expected Update NOT to be called when already set (idempotent)")
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	payload := fashionDto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
+	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleFashionProcessingExhausted_MarksFailed(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	item := &entities.WardrobeItem{Status: wardrobestatus.Processing}
+	item.ID = itemID
+	updateCalled := false
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.WardrobeItem) error {
+			updateCalled = true
+			if updated.Status != wardrobestatus.Failed {
+				t.Fatalf("expected Failed")
+			}
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	payload := fashionDto.FashionProcessingExhaustedPayload{WardrobeItemID: itemID, FashionItemID: fashionItemID, Reason: "exhausted"}
+	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !updateCalled {
+		t.Fatal("expected Update to be called")
+	}
+}
+
+func TestHandleFashionProcessingExhausted_Idempotent(t *testing.T) {
+	itemID := uuid.New()
+	item := &entities.WardrobeItem{Status: wardrobestatus.Failed}
+	item.ID = itemID
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		updateFn: func(ctx context.Context, updated *entities.WardrobeItem) error {
+			t.Fatal("expected no Update when already Failed")
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	payload := fashionDto.FashionProcessingExhaustedPayload{WardrobeItemID: itemID, FashionItemID: uuid.New(), Reason: "exhausted"}
+	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleWardrobeDeleted_Deletes(t *testing.T) {
+	itemID := uuid.New()
+	item := &entities.WardrobeItem{}
+	item.ID = itemID
+	deleteCalled := false
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			deleteCalled = true
+			if id != itemID {
+				t.Fatalf("wrong id")
+			}
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	payload := struct {
+		ItemID uuid.UUID `json:"itemId"`
+		UserID uuid.UUID `json:"userId"`
+		Action string    `json:"action"`
+	}{ItemID: itemID, Action: eventconstants.ActionDeleted}
+	// Use real DTO type
+	dtoPayload := structToWardrobePayload(payload.ItemID, payload.UserID, payload.Action)
+	if err := uc.HandleWardrobeDeleted(context.Background(), dtoPayload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !deleteCalled {
+		t.Fatal("expected Delete to be called")
+	}
+}
+
+func TestHandleWardrobeDeleted_IdempotentIsDeleted(t *testing.T) {
+	itemID := uuid.New()
+	item := &entities.WardrobeItem{}
+	item.ID = itemID
+	item.SoftDeleteEntity.IsDeleted = true
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return item, nil
+		},
+		deleteFn: func(ctx context.Context, id uuid.UUID) error {
+			t.Fatal("should not delete when already IsDeleted")
+			return nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	dtoPayload := structToWardrobePayload(itemID, uuid.New(), eventconstants.ActionDeleted)
+	if err := uc.HandleWardrobeDeleted(context.Background(), dtoPayload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleWardrobeDeleted_NilItem(t *testing.T) {
+	repo := &mockWardrobeItemRepoForEvent{
+		getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.WardrobeItem, error) {
+			return nil, nil
+		},
+	}
+	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
+	dtoPayload := structToWardrobePayload(uuid.New(), uuid.New(), eventconstants.ActionDeleted)
+	if err := uc.HandleWardrobeDeleted(context.Background(), dtoPayload); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func structToWardrobePayload(itemID, userID uuid.UUID, action string) dto.WardrobeEventPayload {
+	// helper to avoid import cycle - uses real DTO
+	return dto.WardrobeEventPayload{ItemID: itemID, UserID: userID, Action: action}
 }

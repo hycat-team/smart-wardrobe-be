@@ -64,26 +64,28 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context
 		targetStatus = wardrobestatus.NeedsReview
 	}
 
-	// Idempotency: only update DB and emit created domain event if item status changed
+	// Idempotency: only update DB and emit created domain event if item status changed (atomic via outbox)
 	if item.Status != targetStatus {
-		item.Status = targetStatus
-		if err := uc.wardrobeItemRepo.Update(ctx, item); err != nil {
-			uc.logger.Error("Failed to update wardrobe item status",
-				zap.String("itemId", item.ID.String()),
-				zap.Error(err),
-			)
-			return err
-		}
-
-		if targetStatus == wardrobestatus.InWardrobe {
-			_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+			item.Status = targetStatus
+			if err := uc.wardrobeItemRepo.Update(txCtx, item); err != nil {
+				uc.logger.Error("Failed to update wardrobe item status",
+					zap.String("itemId", item.ID.String()),
+					zap.Error(err),
+				)
+				return err
+			}
+			if targetStatus == wardrobestatus.InWardrobe {
 				wardrobeCreatedPayload := dto.WardrobeEventPayload{
 					ItemID: item.ID,
 					UserID: item.UserID,
 					Action: eventconstants.ActionCreated,
 				}
 				return uc.eventPublisher.Publish(txCtx, eventconstants.TopicWardrobeCreated, wardrobeCreatedPayload)
-			})
+			}
+			return nil
+		}); err != nil {
+			return err
 		}
 	}
 
@@ -169,6 +171,94 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionFailed(ctx context.Context, 
 		}
 	}
 
+	return nil
+}
+
+func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedPayload) error {
+	if payload.ItemType != "" && payload.ItemType != "wardrobe" {
+		return nil
+	}
+	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.ItemID)
+	if err != nil {
+		uc.logger.Error("Failed to fetch wardrobe item for fashion item created event",
+			zap.String("itemId", payload.ItemID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if item == nil {
+		uc.logger.Warn("Wardrobe item not found for fashion item created event",
+			zap.String("itemId", payload.ItemID.String()),
+		)
+		return nil
+	}
+	if item.FashionItemID != nil && *item.FashionItemID == payload.FashionItemID {
+		return nil
+	}
+	item.FashionItemID = &payload.FashionItemID
+	if err := uc.wardrobeItemRepo.Update(ctx, item); err != nil {
+		uc.logger.Error("Failed to set fashion item id on wardrobe item",
+			zap.String("itemId", item.ID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
+}
+
+func (uc *WardrobeFashionEventUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error {
+	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.WardrobeItemID)
+	if err != nil {
+		uc.logger.Error("Failed to fetch wardrobe item for processing exhausted event",
+			zap.String("itemId", payload.WardrobeItemID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if item == nil {
+		uc.logger.Warn("Wardrobe item not found for processing exhausted event",
+			zap.String("itemId", payload.WardrobeItemID.String()),
+		)
+		return nil
+	}
+	if item.Status == wardrobestatus.Failed {
+		return nil
+	}
+	item.Status = wardrobestatus.Failed
+	if err := uc.wardrobeItemRepo.Update(ctx, item); err != nil {
+		uc.logger.Error("Failed to update wardrobe item status to Failed for processing exhausted",
+			zap.String("itemId", item.ID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
+}
+
+func (uc *WardrobeFashionEventUseCase) HandleWardrobeDeleted(ctx context.Context, payload dto.WardrobeEventPayload) error {
+	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.ItemID)
+	if err != nil {
+		uc.logger.Error("Failed to fetch wardrobe item for deleted event",
+			zap.String("itemId", payload.ItemID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if item == nil {
+		return nil
+	}
+	// Idempotent: if already deleted (soft delete flag or not found after delete), return nil
+	// Check IsDeleted if available, otherwise try Delete and ignore not found
+	if item.IsDeleted {
+		return nil
+	}
+	if err := uc.wardrobeItemRepo.Delete(ctx, item.ID); err != nil {
+		uc.logger.Error("Failed to delete wardrobe item for cleanup",
+			zap.String("itemId", item.ID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
 	return nil
 }
 

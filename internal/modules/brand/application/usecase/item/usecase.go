@@ -543,18 +543,6 @@ func (uc *BrandItemUseCase) SubmitSampleFeedback(ctx context.Context, userID uui
 	return mapper.MapToDigitalSampleResponseRes(feedback), nil
 }
 
-func (uc *BrandItemUseCase) SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error {
-	item, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
-	if err != nil {
-		return err
-	}
-	if item == nil {
-		return nil
-	}
-	item.FashionItemID = &fashionItemID
-	return uc.brandItemRepo.Update(ctx, item)
-}
-
 func (uc *BrandItemUseCase) UpdateBrandItemStatusDirect(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error {
 	item, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
 	if err != nil {

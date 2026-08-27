@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
@@ -9,6 +10,7 @@ import (
 
 type ISearchSyncUseCase interface {
 	ProcessSyncEvent(ctx context.Context, eventPayload dto.WardrobeEventPayload, run *workerlog.Run) error
+	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload, run *workerlog.Run) error
 	TryInitialSync(ctx context.Context, run *workerlog.Run) (bool, error)
 	IsOfflineError(err error) bool
 	RunInitialSyncWithRetry(ctx context.Context, log logger.Interface)

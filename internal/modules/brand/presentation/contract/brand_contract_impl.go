@@ -45,10 +45,6 @@ func (c *BrandContract) ListActiveBrandItemFashionIDs(ctx context.Context, fashi
 	return c.itemUC.ListActiveBrandItemFashionIDs(ctx, fashionItemIDs)
 }
 
-func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error {
-	return c.itemUC.SetFashionItemID(ctx, brandItemID, fashionItemID)
-}
-
 func (c *BrandContract) GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {
 	return c.itemUC.GetBrandItemByIDDirect(ctx, brandItemID)
 }

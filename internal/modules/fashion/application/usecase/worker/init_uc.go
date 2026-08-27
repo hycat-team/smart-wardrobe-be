@@ -5,13 +5,10 @@ import (
 	"fmt"
 
 	"smart-wardrobe-be/internal/config"
-	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/fashion/domain/constants/fashionitemtype"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
-	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
@@ -23,13 +20,11 @@ import (
 )
 
 type FashionInitUseCase struct {
-	cfg              *config.Config
-	logger           logger.Interface
-	fashionItemRepo  repositories.IFashionItemRepository
-	eventPublisher   event.IEventPublisher
-	wardrobeContract wardrobe_contract.IWardrobeContract
-	brandContract    brand_contract.IBrandContract
-	uow              shared_repos.IUnitOfWork
+	cfg             *config.Config
+	logger          logger.Interface
+	fashionItemRepo repositories.IFashionItemRepository
+	eventPublisher  event.IEventPublisher
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewFashionInitUseCase(
@@ -37,18 +32,14 @@ func NewFashionInitUseCase(
 	logger logger.Interface,
 	fashionItemRepo repositories.IFashionItemRepository,
 	eventPublisher event.IEventPublisher,
-	wardrobeContract wardrobe_contract.IWardrobeContract,
-	brandContract brand_contract.IBrandContract,
 	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IFashionInitUseCase {
 	return &FashionInitUseCase{
-		cfg:              cfg,
-		logger:           logger,
-		fashionItemRepo:  fashionItemRepo,
-		eventPublisher:   eventPublisher,
-		wardrobeContract: wardrobeContract,
-		brandContract:    brandContract,
-		uow:              uow,
+		cfg:             cfg,
+		logger:          logger,
+		fashionItemRepo: fashionItemRepo,
+		eventPublisher:  eventPublisher,
+		uow:             uow,
 	}
 }
 
@@ -80,14 +71,14 @@ func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job dto.Fashio
 			return fmt.Errorf("failed to create fashion item: %w", err)
 		}
 
-		if job.ItemType == string(fashionitemtype.Brand) {
-			if err := uc.brandContract.SetFashionItemID(txCtx, job.ItemID, fashionItemID); err != nil {
-				return fmt.Errorf("failed to set fashion item id on brand item: %w", err)
-			}
-		} else {
-			if err := uc.wardrobeContract.SetFashionItemID(txCtx, job.ItemID, fashionItemID); err != nil {
-				return fmt.Errorf("failed to set fashion item id on wardrobe item: %w", err)
-			}
+		createdPayload := dto.FashionItemCreatedPayload{
+			ItemID:        job.ItemID,
+			FashionItemID: fashionItemID,
+			ItemType:      job.ItemType,
+			UserID:        job.UserID,
+		}
+		if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionItemCreated, createdPayload); err != nil {
+			return fmt.Errorf("failed to publish fashion item created event: %w", err)
 		}
 
 		// Publish to analyze queue for AI processing

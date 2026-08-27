@@ -8,3 +8,7 @@ import (
 type IBrandFashionAnalyzedEventConsumer interface {
 	ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashion_dto.FashionAnalyzedEventPayload) error) error
 }
+
+type IBrandFashionBindEventConsumer interface {
+	ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashion_dto.FashionItemCreatedPayload) error) error
+}

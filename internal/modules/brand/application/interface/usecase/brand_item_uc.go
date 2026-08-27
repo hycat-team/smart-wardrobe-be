@@ -26,7 +26,6 @@ type IBrandItemUseCase interface {
 	ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error)
 	ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error)
 	SubmitSampleFeedback(ctx context.Context, userID uuid.UUID, brandItemID uuid.UUID, input dto.SubmitSampleFeedbackReq) (*dto.DigitalSampleResponseRes, error)
-	SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error
 	UpdateBrandItemStatusDirect(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error
 	GetBrandItemByIDDirect(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error)
 	GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error)
@@ -36,4 +35,5 @@ type IBrandItemUseCase interface {
 type IBrandFashionEventUseCase interface {
 	HandleFashionAnalyzed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
+	HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error
 }

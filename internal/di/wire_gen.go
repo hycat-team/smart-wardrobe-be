@@ -296,7 +296,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, iFashionContract, l)
 	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
-	iFashionInitUseCase := worker5.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iWardrobeContract, iBrandContract, iUnitOfWork)
+	iFashionInitUseCase := worker5.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iUnitOfWork)
 	fashionInitWorker := worker6.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
 	visionCategoryCache := worker5.NewVisionCategoryCache(cfg, iCategoryRepository, l)
 	iFashionWorkerUseCase := worker5.NewFashionWorkerUseCase(cfg, l, iWardrobeContract, visionCategoryCache, iMediaService, iaiOrchestrator, iUserSubscriptionContract, rabbitMQClient, iFashionItemRepository, iUnitOfWork)
@@ -324,25 +324,40 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandFashionAnalyzedEventConsumer := messaging3.NewBrandFashionAnalyzedEventConsumer(rabbitMQClient, l)
 	iBrandFashionEventUseCase := item2.NewBrandFashionEventUseCase(iBrandItemRepository, sseManager, l)
 	brandFashionEventWorker := worker3.NewBrandFashionEventWorker(iBrandFashionAnalyzedEventConsumer, iBrandFashionEventUseCase, l)
+	iWardrobeCleanupEventConsumer := messaging2.NewWardrobeCleanupEventConsumer(rabbitMQClient, l)
+	wardrobeCleanupWorker := worker4.NewWardrobeCleanupWorker(iWardrobeCleanupEventConsumer, iWardrobeFashionEventUseCase, l)
+	iWardrobeProcessingExhaustedEventConsumer := messaging2.NewWardrobeProcessingExhaustedEventConsumer(rabbitMQClient, l)
+	wardrobeProcessingExhaustedWorker := worker4.NewWardrobeProcessingExhaustedWorker(iWardrobeProcessingExhaustedEventConsumer, iWardrobeFashionEventUseCase, l)
+	iWardrobeFashionBindEventConsumer := messaging2.NewWardrobeFashionBindEventConsumer(rabbitMQClient, l)
+	wardrobeFashionBindWorker := worker4.NewWardrobeFashionBindWorker(iWardrobeFashionBindEventConsumer, iWardrobeFashionEventUseCase, l)
+	iElasticsearchProcessingExhaustedEventConsumer := messaging2.NewElasticsearchProcessingExhaustedEventConsumer(rabbitMQClient, l)
+	elasticsearchProcessingExhaustedWorker := worker4.NewElasticsearchProcessingExhaustedWorker(iElasticsearchProcessingExhaustedEventConsumer, iSearchSyncUseCase, l)
+	iBrandFashionBindEventConsumer := messaging3.NewBrandFashionBindEventConsumer(rabbitMQClient, l)
+	brandFashionBindWorker := worker3.NewBrandFashionBindWorker(iBrandFashionBindEventConsumer, iBrandFashionEventUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
-		RenewalWorker:               subscriptionRenewalWorker,
-		PaymentReconciliationWorker: paymentReconciliationWorker,
-		WebhookInboxWorker:          webhookInboxWorker,
-		AIUsageReconciliationWorker: aiUsageReconciliationWorker,
-		LoyaltyPointExpiryWorker:    loyaltyPointExpiryWorker,
-		ESAsyncWorker:               searchSyncWorker,
-		FashionInitWorker:           fashionInitWorker,
-		FailedItemsCleanupWorker:    failedItemsCleanupWorker,
-		ProcessingRecoveryWorker:    processingRecoveryWorker,
-		FashionAnalyzeWorker:        fashionAnalyzeWorker,
-		PlanChangedWorker:           planChangedWorker,
-		DashboardAggregatorWorker:   dashboardAggregatorWorker,
-		OutboxWorker:                outboxWorker,
-		EmailWorker:                 emailWorker,
-		AuditLogConsumerWorker:      auditLogConsumerWorker,
-		AuditCleanupWorker:          auditCleanupWorker,
-		WardrobeFashionEventWorker:  wardrobeFashionEventWorker,
-		BrandFashionEventWorker:     brandFashionEventWorker,
+		RenewalWorker:                          subscriptionRenewalWorker,
+		PaymentReconciliationWorker:            paymentReconciliationWorker,
+		WebhookInboxWorker:                     webhookInboxWorker,
+		AIUsageReconciliationWorker:            aiUsageReconciliationWorker,
+		LoyaltyPointExpiryWorker:               loyaltyPointExpiryWorker,
+		ESAsyncWorker:                          searchSyncWorker,
+		FashionInitWorker:                      fashionInitWorker,
+		FailedItemsCleanupWorker:               failedItemsCleanupWorker,
+		ProcessingRecoveryWorker:               processingRecoveryWorker,
+		FashionAnalyzeWorker:                   fashionAnalyzeWorker,
+		PlanChangedWorker:                      planChangedWorker,
+		DashboardAggregatorWorker:              dashboardAggregatorWorker,
+		OutboxWorker:                           outboxWorker,
+		EmailWorker:                            emailWorker,
+		AuditLogConsumerWorker:                 auditLogConsumerWorker,
+		AuditCleanupWorker:                     auditCleanupWorker,
+		WardrobeFashionEventWorker:             wardrobeFashionEventWorker,
+		BrandFashionEventWorker:                brandFashionEventWorker,
+		WardrobeCleanupWorker:                  wardrobeCleanupWorker,
+		WardrobeProcessingExhaustedWorker:      wardrobeProcessingExhaustedWorker,
+		WardrobeFashionBindWorker:              wardrobeFashionBindWorker,
+		ElasticsearchProcessingExhaustedWorker: elasticsearchProcessingExhaustedWorker,
+		BrandFashionBindWorker:                 brandFashionBindWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
 	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)
