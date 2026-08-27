@@ -1,6 +1,10 @@
 package contract
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type ChannelEnum string
 
@@ -22,4 +26,5 @@ const (
 
 type INotificationContract interface {
 	Send(ctx context.Context, channel ChannelEnum, template TemplateEnum, params map[string]any, to string) error
+	SendByUserID(ctx context.Context, channel ChannelEnum, template TemplateEnum, params map[string]any, userID uuid.UUID) error
 }

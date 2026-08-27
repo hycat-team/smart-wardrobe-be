@@ -17,32 +17,12 @@ func NewUserSubscriptionContract(subUC uc_interfaces.ISubscriptionUseCase) IUser
 	return &UserSubscriptionContract{subUC: subUC}
 }
 
-func (c *UserSubscriptionContract) GetUserSubscription(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionDTO, error) {
-	return c.subUC.GetUserSubscription(ctx, userID)
-}
-
 func (c *UserSubscriptionContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error) {
 	return c.subUC.GetUserSubscriptionOverview(ctx, userID)
 }
 
 func (c *UserSubscriptionContract) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error) {
 	return c.subUC.GetUserSubscriptionOverviews(ctx, userIDs)
-}
-
-type SubscriptionPlanContract struct {
-	planUC uc_interfaces.ISubscriptionPlanUseCase
-}
-
-func NewSubscriptionPlanContract(planUC uc_interfaces.ISubscriptionPlanUseCase) ISubscriptionPlanContract {
-	return &SubscriptionPlanContract{planUC: planUC}
-}
-
-func (c *SubscriptionPlanContract) GetDefaultSubscriptionPlanID(ctx context.Context) (uuid.UUID, error) {
-	return c.planUC.GetDefaultSubscriptionPlanID(ctx)
-}
-
-func (c *SubscriptionPlanContract) IsPremiumPlan(ctx context.Context, planID uuid.UUID) (bool, error) {
-	return c.planUC.IsPremiumPlan(ctx, planID)
 }
 
 type UserQuotaContract struct {

@@ -165,21 +165,16 @@ func (uc *SubscriptionUseCase) ProcessUpcomingExpiryNotifications(ctx context.Co
 			continue
 		}
 
-		user, userErr := uc.userBriefContract.GetByID(ctx, sub.UserID)
-		if userErr != nil || user == nil || user.Email == "" {
-			continue
-		}
-
 		daysRemaining := int(sub.ExpiresAt.Sub(now).Hours() / 24)
 		if daysRemaining < 0 {
 			daysRemaining = 0
 		}
 
-		_ = uc.notifContract.Send(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, map[string]any{
+		_ = uc.notifContract.SendByUserID(ctx, notificationContract.ChannelEmail, notificationContract.TemplateWalletWarning, map[string]any{
 			"DaysRemaining":  daysRemaining,
 			"Balance":        sharedmoney.ToFloat(wallet.Balance),
 			"RequiredAmount": sharedmoney.ToFloat(sub.SubscriptionPlan.Price),
-		}, user.Email)
+		}, sub.UserID)
 	}
 	return nil
 }
@@ -328,16 +323,14 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 		zap.String("reason", reason),
 	)
 
-	if user, userErr := uc.userBriefContract.GetByID(txCtx, lockedSub.UserID); userErr == nil && user != nil && user.Email != "" {
-		planName := ""
-		if lockedSub.SubscriptionPlan != nil {
-			planName = lockedSub.SubscriptionPlan.Name
-		}
-		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalFailed, map[string]any{
-			"PlanName": planName,
-			"Reason":   reason,
-		}, user.Email)
+	planName := ""
+	if lockedSub.SubscriptionPlan != nil {
+		planName = lockedSub.SubscriptionPlan.Name
 	}
+	_ = uc.notifContract.SendByUserID(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalFailed, map[string]any{
+		"PlanName": planName,
+		"Reason":   reason,
+	}, lockedSub.UserID)
 
 	result.Status = renewalStatusDowngraded
 	return nil
@@ -426,13 +419,11 @@ func (uc *SubscriptionUseCase) executePaidRenewal(
 		zap.String("reason", result.Reason),
 	)
 
-	if user, userErr := uc.userBriefContract.GetByID(txCtx, lockedSub.UserID); userErr == nil && user != nil && user.Email != "" {
-		_ = uc.notifContract.Send(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalSuccess, map[string]any{
-			"PlanName":     plan.Name,
-			"Amount":       sharedmoney.ToFloat(plan.Price),
-			"NewExpiresAt": lockedSub.ExpiresAt.Format("02/01/2006"),
-		}, user.Email)
-	}
+	_ = uc.notifContract.SendByUserID(txCtx, notificationContract.ChannelEmail, notificationContract.TemplateRenewalSuccess, map[string]any{
+		"PlanName":     plan.Name,
+		"Amount":       sharedmoney.ToFloat(plan.Price),
+		"NewExpiresAt": lockedSub.ExpiresAt.Format("02/01/2006"),
+	}, lockedSub.UserID)
 
 	result.Status = renewalStatusRenewed
 	return nil

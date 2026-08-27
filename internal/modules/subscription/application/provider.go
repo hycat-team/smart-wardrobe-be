@@ -23,7 +23,6 @@ var ProviderSet = wire.NewSet(
 	contract.NewUserSubscriptionContract,
 
 	plan.NewSubscriptionPlanUseCase,
-	contract.NewSubscriptionPlanContract,
 
 	quota.NewUserQuotaUseCase,
 	contract.NewUserQuotaContract,

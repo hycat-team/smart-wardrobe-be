@@ -6,6 +6,7 @@ import (
 	brand_dto "smart-wardrobe-be/internal/modules/brand/application/dto"
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashioerrors "smart-wardrobe-be/internal/modules/fashion/application/errors"
+	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 	sub_dto "smart-wardrobe-be/internal/modules/subscription/application/dto"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
@@ -105,16 +106,61 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	// Fetch Brand items if requested
 	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
-		brandItemDTOS, fashionItems, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
+		brandItemDTOS, _, err := uc.brandContract.ListEligibleBrandItemsForStyling(ctx, userID, &brand_dto.ListEligibleBrandItemsReq{})
 		if err == nil {
+			brandFashionIDs := make([]uuid.UUID, 0, len(brandItemDTOS))
+			for _, brandItem := range brandItemDTOS {
+				if brandItem.FashionItemID != uuid.Nil {
+					brandFashionIDs = append(brandFashionIDs, brandItem.FashionItemID)
+				}
+			}
+			brandFashionIDs = sliceutils.UniqueUUIDs(brandFashionIDs)
+
+			brandFashionMap := make(map[uuid.UUID]*dto.FashionItemRes)
+			if len(brandFashionIDs) > 0 {
+				fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, brandFashionIDs)
+				if err == nil {
+					entityMap := sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
+					for id, fi := range entityMap {
+						var category *dto.CategoryBriefRes
+						if fi.Category != nil {
+							category = &dto.CategoryBriefRes{
+								ID:   fi.Category.ID,
+								Name: fi.Category.Name,
+								Slug: fi.Category.Slug,
+							}
+						}
+						brandFashionMap[id] = &dto.FashionItemRes{
+							ID:              fi.ID,
+							Category:        category,
+							ImageUrl:        fi.ImageUrl,
+							ImagePublicID:   fi.ImagePublicID,
+							Color:           fi.Color,
+							ColorHex:        fi.ColorHex,
+							ColorHue:        fi.ColorHue,
+							ColorSaturation: fi.ColorSaturation,
+							ColorLightness:  fi.ColorLightness,
+							Style:           fi.Style,
+							Material:        fi.Material,
+							Pattern:         fi.Pattern,
+							Fit:             fi.Fit,
+							Seasonality:     fi.Seasonality,
+							Description:     fi.Description,
+							CreatedAt:       fi.CreatedAt,
+							UpdatedAt:       fi.UpdatedAt,
+						}
+					}
+				}
+			}
+
 			type brandCandidate struct {
 				brandItem   *brand_dto.BrandItemRes
 				fashionItem *dto.FashionItemRes
 				category    string
 			}
 			candidatesByCategory := map[string][]brandCandidate{}
-			for i, brandItem := range brandItemDTOS {
-				fashionItem := fashionItems[i]
+			for _, brandItem := range brandItemDTOS {
+				fashionItem := brandFashionMap[brandItem.FashionItemID]
 				if fashionItem == nil || fashionItem.Category == nil {
 					continue
 				}
@@ -136,7 +182,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 				candidatesByCategory[slug] = items[1:]
 
 				mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
-					ID: cand.brandItem.FashionItemID,
+					ID:            cand.brandItem.FashionItemID,
+					FashionItemID: &cand.brandItem.FashionItemID,
 					FashionItem: &wardrobeDto.FashionItemRes{
 						ID: cand.fashionItem.ID,
 					},
@@ -177,7 +224,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 						if seenCategory[cand.category] {
 							// Already seen, take additional item from this category
 							mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
-								ID: cand.brandItem.FashionItemID,
+								ID:            cand.brandItem.FashionItemID,
+								FashionItemID: &cand.brandItem.FashionItemID,
 								FashionItem: &wardrobeDto.FashionItemRes{
 									ID: cand.fashionItem.ID,
 								},
@@ -215,14 +263,19 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	// Rút fashion_item_ids từ chính activeItems (đã lọc + cắt theo giới hạn gói ở validateAndGetActiveItems)
 	// để đảm bảo tập query vector search khớp chính xác với tập wardrobe items khả dụng — không lệch.
 	userFashionItemIDs := make([]uuid.UUID, 0, len(activeItems))
-	activeByFashionID := map[uuid.UUID]*wardrobeDto.WardrobeItemRes{}
 	for _, item := range activeItems {
-		if item.FashionItem != nil {
-			userFashionItemIDs = append(userFashionItemIDs, item.FashionItem.ID)
-			activeByFashionID[item.FashionItem.ID] = item
+		if item.FashionItemID != nil {
+			userFashionItemIDs = append(userFashionItemIDs, *item.FashionItemID)
 		}
 	}
 	userFashionItemIDs = sliceutils.UniqueUUIDs(userFashionItemIDs)
+	filteredItems := make([]*wardrobeDto.WardrobeItemRes, 0, len(activeItems))
+	for _, item := range activeItems {
+		if item.FashionItemID != nil {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+	activeByFashionID := sliceutils.IndexBy(filteredItems, func(item *wardrobeDto.WardrobeItemRes) uuid.UUID { return *item.FashionItemID })
 
 	candidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,
@@ -255,8 +308,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	fashionIDs := make([]uuid.UUID, 0, len(rankingCandidates))
 	for _, c := range rankingCandidates {
-		if c.Item != nil && c.Item.FashionItem != nil {
-			fashionIDs = append(fashionIDs, c.Item.FashionItem.ID)
+		if c.Item != nil && c.Item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *c.Item.FashionItemID)
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
@@ -264,7 +317,8 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
 		if err == nil {
-			for _, fi := range fashionItems {
+			entityMap := sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
+			for id, fi := range entityMap {
 				var category *dto.CategoryBriefRes
 				if fi.Category != nil {
 					category = &dto.CategoryBriefRes{
@@ -273,7 +327,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 						Slug: fi.Category.Slug,
 					}
 				}
-				fashionItemMap[fi.ID] = &dto.FashionItemRes{
+				fashionItemMap[id] = &dto.FashionItemRes{
 					ID:              fi.ID,
 					Category:        category,
 					ImageUrl:        fi.ImageUrl,

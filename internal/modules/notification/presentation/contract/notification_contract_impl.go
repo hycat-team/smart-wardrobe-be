@@ -7,18 +7,25 @@ import (
 	"fmt"
 	"html/template"
 
+	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	"smart-wardrobe-be/internal/modules/notification/infrastructure/communication/templates"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
+
+	"github.com/google/uuid"
 )
 
 type notificationContractImpl struct {
-	outboxRepo messaging.OutboxRepository
-	tmplCache  map[TemplateEnum]*template.Template
+	outboxRepo        messaging.OutboxRepository
+	tmplCache         map[TemplateEnum]*template.Template
+	userBriefContract identity_contract.IUserBriefContract
 }
 
-func NewNotificationContract(outboxRepo messaging.OutboxRepository) INotificationContract {
+func NewNotificationContract(
+	outboxRepo messaging.OutboxRepository,
+	userBriefContract identity_contract.IUserBriefContract,
+) INotificationContract {
 	tmplCache := map[TemplateEnum]*template.Template{
 		TemplateOtp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
 		TemplatePaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
@@ -29,8 +36,9 @@ func NewNotificationContract(outboxRepo messaging.OutboxRepository) INotificatio
 		TemplateWalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 	}
 	return &notificationContractImpl{
-		outboxRepo: outboxRepo,
-		tmplCache:  tmplCache,
+		outboxRepo:        outboxRepo,
+		tmplCache:         tmplCache,
+		userBriefContract: userBriefContract,
 	}
 }
 
@@ -73,6 +81,17 @@ func (c *notificationContractImpl) Send(ctx context.Context, channel ChannelEnum
 		return c.outboxRepo.Create(db.InjectTx(ctx, txDB), record)
 	}
 	return c.outboxRepo.Create(ctx, record)
+}
+
+func (c *notificationContractImpl) SendByUserID(ctx context.Context, channel ChannelEnum, tmplEnum TemplateEnum, params map[string]any, userID uuid.UUID) error {
+	user, err := c.userBriefContract.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user for notification: %w", err)
+	}
+	if user == nil || user.Email == "" {
+		return fmt.Errorf("user not found or has no email: %s", userID)
+	}
+	return c.Send(ctx, channel, tmplEnum, params, user.Email)
 }
 
 func (c *notificationContractImpl) resolveSubject(tmplEnum TemplateEnum) string {
