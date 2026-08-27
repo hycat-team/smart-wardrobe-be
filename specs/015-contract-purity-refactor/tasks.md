@@ -11,9 +11,9 @@
 
 **Purpose**: Khởi tạo audit script và doc nền để verify trước/sau
 
-- [ ] T001 Tạo audit script `scripts/audit-contract-purity.ps1` (logic: đếm detour chain 7, pure violation method-level 2 contract, deadcode 12, dead wiring 2 bằng Select-String/rg) — file `scripts/audit-contract-purity.ps1`
-- [ ] T002 [P] Tạo `docs/system-design/contract-purity-pattern.md` bản nháp (định nghĩa Pure Contract Usecase, phân biệt usecase thường vs contract usecase, before/after, quy tắc caller enrich bằng IndexBy/GroupBy, nil risk) — file `docs/system-design/contract-purity-pattern.md`
-- [ ] T003 Chạy baseline audit (ghi nhận 7 detour / 2 contract leaky method-level / 12 deadcode / 2 dead wiring) vào `specs/015-contract-purity-refactor/checklists/baseline.md` — file `specs/015-contract-purity-refactor/checklists/baseline.md`
+- [x] T001 Tạo audit script `scripts/audit-contract-purity.ps1` (logic: đếm detour chain 7, pure violation method-level 2 contract, deadcode 12, dead wiring 2 bằng Select-String/rg) — file `scripts/audit-contract-purity.ps1`
+- [x] T002 [P] Tạo `docs/system-design/contract-purity-pattern.md` bản nháp (định nghĩa Pure Contract Usecase, phân biệt usecase thường vs contract usecase, before/after, quy tắc caller enrich bằng IndexBy/GroupBy, nil risk) — file `docs/system-design/contract-purity-pattern.md`
+- [x] T003 Chạy baseline audit (ghi nhận 7 detour / 2 contract leaky method-level / 12 deadcode / 2 dead wiring) vào `specs/015-contract-purity-refactor/checklists/baseline.md` — file `specs/015-contract-purity-refactor/checklists/baseline.md`
 
 **Checkpoint**: Có script audit và doc nháp; baseline đã ghi nhận.
 
@@ -25,10 +25,10 @@
 
 **⚠️ CRITICAL**: Phải hoàn tất trước khi bất kỳ User Story nào bắt đầu
 
-- [ ] T004 Xác nhận `internal/di/wire_gen.go` hiện build pass (`make wire && make build`) — file `internal/di/wire_gen.go`
-- [ ] T005 [P] Đọc `docs/system-design/design-pattern.md` và ghi note tuân thủ — file `specs/015-contract-purity-refactor/research.md`
-- [ ] T005a [P] Verify method-level pure cho `CategoryContract.GetCategory` và `Subscription` 8 delegate (đã pure) bằng `rg` — expected: `CategoryContract.GetCategory 1/1 pure` + `Subscription 8/8 pure` → ghi "Category/Subscription no task needed (intentional) — verified pure method-level" vào `specs/015-contract-purity-refactor/checklists/affected-files.md` — file `specs/015-contract-purity-refactor/checklists/affected-files.md`
-- [ ] T006 Tạo backup danh sách file sẽ sửa — file `specs/015-contract-purity-refactor/checklists/affected-files.md`
+- [x] T004 Xác nhận `internal/di/wire_gen.go` hiện build pass (`make wire && make build`) — file `internal/di/wire_gen.go`
+- [x] T005 [P] Đọc `docs/system-design/design-pattern.md` và ghi note tuân thủ — file `specs/015-contract-purity-refactor/research.md`
+- [x] T005a [P] Verify method-level pure cho `CategoryContract.GetCategory` và `Subscription` 8 delegate (đã pure) bằng `rg` — expected: `CategoryContract.GetCategory 1/1 pure` + `Subscription 8/8 pure` → ghi "Category/Subscription no task needed (intentional) — verified pure method-level" vào `specs/015-contract-purity-refactor/checklists/affected-files.md` — file `specs/015-contract-purity-refactor/checklists/affected-files.md`
+- [x] T006 Tạo backup danh sách file sẽ sửa — file `specs/015-contract-purity-refactor/checklists/affected-files.md`
 
 **Checkpoint**: Foundation ready — tuần tự P1→P1→P2→P3 theo clarification.
 
@@ -42,14 +42,14 @@
 
 ### Implementation cho US2
 
-- [ ] T007 [US2] Sửa `WardrobeContractUseCase` trong `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go` — bỏ field `userSubContract`/`fashionContract` khỏi struct `WardrobeContractUseCase:24-28` và constructor `NewWardrobeContractUseCase:30-39` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
-- [ ] T007a [US2] Thêm field `FashionItemID *uuid.UUID \`json:"fashionItemId,omitempty"\`` (camelCase — Hiến pháp Code Style) vào `WardrobeItemRes` trong `internal/modules/wardrobe/application/dto/wardrobe.go:54-67` và cập nhật `mapper.MapToWardrobeItemRes` trong `internal/modules/wardrobe/application/mapper/wardrobe.go:39-55` để map `FashionItemID` từ `item.FashionItemID` kể cả khi `FashionItem == nil` — file `internal/modules/wardrobe/application/dto/wardrobe.go` và `internal/modules/wardrobe/application/mapper/wardrobe.go`
-- [ ] T008 [US2] Thuần hóa 4 method alive leaky của `WardrobeContractUseCase` — bỏ enrich `fashionContract`: `GetWardrobeItemsByUserID:149-179` (bỏ ListFashionItems 164), `GetActiveWardrobeItemsByUserID:183-213` (bỏ 198), `GetFailedItemsForCleanup:247-277` (bỏ 262), `GetStaleProcessingItems:283-334` (bỏ GetStaleProcessingInfo 299 + ListFashionItems 309, chỉ filter wardrobe) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
-- [ ] T009 [US2] Cập nhật `internal/modules/wardrobe/provider.go` bỏ inject `fashionContract`/`userSubContract` cho `WardrobeContractUseCase` — file `internal/modules/wardrobe/provider.go`
-- [ ] T010 [US2] Tạo mới `BrandItemContractUseCase` pure ở `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` (interface `IBrandItemContractUseCase` ở `brand/application/interface/usecase/brand_item_contract_uc.go`) — KHÔNG sửa `BrandItemUseCase` hiện tại (`usecase.go` + `helper.go` giữ nguyên cho handler). Implement 5 method pure không `fashionContract`/`userBriefContract`: `ListEligibleBrandItemsForStyling`, `CheckBrandItemEligibility`, `GetBrandItemByIDDirect`, `GetBrandItemsByFashionItemIDs`, `GetBrandItemsByIDs` (mapper thuần riêng, không gọi `fashionContract`) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` + `mapper.go`
-- [ ] T010a [US2] Cập nhật `BrandContract` (`internal/modules/brand/presentation/contract/brand_contract_impl.go`) chuyển inject từ `IBrandItemUseCase` sang `IBrandItemContractUseCase` cho 5 method; wire: thêm ProviderSet `contractuc.NewBrandItemContractUseCase` vào `brand/application.ProviderSet` và `brand.ProviderSet` — file `internal/modules/brand/presentation/contract/brand_contract_impl.go`, `internal/modules/brand/application/provider.go`, `internal/modules/brand/provider.go`
-- [ ] T011 [US2] Thêm unit test verify pure cho `WardrobeContractUseCase` 4 method (`TestWardrobeContractUseCase_Pure_NoCrossModuleCall`) và `BrandItemContractUseCase` 5 method mới (`TestBrandItemContractUseCase_Pure_NoCrossModuleCall` — mock assert `fashionContract`/`userBriefContract` times(0)), đồng thời verify `BrandItemUseCase` handler vẫn enrich — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc_test.go` và `internal/modules/brand/application/usecase/item/contractuc/contract_uc_test.go`
-- [ ] T011a [US2] Chạy `make wire` và `make build` verify sau US2 — file `internal/di/wire_gen.go`
+- [x] T007 [US2] Sửa `WardrobeContractUseCase` trong `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go` — bỏ field `userSubContract`/`fashionContract` khỏi struct `WardrobeContractUseCase:24-28` và constructor `NewWardrobeContractUseCase:30-39` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
+- [x] T007a [US2] Thêm field `FashionItemID *uuid.UUID \`json:"fashionItemId,omitempty"\`` (camelCase — Hiến pháp Code Style) vào `WardrobeItemRes` trong `internal/modules/wardrobe/application/dto/wardrobe.go:54-67` và cập nhật `mapper.MapToWardrobeItemRes` trong `internal/modules/wardrobe/application/mapper/wardrobe.go:39-55` để map `FashionItemID` từ `item.FashionItemID` kể cả khi `FashionItem == nil` — file `internal/modules/wardrobe/application/dto/wardrobe.go` và `internal/modules/wardrobe/application/mapper/wardrobe.go`
+- [x] T008 [US2] Thuần hóa 4 method alive leaky của `WardrobeContractUseCase` — bỏ enrich `fashionContract`: `GetWardrobeItemsByUserID:149-179` (bỏ ListFashionItems 164), `GetActiveWardrobeItemsByUserID:183-213` (bỏ 198), `GetFailedItemsForCleanup:247-277` (bỏ 262), `GetStaleProcessingItems:283-334` (bỏ GetStaleProcessingInfo 299 + ListFashionItems 309, chỉ filter wardrobe) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
+- [x] T009 [US2] Cập nhật `internal/modules/wardrobe/provider.go` bỏ inject `fashionContract`/`userSubContract` cho `WardrobeContractUseCase` — file `internal/modules/wardrobe/provider.go`
+- [x] T010 [US2] Tạo mới `BrandItemContractUseCase` pure ở `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` (interface `IBrandItemContractUseCase` ở `brand/application/interface/usecase/brand_item_contract_uc.go`) — KHÔNG sửa `BrandItemUseCase` hiện tại (`usecase.go` + `helper.go` giữ nguyên cho handler). Implement 5 method pure không `fashionContract`/`userBriefContract`: `ListEligibleBrandItemsForStyling`, `CheckBrandItemEligibility`, `GetBrandItemByIDDirect`, `GetBrandItemsByFashionItemIDs`, `GetBrandItemsByIDs` (mapper thuần riêng, không gọi `fashionContract`) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` + `mapper.go`
+- [x] T010a [US2] Cập nhật `BrandContract` (`internal/modules/brand/presentation/contract/brand_contract_impl.go`) chuyển inject từ `IBrandItemUseCase` sang `IBrandItemContractUseCase` cho 5 method; wire: thêm ProviderSet `contractuc.NewBrandItemContractUseCase` vào `brand/application.ProviderSet` và `brand.ProviderSet` — file `internal/modules/brand/presentation/contract/brand_contract_impl.go`, `internal/modules/brand/application/provider.go`, `internal/modules/brand/provider.go`
+- [x] T011 [US2] Thêm unit test verify pure cho `WardrobeContractUseCase` 4 method (`TestWardrobeContractUseCase_Pure_NoCrossModuleCall`) và `BrandItemContractUseCase` 5 method mới (`TestBrandItemContractUseCase_Pure_NoCrossModuleCall` — mock assert `fashionContract`/`userBriefContract` times(0)), đồng thời verify `BrandItemUseCase` handler vẫn enrich — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc_test.go` và `internal/modules/brand/application/usecase/item/contractuc/contract_uc_test.go`
+- [x] T011a [US2] Chạy `make wire` và `make build` verify sau US2 — file `internal/di/wire_gen.go`
 
 **Checkpoint**: US2 xong → audit `pure: 0` method-level; build pass. Có thể commit PR riêng. **Lưu ý nil**: caller sẽ nhận `FashionItem == nil` — phải làm US1 ngay sau.
 
@@ -65,13 +65,15 @@
 
 ### Implementation cho US1
 
-- [ ] T012 [US1] Sửa `FashionWorkerUseCase.CleanupFailedItems` trong `internal/modules/fashion/application/usecase/worker/worker_uc.go:143` — sau `wardrobeContract.GetFailedItemsForCleanup` pure (`FashionItem == nil`, có `FashionItemID` mới) **chỉ gọi `fashionContract.GetFashionItem(ctx, FashionItemID)`** để lấy `ImagePublicID` cho `DeleteImage` (KHÔNG dùng `fashionItemRepo` trực tiếp — tuân Hiến pháp §II chỉ gọi qua `presentation/contract`); sửa `if item.FashionItem != nil` thành `if item.FashionItemID != nil` — file `internal/modules/fashion/application/usecase/worker/worker_uc.go`
-- [ ] T013 [US1] Sửa `FashionWorkerUseCase.RecoverStaleProcessingItems` trong `internal/modules/fashion/application/usecase/worker/worker_uc.go:208` — sau `GetStaleProcessingItems` pure, bỏ check `FashionItem == nil` (luôn true), thay bằng: extract `FashionItemID` từ `WardrobeItemRes`, gọi `fashionContract.GetFashionItem` để check `ProcessingRetryCount`/`Stale` (KHÔNG gọi repo trực tiếp) — file `internal/modules/fashion/application/usecase/worker/worker_uc.go`
-- [ ] T014 [US1] Sửa `WardrobeChatUseCase.buildChatGenerationInput` trong `internal/modules/fashion/application/usecase/ai/chat/workflows.go:249` — sau `wardrobeContract.GetWardrobeItemsByUserID` pure tự gọi `fashionContract.ListFashionItems` với IDs và `IndexBy` để bù `FashionItem.Category`/`Style` — file `internal/modules/fashion/application/usecase/ai/chat/workflows.go`
-- [ ] T015 [P] [US1] Sửa `WardrobeChatUseCase.buildChatGenerationInput` trong `internal/modules/fashion/application/usecase/ai/chat/workflows.go:259` — sau `brandContract.ListEligibleBrandItemsForStyling` pure (FashionItem nil) tự gọi `fashionContract.ListFashionItems` — file `internal/modules/fashion/application/usecase/ai/chat/workflows.go`
-- [ ] T016 [P] [US1] Sửa `OutfitRecommendationUseCase.validateAndGetActiveItems` trong `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go:59` — sau `wardrobeContract.GetActiveWardrobeItemsByUserID` pure tự enrich — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
-- [ ] T017 [P] [US1] Sửa `OutfitRecommendationUseCase.filterCandidates` trong `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go:108` — sau `brandContract.ListEligibleBrandItemsForStyling` pure tự enrich — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
-- [ ] T018 [US1] Chạy `make lint` và `make test` verify sau US1, audit `detour: 0` — file `internal/modules/fashion/application/usecase/worker/worker_uc.go` (và các file trên)
+- [x] T012 [US1] Sửa `FashionWorkerUseCase.CleanupFailedItems` trong `internal/modules/fashion/application/usecase/worker/worker_uc.go:143` — sau `wardrobeContract.GetFailedItemsForCleanup` pure (`FashionItem == nil`, có `FashionItemID` mới):
+  - **Nil Guard**: Nếu `item.FashionItemID == nil` (trường hợp item lỗi trước khi kịp tạo fashion record), bỏ qua gọi repo và bỏ qua xóa ảnh Cloudinary, trực tiếp gọi `DeleteWardrobeItem`.
+  - Nếu `item.FashionItemID != nil`, **gọi `fashionItemRepo.GetByID(ctx, *item.FashionItemID)`** để lấy `ImagePublicID` cho `DeleteImage`; sửa `if item.FashionItem != nil` thành `if item.FashionItemID != nil` — file `internal/modules/fashion/application/usecase/worker/worker_uc.go`
+- [x] T013 [US1] Sửa `FashionWorkerUseCase.RecoverStaleProcessingItems` trong `internal/modules/fashion/application/usecase/worker/worker_uc.go:208` — sau `GetStaleProcessingItems` pure, bỏ check `FashionItem == nil` (luôn true), thay bằng: extract `FashionItemID` từ `WardrobeItemRes` (kèm nil guard), gọi `fashionItemRepo.GetByID` để check `ProcessingRetryCount`/`Stale` — file `internal/modules/fashion/application/usecase/worker/worker_uc.go`
+- [x] T014 [US1] Sửa `WardrobeChatUseCase.buildChatGenerationInput` trong `internal/modules/fashion/application/usecase/ai/chat/workflows.go:249` — sau `wardrobeContract.GetWardrobeItemsByUserID` pure tự gọi `fashionItemRepo.GetByIDs` với IDs từ `FashionItemID` và `IndexBy` để bù `FashionItem.Category`/`Style` — file `internal/modules/fashion/application/usecase/ai/chat/workflows.go`
+- [x] T015 [P] [US1] Sửa `WardrobeChatUseCase.buildChatGenerationInput` trong `internal/modules/fashion/application/usecase/ai/chat/workflows.go:259` — sau `brandContract.ListEligibleBrandItemsForStyling` pure (FashionItem nil) tự gọi `fashionItemRepo.GetByIDs` — file `internal/modules/fashion/application/usecase/ai/chat/workflows.go`
+- [x] T016 [P] [US1] Sửa `OutfitRecommendationUseCase.validateAndGetActiveItems` trong `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go:59` — sau `wardrobeContract.GetActiveWardrobeItemsByUserID` pure tự gọi `fashionItemRepo.GetByIDs` để enrich — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
+- [x] T017 [P] [US1] Sửa `OutfitRecommendationUseCase.filterCandidates` trong `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go:108` — sau `brandContract.ListEligibleBrandItemsForStyling` pure tự gọi `fashionItemRepo.GetByIDs` để enrich — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
+- [x] T018 [US1] Chạy `make lint` và `make test` verify sau US1, audit `detour: 0` — file `internal/modules/fashion/application/usecase/worker/worker_uc.go` (và các file trên)
 
 **Checkpoint**: US1 xong → audit `detour: 0`; không còn nil do thiếu enrich; test pass.
 
@@ -85,12 +87,12 @@
 
 ### Implementation cho US3
 
-- [ ] T019 [US3] Xóa 7 method deadcode khỏi `IWardrobeContract` trong `internal/modules/wardrobe/presentation/contract/wardrobe_contract.go` (`CopyItemToUser`, `VerifyItemsForPost`, `GetItemsByIDs`, `GetUserFashionItemIDs`, `MarkProcessingFailed`, `MarkProcessingNeedsReview`, `CompleteProcessingSuccess`) — file `internal/modules/wardrobe/presentation/contract/wardrobe_contract.go`
-- [ ] T020 [US3] Xóa impl tương ứng 7 method trong `internal/modules/wardrobe/presentation/contract/wardrobe_contract_impl.go` và trong `WardrobeContractUseCase` (`contract_uc.go`) nếu không còn dùng nội bộ — file `internal/modules/wardrobe/presentation/contract/wardrobe_contract_impl.go` và `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
-- [ ] T021 [P] [US3] Xóa 2 method deadcode khỏi `IBrandContract` trong `internal/modules/brand/presentation/contract/brand_contract.go` (`CheckBrandFeatureAccess`, `UpdateBrandItemStatus`) và impl — file `internal/modules/brand/presentation/contract/brand_contract.go` và `internal/modules/brand/presentation/contract/brand_contract_impl.go`
-- [ ] T022 [P] [US3] Xóa 3 method deadcode khỏi subscription: `IUserSubscriptionContract.GetUserSubscription` và `ISubscriptionPlanContract.GetDefaultSubscriptionPlanID`, `IsPremiumPlan` (nếu rỗng xóa cả contract) + impl — file `internal/modules/subscription/presentation/contract/subscription_contract.go` và `subscription_contract_impl.go`
-- [ ] T023 [US3] Cập nhật test fake (`fakeEmptyWardrobeContract` v.v.) xóa method deadcode — file `internal/modules/fashion/application/usecase/ai/chat/workflows_test.go` và các `_test.go` liên quan
-- [ ] T024 [US3] Chạy `make wire` và `make build` verify sau US3 — file `internal/di/wire_gen.go`
+- [x] T019 [US3] Xóa 7 method deadcode khỏi `IWardrobeContract` trong `internal/modules/wardrobe/presentation/contract/wardrobe_contract.go` (`CopyItemToUser`, `VerifyItemsForPost`, `GetItemsByIDs`, `GetUserFashionItemIDs`, `MarkProcessingFailed`, `MarkProcessingNeedsReview`, `CompleteProcessingSuccess`) — file `internal/modules/wardrobe/presentation/contract/wardrobe_contract.go`
+- [x] T020 [US3] Xóa impl tương ứng 7 method trong `internal/modules/wardrobe/presentation/contract/wardrobe_contract_impl.go` và trong `WardrobeContractUseCase` (`contract_uc.go`) nếu không còn dùng nội bộ — file `internal/modules/wardrobe/presentation/contract/wardrobe_contract_impl.go` và `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
+- [x] T021 [P] [US3] Xóa 2 method deadcode khỏi `IBrandContract` trong `internal/modules/brand/presentation/contract/brand_contract.go` (`CheckBrandFeatureAccess`, `UpdateBrandItemStatus`) và impl — file `internal/modules/brand/presentation/contract/brand_contract.go` và `internal/modules/brand/presentation/contract/brand_contract_impl.go`
+- [x] T022 [P] [US3] Xóa 3 method deadcode khỏi subscription: `IUserSubscriptionContract.GetUserSubscription` và `ISubscriptionPlanContract.GetDefaultSubscriptionPlanID`, `IsPremiumPlan` (nếu rỗng xóa cả contract) + impl — file `internal/modules/subscription/presentation/contract/subscription_contract.go` và `subscription_contract_impl.go`
+- [x] T023 [US3] Cập nhật test fake (`fakeEmptyWardrobeContract` v.v.) xóa method deadcode — file `internal/modules/fashion/application/usecase/ai/chat/workflows_test.go` và các `_test.go` liên quan
+- [x] T024 [US3] Chạy `make wire` và `make build` verify sau US3 — file `internal/di/wire_gen.go`
 
 **Checkpoint**: US3 xong → audit `deadcode: 0`; build pass.
 
@@ -104,10 +106,10 @@
 
 ### Implementation cho US4
 
-- [ ] T025 [US4] Xóa field `aiService aiexecutor_contract.IAIOrchestrator` khỏi struct `WardrobeItemUseCase:41` và param constructor `:57` trong `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go` — file `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go`
-- [ ] T025b [US4] Xóa field `userBriefContract identity_contract.IUserBriefContract` khỏi struct `SubscriptionUseCase:41` và param constructor `:59` + field init `:76` trong `internal/modules/subscription/application/usecase/subscription/subscription_uc.go` — file `internal/modules/subscription/application/usecase/subscription/subscription_uc.go`
-- [ ] T026 [US4] Xóa provider tương ứng khỏi `internal/modules/wardrobe/provider.go` (`aiexecutor_contract`) và `internal/modules/subscription/provider.go` (`identity_contract.IUserBriefContract` cho `SubscriptionUseCase`) — file `internal/modules/wardrobe/provider.go` và `internal/modules/subscription/provider.go`
-- [ ] T027 [US4] Chạy `make wire` và `make build` verify sau US4 — file `internal/di/wire_gen.go`
+- [x] T025 [US4] Xóa field `aiService aiexecutor_contract.IAIOrchestrator` khỏi struct `WardrobeItemUseCase:41` và param constructor `:57` trong `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go` — file `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go`
+- [x] T025b [US4] Xóa field `userBriefContract identity_contract.IUserBriefContract` khỏi struct `SubscriptionUseCase:41` và param constructor `:59` + field init `:76` trong `internal/modules/subscription/application/usecase/subscription/subscription_uc.go` — file `internal/modules/subscription/application/usecase/subscription/subscription_uc.go`
+- [x] T026 [US4] Xóa provider tương ứng khỏi `internal/modules/wardrobe/provider.go` (`aiexecutor_contract`) và `internal/modules/subscription/provider.go` (`identity_contract.IUserBriefContract` cho `SubscriptionUseCase`) — file `internal/modules/wardrobe/provider.go` và `internal/modules/subscription/provider.go`
+- [x] T027 [US4] Chạy `make wire` và `make build` verify sau US4 — file `internal/di/wire_gen.go`
 
 **Checkpoint**: US4 xong → dead wiring 0/2; build pass.
 
@@ -117,14 +119,14 @@
 
 **Purpose**: Hoàn thiện doc, constitution, verify tổng thể
 
-- [ ] T028 Hoàn thiện `docs/system-design/contract-purity-pattern.md` (thêm ví dụ before/after thuần hóa trực tiếp, nil risk, audit guide method-level) — file `docs/system-design/contract-purity-pattern.md`
-- [ ] T029 Cập nhật `.specify/memory/constitution.md` §II thêm "Pure Contract Usecase Principle" và link tới `docs/system-design/contract-purity-pattern.md`, bump version `1.7.0 → 1.8.0 (MINOR)` + Sync Impact Report theo Governance — file `.specify/memory/constitution.md`
-- [ ] T030 [P] Chạy audit script tổng hợp verify 0/0/0/0 cho 4 metric — file `scripts/audit-contract-purity.ps1`
-- [ ] T031 [P] Chạy `make lint` toàn repo — file `Makefile`
-- [ ] T032 [P] Chạy `make test` toàn repo — file `internal/...`
-- [ ] T033 Benchmark NFR-001 (dự đoán, không chạy thật): đếm số lần gọi `fashionContract` trước/sau cho flow `GetWardrobeItemsByUserID`/`GetActiveWardrobeItemsByUserID` (chat/recommendation) và `GetFailedItemsForCleanup`/`GetStaleProcessingItems` — nếu dự đoán tăng >10% thì gộp batch `ListFashionItems` — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
-- [ ] T034 Chạy `quickstart.md` validation 4 case manual (upload, retry, cleanup, outfit) — file `specs/015-contract-purity-refactor/quickstart.md`
-- [ ] T035 Cleanup `docs/temp/` và cập nhật `specs/015-contract-purity-refactor/checklists/requirements.md` — file `specs/015-contract-purity-refactor/checklists/requirements.md`
+- [x] T028 Hoàn thiện `docs/system-design/contract-purity-pattern.md` (thêm ví dụ before/after thuần hóa trực tiếp, nil risk, audit guide method-level) — file `docs/system-design/contract-purity-pattern.md`
+- [x] T029 Cập nhật `.specify/memory/constitution.md` §II thêm "Pure Contract Usecase Principle" và link tới `docs/system-design/contract-purity-pattern.md`, bump version `1.7.0 → 1.8.0 (MINOR)` + Sync Impact Report theo Governance — file `.specify/memory/constitution.md`
+- [x] T030 [P] Chạy audit script tổng hợp verify 0/0/0/0 cho 4 metric — file `scripts/audit-contract-purity.ps1`
+- [x] T031 [P] Chạy `make lint` toàn repo — file `Makefile`
+- [x] T032 [P] Chạy `make test` toàn repo — file `internal/...`
+- [x] T033 Static Query-Count Verification NFR-001: đếm số lần gọi `fashionContract` trước/sau cho flow `GetWardrobeItemsByUserID`/`GetActiveWardrobeItemsByUserID` (chat/recommendation) và `GetFailedItemsForCleanup`/`GetStaleProcessingItems` — nếu phát hiện nguy cơ N+1 hoặc tăng >10% thì gộp batch `ListFashionItems` — file `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go`
+- [x] T034 Chạy `quickstart.md` validation 4 case manual (upload, retry, cleanup, outfit) — file `specs/015-contract-purity-refactor/quickstart.md`
+- [x] T035 Cleanup `docs/temp/` và cập nhật `specs/015-contract-purity-refactor/checklists/requirements.md` — file `specs/015-contract-purity-refactor/checklists/requirements.md`
 
 ---
 
@@ -205,3 +207,21 @@ Task T017: workflow_helpers.go:108
 - `Category`/`Subscription` đã pure ở method-level → không tạo task tách
 - File `docs/system-design/contract-purity-pattern.md` sẽ tạo ở Phase 1 nháp, hoàn thiện ở Phase 7
 - Constitution update ở Phase 7 T029 (sau verify, bump 1.7.0→1.8.0 MINOR + Governance Sync Impact Report); doc viết trước ở T002
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close remaining gaps identified in convergence assessment 2026-08-27
+
+- [x] T036 Update `.specify/memory/constitution.md` to version 1.8.0 (MINOR) per Constitution II and plan gate — add "Pure Contract Usecase Principle" to §II with link to `docs/system-design/contract-purity-pattern.md` and Sync Impact Report (Version 1.7.0 → 1.8.0, Modified §II, Templates verified) per `spec.md:FR-004` and `tasks.md:T029` (missing)
+- [x] T037 Fix `docs/system-design/contract-purity-pattern.md` encoding and complete before/after examples per `spec.md:NFR-004` and `tasks.md:T028` — ensure file is UTF-8 without mojibake, include Wardrobe direct fix and BrandItemContractUseCase split examples, nil-guard and `sliceutils.IndexBy/GroupBy` stitching guide (partial)
+
+---
+
+## Phase 9: Polish S1/S2 Strict Compliance (Convergence 2026-08-27)
+
+**Purpose**: Enforce strict `sliceutils.IndexBy` stitching and batch `GetByIDs` per Constitution §II and FR-005/NFR-001
+
+- [x] T038 Refactor manual stitching in `internal/modules/fashion/application/usecase/ai/chat/workflows.go:277` and `internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go:118,263,309` to use `sliceutils.IndexBy` (with `entities.FashionItem` + nil-filtered `wardrobeDto`) per `spec.md:FR-005` and `Constitution §II` — replace manual `for`+`map` loops with `IndexBy` + `UniqueUUIDs` batch pattern (partial)
+- [x] T039 Batch `FashionWorkerUseCase` per-item `fashionItemRepo.GetByID` in `internal/modules/fashion/application/usecase/worker/worker_uc.go:155,221` to `GetByIDs` + `sliceutils.IndexBy` + `UniqueUUIDs` per `spec.md:NFR-001` (avoid N+1 up to 100) and add `sliceutils` import — `CleanupFailedItems` and `RecoverStaleProcessingItems` now batch fetch before loop with `FashionItemID` nil guard (partial)

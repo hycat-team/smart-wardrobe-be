@@ -80,14 +80,15 @@ Không có migration.
 
 ## 5. Caller phải tự enrich (nil risk)
 
-Sau thuần hóa, `WardrobeItemRes.FashionItem` và `BrandItemRes.FashionItem` sẽ `nil`. 7 caller fashion phải tự gọi:
+Sau thuần hóa, `WardrobeItemRes.FashionItem` và `BrandItemRes.FashionItem` sẽ `nil`. Các caller trong module `fashion` phải tự gọi repository nội bộ để làm giàu dữ liệu:
 
 ```go
 items, _ := wardrobeContract.GetWardrobeItemsByUserID(ctx, userID) // pure, FashionItem == nil
 ids := extractFashionIDs(items)
-fashionItems, _ := fashionContract.ListFashionItems(ctx, ids)
-byID := sliceutils.IndexBy(fashionItems, func(f *dto.FashionItemRes) uuid.UUID { return f.ID })
-// stitch vào res trước khi trả
+// Sử dụng repository nội bộ để lấy dữ liệu thay vì gọi qua contract của chính module mình
+fashionItems, _ := uc.fashionItemRepo.GetByIDs(ctx, ids) 
+byID := sliceutils.IndexBy(fashionItems, func(f *entities.FashionItem) uuid.UUID { return f.ID })
+// mapper hoặc stitch thông tin ảnh/style từ byID vào DTO trước khi trả về
 ```
 
 Nếu sót, UI thiếu ảnh/category/style.

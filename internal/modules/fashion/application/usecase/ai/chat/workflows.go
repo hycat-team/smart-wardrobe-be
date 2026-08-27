@@ -263,40 +263,49 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 
 	fashionIDs := make([]uuid.UUID, 0, len(activeWardrobeItems))
 	for _, item := range activeWardrobeItems {
-		if item.FashionItem != nil {
-			fashionIDs = append(fashionIDs, item.FashionItem.ID)
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	for _, item := range eligibleBrandItems {
+		if item.FashionItemID != uuid.Nil {
+			fashionIDs = append(fashionIDs, item.FashionItemID)
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
-	for _, item := range activeWardrobeItems {
-		if item.FashionItem != nil {
-			var category *dto.CategoryBriefRes
-			if item.FashionItem.Category != nil {
-				category = &dto.CategoryBriefRes{
-					ID:   item.FashionItem.Category.ID,
-					Name: item.FashionItem.Category.Name,
-					Slug: item.FashionItem.Category.Slug,
+	if len(fashionIDs) > 0 {
+		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
+		if err == nil {
+			entityMap := sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
+			for id, fi := range entityMap {
+				var category *dto.CategoryBriefRes
+				if fi.Category != nil {
+					category = &dto.CategoryBriefRes{
+						ID:   fi.Category.ID,
+						Name: fi.Category.Name,
+						Slug: fi.Category.Slug,
+					}
 				}
-			}
-			fashionItemMap[item.FashionItem.ID] = &dto.FashionItemRes{
-				ID:              item.FashionItem.ID,
-				Category:        category,
-				ImageUrl:        item.FashionItem.ImageUrl,
-				Color:           item.FashionItem.Color,
-				ColorHex:        item.FashionItem.ColorHex,
-				ColorHue:        item.FashionItem.ColorHue,
-				ColorSaturation: item.FashionItem.ColorSaturation,
-				ColorLightness:  item.FashionItem.ColorLightness,
-				Style:           item.FashionItem.Style,
-				Material:        item.FashionItem.Material,
-				Pattern:         item.FashionItem.Pattern,
-				Fit:             item.FashionItem.Fit,
-				Seasonality:     item.FashionItem.Seasonality,
-				Description:     item.FashionItem.Description,
-				CreatedAt:       item.FashionItem.CreatedAt,
-				UpdatedAt:       item.FashionItem.UpdatedAt,
+				fashionItemMap[id] = &dto.FashionItemRes{
+					ID:              fi.ID,
+					Category:        category,
+					ImageUrl:        fi.ImageUrl,
+					Color:           fi.Color,
+					ColorHex:        fi.ColorHex,
+					ColorHue:        fi.ColorHue,
+					ColorSaturation: fi.ColorSaturation,
+					ColorLightness:  fi.ColorLightness,
+					Style:           fi.Style,
+					Material:        fi.Material,
+					Pattern:         fi.Pattern,
+					Fit:             fi.Fit,
+					Seasonality:     fi.Seasonality,
+					Description:     fi.Description,
+					CreatedAt:       fi.CreatedAt,
+					UpdatedAt:       fi.UpdatedAt,
+				}
 			}
 		}
 	}

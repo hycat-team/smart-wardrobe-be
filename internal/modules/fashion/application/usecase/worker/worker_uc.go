@@ -22,6 +22,7 @@ import (
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/pkg/utils/colorutils"
+	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/pkg/utils/stringutils"
 	"smart-wardrobe-be/internal/shared/application/constants/analyzetaskstatus"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
@@ -149,11 +150,24 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 			break
 		}
 
+		fashionIDs := make([]uuid.UUID, 0, len(items))
+		for _, item := range items {
+			if item.FashionItemID != nil {
+				fashionIDs = append(fashionIDs, *item.FashionItemID)
+			}
+		}
+		fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+		fashionItemMap := map[uuid.UUID]*entities.FashionItem{}
+		if len(fashionIDs) > 0 {
+			if fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs); err == nil {
+				fashionItemMap = sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
+			}
+		}
 		for _, item := range items {
 			run.AddTotal(1)
 			imagePublicID := ""
-			if item.FashionItem != nil {
-				if fi, err := uc.fashionItemRepo.GetByID(ctx, item.FashionItem.ID); err == nil && fi != nil {
+			if item.FashionItemID != nil {
+				if fi, ok := fashionItemMap[*item.FashionItemID]; ok && fi != nil {
 					imagePublicID = fi.ImagePublicID
 				}
 			}
@@ -213,13 +227,26 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 	republishedCount := 0
 	markedFailedCount := 0
 
+	fashionIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
-		if item.FashionItem == nil {
+		if item.FashionItemID != nil {
+			fashionIDs = append(fashionIDs, *item.FashionItemID)
+		}
+	}
+	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	fashionItemMap := map[uuid.UUID]*entities.FashionItem{}
+	if len(fashionIDs) > 0 {
+		if fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs); err == nil {
+			fashionItemMap = sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
+		}
+	}
+	for _, item := range items {
+		if item.FashionItemID == nil {
 			run.AddSkipped(1)
 			continue
 		}
-		fi, err := uc.fashionItemRepo.GetByID(ctx, item.FashionItem.ID)
-		if err != nil || fi == nil {
+		fi, ok := fashionItemMap[*item.FashionItemID]
+		if !ok || fi == nil {
 			run.AddSkipped(1)
 			continue
 		}

@@ -19,20 +19,8 @@ func NewWardrobeContract(wardrobeContractUC uc_interfaces.IWardrobeContractUseCa
 	return &WardrobeContract{wardrobeContractUC: wardrobeContractUC}
 }
 
-func (c *WardrobeContract) CopyItemToUser(ctx context.Context, sourceItemID uuid.UUID, targetUserID uuid.UUID) (*dto.WardrobeItemRes, error) {
-	return c.wardrobeContractUC.CopyItemToUser(ctx, sourceItemID, targetUserID)
-}
-
 func (c *WardrobeContract) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
 	return c.wardrobeContractUC.UpdateItemStatus(ctx, itemID, status)
-}
-
-func (c *WardrobeContract) VerifyItemsForPost(ctx context.Context, userID uuid.UUID, itemIDs []uuid.UUID) error {
-	return c.wardrobeContractUC.VerifyItemsForPost(ctx, userID, itemIDs)
-}
-
-func (c *WardrobeContract) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*dto.WardrobeItemRes, error) {
-	return c.wardrobeContractUC.GetItemsByIDs(ctx, itemIDs)
 }
 
 func (c *WardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
@@ -41,10 +29,6 @@ func (c *WardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID 
 
 func (c *WardrobeContract) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemRes, error) {
 	return c.wardrobeContractUC.GetActiveWardrobeItemsByUserID(ctx, userID, limit)
-}
-
-func (c *WardrobeContract) GetUserFashionItemIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	return c.wardrobeContractUC.GetUserFashionItemIDs(ctx, userID)
 }
 
 func (c *WardrobeContract) SetFashionItemID(ctx context.Context, itemID uuid.UUID, fashionItemID uuid.UUID) error {
@@ -61,18 +45,6 @@ func (c *WardrobeContract) DeleteWardrobeItem(ctx context.Context, itemID uuid.U
 
 func (c *WardrobeContract) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemRes, error) {
 	return c.wardrobeContractUC.GetStaleProcessingItems(ctx, staleBefore, limit)
-}
-
-func (c *WardrobeContract) MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error) {
-	return c.wardrobeContractUC.MarkProcessingFailed(ctx, itemID, processingVersion, reason, reviewReason)
-}
-
-func (c *WardrobeContract) MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error) {
-	return c.wardrobeContractUC.MarkProcessingNeedsReview(ctx, itemID, processingVersion, reviewReason)
-}
-
-func (c *WardrobeContract) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
-	return c.wardrobeContractUC.CompleteProcessingSuccess(ctx, itemID, processingVersion, updates)
 }
 
 func (c *WardrobeContract) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {

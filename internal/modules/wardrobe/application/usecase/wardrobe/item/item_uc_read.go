@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
-	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
+
 	brand_contract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	fashion_contract "smart-wardrobe-be/internal/modules/fashion/presentation/contract"
@@ -38,7 +38,6 @@ type WardrobeItemUseCase struct {
 	outfitRepo       repositories.IOutfitRepository
 	searchEngine     search.IWardrobeSearchService
 	mediaService     media.IMediaService
-	aiService        aiexecutor_contract.IAIOrchestrator
 	userSubContract  contract.IUserSubscriptionContract
 	brandContract    brand_contract.IBrandContract
 	eventPublisher   event.IEventPublisher
@@ -54,7 +53,6 @@ func NewWardrobeItemUseCase(
 	outfitRepo repositories.IOutfitRepository,
 	searchEngine search.IWardrobeSearchService,
 	mediaService media.IMediaService,
-	aiService aiexecutor_contract.IAIOrchestrator,
 	userSubContract contract.IUserSubscriptionContract,
 	brandContract brand_contract.IBrandContract,
 	eventPublisher event.IEventPublisher,
@@ -69,7 +67,6 @@ func NewWardrobeItemUseCase(
 		outfitRepo:       outfitRepo,
 		searchEngine:     searchEngine,
 		mediaService:     mediaService,
-		aiService:        aiService,
 		userSubContract:  userSubContract,
 		brandContract:    brandContract,
 		eventPublisher:   eventPublisher,

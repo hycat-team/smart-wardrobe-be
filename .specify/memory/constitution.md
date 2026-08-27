@@ -1,10 +1,9 @@
 <!--
 Sync Impact Report:
-- Version change: 1.6.0 → 1.7.0 (MINOR — expanded allowed cross-module imports)
+- Version change: 1.7.0 → 1.8.0 (MINOR — add Pure Contract Usecase Principle)
 - Modified principles:
-  - §II Strict Module Boundaries & DTO Contracts: expanded allowed imports with rationale
-  - §IV Clean Architecture & Strict Layer Dependency: updated application layer rule
-- Added sections: None
+  - §II Strict Module Boundaries & DTO Contracts: add Pure Contract Usecase Principle with caller-enriched stitching via sliceutils.IndexBy/GroupBy and FashionItemID pattern
+- Added sections: §II Pure Contract Usecase Principle (link to docs/system-design/contract-purity-pattern.md)
 - Removed sections: None
 - Templates requiring updates:
   - .specify/templates/plan-template.md (✅ verified/no updates needed)
@@ -47,6 +46,9 @@ nested loops.
 | `infrastructure/persistence/` | ❌ | Implementation details must not leak across module boundaries. |
 
 **Rationale:** This project is a modular monolith where modules share the same deployment and business domain. Strict isolation via contracts-only would create excessive ceremony without practical benefit for intra-domain communication. The prohibition on importing entities, repositories, and persistence remains absolute to preserve data ownership and prevent tight coupling at the data layer.
+
+**Pure Contract Usecase Principle (added in 1.8.0):**
+Contract usecases (those serving `presentation/contract/`) MUST be pure — they may only access repositories and mappers of their own module (e.g., `wardrobeRepo`, `brandRepo`/`brandItemRepo`/`customerRepo` + `benefitUC` intra-module). They MUST NOT call `presentation/contract/` of other modules to enrich data (no `fashionContract`/`userSubContract`/`userBriefContract` inside contract usecases). If the contract usecase is shared with handlers (e.g., `BrandItemUseCase` used by both `BrandContract` and `BrandPortalHandler`), a separate contract usecase MUST be extracted (e.g., `BrandItemContractUseCase` at `brand/application/usecase/item/contractuc/`). Callers requiring enriched data MUST self-enrich after receiving the pure result: collect `FashionItemID` (exposed as `fashionItemId` camelCase in DTOs) and call the appropriate `fashionItemRepo` (if caller is inside the `fashion` module, per §IV) or `fashionContract` (if caller is outside) followed by `sliceutils.IndexBy`/`GroupBy` stitching. Wardrobe pure results MUST expose `FashionItemID` even when `FashionItem == nil`, with nil-guard for cases where `FashionItemID == nil` (e.g., failed upload before fashion record creation). See `docs/system-design/contract-purity-pattern.md` for before/after and stitching guide.
 
 ### III. Asynchronous Event-Driven Processing
 RabbitMQ must be used to process resource-intensive or slow tasks (e.g., AI analysis, background
@@ -165,4 +167,4 @@ governs implementation-level conventions.
 - Refer to `docs/development/local-setup.md` for running and executing development code using
   Makefile commands (e.g., `make dev`).
 
-**Version**: 1.7.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-22
+**Version**: 1.8.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-08-27

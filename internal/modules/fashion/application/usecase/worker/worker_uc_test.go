@@ -172,9 +172,10 @@ func TestRecoverStaleProcessingItemsRepublishes(t *testing.T) {
 		wardrobeContract: &mockWardrobeContractForWorker{
 			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
 				return []*wardrobeDto.WardrobeItemRes{{
-					ID:          itemID,
-					UserID:      userID,
-					FashionItem: &wardrobeDto.FashionItemRes{ID: fashionItemID},
+					ID:            itemID,
+					UserID:        userID,
+					FashionItem:   &wardrobeDto.FashionItemRes{ID: fashionItemID},
+					FashionItemID: &fashionItemID,
 				}}, nil
 			},
 		},
@@ -230,9 +231,10 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 		wardrobeContract: &mockWardrobeContractForWorker{
 			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
 				return []*wardrobeDto.WardrobeItemRes{{
-					ID:          itemID,
-					UserID:      userID,
-					FashionItem: &wardrobeDto.FashionItemRes{ID: fashionItemID},
+					ID:            itemID,
+					UserID:        userID,
+					FashionItem:   &wardrobeDto.FashionItemRes{ID: fashionItemID},
+					FashionItemID: &fashionItemID,
 				}}, nil
 			},
 			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {

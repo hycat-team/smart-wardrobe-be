@@ -42,14 +42,15 @@ func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionIt
 	}
 
 	res := &dto.WardrobeItemRes{
-		ID:          item.ID,
-		UserID:      item.UserID,
-		Price:       item.Price,
-		Status:      item.Status,
-		CreatedAt:   item.CreatedAt,
-		LastUsedAt:  item.LastUsedAt,
-		TaskID:      item.TaskID,
-		FashionItem: MapToFashionItemRes(fi),
+		ID:            item.ID,
+		UserID:        item.UserID,
+		Price:         item.Price,
+		Status:        item.Status,
+		CreatedAt:     item.CreatedAt,
+		LastUsedAt:    item.LastUsedAt,
+		TaskID:        item.TaskID,
+		FashionItem:   MapToFashionItemRes(fi),
+		FashionItemID: item.FashionItemID,
 	}
 	return res
 }
@@ -95,12 +96,13 @@ func MapToWardrobeItemBrief(item *entities.WardrobeItem, fiBrief *fashion_dto.Fa
 		return nil
 	}
 	return &dto.WardrobeItemBriefRes{
-		ID:          item.ID,
-		Price:       item.Price,
-		Status:      item.Status,
-		LastUsedAt:  item.LastUsedAt,
-		FashionItem: MapToFashionItemBrief(fiBrief),
-		BrandItem:   brandItem,
-		TaskID:      item.TaskID,
+		ID:            item.ID,
+		Price:         item.Price,
+		Status:        item.Status,
+		LastUsedAt:    item.LastUsedAt,
+		FashionItem:   MapToFashionItemBrief(fiBrief),
+		FashionItemID: item.FashionItemID,
+		BrandItem:     brandItem,
+		TaskID:        item.TaskID,
 	}
 }

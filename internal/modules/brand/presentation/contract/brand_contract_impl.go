@@ -5,8 +5,6 @@ import (
 
 	"smart-wardrobe-be/internal/modules/brand/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/benefit/benefitfeaturecode"
-	"smart-wardrobe-be/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 
 	"github.com/google/uuid"
@@ -14,12 +12,12 @@ import (
 
 type BrandContract struct {
 	benefitUC uc_interfaces.IBrandBenefitUseCase
-	itemUC    uc_interfaces.IBrandItemUseCase
+	itemUC    uc_interfaces.IBrandItemContractUseCase
 }
 
 func NewBrandContract(
 	benefitUC uc_interfaces.IBrandBenefitUseCase,
-	itemUC uc_interfaces.IBrandItemUseCase,
+	itemUC uc_interfaces.IBrandItemContractUseCase,
 ) IBrandContract {
 	return &BrandContract{
 		benefitUC: benefitUC,
@@ -27,16 +25,20 @@ func NewBrandContract(
 	}
 }
 
-func (c *BrandContract) CheckBrandFeatureAccess(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, featureCode benefitfeaturecode.BenefitFeatureCode) (bool, error) {
-	return c.benefitUC.CheckBrandFeatureAccess(ctx, userID, brandID, featureCode)
-}
-
 func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemRes, error) {
-	return c.itemUC.ListEligibleBrandItemsForStyling(ctx, userID, req)
+	items, err := c.itemUC.ListEligibleBrandItemsForStyling(ctx, userID, req)
+	if err != nil {
+		return nil, nil, err
+	}
+	return items, nil, nil
 }
 
 func (c *BrandContract) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_dto.FashionItemRes, error) {
-	return c.itemUC.CheckBrandItemEligibility(ctx, userID, fashionItemID)
+	eligible, item, err := c.itemUC.CheckBrandItemEligibility(ctx, userID, fashionItemID)
+	if err != nil {
+		return false, nil, nil, err
+	}
+	return eligible, item, nil, nil
 }
 
 func (c *BrandContract) ListActiveBrandItemFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
@@ -45,10 +47,6 @@ func (c *BrandContract) ListActiveBrandItemFashionIDs(ctx context.Context, fashi
 
 func (c *BrandContract) SetFashionItemID(ctx context.Context, brandItemID uuid.UUID, fashionItemID uuid.UUID) error {
 	return c.itemUC.SetFashionItemID(ctx, brandItemID, fashionItemID)
-}
-
-func (c *BrandContract) UpdateBrandItemStatus(ctx context.Context, brandItemID uuid.UUID, status branditemstatus.BrandItemStatus) error {
-	return c.itemUC.UpdateBrandItemStatusDirect(ctx, brandItemID, status)
 }
 
 func (c *BrandContract) GetBrandItemByID(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {

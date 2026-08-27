@@ -52,29 +52,31 @@ type BrandItemBriefRes struct {
 }
 
 type WardrobeItemRes struct {
-	ID          uuid.UUID                         `json:"id"`
-	UserID      uuid.UUID                         `json:"userId"`
-	Price       *float64                          `json:"price,omitempty"`
-	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
-	IsLocked    bool                              `json:"isLocked"`
-	ItemContext string                            `json:"itemContext,omitempty"`
-	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
-	FashionItem *FashionItemRes                   `json:"fashionItem,omitempty"`
-	CreatedAt   time.Time                         `json:"createdAt"`
-	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
-	IsDeleted   bool                              `json:"isDeleted"`
-	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
+	ID            uuid.UUID                         `json:"id"`
+	UserID        uuid.UUID                         `json:"userId"`
+	Price         *float64                          `json:"price,omitempty"`
+	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked      bool                              `json:"isLocked"`
+	ItemContext   string                            `json:"itemContext,omitempty"`
+	BrandItem     *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	FashionItem   *FashionItemRes                   `json:"fashionItem,omitempty"`
+	FashionItemID *uuid.UUID                        `json:"fashionItemId,omitempty"`
+	CreatedAt     time.Time                         `json:"createdAt"`
+	LastUsedAt    *time.Time                        `json:"lastUsedAt,omitempty"`
+	IsDeleted     bool                              `json:"isDeleted"`
+	TaskID        *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
 type WardrobeItemBriefRes struct {
-	ID          uuid.UUID                         `json:"id"`
-	Price       *float64                          `json:"price,omitempty"`
-	Status      wardrobestatus.WardrobeItemStatus `json:"status"`
-	IsLocked    bool                              `json:"isLocked"`
-	LastUsedAt  *time.Time                        `json:"lastUsedAt,omitempty"`
-	FashionItem *FashionItemBriefRes              `json:"fashionItem,omitempty"`
-	BrandItem   *BrandItemBriefRes                `json:"brandItem,omitempty"`
-	TaskID      *uuid.UUID                        `json:"taskId,omitempty"`
+	ID            uuid.UUID                         `json:"id"`
+	Price         *float64                          `json:"price,omitempty"`
+	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
+	IsLocked      bool                              `json:"isLocked"`
+	LastUsedAt    *time.Time                        `json:"lastUsedAt,omitempty"`
+	FashionItem   *FashionItemBriefRes              `json:"fashionItem,omitempty"`
+	FashionItemID *uuid.UUID                        `json:"fashionItemId,omitempty"`
+	BrandItem     *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	TaskID        *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
 type CloneWardrobeItemReq struct {

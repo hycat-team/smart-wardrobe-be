@@ -161,13 +161,15 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 
 #### Nhóm 2: Ép caller tự Enrich (P1) — xử lý nil
 
-- **FR-005**: System MUST rà caller sau thuần hóa, ép gọi thêm `fashionContract` (KHÔNG gọi `fashionItemRepo` trực tiếp — tuân Hiến pháp §II) để tránh `nil` (vì `FashionItem == nil` nếu không enrich, nhưng `FashionItemID` vẫn có):
-  - `FashionWorkerUseCase.CleanupFailedItems` (worker_uc.go:143:155) — sau thuần hóa `FashionItem == nil`, không lấy được `ImagePublicID` từ `item.FashionItem`; phải đổi sang dùng `item.FashionItemID` (mới thêm vào `WardrobeItemRes` với json `fashionItemId`) + **chỉ gọi `fashionContract.GetFashionItem(ctx, FashionItemID)`** để lấy `ImagePublicID` trước khi `DeleteImage`/`DeleteWardrobeItem`. Nếu không cần ảnh thì có thể bỏ qua Cloudinary delete (không block).
-  - `FashionWorkerUseCase.RecoverStaleProcessingItems` (worker_uc.go:208:217) — check `item.FashionItem == nil` sẽ luôn true sau thuần hóa → phải sửa logic: **bỏ check `FashionItem == nil`**, extract `FashionItemID`, gọi `fashionContract.GetFashionItem` trước khi check `ProcessingRetryCount`.
-  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:249:266 `item.FashionItem.Category`/`Style`) → sau pure `FashionItem == nil` phải tự gọi `fashionContract.ListFashionItems` với IDs từ `FashionItemID` + `sliceutils.IndexBy` để bù.
-  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:259) — qua `brandContract.ListEligibleBrandItemsForStyling` pure (`BrandItemRes.FashionItem == nil` nhưng `FashionItemID` vẫn có) → caller tự gọi `fashionContract.ListFashionItems` nếu cần hiển thị brand item ảnh.
-  - `OutfitRecommendationUseCase.validateAndGetActiveItems` (recommendation/workflow_helpers.go:59) — tương tự wardrobe, tự enrich.
-  - `OutfitRecommendationUseCase.filterCandidates` (recommendation/workflow_helpers.go:108) — qua brand, tự enrich.
+- **FR-005**: System MUST rà caller sau thuần hóa, ép gọi thêm `fashionItemRepo` của chính module `fashion` (hoặc các repositories nội bộ tương ứng — tuân Hiến pháp §IV, Use Case không được gọi Contract của chính module mình) để tránh `nil` (vì `FashionItem == nil` nếu không enrich, nhưng `FashionItemID` vẫn có):
+  - `FashionWorkerUseCase.CleanupFailedItems` (worker_uc.go:143:155) — sau thuần hóa `FashionItem == nil`, không lấy được `ImagePublicID` từ `item.FashionItem`; phải đổi sang dùng `item.FashionItemID` (mới thêm vào `WardrobeItemRes` với json `fashionItemId`):
+    - **Nil Guard**: Nếu `item.FashionItemID == nil` (trường hợp upload lỗi trước khi kịp tạo fashion item), bỏ qua bước gọi `fashionItemRepo.GetByID` và bỏ qua xóa ảnh Cloudinary, trực tiếp thực hiện xóa item tủ đồ.
+    - Nếu `item.FashionItemID != nil`, **chỉ gọi `fashionItemRepo.GetByID(ctx, *FashionItemID)`** để lấy `ImagePublicID` trước khi `DeleteImage`/`DeleteWardrobeItem`.
+  - `FashionWorkerUseCase.RecoverStaleProcessingItems` (worker_uc.go:208:217) — check `item.FashionItem == nil` sẽ luôn true sau thuần hóa → phải sửa logic: **bỏ check `FashionItem == nil`**, extract `FashionItemID`, gọi `fashionItemRepo.GetByID` (kèm nil guard cho `FashionItemID`) trước khi check `ProcessingRetryCount`.
+  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:249:266 `item.FashionItem.Category`/`Style`) → sau pure `FashionItem == nil` phải tự gọi `fashionItemRepo.GetByIDs` với IDs từ `FashionItemID` + `sliceutils.IndexBy` để bù.
+  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:259) — qua `brandContract.ListEligibleBrandItemsForStyling` pure (`BrandItemRes.FashionItem == nil` nhưng `FashionItemID` vẫn có) → caller (thuộc module fashion) tự gọi `fashionItemRepo.GetByIDs` để lấy thông tin ảnh hiển thị brand item.
+  - `OutfitRecommendationUseCase.validateAndGetActiveItems` (recommendation/workflow_helpers.go:59) — tương tự wardrobe, tự enrich qua `fashionItemRepo.GetByIDs`.
+  - `OutfitRecommendationUseCase.filterCandidates` (recommendation/workflow_helpers.go:108) — qua brand, tự enrich qua `fashionItemRepo.GetByIDs`.
   - Tất cả caller phải stitch bằng `sliceutils.IndexBy`/`GroupBy` (Constitution §II) và dùng `FashionItemID` mới (wardrobe) hoặc `FashionItemID` sẵn có (brand).
 - **FR-006**: System MUST đảm bảo functional behavior không đổi sau khi thuần hóa + enrich ở caller (cùng kết quả trả về cho user, không `nil` do thiếu enrich).
 
@@ -199,7 +201,7 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 
 ### Non-Functional Requirements
 
-- **NFR-001**: Performance — Tổng số DB call tăng không quá 10% so với trước refactor (do caller tự enrich bằng batch `ListFashionItems`). Benchmark lần này chỉ dự đoán (không chạy thật), ghi nhận số call trước/sau bằng đếm `fashionContract` trong code review. Nếu dự đoán vượt 10%, phải gộp batch hoặc cache trước khi merge.
+- **NFR-001**: Performance & Query Complexity — Tổng số DB call tăng không quá 10% so với trước refactor (do caller tự enrich bằng batch `ListFashionItems`). Thực hiện kiểm chứng bằng phân tích tĩnh (Static Query-Count & Call-Site Verification) thông qua đếm số lần gọi `fashionContract` trong code review thay vì load test động. Nếu phát hiện nguy cơ N+1 hoặc tăng quá 10%, bắt buộc gộp batch bằng `ListFashionItems` hoặc cache trong request lifecycle trước khi merge.
 - **NFR-002**: Backward compatibility — API endpoint và DTO response KHÔNG đổi (WardrobeItemRes thêm `FashionItemID` là additive, không break). Caller bên ngoài (frontend, mobile) không cần thay đổi. Contract method signature KHÔNG đổi, chỉ thay đổi bên trong (FashionItem có thể `nil` nếu caller chưa enrich — caller phải xử lý).
 - **NFR-003**: Test coverage — Mỗi contract usecase đã thuần hóa (`WardrobeContractUseCase` 4 method sửa trực tiếp, `BrandItemContractUseCase` 5 method tạo mới) phải có unit test verify không gọi cross-module contract (mock assert `fashionContract`/`userBriefContract` không được gọi). `BrandItemUseCase` handler giữ nguyên không cần test pure.
 - **NFR-004**: Documentation — `docs/system-design/contract-purity-pattern.md` phải giải thích "pure contract usecase", before/after, quy tắc caller tự enrich bằng `sliceutils.IndexBy`/`GroupBy`, và cách dùng `FashionItemID` mới.
@@ -223,18 +225,18 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 - **SC-005**: Tất cả test cũ (`make test`) vẫn pass sau khi refactor.
 - **SC-006**: Tất cả lint check (`make lint`) pass sau khi refactor.
 - **SC-007**: Wire build (`make wire && make build`) pass sau khi refactor.
-- **SC-008**: Tổng số DB call tăng không quá 10% (benchmark **dự đoán** — đếm `fashionContract` trong code review, không chạy thật — cho 4 flow bị ảnh hưởng: `GetWardrobeItemsByUserID`/`GetActiveWardrobeItemsByUserID` (chat/recommendation) và `GetFailedItemsForCleanup`/`GetStaleProcessingItems` (worker); nếu dự đoán >10% phải gộp batch `ListFashionItems`).
+- **SC-008**: Tổng số DB call tăng không quá 10% (xác nhận qua Static Query-Count Verification — đếm `fashionContract` trong code review — cho 4 flow bị ảnh hưởng: `GetWardrobeItemsByUserID`/`GetActiveWardrobeItemsByUserID` (chat/recommendation) và `GetFailedItemsForCleanup`/`GetStaleProcessingItems` (worker); nếu nguy cơ >10% phải gộp batch `ListFashionItems`).
 - **SC-009**: Functional test 4 case manual (upload, retry analysis, cleanup failed, outfit recommendation) cho kết quả giống trước refactor.
 
 ---
 
 ## Assumptions
 
-- **Migration strategy**: Triển khai tuần tự theo priority (P1 → P1 → P2 → P3) — mỗi phase verify xong mới qua phase sau. Mỗi user story là 1 commit/PR riêng để dễ review và rollback.
+- **Migration strategy (Atomic MVP)**: US2 (Pure Contract) và US1 (Caller Enrich) tạo thành một khối nguyên tử (Atomic Unit). Dù phát triển tuần tự theo P1 (US2) → P1 (US1), hai story này bắt buộc phải tích hợp và kiểm thử đồng thời trong cùng một đợt merge/PR để loại trừ hoàn toàn rủi ro `nil pointer dereference` tại tầng caller.
 - **Caller có thể tự gọi 2 contract riêng**: Caller (use case khác module) có khả năng gọi 2 contract trong cùng 1 method mà không phức tạp hóa logic.
 - **Test pattern hiện tại (embed interface) đủ tốt**: Các fake contract hiện dùng embed interface có thể adapt dễ dàng khi tách pure use case.
 - **Outbox pattern đã ổn định**: Không cần thay đổi event-driven infrastructure.
-- **SLA performance cho phép tăng nhẹ DB call**: Người dùng chấp nhận tăng ~10% latency để đổi lấy code sạch hơn. Nếu benchmark vượt 10%, sẽ optimize (batch query/cache) trước khi merge.
+- **SLA performance cho phép tăng nhẹ DB call**: Người dùng chấp nhận tăng ~10% latency để đổi lấy code sạch hơn. Nếu phân tích tĩnh cho thấy vượt 10%, sẽ optimize (batch query/cache) trước khi merge.
 - **Rollback dùng git revert**: Không cần feature flag vì refactor nội bộ, API contract không đổi. Git revert là đủ.
 - **Documentation kèm theo**: Phải viết doc dài `docs/system-design/contract-purity-pattern.md` TRƯỚC khi code (Phase 1 T002 nháp, Phase 7 T028 hoàn thiện). Constitution sẽ ref tới file đó SAU khi refactor verify xong (Phase 7 T029, bump 1.7.0 → 1.8.0 MINOR theo Governance).
 
@@ -245,7 +247,7 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 - **Tách `dashboard` module**: Dashboard đã được audit ở phase trước, có 6 file use case inject contract (1-way), nhưng không phải root cause của vấn đề. Để phase sau nếu cần.
 - **Tách thành microservice**: Chỉ là clean up contract, không thay đổi kiến trúc deployment.
 - **Thay đổi API endpoint**: Giữ nguyên 100% API để tránh ảnh hưởng frontend.
-- **Refactor event-driven `wardrobe ↔ fashion`**: Đã có plan ở `docs/temp/wardrobe-fashion-cycle-refactor/04_final_plan.md` nhưng chưa áp dụng vì nhận thấy pure contract refactor đã giải quyết phần lớn cycle 2-way.
+- **Refactor event-driven cho các Write Contract Methods**: 4 direct write methods (`wardrobeContract.DeleteWardrobeItem`, `wardrobeContract.UpdateItemStatus`, `wardrobeContract.SetFashionItemID`, `brandContract.SetFashionItemID`) được xác định là pure database operations nội bộ của module đích, không gây detour call hay leak cross-module. Do đó, chúng được giữ lại an toàn dưới dạng Pure Contract trong feature này nhằm cô lập rủi ro refactor. Kế hoạch Event-Driven toàn diện (tại `docs/temp/wardrobe-fashion-cycle-refactor/04_final_plan.md`) được bảo lưu cho một feature chuyên biệt về Asynchronous Decoupling tiếp theo nếu có nhu cầu tách service vật lý.
 - **Cập nhật Constitution ngay trong feature này**: Doc `docs/system-design/contract-purity-pattern.md` viết TRƯỚC (Phase 1 T002 nháp, Phase 7 T028 hoàn thiện), Constitution `1.7.0 → 1.8.0 (MINOR)` cập nhật SAU khi refactor verify xong (Phase 7 T029 thêm "Pure Contract Usecase Principle" vào §II + link tới doc, kèm Sync Impact Report) — tuân Governance.
 
 ---
