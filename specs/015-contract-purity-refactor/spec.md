@@ -1,0 +1,260 @@
+# Feature Specification: Refactor Contract Purity & Xử Lý Detour Call + Deadcode
+
+**Feature Branch**: `015-contract-purity-refactor`
+
+**Created**: 2026-08-27
+
+**Status**: Draft
+
+**Input**: User description: "tuân thủ @AGENTS.md và @docs/development/agent-workflow.md, lên specs để thực hiện và xử lí toàn bộ vấn đề tìm được trong cả 2 folder bạn vừa tạo trong docs/temp"
+
+**Tài liệu nguồn**:
+- `docs/temp/wardrobe-fashion-cycle-refactor/` — phân tích cycle 2-way `wardrobe ↔ fashion` và kế hoạch event-driven (file 01-04 + README)
+- `docs/temp/detour-call-audit/` — báo cáo audit 3 vấn đề: Detour Call, Pure Contract Violation, Contract Deadcode (file 01-05)
+
+---
+
+## Tóm tắt bối cảnh
+
+Audit toàn bộ 8 module của dự án phát hiện **3 nhóm vấn đề** về kiến trúc Contract (đã rà lại method-level để tránh overengineering):
+
+| Vấn đề | Số lượng (method-level) | Root cause | Severity |
+|---|---|---|---|
+| **Detour Call** (chain 2-hop qua lại) | 7 chuỗi | Contract usecase enrich ngầm qua fashionContract | HIGH + MEDIUM |
+| **Pure Contract Violation** (leaky method trong contract usecase) | 2 contract usecase (wardrobe **4/8 alive leaky** — 7/15 nếu tính 3 deadcode trùng, `BrandItemUseCase` 5/9 method) — `Category`/`Subscription` đã pure ở method-level, không tính | Enrich trong contract usecase | HIGH |
+| **Contract Deadcode** (method không có caller) | 12 method | Interface Segregation vi phạm | LOW |
+| **Dead Wiring** (inject nhưng không dùng) | 1 (wardrobe inject IAIOrchestrator) | Lỗi refactor | LOW |
+
+**Mục tiêu feature**: Sửa trực tiếp contract usecase có sẵn cho thuần (không tạo usecase mới nếu đã có), xóa deadcode, và ép caller phải tự enrich khi cần — tránh overengineering.
+
+**Phân biệt 2 loại usecase**:
+- **Usecase thường** (`WardrobeItemUseCase`, `CategoryUseCase`, `BrandItemUseCase` thường, `SubscriptionUseCase`) — phục vụ handler/worker, được phép enrich.
+- **Contract usecase** (`WardrobeContractUseCase` ở `wardrobe/application/usecase/wardrobe/contractuc/`) — chuyên phục vụ contract, phải thuần (chỉ `wardrobeRepo` + mapper, không `fashionContract`/`userSubContract`).
+
+**Rủi ro khi thuần hóa**: Caller hiện đang dùng nested field đã enrich (ví dụ `item.FashionItem`) sẽ thành `nil` nếu không gọi thêm contract. Phải kiểm tra và ép caller gọi thêm `fashionContract` tương ứng (ví dụ `ListFashionItems`) + stitch bằng `sliceutils.IndexBy`/`GroupBy`.
+
+---
+
+## Clarifications
+
+### Session 2026-08-27
+
+- Q: Triển khai theo thứ tự nào cho 4 user story (P1/P1/P2/P3)? → A: Tuần tự theo priority (P1 → P1 → P2 → P3) — giảm rủi ro, dễ rollback, phù hợp workflow Spec-kit.
+- Q: Có cần cập nhật Constitution thêm nguyên tắc "Pure Contract" không? → A: Có — thêm nguyên tắc Pure Contract vào §II (Strict Module Boundaries) để ngăn chặn leaky contract tái diễn.
+- Q: Có cần viết ADR cho quyết định tách pure contract không? → A: Có, nhưng viết doc dài trong `docs/system-design/` (thay vì ADR ngắn) — Constitution phải ref tới vị trí file đó.
+- Q: Nếu benchmark tăng >10% DB call thì xử lý thế nào? → A: Optimize (batch query/cache) trước khi merge — đảm bảo NFR-001 được tuân thủ, tránh tích lũy technical debt.
+- Q: Có cần feature flag để rollback nhanh không? → A: Không cần — refactor nội bộ, API contract không đổi, dùng git revert khi cần.
+
+---
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Loại bỏ Detour Call trong workflow fashion (Priority: P1)
+
+Là **developer/maintainer** của SmartWardrobe Backend, tôi muốn mọi cuộc gọi từ fashion use case sang wardrobe/brand contract **chỉ trigger đúng 1 lần** (không bị "đi vòng" qua module khác rồi quay lại), để:
+- Debug dễ dàng hơn (trace stack rõ ràng).
+- Performance tốt hơn (giảm N+1 query pattern ẩn).
+- Coupling giảm (fashion không bị phụ thuộc ngầm vào enrichment logic của wardrobe).
+
+**Why this priority**: Đây là root cause ảnh hưởng nhiều flow business quan trọng: cleanup failed items, stale processing recovery, chat AI, outfit recommendation. Fix cái này sẽ giải quyết được 7/7 chuỗi detour call.
+
+**Independent Test**: 
+- Trigger `FashionWorkerUseCase.CleanupFailedItems` → assert chỉ có 1 call tới `wardrobeContract.GetFailedItemsForCleanup` (không có call ngược `fashionContract`).
+- Trigger `WardrobeChatUseCase.buildChatGenerationInput` → assert chỉ fetch wardrobe items 1 lần, sau đó fashion caller tự gọi `fashionContract.ListFashionItems` riêng.
+
+**Acceptance Scenarios**:
+1. **Given** fashion use case gọi `wardrobeContract.GetWardrobeItemsByUserID`, **When** request được xử lý, **Then** wardrobe contract chỉ trả về wardrobe items (không enrich fashion data).
+2. **Given** fashion use case cần enrich fashion data, **When** nhận kết quả từ wardrobe, **Then** fashion caller tự gọi `fashionContract.ListFashionItems` với IDs thu được.
+3. **Given** 7 chuỗi detour call đã được phát hiện, **When** refactor hoàn tất, **Then** audit script verify được 0 chuỗi còn lại.
+
+---
+
+### User Story 2 - Thuần hóa Contract Usecase có sẵn (Priority: P1)
+
+Là **architect/lead developer**, tôi muốn contract usecase hiện có trở nên thuần (chỉ gọi repo nội bộ) — **sửa trực tiếp**, không tạo usecase mới — để:
+- Caller biết trước contract không enrich ngầm.
+- Trách nhiệm rõ ràng: contract chỉ là "data fetcher", caller lo enrich.
+- Tránh overengineering (không tạo `*PureUseCase` mới khi đã có contract usecase).
+
+**Why this priority**: Pure Contract Violation là root cause của Detour Call. Thuần hóa contract usecase = tự động giải quyết Detour Call.
+
+**Independent Test**: 
+- Đọc `WardrobeContractUseCase` (wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go) → assert 7 method leaky đã bỏ `fashionContract`/`userSubContract`, chỉ còn `wardrobeRepo` + mapper.
+- Đọc 5 method leaky của `BrandItemUseCase` (helper `mapToRes`/`mapSliceTo*`) → assert đã bỏ `fashionContract` enrich, chỉ trả `FashionItemID` thô hoặc không enrich.
+- `CategoryUseCase`/`SubscriptionUseCase` đã pure ở method-level (verify, không cần sửa).
+
+**Acceptance Scenarios**:
+1. **Given** `WardrobeContractUseCase` có 7/15 method leaky, **When** sửa trực tiếp cho thuần, **Then** mỗi method chỉ gọi `wardrobeRepo` + mapper, không gọi `fashionContract`/`userSubContract`.
+2. **Given** 5 method leaky của `BrandItemUseCase` (qua helper), **When** sửa trực tiếp cho thuần, **Then** caller nhận `BrandItemRes` với `FashionItem == nil` nếu chưa enrich.
+3. **Given** contract đã thuần, **When** caller cần enrich, **Then** caller phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` và stitch bằng `sliceutils.IndexBy`/`GroupBy` — verify không còn `nil` do thiếu enrich.
+4. **Given** refactor thuần hóa, **When** chạy test suite, **Then** tất cả test cũ vẫn pass — API surface giữ nguyên, chỉ thay đổi bên trong.
+
+---
+
+### User Story 3 - Dọn dẹp Contract Deadcode (Priority: P2)
+
+Là **developer**, tôi muốn mỗi method trong contract interface phải có ít nhất 1 caller thực sự, để:
+- Giảm surface area, dễ review và maintain.
+- Tránh nhầm lẫn (developer mới không gọi method không có caller vì nghĩ nó quan trọng).
+- Tăng độ tin cậy của contract (mỗi method đều "live").
+
+**Why this priority**: Quick win, ít rủi ro, làm trước để giảm noise trước khi refactor lớn. Nhưng không critical như P1.
+
+**Independent Test**:
+- Chạy audit script (grep) trên 12 method deadcode đã phát hiện → assert 0 caller ngoài `_impl.go`/`_test.go`.
+- Sau khi xóa, `make build` + `make test` vẫn pass.
+
+**Acceptance Scenarios**:
+1. **Given** 12 method deadcode đã được liệt kê, **When** xóa khai báo + impl, **Then** không có test nào bị break.
+2. **Given** wire_gen.go đã được regenerate, **When** `make build`, **Then** không có lỗi missing provider.
+3. **Given** contract đã sạch deadcode, **When** audit lại, **Then** mọi method còn lại đều có caller.
+
+---
+
+### User Story 4 - Sửa Dead Wiring (Priority: P3)
+
+Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực sự được sử dụng, để:
+- Tránh khởi tạo object thừa (tốn memory).
+- Tăng tính minh bạch (rõ ràng struct cần gì).
+- Tránh confuse khi đọc code (inject thấy có nhưng không dùng → tưởng đã dùng).
+
+**Why this priority**: Low impact, chỉ 1 case. Làm cuối cùng.
+
+**Independent Test**:
+- Đọc struct `WardrobeItemUseCase` → assert field `aiService` đã được xóa (vì không dùng).
+- `make build` vẫn pass sau khi xóa.
+
+**Acceptance Scenarios**:
+1. **Given** `WardrobeItemUseCase` có field `aiService` không dùng, **When** xóa field + param constructor, **Then** struct và constructor gọn hơn.
+2. **Given** wire_gen.go đã được regenerate, **When** `make build`, **Then** không lỗi.
+
+---
+
+## Edge Cases
+
+- **Caller bị nil do thiếu enrich**: Sau khi thuần hóa, `item.FashionItem` sẽ `nil` nếu caller không gọi thêm `fashionContract`. Phải rà 7 caller của `WardrobeContract`/`BrandContract` và ép gọi thêm contract tương ứng (ví dụ `ListFashionItems` + `IndexBy`). Nếu sót, UI sẽ thiếu ảnh/category/style.
+- **Performance regression**: Nếu trước đây 1 call enrich được batch, sau khi tách caller phải gọi 2 call riêng → có thể tăng latency. Cần benchmark.
+- **Test fake phải update**: Các `fakeEmptyWardrobeContract` (chỉ embed interface) có thể không cần update nhiều, nhưng các fake dùng method enrich sẽ phải viết lại để mock thêm `fashionContract`.
+- **Order of migration**: Thuần hóa contract usecase trước, sau đó update caller trong cùng commit/PR. Nếu làm ngược lại, caller sẽ nhận `nil`.
+- **Concurrent calls**: Khi tách contract, có thể caller gọi 2 contract riêng biệt → cần đảm bảo không phụ thuộc transaction chung (caller stitch ngoài transaction).
+- **Không overengineering**: `CategoryUseCase`/`SubscriptionUseCase` đã pure ở method-level → không tạo `*PureUseCase` mới, không sửa.
+
+---
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+#### Nhóm 1: Thuần hóa Contract Usecase có sẵn (Root cause - P1) — sửa trực tiếp, không tạo mới
+
+- **FR-001**: System MUST sửa trực tiếp `WardrobeContractUseCase` (`wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go:24-28`) cho thuần: bỏ field `fashionContract` + `userSubContract`, chỉ giữ `wardrobeRepo`; 4 method alive leaky (`GetWardrobeItemsByUserID:164`, `GetActiveWardrobeItemsByUserID:198`, `GetFailedItemsForCleanup:262`, `GetStaleProcessingItems:299+309`) phải bỏ enrich `fashionContract`/`userSubContract`, chỉ trả `WardrobeItemRes` với `FashionItem == nil` + thêm field `FashionItemID` (mới) để caller còn ID để tự enrich (3 method deadcode `CopyItemToUser:69`, `VerifyItemsForPost:92`, `GetItemsByIDs:230` trùng deadcode sẽ bị xóa ở FR-007 nên không sửa).
+- **FR-002**: `CategoryUseCase`/`SubscriptionUseCase` đã pure ở method-level (verify: `CategoryContract.GetCategory` chỉ `categoryRepo`, `UserSubscriptionContract` 3 method chỉ repo) → **KHÔNG sửa**, không tạo `*PureUseCase` mới — tránh overengineering.
+- **FR-003**: System MUST sửa trực tiếp 5 method leaky của `BrandItemUseCase` cho thuần (bỏ cross-module enrich, giữ `FashionItemID`):
+  - `ListEligibleBrandItemsForStyling:87+157` — bỏ `userBriefContract.GetByID:87` (caller fashion đã có userID từ auth, không cần verify lại; nếu caller là worker/background job không có auth context thì brand vẫn check `customerRepo` + `benefitUC` intra là đủ, không cần verify user tồn tại ở brand) và bỏ `fashionContract.ListFashionItems:157` enrich (chỉ trả `BrandItemRes` với `FashionItem == nil`, `FashionItemID` vẫn có).
+  - `CheckBrandItemEligibility:185+227` — bỏ `userBriefContract.GetByID:185` (lý do như trên) và bỏ `fashionContract.GetFashionItem:227`.
+  - `GetBrandItemByIDDirect:570-579` (qua `mapToRes:21`), `GetBrandItemsByFashionItemIDs:581-597` (qua `mapSliceToBriefRes:33`), `GetBrandItemsByIDs:599-608` (qua `mapSliceToRes:54`) — bỏ `fashionContract` enrich trong helper.
+  - Các method pure còn lại (`ListActiveBrandItemFashionIDs:231`, `SetFashionItemID:546`, `UpdateBrandItemStatusDirect:558`) giữ nguyên.
+- **FR-004**: System MUST KHÔNG tách `SubscriptionUseCase` workflow — đã pure ở method-level (verify 8/8 delegate pure), không cần `IUserSubscriptionPureUseCase` mới.
+
+#### Nhóm 2: Ép caller tự Enrich (P1) — xử lý nil
+
+- **FR-005**: System MUST rà caller sau thuần hóa, ép gọi thêm `fashionContract` (KHÔNG gọi `fashionItemRepo` trực tiếp — tuân Hiến pháp §II) để tránh `nil` (vì `FashionItem == nil` nếu không enrich, nhưng `FashionItemID` vẫn có):
+  - `FashionWorkerUseCase.CleanupFailedItems` (worker_uc.go:143:155) — sau thuần hóa `FashionItem == nil`, không lấy được `ImagePublicID` từ `item.FashionItem`; phải đổi sang dùng `item.FashionItemID` (mới thêm vào `WardrobeItemRes` với json `fashionItemId`) + **chỉ gọi `fashionContract.GetFashionItem(ctx, FashionItemID)`** để lấy `ImagePublicID` trước khi `DeleteImage`/`DeleteWardrobeItem`. Nếu không cần ảnh thì có thể bỏ qua Cloudinary delete (không block).
+  - `FashionWorkerUseCase.RecoverStaleProcessingItems` (worker_uc.go:208:217) — check `item.FashionItem == nil` sẽ luôn true sau thuần hóa → phải sửa logic: **bỏ check `FashionItem == nil`**, extract `FashionItemID`, gọi `fashionContract.GetFashionItem` trước khi check `ProcessingRetryCount`.
+  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:249:266 `item.FashionItem.Category`/`Style`) → sau pure `FashionItem == nil` phải tự gọi `fashionContract.ListFashionItems` với IDs từ `FashionItemID` + `sliceutils.IndexBy` để bù.
+  - `WardrobeChatUseCase.buildChatGenerationInput` (chat/workflows.go:259) — qua `brandContract.ListEligibleBrandItemsForStyling` pure (`BrandItemRes.FashionItem == nil` nhưng `FashionItemID` vẫn có) → caller tự gọi `fashionContract.ListFashionItems` nếu cần hiển thị brand item ảnh.
+  - `OutfitRecommendationUseCase.validateAndGetActiveItems` (recommendation/workflow_helpers.go:59) — tương tự wardrobe, tự enrich.
+  - `OutfitRecommendationUseCase.filterCandidates` (recommendation/workflow_helpers.go:108) — qua brand, tự enrich.
+  - Tất cả caller phải stitch bằng `sliceutils.IndexBy`/`GroupBy` (Constitution §II) và dùng `FashionItemID` mới (wardrobe) hoặc `FashionItemID` sẵn có (brand).
+- **FR-006**: System MUST đảm bảo functional behavior không đổi sau khi thuần hóa + enrich ở caller (cùng kết quả trả về cho user, không `nil` do thiếu enrich).
+
+#### Nhóm 3: Dọn dẹp Deadcode (P2)
+
+- **FR-007**: System MUST xóa 7 method deadcode của `IWardrobeContract`:
+  - `CopyItemToUser`, `VerifyItemsForPost`, `GetItemsByIDs`, `GetUserFashionItemIDs`, `MarkProcessingFailed`, `MarkProcessingNeedsReview`, `CompleteProcessingSuccess`.
+- **FR-008**: System MUST xóa 2 method deadcode của `IBrandContract`:
+  - `CheckBrandFeatureAccess`, `UpdateBrandItemStatus`.
+- **FR-009**: System MUST xóa 3 method deadcode của subscription contracts:
+  - `IUserSubscriptionContract.GetUserSubscription`.
+  - `ISubscriptionPlanContract.GetDefaultSubscriptionPlanID`, `IsPremiumPlan`.
+- **FR-010**: System MUST regenerate `wire_gen.go` sau khi xóa các method contract.
+
+#### Nhóm 4: Sửa Dead Wiring (P3)
+
+- **FR-011**: System MUST xóa field `aiService aiexecutor_contract.IAIOrchestrator` khỏi `WardrobeItemUseCase` (wardrobe/.../wardrobe/item/item_uc_read.go:41,57) vì không được sử dụng.
+- **FR-012**: System MUST regenerate `wire_gen.go` sau khi xóa inject.
+
+#### Nhóm 5: Audit & Verify
+
+- **FR-013**: System MUST viết audit script (Go test hoặc shell script) để tự động phát hiện 3 vấn đề:
+  - Detour call (chain 2-hop).
+  - Pure contract violation.
+  - Contract deadcode.
+- **FR-014**: System MUST đạt 0/0/0 cho cả 3 metrics sau khi refactor hoàn tất (số detour, số violation, số deadcode).
+
+### Non-Functional Requirements
+
+- **NFR-001**: Performance — Tổng số DB call tăng không quá 10% so với trước refactor (do caller tự enrich bằng batch `ListFashionItems`). Benchmark lần này chỉ dự đoán (không chạy thật), ghi nhận số call trước/sau bằng đếm `fashionContract` trong code review. Nếu dự đoán vượt 10%, phải gộp batch hoặc cache trước khi merge.
+- **NFR-002**: Backward compatibility — API endpoint và DTO response KHÔNG đổi (WardrobeItemRes thêm `FashionItemID` là additive, không break). Caller bên ngoài (frontend, mobile) không cần thay đổi. Contract method signature KHÔNG đổi, chỉ thay đổi bên trong (FashionItem có thể `nil` nếu caller chưa enrich — caller phải xử lý).
+- **NFR-003**: Test coverage — Mỗi contract usecase đã thuần hóa (`WardrobeContractUseCase` 4 method, `BrandItemUseCase` 5 method) phải có unit test verify không gọi cross-module contract (mock assert `fashionContract` không được gọi). Không yêu cầu 80% cho usecase mới vì không tạo mới.
+- **NFR-004**: Documentation — `docs/system-design/contract-purity-pattern.md` phải giải thích "pure contract usecase", before/after, quy tắc caller tự enrich bằng `sliceutils.IndexBy`/`GroupBy`, và cách dùng `FashionItemID` mới.
+
+### Key Entities
+
+- **Contract usecase** (`WardrobeContractUseCase`): Usecase chuyên phục vụ contract, sau thuần hóa chỉ còn `wardrobeRepo` + mapper, không `fashionContract`/`userSubContract`. Giữ nguyên interface `IWardrobeContractUseCase` (không tạo `IPure*` mới).
+- **BrandItemUseCase (5 method leaky)**: Sau thuần hóa, 5 method trên chỉ trả brand data thô, `FashionItem` = `nil`. Helper `mapToRes`/`mapSliceTo*` bỏ `fashionContract`.
+- **Caller (fashion use cases)**: Phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` + `sliceutils.IndexBy`/`GroupBy` để enrich, tránh `nil`.
+
+---
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: Audit script verify được **0 chuỗi detour call** trong codebase (từ 7 hiện tại).
+- **SC-002**: Audit script verify được **0 contract usecase leaky method** (từ 2 contract method-level hiện tại: wardrobe 7/15, brand 5/9; struct-level cũ là 4).
+- **SC-003**: Audit script verify được **0 method contract deadcode** (từ 12 hiện tại).
+- **SC-004**: Audit script verify được **0 dead wiring** (từ 1 hiện tại).
+- **SC-005**: Tất cả test cũ (`make test`) vẫn pass sau khi refactor.
+- **SC-006**: Tất cả lint check (`make lint`) pass sau khi refactor.
+- **SC-007**: Wire build (`make wire && make build`) pass sau khi refactor.
+- **SC-008**: Tổng số DB call tăng không quá 10% (benchmark **dự đoán** — đếm `fashionContract` trong code review, không chạy thật — cho 4 flow bị ảnh hưởng: `GetWardrobeItemsByUserID`/`GetActiveWardrobeItemsByUserID` (chat/recommendation) và `GetFailedItemsForCleanup`/`GetStaleProcessingItems` (worker); nếu dự đoán >10% phải gộp batch `ListFashionItems`).
+- **SC-009**: Functional test 4 case manual (upload, retry analysis, cleanup failed, outfit recommendation) cho kết quả giống trước refactor.
+
+---
+
+## Assumptions
+
+- **Migration strategy**: Triển khai tuần tự theo priority (P1 → P1 → P2 → P3) — mỗi phase verify xong mới qua phase sau. Mỗi user story là 1 commit/PR riêng để dễ review và rollback.
+- **Caller có thể tự gọi 2 contract riêng**: Caller (use case khác module) có khả năng gọi 2 contract trong cùng 1 method mà không phức tạp hóa logic.
+- **Test pattern hiện tại (embed interface) đủ tốt**: Các fake contract hiện dùng embed interface có thể adapt dễ dàng khi tách pure use case.
+- **Outbox pattern đã ổn định**: Không cần thay đổi event-driven infrastructure.
+- **SLA performance cho phép tăng nhẹ DB call**: Người dùng chấp nhận tăng ~10% latency để đổi lấy code sạch hơn. Nếu benchmark vượt 10%, sẽ optimize (batch query/cache) trước khi merge.
+- **Rollback dùng git revert**: Không cần feature flag vì refactor nội bộ, API contract không đổi. Git revert là đủ.
+- **Documentation kèm theo**: Phải viết doc dài `docs/system-design/contract-purity-pattern.md` TRƯỚC khi code (Phase 1 T002 nháp, Phase 7 T028 hoàn thiện). Constitution sẽ ref tới file đó SAU khi refactor verify xong (Phase 7 T029, bump 1.7.0 → 1.8.0 MINOR theo Governance).
+
+---
+
+## Phạm vi áp dụng (Out of Scope)
+
+- **Tách `dashboard` module**: Dashboard đã được audit ở phase trước, có 6 file use case inject contract (1-way), nhưng không phải root cause của vấn đề. Để phase sau nếu cần.
+- **Tách thành microservice**: Chỉ là clean up contract, không thay đổi kiến trúc deployment.
+- **Thay đổi API endpoint**: Giữ nguyên 100% API để tránh ảnh hưởng frontend.
+- **Refactor event-driven `wardrobe ↔ fashion`**: Đã có plan ở `docs/temp/wardrobe-fashion-cycle-refactor/04_final_plan.md` nhưng chưa áp dụng vì nhận thấy pure contract refactor đã giải quyết phần lớn cycle 2-way.
+- **Cập nhật Constitution ngay trong feature này**: Doc `docs/system-design/contract-purity-pattern.md` viết TRƯỚC (Phase 1 T002 nháp, Phase 7 T028 hoàn thiện), Constitution `1.7.0 → 1.8.0 (MINOR)` cập nhật SAU khi refactor verify xong (Phase 7 T029 thêm "Pure Contract Usecase Principle" vào §II + link tới doc, kèm Sync Impact Report) — tuân Governance.
+
+---
+
+## Tài liệu tham khảo
+
+- `docs/temp/wardrobe-fashion-cycle-refactor/01_research_overview.md` — Tổng quan research
+- `docs/temp/wardrobe-fashion-cycle-refactor/02_cycle_analysis.md` — Phân tích cycle 2-way
+- `docs/temp/wardrobe-fashion-cycle-refactor/03_eventual_consistency_analysis.md` — Phân tích eventual consistency
+- `docs/temp/wardrobe-fashion-cycle-refactor/04_final_plan.md` — Kế hoạch event-driven (chưa áp dụng)
+- `docs/temp/detour-call-audit/01_overview.md` — Tổng quan audit
+- `docs/temp/detour-call-audit/02_wardrobe_fashion.md` — Chi tiết wardrobe + fashion
+- `docs/temp/detour-call-audit/03_brand_aiexecutor.md` — Chi tiết brand + aiexecutor
+- `docs/temp/detour-call-audit/04_others.md` — Chi tiết identity, subscription, notification, admin
+- `docs/temp/detour-call-audit/05_recommendations.md` — Đề xuất hướng giải quyết
+- `.specify/memory/constitution.md` — Constitution (version 1.7.0)
+- `docs/system-design/contract-purity-pattern.md` — **SẼ TẠO**: Doc giải thích Pure Contract pattern (P1 của feature này)
