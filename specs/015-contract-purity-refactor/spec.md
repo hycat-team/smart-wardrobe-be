@@ -21,15 +21,15 @@ Audit toàn bộ 8 module của dự án phát hiện **3 nhóm vấn đề** v�
 | Vấn đề | Số lượng (method-level) | Root cause | Severity |
 |---|---|---|---|
 | **Detour Call** (chain 2-hop qua lại) | 7 chuỗi | Contract usecase enrich ngầm qua fashionContract | HIGH + MEDIUM |
-| **Pure Contract Violation** (leaky method trong contract usecase) | 2 contract usecase (wardrobe **4/8 alive leaky** — 7/15 nếu tính 3 deadcode trùng, `BrandItemUseCase` 5/9 method) — `Category`/`Subscription` đã pure ở method-level, không tính | Enrich trong contract usecase | HIGH |
+| **Pure Contract Violation** (leaky method trong contract usecase) | 2 contract (wardrobe **4/8 alive leaky** — 7/15 nếu tính 3 deadcode trùng đã tách; brand 5/9 method **dùng chung handler+contract** nên phải tách `BrandItemContractUseCase` riêng) — `Category`/`Subscription` đã pure ở method-level, không tính | Enrich trong contract usecase | HIGH |
 | **Contract Deadcode** (method không có caller) | 12 method | Interface Segregation vi phạm | LOW |
 | **Dead Wiring** (inject nhưng không dùng) | 1 (wardrobe inject IAIOrchestrator) | Lỗi refactor | LOW |
 
-**Mục tiêu feature**: Sửa trực tiếp contract usecase có sẵn cho thuần (không tạo usecase mới nếu đã có), xóa deadcode, và ép caller phải tự enrich khi cần — tránh overengineering.
+**Mục tiêu feature**: Thuần hóa contract usecase — **sửa trực tiếp nếu đã tách** (`WardrobeContractUseCase` đã tách), **tạo mới nếu đang dùng chung với handler** (`BrandItemUseCase` dùng chung handler+contract → tạo `BrandItemContractUseCase` riêng), xóa deadcode, và ép caller phải tự enrich khi cần — tránh làm handler mất enrich.
 
 **Phân biệt 2 loại usecase**:
-- **Usecase thường** (`WardrobeItemUseCase`, `CategoryUseCase`, `BrandItemUseCase` thường, `SubscriptionUseCase`) — phục vụ handler/worker, được phép enrich.
-- **Contract usecase** (`WardrobeContractUseCase` ở `wardrobe/application/usecase/wardrobe/contractuc/`) — chuyên phục vụ contract, phải thuần (chỉ `wardrobeRepo` + mapper, không `fashionContract`/`userSubContract`).
+- **Usecase thường / handler usecase** (`WardrobeItemUseCase`, `CategoryUseCase`, `BrandItemUseCase` thường, `SubscriptionUseCase`) — phục vụ handler/worker, được phép enrich.
+- **Contract usecase** (`WardrobeContractUseCase` ở `wardrobe/application/usecase/wardrobe/contractuc/` đã tách; `BrandItemContractUseCase` sẽ tạo mới ở `brand/application/usecase/item/contractuc/` vì brand đang dùng chung) — chuyên phục vụ contract, phải thuần (chỉ `*Repo` + mapper, không `fashionContract`/`userSubContract`/`userBriefContract`).
 
 **Rủi ro khi thuần hóa**: Caller hiện đang dùng nested field đã enrich (ví dụ `item.FashionItem`) sẽ thành `nil` nếu không gọi thêm contract. Phải kiểm tra và ép caller gọi thêm `fashionContract` tương ứng (ví dụ `ListFashionItems`) + stitch bằng `sliceutils.IndexBy`/`GroupBy`.
 
@@ -69,23 +69,23 @@ Là **developer/maintainer** của SmartWardrobe Backend, tôi muốn mọi cu�
 
 ---
 
-### User Story 2 - Thuần hóa Contract Usecase có sẵn (Priority: P1)
+### User Story 2 - Thuần hóa Contract Usecase (Priority: P1)
 
-Là **architect/lead developer**, tôi muốn contract usecase hiện có trở nên thuần (chỉ gọi repo nội bộ) — **sửa trực tiếp**, không tạo usecase mới — để:
+Là **architect/lead developer**, tôi muốn mọi contract usecase trở nên thuần (chỉ gọi repo nội bộ) — **sửa trực tiếp nếu đã tách, tạo mới nếu đang dùng chung với handler** — để:
 - Caller biết trước contract không enrich ngầm.
 - Trách nhiệm rõ ràng: contract chỉ là "data fetcher", caller lo enrich.
-- Tránh overengineering (không tạo `*PureUseCase` mới khi đã có contract usecase).
+- Handler giữ nguyên enrich (không bị ảnh hưởng), contract tách riêng để thuần.
 
 **Why this priority**: Pure Contract Violation là root cause của Detour Call. Thuần hóa contract usecase = tự động giải quyết Detour Call.
 
 **Independent Test**: 
-- Đọc `WardrobeContractUseCase` (wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go) → assert 7 method leaky đã bỏ `fashionContract`/`userSubContract`, chỉ còn `wardrobeRepo` + mapper.
-- Đọc 5 method leaky của `BrandItemUseCase` (helper `mapToRes`/`mapSliceTo*`) → assert đã bỏ `fashionContract` enrich, chỉ trả `FashionItemID` thô hoặc không enrich.
+- Đọc `WardrobeContractUseCase` (wardrobe đã tách riêng `contractuc`) → assert 4 alive leaky đã bỏ `fashionContract`/`userSubContract`, chỉ còn `wardrobeRepo` + mapper (3 deadcode sẽ xóa).
+- Đọc `BrandItemContractUseCase` mới (`brand/application/usecase/item/contractuc/contract_uc.go`) → assert 5 method pure chỉ `brandRepo`/`brandItemRepo`/`customerRepo`/`benefitUC`, không `fashionContract`/`userBriefContract`, chỉ trả `FashionItemID` thô; đồng thời verify `BrandItemUseCase` cũ (handler) vẫn enrich bình thường.
 - `CategoryUseCase`/`SubscriptionUseCase` đã pure ở method-level (verify, không cần sửa).
 
 **Acceptance Scenarios**:
-1. **Given** `WardrobeContractUseCase` có 7/15 method leaky, **When** sửa trực tiếp cho thuần, **Then** mỗi method chỉ gọi `wardrobeRepo` + mapper, không gọi `fashionContract`/`userSubContract`.
-2. **Given** 5 method leaky của `BrandItemUseCase` (qua helper), **When** sửa trực tiếp cho thuần, **Then** caller nhận `BrandItemRes` với `FashionItem == nil` nếu chưa enrich.
+1. **Given** `WardrobeContractUseCase` đã tách, có 4/8 alive leaky, **When** sửa trực tiếp cho thuần, **Then** mỗi method chỉ gọi `wardrobeRepo` + mapper, không gọi `fashionContract`/`userSubContract`.
+2. **Given** `BrandItemUseCase` đang dùng chung handler+contract, **When** tạo `BrandItemContractUseCase` riêng cho thuần, **Then** contract caller nhận `BrandItemRes` với `FashionItem == nil` (còn `FashionItemID`), trong khi handler caller (`GetBrandItemForStaff`…) vẫn nhận `FashionItem` đầy đủ.
 3. **Given** contract đã thuần, **When** caller cần enrich, **Then** caller phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` và stitch bằng `sliceutils.IndexBy`/`GroupBy` — verify không còn `nil` do thiếu enrich.
 4. **Given** refactor thuần hóa, **When** chạy test suite, **Then** tất cả test cũ vẫn pass — API surface giữ nguyên, chỉ thay đổi bên trong.
 
@@ -145,15 +145,18 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 
 ### Functional Requirements
 
-#### Nhóm 1: Thuần hóa Contract Usecase có sẵn (Root cause - P1) — sửa trực tiếp, không tạo mới
+#### Nhóm 1: Thuần hóa Contract Usecase (Root cause - P1) — sửa trực tiếp nếu đã tách, tạo mới nếu đang dùng chung với handler
 
-- **FR-001**: System MUST sửa trực tiếp `WardrobeContractUseCase` (`wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go:24-28`) cho thuần: bỏ field `fashionContract` + `userSubContract`, chỉ giữ `wardrobeRepo`; 4 method alive leaky (`GetWardrobeItemsByUserID:164`, `GetActiveWardrobeItemsByUserID:198`, `GetFailedItemsForCleanup:262`, `GetStaleProcessingItems:299+309`) phải bỏ enrich `fashionContract`/`userSubContract`, chỉ trả `WardrobeItemRes` với `FashionItem == nil` + thêm field `FashionItemID` (mới) để caller còn ID để tự enrich (3 method deadcode `CopyItemToUser:69`, `VerifyItemsForPost:92`, `GetItemsByIDs:230` trùng deadcode sẽ bị xóa ở FR-007 nên không sửa).
+- **FR-001**: System MUST sửa trực tiếp `WardrobeContractUseCase` (`wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go:24-28`) cho thuần — wardrobe **đã tách** riêng `contractuc` (handler dùng `WardrobeItemUseCase`, contract dùng `WardrobeContractUseCase`): bỏ field `fashionContract` + `userSubContract`, chỉ giữ `wardrobeRepo`; 4 method alive leaky (`GetWardrobeItemsByUserID:164`, `GetActiveWardrobeItemsByUserID:198`, `GetFailedItemsForCleanup:262`, `GetStaleProcessingItems:299+309`) phải bỏ enrich `fashionContract`/`userSubContract`, chỉ trả `WardrobeItemRes` với `FashionItem == nil` + thêm field `FashionItemID` (mới) để caller còn ID để tự enrich (3 method deadcode `CopyItemToUser:69`, `VerifyItemsForPost:92`, `GetItemsByIDs:230` trùng deadcode sẽ bị xóa ở FR-007 nên không sửa).
 - **FR-002**: `CategoryUseCase`/`SubscriptionUseCase` đã pure ở method-level (verify: `CategoryContract.GetCategory` chỉ `categoryRepo`, `UserSubscriptionContract` 3 method chỉ repo) → **KHÔNG sửa**, không tạo `*PureUseCase` mới — tránh overengineering.
-- **FR-003**: System MUST sửa trực tiếp 5 method leaky của `BrandItemUseCase` cho thuần (bỏ cross-module enrich, giữ `FashionItemID`):
-  - `ListEligibleBrandItemsForStyling:87+157` — bỏ `userBriefContract.GetByID:87` (caller fashion đã có userID từ auth, không cần verify lại; nếu caller là worker/background job không có auth context thì brand vẫn check `customerRepo` + `benefitUC` intra là đủ, không cần verify user tồn tại ở brand) và bỏ `fashionContract.ListFashionItems:157` enrich (chỉ trả `BrandItemRes` với `FashionItem == nil`, `FashionItemID` vẫn có).
-  - `CheckBrandItemEligibility:185+227` — bỏ `userBriefContract.GetByID:185` (lý do như trên) và bỏ `fashionContract.GetFashionItem:227`.
-  - `GetBrandItemByIDDirect:570-579` (qua `mapToRes:21`), `GetBrandItemsByFashionItemIDs:581-597` (qua `mapSliceToBriefRes:33`), `GetBrandItemsByIDs:599-608` (qua `mapSliceToRes:54`) — bỏ `fashionContract` enrich trong helper.
-  - Các method pure còn lại (`ListActiveBrandItemFashionIDs:231`, `SetFashionItemID:546`, `UpdateBrandItemStatusDirect:558`) giữ nguyên.
+- **FR-003**: System MUST tạo **BrandItemContractUseCase riêng** (`brand/application/usecase/item/contractuc/contract_uc.go`) cho thuần — vì `BrandItemUseCase` hiện **dùng chung** cho cả handler và contract (`brand/presentation/contract/brand_contract_impl.go:16-17` inject `IBrandItemUseCase` và `brand/presentation/handler/brand_portal_handler.go:17` cũng inject `IBrandItemUseCase`). Sửa trực tiếp `BrandItemUseCase` sẽ làm handler (`GetBrandItemForStaff`, `GetBrandItemForUser`, `ListBrandProductsForCustomer`…) mất `FashionItem` enrich. Vì vậy:
+  - Giữ nguyên `BrandItemUseCase` (`brand/application/usecase/item/usecase.go` + `helper.go`) cho handler — **KHÔNG đụng**, vẫn được phép enrich qua `fashionContract`/`userBriefContract`.
+  - Tạo mới `BrandItemContractUseCase` (interface `IBrandItemContractUseCase`) chỉ phụ thuộc `brandRepo`/`brandItemRepo`/`customerRepo`/`benefitUC` (KHÔNG `fashionContract`/`userBriefContract`), implement 5 method phiên bản pure:
+    - `ListEligibleBrandItemsForStyling` — bỏ `userBriefContract.GetByID:87` (caller fashion đã có userID từ auth; nếu caller là worker không có auth thì `customerRepo`+`benefitUC` intra là đủ) và bỏ `fashionContract.ListFashionItems:157` (trả `BrandItemRes` với `FashionItem == nil`, `FashionItemID` vẫn có).
+    - `CheckBrandItemEligibility` — bỏ `userBriefContract.GetByID:185` + `fashionContract.GetFashionItem:227`.
+    - `GetBrandItemByIDDirect:570-579` (mapper pure `mapToRes` không gọi `fashionContract.GetFashionItem:21`), `GetBrandItemsByFashionItemIDs:581-597` (`mapSliceToBriefRes:33` bỏ `ListFashionItemsBrief`), `GetBrandItemsByIDs:599-608` (`mapSliceToRes:54` bỏ `ListFashionItems`).
+  - `BrandContract` (`brand/presentation/contract/brand_contract_impl.go`) chuyển từ inject `IBrandItemUseCase` sang `IBrandItemContractUseCase` cho 5 method trên; các method pure còn lại (`ListActiveBrandItemFashionIDs:231`, `SetFashionItemID:546`, `UpdateBrandItemStatusDirect:558`) giữ trong contract uc thuần (không cần enrich).
+  - Wire: thêm `brand/application/usecase/item/contractuc` ProviderSet, `brand/application.ProviderSet` include `contractuc.NewBrandItemContractUseCase`, `brand.ProviderSet` bind `IBrandItemContractUseCase`.
 - **FR-004**: System MUST KHÔNG tách `SubscriptionUseCase` workflow — đã pure ở method-level (verify 8/8 delegate pure), không cần `IUserSubscriptionPureUseCase` mới.
 
 #### Nhóm 2: Ép caller tự Enrich (P1) — xử lý nil
@@ -196,14 +199,14 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 
 - **NFR-001**: Performance — Tổng số DB call tăng không quá 10% so với trước refactor (do caller tự enrich bằng batch `ListFashionItems`). Benchmark lần này chỉ dự đoán (không chạy thật), ghi nhận số call trước/sau bằng đếm `fashionContract` trong code review. Nếu dự đoán vượt 10%, phải gộp batch hoặc cache trước khi merge.
 - **NFR-002**: Backward compatibility — API endpoint và DTO response KHÔNG đổi (WardrobeItemRes thêm `FashionItemID` là additive, không break). Caller bên ngoài (frontend, mobile) không cần thay đổi. Contract method signature KHÔNG đổi, chỉ thay đổi bên trong (FashionItem có thể `nil` nếu caller chưa enrich — caller phải xử lý).
-- **NFR-003**: Test coverage — Mỗi contract usecase đã thuần hóa (`WardrobeContractUseCase` 4 method, `BrandItemUseCase` 5 method) phải có unit test verify không gọi cross-module contract (mock assert `fashionContract` không được gọi). Không yêu cầu 80% cho usecase mới vì không tạo mới.
+- **NFR-003**: Test coverage — Mỗi contract usecase đã thuần hóa (`WardrobeContractUseCase` 4 method sửa trực tiếp, `BrandItemContractUseCase` 5 method tạo mới) phải có unit test verify không gọi cross-module contract (mock assert `fashionContract`/`userBriefContract` không được gọi). `BrandItemUseCase` handler giữ nguyên không cần test pure.
 - **NFR-004**: Documentation — `docs/system-design/contract-purity-pattern.md` phải giải thích "pure contract usecase", before/after, quy tắc caller tự enrich bằng `sliceutils.IndexBy`/`GroupBy`, và cách dùng `FashionItemID` mới.
 
 ### Key Entities
 
-- **Contract usecase** (`WardrobeContractUseCase`): Usecase chuyên phục vụ contract, sau thuần hóa chỉ còn `wardrobeRepo` + mapper, không `fashionContract`/`userSubContract`. Giữ nguyên interface `IWardrobeContractUseCase` (không tạo `IPure*` mới).
-- **BrandItemUseCase (5 method leaky)**: Sau thuần hóa, 5 method trên chỉ trả brand data thô, `FashionItem` = `nil`. Helper `mapToRes`/`mapSliceTo*` bỏ `fashionContract`.
-- **Caller (fashion use cases)**: Phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` + `sliceutils.IndexBy`/`GroupBy` để enrich, tránh `nil`.
+- **Contract usecase** (`WardrobeContractUseCase` đã tách, `BrandItemContractUseCase` mới tách): Chuyên phục vụ contract, sau thuần hóa chỉ còn `*Repo` + mapper, không `fashionContract`/`userSubContract`/`userBriefContract`. Wardrobe sửa trực tiếp, Brand tạo mới ở `item/contractuc/`.
+- **BrandItemUseCase (handler)**: Giữ nguyên cho handler (`GetBrandItemForStaff`, `ListBrandProductsForCustomer`…) — vẫn được phép enrich `FashionItem` qua `fashionContract`, không đụng để tránh break handler.
+- **Caller (fashion use cases)**: Sau thuần hóa contract, phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` + `sliceutils.IndexBy`/`GroupBy` để enrich, tránh `nil`.
 
 ---
 

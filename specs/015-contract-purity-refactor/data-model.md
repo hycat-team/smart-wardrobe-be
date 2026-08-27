@@ -3,7 +3,7 @@
 **Feature**: `015-contract-purity-refactor`
 **Ngày**: 2026-08-27 (cập nhật tránh overengineering)
 
-> Feature này KHÔNG thêm entity/DB migration, KHÔNG thêm interface `IPure*`. Chỉ sửa trực tiếp contract usecase có sẵn cho thuần.
+> Feature này KHÔNG thêm entity/DB migration. Sửa trực tiếp `WardrobeContractUseCase` đã tách cho thuần; **tạo mới** `BrandItemContractUseCase` vì `BrandItemUseCase` đang dùng chung handler+contract — không sửa trực tiếp để tránh handler mất enrich.
 
 ---
 
@@ -21,9 +21,9 @@ Không có migration.
 
 ---
 
-## 2. Sửa trực tiếp cho thuần (không tạo mới)
+## 2. Thuần hóa cho thuần (sửa trực tiếp đã tách, tạo mới nếu dùng chung)
 
-### 2.1. `WardrobeContractUseCase` + DTO `WardrobeItemRes` (wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go + dto/wardrobe.go)
+### 2.1. `WardrobeContractUseCase` + DTO `WardrobeItemRes` (wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go + dto/wardrobe.go) — **đã tách, sửa trực tiếp**
 
 - **Hiện trạng**: Struct `WardrobeContractUseCase` có 3 field `wardrobeRepo`, `userSubContract`, `fashionContract`. 7/15 method leaky do gọi 2 contract này để enrich. DTO `WardrobeItemRes` hiện chỉ có `FashionItem *FashionItemRes` (không có `FashionItemID` top-level).
 - **Sửa DTO (D1 — Hiến pháp Code Style)**: Thêm field `FashionItemID *uuid.UUID \`json:"fashionItemId,omitempty"\`` vào `WardrobeItemRes` (`dto/wardrobe.go:54-67`) — **camelCase `fashionItemId`** (tuân Hiến pháp Code Style JSON). Cập nhật `mapper.MapToWardrobeItemRes` (`mapper/wardrobe.go:39-55`) để map `FashionItemID` từ `item.FashionItemID` (entity) vào DTO, kể cả khi `FashionItem == nil`.
@@ -37,16 +37,18 @@ Không có migration.
   - `GetStaleProcessingItems:299+309` — bỏ 2 call `GetStaleProcessingInfo` + `ListFashionItems`, chỉ filter theo wardrobe stale.
 - **8 method pure giữ nguyên**: `UpdateItemStatus`, `GetUserFashionItemIDs`, `SetFashionItemID`, `DeleteWardrobeItem`, `MarkProcessingFailed/NeedsReview/CompleteProcessingSuccess`, `CountItemsByFashionIDs`.
 
-### 2.2. `BrandItemUseCase` 5 method leaky (brand/application/usecase/item/usecase.go + helper.go)
+### 2.2. `BrandItemUseCase` dùng chung handler+contract → **tạo mới** `BrandItemContractUseCase` (brand/application/usecase/item/contractuc/contract_uc.go)
 
-- **Hiện trạng**: 5 method qua helper gọi `fashionContract` để enrich `FashionItem`.
-- **Sửa trực tiếp** 5 method + helper cho thuần (bỏ `fashionContract`/`userBriefContract`):
+- **Hiện trạng**: `BrandItemUseCase` (`brand/application/usecase/item/usecase.go`) inject `fashionContract` + `userBriefContract` để enrich; được **dùng chung** bởi handler (`brand_portal_handler.go:17` `IBrandItemUseCase`) và contract (`brand_contract_impl.go:16-17` `IBrandItemUseCase`). Helper `helper.go:21,33,54,96` gọi `fashionContract` để enrich `FashionItem`. 5 method contract bị leaky.
+- **Tại sao KHÔNG sửa trực tiếp**: Handler cần `FashionItem` enrich (ví dụ `GetBrandItemForStaff`, `ListBrandProductsForCustomer` trả `FashionItem` cho UI). Sửa `BrandItemUseCase` thành pure sẽ làm handler mất enrich → break API.
+- **Tạo mới** `BrandItemContractUseCase` (interface `IBrandItemContractUseCase`) chỉ phụ thuộc `brandRepo`/`brandItemRepo`/`customerRepo`/`benefitUC` (KHÔNG `fashionContract`/`userBriefContract`), implement 5 method phiên bản pure với mapper thuần (không gọi fashion):
   - `ListEligibleBrandItemsForStyling:87+157` — bỏ `userBriefContract.GetByID` + `fashionContract.ListFashionItems`.
   - `CheckBrandItemEligibility:185+227` — bỏ `userBriefContract` + `fashionContract.GetFashionItem`.
-  - `GetBrandItemByIDDirect:570-579` → `helper mapToRes:21` bỏ `fashionContract.GetFashionItem`.
-  - `GetBrandItemsByFashionItemIDs:581-597` → `helper mapSliceToBriefRes:33` bỏ `ListFashionItemsBrief`.
-  - `GetBrandItemsByIDs:599-608` → `helper mapSliceToRes:54` bỏ `ListFashionItems`.
-- **4 method pure giữ nguyên**: `CheckBrandFeatureAccess` (benefit), `ListActiveBrandItemFashionIDs`, `SetFashionItemID`, `UpdateBrandItemStatusDirect`.
+  - `GetBrandItemByIDDirect:570-579` → `mapToRes:21` bỏ `fashionContract.GetFashionItem`.
+  - `GetBrandItemsByFashionItemIDs:581-597` → `mapSliceToBriefRes:33` bỏ `ListFashionItemsBrief`.
+  - `GetBrandItemsByIDs:599-608` → `mapSliceToRes:54` bỏ `ListFashionItems`.
+- **Giữ nguyên** `BrandItemUseCase` cho handler — không đụng, vẫn enrich. `BrandContract` chuyển sang inject `IBrandItemContractUseCase` cho 5 method trên; các method pure còn lại (`ListActiveBrandItemFashionIDs:231`, `SetFashionItemID:546`, `UpdateBrandItemStatusDirect:558`) cũng đưa vào contract uc thuần.
+- **Wire**: Thêm ProviderSet `item/contractuc.NewBrandItemContractUseCase`, include vào `brand/application.ProviderSet`, `brand.ProviderSet` bind `IBrandItemContractUseCase` cho `BrandContract`.
 
 ### 2.3. `CategoryUseCase` / `SubscriptionUseCase` — KHÔNG sửa
 

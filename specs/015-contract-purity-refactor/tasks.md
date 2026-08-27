@@ -34,20 +34,21 @@
 
 ---
 
-## Phase 3: User Story 2 - Thuần hóa Contract Usecase có sẵn (Priority: P1) 🎯 MVP — Root Cause
+## Phase 3: User Story 2 - Thuần hóa Contract Usecase (Priority: P1) 🎯 MVP — Root Cause
 
-**Goal**: 2 contract usecase (wardrobe 7/15, brand 5/9 leaky method) trở nên thuần, không tạo *PureUseCase mới — sửa trực tiếp
+**Goal**: Wardrobe contract uc (4/8 alive leaky) sửa trực tiếp cho thuần + Brand contract uc mới tách riêng cho thuần (5 method) — handler `BrandItemUseCase` giữ nguyên enrich
 
-**Independent Test**: Đọc `WardrobeContractUseCase` và 5 method `BrandItemUseCase` → assert chỉ `Repo` + mapper, không `fashionContract`/`userSubContract`/`userBriefContract`; audit `pure: 0`; `make wire && make build` pass
+**Independent Test**: Đọc `WardrobeContractUseCase` → chỉ `Repo` + mapper; đọc `BrandItemContractUseCase` mới → chỉ `brandRepo`/`brandItemRepo`/`customerRepo`/`benefitUC` không `fashionContract`/`userBriefContract`; đồng thời verify `BrandItemUseCase` handler vẫn enrich; audit `pure: 0`; `make wire && make build` pass
 
 ### Implementation cho US2
 
 - [ ] T007 [US2] Sửa `WardrobeContractUseCase` trong `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go` — bỏ field `userSubContract`/`fashionContract` khỏi struct `WardrobeContractUseCase:24-28` và constructor `NewWardrobeContractUseCase:30-39` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
 - [ ] T007a [US2] Thêm field `FashionItemID *uuid.UUID \`json:"fashionItemId,omitempty"\`` (camelCase — Hiến pháp Code Style) vào `WardrobeItemRes` trong `internal/modules/wardrobe/application/dto/wardrobe.go:54-67` và cập nhật `mapper.MapToWardrobeItemRes` trong `internal/modules/wardrobe/application/mapper/wardrobe.go:39-55` để map `FashionItemID` từ `item.FashionItemID` kể cả khi `FashionItem == nil` — file `internal/modules/wardrobe/application/dto/wardrobe.go` và `internal/modules/wardrobe/application/mapper/wardrobe.go`
-- [ ] T008 [US2] Thuần hóa 4 method alive leaky của `WardrobeContractUseCase` — bỏ enrich `fashionContract`: `GetWardrobeItemsByUserID:149-179` (bỏ ListFashionItems 164), `GetActiveWardrobeItemsByUserID:183-213` (bỏ 198), `GetFailedItemsForCleanup:247-277` (bỏ 262), `GetStaleProcessingItems:283-334` (bỏ GetStaleProcessingInfo 299 + ListFashionItems 309, chỉ filter wardrobe) — trả `FashionItem == nil` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
+- [ ] T008 [US2] Thuần hóa 4 method alive leaky của `WardrobeContractUseCase` — bỏ enrich `fashionContract`: `GetWardrobeItemsByUserID:149-179` (bỏ ListFashionItems 164), `GetActiveWardrobeItemsByUserID:183-213` (bỏ 198), `GetFailedItemsForCleanup:247-277` (bỏ 262), `GetStaleProcessingItems:283-334` (bỏ GetStaleProcessingInfo 299 + ListFashionItems 309, chỉ filter wardrobe) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc.go`
 - [ ] T009 [US2] Cập nhật `internal/modules/wardrobe/provider.go` bỏ inject `fashionContract`/`userSubContract` cho `WardrobeContractUseCase` — file `internal/modules/wardrobe/provider.go`
-- [ ] T010 [US2] Thuần hóa 5 method leaky của `BrandItemUseCase` trong `internal/modules/brand/application/usecase/item/usecase.go` + `helper.go:21,33,54,96` — bỏ `fashionContract`/`userBriefContract` enrich (`ListEligibleBrandItemsForStyling:87+157`, `CheckBrandItemEligibility:185+227`, `GetBrandItemByIDDirect:570` via `mapToRes:21`, `GetBrandItemsByFashionItemIDs:581` via `mapSliceToBriefRes:33`, `GetBrandItemsByIDs:599` via `mapSliceToRes:54`) — trả `FashionItem == nil` — file `internal/modules/brand/application/usecase/item/usecase.go` và `internal/modules/brand/application/usecase/item/helper.go`
-- [ ] T011 [US2] Thêm unit test verify pure cho `WardrobeContractUseCase` 4 method (`TestWardrobeContractUseCase_Pure_NoCrossModuleCall`) và `BrandItemUseCase` 5 method (`TestBrandItemUseCase_Pure_NoFashionEnrich` trong `usecase_test.go` đã tồn tại — append case) — mock assert `fashionContract`/`userSubContract`/`userBriefContract` không được gọi (gomock `EXPECT().GetFashionItem/ListFashionItems times(0)`) — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc_test.go` và `internal/modules/brand/application/usecase/item/usecase_test.go`
+- [ ] T010 [US2] Tạo mới `BrandItemContractUseCase` pure ở `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` (interface `IBrandItemContractUseCase` ở `brand/application/interface/usecase/brand_item_contract_uc.go`) — KHÔNG sửa `BrandItemUseCase` hiện tại (`usecase.go` + `helper.go` giữ nguyên cho handler). Implement 5 method pure không `fashionContract`/`userBriefContract`: `ListEligibleBrandItemsForStyling`, `CheckBrandItemEligibility`, `GetBrandItemByIDDirect`, `GetBrandItemsByFashionItemIDs`, `GetBrandItemsByIDs` (mapper thuần riêng, không gọi `fashionContract`) — trả `FashionItem == nil` + `FashionItemID` — file `internal/modules/brand/application/usecase/item/contractuc/contract_uc.go` + `mapper.go`
+- [ ] T010a [US2] Cập nhật `BrandContract` (`internal/modules/brand/presentation/contract/brand_contract_impl.go`) chuyển inject từ `IBrandItemUseCase` sang `IBrandItemContractUseCase` cho 5 method; wire: thêm ProviderSet `contractuc.NewBrandItemContractUseCase` vào `brand/application.ProviderSet` và `brand.ProviderSet` — file `internal/modules/brand/presentation/contract/brand_contract_impl.go`, `internal/modules/brand/application/provider.go`, `internal/modules/brand/provider.go`
+- [ ] T011 [US2] Thêm unit test verify pure cho `WardrobeContractUseCase` 4 method (`TestWardrobeContractUseCase_Pure_NoCrossModuleCall`) và `BrandItemContractUseCase` 5 method mới (`TestBrandItemContractUseCase_Pure_NoCrossModuleCall` — mock assert `fashionContract`/`userBriefContract` times(0)), đồng thời verify `BrandItemUseCase` handler vẫn enrich — file `internal/modules/wardrobe/application/usecase/wardrobe/contractuc/contract_uc_test.go` và `internal/modules/brand/application/usecase/item/contractuc/contract_uc_test.go`
 - [ ] T011a [US2] Chạy `make wire` và `make build` verify sau US2 — file `internal/di/wire_gen.go`
 
 **Checkpoint**: US2 xong → audit `pure: 0` method-level; build pass. Có thể commit PR riêng. **Lưu ý nil**: caller sẽ nhận `FashionItem == nil` — phải làm US1 ngay sau.
@@ -199,7 +200,7 @@ Task T017: workflow_helpers.go:108
 - [Story] label maps task tới user story cụ thể
 - Mỗi phase nên commit riêng (tuần tự P1→P1→P2→P3, mỗi story 1 commit/PR)
 - Verify `make test` và `make lint` sau mỗi phase
-- Không tạo `*PureUseCase` mới — sửa trực tiếp contract usecase có sẵn để tránh overengineering
+- Wardrobe đã tách: không tạo `*PureUseCase` mới — sửa trực tiếp `WardrobeContractUseCase`; Brand đang dùng chung handler+contract nên **phải tạo** `BrandItemContractUseCase` mới ở `item/contractuc/` để tách — không sửa `BrandItemUseCase` handler để tránh mất enrich
 - `Category`/`Subscription` đã pure ở method-level → không tạo task tách
 - File `docs/system-design/contract-purity-pattern.md` sẽ tạo ở Phase 1 nháp, hoàn thiện ở Phase 7
 - Constitution update ở Phase 7 T029 (sau verify, bump 1.7.0→1.8.0 MINOR + Governance Sync Impact Report); doc viết trước ở T002

@@ -10,7 +10,7 @@
 
 Audit method-level toàn bộ 8 module phát hiện: 7 chuỗi detour call (wardrobe ↔ fashion), 2 contract usecase leaky (wardrobe **4/8 alive leaky** — 7/15 nếu tính 3 deadcode trùng, brand 5/9 method — category/subscription đã pure nên không tính), 12 method deadcode + 1 dead wiring. Mục tiêu: sửa trực tiếp contract usecase có sẵn cho thuần (không tạo *PureUseCase mới — tránh overengineering), thêm `FashionItemID` vào `WardrobeItemRes` (`fashionItemId` camelCase) để caller còn ID, ép caller tự enrich bằng `fashionContract` + `sliceutils.IndexBy`/`GroupBy` để tránh `nil`. Triển khai tuần tự P1→P1→P2→P3, giữ 100% API surface. Viết `docs/system-design/contract-purity-pattern.md` trước (T002), cập nhật Constitution §II ref tới doc sau (T029, bump 1.7.0→1.8.0 MINOR).
 
-**Hướng tiếp cận kỹ thuật**: Sửa trực tiếp `WardrobeContractUseCase` (bỏ 4 alive enrich + 3 deadcode sẽ xóa, thêm `FashionItemID` `fashionItemId` vào DTO/mapper) và 5 method leaky của `BrandItemUseCase` (bỏ `fashionContract`/`userBriefContract` qua helper), update 7 caller fashion **chỉ gọi `fashionContract`** (không gọi repo trực tiếp) sau khi nhận pure result (`FashionItem == nil` nhưng có `FashionItemID`), xóa 12 method deadcode (3 trong số đó trùng leaky), sửa 1 dead wiring. Mỗi phase commit riêng, verify bằng `make lint`/`make test`/`make wire`.
+**Hướng tiếp cận kỹ thuật**: Sửa trực tiếp `WardrobeContractUseCase` đã tách (bỏ 4 alive enrich + 3 deadcode sẽ xóa, thêm `FashionItemID` `fashionItemId` vào DTO/mapper) và **tạo mới** `BrandItemContractUseCase` (`brand/application/usecase/item/contractuc/`) cho brand vì `BrandItemUseCase` đang dùng chung handler+contract — không sửa trực tiếp để tránh handler mất enrich; contract uc mới pure (không `fashionContract`/`userBriefContract`), `BrandContract` chuyển sang inject `IBrandItemContractUseCase`. Update 7 caller fashion **chỉ gọi `fashionContract`** sau khi nhận pure result (`FashionItem == nil` nhưng có `FashionItemID`), xóa 12 method deadcode (3 trùng leaky), sửa 1 dead wiring. Mỗi phase commit riêng, verify bằng `make lint`/`make test`/`make wire`.
 
 ---
 
@@ -74,7 +74,7 @@ specs/015-contract-purity-refactor/
 internal/
 ├── modules/
 │   ├── wardrobe/
-│   │   ├── application/usecase/wardrobe/contractuc/contract_uc.go  # sửa trực tiếp 7 method cho thuần (bỏ fashionContract/userSubContract)
+│   │   ├── application/usecase/wardrobe/contractuc/contract_uc.go  # sửa trực tiếp 4 alive leaky cho thuần (bỏ fashionContract/userSubContract) + thêm FashionItemID
 │   │   ├── application/usecase/wardrobe/item/item_uc_read.go        # xóa dead wiring aiService
 │   │   ├── presentation/contract/wardrobe_contract.go               # xóa 7 method deadcode
 │   │   └── presentation/contract/wardrobe_contract_impl.go
@@ -83,10 +83,12 @@ internal/
 │   │   ├── application/usecase/ai/chat/workflows.go                 # 2 caller ép enrich
 │   │   └── application/usecase/ai/recommendation/workflow_helpers.go # 2 caller ép enrich
 │   ├── brand/
-│   │   ├── application/usecase/item/usecase.go                      # sửa 5 method leaky cho thuần (bỏ fashion enrich qua helper)
-│   │   ├── application/usecase/item/helper.go                       # sửa helper bỏ fashionContract
+│   │   ├── application/usecase/item/usecase.go                      # GIỮ NGUYÊN cho handler (vẫn enrich) — không đụng
+│   │   ├── application/usecase/item/helper.go                       # GIỮ NGUYÊN — handler vẫn dùng
+│   │   ├── application/usecase/item/contractuc/contract_uc.go       # TẠO MỚI — BrandItemContractUseCase pure (không fashionContract/userBriefContract)
+│   │   ├── application/usecase/item/contractuc/mapper.go            # TẠO MỚI — mapper thuần
 │   │   ├── presentation/contract/brand_contract.go                  # xóa 2 method deadcode
-│   │   └── presentation/contract/brand_contract_impl.go
+│   │   └── presentation/contract/brand_contract_impl.go             # chuyển inject sang IBrandItemContractUseCase
 │   ├── subscription/
 │   │   ├── presentation/contract/subscription_contract.go           # xóa 3 method deadcode (không sửa usecase vì đã pure)
 │   │   └── presentation/contract/subscription_contract_impl.go
@@ -101,7 +103,7 @@ internal/
         └── contract-purity-pattern.md  # SẼ TẠO (FR theo clarify)
 ```
 
-**Quyết định cấu trúc**: Giữ nguyên monolith, không thêm file `*_pure_uc.go` mới, không thêm interface `IPure*`. Sửa trực tiếp contract usecase có sẵn + helper. Thêm 1 doc trong `docs/system-design/`.
+**Quyết định cấu trúc**: Giữ nguyên monolith. Wardrobe đã tách nên **sửa trực tiếp** `WardrobeContractUseCase`; brand đang dùng chung nên **tạo mới** `BrandItemContractUseCase` ở `item/contractuc/` — không đụng `BrandItemUseCase` handler để tránh mất enrich. Thêm 1 doc trong `docs/system-design/`.
 
 ---
 
@@ -121,7 +123,7 @@ Không có vi phạm. Bảng để trống.
 
 | Chủ đề | Quyết định |
 |---|---|
-| Thuần hóa | Sửa trực tiếp `WardrobeContractUseCase` 4 alive leaky + 3 deadcode (7/15 nếu tính trùng) + 5 method `BrandItemUseCase` cho thuần (bỏ `fashionContract`/`userBriefContract`/`userSubContract`), thêm `FashionItemID` `fashionItemId` vào `WardrobeItemRes` DTO/mapper (tuân Code Style camelCase), không tạo `IPure*` mới — tránh overengineering; `Category` `1/1` + `Subscription` `8/8` đã pure method-level — verify bằng `rg`, không sửa |
+| Thuần hóa | Wardrobe đã tách: sửa trực tiếp `WardrobeContractUseCase` 4 alive leaky + 3 deadcode (7/15 nếu tính trùng), thêm `FashionItemID` `fashionItemId` vào DTO/mapper; Brand dùng chung handler+contract: **tạo mới** `BrandItemContractUseCase` ở `item/contractuc/` với 5 method pure (bỏ `fashionContract`/`userBriefContract`), giữ nguyên `BrandItemUseCase` cho handler; `Category` `1/1` + `Subscription` `8/8` đã pure — verify bằng `rg` |
 | Enrichment ở caller (nil risk) | Caller sau thuần hóa nhận `FashionItem == nil` → phải tự gọi `fashionContract.ListFashionItems`/`GetFashionItem` + `sliceutils.IndexBy`/`GroupBy` để stitch, tránh nil |
 | Deadcode verification | `rg` để xác nhận không có caller ngoài `_test.go`/`_impl.go`; trong đó 3 method trùng leaky nên xóa luôn |
 | Wire | Không tách ProviderSet, chỉ bỏ field `fashionContract`/`userSubContract` khỏi `WardrobeContractUseCase` constructor, regenerate `wire_gen.go` |
