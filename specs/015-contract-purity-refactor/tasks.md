@@ -11,9 +11,9 @@
 
 **Purpose**: Khởi tạo audit script và doc nền để verify trước/sau
 
-- [ ] T001 Tạo audit script `scripts/audit-contract-purity.ps1` (logic: đếm detour chain 7, pure violation method-level 2 contract, deadcode 12, dead wiring 1 bằng Select-String/rg) — file `scripts/audit-contract-purity.ps1`
+- [ ] T001 Tạo audit script `scripts/audit-contract-purity.ps1` (logic: đếm detour chain 7, pure violation method-level 2 contract, deadcode 12, dead wiring 2 bằng Select-String/rg) — file `scripts/audit-contract-purity.ps1`
 - [ ] T002 [P] Tạo `docs/system-design/contract-purity-pattern.md` bản nháp (định nghĩa Pure Contract Usecase, phân biệt usecase thường vs contract usecase, before/after, quy tắc caller enrich bằng IndexBy/GroupBy, nil risk) — file `docs/system-design/contract-purity-pattern.md`
-- [ ] T003 Chạy baseline audit (ghi nhận 7 detour / 2 contract leaky method-level / 12 deadcode / 1 dead wiring) vào `specs/015-contract-purity-refactor/checklists/baseline.md` — file `specs/015-contract-purity-refactor/checklists/baseline.md`
+- [ ] T003 Chạy baseline audit (ghi nhận 7 detour / 2 contract leaky method-level / 12 deadcode / 2 dead wiring) vào `specs/015-contract-purity-refactor/checklists/baseline.md` — file `specs/015-contract-purity-refactor/checklists/baseline.md`
 
 **Checkpoint**: Có script audit và doc nháp; baseline đã ghi nhận.
 
@@ -98,17 +98,18 @@
 
 ## Phase 6: User Story 4 - Sửa Dead Wiring (Priority: P3)
 
-**Goal**: 1 dead wiring bị xóa
+**Goal**: 2 dead wiring bị xóa (wardrobe `aiService` + subscription `userBriefContract`)
 
-**Independent Test**: Struct `WardrobeItemUseCase` không còn `aiService`; `make build` pass
+**Independent Test**: `WardrobeItemUseCase` không còn `aiService` và `SubscriptionUseCase` không còn `userBriefContract`; `make build` pass
 
 ### Implementation cho US4
 
 - [ ] T025 [US4] Xóa field `aiService aiexecutor_contract.IAIOrchestrator` khỏi struct `WardrobeItemUseCase:41` và param constructor `:57` trong `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go` — file `internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go`
-- [ ] T026 [US4] Xóa provider tương ứng khỏi `internal/modules/wardrobe/provider.go` — file `internal/modules/wardrobe/provider.go`
+- [ ] T025b [US4] Xóa field `userBriefContract identity_contract.IUserBriefContract` khỏi struct `SubscriptionUseCase:41` và param constructor `:59` + field init `:76` trong `internal/modules/subscription/application/usecase/subscription/subscription_uc.go` — file `internal/modules/subscription/application/usecase/subscription/subscription_uc.go`
+- [ ] T026 [US4] Xóa provider tương ứng khỏi `internal/modules/wardrobe/provider.go` (`aiexecutor_contract`) và `internal/modules/subscription/provider.go` (`identity_contract.IUserBriefContract` cho `SubscriptionUseCase`) — file `internal/modules/wardrobe/provider.go` và `internal/modules/subscription/provider.go`
 - [ ] T027 [US4] Chạy `make wire` và `make build` verify sau US4 — file `internal/di/wire_gen.go`
 
-**Checkpoint**: US4 xong → dead wiring 0; build pass.
+**Checkpoint**: US4 xong → dead wiring 0/2; build pass.
 
 ---
 

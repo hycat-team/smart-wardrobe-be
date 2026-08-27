@@ -69,11 +69,12 @@ Không có migration.
 
 ---
 
-## 4. Dead Wiring
+## 4. Dead Wiring (2 case)
 
-| Struct | File | Field xóa |
-|---|---|---|
-| `WardrobeItemUseCase` | `wardrobe/application/usecase/wardrobe/item/item_uc_read.go:41,57` | `aiService aiexecutor_contract.IAIOrchestrator` |
+| Struct | File | Field xóa | Phát hiện |
+|---|---|---|---|
+| `WardrobeItemUseCase` | `wardrobe/application/usecase/wardrobe/item/item_uc_read.go:41,57` | `aiService aiexecutor_contract.IAIOrchestrator` | Lỗi refactor cũ |
+| `SubscriptionUseCase` | `subscription/application/usecase/subscription/subscription_uc.go:41,59,76` | `userBriefContract identity_contract.IUserBriefContract` (0 call) | Rà shared usecase 2026-08-27 |
 
 ---
 

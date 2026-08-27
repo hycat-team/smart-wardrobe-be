@@ -23,7 +23,7 @@ Audit toàn bộ 8 module của dự án phát hiện **3 nhóm vấn đề** v�
 | **Detour Call** (chain 2-hop qua lại) | 7 chuỗi | Contract usecase enrich ngầm qua fashionContract | HIGH + MEDIUM |
 | **Pure Contract Violation** (leaky method trong contract usecase) | 2 contract (wardrobe **4/8 alive leaky** — 7/15 nếu tính 3 deadcode trùng đã tách; brand 5/9 method **dùng chung handler+contract** nên phải tách `BrandItemContractUseCase` riêng) — `Category`/`Subscription` đã pure ở method-level, không tính | Enrich trong contract usecase | HIGH |
 | **Contract Deadcode** (method không có caller) | 12 method | Interface Segregation vi phạm | LOW |
-| **Dead Wiring** (inject nhưng không dùng) | 1 (wardrobe inject IAIOrchestrator) | Lỗi refactor | LOW |
+| **Dead Wiring** (inject nhưng không dùng) | 2 (wardrobe `aiService` + subscription `userBriefContract`) | Lỗi refactor / inject không dùng | LOW |
 
 **Mục tiêu feature**: Thuần hóa contract usecase — **sửa trực tiếp nếu đã tách** (`WardrobeContractUseCase` đã tách), **tạo mới nếu đang dùng chung với handler** (`BrandItemUseCase` dùng chung handler+contract → tạo `BrandItemContractUseCase` riêng), xóa deadcode, và ép caller phải tự enrich khi cần — tránh làm handler mất enrich.
 
@@ -182,9 +182,11 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
   - `ISubscriptionPlanContract.GetDefaultSubscriptionPlanID`, `IsPremiumPlan`.
 - **FR-010**: System MUST regenerate `wire_gen.go` sau khi xóa các method contract.
 
-#### Nhóm 4: Sửa Dead Wiring (P3)
+#### Nhóm 4: Sửa Dead Wiring (P3) — 2 case
 
-- **FR-011**: System MUST xóa field `aiService aiexecutor_contract.IAIOrchestrator` khỏi `WardrobeItemUseCase` (wardrobe/.../wardrobe/item/item_uc_read.go:41,57) vì không được sử dụng.
+- **FR-011**: System MUST xóa 2 dead wiring:
+  - `WardrobeItemUseCase.aiService aiexecutor_contract.IAIOrchestrator` (`wardrobe/application/usecase/wardrobe/item/item_uc_read.go:41,57`) — không dùng.
+  - `SubscriptionUseCase.userBriefContract identity_contract.IUserBriefContract` (`subscription/application/usecase/subscription/subscription_uc.go:41,59,76`) — inject nhưng 0 call (dead wiring phát hiện khi rà shared usecase).
 - **FR-012**: System MUST regenerate `wire_gen.go` sau khi xóa inject.
 
 #### Nhóm 5: Audit & Verify
@@ -217,7 +219,7 @@ Là **developer**, tôi muốn mỗi dependency inject vào struct phải thực
 - **SC-001**: Audit script verify được **0 chuỗi detour call** trong codebase (từ 7 hiện tại).
 - **SC-002**: Audit script verify được **0 contract usecase leaky method** (từ 2 contract method-level hiện tại: wardrobe 7/15, brand 5/9; struct-level cũ là 4).
 - **SC-003**: Audit script verify được **0 method contract deadcode** (từ 12 hiện tại).
-- **SC-004**: Audit script verify được **0 dead wiring** (từ 1 hiện tại).
+- **SC-004**: Audit script verify được **0 dead wiring** (từ 2 hiện tại: wardrobe + subscription).
 - **SC-005**: Tất cả test cũ (`make test`) vẫn pass sau khi refactor.
 - **SC-006**: Tất cả lint check (`make lint`) pass sau khi refactor.
 - **SC-007**: Wire build (`make wire && make build`) pass sau khi refactor.
