@@ -153,3 +153,35 @@ func (uc *BrandFashionEventUseCase) HandleFashionFailed(ctx context.Context, pay
 
 	return nil
 }
+
+func (uc *BrandFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error {
+	if payload.ItemType != "" && payload.ItemType != "brand" {
+		return nil
+	}
+	item, err := uc.brandItemRepo.GetByID(ctx, payload.ItemID)
+	if err != nil {
+		uc.logger.Error("Failed to fetch brand item for fashion item created event",
+			zap.String("itemId", payload.ItemID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if item == nil {
+		uc.logger.Warn("Brand item not found for fashion item created event",
+			zap.String("itemId", payload.ItemID.String()),
+		)
+		return nil
+	}
+	if item.FashionItemID != nil && *item.FashionItemID == payload.FashionItemID {
+		return nil
+	}
+	item.FashionItemID = &payload.FashionItemID
+	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
+		uc.logger.Error("Failed to set fashion item id on brand item",
+			zap.String("itemId", item.ID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
+}

@@ -25,6 +25,10 @@ var ProviderSet = wire.NewSet(
 	search.NewWardrobeSearchIndexService,
 	messaging.NewSearchSyncEventConsumer,
 	messaging.NewWardrobeFashionAnalyzedEventConsumer,
+	messaging.NewWardrobeCleanupEventConsumer,
+	messaging.NewWardrobeProcessingExhaustedEventConsumer,
+	messaging.NewWardrobeFashionBindEventConsumer,
+	messaging.NewElasticsearchProcessingExhaustedEventConsumer,
 
 	item.NewWardrobeItemUseCase,
 	catalog.NewWardrobeCatalogUseCase,
@@ -40,4 +44,8 @@ var ProviderSet = wire.NewSet(
 	router.NewRouter,
 	presentation_worker.NewSearchSyncWorker,
 	presentation_worker.NewWardrobeFashionEventWorker,
+	presentation_worker.NewWardrobeCleanupWorker,
+	presentation_worker.NewWardrobeProcessingExhaustedWorker,
+	presentation_worker.NewWardrobeFashionBindWorker,
+	presentation_worker.NewElasticsearchProcessingExhaustedWorker,
 )

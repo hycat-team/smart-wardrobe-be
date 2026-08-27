@@ -117,6 +117,41 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		return err
 	}
 
+	// 10. Declare and Bind Wardrobe Cleanup Queue (pub/sub for fashion cleanup)
+	if err := r.DeclareAndBindQueue(QueueWardrobeCleanup, RoutingKeyWardrobeDeleted); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 11. Declare and Bind Wardrobe Processing Exhausted Queue (DB)
+	if err := r.DeclareAndBindQueue(QueueWardrobeProcessingExhausted, RoutingKeyFashionProcessingExhausted); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 12. Declare and Bind Elasticsearch Processing Exhausted Queue (ES - pub/sub)
+	if err := r.DeclareAndBindQueue(QueueElasticsearchProcessingExhausted, RoutingKeyFashionProcessingExhausted); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 13. Declare and Bind Wardrobe Fashion Bind Queue
+	if err := r.DeclareAndBindQueue(QueueWardrobeFashionBind, RoutingKeyFashionItemCreated); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
+	// 14. Declare and Bind Brand Fashion Bind Queue
+	if err := r.DeclareAndBindQueue(QueueBrandFashionBind, RoutingKeyFashionItemCreated); err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return err
+	}
+
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
 
 	// 4. Register to listen to NotifyClose for auto-reconnection in the background upon disconnection

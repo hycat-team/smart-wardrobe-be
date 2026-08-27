@@ -25,24 +25,29 @@ import (
 )
 
 type AppWorkers struct {
-	RenewalWorker               *subWorker.SubscriptionRenewalWorker
-	PaymentReconciliationWorker *subWorker.PaymentReconciliationWorker
-	WebhookInboxWorker          *subWorker.WebhookInboxWorker
-	AIUsageReconciliationWorker *aiexecutorWorker.AIUsageReconciliationWorker
-	LoyaltyPointExpiryWorker    *brandWorker.LoyaltyPointExpiryWorker
-	ESAsyncWorker               *wardrobeWorker.SearchSyncWorker
-	FashionInitWorker           *fashionWorker.FashionInitWorker
-	FailedItemsCleanupWorker    *fashionWorker.FailedItemsCleanupWorker
-	ProcessingRecoveryWorker    *fashionWorker.ProcessingRecoveryWorker
-	FashionAnalyzeWorker        *fashionWorker.FashionAnalyzeWorker
-	PlanChangedWorker           *aiexecutorWorker.PlanChangedWorker
-	DashboardAggregatorWorker   *dashboardWorker.DashboardAggregatorWorker
-	OutboxWorker                *sharedWorker.OutboxWorker
-	EmailWorker                 *notificationWorker.EmailWorker
-	AuditLogConsumerWorker      *adminWorker.AuditLogConsumerWorker
-	AuditCleanupWorker          *adminWorker.AuditCleanupWorker
-	WardrobeFashionEventWorker  *wardrobeWorker.WardrobeFashionEventWorker
-	BrandFashionEventWorker     *brandWorker.BrandFashionEventWorker
+	RenewalWorker                          *subWorker.SubscriptionRenewalWorker
+	PaymentReconciliationWorker            *subWorker.PaymentReconciliationWorker
+	WebhookInboxWorker                     *subWorker.WebhookInboxWorker
+	AIUsageReconciliationWorker            *aiexecutorWorker.AIUsageReconciliationWorker
+	LoyaltyPointExpiryWorker               *brandWorker.LoyaltyPointExpiryWorker
+	ESAsyncWorker                          *wardrobeWorker.SearchSyncWorker
+	FashionInitWorker                      *fashionWorker.FashionInitWorker
+	FailedItemsCleanupWorker               *fashionWorker.FailedItemsCleanupWorker
+	ProcessingRecoveryWorker               *fashionWorker.ProcessingRecoveryWorker
+	FashionAnalyzeWorker                   *fashionWorker.FashionAnalyzeWorker
+	PlanChangedWorker                      *aiexecutorWorker.PlanChangedWorker
+	DashboardAggregatorWorker              *dashboardWorker.DashboardAggregatorWorker
+	OutboxWorker                           *sharedWorker.OutboxWorker
+	EmailWorker                            *notificationWorker.EmailWorker
+	AuditLogConsumerWorker                 *adminWorker.AuditLogConsumerWorker
+	AuditCleanupWorker                     *adminWorker.AuditCleanupWorker
+	WardrobeFashionEventWorker             *wardrobeWorker.WardrobeFashionEventWorker
+	BrandFashionEventWorker                *brandWorker.BrandFashionEventWorker
+	WardrobeCleanupWorker                  *wardrobeWorker.WardrobeCleanupWorker
+	WardrobeProcessingExhaustedWorker      *wardrobeWorker.WardrobeProcessingExhaustedWorker
+	WardrobeFashionBindWorker              *wardrobeWorker.WardrobeFashionBindWorker
+	ElasticsearchProcessingExhaustedWorker *wardrobeWorker.ElasticsearchProcessingExhaustedWorker
+	BrandFashionBindWorker                 *brandWorker.BrandFashionBindWorker
 }
 
 type App struct {
@@ -109,6 +114,11 @@ func (a *App) Run() error {
 	a.Workers.AuditCleanupWorker.Start(ctxWorker)
 	a.Workers.WardrobeFashionEventWorker.Start(ctxWorker)
 	a.Workers.BrandFashionEventWorker.Start(ctxWorker)
+	a.Workers.WardrobeCleanupWorker.Start(ctxWorker)
+	a.Workers.WardrobeProcessingExhaustedWorker.Start(ctxWorker)
+	a.Workers.WardrobeFashionBindWorker.Start(ctxWorker)
+	a.Workers.ElasticsearchProcessingExhaustedWorker.Start(ctxWorker)
+	a.Workers.BrandFashionBindWorker.Start(ctxWorker)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -140,6 +150,11 @@ func (a *App) Run() error {
 	a.Workers.AuditCleanupWorker.Stop()
 	a.Workers.WardrobeFashionEventWorker.Stop()
 	a.Workers.BrandFashionEventWorker.Stop()
+	a.Workers.WardrobeCleanupWorker.Stop()
+	a.Workers.WardrobeProcessingExhaustedWorker.Stop()
+	a.Workers.WardrobeFashionBindWorker.Stop()
+	a.Workers.ElasticsearchProcessingExhaustedWorker.Stop()
+	a.Workers.BrandFashionBindWorker.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

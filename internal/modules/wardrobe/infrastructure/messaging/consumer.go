@@ -83,3 +83,118 @@ func (c *WardrobeFashionAnalyzedEventConsumer) ConsumeEvents(ctx context.Context
 	c.logger.Info("[WardrobeFashionAnalyzedEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueWardrobeFashionAnalyzed))
 	return nil
 }
+
+type WardrobeCleanupEventConsumer struct {
+	messageClient shared_event.IMessageConsumer
+	logger        logger.Interface
+}
+
+func NewWardrobeCleanupEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.IWardrobeCleanupEventConsumer {
+	return &WardrobeCleanupEventConsumer{messageClient: messageClient, logger: l}
+}
+
+func (c *WardrobeCleanupEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event dto.WardrobeEventPayload) error) error {
+	wrappedHandler := func(msg shared_event.Message) error {
+		var eventPayload dto.WardrobeEventPayload
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
+			c.logger.Error("[WardrobeCleanupEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[WardrobeCleanupEventConsumer] Error processing cleanup event", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+	c.messageClient.RegisterConsumer(shared_msg.QueueWardrobeCleanup, wrappedHandler)
+	c.logger.Info("[WardrobeCleanupEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueWardrobeCleanup))
+	return nil
+}
+
+type WardrobeProcessingExhaustedEventConsumer struct {
+	messageClient shared_event.IMessageConsumer
+	logger        logger.Interface
+}
+
+func NewWardrobeProcessingExhaustedEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.IWardrobeProcessingExhaustedEventConsumer {
+	return &WardrobeProcessingExhaustedEventConsumer{messageClient: messageClient, logger: l}
+}
+
+func (c *WardrobeProcessingExhaustedEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashionDto.FashionProcessingExhaustedPayload) error) error {
+	wrappedHandler := func(msg shared_event.Message) error {
+		var eventPayload fashionDto.FashionProcessingExhaustedPayload
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
+			c.logger.Error("[WardrobeProcessingExhaustedEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[WardrobeProcessingExhaustedEventConsumer] Error processing processing-exhausted event", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+	c.messageClient.RegisterConsumer(shared_msg.QueueWardrobeProcessingExhausted, wrappedHandler)
+	c.logger.Info("[WardrobeProcessingExhaustedEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueWardrobeProcessingExhausted))
+	return nil
+}
+
+type WardrobeFashionBindEventConsumer struct {
+	messageClient shared_event.IMessageConsumer
+	logger        logger.Interface
+}
+
+func NewWardrobeFashionBindEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.IWardrobeFashionBindEventConsumer {
+	return &WardrobeFashionBindEventConsumer{messageClient: messageClient, logger: l}
+}
+
+func (c *WardrobeFashionBindEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashionDto.FashionItemCreatedPayload) error) error {
+	wrappedHandler := func(msg shared_event.Message) error {
+		var eventPayload fashionDto.FashionItemCreatedPayload
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
+			c.logger.Error("[WardrobeFashionBindEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+		if eventPayload.ItemType != "" && eventPayload.ItemType != "wardrobe" {
+			return nil
+		}
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[WardrobeFashionBindEventConsumer] Error processing fashion bind event", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+	c.messageClient.RegisterConsumer(shared_msg.QueueWardrobeFashionBind, wrappedHandler)
+	c.logger.Info("[WardrobeFashionBindEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueWardrobeFashionBind))
+	return nil
+}
+
+type ElasticsearchProcessingExhaustedEventConsumer struct {
+	messageClient shared_event.IMessageConsumer
+	logger        logger.Interface
+}
+
+func NewElasticsearchProcessingExhaustedEventConsumer(messageClient shared_event.IMessageConsumer, l logger.Interface) wardrobe_event.IElasticsearchProcessingExhaustedEventConsumer {
+	return &ElasticsearchProcessingExhaustedEventConsumer{messageClient: messageClient, logger: l}
+}
+
+func (c *ElasticsearchProcessingExhaustedEventConsumer) ConsumeEvents(ctx context.Context, handler func(ctx context.Context, event fashionDto.FashionProcessingExhaustedPayload) error) error {
+	wrappedHandler := func(msg shared_event.Message) error {
+		var eventPayload fashionDto.FashionProcessingExhaustedPayload
+		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
+			c.logger.Error("[ElasticsearchProcessingExhaustedEventConsumer] Failed to unmarshal message body", zap.Error(err))
+			return err
+		}
+		if err := handler(ctx, eventPayload); err != nil {
+			c.logger.Error("[ElasticsearchProcessingExhaustedEventConsumer] Error processing processing-exhausted event for search", zap.Error(err))
+			if strings.Contains(err.Error(), "elasticsearch is offline") {
+				time.Sleep(5 * time.Second)
+				return err
+			}
+			return err
+		}
+		return nil
+	}
+	c.messageClient.RegisterConsumer(shared_msg.QueueElasticsearchProcessingExhausted, wrappedHandler)
+	c.logger.Info("[ElasticsearchProcessingExhaustedEventConsumer] Registered consumer for queue", zap.String("queue", shared_msg.QueueElasticsearchProcessingExhausted))
+	return nil
+}

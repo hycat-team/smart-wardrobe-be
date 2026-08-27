@@ -9,11 +9,13 @@ const (
 	TopicSubscriptionPlanChanged = "subscription.plan.changed"
 
 	// Fashion Events
-	TopicFashionInit       = "fashion.event.init"
-	TopicFashionAnalyze    = "fashion.event.analyze"
-	TopicFashionAnalyzed   = "fashion.event.analyzed"
-	TopicFashionFailed     = "fashion.event.failed"
-	TopicNotificationEmail = "notification.email"
+	TopicFashionInit                = "fashion.event.init"
+	TopicFashionAnalyze             = "fashion.event.analyze"
+	TopicFashionAnalyzed            = "fashion.event.analyzed"
+	TopicFashionFailed              = "fashion.event.failed"
+	TopicFashionItemCreated         = "fashion.item.created"
+	TopicFashionProcessingExhausted = "fashion.event.processing-exhausted"
+	TopicNotificationEmail          = "notification.email"
 
 	TopicAuditLog = "admin.audit.log"
 

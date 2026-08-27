@@ -15,6 +15,7 @@ import (
 	wardrobe_contract "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
@@ -81,9 +82,10 @@ func (m *mockFashionItemRepoForWorker) MarkProcessingFailed(ctx context.Context,
 
 type mockWardrobeContractForWorker struct {
 	wardrobe_contract.IWardrobeContract
-	updateItemStatusFn        func(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error
-	getItemsByIDsFn           func(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error)
-	getStaleProcessingItemsFn func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error)
+	updateItemStatusFn         func(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error
+	getItemsByIDsFn            func(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error)
+	getStaleProcessingItemsFn  func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error)
+	getFailedItemsForCleanupFn func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error)
 }
 
 func (m *mockWardrobeContractForWorker) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
@@ -96,6 +98,13 @@ func (m *mockWardrobeContractForWorker) GetItemsByIDs(ctx context.Context, itemI
 
 func (m *mockWardrobeContractForWorker) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
 	return m.getStaleProcessingItemsFn(ctx, staleBefore, limit)
+}
+
+func (m *mockWardrobeContractForWorker) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
+	if m.getFailedItemsForCleanupFn != nil {
+		return m.getFailedItemsForCleanupFn(ctx, limit)
+	}
+	return nil, nil
 }
 
 type mockEventPublisherForWorker struct {
@@ -243,7 +252,7 @@ func TestRecoverStaleProcessingItemsRepublishes(t *testing.T) {
 }
 
 // TestRecoverStaleProcessingItemsMarksFailed verifies that stale processing items
-// at or above the retry cap are marked failed instead of republished.
+// at or above the retry cap are marked failed and publish FashionProcessingExhausted instead of republished.
 func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 	itemID := uuid.New()
 	fashionItemID := uuid.New()
@@ -251,6 +260,7 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 
 	markedFailed := false
 	publishCalls := 0
+	var publishedTopic string
 	uc := &FashionWorkerUseCase{
 		cfg: &config.Config{Wardrobe: config.WardrobeProcessing{MaxRetryCount: 3}},
 		wardrobeContract: &mockWardrobeContractForWorker{
@@ -261,12 +271,6 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 					FashionItem:   &wardrobeDto.FashionItemRes{ID: fashionItemID},
 					FashionItemID: &fashionItemID,
 				}}, nil
-			},
-			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
-				if status != wardrobestatus.Failed {
-					t.Fatalf("expected Failed status, got %v", status)
-				}
-				return nil
 			},
 		},
 		fashionItemRepo: &mockFashionItemRepoForWorker{
@@ -280,8 +284,14 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 		},
 		eventPublisher: &mockEventPublisherForWorker{
 			publishFn: func(ctx context.Context, topic string, payload any) error {
+				publishedTopic = topic
 				publishCalls++
 				return nil
+			},
+		},
+		uow: &mockUOWForWorker{
+			executeFn: func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
 			},
 		},
 		logger: &mockLogger{},
@@ -294,9 +304,75 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 	if !markedFailed {
 		t.Fatal("expected MarkProcessingFailed to be called")
 	}
-	if publishCalls != 0 {
-		t.Fatalf("expected 0 republish for exhausted retries, got %d", publishCalls)
+	if publishCalls != 1 {
+		t.Fatalf("expected 1 publish for exhausted retries (FashionProcessingExhausted), got %d", publishCalls)
 	}
+	if publishedTopic != eventconstants.TopicFashionProcessingExhausted {
+		t.Fatalf("expected topic %s, got %s", eventconstants.TopicFashionProcessingExhausted, publishedTopic)
+	}
+}
+
+func TestCleanupFailedItemsPublishes(t *testing.T) {
+	itemID := uuid.New()
+	fashionItemID := uuid.New()
+	userID := uuid.New()
+	publishCalls := 0
+	var publishedTopic string
+	uc := &FashionWorkerUseCase{
+		wardrobeContract: &mockWardrobeContractForWorker{
+			getFailedItemsForCleanupFn: func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
+				if limit == 100 {
+					return []*wardrobeDto.WardrobeItemRes{{
+						ID:            itemID,
+						UserID:        userID,
+						FashionItemID: &fashionItemID,
+					}}, nil
+				}
+				return nil, nil
+			},
+		},
+		fashionItemRepo: &mockFashionItemRepoForWorker{
+			getByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+				return nil, nil
+			},
+		},
+		eventPublisher: &mockEventPublisherForWorker{
+			publishFn: func(ctx context.Context, topic string, payload any) error {
+				publishedTopic = topic
+				publishCalls++
+				if topic != eventconstants.TopicWardrobeDeleted {
+					t.Fatalf("expected WardrobeDeleted, got %s", topic)
+				}
+				return nil
+			},
+		},
+		uow: &mockUOWForWorker{
+			executeFn: func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
+			},
+		},
+		mediaService: &mockMediaServiceForWorker{},
+		logger:       &mockLogger{},
+	}
+	run := workerlog.New("cleanup", "test")
+	if err := uc.CleanupFailedItems(context.Background(), run); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if publishCalls != 1 {
+		t.Fatalf("expected 1 publish WardrobeDeleted, got %d", publishCalls)
+	}
+	if publishedTopic != eventconstants.TopicWardrobeDeleted {
+		t.Fatalf("expected TopicWardrobeDeleted, got %s", publishedTopic)
+	}
+}
+
+type mockMediaServiceForWorker struct{}
+
+func (m *mockMediaServiceForWorker) DeleteImage(ctx context.Context, publicID string) error {
+	return nil
+}
+func (m *mockMediaServiceForWorker) GenerateUploadSignature(ctx context.Context, params shared_dto.UploadSignatureParams) (*shared_dto.UploadSignatureResult, error) {
+	return nil, nil
 }
 
 // TestRaceConditionClaimSingleWinner verifies SC-007 race-condition behaviour:

@@ -122,3 +122,17 @@ type FashionAnalyzedEventPayload struct {
 	FashionBrief  *FashionItemBriefRes                `json:"fashionBrief,omitempty"`
 	Error         string                              `json:"error,omitempty"`
 }
+
+type FashionItemCreatedPayload struct {
+	ItemID        uuid.UUID `json:"itemId"`
+	FashionItemID uuid.UUID `json:"fashionItemId"`
+	ItemType      string    `json:"itemType"` // "wardrobe" | "brand"
+	UserID        uuid.UUID `json:"userId,omitempty"`
+}
+
+type FashionProcessingExhaustedPayload struct {
+	WardrobeItemID uuid.UUID `json:"wardrobeItemId"`
+	FashionItemID  uuid.UUID `json:"fashionItemId"`
+	Reason         string    `json:"reason"`
+	UserID         uuid.UUID `json:"userId,omitempty"`
+}
