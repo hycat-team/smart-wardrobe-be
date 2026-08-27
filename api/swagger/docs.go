@@ -12669,6 +12669,9 @@ const docTemplate = `{
                 "fashionItem": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
                 },
+                "fashionItemId": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -12700,6 +12703,9 @@ const docTemplate = `{
                 },
                 "fashionItem": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes"
+                },
+                "fashionItemId": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"

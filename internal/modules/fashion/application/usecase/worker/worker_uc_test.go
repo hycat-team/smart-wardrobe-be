@@ -27,6 +27,7 @@ type mockFashionItemRepoForWorker struct {
 	repositories.IFashionItemRepository
 	completeSuccessFn      func(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	getByIDFn              func(ctx context.Context, itemID uuid.UUID) (*entities.FashionItem, error)
+	getByIDsFn             func(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error)
 	incrementRetryCountFn  func(ctx context.Context, itemID uuid.UUID) error
 	markProcessingFailedFn func(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error)
 }
@@ -44,6 +45,30 @@ func (m *mockFashionItemRepoForWorker) GetByID(ctx context.Context, itemID uuid.
 	}
 	fi.ID = itemID
 	return fi, nil
+}
+
+func (m *mockFashionItemRepoForWorker) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error) {
+	if m.getByIDsFn != nil {
+		return m.getByIDsFn(ctx, ids)
+	}
+	if m.getByIDFn != nil {
+		result := make([]*entities.FashionItem, 0, len(ids))
+		for _, id := range ids {
+			if fi, _ := m.getByIDFn(ctx, id); fi != nil {
+				result = append(result, fi)
+			}
+		}
+		return result, nil
+	}
+	result := make([]*entities.FashionItem, 0, len(ids))
+	for _, id := range ids {
+		fi := &entities.FashionItem{
+			ImageUrl: "https://example.com/item.jpg",
+		}
+		fi.ID = id
+		result = append(result, fi)
+	}
+	return result, nil
 }
 
 func (m *mockFashionItemRepoForWorker) IncrementProcessingRetryCount(ctx context.Context, itemID uuid.UUID) error {
