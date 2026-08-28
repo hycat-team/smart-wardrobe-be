@@ -371,21 +371,20 @@ Policy for protecting B2C user information when fashion brands extract data from
 
 All cross-module event publishing MUST use the **transactional outbox pattern**. Events are written to the `outbox_records` table within the same database transaction as the business operation. A dedicated `OutboxWorker` asynchronously publishes events to RabbitMQ and marks them as published. This guarantees at-least-once delivery and prevents event loss during broker outages.
 
-- **Table:** `shared.outbox_records`
-- **Worker:** `internal/shared/presentation/worker/outbox_worker.go`
+- **Table:** `shared.outbox_records` (headers: `correlationId/eventVersion/publishedAt`)
+- **Worker:** `internal/shared/presentation/worker/outbox_worker.go` (poll `2s`, batch `200` parallel 10, `FOR UPDATE SKIP LOCKED` bọc transaction)
 - **Routing:** The `topic` field in the outbox record determines the RabbitMQ routing key, enabling a single outbox table and worker to serve all modules.
 
 ### Event publishing preference
 
 Cross-module write side effects **must prefer event publishing** over direct contract calls. Direct calls are acceptable only when the caller and callee share the same database transaction (Unit of Work) and immediate consistency is required.
 
-### Current events
+### Cơ chế RabbitMQ hiện tại (016)
 
-| Event | Publisher | Consumer | Routing Key |
-|-------|-----------|----------|-------------|
-| `wardrobe.event.created/updated/deleted` | wardrobe | elasticsearch sync | `wardrobe.event.*` |
-| `fashion.event.init` | wardrobe | fashion init worker | `fashion.event.init` |
-| `fashion.event.analyze` | fashion | fashion analyze worker | `fashion.event.analyze` |
-| `subscription.plan.changed` | subscription | aiexecutor plan changed worker | `subscription.plan.changed` |
+- **Exchange**: `smart_wardrobe_exchange` (topic) + DLX `smart_wardrobe_exchange.dlx`; wire qua `internal/shared/infrastructure/messaging/topology.go` (registry).
+- **Routing**: `module.event.action` với hậu tố `.wardrobe/.brand` cho fashion, wildcard `.#` thống nhất; point-to-point (1 key→1 queue) vs pub/sub (1 key→2 queue) ở mức cơ chế.
+- **Queue**: quorum-ready single-node (1 node prod, `x-queue-type=quorum`, `x-delivery-limit=5`, `x-dead-letter-exchange`); downtime drain chấp nhận do demo chưa release.
+- **Channel**: `publisherChannel` (Confirm) + consumer channel riêng `Qos(prefetch=20, global=false)`, `concurrency` per-queue, `RegisterTypedConsumer[T]` generic.
+- **Luồng**: `outbox → exchange → queue → consumer → Ack/Nack (Permanent→DLQ, Retryable→requeue)` với `correlationId` trace.
 
-For detailed event payloads and flow diagrams, see `docs/system-design/event-driven-design.md`.
+Chi tiết queue không liệt kê exhaustive; xem `topology.go` và `docs/system-design/event-driven-design.md` (đúng 6 cơ chế: exchange+DLS, routing, outbox, DLQ/retry, channel/prefetch, flow).

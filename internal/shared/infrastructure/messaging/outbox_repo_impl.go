@@ -35,15 +35,16 @@ func (r *OutboxRepositoryImpl) Create(ctx context.Context, record *OutboxRecord)
 
 func (r *OutboxRepositoryImpl) ClaimToPublish(ctx context.Context, limit int, maxAttempts int, retryAfter time.Duration) ([]OutboxRecord, error) {
 	var records []OutboxRecord
-	retryAfterMinutes := int(retryAfter.Minutes())
-	err := r.baseDB.WithContext(ctx).
-		Raw(`SELECT * FROM outbox_records
+	retryAfterSeconds := int(retryAfter.Seconds())
+	err := r.baseDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Raw(`SELECT * FROM outbox_records
 			WHERE status = ?
-			   OR (status = ? AND attempts < ? AND updated_at < NOW() - make_interval(mins => ?))
+			   OR (status = ? AND attempts < ? AND updated_at < NOW() - ? * INTERVAL '1 second')
 			ORDER BY created_at ASC LIMIT ?
 			FOR UPDATE SKIP LOCKED`,
-			OutboxStatusPending, OutboxStatusFailed, maxAttempts, retryAfterMinutes, limit).
-		Scan(&records).Error
+			OutboxStatusPending, OutboxStatusFailed, maxAttempts, retryAfterSeconds, limit).
+			Scan(&records).Error
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to claim outbox records ready to publish: %w", err)
 	}

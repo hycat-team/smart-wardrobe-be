@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -27,7 +28,9 @@ type RabbitMQClient struct {
 	logger         logger.Interface
 	conn           *amqp.Connection
 	ch             *amqp.Channel
+	publisherCh    *amqp.Channel
 	mu             sync.RWMutex
+	publisherMu    sync.Mutex
 	isReconnecting bool
 	consumers      []consumerRegistration
 	consumerMu     sync.Mutex
@@ -54,6 +57,9 @@ func (r *RabbitMQClient) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if r.publisherCh != nil {
+		_ = r.publisherCh.Close()
+	}
 	if r.ch != nil {
 		_ = r.ch.Close()
 	}
@@ -101,8 +107,19 @@ func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(event.
 	for d := range deliveries {
 		if err := handler(event.Message{Body: d.Body}); err != nil {
 			r.logger.Error("Consumer handler error", zap.String("queue", queueName), zap.Error(err))
-			_ = d.Nack(false, false)
+			incNack()
+			var pe PermanentError
+			var re RetryableError
+			switch {
+			case errors.As(err, &pe):
+				_ = d.Nack(false, false)
+			case errors.As(err, &re):
+				_ = d.Nack(false, true)
+			default:
+				_ = d.Nack(false, false)
+			}
 		} else {
+			incAck()
 			_ = d.Ack(false)
 		}
 	}

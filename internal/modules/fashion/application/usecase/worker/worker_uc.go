@@ -353,7 +353,11 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 				return err
 			}
 		}
-		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionFailed, payload)
+		failedTopic := eventconstants.TopicFashionFailedWardrobe
+		if job.ItemType == "brand" {
+			failedTopic = eventconstants.TopicFashionFailedBrand
+		}
+		return uc.eventPublisher.Publish(txCtx, failedTopic, payload)
 	})
 }
 
@@ -435,7 +439,11 @@ func (uc *FashionWorkerUseCase) markNeedsReview(ctx context.Context, job dto.Fas
 				return err
 			}
 		}
-		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
+		analyzedTopic := eventconstants.TopicFashionAnalyzedWardrobe
+		if job.ItemType == "brand" {
+			analyzedTopic = eventconstants.TopicFashionAnalyzedBrand
+		}
+		return uc.eventPublisher.Publish(txCtx, analyzedTopic, payload)
 	})
 }
 
@@ -529,7 +537,11 @@ func (uc *FashionWorkerUseCase) completeProcessedItem(ctx context.Context, job d
 			FashionBrief:  fashionBrief,
 		}
 
-		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionAnalyzed, payload)
+		analyzedTopic := eventconstants.TopicFashionAnalyzedWardrobe
+		if job.ItemType == "brand" {
+			analyzedTopic = eventconstants.TopicFashionAnalyzedBrand
+		}
+		return uc.eventPublisher.Publish(txCtx, analyzedTopic, payload)
 	})
 	// If CompleteProcessingSuccess returned false (version mismatch), no publish was done; return nil
 	if err != nil {

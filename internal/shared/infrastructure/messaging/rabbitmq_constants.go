@@ -24,12 +24,18 @@ const (
 	QueueElasticsearchProcessingExhausted = "elasticsearch_processing_exhausted_queue"
 
 	// Routing Keys
-	RoutingKeyElasticsearchSyncWildcard  = "wardrobe.event.*"
+	RoutingKeyElasticsearchSyncWildcard  = "wardrobe.event.#"
 	RoutingKeyFashionInit                = eventconstants.TopicFashionInit
 	RoutingKeyFashionAnalyze             = eventconstants.TopicFashionAnalyze
 	RoutingKeyFashionAnalyzed            = eventconstants.TopicFashionAnalyzed
 	RoutingKeyFashionFailed              = eventconstants.TopicFashionFailed
 	RoutingKeyFashionItemCreated         = eventconstants.TopicFashionItemCreated
+	RoutingKeyFashionAnalyzedWardrobe    = eventconstants.TopicFashionAnalyzedWardrobe
+	RoutingKeyFashionAnalyzedBrand       = eventconstants.TopicFashionAnalyzedBrand
+	RoutingKeyFashionFailedWardrobe      = eventconstants.TopicFashionFailedWardrobe
+	RoutingKeyFashionFailedBrand         = eventconstants.TopicFashionFailedBrand
+	RoutingKeyFashionItemCreatedWardrobe = eventconstants.TopicFashionItemCreatedWardrobe
+	RoutingKeyFashionItemCreatedBrand    = eventconstants.TopicFashionItemCreatedBrand
 	RoutingKeyFashionProcessingExhausted = eventconstants.TopicFashionProcessingExhausted
 	RoutingKeyWardrobeDeleted            = eventconstants.TopicWardrobeDeleted
 	RoutingKeySubscriptionPlanChanged    = eventconstants.TopicSubscriptionPlanChanged

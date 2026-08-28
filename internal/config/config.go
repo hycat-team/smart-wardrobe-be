@@ -130,10 +130,13 @@ type AIServiceConfig struct {
 }
 
 type RabbitMQ struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
+	Host                string `mapstructure:"host"`
+	Port                int    `mapstructure:"port"`
+	User                string `mapstructure:"user"`
+	Password            string `mapstructure:"password"`
+	Prefetch            int    `mapstructure:"prefetch"`
+	ConsumerConcurrency int    `mapstructure:"consumer_concurrency"`
+	DeliveryLimit       int    `mapstructure:"delivery_limit"`
 }
 
 type Cloudinary struct {

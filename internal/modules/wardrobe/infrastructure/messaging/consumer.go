@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-	"time"
 
 	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
@@ -30,17 +29,16 @@ func (c *SearchSyncEventConsumer) ConsumeEvents(ctx context.Context, handler fun
 		var eventPayload dto.WardrobeEventPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[SearchSyncEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
+			return shared_msg.PermanentError{Err: err}
 		}
 
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[SearchSyncEventConsumer] Error processing sync event", zap.Error(err))
 			if strings.Contains(err.Error(), "elasticsearch is offline") {
-				c.logger.Info("[SearchSyncEventConsumer] Elasticsearch is offline. Sleeping 5s and requeuing event for retry.")
-				time.Sleep(5 * time.Second)
-				return err
+				c.logger.Info("[SearchSyncEventConsumer] Elasticsearch is offline. Requeuing for retry.")
+				return shared_msg.RetryableError{Err: err}
 			}
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -64,17 +62,12 @@ func (c *WardrobeFashionAnalyzedEventConsumer) ConsumeEvents(ctx context.Context
 		var eventPayload fashionDto.FashionAnalyzedEventPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[WardrobeFashionAnalyzedEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
-
-		// Only process wardrobe items
-		if eventPayload.ItemType != "" && eventPayload.ItemType != "wardrobe" {
-			return nil
+			return shared_msg.PermanentError{Err: err}
 		}
 
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[WardrobeFashionAnalyzedEventConsumer] Error processing fashion analyzed event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -98,11 +91,11 @@ func (c *WardrobeCleanupEventConsumer) ConsumeEvents(ctx context.Context, handle
 		var eventPayload dto.WardrobeEventPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[WardrobeCleanupEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
+			return shared_msg.PermanentError{Err: err}
 		}
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[WardrobeCleanupEventConsumer] Error processing cleanup event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -125,11 +118,11 @@ func (c *WardrobeProcessingExhaustedEventConsumer) ConsumeEvents(ctx context.Con
 		var eventPayload fashionDto.FashionProcessingExhaustedPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[WardrobeProcessingExhaustedEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
+			return shared_msg.PermanentError{Err: err}
 		}
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[WardrobeProcessingExhaustedEventConsumer] Error processing processing-exhausted event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -152,14 +145,11 @@ func (c *WardrobeFashionBindEventConsumer) ConsumeEvents(ctx context.Context, ha
 		var eventPayload fashionDto.FashionItemCreatedPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[WardrobeFashionBindEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
-		if eventPayload.ItemType != "" && eventPayload.ItemType != "wardrobe" {
-			return nil
+			return shared_msg.PermanentError{Err: err}
 		}
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[WardrobeFashionBindEventConsumer] Error processing fashion bind event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -182,15 +172,14 @@ func (c *ElasticsearchProcessingExhaustedEventConsumer) ConsumeEvents(ctx contex
 		var eventPayload fashionDto.FashionProcessingExhaustedPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[ElasticsearchProcessingExhaustedEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
+			return shared_msg.PermanentError{Err: err}
 		}
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[ElasticsearchProcessingExhaustedEventConsumer] Error processing processing-exhausted event for search", zap.Error(err))
 			if strings.Contains(err.Error(), "elasticsearch is offline") {
-				time.Sleep(5 * time.Second)
-				return err
+				return shared_msg.RetryableError{Err: err}
 			}
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}

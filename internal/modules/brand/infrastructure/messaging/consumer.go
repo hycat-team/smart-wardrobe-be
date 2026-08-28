@@ -27,17 +27,12 @@ func (c *BrandFashionAnalyzedEventConsumer) ConsumeEvents(ctx context.Context, h
 		var eventPayload fashion_dto.FashionAnalyzedEventPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[BrandFashionAnalyzedEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
-
-		// Only process brand items
-		if eventPayload.ItemType != "brand" {
-			return nil
+			return shared_msg.PermanentError{Err: err}
 		}
 
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[BrandFashionAnalyzedEventConsumer] Error processing brand fashion analyzed event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}
@@ -61,14 +56,11 @@ func (c *BrandFashionBindEventConsumer) ConsumeEvents(ctx context.Context, handl
 		var eventPayload fashion_dto.FashionItemCreatedPayload
 		if err := json.Unmarshal(msg.Body, &eventPayload); err != nil {
 			c.logger.Error("[BrandFashionBindEventConsumer] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
-		if eventPayload.ItemType != "" && eventPayload.ItemType != "brand" {
-			return nil
+			return shared_msg.PermanentError{Err: err}
 		}
 		if err := handler(ctx, eventPayload); err != nil {
 			c.logger.Error("[BrandFashionBindEventConsumer] Error processing brand fashion bind event", zap.Error(err))
-			return err
+			return shared_msg.RetryableError{Err: err}
 		}
 		return nil
 	}

@@ -2,10 +2,17 @@ package messaging
 
 import (
 	"fmt"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// DeclareAndBindQueue is a helper method to declare a queue and bind it to the topic exchange
+// DeclareAndBindQueue is a helper method to declare a queue and bind it to the topic exchange (backward compatible).
 func (r *RabbitMQClient) DeclareAndBindQueue(queueName, routingKey string) error {
+	return r.DeclareAndBindQueueWithArgs(queueName, routingKey, ExchangeName, nil)
+}
+
+// DeclareAndBindQueueWithArgs declares a durable queue with custom args and binds it to the given exchange.
+func (r *RabbitMQClient) DeclareAndBindQueueWithArgs(queueName, routingKey, exchange string, args amqp.Table) error {
 	if r.ch == nil {
 		return fmt.Errorf("RabbitMQ channel is not open")
 	}
@@ -17,7 +24,7 @@ func (r *RabbitMQClient) DeclareAndBindQueue(queueName, routingKey string) error
 		false,     // delete when unused
 		false,     // exclusive
 		false,     // no-wait
-		nil,       // arguments
+		args,      // arguments (quorum, DLX, etc.)
 	)
 	if err != nil {
 		return fmt.Errorf("failed to declare queue %s: %w", queueName, err)
@@ -25,9 +32,9 @@ func (r *RabbitMQClient) DeclareAndBindQueue(queueName, routingKey string) error
 
 	// 2. Bind Queue to Exchange with the corresponding routing key
 	err = r.ch.QueueBind(
-		queueName,    // queue name
-		routingKey,   // routing key
-		ExchangeName, // exchange
+		queueName,  // queue name
+		routingKey, // routing key
+		exchange,   // exchange
 		false,
 		nil,
 	)

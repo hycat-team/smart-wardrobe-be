@@ -77,7 +77,11 @@ func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job dto.Fashio
 			ItemType:      job.ItemType,
 			UserID:        job.UserID,
 		}
-		if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionItemCreated, createdPayload); err != nil {
+		createdTopic := eventconstants.TopicFashionItemCreatedWardrobe
+		if job.ItemType == "brand" {
+			createdTopic = eventconstants.TopicFashionItemCreatedBrand
+		}
+		if err := uc.eventPublisher.Publish(txCtx, createdTopic, createdPayload); err != nil {
 			return fmt.Errorf("failed to publish fashion item created event: %w", err)
 		}
 

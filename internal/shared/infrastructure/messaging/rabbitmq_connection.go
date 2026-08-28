@@ -34,6 +34,15 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		_ = r.conn.Close()
 		return fmt.Errorf("could not open RabbitMQ channel: %w", err)
 	}
+	r.publisherCh, err = r.conn.Channel()
+	if err != nil {
+		_ = r.ch.Close()
+		_ = r.conn.Close()
+		return fmt.Errorf("could not open RabbitMQ publisher channel: %w", err)
+	}
+	if err := r.publisherCh.Confirm(false); err != nil {
+		r.logger.Warn("Failed to enable publisher confirms", zap.Error(err))
+	}
 
 	// 1. Initialize flexible Topic Exchange, standard event-driven Pub/Sub
 	err = r.ch.ExchangeDeclare(
@@ -46,110 +55,59 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 		nil,          // arguments
 	)
 	if err != nil {
+		if r.publisherCh != nil {
+			_ = r.publisherCh.Close()
+		}
 		_ = r.ch.Close()
 		_ = r.conn.Close()
 		return fmt.Errorf("could not declare RabbitMQ exchange: %w", err)
 	}
 
-	// 2. Declare and Bind Elasticsearch Sync Queue
-	if err := r.DeclareAndBindQueue(QueueElasticsearchSync, RoutingKeyElasticsearchSyncWildcard); err != nil {
+	// 1b. Declare DLX topic exchange for dead-lettering
+	err = r.ch.ExchangeDeclare(
+		ExchangeDLXName,
+		ExchangeDLXType,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		if r.publisherCh != nil {
+			_ = r.publisherCh.Close()
+		}
 		_ = r.ch.Close()
 		_ = r.conn.Close()
-		return err
+		return fmt.Errorf("could not declare DLX exchange: %w", err)
 	}
 
-	// 3. Declare and Bind Fashion Init Queue
-	if err := r.DeclareAndBindQueue(QueueFashionInit, RoutingKeyFashionInit); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
+	// 2. Declare and bind primary topology via registry
+	for _, b := range Topology {
+		for _, rk := range b.RoutingKeys {
+			if err := r.DeclareAndBindQueueWithArgs(b.Queue, rk, b.Exchange, b.Args); err != nil {
+				if r.publisherCh != nil {
+					_ = r.publisherCh.Close()
+				}
+				_ = r.ch.Close()
+				_ = r.conn.Close()
+				return err
+			}
+		}
 	}
 
-	// 4. Declare and Bind Fashion Analyze Queue
-	if err := r.DeclareAndBindQueue(QueueFashionAnalyze, RoutingKeyFashionAnalyze); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 5. Declare and Bind Subscription Plan Changed Queue
-	if err := r.DeclareAndBindQueue(QueueSubscriptionPlanChanged, RoutingKeySubscriptionPlanChanged); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 6. Declare and Bind Notification Email Queue
-	if err := r.DeclareAndBindQueue(QueueNotificationEmail, RoutingKeyNotificationEmail); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 7. Declare and Bind Audit Log Queue
-	if err := r.DeclareAndBindQueue(QueueAuditLog, RoutingKeyAuditLog); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 8. Declare and Bind Wardrobe Fashion Analyzed Queue
-	if err := r.DeclareAndBindQueue(QueueWardrobeFashionAnalyzed, RoutingKeyFashionAnalyzed); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-	if err := r.DeclareAndBindQueue(QueueWardrobeFashionAnalyzed, RoutingKeyFashionFailed); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 9. Declare and Bind Brand Fashion Analyzed Queue
-	if err := r.DeclareAndBindQueue(QueueBrandFashionAnalyzed, RoutingKeyFashionAnalyzed); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-	if err := r.DeclareAndBindQueue(QueueBrandFashionAnalyzed, RoutingKeyFashionFailed); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 10. Declare and Bind Wardrobe Cleanup Queue (pub/sub for fashion cleanup)
-	if err := r.DeclareAndBindQueue(QueueWardrobeCleanup, RoutingKeyWardrobeDeleted); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 11. Declare and Bind Wardrobe Processing Exhausted Queue (DB)
-	if err := r.DeclareAndBindQueue(QueueWardrobeProcessingExhausted, RoutingKeyFashionProcessingExhausted); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 12. Declare and Bind Elasticsearch Processing Exhausted Queue (ES - pub/sub)
-	if err := r.DeclareAndBindQueue(QueueElasticsearchProcessingExhausted, RoutingKeyFashionProcessingExhausted); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 13. Declare and Bind Wardrobe Fashion Bind Queue
-	if err := r.DeclareAndBindQueue(QueueWardrobeFashionBind, RoutingKeyFashionItemCreated); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
-	}
-
-	// 14. Declare and Bind Brand Fashion Bind Queue
-	if err := r.DeclareAndBindQueue(QueueBrandFashionBind, RoutingKeyFashionItemCreated); err != nil {
-		_ = r.ch.Close()
-		_ = r.conn.Close()
-		return err
+	// 3. Declare and bind DLQ topology
+	for _, b := range DLQTopology {
+		for _, rk := range b.RoutingKeys {
+			if err := r.DeclareAndBindQueueWithArgs(b.Queue, rk, b.Exchange, b.Args); err != nil {
+				if r.publisherCh != nil {
+					_ = r.publisherCh.Close()
+				}
+				_ = r.ch.Close()
+				_ = r.conn.Close()
+				return err
+			}
+		}
 	}
 
 	r.logger.Info("Successfully connected to RabbitMQ and established binding topology.")
@@ -202,6 +160,7 @@ func (r *RabbitMQClient) reconnect(ctx context.Context) {
 		}
 
 		r.logger.Info("Attempting to reconnect to RabbitMQ...", zap.Int("attempt", attempt+1))
+		incReconnect()
 		err := r.connect(30 * time.Second)
 		if err == nil {
 			r.logger.Info("Successfully reconnected to RabbitMQ and restored topology!")
