@@ -160,7 +160,7 @@ func TestCompleteProcessedItemPublishesEvent(t *testing.T) {
 		},
 		eventPublisher: &mockEventPublisherForWorker{
 			publishFn: func(ctx context.Context, topic string, payload any) error {
-				if topic == eventconstants.TopicFashionAnalyzed {
+				if topic == eventconstants.TopicFashionAnalyzedWardrobe {
 					eventPublished = true
 				}
 				return nil

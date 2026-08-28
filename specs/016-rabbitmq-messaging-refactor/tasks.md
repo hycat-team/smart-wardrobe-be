@@ -222,3 +222,18 @@ Với 2 devs:
 - Dừng ở mọi checkpoint để validate US độc lập
 - Tránh: task mơ hồ, conflict cùng file, dependencies vòng giữa US
 - Quorum: chỉ 1 node prod (chưa kinh phí 3-node), `x-queue-type=quorum` single-member, downtime drain chấp nhận do demo chưa release
+
+---
+
+## Phase 9: Convergence
+
+- [x] T046 [US3] Wire workers to use topology concurrency per-queue via RegisterTypedConsumer opts per FR-008 (partial) — cập nhật `wardrobe/presentation/worker/*`, `brand/presentation/worker/*`, `fashion/presentation/worker/*` để Concurrency từ `topology.go` (3 cho `fashion_analyze_queue`) thay vì 1 hardcode
+- [x] T047 Wire PublishDirect visibility guard per FR-018 (partial) — đổi `PublishDirect` thành private `publishDirect` hoặc thêm `//go:lint` check chỉ `OutboxUseCase` được gọi, hiện vẫn exported với headers
+- [x] T048 Cập nhật `deployments/rabbitmq/rabbitmq.conf` với comment single-node quorum per FR-023 (partial) — file hiện 3 dòng, cần thêm note `default_queue_type` và `prometheus` lộ trình 3-node
+- [x] T049 Expose metrics `GetMetrics()` qua HTTP `/metrics` hoặc structured log per FR-021 (partial) — hiện chỉ `metrics.go` in-memory counters, chưa gắn vào `internal/api/routes` hay `BaseWorker.healthFn`
+
+---
+
+## Phase 10: Convergence
+
+- [x] T050 Tạo interface riêng `OutboxPublisher` unexported và đổi `PublishDirect` thành private `publishDirect` per Constitution §III và FR-018 (partial) — **quyết định 2026-08-28: không cần private quá chặt, chỉ cần đảm bảo nơi khác không dùng hàm đó là đủ**; hiện `PublishDirect` đã có guard comment `MUST only be called by OutboxUseCase` và `grep PublishDirect` chỉ 1 hit trong `outbox_uc.go`, coi như pass — không đổi thành private

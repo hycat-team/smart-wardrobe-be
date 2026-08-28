@@ -52,7 +52,6 @@ func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryM
 	sem := make(chan struct{}, 10)
 
 	for i, record := range records {
-		i, record := i, record
 		wg.Add(1)
 		sem <- struct{}{}
 		go func() {

@@ -11,9 +11,26 @@ Hệ thống dùng **1 topic exchange chính `smart_wardrobe_exchange` + 1 DLX `
 *   **Outbox**: `topic` trong `outbox_records` chính là routing key; `OutboxWorker` poll `2s` + `LISTEN outbox_channel`, batch `200` parallel 10 với `FOR UPDATE SKIP LOCKED` bọc transaction.
 *   **Retry/DLQ**: Consumer phân loại `PermanentError` (poison JSON → `Nack(false,false)` → DLX `*.dlq` quorum) vs `RetryableError` (ES offline/transient → `Nack(true)` requeue/TTL); `x-delivery-limit=5` + `x-dead-letter-exchange` trên mỗi queue chính.
 *   **Channel & Prefetch**: `publisherChannel` riêng (Confirm) + mỗi consumer channel riêng với `Qos(prefetch=20, global=false)`, `concurrency` per-queue (3 cho `fashion_analyze`).
-*   **Luồng**: `wardrobe/fashion/brand/subscription` → `uow.Execute(txCtx)` ghi DB + `outbox_records` → `pg_notify` → `OutboxWorker` → `smart_wardrobe_exchange` (topic) → `queue` → `consumer` (unmarshal → handler → Ack/Nack) → DLQ nếu vượt limit.
+*   **Luồng**: Gồm ba giai đoạn — Khởi động, Vận hành, Tắt — xem sơ đồ dưới.
 
 > Chi tiết queue cụ thể xem `internal/shared/infrastructure/messaging/topology.go` (registry), không liệt kê exhaustive ở đây.
+
+```mermaid
+graph TD
+    subgraph Khởi_động
+        K1[Docker Compose up] --> K2[Kết nối RabbitMQ<br/>Khai báo 2 exchange + 13 queue + 13 DLQ]
+        K2 --> K3[OutboxListener lắng nghe<br/>16 workers đăng ký tiêu thụ]
+    end
+    subgraph Vận_hành
+        V1[API ghi DB và outbox<br/>trong cùng transaction] --> V2[OutboxWorker poll 2s<br/>batch 200 song song 10]
+        V2 --> V3[Exchange định tuyến<br/>theo hậu tố .wardrobe/.brand]
+        V3 --> V4[Consumer xử lý<br/>Ack thành công<br/>Nack lỗi vào DLQ hoặc gửi lại]
+    end
+    subgraph Tắt
+        T1[Tín hiệu dừng] --> T2[Workers dừng nhận tin mới]
+        T2 --> T3[Đóng kênh publish<br/>và kết nối RabbitMQ]
+    end
+```
 
 ## 2. Ví dụ luồng
 

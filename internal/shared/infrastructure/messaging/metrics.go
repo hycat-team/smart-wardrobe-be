@@ -10,11 +10,11 @@ var (
 	reconnectTotal   atomic.Int64
 )
 
-func incPublishTotal()     { publishTotal.Add(1) }
-func incPublishFailed()    { publishFailed.Add(1) }
-func incAck()              { consumeAckTotal.Add(1) }
-func incNack()             { consumeNackTotal.Add(1) }
-func incReconnect()        { reconnectTotal.Add(1) }
+func incPublishTotal()  { publishTotal.Add(1) }
+func incPublishFailed() { publishFailed.Add(1) }
+func incAck()           { consumeAckTotal.Add(1) }
+func incNack()          { consumeNackTotal.Add(1) }
+func incReconnect()     { reconnectTotal.Add(1) }
 
 // GetMetrics returns current counters for /metrics or structured log.
 func GetMetrics() map[string]int64 {

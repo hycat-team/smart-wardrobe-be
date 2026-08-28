@@ -8,11 +8,13 @@ import (
 
 	"smart-wardrobe-be/internal/shared/application/event"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/google/uuid"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
+// PublishDirect publishes directly to RabbitMQ — MUST only be called by OutboxUseCase (constitution §III, FR-018).
+// Other usecases must use Publish() which writes to outbox.
 func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body []byte, headers amqp.Table) error {
 	r.publisherMu.Lock()
 	defer r.publisherMu.Unlock()
