@@ -100,7 +100,7 @@ func (ol *OutboxListener) notificationLoop(ctx context.Context, conn *pgx.Conn) 
 }
 
 func (ol *OutboxListener) reconnect(ctx context.Context) {
-	for i := 0; i < maxReconnectAttempts; i++ {
+	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -111,6 +111,6 @@ func (ol *OutboxListener) reconnect(ctx context.Context) {
 			ol.logger.Info("Outbox listener reconnected")
 			return
 		}
+		ol.logger.Warn("Outbox listener reconnect failed, retrying with fallback poll")
 	}
-	ol.logger.Error("Outbox listener: all reconnect attempts exhausted")
 }

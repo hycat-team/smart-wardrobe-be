@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const outboxFallbackInterval = 10 * time.Second
+const outboxFallbackInterval = 2 * time.Second
 
 type OutboxWorker struct {
 	*BaseWorker

@@ -77,6 +77,10 @@ func (w *FashionAnalyzeWorker) startConsume(ctx context.Context) {
 		return nil
 	}
 
-	w.messageClient.RegisterConsumer(shared_msg.QueueFashionAnalyze, handler)
-	w.logger.Info("[FashionAnalyzeWorker] Registered consumer for queue", zap.String("queue", shared_msg.QueueFashionAnalyze))
+	// Use concurrency from topology (FR-008): fashion_analyze_queue concurrency 3 per single-node quorum
+	concurrency := 3
+	for i := 0; i < concurrency; i++ {
+		w.messageClient.RegisterConsumer(shared_msg.QueueFashionAnalyze, handler)
+	}
+	w.logger.Info("[FashionAnalyzeWorker] Registered consumer for queue", zap.String("queue", shared_msg.QueueFashionAnalyze), zap.Int("concurrency", concurrency))
 }

@@ -14,6 +14,12 @@ const (
 	TopicFashionAnalyzed            = "fashion.event.analyzed"
 	TopicFashionFailed              = "fashion.event.failed"
 	TopicFashionItemCreated         = "fashion.item.created"
+	TopicFashionAnalyzedWardrobe    = "fashion.event.analyzed.wardrobe"
+	TopicFashionAnalyzedBrand       = "fashion.event.analyzed.brand"
+	TopicFashionFailedWardrobe      = "fashion.event.failed.wardrobe"
+	TopicFashionFailedBrand         = "fashion.event.failed.brand"
+	TopicFashionItemCreatedWardrobe = "fashion.item.created.wardrobe"
+	TopicFashionItemCreatedBrand    = "fashion.item.created.brand"
 	TopicFashionProcessingExhausted = "fashion.event.processing-exhausted"
 	TopicNotificationEmail          = "notification.email"
 

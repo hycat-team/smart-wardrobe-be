@@ -2,11 +2,14 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
+	"sync"
 	"time"
 
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
@@ -38,15 +41,53 @@ func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryM
 		return 0, nil
 	}
 
+	// Parallel publish with bounded concurrency
+	type result struct {
+		id         string
+		published  bool
+		publishErr error
+	}
+	results := make([]result, len(records))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10)
+
+	for i, record := range records {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			headers := amqp.Table{}
+			if len(record.Headers) > 0 && string(record.Headers) != "{}" {
+				var h map[string]any
+				if err := json.Unmarshal(record.Headers, &h); err == nil {
+					for k, v := range h {
+						if k == "correlationId" {
+							headers["x-correlation-id"] = v
+						}
+						headers[k] = v
+					}
+				}
+			}
+			if err := uc.rabbitMQ.PublishDirect(ctx, record.Topic, record.Payload, headers); err != nil {
+				results[i] = result{id: record.ID.String(), publishErr: err}
+				return
+			}
+			results[i] = result{id: record.ID.String(), published: true}
+		}()
+	}
+	wg.Wait()
+
 	publishedCount := 0
-	for _, record := range records {
-		if err := uc.rabbitMQ.PublishDirect(ctx, record.Topic, record.Payload); err != nil {
+	for i, record := range records {
+		r := results[i]
+		if r.publishErr != nil {
 			uc.logger.Error("[OutboxUseCase] Failed to publish outbox record",
 				zap.String("recordId", record.ID.String()),
 				zap.String("topic", record.Topic),
-				zap.Error(err),
+				zap.Error(r.publishErr),
 			)
-			if markErr := uc.outboxRepo.MarkFailed(ctx, record.ID, err); markErr != nil {
+			if markErr := uc.outboxRepo.MarkFailed(ctx, record.ID, r.publishErr); markErr != nil {
 				uc.logger.Error("[OutboxUseCase] Failed to mark outbox record as failed",
 					zap.String("recordId", record.ID.String()),
 					zap.Error(markErr),
@@ -54,14 +95,15 @@ func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryM
 			}
 			continue
 		}
-
 		if err := uc.outboxRepo.MarkPublished(ctx, record.ID); err != nil {
 			uc.logger.Error("[OutboxUseCase] Failed to mark outbox record as published",
 				zap.String("recordId", record.ID.String()),
 				zap.Error(err),
 			)
 		}
-		publishedCount++
+		if r.published {
+			publishedCount++
+		}
 	}
 
 	return publishedCount, nil

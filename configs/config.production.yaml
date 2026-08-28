@@ -56,6 +56,9 @@ rabbitmq:
     port: 5672
     user: "${RABBITMQ_USER}"
     password: "${RABBITMQ_PASSWORD}"
+    prefetch: 20
+    consumer_concurrency: 1
+    delivery_limit: 5
 outbox:
     retry_max_attempts: 3
     retry_interval_minutes: 5
