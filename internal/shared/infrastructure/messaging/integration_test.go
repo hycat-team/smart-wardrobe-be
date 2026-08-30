@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"smart-wardrobe-be/internal/config"
+
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"gorm.io/driver/postgres"
@@ -92,6 +94,62 @@ func dialTestAMQP(t *testing.T) *amqp.Connection {
 
 // TestIntegration_DLQTopologyReachable (T021 - phần DLQ): mọi DLQ trong
 // DLQTopology phải tồn tại và đếm được depth qua Management API.
+// TestIntegration_PoisonToDLQ_EndToEnd (T021 + quickstart §4): kịch bản đầy đủ —
+// consumer framework nhận poison JSON → PermanentError → Nack(false,false)
+// → DLX → fashion_analyze_queue.dlq. Publish đi qua PublishDirect để kiểm
+// chứng luôn publisher confirm (T023) trên broker thật.
+func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
+	user := os.Getenv("TEST_RABBITMQ_USER")
+	pass := os.Getenv("TEST_RABBITMQ_PASSWORD")
+	if user == "" {
+		user, pass = "guest", "guest"
+	}
+
+	cfg := testRabbitConfig(user, pass)
+	client, err := NewRabbitMQClient(cfg, &nopLogger{}, nil)
+	if err != nil {
+		t.Fatalf("new rabbitmq client: %v", err)
+	}
+	defer client.Close()
+
+	dlqBaseline, err := fetchQueueMessages(t, QueueFashionAnalyze+".dlq")
+	if err != nil {
+		t.Fatalf("fetch dlq baseline: %v", err)
+	}
+
+	if err := RegisterTypedConsumer(client, QueueFashionAnalyze, func(ctx context.Context, payload struct{}) error {
+		t.Error("handler must not run for poison payload")
+		return nil
+	}, ConsumerOpts{}); err != nil {
+		t.Fatalf("register typed consumer: %v", err)
+	}
+
+	if err := client.PublishDirect(context.Background(), RoutingKeyFashionAnalyze,
+		[]byte("{poison-end-to-end"), amqp.Table{"x-correlation-id": "e2e-poison-test"}); err != nil {
+		t.Fatalf("publish poison (publisher confirm path): %v", err)
+	}
+
+	if err := waitDepthAtLeast(t, QueueFashionAnalyze+".dlq", dlqBaseline+1); err != nil {
+		t.Fatalf("poison did not dead-letter into %s: %v", QueueFashionAnalyze+".dlq", err)
+	}
+
+	// Dọn dẹp: nhặt đúng 1 message (poison vừa tạo) khỏi DLQ để không ô nhiễm môi trường.
+	ch, err := client.conn.Channel()
+	if err != nil {
+		t.Fatalf("open dlq cleanup channel: %v", err)
+	}
+	deliveries, err := ch.Consume(QueueFashionAnalyze+".dlq", "", true, false, false, false, nil)
+	if err != nil {
+		t.Fatalf("consume dlq: %v", err)
+	}
+	select {
+	case d := <-deliveries:
+		_ = d
+	case <-time.After(depthPollTimeout):
+		t.Log("warn: no message to clean from dlq (already consumed?)")
+	}
+}
+
 func TestIntegration_DLQTopologyReachable(t *testing.T) {
 	conn := dialTestAMQP(t)
 	if _, err := conn.Channel(); err != nil {
@@ -161,7 +219,7 @@ func TestIntegration_RoutingBurstSeparation(t *testing.T) {
 		queue string
 	}{
 		{"wardrobe", "wardrobe.event.test-burst", QueueElasticsearchSync},
-		{"brand", "fashion.event.analyzed.brand.test-burst", QueueBrandFashionAnalyzed},
+		{"brand", "fashion.event.analyzed.brand", QueueBrandFashionAnalyzed},
 	}
 	for _, target := range targets {
 		baseline, err := fetchQueueMessages(t, target.queue)
@@ -263,4 +321,12 @@ func waitDepthAtLeast(t *testing.T, queue string, minDepth int) error {
 	}
 	depth, err := fetchQueueMessages(t, queue)
 	return fmt.Errorf("queue %s depth = %d (err %v), want >= %d after %s", queue, depth, err, minDepth, depthPollTimeout)
+}
+
+// testRabbitConfig tạo config tối giản để NewRabbitMQClient trong test.
+func testRabbitConfig(user, pass string) *config.Config {
+	return &config.Config{
+		Startup:  config.Startup{RetryAttempt1Seconds: 5, RetryAttempt2Seconds: 5, RetryAttempt3Seconds: 5},
+		RabbitMQ: config.RabbitMQ{Host: "127.0.0.1", Port: 5672, User: user, Password: pass, Prefetch: 20},
+	}
 }
