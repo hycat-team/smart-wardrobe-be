@@ -41,7 +41,7 @@ FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*'
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 endif
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
+.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test test-race build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
 help:
 	@echo "========================================================================"
@@ -157,6 +157,11 @@ test:
 	@echo Running Go tests...
 	@$(TEST_CMD)
 	@echo Go tests finished.
+
+test-race:
+	@echo Running Go tests with race detector...
+	@go test -race ./...
+	@echo Go race tests finished.
 
 build:
 	@echo Building application for the current operating system...
