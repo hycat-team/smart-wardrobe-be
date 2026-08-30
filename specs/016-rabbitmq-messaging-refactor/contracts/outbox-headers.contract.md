@@ -11,16 +11,23 @@
 ```json
 {
   "correlationId": "uuid-v4",
-  "traceparent": "00-<traceId>-<spanId>-01", // optional OTel
   "eventVersion": "v1",
   "publishedAt": "2026-08-27T10:00:00Z",
   "producer": "wardrobe"
 }
 ```
 
+> **Decision 2026-08-30 — `traceparent` de-scope**: không inject `traceparent`
+> trong 016. Lý do: hệ thống là modular monolith (publisher + 13 consumer cùng
+> 1 process) nên `correlationId` đã đáp ứng đủ nhu cầu trace; W3C `traceparent`
+> chỉ phát huy giá trị khi message đi qua ≥2 process với OpenTelemetry SDK và
+> tracing backend. Headers là additive — bổ sung `traceparent` sau không phá
+> gì. Điều kiện reconsider: lần đầu có message đi qua 2 process khác nhau.
+> Chi tiết: `docs/decisions/016-rabbitmq-refactor.md` §Decision 4.
+
 ## Publish Contract
 
-- `IEventPublisher.Publish(ctx, topic, payload)` (gọi trong `uow.Execute(txCtx)`): `json.Marshal(payload)` → `OutboxRecord{Topic: topic, Payload: bytes, Headers: {correlationId: uuid.NewString(), traceparent: trace.SpanFromContext(ctx), eventVersion:"v1", publishedAt: now}, Status:"pending"}` → `outboxRepo.Create(txCtx, record)` (dùng `db.GetTx(ctx)`). Không gọi `PublishDirect`.
+- `IEventPublisher.Publish(ctx, topic, payload)` (gọi trong `uow.Execute(txCtx)`): `json.Marshal(payload)` → `OutboxRecord{Topic: topic, Payload: bytes, Headers: {correlationId: uuid.NewString(), eventVersion:"v1", publishedAt: now}, Status:"pending"}` → `outboxRepo.Create(txCtx, record)` (dùng `db.GetTx(ctx)`). Không gọi `PublishDirect`.
 - `OutboxUseCase.PublishBatch`: `ClaimToPublish` bọc `Transaction{ SELECT ... FOR UPDATE SKIP LOCKED LIMIT batchSize FOR UPDATE ...; UPDATE status='processing' RETURNING }` → loop parallel `errgroup` 10: `PublishDirect(record.Topic, record.Payload, record.Headers)` với **publisher confirms** → `MarkPublished` nếu `NotifyPublish` ack, `MarkFailed` nếu nack/error (attempts++).
 
 ## AMQP Publishing (`PublishDirect` private)
