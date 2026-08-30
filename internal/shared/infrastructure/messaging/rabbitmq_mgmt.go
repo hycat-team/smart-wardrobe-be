@@ -13,7 +13,7 @@ import (
 )
 
 // mgmtQueue là subset field của /api/queues trong RabbitMQ Management API
-// mà ta cần cho gauges queue_depth/dlq_depth (T028).
+// mà ta cần cho gauges queue_depth/dlq_depth.
 type mgmtQueue struct {
 	Name     string `json:"name"`
 	Messages int    `json:"messages"`

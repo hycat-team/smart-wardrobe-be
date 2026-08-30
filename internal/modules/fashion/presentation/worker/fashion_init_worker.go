@@ -6,7 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type FashionInitWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IFashionInitUseCase
 	logger        logger.Interface
 }
 
 func NewFashionInitWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IFashionInitUseCase,
 	l logger.Interface,
 ) *FashionInitWorker {
@@ -35,7 +36,7 @@ func NewFashionInitWorker(
 
 func (w *FashionInitWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueFashionInit, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueFashionInit, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register fashion init consumer", zap.Error(err))
 	}
 }
@@ -47,7 +48,7 @@ func (w *FashionInitWorker) handle(ctx context.Context, job dto.FashionAnalyzeJo
 	}
 	run := workerlog.New("fashion_init", triggerType)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("itemId", job.ItemID.String()),
 		zap.String("itemType", job.ItemType),
 	)

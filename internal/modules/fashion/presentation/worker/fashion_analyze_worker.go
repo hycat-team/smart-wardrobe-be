@@ -6,7 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type FashionAnalyzeWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IFashionWorkerUseCase
 	logger        logger.Interface
 }
 
 func NewFashionAnalyzeWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IFashionWorkerUseCase,
 	l logger.Interface,
 ) *FashionAnalyzeWorker {
@@ -35,8 +36,8 @@ func NewFashionAnalyzeWorker(
 
 func (w *FashionAnalyzeWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	// Concurrency đọc từ Topology (FR-008): fashion_analyze_queue = 3.
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueFashionAnalyze, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	// Concurrency đọc từ Topology registry.
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueFashionAnalyze, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register fashion analyze consumer", zap.Error(err))
 	}
 }
@@ -48,7 +49,7 @@ func (w *FashionAnalyzeWorker) handle(ctx context.Context, job dto.FashionAnalyz
 	}
 	run := workerlog.New("fashion_analyze_item", triggerType)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("fashionItemId", job.FashionItemID.String()),
 		zap.String("itemId", job.ItemID.String()),
 		zap.String("itemType", job.ItemType),

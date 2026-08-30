@@ -9,7 +9,7 @@ var (
 	consumeNackTotal atomic.Int64
 	reconnectTotal   atomic.Int64
 
-	// Gauges (T028) — cập nhật định kỳ bởi OutboxWorker.RefreshGauges.
+	// Gauges — cập nhật định kỳ bởi OutboxWorker.RefreshGauges.
 	outboxPending atomic.Int64
 	queueDepth    atomic.Int64
 	dlqDepth      atomic.Int64

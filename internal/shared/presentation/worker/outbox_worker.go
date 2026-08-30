@@ -75,7 +75,7 @@ func (w *OutboxWorker) runLoop(ctx context.Context) {
 	}
 }
 
-// refreshGauges cập nhật gauges outbox_pending/queue_depth/dlq_depth (T028).
+// refreshGauges cập nhật gauges outbox_pending/queue_depth/dlq_depth.
 func (w *OutboxWorker) refreshGauges(ctx context.Context) {
 	w.outboxUC.RefreshGauges(ctx)
 }

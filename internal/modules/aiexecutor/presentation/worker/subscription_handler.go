@@ -6,7 +6,8 @@ import (
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type PlanChangedWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	grantUseCase  uc_interfaces.IGrantUseCase
 	logger        logger.Interface
 }
 
 func NewPlanChangedWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	grantUseCase uc_interfaces.IGrantUseCase,
 	l logger.Interface,
 ) *PlanChangedWorker {
@@ -35,7 +36,7 @@ func NewPlanChangedWorker(
 
 func (w *PlanChangedWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueSubscriptionPlanChanged, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueSubscriptionPlanChanged, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register plan changed consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *PlanChangedWorker) Start(ctx context.Context) {
 func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.PlanChangedPayload) error {
 	run := workerlog.New("plan_changed", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("userId", payload.UserID),
 		zap.String("eventType", payload.EventType),
 	)

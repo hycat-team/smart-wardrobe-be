@@ -1,6 +1,6 @@
 package messaging_test
 
-// TestIntegration_OutboxPublishBatch (T007 + T023 end-to-end): chèn record
+// TestIntegration_OutboxPublishBatch: chèn record
 // pending vào DB thật → PublishBatch → assert record chuyển 'published' trong
 // DB (chỉ khi broker confirm ack) VÀ message xuất hiện trong queue đích.
 // Package riêng (messaging_test) vì cần import shared usecase — tránh cycle.
@@ -15,6 +15,7 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	shared_uc "smart-wardrobe-be/internal/shared/application/usecase"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 
@@ -103,7 +104,7 @@ func TestIntegration_OutboxPublishBatch(t *testing.T) {
 	outboxRepo := messaging.NewOutboxRepository(db)
 	uc := shared_uc.NewOutboxUseCase(outboxRepo, client, cfg, l)
 
-	queueBaseline, err := fetchQueueDepth(t, messaging.QueueAuditLog)
+	queueBaseline, err := fetchQueueDepth(t, eventconstants.QueueAuditLog)
 	if err != nil {
 		t.Fatalf("fetch queue baseline: %v", err)
 	}
@@ -124,7 +125,7 @@ func TestIntegration_OutboxPublishBatch(t *testing.T) {
 		t.Fatalf("published = %d, want >= 1", published)
 	}
 
-	// T007/T023: record được đánh dấu published CHỈ sau khi broker confirm.
+	// Record được đánh dấu published CHỈ sau khi broker confirm.
 	var after messaging.OutboxRecord
 	if err := db.Where("id = ?", record.ID).First(&after).Error; err != nil {
 		t.Fatalf("reload record: %v", err)
@@ -136,12 +137,12 @@ func TestIntegration_OutboxPublishBatch(t *testing.T) {
 	// Message phải thực sự nằm trong queue đích.
 	deadline := time.Now().Add(15 * time.Second)
 	for {
-		depth, err := fetchQueueDepth(t, messaging.QueueAuditLog)
+		depth, err := fetchQueueDepth(t, eventconstants.QueueAuditLog)
 		if err == nil && depth >= queueBaseline+1 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("message not in %s (depth %d, err %v)", messaging.QueueAuditLog, depth, err)
+			t.Fatalf("message not in %s (depth %d, err %v)", eventconstants.QueueAuditLog, depth, err)
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -156,7 +157,7 @@ func TestIntegration_OutboxPublishBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open cleanup channel: %v", err)
 	}
-	deliveries, err := ch.Consume(messaging.QueueAuditLog, "", true, false, false, false, nil)
+	deliveries, err := ch.Consume(eventconstants.QueueAuditLog, "", true, false, false, false, nil)
 	if err != nil {
 		t.Fatalf("consume cleanup: %v", err)
 	}

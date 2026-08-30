@@ -375,7 +375,7 @@ func (m *mockMediaServiceForWorker) GenerateUploadSignature(ctx context.Context,
 	return nil, nil
 }
 
-// TestRaceConditionClaimSingleWinner verifies SC-007 race-condition behaviour:
+// TestRaceConditionClaimSingleWinner verifies race-condition behaviour:
 // two workers claiming the same item — only one wins because the version check
 // on the fashion side rejects the second update.
 func TestRaceConditionClaimSingleWinner(t *testing.T) {
@@ -446,7 +446,7 @@ func TestRaceConditionClaimSingleWinner(t *testing.T) {
 	}
 }
 
-// TestClaimRetryLatencyWithinBudget verifies SC-007: the claim-retry completion path
+// TestClaimRetryLatencyWithinBudget verifies that the claim-retry completion path
 // completes well within the +100ms budget allowed after the refactor.
 func TestClaimRetryLatencyWithinBudget(t *testing.T) {
 	itemID := uuid.New()
@@ -497,7 +497,7 @@ func TestClaimRetryLatencyWithinBudget(t *testing.T) {
 	elapsed := time.Since(start)
 	avg := elapsed / iterations
 	if avg > budget {
-		t.Fatalf("average claim-retry latency %v exceeds +100ms budget (SC-007)", avg)
+		t.Fatalf("average claim-retry latency %v exceeds +100ms budget", avg)
 	}
 }
 

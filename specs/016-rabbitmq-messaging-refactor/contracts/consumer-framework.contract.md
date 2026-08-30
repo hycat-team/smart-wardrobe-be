@@ -9,10 +9,10 @@ Thay thế 8 wrapper `IWardrobeFashionAnalyzedEventConsumer`... lặp unmarshal+
 ## Interface
 
 ```go
-// internal/shared/infrastructure/messaging/consumer_framework.go
-// (taxonomy types re-exported here; worker nhận *RabbitMQClient qua DI)
+// Types ở application layer: internal/shared/application/event/consumer.go
+// (worker chỉ import event + eventconstants — không import infrastructure).
 
-package messaging
+package event
 
 type PermanentError struct{ Err error }
 func (e PermanentError) Error() string { return e.Err.Error() }
@@ -28,16 +28,25 @@ type ConsumerOpts struct {
 
 type TypedHandler[T any] func(ctx context.Context, payload T) error
 
-// Shared messaging provides:
-func RegisterTypedConsumer[T any](r *RabbitMQClient, queue string, handler TypedHandler[T], opts ConsumerOpts) error
+// IMessageConsumer có thêm method non-generic (impl: messaging.RabbitMQClient):
+func (r *RabbitMQClient) RegisterTypedHandler(queue string,
+    handler func(ctx context.Context, msg event.Message) error, opts event.ConsumerOpts) error
+
+// Generic helper (application layer, delegate xuống RegisterTypedHandler):
+func RegisterTypedConsumer[T any](mc IMessageConsumer, queue string, handler TypedHandler[T], opts ConsumerOpts) error
 func CorrelationIdFromContext(ctx context.Context) string
 ```
 
 > **Amend 2026-08-30 (T052)**: bỏ `DeliveryLimit` khỏi `ConsumerOpts` — đó là
 > **queue argument** (`x-delivery-limit` trong `queueArgs`, `topology.go`), không
 > phải consumer option; helper không thể enforce nó lúc runtime. Defaults
-> Prefetch/Concurrency đọc từ registry `Topology` (single source of truth,
-> FR-008/FR-022). Helper tái dùng `RegisterConsumer` registry nên
+> Prefetch/Concurrency đọc từ registry `Topology` (single source of truth).
+>
+> **Amend 2026-08-30 (DIP refactor)**: types + generic helper chuyển về
+> `event` (application layer) đúng như văn bản gốc của contract này; worker giữ
+> `IMessageConsumer` interface, queue constants chuyển sang `eventconstants`
+> (shared vocabulary, cùng chỗ topic names) — presentation không import
+> infrastructure. Helper tái dùng `RegisterConsumer` registry nên
 > `reRegisterConsumers` trên reconnect tự hoạt động; per-message ctx derive từ
 > `baseCtx` của client (cancel khi `Close()`).
 

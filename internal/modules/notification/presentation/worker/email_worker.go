@@ -6,7 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/notification/application/dto"
 	"smart-wardrobe-be/internal/modules/notification/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type EmailWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	emailUC       usecase.IEmailUseCase
 	logger        logger.Interface
 }
 
 func NewEmailWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	emailUC usecase.IEmailUseCase,
 	l logger.Interface,
 ) *EmailWorker {
@@ -35,7 +36,7 @@ func NewEmailWorker(
 
 func (w *EmailWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueNotificationEmail, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueNotificationEmail, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register email consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *EmailWorker) Start(ctx context.Context) {
 func (w *EmailWorker) handle(ctx context.Context, payload dto.EmailPayload) error {
 	run := workerlog.New("email", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("to", payload.To),
 		zap.String("subject", payload.Subject),
 	)

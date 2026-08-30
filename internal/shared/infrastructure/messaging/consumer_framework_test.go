@@ -2,13 +2,13 @@ package messaging
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
 
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
@@ -37,10 +37,10 @@ func newTestClient(t *testing.T) *RabbitMQClient {
 }
 
 func TestTopologyConcurrencyDefaults(t *testing.T) {
-	if got := topologyConcurrency(QueueFashionAnalyze); got != 3 {
+	if got := topologyConcurrency(eventconstants.QueueFashionAnalyze); got != 3 {
 		t.Errorf("fashion_analyze concurrency = %d, want 3 (from Topology)", got)
 	}
-	if got := topologyConcurrency(QueueElasticsearchSync); got != 1 {
+	if got := topologyConcurrency(eventconstants.QueueElasticsearchSync); got != 1 {
 		t.Errorf("elasticsearch_sync concurrency = %d, want 1", got)
 	}
 	if got := topologyConcurrency("unknown_queue"); got != 1 {
@@ -49,7 +49,7 @@ func TestTopologyConcurrencyDefaults(t *testing.T) {
 }
 
 func TestTopologyPrefetchDefaults(t *testing.T) {
-	if got := topologyPrefetch(QueueFashionAnalyze); got != 20 {
+	if got := topologyPrefetch(eventconstants.QueueFashionAnalyze); got != 20 {
 		t.Errorf("prefetch = %d, want 20 (from Topology)", got)
 	}
 	if got := topologyPrefetch("unknown_queue"); got != 20 {
@@ -57,88 +57,74 @@ func TestTopologyPrefetchDefaults(t *testing.T) {
 	}
 }
 
-func TestRegisterTypedConsumer_UnmarshalFailIsPermanent(t *testing.T) {
+// RegisterTypedHandler với zero-value opts phải spawn đúng số consumer
+// theo Topology, và wrapper phải inject correlationId vào ctx.
+func TestRegisterTypedHandler_WrapsAndResolvesDefaults(t *testing.T) {
 	client := newTestClient(t)
-	handlerCalled := false
-
-	err := RegisterTypedConsumer(client, QueueWardrobeCleanup, func(ctx context.Context, payload event.Message) error {
-		handlerCalled = true
-		return nil
-	}, ConsumerOpts{})
-	if err != nil {
-		t.Fatalf("RegisterTypedConsumer returned error: %v", err)
-	}
-	if len(client.consumers) != 1 {
-		t.Fatalf("consumers registered = %d, want 1", len(client.consumers))
-	}
-
-	wrapper := client.consumers[0].handler
-	werr := wrapper(event.Message{Body: []byte("{not-json")})
-	if werr == nil {
-		t.Fatal("wrapper returned nil error for poison JSON")
-	}
-	var pe PermanentError
-	if !errors.As(werr, &pe) {
-		t.Fatalf("error is not PermanentError: %v", werr)
-	}
-	if handlerCalled {
-		t.Error("handler must not be called on unmarshal failure")
-	}
-}
-
-func TestRegisterTypedConsumer_CorrelationIdInContext(t *testing.T) {
-	client := newTestClient(t)
-	type payload struct {
-		ItemID uuid.UUID `json:"item_id"`
-	}
-	correlationID := "corr-123"
 
 	var gotCtx context.Context
-	err := RegisterTypedConsumer(client, QueueWardrobeCleanup, func(ctx context.Context, p payload) error {
+	wrapper := func(ctx context.Context, msg event.Message) error {
 		gotCtx = ctx
 		return nil
-	}, ConsumerOpts{})
-
-	if err != nil {
-		t.Fatalf("RegisterTypedConsumer returned error: %v", err)
 	}
-	body, _ := json.Marshal(payload{ItemID: uuid.New()})
+
+	if err := client.RegisterTypedHandler(eventconstants.QueueFashionAnalyze, wrapper, event.ConsumerOpts{}); err != nil {
+		t.Fatalf("RegisterTypedHandler returned error: %v", err)
+	}
+	if len(client.consumers) != 3 {
+		t.Fatalf("consumers registered = %d, want 3 (Topology concurrency for fashion_analyze)", len(client.consumers))
+	}
+
 	msg := event.Message{
-		Body:    body,
-		Headers: map[string]any{"x-correlation-id": correlationID},
+		Body:    []byte(`{}`),
+		Headers: map[string]any{"x-correlation-id": "corr-abc"},
 	}
 	if err := client.consumers[0].handler(msg); err != nil {
-		t.Fatalf("wrapper returned error: %v", err)
+		t.Fatalf("wrapped handler returned error: %v", err)
 	}
-	if got := CorrelationIdFromContext(gotCtx); got != correlationID {
-		t.Errorf("correlationId in ctx = %q, want %q", got, correlationID)
+	if got := event.CorrelationIdFromContext(gotCtx); got != "corr-abc" {
+		t.Errorf("correlationId in ctx = %q, want %q", got, "corr-abc")
 	}
-	if gotCtx == nil {
-		t.Error("handler must receive a non-nil ctx derived from client baseCtx")
+	if gotCtx == nil || gotCtx.Err() != nil {
+		t.Error("handler ctx must derive from client baseCtx")
 	}
 }
 
-func TestRegisterTypedConsumer_ConcurrencyFromTopology(t *testing.T) {
+// Handler error phải được log kèm queue + correlationId, rồi trả nguyên
+// lên trên để startConsumerLoop quyết định ack/nack.
+func TestRegisterTypedHandler_LogsHandlerError(t *testing.T) {
 	client := newTestClient(t)
-	err := RegisterTypedConsumer(client, QueueFashionAnalyze, func(ctx context.Context, payload struct{}) error {
-		return nil
-	}, ConsumerOpts{})
+
+	err := client.RegisterTypedHandler(eventconstants.QueueWardrobeCleanup, func(ctx context.Context, msg event.Message) error {
+		return errors.New("boom")
+	}, event.ConsumerOpts{Concurrency: 1})
 	if err != nil {
-		t.Fatalf("RegisterTypedConsumer returned error: %v", err)
+		t.Fatalf("RegisterTypedHandler returned error: %v", err)
 	}
-	if len(client.consumers) != 3 {
-		t.Errorf("consumers registered = %d, want 3 (Topology concurrency for fashion_analyze)", len(client.consumers))
+
+	werr := client.consumers[0].handler(event.Message{Body: []byte(`{}`), Headers: map[string]any{"x-correlation-id": "c1"}})
+	if werr == nil {
+		t.Fatal("wrapped handler must propagate handler error")
+	}
+	found := false
+	for _, m := range client.logger.(*nopLogger).errs {
+		if strings.Contains(m, "Handler error") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a handler-error log among %d logs", len(client.logger.(*nopLogger).errs))
 	}
 }
 
 func TestErrorTaxonomyClassification(t *testing.T) {
 	// Mô phỏng switch trong startConsumerLoop:
 	// Permanent → Nack(false,false) → DLQ; Retryable → Nack(false,true) → requeue.
-	permanent := PermanentError{Err: errors.New("bad json")}
-	retryable := RetryableError{Err: errors.New("elasticsearch is offline")}
+	permanent := event.PermanentError{Err: errors.New("bad json")}
+	retryable := event.RetryableError{Err: errors.New("elasticsearch is offline")}
 
-	var pe PermanentError
-	var re RetryableError
+	var pe event.PermanentError
+	var re event.RetryableError
 	if !errors.As(permanent, &pe) {
 		t.Error("PermanentError should match errors.As PermanentError")
 	}

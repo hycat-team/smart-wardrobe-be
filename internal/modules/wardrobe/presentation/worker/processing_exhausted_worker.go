@@ -6,7 +6,8 @@ import (
 	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type WardrobeProcessingExhaustedWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IWardrobeFashionEventUseCase
 	logger        logger.Interface
 }
 
 func NewWardrobeProcessingExhaustedWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IWardrobeFashionEventUseCase,
 	l logger.Interface,
 ) *WardrobeProcessingExhaustedWorker {
@@ -35,7 +36,7 @@ func NewWardrobeProcessingExhaustedWorker(
 
 func (w *WardrobeProcessingExhaustedWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueWardrobeProcessingExhausted, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueWardrobeProcessingExhausted, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register wardrobe processing exhausted consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *WardrobeProcessingExhaustedWorker) Start(ctx context.Context) {
 func (w *WardrobeProcessingExhaustedWorker) handle(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error {
 	run := workerlog.New("wardrobe_processing_exhausted", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("wardrobeItemId", payload.WardrobeItemID.String()),
 		zap.String("fashionItemId", payload.FashionItemID.String()),
 	)

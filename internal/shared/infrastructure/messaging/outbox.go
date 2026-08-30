@@ -45,7 +45,7 @@ type OutboxRepository interface {
 	MarkFailed(ctx context.Context, id uuid.UUID, err error) error
 	// DeletePublishedBefore deletes published records older than `since` (cleanup).
 	DeletePublishedBefore(ctx context.Context, since time.Time) (int64, error)
-	// CountPending trả về số record còn chờ publish (gauge outbox_pending, T028).
+	// CountPending trả về số record còn chờ publish (gauge outbox_pending).
 	CountPending(ctx context.Context) (int64, error)
 	SendNotification(ctx context.Context) error
 }

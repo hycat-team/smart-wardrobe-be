@@ -5,9 +5,9 @@
 ## Thêm queue/topic mới (chỉ 1 nơi + 1 worker)
 
 1. Thêm hằng topic vào `internal/shared/application/constants/eventconstants/eventconstants.go` (ví dụ `TopicOutfitCreated = "outfit.event.created"` và hậu tố `.wardrobe/.brand` nếu cần phân luồng).
-2. Thêm `Queue*` + `RoutingKey*` vào `internal/shared/infrastructure/messaging/rabbitmq_constants.go` tham chiếu hằng trên.
+2. Thêm hằng `QueueOutfitCreated` vào `internal/shared/application/constants/eventconstants/queues.go` (shared vocabulary — cùng chỗ với topic names), và `RoutingKey*` vào `internal/shared/infrastructure/messaging/rabbitmq_constants.go` tham chiếu hằng trên.
 3. Thêm `Binding` vào `internal/shared/infrastructure/messaging/topology.go` `Topology` (ví dụ `{Queue: QueueOutfitCreated, RoutingKeys: []string{RoutingKeyOutfitCreated}, Args: queueArgs(...), Prefetch:20, Concurrency:1}`) — không sửa `rabbitmq_connection.go`. Thêm DLQ tương ứng vào `DLQTopology`.
-4. Tạo worker thin `internal/modules/<module>/presentation/worker/<name>_worker.go` embed `*worker.BaseWorker`; `Start(ctx)` gọi `shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueX, w.handle, shared_msg.ConsumerOpts{})` với `w.handle(ctx, payload T)` delegate usecase. Unmarshal + correlationId ctx do helper xử lý; `ConsumerOpts{}` để Prefetch/Concurrency đọc từ `Topology` (FR-008/FR-022). Worker nhận `*messaging.RabbitMQClient` qua DI, dùng `w.Context()` (BaseWorker) cho goroutine phụ để graceful shutdown đúng.
+4. Tạo worker thin `internal/modules/<module>/presentation/worker/<name>_worker.go` embed `*worker.BaseWorker`; `Start(ctx)` gọi `event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueX, w.handle, event.ConsumerOpts{})` với `w.handle(ctx, payload T)` delegate usecase. Unmarshal + correlationId ctx do helper xử lý; `ConsumerOpts{}` để Prefetch/Concurrency đọc từ `Topology` (FR-008/FR-022). Worker nhận interface `event.IMessageConsumer` qua DI (wire bind về RabbitMQClient) — presentation không import infrastructure; dùng `w.Context()` (BaseWorker) cho goroutine phụ để graceful shutdown đúng.
 5. Wire worker vào `internal/bootstrap/app.go` `AppWorkers` (concrete pointer) + `provider.go`.
 6. `make wire && make build`, verify `curl -u guest:guest http://localhost:15672/api/queues | grep <queue>`.
 
@@ -15,8 +15,8 @@
 
 ## Phân loại lỗi Permanent vs Retryable
 
-- **Permanent** (`messaging.PermanentError{Err: err}`): poison JSON, schema mismatch → `Nack(false,false)` → DLX `*.dlq` quorum, không requeue. Unmarshal JSON fail được helper tự trả Permanent — handler không cần bọc.
-- **Retryable** (`messaging.RetryableError{Err: err}`): `elasticsearch is offline`, DB timeout, transient 5xx → `Nack(false,true)` requeue/TTL; vượt `x-delivery-limit=5` tự vào DLQ. Handler error KHÔNG bọc là mặc định requeue (taxonomy trong `startConsumerLoop`).
+- **Permanent** (`event.PermanentError{Err: err}`): poison JSON, schema mismatch → `Nack(false,false)` → DLX `*.dlq` quorum, không requeue. Unmarshal JSON fail được helper tự trả Permanent — handler không cần bọc.
+- **Retryable** (`event.RetryableError{Err: err}`): `elasticsearch is offline`, DB timeout, transient 5xx → `Nack(false,true)` requeue/TTL; vượt `x-delivery-limit=5` tự vào DLQ. Handler error KHÔNG bọc là mặc định requeue (taxonomy trong `startConsumerLoop`).
 - Detection offline thật nằm ở usecase: `search_sync_uc.go` `IsOfflineError` (dùng cho log `willRequeue`), không phải string check ở consumer.
 - **Không** `time.Sleep` trong handler; retry do broker.
 
@@ -38,5 +38,5 @@
 - [ ] `eventconstants` + `rabbitmq_constants` hằng mới tham chiếu symbol, không hardcode string?
 - [ ] Worker thin, không chứa business logic/unmarshal, `BaseWorker` đúng, goroutine phụ dùng `w.Context()`?
 - [ ] `go vet` + `make wire` pass, `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` == 0?
-- [ ] `correlationId` propagate: helper inject vào ctx, worker log `shared_msg.CorrelationIdFromContext(ctx)`?
+- [ ] `correlationId` propagate: helper inject vào ctx, worker log event.CorrelationIdFromContext(ctx)`?
 - [ ] Test poison → DLQ và burst 100 không mất?

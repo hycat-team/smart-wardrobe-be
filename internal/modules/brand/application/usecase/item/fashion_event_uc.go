@@ -98,7 +98,7 @@ func (uc *BrandFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context, p
 }
 
 // HandleFashionEvent dispatch theo status payload. Trước đây nằm ở
-// presentation worker — chuyển vào usecase để worker thin (FR-020).
+// presentation worker — chuyển vào usecase để worker thin.
 func (uc *BrandFashionEventUseCase) HandleFashionEvent(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error {
 	if payload.Status == analyzetaskstatus.Failed {
 		return uc.HandleFashionFailed(ctx, payload)

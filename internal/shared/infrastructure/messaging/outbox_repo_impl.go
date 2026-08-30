@@ -39,9 +39,9 @@ const outboxStaleProcessingSeconds = 60
 
 // ClaimToPublish claims up to `limit` outbox records ready to be published:
 // pending records, failed records past their retry backoff, and stale
-// 'processing' records (crashed worker). The claim atomically flips status to
-// 'processing' inside the same transaction that holds the row locks, so two
-// replicas can never claim the same record (T007).
+// `processing` records (crashed worker). The claim atomically flips status to
+// `processing` inside the same transaction that holds the row locks, so two
+// replicas can never claim the same record.
 func (r *OutboxRepositoryImpl) ClaimToPublish(ctx context.Context, limit int, maxAttempts int, retryAfter time.Duration) ([]OutboxRecord, error) {
 	var records []OutboxRecord
 	retryAfterSeconds := int(retryAfter.Seconds())

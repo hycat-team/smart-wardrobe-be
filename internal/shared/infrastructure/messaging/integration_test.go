@@ -1,13 +1,13 @@
 package messaging
 
-// Integration tests cho spec 016 (T021, T026, T037).
+// Integration tests hạ tầng messaging — cần broker/postgres thật, mặc định SKIP.
 //
 // Các test này cần hạ tầng thật và MẶC ĐỊNH BỊ SKIP:
 //   - RabbitMQ tests: set TEST_RABBITMQ_URL (vd amqp://guest:guest@localhost:5672/)
 //     và chạy KHÔNG kèm app (chỉ docker compose infra) để không có consumer
 //     nào "ăn" message trước khi assert queue depth. Management API đọc qua
 //     TEST_RABBITMQ_MGMT_URL (default http://localhost:15672, guest/guest).
-//   - Postgres test (T026): set TEST_DATABASE_URL (vd postgres://user:pass@localhost:5432/db).
+//   - Postgres test: set TEST_DATABASE_URL (vd postgres://user:pass@localhost:5432/db).
 //
 // Chạy: TEST_RABBITMQ_URL=... TEST_DATABASE_URL=... go test -race -run Integration ./internal/shared/infrastructure/messaging/
 
@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -92,12 +94,12 @@ func dialTestAMQP(t *testing.T) *amqp.Connection {
 	return conn
 }
 
-// TestIntegration_DLQTopologyReachable (T021 - phần DLQ): mọi DLQ trong
+// TestIntegration_DLQTopologyReachable kiểm tra: mọi DLQ trong
 // DLQTopology phải tồn tại và đếm được depth qua Management API.
-// TestIntegration_PoisonToDLQ_EndToEnd (T021 + quickstart §4): kịch bản đầy đủ —
+// TestIntegration_PoisonToDLQ_EndToEnd: kịch bản đầy đủ —
 // consumer framework nhận poison JSON → PermanentError → Nack(false,false)
 // → DLX → fashion_analyze_queue.dlq. Publish đi qua PublishDirect để kiểm
-// chứng luôn publisher confirm (T023) trên broker thật.
+// chứng luôn publisher confirm trên broker thật.
 func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
 	testEnvOrSkip(t, "TEST_RABBITMQ_URL") // gate: skip khi không có hạ tầng test
 	user := os.Getenv("TEST_RABBITMQ_USER")
@@ -113,15 +115,15 @@ func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
 	}
 	defer client.Close()
 
-	dlqBaseline, err := fetchQueueMessages(t, QueueFashionAnalyze+".dlq")
+	dlqBaseline, err := fetchQueueMessages(t, eventconstants.QueueFashionAnalyze+".dlq")
 	if err != nil {
 		t.Fatalf("fetch dlq baseline: %v", err)
 	}
 
-	if err := RegisterTypedConsumer(client, QueueFashionAnalyze, func(ctx context.Context, payload struct{}) error {
+	if err := event.RegisterTypedConsumer(client, eventconstants.QueueFashionAnalyze, func(ctx context.Context, payload struct{}) error {
 		t.Error("handler must not run for poison payload")
 		return nil
-	}, ConsumerOpts{}); err != nil {
+	}, event.ConsumerOpts{}); err != nil {
 		t.Fatalf("register typed consumer: %v", err)
 	}
 
@@ -130,8 +132,8 @@ func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
 		t.Fatalf("publish poison (publisher confirm path): %v", err)
 	}
 
-	if err := waitDepthAtLeast(t, QueueFashionAnalyze+".dlq", dlqBaseline+1); err != nil {
-		t.Fatalf("poison did not dead-letter into %s: %v", QueueFashionAnalyze+".dlq", err)
+	if err := waitDepthAtLeast(t, eventconstants.QueueFashionAnalyze+".dlq", dlqBaseline+1); err != nil {
+		t.Fatalf("poison did not dead-letter into %s: %v", eventconstants.QueueFashionAnalyze+".dlq", err)
 	}
 
 	// Dọn dẹp: nhặt đúng 1 message (poison vừa tạo) khỏi DLQ để không ô nhiễm môi trường.
@@ -139,7 +141,7 @@ func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open dlq cleanup channel: %v", err)
 	}
-	deliveries, err := ch.Consume(QueueFashionAnalyze+".dlq", "", true, false, false, false, nil)
+	deliveries, err := ch.Consume(eventconstants.QueueFashionAnalyze+".dlq", "", true, false, false, false, nil)
 	if err != nil {
 		t.Fatalf("consume dlq: %v", err)
 	}
@@ -169,7 +171,7 @@ func TestIntegration_DLQTopologyReachable(t *testing.T) {
 	}
 }
 
-// TestIntegration_PoisonMessageRoutedToQueue (T021 - phần poison): publish
+// TestIntegration_PoisonMessageRoutedToQueue: publish
 // poison JSON vào fashion_analyze_queue, assert depth tăng lên, rồi purge
 // để test chạy lặp lại được. CHỈ an toàn trên stack test không có app consumer.
 func TestIntegration_PoisonMessageRoutedToQueue(t *testing.T) {
@@ -180,7 +182,7 @@ func TestIntegration_PoisonMessageRoutedToQueue(t *testing.T) {
 	}
 	defer ch.Close()
 
-	baseline, err := fetchQueueMessages(t, QueueFashionAnalyze)
+	baseline, err := fetchQueueMessages(t, eventconstants.QueueFashionAnalyze)
 	if err != nil {
 		t.Fatalf("fetch baseline depth: %v", err)
 	}
@@ -192,16 +194,16 @@ func TestIntegration_PoisonMessageRoutedToQueue(t *testing.T) {
 		t.Fatalf("publish poison: %v", err)
 	}
 
-	if err := waitDepthAtLeast(t, QueueFashionAnalyze, baseline+1); err != nil {
-		t.Fatalf("poison message did not arrive in %s: %v", QueueFashionAnalyze, err)
+	if err := waitDepthAtLeast(t, eventconstants.QueueFashionAnalyze, baseline+1); err != nil {
+		t.Fatalf("poison message did not arrive in %s: %v", eventconstants.QueueFashionAnalyze, err)
 	}
 
-	if _, err := ch.QueuePurge(QueueFashionAnalyze, false); err != nil {
-		t.Logf("warn: purge %s failed: %v", QueueFashionAnalyze, err)
+	if _, err := ch.QueuePurge(eventconstants.QueueFashionAnalyze, false); err != nil {
+		t.Logf("warn: purge %s failed: %v", eventconstants.QueueFashionAnalyze, err)
 	}
 }
 
-// TestIntegration_RoutingBurstSeparation (T037): burst 100 wardrobe + 100
+// TestIntegration_RoutingBurstSeparation: burst 100 wardrobe + 100
 // brand events với routing key tương ứng — assert mỗi luồng tới đúng queue
 // (wardrobe.event.# → elasticsearch_sync_queue; fashion.event.*.brand →
 // brand_fashion_analyzed_queue). Chạy trên stack test KHÔNG có app consumer.
@@ -219,8 +221,8 @@ func TestIntegration_RoutingBurstSeparation(t *testing.T) {
 		key   string
 		queue string
 	}{
-		{"wardrobe", "wardrobe.event.test-burst", QueueElasticsearchSync},
-		{"brand", "fashion.event.analyzed.brand", QueueBrandFashionAnalyzed},
+		{"wardrobe", "wardrobe.event.test-burst", eventconstants.QueueElasticsearchSync},
+		{"brand", "fashion.event.analyzed.brand", eventconstants.QueueBrandFashionAnalyzed},
 	}
 	for _, target := range targets {
 		baseline, err := fetchQueueMessages(t, target.queue)
@@ -245,7 +247,7 @@ func TestIntegration_RoutingBurstSeparation(t *testing.T) {
 	}
 }
 
-// TestIntegration_ClaimConcurrent (T026): 2 "replica" claim đồng thời —
+// TestIntegration_ClaimConcurrent: 2 "replica" claim đồng thời —
 // không ID nào được claim 2 lần nhờ atomic UPDATE...RETURNING + SKIP LOCKED.
 func TestIntegration_ClaimConcurrent(t *testing.T) {
 	dsn := testEnvOrSkip(t, "TEST_DATABASE_URL")

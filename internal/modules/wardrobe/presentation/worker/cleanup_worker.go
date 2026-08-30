@@ -6,7 +6,8 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type WardrobeCleanupWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IWardrobeFashionEventUseCase
 	logger        logger.Interface
 }
 
 func NewWardrobeCleanupWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IWardrobeFashionEventUseCase,
 	l logger.Interface,
 ) *WardrobeCleanupWorker {
@@ -35,7 +36,7 @@ func NewWardrobeCleanupWorker(
 
 func (w *WardrobeCleanupWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueWardrobeCleanup, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueWardrobeCleanup, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register wardrobe cleanup consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *WardrobeCleanupWorker) Start(ctx context.Context) {
 func (w *WardrobeCleanupWorker) handle(ctx context.Context, payload dto.WardrobeEventPayload) error {
 	run := workerlog.New("wardrobe_cleanup", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("itemId", payload.ItemID.String()),
 	)
 	if err := w.useCase.HandleWardrobeDeleted(ctx, payload); err != nil {

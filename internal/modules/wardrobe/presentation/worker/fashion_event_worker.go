@@ -6,7 +6,8 @@ import (
 	fashionDto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type WardrobeFashionEventWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       uc_interfaces.IWardrobeFashionEventUseCase
 	logger        logger.Interface
 }
 
 func NewWardrobeFashionEventWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase uc_interfaces.IWardrobeFashionEventUseCase,
 	l logger.Interface,
 ) *WardrobeFashionEventWorker {
@@ -35,7 +36,7 @@ func NewWardrobeFashionEventWorker(
 
 func (w *WardrobeFashionEventWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueWardrobeFashionAnalyzed, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueWardrobeFashionAnalyzed, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register wardrobe fashion event consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *WardrobeFashionEventWorker) Start(ctx context.Context) {
 func (w *WardrobeFashionEventWorker) handle(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
 	run := workerlog.New("wardrobe_fashion_event", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("itemId", payload.ItemID.String()),
 		zap.String("taskId", payload.TaskID),
 		zap.String("status", string(payload.Status)),

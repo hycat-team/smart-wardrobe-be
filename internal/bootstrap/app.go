@@ -97,7 +97,7 @@ func (a *App) Run() error {
 
 	ctxWorker := context.Background()
 
-	// T030: wire healthFn cho messaging — health probe đọc outbox backlog.
+	// Health check đọc outbox backlog.
 	a.Workers.OutboxWorker.SetHealthCheck(func(ctx context.Context) error {
 		const outboxBacklogThreshold = 10000
 		metrics := shared_msg.GetMetrics()

@@ -6,7 +6,8 @@ import (
 	usecase_interfaces "smart-wardrobe-be/internal/modules/brand/application/interface/usecase"
 	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,13 +16,13 @@ import (
 
 type BrandFashionBindWorker struct {
 	*worker.BaseWorker
-	messageClient *shared_msg.RabbitMQClient
+	messageClient event.IMessageConsumer
 	useCase       usecase_interfaces.IBrandFashionEventUseCase
 	logger        logger.Interface
 }
 
 func NewBrandFashionBindWorker(
-	messageClient *shared_msg.RabbitMQClient,
+	messageClient event.IMessageConsumer,
 	useCase usecase_interfaces.IBrandFashionEventUseCase,
 	l logger.Interface,
 ) *BrandFashionBindWorker {
@@ -35,7 +36,7 @@ func NewBrandFashionBindWorker(
 
 func (w *BrandFashionBindWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueBrandFashionBind, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueBrandFashionBind, w.handle, event.ConsumerOpts{}); err != nil {
 		w.logger.Error("Failed to register brand fashion bind consumer", zap.Error(err))
 	}
 }
@@ -43,7 +44,7 @@ func (w *BrandFashionBindWorker) Start(ctx context.Context) {
 func (w *BrandFashionBindWorker) handle(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error {
 	run := workerlog.New("brand_fashion_bind", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
-		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
 		zap.String("itemId", payload.ItemID.String()),
 		zap.String("fashionItemId", payload.FashionItemID.String()),
 	)

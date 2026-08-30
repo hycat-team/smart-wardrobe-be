@@ -35,7 +35,7 @@ func NewOutboxUseCase(
 	}
 }
 
-// RefreshGauges cập nhật gauges vận hành (T028): outbox_pending từ DB,
+// RefreshGauges cập nhật gauges vận hành: outbox_pending từ DB,
 // queue_depth/dlq_depth từ RabbitMQ Management API. Lỗi chỉ log warn —
 // metrics không được phép giết worker.
 func (uc *OutboxUseCase) RefreshGauges(ctx context.Context) {

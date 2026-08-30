@@ -117,8 +117,8 @@ func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(event.
 		if err := handler(msg); err != nil {
 			r.logger.Error("Consumer handler error", zap.String("queue", queueName), zap.Error(err))
 			incNack()
-			var pe PermanentError
-			var re RetryableError
+			var pe event.PermanentError
+			var re event.RetryableError
 			switch {
 			case errors.As(err, &pe):
 				_ = d.Nack(false, false)

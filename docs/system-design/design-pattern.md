@@ -662,26 +662,27 @@ func (w *SomeWorker) Stop() {
 }
 ```
 
-#### Queue consumer registration (`RegisterTypedConsumer`)
+#### Queue consumer registration (`event.RegisterTypedConsumer`)
 
-Event-consuming workers MUST register through the shared generic helper — no per-module consumer adapters or manual `RegisterConsumer` + unmarshal:
+Event-consuming workers MUST register through the shared generic helper (application layer `event` package) — no per-module consumer adapters, no manual `RegisterConsumer` + unmarshal, no direct dependency on the infrastructure client:
 
 ```go
 func (w *SomeWorker) Start(ctx context.Context) {
     w.BaseWorker.Start(ctx)    // MUST call first
-    if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueSomeQueue, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+    if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueSomeQueue, w.handle, event.ConsumerOpts{}); err != nil {
         w.logger.Error("Failed to register consumer", zap.Error(err))
     }
 }
 
 func (w *SomeWorker) handle(ctx context.Context, payload SomePayloadDTO) error {
     // log correlationId propagated by the helper:
-    // zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx))
+    // zap.String("correlationId", event.CorrelationIdFromContext(ctx))
     // delegate to use case — no unmarshal, no error classification here
 }
 ```
 
-- `ConsumerOpts{}` reads `Prefetch`/`Concurrency` defaults from `topology.go` (FR-008/FR-022).
+- `w.messageClient` is the `event.IMessageConsumer` interface — wire binds it to the infrastructure client; workers never import infrastructure packages (queue names live in `eventconstants` with the topic names).
+- `ConsumerOpts{}` reads `Prefetch`/`Concurrency` defaults from `topology.go`.
 - Unmarshal failure → `PermanentError` → DLQ (handled by helper); handler errors → `RetryableError` → requeue (handled by `startConsumerLoop`).
 - `correlationId` from message headers is injected into the per-message context by the helper.
 
