@@ -30,8 +30,8 @@ func newTestClient(t *testing.T) *RabbitMQClient {
 	baseCtx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	return &RabbitMQClient{
-		logger:   &nopLogger{},
-		baseCtx:  baseCtx,
+		logger:     &nopLogger{},
+		baseCtx:    baseCtx,
 		baseCancel: cancel,
 	}
 }

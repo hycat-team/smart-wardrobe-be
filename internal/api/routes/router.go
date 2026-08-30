@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
+	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 	"time"
 
