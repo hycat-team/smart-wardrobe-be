@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 
@@ -16,19 +17,45 @@ import (
 type OutboxUseCase struct {
 	outboxRepo messaging.OutboxRepository
 	rabbitMQ   *messaging.RabbitMQClient
+	cfg        *config.Config
 	logger     logger.Interface
 }
 
 func NewOutboxUseCase(
 	outboxRepo messaging.OutboxRepository,
 	rabbitMQ *messaging.RabbitMQClient,
+	cfg *config.Config,
 	l logger.Interface,
 ) *OutboxUseCase {
 	return &OutboxUseCase{
 		outboxRepo: outboxRepo,
 		rabbitMQ:   rabbitMQ,
+		cfg:        cfg,
 		logger:     l,
 	}
+}
+
+// RefreshGauges cập nhật gauges vận hành (T028): outbox_pending từ DB,
+// queue_depth/dlq_depth từ RabbitMQ Management API. Lỗi chỉ log warn —
+// metrics không được phép giết worker.
+func (uc *OutboxUseCase) RefreshGauges(ctx context.Context) {
+	pending, err := uc.outboxRepo.CountPending(ctx)
+	if err != nil {
+		uc.logger.Warn("[OutboxUseCase] Failed to count pending outbox records", zap.Error(err))
+	}
+
+	mgmtPort := uc.cfg.RabbitMQ.ManagementPort
+	if mgmtPort <= 0 {
+		mgmtPort = 15672
+	}
+	var queueDepth, dlqDepth int64
+	queueDepth, dlqDepth, err = messaging.FetchQueueDepths(ctx, uc.cfg.RabbitMQ.Host, mgmtPort,
+		uc.cfg.RabbitMQ.User, uc.cfg.RabbitMQ.Password, uc.logger)
+	if err != nil {
+		uc.logger.Warn("[OutboxUseCase] Failed to fetch queue depths from management API", zap.Error(err))
+	}
+
+	messaging.SetGauges(pending, queueDepth, dlqDepth)
 }
 
 func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryMax int, retryAfter time.Duration) (int, error) {

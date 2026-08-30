@@ -82,6 +82,14 @@ func (r *OutboxRepositoryImpl) MarkPublished(ctx context.Context, id uuid.UUID) 
 		}).Error
 }
 
+func (r *OutboxRepositoryImpl) CountPending(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.baseDB.WithContext(ctx).Model(&OutboxRecord{}).
+		Where("status = ?", OutboxStatusPending).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *OutboxRepositoryImpl) SendNotification(ctx context.Context) error {
 	return r.baseDB.WithContext(ctx).
 		Exec("SELECT pg_notify('outbox_channel', '')").Error

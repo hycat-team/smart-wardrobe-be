@@ -137,6 +137,7 @@ type RabbitMQ struct {
 	Prefetch            int    `mapstructure:"prefetch"`
 	ConsumerConcurrency int    `mapstructure:"consumer_concurrency"`
 	DeliveryLimit       int    `mapstructure:"delivery_limit"`
+	ManagementPort      int    `mapstructure:"management_port"`
 }
 
 type Cloudinary struct {

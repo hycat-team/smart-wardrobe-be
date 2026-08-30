@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
+	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 	"time"
@@ -60,8 +61,9 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	{
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"status": "healthy",
-				"time":   time.Now().Format(time.RFC3339),
+				"status":    "healthy",
+				"time":      time.Now().Format(time.RFC3339),
+				"messaging": shared_msg.GetMetrics(),
 			})
 		})
 

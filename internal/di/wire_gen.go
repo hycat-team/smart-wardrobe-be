@@ -304,7 +304,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	iDashboardAggregatorUseCase := usecase2.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker7.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
-	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, l)
+	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, cfg, l)
 	outboxListener, err := db.NewOutboxListener(cfg, l)
 	if err != nil {
 		return nil, nil, err
