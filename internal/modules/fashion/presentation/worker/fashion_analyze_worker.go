@@ -2,12 +2,10 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	"smart-wardrobe-be/internal/shared/application/event"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
@@ -17,13 +15,13 @@ import (
 
 type FashionAnalyzeWorker struct {
 	*worker.BaseWorker
-	messageClient event.IMessageConsumer
+	messageClient *shared_msg.RabbitMQClient
 	useCase       uc_interfaces.IFashionWorkerUseCase
 	logger        logger.Interface
 }
 
 func NewFashionAnalyzeWorker(
-	messageClient event.IMessageConsumer,
+	messageClient *shared_msg.RabbitMQClient,
 	useCase uc_interfaces.IFashionWorkerUseCase,
 	l logger.Interface,
 ) *FashionAnalyzeWorker {
@@ -37,50 +35,38 @@ func NewFashionAnalyzeWorker(
 
 func (w *FashionAnalyzeWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	go w.startConsume(ctx)
+	// Concurrency đọc từ Topology (FR-008): fashion_analyze_queue = 3.
+	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueFashionAnalyze, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+		w.logger.Error("Failed to register fashion analyze consumer", zap.Error(err))
+	}
 }
 
-func (w *FashionAnalyzeWorker) startConsume(ctx context.Context) {
-	handler := func(msg event.Message) error {
-		var job dto.FashionAnalyzeJobDTO
-		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			w.logger.Error("[FashionAnalyzeWorker] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
+func (w *FashionAnalyzeWorker) handle(ctx context.Context, job dto.FashionAnalyzeJobDTO) error {
+	triggerType := workerlog.TriggerQueue
+	if job.RetryCount > 0 {
+		triggerType = workerlog.TriggerRequeue
+	}
+	run := workerlog.New("fashion_analyze_item", triggerType)
+	run.LogReceived(w.logger,
+		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("fashionItemId", job.FashionItemID.String()),
+		zap.String("itemId", job.ItemID.String()),
+		zap.String("itemType", job.ItemType),
+		zap.Int("processingVersion", job.ProcessingVersion),
+		zap.Int("retryCount", job.RetryCount),
+	)
 
-		triggerType := workerlog.TriggerQueue
-		if job.RetryCount > 0 {
-			triggerType = workerlog.TriggerRequeue
-		}
-		run := workerlog.New("fashion_analyze_item", triggerType)
-		run.LogReceived(w.logger,
+	if err := w.useCase.ProcessBackgroundBatchUploadJob(ctx, job, run); err != nil {
+		run.LogFailure(w.logger, err,
 			zap.String("fashionItemId", job.FashionItemID.String()),
 			zap.String("itemId", job.ItemID.String()),
-			zap.String("itemType", job.ItemType),
-			zap.Int("processingVersion", job.ProcessingVersion),
-			zap.Int("retryCount", job.RetryCount),
+			zap.Error(err),
 		)
-
-		err := w.useCase.ProcessBackgroundBatchUploadJob(ctx, job, run)
-		if err != nil {
-			run.LogFailure(w.logger, err,
-				zap.String("fashionItemId", job.FashionItemID.String()),
-				zap.String("itemId", job.ItemID.String()),
-				zap.Error(err),
-			)
-			return err
-		}
-		run.LogSuccessIfData(w.logger,
-			zap.String("fashionItemId", job.FashionItemID.String()),
-			zap.String("itemId", job.ItemID.String()),
-		)
-		return nil
+		return err
 	}
-
-	// Use concurrency from topology (FR-008): fashion_analyze_queue concurrency 3 per single-node quorum
-	concurrency := 3
-	for i := 0; i < concurrency; i++ {
-		w.messageClient.RegisterConsumer(shared_msg.QueueFashionAnalyze, handler)
-	}
-	w.logger.Info("[FashionAnalyzeWorker] Registered consumer for queue", zap.String("queue", shared_msg.QueueFashionAnalyze), zap.Int("concurrency", concurrency))
+	run.LogSuccessIfData(w.logger,
+		zap.String("fashionItemId", job.FashionItemID.String()),
+		zap.String("itemId", job.ItemID.String()),
+	)
+	return nil
 }

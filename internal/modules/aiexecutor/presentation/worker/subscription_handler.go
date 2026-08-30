@@ -2,12 +2,10 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
-	"smart-wardrobe-be/internal/shared/application/event"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
@@ -17,13 +15,13 @@ import (
 
 type PlanChangedWorker struct {
 	*worker.BaseWorker
-	messageClient event.IMessageConsumer
+	messageClient *shared_msg.RabbitMQClient
 	grantUseCase  uc_interfaces.IGrantUseCase
 	logger        logger.Interface
 }
 
 func NewPlanChangedWorker(
-	messageClient event.IMessageConsumer,
+	messageClient *shared_msg.RabbitMQClient,
 	grantUseCase uc_interfaces.IGrantUseCase,
 	l logger.Interface,
 ) *PlanChangedWorker {
@@ -37,41 +35,32 @@ func NewPlanChangedWorker(
 
 func (w *PlanChangedWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	go w.startConsume(ctx)
+	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueSubscriptionPlanChanged, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+		w.logger.Error("Failed to register plan changed consumer", zap.Error(err))
+	}
 }
 
-func (w *PlanChangedWorker) startConsume(ctx context.Context) {
-	handler := func(msg event.Message) error {
-		var payload aiexecutor_dto.PlanChangedPayload
-		if err := json.Unmarshal(msg.Body, &payload); err != nil {
-			w.logger.Error("[PlanChangedWorker] Failed to unmarshal message body", zap.Error(err))
-			return err
-		}
+func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.PlanChangedPayload) error {
+	run := workerlog.New("plan_changed", workerlog.TriggerQueue)
+	run.LogReceived(w.logger,
+		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("userId", payload.UserID),
+		zap.String("eventType", payload.EventType),
+	)
 
-		run := workerlog.New("plan_changed", workerlog.TriggerQueue)
-		run.LogReceived(w.logger,
-			zap.String("userId", payload.UserID),
-			zap.String("eventType", payload.EventType),
-		)
-
-		err := w.grantUseCase.HandlePlanChanged(ctx, payload)
-		if err != nil {
-			run.LogFailure(w.logger, err,
-				zap.String("userId", payload.UserID),
-			)
-			return err
-		}
-
-		run.AddTotal(1)
-		run.AddSuccess(1)
-		run.LogSuccessIfData(w.logger,
+	if err := w.grantUseCase.HandlePlanChanged(ctx, payload); err != nil {
+		run.LogFailure(w.logger, err,
 			zap.String("userId", payload.UserID),
 		)
-		return nil
+		return err
 	}
 
-	w.messageClient.RegisterConsumer(shared_msg.QueueSubscriptionPlanChanged, handler)
-	w.logger.Info("[PlanChangedWorker] Registered consumer for queue", zap.String("queue", shared_msg.QueueSubscriptionPlanChanged))
+	run.AddTotal(1)
+	run.AddSuccess(1)
+	run.LogSuccessIfData(w.logger,
+		zap.String("userId", payload.UserID),
+	)
+	return nil
 }
 
 func (w *PlanChangedWorker) Stop() {
