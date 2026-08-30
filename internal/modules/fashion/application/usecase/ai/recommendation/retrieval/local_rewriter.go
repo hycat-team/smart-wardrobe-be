@@ -15,11 +15,6 @@ import (
 // LocalRecommendationQueryRewriter xây dựng các truy vấn tìm kiếm bằng quy tắc phân tích tĩnh (rule-based) cục bộ từ ý định của người dùng.
 type LocalRecommendationQueryRewriter struct{}
 
-// NewLocalRecommendationQueryRewriter khởi tạo thực thể [LocalRecommendationQueryRewriter].
-func NewLocalRecommendationQueryRewriter() *LocalRecommendationQueryRewriter {
-	return &LocalRecommendationQueryRewriter{}
-}
-
 // Rewrite xây dựng một truy vấn tìm kiếm nâng cao [RecommendationRetrievalQuery] từ ý định phân tích ngôn ngữ tự nhiên cục bộ.
 //
 // Hành vi:

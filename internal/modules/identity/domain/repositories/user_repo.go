@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/identity/application/dto"
 	"smart-wardrobe-be/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/repositories"
 
@@ -35,6 +34,6 @@ type IUserRepository interface {
 	GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error)
 	GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*entities.User, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
-	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error)
-	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*dto.UserAdminStatsDTO, error)
+	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*UserStyleProfileRes, error)
+	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*UserAdminStatsDTO, error)
 }

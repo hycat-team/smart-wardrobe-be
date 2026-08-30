@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
+	"smart-wardrobe-be/internal/modules/wardrobe/domain/repositories"
 )
 
 type UnderutilizedItemInfoDTO struct {
@@ -15,10 +16,4 @@ type UnderutilizedItemInfoDTO struct {
 	ImageURL         string    `json:"imageUrl"`
 }
 
-type UserWardrobeSummaryStatsDTO struct {
-	UserID                  uuid.UUID `json:"userId"`
-	TotalItems              int       `json:"totalItems"`
-	TotalWardrobeValueVND   float64   `json:"totalWardrobeValueVnd"`
-	AverageCostPerWearVND   float64   `json:"averageCostPerWearVnd"`
-	UnderutilizedItemsCount int       `json:"underutilizedItemsCount"`
-}
+type UserWardrobeSummaryStatsDTO = repositories.UserWardrobeSummaryStatsDTO

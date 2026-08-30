@@ -1,51 +1,21 @@
+// Package messaging — outbox types are owned by the shared domain layer
+// (feature 017); aliased here so existing infrastructure consumers keep
+// compiling while implementation details stay in this package.
 package messaging
 
 import (
-	"context"
-	"encoding/json"
-	"time"
-
-	"github.com/google/uuid"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 )
 
-type OutboxStatus string
+type OutboxStatus = shared_repos.OutboxStatus
 
 const (
-	OutboxStatusPending    OutboxStatus = "pending"
-	OutboxStatusProcessing OutboxStatus = "processing"
-	OutboxStatusPublished  OutboxStatus = "published"
-	OutboxStatusFailed     OutboxStatus = "failed"
+	OutboxStatusPending    = shared_repos.OutboxStatusPending
+	OutboxStatusProcessing = shared_repos.OutboxStatusProcessing
+	OutboxStatusPublished  = shared_repos.OutboxStatusPublished
+	OutboxStatusFailed     = shared_repos.OutboxStatusFailed
 )
 
-type OutboxRecord struct {
-	ID          uuid.UUID       `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Topic       string          `json:"topic" gorm:"type:varchar(255);not null"`
-	Payload     json.RawMessage `json:"payload" gorm:"type:jsonb;not null"`
-	Headers     json.RawMessage `json:"headers" gorm:"type:jsonb;default:'{}'"`
-	Status      OutboxStatus    `json:"status" gorm:"type:varchar(50);not null;default:'pending'"`
-	CreatedAt   time.Time       `json:"created_at" gorm:"type:timestamptz;not null;default:now()"`
-	PublishedAt *time.Time      `json:"published_at" gorm:"type:timestamptz"`
-	Attempts    int             `json:"attempts" gorm:"type:int;not null;default:0"`
-	LastError   *string         `json:"last_error" gorm:"type:text"`
-	UpdatedAt   time.Time       `json:"updated_at" gorm:"type:timestamptz;not null;default:now()"`
-}
+type OutboxRecord = shared_repos.OutboxRecord
 
-func (OutboxRecord) TableName() string {
-	return "outbox_records"
-}
-
-type OutboxRepository interface {
-	Create(ctx context.Context, record *OutboxRecord) error
-	// ClaimToPublish claims up to `limit` outbox records that are ready to be
-	// published to RabbitMQ: new pending records plus failed records that have
-	// exhausted the retry backoff (attempts < maxAttempts and updated_at older
-	// than retryAfter). Uses FOR UPDATE SKIP LOCKED for atomic per-worker claiming.
-	ClaimToPublish(ctx context.Context, limit int, maxAttempts int, retryAfter time.Duration) ([]OutboxRecord, error)
-	MarkPublished(ctx context.Context, id uuid.UUID) error
-	MarkFailed(ctx context.Context, id uuid.UUID, err error) error
-	// DeletePublishedBefore deletes published records older than `since` (cleanup).
-	DeletePublishedBefore(ctx context.Context, since time.Time) (int64, error)
-	// CountPending trả về số record còn chờ publish (gauge outbox_pending).
-	CountPending(ctx context.Context) (int64, error)
-	SendNotification(ctx context.Context) error
-}
+type OutboxRepository = shared_repos.OutboxRepository

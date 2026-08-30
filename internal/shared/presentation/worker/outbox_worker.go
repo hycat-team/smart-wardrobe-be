@@ -7,7 +7,6 @@ import (
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/interface/usecase"
-	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 
 	"go.uber.org/zap"
@@ -16,17 +15,24 @@ import (
 const outboxFallbackInterval = 2 * time.Second
 const outboxGaugeInterval = 30 * time.Second
 
+// OutboxSignalListener is the consumer-side port for the infrastructure
+// LISTEN/NOTIFY wake-up signal; the concrete listener is provided by DI
+// (feature 017 removes the direct infrastructure dependency from here).
+type OutboxSignalListener interface {
+	SignalChan() <-chan struct{}
+}
+
 type OutboxWorker struct {
 	*BaseWorker
 	outboxUC usecase.IOutboxUseCase
-	listener *db.OutboxListener
+	listener OutboxSignalListener
 	logger   logger.Interface
 	cfg      config.OutboxConfig
 }
 
 func NewOutboxWorker(
 	outboxUC usecase.IOutboxUseCase,
-	listener *db.OutboxListener,
+	listener OutboxSignalListener,
 	cfg *config.Config,
 	l logger.Interface,
 ) *OutboxWorker {

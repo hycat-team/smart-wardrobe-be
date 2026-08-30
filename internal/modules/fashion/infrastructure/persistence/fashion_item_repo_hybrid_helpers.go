@@ -120,26 +120,6 @@ func (r *FashionItemRepository) buildHybridCandidates(
 	return candidates, nil
 }
 
-// buildRecommendationTSQueryOR sinh chuỗi truy vấn tsquery của PostgreSQL nối với nhau bằng toán tử "OR" (||) từ danh sách các từ khóa văn bản, đồng thời chuẩn hóa Lowercase và loại bỏ dấu tiếng Việt (unaccent).
-func buildRecommendationTSQueryOR(terms []string) (string, []any) {
-	var parts []string
-	args := make([]any, 0, len(terms))
-	seen := map[string]bool{}
-	for _, term := range terms {
-		term = strings.TrimSpace(strings.ToLower(term))
-		if term == "" || seen[term] {
-			continue
-		}
-		seen[term] = true
-		parts = append(parts, "plainto_tsquery('simple', immutable_unaccent(lower(?)))")
-		args = append(args, term)
-	}
-	if len(parts) == 0 {
-		return "", nil
-	}
-	return strings.Join(parts, " || "), args
-}
-
 // buildRecommendationSeasonalityCondition xây dựng điều kiện SQL (SQL Where condition) để lọc các món đồ có mùa vụ (seasonality) phù hợp với mùa yêu cầu hoặc hỗ trợ tất cả các mùa (all-season).
 func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 	aliases := recommendationSeasonalityAliases(seasons)

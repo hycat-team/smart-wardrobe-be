@@ -6503,8 +6503,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cho phép owner thêm nhiều thành viên với vai trò staff bằng email
-        hoặc tên đăng nhập. API này không tạo owner mới.
       parameters:
       - description: ID brand
         in: path
@@ -6529,7 +6527,6 @@ paths:
                 data:
                   $ref: '#/definitions/smart-wardrobe-be_internal_modules_brand_application_dto.AddBrandMembersRes'
               type: object
-      summary: Thêm thành viên vào brand
       tags:
       - Brand Member
   /api/v1/brand-portal/brands/{brandId}/profile-images:

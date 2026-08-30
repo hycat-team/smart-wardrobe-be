@@ -25,6 +25,7 @@ var ProviderSet = wire.NewSet(
 	infra_caching.NewRedisCooldownService,
 	messaging.NewOutboxRepository,
 	messaging.NewRabbitMQClient,
+	messaging.NewOutboxGaugeProbe,
 	search.NewElasticsearchClient,
 	sse.NewSSEManager,
 	infra_db.NewOutboxListener,
@@ -32,6 +33,9 @@ var ProviderSet = wire.NewSet(
 	sharedWorker.NewOutboxWorker,
 	wire.Bind(new(event.IMessageConsumer), new(*messaging.RabbitMQClient)),
 	wire.Bind(new(event.IEventPublisher), new(*messaging.RabbitMQClient)),
+	wire.Bind(new(event.IRawMessagePublisher), new(*messaging.RabbitMQClient)),
+	wire.Bind(new(event.IOutboxGaugeProbe), new(*messaging.OutboxGaugeProbe)),
+	wire.Bind(new(sharedWorker.OutboxSignalListener), new(*infra_db.OutboxListener)),
 	wire.Bind(new(sse.ISSEManager), new(*sse.SSEManager)),
 	wire.Bind(new(sharedUcInterface.IOutboxUseCase), new(*sharedUsecase.OutboxUseCase)),
 )

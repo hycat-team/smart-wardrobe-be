@@ -130,7 +130,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	outboxRepository := messaging.NewOutboxRepository(gormDB)
 	iUserBriefUseCase := usecase.NewUserBriefUseCase(iUserRepository)
 	iUserBriefContract := contract.NewUserBriefContract(iUserBriefUseCase)
-	iNotificationContract := contract2.NewNotificationContract(outboxRepository, iUserBriefContract)
+	iOutboxEmailUseCase := email.NewOutboxEmailUseCase(outboxRepository, iUserBriefContract)
+	iNotificationContract := contract2.NewNotificationContract(iOutboxEmailUseCase)
 	iPasswordHasher := security.NewBcryptPasswordHasher()
 	iRegisterUseCase := usecase.NewRegisterUseCase(iUserRepository, iOtpService, iNotificationContract, iPasswordHasher, cfg)
 	iRefreshTokenRepository := persistence.NewRefreshTokenRepository(gormDB)
@@ -304,7 +305,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	iDashboardAggregatorUseCase := usecase2.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker7.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
-	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, cfg, l)
+	outboxGaugeProbe := messaging.NewOutboxGaugeProbe(cfg, l)
+	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, outboxGaugeProbe, cfg, l)
 	outboxListener, err := db.NewOutboxListener(cfg, l)
 	if err != nil {
 		return nil, nil, err

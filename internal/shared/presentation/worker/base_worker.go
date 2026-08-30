@@ -47,16 +47,8 @@ func (w *BaseWorker) Stop() {
 	w.running.Store(false)
 }
 
-func (w *BaseWorker) IsRunning() bool {
-	return w.running.Load()
-}
-
 func (w *BaseWorker) Name() string {
 	return w.name
-}
-
-func (w *BaseWorker) RestartCount() int32 {
-	return w.restartCount.Load()
 }
 
 func (w *BaseWorker) SetHealthCheck(fn func(context.Context) error) {

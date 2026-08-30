@@ -1,0 +1,2506 @@
+{
+  "run_id": "20260830-173202",
+  "generated_at": "2026-08-30T17:32:02.8803485+07:00",
+  "scope": {
+    "scanned_files": 637,
+    "test_files": 58,
+    "exclusions": [
+      "api/swagger/** (generated swagger artifacts)",
+      "bin/** (build output)",
+      "deployments/** (deployment configuration, no Go source)",
+      "specs/** (specification documents)",
+      "docs/** (documentation)",
+      "database/** (goose SQL migrations)",
+      ".git/** (vcs metadata)"
+    ]
+  },
+  "summary": {
+    "by_rule": {
+      "H1": {
+        "fail": 0,
+        "warning": 51,
+        "needsConfirmation": 0
+      },
+      "H2": {
+        "fail": 0,
+        "warning": 9,
+        "needsConfirmation": 0
+      },
+      "H5": {
+        "fail": 0,
+        "warning": 0,
+        "needsConfirmation": 99
+      },
+      "H6": {
+        "fail": 0,
+        "warning": 20,
+        "needsConfirmation": 0
+      },
+      "H8": {
+        "fail": 0,
+        "warning": 41,
+        "needsConfirmation": 0
+      }
+    },
+    "by_module": {
+      "admin": {
+        "fail": 0,
+        "warning": 3,
+        "needsConfirmation": 12
+      },
+      "aiexecutor": {
+        "fail": 0,
+        "warning": 18,
+        "needsConfirmation": 1
+      },
+      "api/swagger/docs.go": {
+        "fail": 0,
+        "warning": 0,
+        "needsConfirmation": 1
+      },
+      "brand": {
+        "fail": 0,
+        "warning": 15,
+        "needsConfirmation": 6
+      },
+      "dashboard": {
+        "fail": 0,
+        "warning": 4,
+        "needsConfirmation": 0
+      },
+      "fashion": {
+        "fail": 0,
+        "warning": 30,
+        "needsConfirmation": 11
+      },
+      "identity": {
+        "fail": 0,
+        "warning": 3,
+        "needsConfirmation": 3
+      },
+      "internal/bootstrap": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "internal/pkg": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 12
+      },
+      "internal/shared": {
+        "fail": 0,
+        "warning": 10,
+        "needsConfirmation": 24
+      },
+      "internal/tools": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "notification": {
+        "fail": 0,
+        "warning": 4,
+        "needsConfirmation": 1
+      },
+      "subscription": {
+        "fail": 0,
+        "warning": 20,
+        "needsConfirmation": 12
+      },
+      "wardrobe": {
+        "fail": 0,
+        "warning": 11,
+        "needsConfirmation": 16
+      }
+    }
+  },
+  "metrics": {
+    "files_over_500": 0,
+    "files_over_800": 0,
+    "cross_module_prohibited_imports": 0,
+    "layer_skips": 0
+  },
+  "violations": [
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/bootstrap/app.go",
+        "line": 78,
+        "symbol": "App.Run"
+      },
+      "severity": "warning",
+      "detail": "function spans 102 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/cost/usecase.go",
+        "line": 43,
+        "symbol": "CostUseCase.Prepare"
+      },
+      "severity": "warning",
+      "detail": "function spans 93 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
+        "line": 189,
+        "symbol": "OrchestratorUseCase.GenerateChatTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 92 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/benefit/usecase_test.go"
+      },
+      "severity": "warning",
+      "detail": "file has 1033 lines (warning threshold 750)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/brand/member_uc.go",
+        "line": 17,
+        "symbol": "BrandUseCase.AddBrandMembers"
+      },
+      "severity": "warning",
+      "detail": "function spans 164 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/claim/usecase.go",
+        "line": 146,
+        "symbol": "BrandClaimUseCase.ClaimBrandCustomer"
+      },
+      "severity": "warning",
+      "detail": "function spans 85 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/crud_uc.go",
+        "line": 30,
+        "symbol": "BrandItemUseCase.CreateBrandItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/eligibility_uc.go",
+        "line": 20,
+        "symbol": "BrandItemUseCase.ListEligibleBrandItemsForStyling"
+      },
+      "severity": "warning",
+      "detail": "function spans 97 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/loyalty/helper.go",
+        "line": 109,
+        "symbol": "BrandLoyaltyUseCase.resolveBrandCustomerForPoints"
+      },
+      "severity": "warning",
+      "detail": "function spans 96 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/loyalty/points_uc.go",
+        "line": 21,
+        "symbol": "BrandLoyaltyUseCase.GrantLoyaltyPoints"
+      },
+      "severity": "warning",
+      "detail": "function spans 131 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/presentation/router/router.go",
+        "line": 37,
+        "symbol": "Router.Init"
+      },
+      "severity": "warning",
+      "detail": "function spans 121 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go",
+        "line": 103,
+        "symbol": "AdminDashboardUseCase.GetAIMarginAnalytics"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/dynamic_query_execute_uc.go",
+        "line": 20,
+        "symbol": "DynamicQueryUseCase.ExecuteDynamicQuery"
+      },
+      "severity": "warning",
+      "detail": "function spans 247 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go",
+        "line": 110,
+        "symbol": "UserDashboardUseCase.GetWardrobeInsights"
+      },
+      "severity": "warning",
+      "detail": "function spans 87 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+        "line": 32,
+        "symbol": "buildChatSystemPromptWithLimits"
+      },
+      "severity": "warning",
+      "detail": "function spans 119 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/parser/parser.go",
+        "line": 114,
+        "symbol": "LocalNLPParser.Parse"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/fallback_hsl.go",
+        "line": 33,
+        "symbol": "RunLocalHSLMatching"
+      },
+      "severity": "warning",
+      "detail": "function spans 138 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/scoring.go",
+        "line": 51,
+        "symbol": "ScoreCandidateItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 189 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+        "line": 57,
+        "symbol": "buildRecommendationPrompt"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go",
+        "line": 91,
+        "symbol": "OutfitRecommendationUseCase.filterCandidates"
+      },
+      "severity": "warning",
+      "detail": "function spans 289 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/worker/cleanup_uc.go",
+        "line": 99,
+        "symbol": "FashionWorkerUseCase.RecoverStaleProcessingItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 81 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid.go",
+        "line": 21,
+        "symbol": "FashionItemRepository.GetHybridCandidates"
+      },
+      "severity": "warning",
+      "detail": "function spans 102 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/identity/application/mapper/user_mapper.go",
+        "line": 43,
+        "symbol": "MapToUserRes"
+      },
+      "severity": "warning",
+      "detail": "function spans 87 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/identity/application/usecase/session_uc.go",
+        "line": 118,
+        "symbol": "SessionUseCase.RefreshToken"
+      },
+      "severity": "warning",
+      "detail": "function spans 106 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/notification/infrastructure/communication/smtp_sender.go",
+        "line": 29,
+        "symbol": "SmtpSender.Send"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/purchase/checkout.go",
+        "line": 24,
+        "symbol": "SubscriptionPurchaseUseCase.CreateDirectPurchase"
+      },
+      "severity": "warning",
+      "detail": "function spans 151 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/purchase/wallet.go",
+        "line": 23,
+        "symbol": "SubscriptionPurchaseUseCase.PurchasePlanWithWallet"
+      },
+      "severity": "warning",
+      "detail": "function spans 153 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/reconciliation/payment_reconciliation_usecase.go",
+        "line": 82,
+        "symbol": "PaymentReconciliationUseCase.reconcile"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 340,
+        "symbol": "SubscriptionUseCase.executePaidRenewal"
+      },
+      "severity": "warning",
+      "detail": "function spans 91 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/wallet/internal_wallet_transaction_workflow.go",
+        "line": 29,
+        "symbol": "ProcessWalletTransaction"
+      },
+      "severity": "warning",
+      "detail": "function spans 104 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/webhook/purchase_workflow.go",
+        "line": 19,
+        "symbol": "PaymentWebhookUseCase.executeDirectPurchaseWorkflow"
+      },
+      "severity": "warning",
+      "detail": "function spans 126 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/infrastructure/payment/payos/payos_service_impl.go",
+        "line": 57,
+        "symbol": "PayOSService.CreateCheckoutSession"
+      },
+      "severity": "warning",
+      "detail": "function spans 98 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/mapper/search_mapper.go",
+        "line": 13,
+        "symbol": "MapToSearchDocumentDTO"
+      },
+      "severity": "warning",
+      "detail": "function spans 91 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go",
+        "line": 74,
+        "symbol": "OutfitUseCase.SaveOutfit"
+      },
+      "severity": "warning",
+      "detail": "function spans 119 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go",
+        "line": 194,
+        "symbol": "OutfitUseCase.UpdateOutfit"
+      },
+      "severity": "warning",
+      "detail": "function spans 115 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/catalog/catalog_uc.go",
+        "line": 117,
+        "symbol": "WardrobeCatalogUseCase.InitClosetFromCatalog"
+      },
+      "severity": "warning",
+      "detail": "function spans 103 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go",
+        "line": 90,
+        "symbol": "WardrobeItemUseCase.GetWardrobeItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 114 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go",
+        "line": 27,
+        "symbol": "WardrobeItemUseCase.CloneWardrobeItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 138 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go",
+        "line": 386,
+        "symbol": "WardrobeItemUseCase.BatchUploadWardrobeItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/infrastructure/search/wardrobe_helper.go",
+        "line": 14,
+        "symbol": "WardrobeSearchService.parseSearchWardrobeItemRes"
+      },
+      "severity": "warning",
+      "detail": "function spans 84 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/infrastructure/search/wardrobe_search.go",
+        "line": 15,
+        "symbol": "WardrobeSearchService.SearchItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 81 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/pkg/logger/logger.go",
+        "line": 27,
+        "symbol": "New"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/google/google_text.go",
+        "line": 17,
+        "symbol": "CallTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 123 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/google/google_text.go",
+        "line": 142,
+        "symbol": "CallText"
+      },
+      "severity": "warning",
+      "detail": "function spans 100 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/openai/openai.go",
+        "line": 19,
+        "symbol": "CallTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 116 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/openai/openai.go",
+        "line": 137,
+        "symbol": "CallText"
+      },
+      "severity": "warning",
+      "detail": "function spans 84 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/vision_embedding_service.go",
+        "line": 80,
+        "symbol": "AIService.EstimatePromptTokens"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/messaging/rabbitmq_connection.go",
+        "line": 12,
+        "symbol": "RabbitMQClient.connect"
+      },
+      "severity": "warning",
+      "detail": "function spans 117 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/presentation/middleware/error_handler.go",
+        "line": 14,
+        "symbol": "GlobalErrorHandler"
+      },
+      "severity": "warning",
+      "detail": "function spans 81 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/presentation/middleware/swagger_lock.go",
+        "line": 12,
+        "symbol": "SwaggerLockMiddleware"
+      },
+      "severity": "warning",
+      "detail": "function spans 193 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/tools/swagger-split/main.go",
+        "line": 44,
+        "symbol": "run"
+      },
+      "severity": "warning",
+      "detail": "function spans 116 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/aiexecutor/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 6 types (AICostPolicy, AICostPolicyOperation, AIModelConfig, AIPolicyGrant, AIUsageEvent, AIUsagePeriodLedger); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/brand/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 15 types (BenefitRedemption, Brand, BrandBenefit, BrandConversation, BrandConversationMessage, BrandCustomer, BrandCustomerClaim, BrandItem, BrandMember, DigitalSampleResponse, LoyaltyAccount, LoyaltyPointLot, LoyaltyPointTransaction, LoyaltyProgram, LoyaltyTier); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/dashboard/domain/entities/dashboard_snapshots.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 3 types (DashboardAdminDailySnapshot, DashboardBrandDailySnapshot, DashboardUserWardrobeSummary); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/fashion/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 4 types (Category, ConversationalContext, FashionItem, Message); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/identity/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 3 types (RefreshToken, User, UserStyleProfile); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/subscription/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 10 types (DepositTransaction, ProviderPaymentEvent, ProviderWebhookInbox, SubscriptionPlan, SubscriptionRenewalAttempt, UserDailyQuota, UserSubscription, UserSubscriptionEvent, UserWallet, WalletStatement); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/wardrobe/domain/entities/table_name.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 3 types (Outfit, OutfitItem, WardrobeItem); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/shared/application/event/consumer.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 3 types (Message, PermanentError, RetryableError); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/shared/domain/entities/jsonb.go"
+      },
+      "severity": "warning",
+      "detail": "file carries behavior for 3 types (JSONDocument, bodyProfile, preferredColors); split by responsibility",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "symbol": "errors.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file errors.go exists in 7 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/admin/presentation/router/router.go",
+        "symbol": "router.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file router.go exists in 8 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/admin/provider.go",
+        "symbol": "provider.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file provider.go exists in 9 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/fashion, internal/modules/identity, internal/modules/notification, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/dto/dashboard_dto.go",
+        "symbol": "dashboard_dto.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file dashboard_dto.go exists in 4 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/identity, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/cost/helper.go",
+        "symbol": "helper.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file helper.go exists in 3 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/cost/usecase.go",
+        "symbol": "usecase.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file usecase.go exists in 3 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/plan.go",
+        "symbol": "plan.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file plan.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/subscription); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/domain/entities/base_types.go",
+        "symbol": "base_types.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file base_types.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/domain/entities/table_name.go",
+        "symbol": "table_name.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file table_name.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/domain/repositories/readmodels.go",
+        "symbol": "readmodels.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file readmodels.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/presentation/contract/dashboard_reader.go",
+        "symbol": "dashboard_reader.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file dashboard_reader.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/presentation/handler/admin_handler.go",
+        "symbol": "admin_handler.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file admin_handler.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/identity); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/presentation/worker/subscription_handler.go",
+        "symbol": "subscription_handler.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file subscription_handler.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/subscription); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/application/dto/chat.go",
+        "symbol": "chat.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file chat.go exists in 2 modules (internal/modules/brand, internal/modules/fashion); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/contractuc/contract_uc.go",
+        "symbol": "contract_uc.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file contract_uc.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/fashion_event_uc.go",
+        "symbol": "fashion_event_uc.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file fashion_event_uc.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/domain/repositories/interfaces.go",
+        "symbol": "interfaces.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file interfaces.go exists in 3 modules (internal/modules/brand, internal/modules/fashion, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/presentation/worker/fashion_bind_worker.go",
+        "symbol": "fashion_bind_worker.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file fashion_bind_worker.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/brand/presentation/worker/fashion_event_worker.go",
+        "symbol": "fashion_event_worker.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file fashion_event_worker.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/fashion/application/dto/recommendation.go",
+        "symbol": "recommendation.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file recommendation.go exists in 2 modules (internal/modules/fashion, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
+        "line": 93,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
+        "line": 151,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
+        "line": 221,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/plan.go",
+        "line": 21,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/pricing/usecase.go",
+        "line": 43,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go",
+        "line": 30,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go",
+        "line": 64,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 71,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 83,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 147,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 154,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 173,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 217,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 220,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 231,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 246,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/generation.go",
+        "line": 69,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/generation.go",
+        "line": 90,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
+        "line": 38,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
+        "line": 52,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
+        "line": 57,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
+        "line": 61,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+        "line": 54,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/worker/analyze_uc.go",
+        "line": 187,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/worker/shared/fashion_helper.go",
+        "line": 32,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
+        "line": 53,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
+        "line": 58,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
+        "line": 94,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 67,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 73,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 78,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 85,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 90,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 180,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 134,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 267,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 435,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 440,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 443,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 449,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/search_sync/search_sync_uc.go",
+        "line": 57,
+        "symbol": "fmt.Errorf"
+      },
+      "severity": "warning",
+      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "api/swagger/docs.go",
+        "line": 13007,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 9,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 13,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 17,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 21,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 25,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 29,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 33,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 37,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 41,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 45,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 49,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/admin/application/errors/errors.go",
+        "line": 53,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/errors/errors.go",
+        "line": 11,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/errors/errors.go",
+        "line": 77,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/mapper/brand.go",
+        "line": 123,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/mapper/brand.go",
+        "line": 195,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/benefit/helper.go",
+        "line": 9,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/brand/helper.go",
+        "line": 25,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/helper.go",
+        "line": 26,
+        "symbol": "29"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/errors/category_errors.go",
+        "line": 31,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/errors/chat_errors.go",
+        "line": 11,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+        "line": 20,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+        "line": 153,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/ranking.go",
+        "line": 126,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/local_rewriter.go",
+        "line": 19,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+        "line": 38,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go",
+        "line": 58,
+        "symbol": "34"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+        "line": 124,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+        "line": 144,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+        "line": 211,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/identity/application/errors/errors.go",
+        "line": 25,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/identity/application/errors/errors.go",
+        "line": 49,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/identity/application/errors/errors.go",
+        "line": 53,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/notification/infrastructure/communication/smtp_sender.go",
+        "line": 113,
+        "symbol": "22"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 67,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 71,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 83,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 87,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 91,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 99,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/errors/errors.go",
+        "line": 135,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 139,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 202,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 215,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 223,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 230,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 10,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 15,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 20,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 59,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 63,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 87,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 99,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 103,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 135,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 139,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 143,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 147,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/errors/errors.go",
+        "line": 151,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lifecycle_decay.go",
+        "line": 13,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lock_helper.go",
+        "line": 34,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/string_helper.go",
+        "line": 6,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/contextutils/user.go",
+        "line": 67,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/contextutils/user.go",
+        "line": 97,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/errorutils/errorutils.go",
+        "line": 199,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/numberutils/numberutils.go",
+        "line": 7,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/sliceutils/sliceutils.go",
+        "line": 74,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/streamutils/streamutils.go",
+        "line": 6,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/stringutils/stringutils.go",
+        "line": 47,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/stringutils/stringutils.go",
+        "line": 71,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/stringutils/stringutils.go",
+        "line": 89,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/stringutils/stringutils.go",
+        "line": 96,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/stringutils/stringutils.go",
+        "line": 119,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/pkg/utils/timeutils/timeutils.go",
+        "line": 25,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 3,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 7,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 11,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 15,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 27,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 39,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 47,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 51,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 55,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 59,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 63,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 67,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/application/constants/apperror/static_errors.go",
+        "line": 71,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/domain/entities/jsonb.go",
+        "line": 120,
+        "symbol": "24"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/domain/entities/vector.go",
+        "line": 29,
+        "symbol": "18"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/helper.go",
+        "line": 56,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/infrastructure/httptransport/transport.go",
+        "line": 35,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/infrastructure/repositories/pagination.go",
+        "line": 8,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/infrastructure/repositories/pagination.go",
+        "line": 12,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/infrastructure/repositories/pagination.go",
+        "line": 21,
+        "symbol": "6"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/middleware/ratelimit.go",
+        "line": 78,
+        "symbol": "31"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/worker/base_worker.go",
+        "line": 50,
+        "symbol": "22"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/worker/base_worker.go",
+        "line": 54,
+        "symbol": "22"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/worker/base_worker.go",
+        "line": 58,
+        "symbol": "22"
+      },
+      "severity": "needs-confirmation",
+      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
+      "status": "open"
+    }
+  ]
+}

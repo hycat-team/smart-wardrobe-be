@@ -27,7 +27,3 @@ func ErrCategoryOtherImmutable() *apperror.Error {
 func ErrCategoryHasUserItems() *apperror.Error {
 	return apperror.NewBadRequest("Không thể xóa danh mục đang có trang phục người dùng.")
 }
-
-func ErrFallbackCategoryNotFound() *apperror.Error {
-	return apperror.NewInternalError("Không tìm thấy danh mục 'other' để chuyển trang phục.")
-}

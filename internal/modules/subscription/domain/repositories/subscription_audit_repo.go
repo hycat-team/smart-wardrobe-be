@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 )
 
@@ -16,5 +15,5 @@ type ISubscriptionRenewalAttemptRepository interface {
 	Create(ctx context.Context, attempt *entities.SubscriptionRenewalAttempt) error
 	GetByKey(ctx context.Context, key string) (*entities.SubscriptionRenewalAttempt, error)
 	Update(ctx context.Context, attempt *entities.SubscriptionRenewalAttempt) error
-	GetRenewalStats(ctx context.Context) (*dto.RenewalStatsDTO, error)
+	GetRenewalStats(ctx context.Context) (*RenewalStatsDTO, error)
 }

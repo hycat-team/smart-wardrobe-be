@@ -2,6 +2,12 @@
 
 This document describes the core design patterns, conventions, and utility packages used throughout the project.
 
+> **Hygiene thresholds**: File/function length caps, struct-per-file rules, module boundary scan,
+> and the `make hygiene-scan` workflow are defined in
+> [`docs/development/code-hygiene.md`](../development/code-hygiene.md) — the single source of
+> truth for code hygiene standards (feature 017). This document governs *how* to write code;
+> that document governs the *structural limits* the code must stay within.
+
 ---
 
 ## Utility Packages (`internal/pkg/utils/`)

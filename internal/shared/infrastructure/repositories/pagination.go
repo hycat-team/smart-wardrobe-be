@@ -5,10 +5,6 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 )
 
-func NormalizePagination(query shared_dto.PaginationQuery) shared_dto.PaginationQuery {
-	return query.Normalize()
-}
-
 func Offset(query shared_dto.PaginationQuery) int {
 	return query.Offset()
 }

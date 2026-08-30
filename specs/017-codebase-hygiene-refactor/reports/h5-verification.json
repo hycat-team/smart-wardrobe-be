@@ -1,0 +1,884 @@
+[
+  {
+    "raw": "unreachable func: ErrAuditLogNotFound",
+    "sym": "ErrAuditLogNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 9,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidAuditFilter",
+    "sym": "ErrInvalidAuditFilter",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 13,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrUserNotFound",
+    "sym": "ErrUserNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 17,
+    "kind": "referenced",
+    "fileCount": 12,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrSubscriptionNotFound",
+    "sym": "ErrSubscriptionNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 21,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrPlanNotFound",
+    "sym": "ErrPlanNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 25,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrPlanSlugExists",
+    "sym": "ErrPlanSlugExists",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 29,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidSubscriptionStatus",
+    "sym": "ErrInvalidSubscriptionStatus",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 33,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrBrandMemberNotFound",
+    "sym": "ErrBrandMemberNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 37,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrCannotRemoveLastOwner",
+    "sym": "ErrCannotRemoveLastOwner",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 41,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrCannotDemoteLastOwner",
+    "sym": "ErrCannotDemoteLastOwner",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 45,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrAIModelConfigNotFound",
+    "sym": "ErrAIModelConfigNotFound",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 49,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidAIGrant",
+    "sym": "ErrInvalidAIGrant",
+    "file": "internal/modules/admin/application/errors/errors.go",
+    "line": 53,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrGrantPolicyNotFound",
+    "sym": "ErrGrantPolicyNotFound",
+    "file": "internal/modules/aiexecutor/application/errors/errors.go",
+    "line": 11,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrBenefitRequiredPointsNotMet",
+    "sym": "ErrBenefitRequiredPointsNotMet",
+    "file": "internal/modules/brand/application/errors/errors.go",
+    "line": 77,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: MapBrandMembers",
+    "sym": "MapBrandMembers",
+    "file": "internal/modules/brand/application/mapper/brand.go",
+    "line": 123,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: MapBrandCustomers",
+    "sym": "MapBrandCustomers",
+    "file": "internal/modules/brand/application/mapper/brand.go",
+    "line": 195,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: parseValidDurationDays",
+    "sym": "parseValidDurationDays",
+    "file": "internal/modules/brand/application/usecase/benefit/helper.go",
+    "line": 9,
+    "kind": "referenced",
+    "fileCount": 5,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: isValidBrandMemberRole",
+    "sym": "isValidBrandMemberRole",
+    "file": "internal/modules/brand/application/usecase/brand/helper.go",
+    "line": 25,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: BrandItemUseCase.mapToBriefRes",
+    "sym": "mapToBriefRes",
+    "file": "internal/modules/brand/application/usecase/item/helper.go",
+    "line": 26,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrFallbackCategoryNotFound",
+    "sym": "ErrFallbackCategoryNotFound",
+    "file": "internal/modules/fashion/application/errors/category_errors.go",
+    "line": 31,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidChatIDFormat",
+    "sym": "ErrInvalidChatIDFormat",
+    "file": "internal/modules/fashion/application/errors/chat_errors.go",
+    "line": 11,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: buildChatSystemPrompt",
+    "sym": "buildChatSystemPrompt",
+    "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+    "line": 20,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 4
+  },
+  {
+    "raw": "unreachable func: isWardrobeRelatedQuery",
+    "sym": "isWardrobeRelatedQuery",
+    "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+    "line": 153,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: RetrievalScoreStats",
+    "sym": "RetrievalScoreStats",
+    "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/ranking.go",
+    "line": 126,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: NewLocalRecommendationQueryRewriter",
+    "sym": "NewLocalRecommendationQueryRewriter",
+    "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/local_rewriter.go",
+    "line": 19,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: BuildRecommendationPrompt",
+    "sym": "BuildRecommendationPrompt",
+    "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+    "line": 38,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 4
+  },
+  {
+    "raw": "unreachable func: FallbackCandidateCounts.Total",
+    "sym": "Total",
+    "file": "internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go",
+    "line": 58,
+    "kind": "referenced",
+    "fileCount": 98,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: buildRecommendationTSQueryOR",
+    "sym": "buildRecommendationTSQueryOR",
+    "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+    "line": 124,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: buildRecommendationSeasonalityCondition",
+    "sym": "buildRecommendationSeasonalityCondition",
+    "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+    "line": 144,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 4
+  },
+  {
+    "raw": "unreachable func: recommendationSearchDocumentSQL",
+    "sym": "recommendationSearchDocumentSQL",
+    "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+    "line": 211,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 4
+  },
+  {
+    "raw": "unreachable func: ErrOtpGenericCooldown",
+    "sym": "ErrOtpGenericCooldown",
+    "file": "internal/modules/identity/application/errors/errors.go",
+    "line": 25,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrOtpNotFound",
+    "sym": "ErrOtpNotFound",
+    "file": "internal/modules/identity/application/errors/errors.go",
+    "line": 49,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrOtpTooManyAttempts",
+    "sym": "ErrOtpTooManyAttempts",
+    "file": "internal/modules/identity/application/errors/errors.go",
+    "line": 53,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: SmtpSender.renderAndSend",
+    "sym": "renderAndSend",
+    "file": "internal/modules/notification/infrastructure/communication/smtp_sender.go",
+    "line": 113,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrDepositMustBeInteger",
+    "sym": "ErrDepositMustBeInteger",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 67,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrPaymentLinkUpdateFailed",
+    "sym": "ErrPaymentLinkUpdateFailed",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 71,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrWalletCreateFailed",
+    "sym": "ErrWalletCreateFailed",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 83,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrWalletBalanceUpdateFailed",
+    "sym": "ErrWalletBalanceUpdateFailed",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 87,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrWalletStatementSaveFailed",
+    "sym": "ErrWalletStatementSaveFailed",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 91,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrSubscriptionExpiredAutoRenew",
+    "sym": "ErrSubscriptionExpiredAutoRenew",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 99,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrPaymentLinkCreateFailed",
+    "sym": "ErrPaymentLinkCreateFailed",
+    "file": "internal/modules/subscription/application/errors/errors.go",
+    "line": 135,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: RestoreLifetimeFallbackIfExpired",
+    "sym": "RestoreLifetimeFallbackIfExpired",
+    "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+    "line": 139,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: applyCurrent",
+    "sym": "applyCurrent",
+    "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+    "line": 202,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: expiryFor",
+    "sym": "expiryFor",
+    "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+    "line": 215,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: AddProductDays",
+    "sym": "AddProductDays",
+    "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+    "line": 223,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: clearFallback",
+    "sym": "clearFallback",
+    "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+    "line": 230,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ErrItemNotFoundWithID",
+    "sym": "ErrItemNotFoundWithID",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 10,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ErrItemForbiddenWithID",
+    "sym": "ErrItemForbiddenWithID",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 15,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ErrItemSoldWithID",
+    "sym": "ErrItemSoldWithID",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 20,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ErrInvalidChatIDFormat",
+    "sym": "ErrInvalidChatIDFormat",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 59,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidOutfitIDFormat",
+    "sym": "ErrInvalidOutfitIDFormat",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 63,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrProcessFashionTextFailed",
+    "sym": "ErrProcessFashionTextFailed",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 87,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrRetryWardrobeAnalysisCooldown",
+    "sym": "ErrRetryWardrobeAnalysisCooldown",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 99,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrItemToCloneNotFound",
+    "sym": "ErrItemToCloneNotFound",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 103,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrNoSuitableItemsForOutfit",
+    "sym": "ErrNoSuitableItemsForOutfit",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 135,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrMinimumWardrobeItemsRequired",
+    "sym": "ErrMinimumWardrobeItemsRequired",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 139,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrNoOutfitsFound",
+    "sym": "ErrNoOutfitsFound",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 143,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrChatNotFound",
+    "sym": "ErrChatNotFound",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 147,
+    "kind": "referenced",
+    "fileCount": 3,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidOutfitStructure",
+    "sym": "ErrInvalidOutfitStructure",
+    "file": "internal/modules/wardrobe/application/errors/errors.go",
+    "line": 151,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: CalculateLifecycleDecayFactor",
+    "sym": "CalculateLifecycleDecayFactor",
+    "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lifecycle_decay.go",
+    "line": 13,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: FilterActiveItems",
+    "sym": "FilterActiveItems",
+    "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lock_helper.go",
+    "line": 34,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: RemoveVietnameseSigns",
+    "sym": "RemoveVietnameseSigns",
+    "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/string_helper.go",
+    "line": 6,
+    "kind": "referenced",
+    "fileCount": 4,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: GetEmail",
+    "sym": "GetEmail",
+    "file": "internal/pkg/utils/contextutils/user.go",
+    "line": 67,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: GetBrandID",
+    "sym": "GetBrandID",
+    "file": "internal/pkg/utils/contextutils/user.go",
+    "line": 97,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: MapErrorToProblem",
+    "sym": "MapErrorToProblem",
+    "file": "internal/pkg/utils/errorutils/errorutils.go",
+    "line": 199,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ToFloat64",
+    "sym": "ToFloat64",
+    "file": "internal/pkg/utils/numberutils/numberutils.go",
+    "line": 7,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: GroupBy",
+    "sym": "GroupBy",
+    "file": "internal/pkg/utils/sliceutils/sliceutils.go",
+    "line": 74,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: SplitForStream",
+    "sym": "SplitForStream",
+    "file": "internal/pkg/utils/streamutils/streamutils.go",
+    "line": 6,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ToSnakeCase",
+    "sym": "ToSnakeCase",
+    "file": "internal/pkg/utils/stringutils/stringutils.go",
+    "line": 47,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: HashString",
+    "sym": "HashString",
+    "file": "internal/pkg/utils/stringutils/stringutils.go",
+    "line": 71,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: UuidPtrToStr",
+    "sym": "UuidPtrToStr",
+    "file": "internal/pkg/utils/stringutils/stringutils.go",
+    "line": 89,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: UuidPtrToStringPtr",
+    "sym": "UuidPtrToStringPtr",
+    "file": "internal/pkg/utils/stringutils/stringutils.go",
+    "line": 96,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: SanitizeFileName",
+    "sym": "SanitizeFileName",
+    "file": "internal/pkg/utils/stringutils/stringutils.go",
+    "line": 119,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: GenerateOrderCode",
+    "sym": "GenerateOrderCode",
+    "file": "internal/pkg/utils/timeutils/timeutils.go",
+    "line": 25,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: ErrInvalidId",
+    "sym": "ErrInvalidId",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 3,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInvalidImageFormat",
+    "sym": "ErrInvalidImageFormat",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 7,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrImageRequired",
+    "sym": "ErrImageRequired",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 11,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrBusiness",
+    "sym": "ErrBusiness",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 15,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrMissingTokenInfo",
+    "sym": "ErrMissingTokenInfo",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 27,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrTokenNotFound",
+    "sym": "ErrTokenNotFound",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 39,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrConflictDuplicate",
+    "sym": "ErrConflictDuplicate",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 47,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrTooManyRequests",
+    "sym": "ErrTooManyRequests",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 51,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrOTPRateLimit",
+    "sym": "ErrOTPRateLimit",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 55,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrOTPTooManyAttempts",
+    "sym": "ErrOTPTooManyAttempts",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 59,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrInternalServer",
+    "sym": "ErrInternalServer",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 63,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrDbUpdate",
+    "sym": "ErrDbUpdate",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 67,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: ErrExportFailed",
+    "sym": "ErrExportFailed",
+    "file": "internal/shared/application/constants/apperror/static_errors.go",
+    "line": 71,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: JSONDocument.Scan",
+    "sym": "Scan",
+    "file": "internal/shared/domain/entities/jsonb.go",
+    "line": 120,
+    "kind": "referenced",
+    "fileCount": 26,
+    "ownFileRefs": 3
+  },
+  {
+    "raw": "unreachable func: Vector.Scan",
+    "sym": "Scan",
+    "file": "internal/shared/domain/entities/vector.go",
+    "line": 29,
+    "kind": "referenced",
+    "fileCount": 26,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: parseSSEStream",
+    "sym": "parseSSEStream",
+    "file": "internal/shared/infrastructure/ai/helper.go",
+    "line": 56,
+    "kind": "referenced",
+    "fileCount": 4,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: DefaultClient",
+    "sym": "DefaultClient",
+    "file": "internal/shared/infrastructure/httptransport/transport.go",
+    "line": 35,
+    "kind": "referenced",
+    "fileCount": 2,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: NormalizePagination",
+    "sym": "NormalizePagination",
+    "file": "internal/shared/infrastructure/repositories/pagination.go",
+    "line": 8,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: Offset",
+    "sym": "Offset",
+    "file": "internal/shared/infrastructure/repositories/pagination.go",
+    "line": 12,
+    "kind": "referenced",
+    "fileCount": 10,
+    "ownFileRefs": 4
+  },
+  {
+    "raw": "unreachable func: BuildPaginationMetadata",
+    "sym": "BuildPaginationMetadata",
+    "file": "internal/shared/infrastructure/repositories/pagination.go",
+    "line": 21,
+    "kind": "referenced",
+    "fileCount": 19,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: RateLimitMiddleware.Stop",
+    "sym": "Stop",
+    "file": "internal/shared/presentation/middleware/ratelimit.go",
+    "line": 78,
+    "kind": "referenced",
+    "fileCount": 33,
+    "ownFileRefs": 2
+  },
+  {
+    "raw": "unreachable func: BaseWorker.IsRunning",
+    "sym": "IsRunning",
+    "file": "internal/shared/presentation/worker/base_worker.go",
+    "line": 50,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: BaseWorker.Name",
+    "sym": "Name",
+    "file": "internal/shared/presentation/worker/base_worker.go",
+    "line": 54,
+    "kind": "referenced",
+    "fileCount": 156,
+    "ownFileRefs": 1
+  },
+  {
+    "raw": "unreachable func: BaseWorker.RestartCount",
+    "sym": "RestartCount",
+    "file": "internal/shared/presentation/worker/base_worker.go",
+    "line": 58,
+    "kind": "decl-only",
+    "fileCount": 1,
+    "ownFileRefs": 1
+  }
+]
