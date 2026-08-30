@@ -284,12 +284,10 @@ func TestAdvisoryRules(t *testing.T) {
 		t.Fatalf("expected one H8 warning for errors.New in usecase, got %+v", h8)
 	}
 
-	h6 := violationsFor(runAdvisoryRules(files), RuleH6)
-	// multi.go / repo.go / skipper.go base names each exist in one module only.
-	// long.go handler duplicates? Only files in >=2 distinct modules qualify;
-	// this fixture has none, so H6 must stay silent.
-	if len(h6) != 0 {
-		t.Fatalf("expected no H6 suggestion in single-module fixture, got %+v", h6)
+	// H6 same-name-file heuristic was retired; the rule stays a manual audit
+	// item and must never emit automated findings.
+	if got := violationsFor(runAdvisoryRules(files), RuleH6); len(got) != 0 {
+		t.Fatalf("H6 must not emit automated findings, got %+v", got)
 	}
 }
 
@@ -301,8 +299,32 @@ func TestDuplicationClustersAcrossModules(t *testing.T) {
 	})
 
 	h6 := violationsFor(runAdvisoryRules(files), RuleH6)
-	if len(h6) != 1 || !strings.Contains(h6[0].Detail, "2 modules (internal/modules/alpha, internal/modules/beta)") {
-		t.Fatalf("expected one H6 cluster for helper.go, got %+v", h6)
+	if len(h6) != 0 {
+		t.Fatalf("H6 same-name heuristic is retired; expected no findings, got %+v", h6)
+	}
+}
+
+func TestBehaviorStructsExemptsTableNameBoilerplate(t *testing.T) {
+	files := mustScan(t, map[string]string{
+		"go.mod": "module smart-wardrobe-be\n\ngo 1.25\n",
+		"internal/modules/alpha/domain/entities/table_name.go": `package entities
+
+type A struct{}
+
+func (A) TableName() string { return "a" }
+
+type B struct{}
+
+func (B) TableName() string { return "b" }
+
+type C struct{}
+
+func (C) TableName() string { return "c" }
+`,
+	})
+
+	if got := violationsFor(runStructuralRules(files), RuleH2); len(got) != 0 {
+		t.Fatalf("table_name.go boilerplate must be exempt from H2, got %+v", got)
 	}
 }
 

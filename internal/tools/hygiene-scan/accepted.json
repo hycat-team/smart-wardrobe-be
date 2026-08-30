@@ -14,6 +14,10 @@
     { "ruleId": "H5", "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go", "symbol": "isWardrobeRelatedQuery", "reason": "used by helpers_test.go to lock keyword-detection behavior" },
     { "ruleId": "H5", "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lifecycle_decay.go", "symbol": "CalculateLifecycleDecayFactor", "reason": "used by lifecycle_decay_test.go to lock decay formula" },
     { "ruleId": "H8", "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go", "symbol": "errors.New", "reason": "one-off parse-guard errors inside summary JSON extraction; no chain to wrap" },
-    { "ruleId": "H8", "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go", "symbol": "errors.New", "reason": "one-off defensive parse guards; no chain to wrap" }
+    { "ruleId": "H8", "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go", "symbol": "errors.New", "reason": "one-off defensive parse guards; no chain to wrap" },
+    { "ruleId": "H1", "file": "internal/modules/brand/application/usecase/benefit/usecase_test.go", "symbol": "", "reason": "test file length accepted (table-driven fixtures); threshold already relaxed +50%" },
+    { "ruleId": "H2", "file": "internal/shared/application/event/consumer.go", "symbol": "", "reason": "Message/PermanentError/RetryableError serve one concern — the event consumer contract" },
+    { "ruleId": "H2", "file": "internal/shared/domain/entities/jsonb.go", "symbol": "", "reason": "JSONDocument plus its small parse helpers serve one concern (JSONB column handling)" },
+    { "ruleId": "H2", "file": "internal/modules/dashboard/domain/entities/dashboard_snapshots.go", "symbol": "", "reason": "three daily-snapshot aggregates (admin/brand/user) serve the same dashboard concern" }
   ]
 }

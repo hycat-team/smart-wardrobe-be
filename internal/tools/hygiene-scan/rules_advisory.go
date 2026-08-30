@@ -18,15 +18,18 @@ const (
 	RuleH8 = "H8" // error handling consistency
 )
 
-// maxDuplicationSuggestions caps H6 output so the report stays readable.
-const maxDuplicationSuggestions = 40
+// RuleH6 is a manual audit item (see runAdvisoryRules); no automated check
+// emits it since the 2026-08-30 heuristic retirement.
 
-// runAdvisoryRules executes the heuristic rules H6, H7 and H8 that work off
+// runAdvisoryRules executes the heuristic rules H7 and H8 that work off
 // parsed files. H5 (dead code) needs the external deadcode tool and runs
-// separately via runDeadCodeScan.
+// separately via runDeadCodeScan. H6 is a manual audit item — the automated
+// same-name-file heuristic was retired after the 2026-08-30 audit: in this
+// modular monolith every module repeats the same folder archetypes
+// (router.go, provider.go, errors.go, usecase.go, ...), so filename equality
+// never indicated real duplication. See docs/development/code-hygiene.md.
 func runAdvisoryRules(files []*parsedFile) []Violation {
 	var out []Violation
-	out = append(out, checkDuplicationClusters(files)...)
 	for _, pf := range files {
 		if pf.Type != fileProduction {
 			continue
@@ -35,81 +38,6 @@ func runAdvisoryRules(files []*parsedFile) []Violation {
 		out = append(out, checkErrorHandling(pf)...)
 	}
 	sort.Slice(out, func(i, j int) bool { return lessViolation(out[i], out[j]) })
-	return out
-}
-
-// fileOccurrence records where a candidate file lives across modules.
-type fileOccurrence struct {
-	module string
-	path   string
-}
-
-// checkDuplicationClusters implements H6 as a suggestion engine: files with
-// identical base names living in different modules hint at copy-paste
-// helpers. Whether to merge is a manual audit call — module boundaries take
-// precedence over de-duplication (CHK013).
-func checkDuplicationClusters(files []*parsedFile) []Violation {
-	byBase := map[string][]fileOccurrence{}
-
-	for _, pf := range files {
-		if pf.Type != fileProduction || !strings.HasPrefix(pf.Module, "internal/modules/") {
-			continue
-		}
-		base := filepath.Base(pf.Path)
-		byBase[base] = append(byBase[base], fileOccurrence{module: pf.Module, path: pf.Path})
-	}
-
-	bases := make([]string, 0, len(byBase))
-	for base, occs := range byBase {
-		if sameModule(occs) {
-			continue
-		}
-		bases = append(bases, base)
-	}
-	sort.Strings(bases)
-
-	var out []Violation
-	for _, base := range bases {
-		if len(out) >= maxDuplicationSuggestions {
-			break
-		}
-		occs := byBase[base]
-		modules := distinctModules(occs)
-		sort.Strings(modules)
-		out = append(out, Violation{
-			RuleID: RuleH6,
-			Location: Location{
-				File:   occs[0].path,
-				Symbol: base,
-			},
-			Severity: SeverityWarning,
-			Detail: fmt.Sprintf(
-				"potential duplication: file %s exists in %d modules (%s); audit before merging",
-				base, len(modules), strings.Join(modules, ", ")),
-			Status: StatusOpen,
-		})
-	}
-	return out
-}
-
-func sameModule(occs []fileOccurrence) bool {
-	for _, o := range occs {
-		if o.module != occs[0].module {
-			return false
-		}
-	}
-	return true
-}
-
-func distinctModules(occs []fileOccurrence) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, o := range occs {
-		if !seen[o.module] {
-			seen[o.module] = true
-			out = append(out, o.module)
-		}
-	}
 	return out
 }
 

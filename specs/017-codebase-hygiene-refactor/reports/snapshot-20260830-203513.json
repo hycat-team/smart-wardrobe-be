@@ -1,9 +1,9 @@
 {
-  "run_id": "20260830-193926",
-  "generated_at": "2026-08-30T19:39:26.711454+07:00",
+  "run_id": "20260830-203513",
+  "generated_at": "2026-08-30T20:35:13.4723697+07:00",
   "scope": {
     "scanned_files": 635,
-    "test_files": 58,
+    "test_files": 57,
     "exclusions": [
       "api/swagger/** (generated swagger artifacts)",
       "bin/** (build output)",
@@ -18,49 +18,34 @@
     "by_rule": {
       "H1": {
         "fail": 0,
-        "warning": 51,
-        "needsConfirmation": 0
-      },
-      "H2": {
-        "fail": 0,
-        "warning": 9,
-        "needsConfirmation": 0
-      },
-      "H6": {
-        "fail": 0,
-        "warning": 20,
+        "warning": 50,
         "needsConfirmation": 0
       }
     },
     "by_module": {
-      "admin": {
+      "aiexecutor": {
         "fail": 0,
         "warning": 2,
         "needsConfirmation": 0
       },
-      "aiexecutor": {
-        "fail": 0,
-        "warning": 14,
-        "needsConfirmation": 0
-      },
       "brand": {
         "fail": 0,
-        "warning": 15,
+        "warning": 7,
         "needsConfirmation": 0
       },
       "dashboard": {
         "fail": 0,
-        "warning": 4,
+        "warning": 3,
         "needsConfirmation": 0
       },
       "fashion": {
         "fail": 0,
-        "warning": 10,
+        "warning": 8,
         "needsConfirmation": 0
       },
       "identity": {
         "fail": 0,
-        "warning": 3,
+        "warning": 2,
         "needsConfirmation": 0
       },
       "internal/bootstrap": {
@@ -75,7 +60,7 @@
       },
       "internal/shared": {
         "fail": 0,
-        "warning": 10,
+        "warning": 8,
         "needsConfirmation": 0
       },
       "internal/tools": {
@@ -90,12 +75,12 @@
       },
       "subscription": {
         "fail": 0,
-        "warning": 8,
+        "warning": 7,
         "needsConfirmation": 0
       },
       "wardrobe": {
         "fail": 0,
-        "warning": 10,
+        "warning": 9,
         "needsConfirmation": 0
       }
     }
@@ -146,8 +131,8 @@
         "file": "internal/modules/brand/application/usecase/benefit/usecase_test.go"
       },
       "severity": "warning",
-      "detail": "file has 1033 lines (warning threshold 750)",
-      "status": "open"
+      "detail": "accepted-keep: test file length accepted (table-driven fixtures); threshold already relaxed +50%",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H1",
@@ -641,7 +626,7 @@
         "symbol": "GlobalErrorHandler"
       },
       "severity": "warning",
-      "detail": "function spans 85 lines (threshold 80)",
+      "detail": "function spans 89 lines (threshold 80)",
       "status": "open"
     },
     {
@@ -669,65 +654,11 @@
     {
       "ruleId": "H2",
       "location": {
-        "file": "internal/modules/aiexecutor/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 6 types (AICostPolicy, AICostPolicyOperation, AIModelConfig, AIPolicyGrant, AIUsageEvent, AIUsagePeriodLedger); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
-        "file": "internal/modules/brand/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 15 types (BenefitRedemption, Brand, BrandBenefit, BrandConversation, BrandConversationMessage, BrandCustomer, BrandCustomerClaim, BrandItem, BrandMember, DigitalSampleResponse, LoyaltyAccount, LoyaltyPointLot, LoyaltyPointTransaction, LoyaltyProgram, LoyaltyTier); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
         "file": "internal/modules/dashboard/domain/entities/dashboard_snapshots.go"
       },
       "severity": "warning",
-      "detail": "file carries behavior for 3 types (DashboardAdminDailySnapshot, DashboardBrandDailySnapshot, DashboardUserWardrobeSummary); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
-        "file": "internal/modules/fashion/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 4 types (Category, ConversationalContext, FashionItem, Message); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
-        "file": "internal/modules/identity/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 3 types (RefreshToken, User, UserStyleProfile); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
-        "file": "internal/modules/subscription/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 10 types (DepositTransaction, ProviderPaymentEvent, ProviderWebhookInbox, SubscriptionPlan, SubscriptionRenewalAttempt, UserDailyQuota, UserSubscription, UserSubscriptionEvent, UserWallet, WalletStatement); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H2",
-      "location": {
-        "file": "internal/modules/wardrobe/domain/entities/table_name.go"
-      },
-      "severity": "warning",
-      "detail": "file carries behavior for 3 types (Outfit, OutfitItem, WardrobeItem); split by responsibility",
-      "status": "open"
+      "detail": "accepted-keep: three daily-snapshot aggregates (admin/brand/user) serve the same dashboard concern",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H2",
@@ -735,8 +666,8 @@
         "file": "internal/shared/application/event/consumer.go"
       },
       "severity": "warning",
-      "detail": "file carries behavior for 3 types (Message, PermanentError, RetryableError); split by responsibility",
-      "status": "open"
+      "detail": "accepted-keep: Message/PermanentError/RetryableError serve one concern — the event consumer contract",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H2",
@@ -744,208 +675,8 @@
         "file": "internal/shared/domain/entities/jsonb.go"
       },
       "severity": "warning",
-      "detail": "file carries behavior for 3 types (JSONDocument, bodyProfile, preferredColors); split by responsibility",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/admin/presentation/router/router.go",
-        "symbol": "router.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file router.go exists in 8 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/admin/provider.go",
-        "symbol": "provider.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file provider.go exists in 9 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/fashion, internal/modules/identity, internal/modules/notification, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/dto/dashboard_dto.go",
-        "symbol": "dashboard_dto.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file dashboard_dto.go exists in 4 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/identity, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/errors/errors.go",
-        "symbol": "errors.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file errors.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/cost/helper.go",
-        "symbol": "helper.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file helper.go exists in 3 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/cost/usecase.go",
-        "symbol": "usecase.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file usecase.go exists in 3 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/plan.go",
-        "symbol": "plan.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file plan.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/subscription); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/domain/entities/base_types.go",
-        "symbol": "base_types.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file base_types.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/domain/entities/table_name.go",
-        "symbol": "table_name.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file table_name.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/domain/repositories/readmodels.go",
-        "symbol": "readmodels.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file readmodels.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/presentation/contract/dashboard_reader.go",
-        "symbol": "dashboard_reader.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file dashboard_reader.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/fashion, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/presentation/handler/admin_handler.go",
-        "symbol": "admin_handler.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file admin_handler.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/identity); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/aiexecutor/presentation/worker/subscription_handler.go",
-        "symbol": "subscription_handler.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file subscription_handler.go exists in 2 modules (internal/modules/aiexecutor, internal/modules/subscription); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/application/dto/chat.go",
-        "symbol": "chat.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file chat.go exists in 2 modules (internal/modules/brand, internal/modules/fashion); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/application/usecase/item/contractuc/contract_uc.go",
-        "symbol": "contract_uc.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file contract_uc.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/application/usecase/item/fashion_event_uc.go",
-        "symbol": "fashion_event_uc.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file fashion_event_uc.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/domain/repositories/interfaces.go",
-        "symbol": "interfaces.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file interfaces.go exists in 3 modules (internal/modules/brand, internal/modules/fashion, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/presentation/worker/fashion_bind_worker.go",
-        "symbol": "fashion_bind_worker.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file fashion_bind_worker.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/brand/presentation/worker/fashion_event_worker.go",
-        "symbol": "fashion_event_worker.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file fashion_event_worker.go exists in 2 modules (internal/modules/brand, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
-        "file": "internal/modules/fashion/application/dto/recommendation.go",
-        "symbol": "recommendation.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file recommendation.go exists in 2 modules (internal/modules/fashion, internal/modules/wardrobe); audit before merging",
-      "status": "open"
+      "detail": "accepted-keep: JSONDocument plus its small parse helpers serve one concern (JSONB column handling)",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H8",
@@ -1146,5 +877,5 @@
       "status": "accepted-with-reason"
     }
   ],
-  "acceptedKeeps": 18
+  "acceptedKeeps": 22
 }

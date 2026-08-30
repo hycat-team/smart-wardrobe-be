@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -103,7 +104,12 @@ func checkFuncLength(pf *parsedFile) []Violation {
 // checkBehaviorStructs implements H2: a production file should carry behavior
 // for at most one type. Pure data-shape files (DTOs, entities) are exempt by
 // design — only structs that own methods count as behavior-carrying.
+// table_name.go is exempt as well: GORM TableName() boilerplate is grouped per
+// module on purpose (splitting it would scatter one-line methods).
 func checkBehaviorStructs(pf *parsedFile) []Violation {
+	if filepath.Base(pf.Path) == "table_name.go" {
+		return nil
+	}
 	structsWithMethods := map[string]bool{}
 	ast.Inspect(pf.AST, func(n ast.Node) bool {
 		if fn, ok := n.(*ast.FuncDecl); ok && fn.Recv != nil && len(fn.Recv.List) > 0 {

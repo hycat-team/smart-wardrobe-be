@@ -22,10 +22,10 @@ tool `hygiene-scan` và schema của các artifact báo cáo.
 | H1 file-length (production) | >500 dòng | >800 dòng | Loại trừ generated |
 | H1 file-length (test) | >750 dòng | >1200 dòng | Nới +50% |
 | H1 func-length | >80 dòng | — (warning only) | Per-function |
-| H2 struct-per-file | >2 struct không cùng mối quan tâm | — | "Cùng mối quan tâm" = cùng phục vụ một use case trong file |
+| H2 struct-per-file | >2 struct không cùng mối quan tâm | — | "Cùng mối quan tâm" = cùng phục vụ một use case trong file; miễn table_name.go (boilerplate GORM) |
 | H4 boundary / layering | — | import cấm, bỏ qua tầng | Bảng Allowed/Prohibited Constitution §II/§IV; `provider.go`, `di`, `bootstrap` được miễn rule bỏ qua tầng |
 | H5 dead-code | — | — | Mọi kết quả gắn `needs-confirmation` (FR-008) |
-| H6 duplication | cụm nghi vấn | — | Chỉ gợi ý, quyết định bằng audit tay |
+| H6 duplication | — (heuristic đã nghỉ) | — | Audit thủ công — same-name-file heuristic nghỉ hổ 2026-08-30, tool không tự emit H6 |
 | H7 naming | lệch chuẩn | — | Heuristic theo design-pattern.md |
 | H8 error-handling | lệch chuẩn | — | Heuristic apperror / %w / WrapHandler. Miễn: sentinel package-level `var ErrXxx = errors.New(...)` (tên biến tiền tố `Err`) và `fmt.Errorf` message-only (không có argument kiểu error) — chỉ flag `fmt.Errorf` có error argument thiếu `%w` (FR-003) |
 
