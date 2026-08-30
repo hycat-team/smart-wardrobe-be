@@ -126,7 +126,9 @@ func (uc *FashionWorkerUseCase) handleJobFailure(ctx context.Context, job dto.Fa
 		Status:        analyzetaskstatus.Failed,
 		Total:         job.Total,
 		Index:         job.Index,
-		Error:         err.Error(),
+		// The raw provider error must not reach the SSE stream; it is already
+		// logged above and this message is the only user-facing detail.
+		Error: processingFailureReasonMessage,
 	}
 	_ = uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		if job.FashionItemID != nil {

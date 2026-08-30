@@ -44,22 +44,22 @@ func (s *RedisOtpService) GenerateOtp(ctx context.Context, email string, tempUse
 
 	err := s.cache.SetRaw(ctx, otpKey, otpCode, expiry)
 	if err != nil {
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	err = s.cache.SetRaw(ctx, attemptKey, "0", expiry)
 	if err != nil {
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	err = s.cache.SetRaw(ctx, dataKey, tempUserDataJson, expiry)
 	if err != nil {
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	err = s.cooldown.SetCooldown(ctx, cooldownKey, cooldownTTL)
 	if err != nil {
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	return otpCode, nil
@@ -75,7 +75,7 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 		if errors.Is(err, shared_infra_caching.ErrKeyNotFound) {
 			return "", apperror.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
 		}
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	tempUserData, err := s.cache.GetRaw(ctx, dataKey)
@@ -83,12 +83,12 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 		if errors.Is(err, shared_infra_caching.ErrKeyNotFound) {
 			return "", apperror.NewBadRequest("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới.")
 		}
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 
 	attemptsStr, err := s.cache.GetRaw(ctx, attemptKey)
 	if err != nil && !errors.Is(err, shared_infra_caching.ErrKeyNotFound) {
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 	if errors.Is(err, shared_infra_caching.ErrKeyNotFound) {
 		attemptsStr = "0"
@@ -123,7 +123,11 @@ func (s *RedisOtpService) VerifyOtp(ctx context.Context, email string, otpCode s
 
 func (s *RedisOtpService) IsInResendCooldown(ctx context.Context, email string, purpose string) (bool, error) {
 	key := otpconstants.BuildKey(purpose, otpconstants.KeyCooldown, email)
-	return s.cooldown.IsInCooldown(ctx, key)
+	inCooldown, err := s.cooldown.IsInCooldown(ctx, key)
+	if err != nil {
+		return false, cacheUnavailable(err)
+	}
+	return inCooldown, nil
 }
 
 func (s *RedisOtpService) GetData(ctx context.Context, email string, purpose string) (string, error) {
@@ -133,9 +137,15 @@ func (s *RedisOtpService) GetData(ctx context.Context, email string, purpose str
 		if errors.Is(err, shared_infra_caching.ErrKeyNotFound) {
 			return "", nil
 		}
-		return "", err
+		return "", cacheUnavailable(err)
 	}
 	return tempUserData, nil
+}
+
+// cacheUnavailable maps raw Redis errors to a client-safe 503 so internal
+// network detail (e.g. dial tcp addresses) never reaches handlers.
+func cacheUnavailable(err error) error {
+	return apperror.NewUpstreamUnavailable(err)
 }
 
 func (s *RedisOtpService) generateSecureOTP() string {

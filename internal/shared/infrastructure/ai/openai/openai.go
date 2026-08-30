@@ -74,7 +74,7 @@ func CallTextStream(
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			errChan <- fmt.Errorf("OpenAI Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			errChan <- apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 			return
 		}
 
@@ -180,7 +180,7 @@ func CallText(
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var openAIResp struct {
@@ -265,7 +265,7 @@ func CallVision(ctx context.Context, client *http.Client, provider config.APIPro
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var openAIResp struct {
@@ -325,7 +325,7 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			return nil, fmt.Errorf("OpenAI Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			return nil, apperror.NewUpstreamUnavailable(fmt.Errorf("OpenAI Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 		}
 
 		var openAIResp struct {

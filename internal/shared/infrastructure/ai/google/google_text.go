@@ -74,7 +74,7 @@ func CallTextStream(
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			errChan <- fmt.Errorf("Google Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			errChan <- apperror.NewUpstreamUnavailable(fmt.Errorf("Google Text Stream API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 			return
 		}
 
@@ -189,7 +189,7 @@ func CallText(
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Google Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("Google Text API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var googleResp struct {

@@ -10,6 +10,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/utils/contextutils"
 	"smart-wardrobe-be/internal/pkg/utils/streamutils"
 	"smart-wardrobe-be/internal/pkg/utils/validation"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 
@@ -317,8 +318,11 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 			if !ok {
 				commitCalled = true
 				if err := commitFn(true); err != nil {
+					// The raw error may contain provider or SQL detail; the SSE
+					// event carries only the generic message while c.Error keeps
+					// the full detail for the server log.
 					_ = c.Error(err)
-					_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", streamutils.SanitizeSSEData(err.Error()))
+					_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", streamutils.SanitizeSSEData(apperror.GenericInternalMessage))
 					flusher.Flush()
 					return nil
 				}

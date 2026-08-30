@@ -2,6 +2,8 @@ package apperror
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -62,7 +64,8 @@ func TestDefaultConstructorCapturesOriginStack(t *testing.T) {
 }
 
 func TestWrapPlainErrorFallsBackToInternalError(t *testing.T) {
-	err := Wrap(errors.New("plain failure"))
+	plain := errors.New("plain failure")
+	err := Wrap(plain)
 
 	appErr, ok := err.(*Error)
 	if !ok {
@@ -71,8 +74,47 @@ func TestWrapPlainErrorFallsBackToInternalError(t *testing.T) {
 	if appErr.Status != 500 {
 		t.Fatalf("expected 500, got %d", appErr.Status)
 	}
-	if appErr.Message != "plain failure" {
-		t.Fatalf("unexpected message: %q", appErr.Message)
+	if appErr.Message != GenericInternalMessage {
+		t.Fatalf("expected generic message, got %q", appErr.Message)
+	}
+	if !errors.Is(appErr, plain) && appErr.Cause != plain {
+		t.Fatalf("expected cause chain to preserve the original error, got %v", appErr.Cause)
+	}
+}
+
+func TestFromUnknownErrorHidesRawText(t *testing.T) {
+	raw := errors.New(`pq: duplicate key value violates unique constraint "idx_x"`)
+	appErr := From(raw)
+
+	if appErr == nil {
+		t.Fatal("expected app error")
+	}
+	if appErr.Status != 500 {
+		t.Fatalf("expected 500, got %d", appErr.Status)
+	}
+	if appErr.Message != GenericInternalMessage {
+		t.Fatalf("expected generic message, got %q", appErr.Message)
+	}
+	if appErr.Cause != raw {
+		t.Fatalf("expected cause to preserve raw error for logging, got %v", appErr.Cause)
+	}
+	if strings.Contains(appErr.Error(), "duplicate key") {
+		t.Fatalf("raw error text must not appear in client-facing message")
+	}
+}
+
+func TestNewUpstreamUnavailableKeepsProviderDetailOutOfMessage(t *testing.T) {
+	cause := fmt.Errorf("OpenAI Text API error (HTTP 429): {\"error\":{\"message\":\"quota exceeded for project\"}}")
+	appErr := NewUpstreamUnavailable(cause)
+
+	if appErr.Status != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", appErr.Status)
+	}
+	if appErr.Message == "" || strings.Contains(appErr.Message, "quota") || strings.Contains(appErr.Message, "OpenAI") {
+		t.Fatalf("expected static client-safe message without provider detail, got %q", appErr.Message)
+	}
+	if appErr.Cause != cause {
+		t.Fatalf("expected cause to preserve provider detail for logs, got %v", appErr.Cause)
 	}
 }
 

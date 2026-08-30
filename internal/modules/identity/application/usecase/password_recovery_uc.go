@@ -93,7 +93,9 @@ func (uc *PasswordRecoveryUseCase) SendForgotPasswordOtp(ctx context.Context, in
 		"OTPCode":       otpCode,
 		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
 	}, input.Email); err != nil {
-		return false, identityerrors.ErrRecoveryEmailFailed()
+		sendErr := identityerrors.ErrRecoveryEmailFailed()
+		sendErr.Cause = err
+		return false, sendErr
 	}
 
 	return true, nil

@@ -83,7 +83,11 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 
 		res := *appErr
 		res.StackTrace = nil
+		res.DebugMessage = ""
 		if appEnv == "development" || gin.Mode() == gin.DebugMode {
+			if rawErr != nil && rawErr.Error() != appErr.Message {
+				res.DebugMessage = rawErr.Error()
+			}
 			res.StackTrace = errorutils.FilterStackTraceArray(appErr.Stack())
 		}
 

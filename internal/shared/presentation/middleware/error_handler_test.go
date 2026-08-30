@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -121,5 +122,62 @@ func TestGlobalErrorHandlerReturnsPanicStack(t *testing.T) {
 
 	if !strings.Contains(rec.Body.String(), "stackTrace") {
 		t.Fatalf("expected panic response to include stack trace, got %s", rec.Body.String())
+	}
+}
+
+func TestGlobalErrorHandlerHidesRawUnknownErrorInProduction(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+
+	router := gin.New()
+	router.Use(GlobalErrorHandler(testLogger{}, "production"))
+	router.GET("/db-fail", func(c *gin.Context) {
+		c.Error(errors.New(`pq: duplicate key value violates unique constraint "idx_x"`))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/db-fail", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "duplicate key") || strings.Contains(body, "idx_x") {
+		t.Fatalf("production response must not leak raw error text, got %s", body)
+	}
+	if !strings.Contains(body, apperror.GenericInternalMessage) {
+		t.Fatalf("expected generic message, got %s", body)
+	}
+	if strings.Contains(body, "debugMessage") {
+		t.Fatalf("production response must omit debugMessage, got %s", body)
+	}
+}
+
+func TestGlobalErrorHandlerExposesDebugMessageInDevelopment(t *testing.T) {
+	gin.SetMode(gin.DebugMode)
+
+	router := gin.New()
+	router.Use(GlobalErrorHandler(testLogger{}, "development"))
+	router.GET("/db-fail", func(c *gin.Context) {
+		c.Error(errors.New(`pq: duplicate key value violates unique constraint "idx_x"`))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/db-fail", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	var body struct {
+		Status       int    `json:"status"`
+		Message      string `json:"message"`
+		DebugMessage string `json:"debugMessage"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body.Message != apperror.GenericInternalMessage {
+		t.Fatalf("expected generic message, got %q", body.Message)
+	}
+	if !strings.Contains(body.DebugMessage, "duplicate key") {
+		t.Fatalf("expected raw error detail in debugMessage, got %q", body.DebugMessage)
 	}
 }

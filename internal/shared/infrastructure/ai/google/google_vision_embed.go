@@ -65,7 +65,7 @@ func CallVision(ctx context.Context, client *http.Client, provider config.APIPro
 
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Google Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+		return "", apperror.NewUpstreamUnavailable(fmt.Errorf("Google Vision API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 	}
 
 	var googleResp struct {
@@ -144,7 +144,7 @@ func CallEmbeddingBatch(ctx context.Context, client *http.Client, provider confi
 
 		if resp.StatusCode != http.StatusOK {
 			respBytes, _ := io.ReadAll(resp.Body)
-			return nil, fmt.Errorf("Google Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes))
+			return nil, apperror.NewUpstreamUnavailable(fmt.Errorf("Google Embedding Batch API error (HTTP %d): %s", resp.StatusCode, string(respBytes)))
 		}
 
 		var googleResp struct {

@@ -121,7 +121,9 @@ func (uc *RegisterUseCase) Register(ctx context.Context, input dto.RegisterReq) 
 		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
 	}, input.Email)
 	if err != nil {
-		return false, identityerrors.ErrOtpEmailSendFailed()
+		sendErr := identityerrors.ErrOtpEmailSendFailed()
+		sendErr.Cause = err
+		return false, sendErr
 	}
 
 	return true, nil
@@ -200,7 +202,9 @@ func (uc *RegisterUseCase) ResendRegisterOtp(ctx context.Context, input dto.Rese
 		"ExpiryMinutes": uc.cfg.Otp.ExpiryMinutes,
 	}, input.Email)
 	if err != nil {
-		return false, identityerrors.ErrOtpEmailSendFailed()
+		sendErr := identityerrors.ErrOtpEmailSendFailed()
+		sendErr.Cause = err
+		return false, sendErr
 	}
 
 	return true, nil

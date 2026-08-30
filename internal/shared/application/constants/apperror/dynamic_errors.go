@@ -37,3 +37,12 @@ func NewInternalError(detail string) *Error {
 func NewServiceUnavailable(detail string) *Error {
 	return New(http.StatusServiceUnavailable, "Dịch vụ tạm thời gián đoạn", detail)
 }
+
+// NewUpstreamUnavailable maps a third-party upstream failure to a client-safe
+// 503; the raw provider error travels only as Cause (never serialized) so
+// server logs keep the detail.
+func NewUpstreamUnavailable(cause error) *Error {
+	e := NewServiceUnavailable("Dịch vụ đang bận, vui lòng thử lại sau ít phút.")
+	e.Cause = cause
+	return e
+}
