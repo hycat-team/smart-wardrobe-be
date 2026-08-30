@@ -10,7 +10,7 @@ Hệ thống dùng **1 topic exchange chính `smart_wardrobe_exchange` + 1 DLX `
 *   **Point-to-point vs Pub/Sub**: Topic exchange nhưng 1 routing key → 1 queue là point-to-point (ví dụ `fashion.event.init` → `fashion_init_queue`), 1 routing key → 2 queue là pub/sub fan-out (ví dụ `fashion.event.processing-exhausted` → `wardrobe` + `elasticsearch`).
 *   **Outbox**: `topic` trong `outbox_records` chính là routing key; `OutboxWorker` poll `2s` + `LISTEN outbox_channel`, batch `200` parallel 10 với `FOR UPDATE SKIP LOCKED` bọc transaction.
 *   **Retry/DLQ**: Consumer phân loại `PermanentError` (poison JSON → `Nack(false,false)` → DLX `*.dlq` quorum) vs `RetryableError` (ES offline/transient → `Nack(true)` requeue/TTL); `x-delivery-limit=5` + `x-dead-letter-exchange` trên mỗi queue chính.
-*   **Channel & Prefetch**: `publisherChannel` riêng (Confirm) + mỗi consumer channel riêng với `Qos(prefetch=20, global=false)`, `concurrency` per-queue (3 cho `fashion_analyze`).
+*   **Channel & Prefetch**: `publisherChannel` riêng (Confirm) + mỗi consumer channel riêng với `Qos(prefetch=20, global=false)`; `prefetch/concurrency` per-queue là source of truth trong `topology.go` (3 cho `fashion_analyze`), được `RegisterTypedConsumer` đọc mặc định. Mọi consumer đăng ký qua `RegisterTypedConsumer[T]` (shared messaging): unmarshal fail → `PermanentError` → DLQ, correlationId từ message headers được inject vào context per-message để log 2 đầu cùng ID.
 *   **Luồng**: Gồm ba giai đoạn — Khởi động, Vận hành, Tắt — xem sơ đồ dưới.
 
 > Chi tiết queue cụ thể xem `internal/shared/infrastructure/messaging/topology.go` (registry), không liệt kê exhaustive ở đây.
