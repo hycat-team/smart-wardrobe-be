@@ -46,6 +46,11 @@ Mỗi lần chạy ghi (theo `-out`):
    5. `## Exclusions` — các thư mục/pattern loại trừ kèm lý do;
    6. `## Needs Confirmation` — dead code/archived cần xác nhận tay.
 
+Ngoài ra, tool đọc keep-list `internal/tools/hygiene-scan/accepted.json` (FR-011): finding
+advisory (H5/H8) khớp entry (rule + file + symbol) được đánh dấu status `accepted-with-reason`
+kèm reason trong bảng Violations — **không tính** vào tổng đếm fail/warning/needs-confirmation
+ở Summary/By Rule/By Module, nhưng vẫn được in minh bạch trong section Violations.
+
 Markdown phải render được trên GitHub (bảng GFM, không HTML).
 
 ## Behavioral guarantees
@@ -57,5 +62,9 @@ Markdown phải render được trên GitHub (bảng GFM, không HTML).
   hiện trong `violations`, chỉ xuất hiện trong `exclusions`.
 - `provider.go`, `internal/di/**`, `internal/bootstrap/**` được miễn rule "bỏ qua tầng"
   (nơi dựng Wire) nhưng KHÔNG được miễn rule import chéo module bị cấm.
+- stdout in thêm dòng `accepted-keep: N` (N = số finding khớp keep-list trong lần chạy).
+- Heuristic H8 miễn: sentinel package-level `var ErrXxx = errors.New(...)` (quy ước Go, tên
+  biến tiền tố `Err`) và `fmt.Errorf` message-only (không có argument kiểu error) — chỉ flag
+  `fmt.Errorf` có error argument mà thiếu `%w` (FR-003).
 - Tất cả vi phạm phải mang RuleID khớp bảng rule trong data-model.md (SC-005: quy chiếu được
   về điều luật trong `docs/development/code-hygiene.md` sau khi doc được chốt).

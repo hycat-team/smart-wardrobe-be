@@ -27,7 +27,7 @@ tool `hygiene-scan` và schema của các artifact báo cáo.
 | H5 dead-code | — | — | Mọi kết quả gắn `needs-confirmation` (FR-008) |
 | H6 duplication | cụm nghi vấn | — | Chỉ gợi ý, quyết định bằng audit tay |
 | H7 naming | lệch chuẩn | — | Heuristic theo design-pattern.md |
-| H8 error-handling | lệch chuẩn | — | Heuristic apperror / %w / WrapHandler |
+| H8 error-handling | lệch chuẩn | — | Heuristic apperror / %w / WrapHandler. Miễn: sentinel package-level `var ErrXxx = errors.New(...)` (tên biến tiền tố `Err`) và `fmt.Errorf` message-only (không có argument kiểu error) — chỉ flag `fmt.Errorf` có error argument thiếu `%w` (FR-003) |
 
 ## 2. Violation (một vi phạm)
 
@@ -40,7 +40,9 @@ tool `hygiene-scan` và schema của các artifact báo cáo.
 | Status | enum | open / refactored / accepted-with-reason |
 
 Trạng thái `accepted-with-reason` dùng cho dead code cần xác nhận tay và archived module
-(chỉ ghi nhận).
+(chỉ ghi nhận), và cho finding advisory khớp keep-list
+`internal/tools/hygiene-scan/accepted.json` (FR-011) — finding vẫn được liệt kê trong báo cáo
+nhưng không tính vào tổng đếm ở Summary/By Rule/By Module.
 
 ## 3. ScanRun (một lần scan) — schema snapshot JSON
 
@@ -58,6 +60,7 @@ Trạng thái `accepted-with-reason` dùng cho dead code cần xác nhận tay v
     "by_module": { "<module-name>": {"fail": n, "warning": n}, ... }
   },
   "violations": [ Violation... ],
+  "acceptedKeeps": int,   // số finding khớp keep-list (FR-011); optional
   "metrics": {
     "files_over_500": int, "files_over_800": int,
     "cross_module_prohibited_imports": int,

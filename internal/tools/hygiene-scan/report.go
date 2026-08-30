@@ -15,13 +15,18 @@ func buildRunID(now time.Time) string {
 	return now.Format("20060102-150405")
 }
 
-// summarize rolls violations up per rule and per module.
+// summarize rolls violations up per rule and per module. Findings accepted
+// with a keep-reason (FR-011) are excluded from the counts but remain listed
+// in the report.
 func summarize(violations []Violation) Summary {
 	summary := Summary{
 		ByRule:   map[string]RuleSummary{},
 		ByModule: map[string]RuleSummary{},
 	}
 	for _, v := range violations {
+		if v.Status == StatusAcceptedWithReason {
+			continue
+		}
 		rule := summary.ByRule[v.RuleID]
 		incRule := &rule
 		addSeverity(incRule, v.Severity)

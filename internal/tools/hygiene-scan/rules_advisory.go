@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -141,13 +142,19 @@ func checkNaming(pf *parsedFile) []Violation {
 //   - presentation handlers must not construct raw business errors
 //     (errors.New / fmt.Errorf) — they delegate to use cases;
 //   - use cases must not create bare errors.New — use apperror factories or
-//     module domain error constructors.
+//     module domain error constructors, EXCEPT package-level sentinels named
+//     with the "Err" prefix (standard Go convention, see FR-003);
+//   - use cases must not drop an error cause in fmt.Errorf (error-typed
+//     argument without %w). Message-only fmt.Errorf (no error argument) is
+//     accepted — there is nothing to chain.
 func checkErrorHandling(pf *parsedFile) []Violation {
 	isHandler := strings.Contains(pf.Path, "/presentation/handler/")
 	isUseCase := strings.Contains(pf.Path, "/application/usecase/")
 	if !isHandler && !isUseCase {
 		return nil
 	}
+
+	sentinelPos := collectSentinelPositions(pf.AST)
 
 	var out []Violation
 	ast.Inspect(pf.AST, func(n ast.Node) bool {
@@ -171,12 +178,12 @@ func checkErrorHandling(pf *parsedFile) []Violation {
 		case isHandler && (callee == "errors.New" || callee == "fmt.Errorf"):
 			flag = true
 			detail = "handler constructs raw error; delegate business errors to the use case"
-		case isUseCase && callee == "errors.New":
+		case isUseCase && callee == "errors.New" && !sentinelPos[call.Pos()]:
 			flag = true
 			detail = "use case constructs bare errors.New; use apperror factory or domain error constructor"
-		case isUseCase && callee == "fmt.Errorf" && !hasWrapVerb(call):
+		case isUseCase && callee == "fmt.Errorf" && !hasWrapVerb(call) && hasErrorLikeArg(call):
 			flag = true
-			detail = "use case uses fmt.Errorf without %w; wrap the cause or use apperror"
+			detail = "use case drops the error cause in fmt.Errorf; wrap it with %w or use apperror"
 		}
 		if !flag {
 			return true
@@ -191,6 +198,50 @@ func checkErrorHandling(pf *parsedFile) []Violation {
 		return true
 	})
 	return out
+}
+
+// collectSentinelPositions records the call positions of package-level
+// `var ErrXxx = errors.New(...)` declarations so the sentinel convention is
+// exempt from the bare errors.New rule.
+func collectSentinelPositions(node ast.Node) map[token.Pos]bool {
+	positions := make(map[token.Pos]bool)
+	ast.Inspect(node, func(n ast.Node) bool {
+		spec, ok := n.(*ast.ValueSpec)
+		if !ok || len(spec.Names) == 0 || len(spec.Values) != len(spec.Names) {
+			return true
+		}
+		for i, name := range spec.Names {
+			if !strings.HasPrefix(name.Name, "Err") {
+				continue
+			}
+			call, ok := spec.Values[i].(*ast.CallExpr)
+			if !ok {
+				continue
+			}
+			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "errors" && sel.Sel.Name == "New" {
+					positions[call.Pos()] = true
+				}
+			}
+		}
+		return true
+	})
+	return positions
+}
+
+// hasErrorLikeArg reports whether any argument identifier looks like an
+// error value by naming convention (err, errXxx, xxErr, xxError).
+func hasErrorLikeArg(call *ast.CallExpr) bool {
+	for _, arg := range call.Args {
+		if ident, ok := arg.(*ast.Ident); ok {
+			name := ident.Name
+			if name == "err" || strings.HasPrefix(name, "err") ||
+				strings.HasSuffix(name, "Err") || strings.HasSuffix(name, "Error") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // hasWrapVerb reports whether an fmt.Errorf call includes the %w verb.

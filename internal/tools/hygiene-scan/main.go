@@ -51,14 +51,17 @@ func run(rootFlag, outFlag, baselineFlag, format string) int {
 	hits, deadCodeNote := runDeadCodeScan(root)
 	violations = append(violations, deadCodeViolations(root, hits)...)
 
+	acceptedKeeps := applyAccepted(violations, loadAcceptedList(root))
+
 	run := &ScanRun{
-		RunID:        buildRunID(time.Now()),
-		GeneratedAt:  time.Now(),
-		Scope:        buildScope(files),
-		Summary:      summarize(violations),
-		Metrics:      computeMetrics(files, violations),
-		Violations:   violations,
-		DeadCodeNote: deadCodeNote,
+		RunID:         buildRunID(time.Now()),
+		GeneratedAt:   time.Now(),
+		Scope:         buildScope(files),
+		Summary:       summarize(violations),
+		Metrics:       computeMetrics(files, violations),
+		Violations:    violations,
+		AcceptedKeeps: acceptedKeeps,
+		DeadCodeNote:  deadCodeNote,
 	}
 
 	base, err := resolveBaseline(root, outDir, baselineFlag)
@@ -152,6 +155,7 @@ func printStdoutSummary(run *ScanRun, outDir string) {
 		run.Summary.bySeverity(SeverityFail),
 		run.Summary.bySeverity(SeverityWarning),
 		run.Summary.bySeverity(SeverityNeedsConfirmation))
+	fmt.Printf("accepted-keep: %d (see %s)\n", run.AcceptedKeeps, acceptedFilePath)
 
 	type row struct {
 		rule string

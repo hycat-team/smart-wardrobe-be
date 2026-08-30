@@ -78,11 +78,12 @@ type Metrics struct {
 
 // ScanRun is the full machine-readable result of one scan execution.
 type ScanRun struct {
-	RunID        string      `json:"run_id"`
-	GeneratedAt  time.Time   `json:"generated_at"`
-	Scope        Scope       `json:"scope"`
-	Summary      Summary     `json:"summary"`
-	Metrics      Metrics     `json:"metrics"`
-	Violations   []Violation `json:"violations"`
-	DeadCodeNote string      `json:"deadCodeNote,omitempty"`
+	RunID         string      `json:"run_id"`
+	GeneratedAt   time.Time   `json:"generated_at"`
+	Scope         Scope       `json:"scope"`
+	Summary       Summary     `json:"summary"`
+	Metrics       Metrics     `json:"metrics"`
+	Violations    []Violation `json:"violations"`
+	AcceptedKeeps int         `json:"acceptedKeeps,omitempty"`
+	DeadCodeNote  string      `json:"deadCodeNote,omitempty"`
 }

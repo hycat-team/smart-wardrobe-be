@@ -13,6 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
+// ErrLocalFallbackRoute is the sentinel signaled when the orchestrator
+// resolves a local route; no remote API call is made.
+var ErrLocalFallbackRoute = errors.New("ai route resolved to local fallback: bypassing remote api call")
+
 func mapOptions(opt aiexecutor_dto.OrchestratorOptions, requestID uuid.UUID, onUsage func(app_ai.TokenUsage)) app_ai.TextGenerationOptions {
 	return app_ai.TextGenerationOptions{
 		MaxOutputTokens:  opt.MaxOutputTokens,
@@ -90,7 +94,7 @@ func (uc *OrchestratorUseCase) GenerateChatText(ctx context.Context, systemPromp
 
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
-		return "", errors.New("ai route resolved to local fallback: bypassing remote api call")
+		return "", ErrLocalFallbackRoute
 	}
 
 	if decision.Route == airoute.Free {
@@ -148,7 +152,7 @@ func (uc *OrchestratorUseCase) GenerateRecommendationText(ctx context.Context, s
 
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
-		return "", errors.New("ai route resolved to local fallback: bypassing remote api call")
+		return "", ErrLocalFallbackRoute
 	}
 
 	if decision.Route == airoute.Free {
@@ -218,7 +222,7 @@ func (uc *OrchestratorUseCase) GenerateChatTextStream(ctx context.Context, syste
 
 	if decision.Route == airoute.Local {
 		_ = uc.costUC.Release(ctx, decision.RequestID, "local fallback triggered")
-		errChan <- errors.New("ai route resolved to local fallback: bypassing remote api call")
+		errChan <- ErrLocalFallbackRoute
 		close(textChan)
 		close(errChan)
 		return textChan, errChan
