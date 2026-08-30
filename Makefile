@@ -43,7 +43,7 @@ TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
 endif
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test test-race build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
+.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
 help:
 	@echo "========================================================================"
@@ -76,6 +76,8 @@ quality-help:
 	@echo "  make vet              : Run static analysis using 'go vet'"
 	@echo "  make test             : Run all Go unit and integration tests"
 	@echo "  make test-race        : Run all Go tests with race detector enabled"
+	@echo "  make test-integration : Run messaging integration tests (needs TEST_RABBITMQ_URL / TEST_DATABASE_URL)"
+	@echo "  make lint             : Run fmt-check + go vet"
 	@echo "  make build            : Compile Go backend binary"
 	@echo "  make check            : Run all checks sequentially (CI check suite)"
 
@@ -165,6 +167,14 @@ test-race:
 	@echo Running Go tests with race detector...
 	@$(RACE_TEST_CMD)
 	@echo Go race tests finished.
+
+lint: fmt-check vet
+	@echo Lint finished.
+
+test-integration:
+	@echo Running integration tests - requires TEST_RABBITMQ_URL / TEST_DATABASE_URL...
+	@go test -race -run Integration ./internal/shared/infrastructure/messaging/
+	@echo Integration tests finished.
 
 build:
 	@echo Building application for the current operating system...

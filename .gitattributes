@@ -1,0 +1,9 @@
+# Go source luôn LF — gofmt không chấp nhận CRLF (make lint/fmt-check fail trên Windows checkout)
+*.go text eol=lf
+# Go module files
+go.mod text eol=lf
+go.sum text eol=lf
+# Scripts chạy trong container/Linux
+Makefile text eol=lf
+Dockerfile text eol=lf
+*.sh text eol=lf
