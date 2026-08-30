@@ -99,6 +99,7 @@ func dialTestAMQP(t *testing.T) *amqp.Connection {
 // → DLX → fashion_analyze_queue.dlq. Publish đi qua PublishDirect để kiểm
 // chứng luôn publisher confirm (T023) trên broker thật.
 func TestIntegration_PoisonToDLQ_EndToEnd(t *testing.T) {
+	testEnvOrSkip(t, "TEST_RABBITMQ_URL") // gate: skip khi không có hạ tầng test
 	user := os.Getenv("TEST_RABBITMQ_USER")
 	pass := os.Getenv("TEST_RABBITMQ_PASSWORD")
 	if user == "" {
