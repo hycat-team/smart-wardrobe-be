@@ -1,10 +1,7 @@
 package dto
 
-import "time"
+import (
+	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
+)
 
-type UserAdminStatsDTO struct {
-	SnapshotDate   time.Time `json:"snapshotDate"`
-	TotalUsers     int       `json:"totalUsers"`
-	NewUsers       int       `json:"newUsers"`
-	ActiveUsersDau int       `json:"activeUsersDau"`
-}
+type UserAdminStatsDTO = repositories.UserAdminStatsDTO

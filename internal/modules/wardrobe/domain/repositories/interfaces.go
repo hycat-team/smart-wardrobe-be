@@ -2,13 +2,12 @@ package repositories
 
 import (
 	"context"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"github.com/google/uuid"
@@ -36,7 +35,7 @@ type IWardrobeItemRepository interface {
 	MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error)
 	CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	TouchLastUsedAt(ctx context.Context, ids []uuid.UUID, usedAt time.Time) error
-	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*dto.UserWardrobeSummaryStatsDTO, error)
+	GetUserWardrobeSummaryStats(ctx context.Context, userID uuid.UUID) (*UserWardrobeSummaryStatsDTO, error)
 	GetUnderutilizedItems(ctx context.Context, userID uuid.UUID, limit int) ([]*entities.WardrobeItem, error)
 }
 

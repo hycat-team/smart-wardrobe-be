@@ -1,0 +1,23 @@
+{
+  "entries": [
+    { "ruleId": "H5", "file": "internal/shared/domain/entities/jsonb.go", "symbol": "Scan", "reason": "implements sql.Scanner — GORM contract, called by the database driver" },
+    { "ruleId": "H5", "file": "internal/shared/domain/entities/vector.go", "symbol": "Scan", "reason": "implements sql.Scanner — GORM contract for pgvector column" },
+    { "ruleId": "H5", "file": "internal/shared/presentation/worker/base_worker.go", "symbol": "Name", "reason": "BaseWorker framework accessor (pair with Start/Stop/Context/SetHealthCheck)" },
+    { "ruleId": "H5", "file": "internal/shared/presentation/middleware/ratelimit.go", "symbol": "Stop", "reason": "shutdown hook for the cleanup goroutine started in NewRateLimitMiddleware" },
+    { "ruleId": "H5", "file": "internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go", "symbol": "Total", "reason": "used by ranking tests (scoring_test.go) to assert fallback candidate counts" },
+    { "ruleId": "H5", "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go", "symbol": "buildRecommendationSeasonalityCondition", "reason": "used by fashion_item_repo_hybrid_test.go to assert seasonality SQL" },
+    { "ruleId": "H5", "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go", "symbol": "RestoreLifetimeFallbackIfExpired", "reason": "exported state-machine transition, covered by state_machine_test.go" },
+    { "ruleId": "H5", "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go", "symbol": "expiryFor", "reason": "used by RestoreLifetimeFallbackIfExpired cluster and state_machine_test.go" },
+    { "ruleId": "H5", "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go", "symbol": "AddProductDays", "reason": "used by expiryFor and state_machine_test.go" },
+    { "ruleId": "H5", "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go", "symbol": "clearFallback", "reason": "used by RestoreLifetimeFallbackIfExpired" },
+    { "ruleId": "H5", "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go", "symbol": "BuildRecommendationPrompt", "reason": "used by synthesis_test.go to lock the stylist prompt contract" },
+    { "ruleId": "H5", "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go", "symbol": "isWardrobeRelatedQuery", "reason": "used by helpers_test.go to lock keyword-detection behavior" },
+    { "ruleId": "H5", "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lifecycle_decay.go", "symbol": "CalculateLifecycleDecayFactor", "reason": "used by lifecycle_decay_test.go to lock decay formula" },
+    { "ruleId": "H8", "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go", "symbol": "errors.New", "reason": "one-off parse-guard errors inside summary JSON extraction; no chain to wrap" },
+    { "ruleId": "H8", "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go", "symbol": "errors.New", "reason": "one-off defensive parse guards; no chain to wrap" },
+    { "ruleId": "H1", "file": "internal/modules/brand/application/usecase/benefit/usecase_test.go", "symbol": "", "reason": "test file length accepted (table-driven fixtures); threshold already relaxed +50%" },
+    { "ruleId": "H2", "file": "internal/shared/application/event/consumer.go", "symbol": "", "reason": "Message/PermanentError/RetryableError serve one concern — the event consumer contract" },
+    { "ruleId": "H2", "file": "internal/shared/domain/entities/jsonb.go", "symbol": "", "reason": "JSONDocument plus its small parse helpers serve one concern (JSONB column handling)" },
+    { "ruleId": "H2", "file": "internal/modules/dashboard/domain/entities/dashboard_snapshots.go", "symbol": "", "reason": "three daily-snapshot aggregates (admin/brand/user) serve the same dashboard concern" }
+  ]
+}

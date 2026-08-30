@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/usersubscriptionstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/shared/domain/repositories"
@@ -30,6 +29,6 @@ type IUserSubscriptionRepository interface {
 	GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error)
 	BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error
 	ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error
-	GetDistributionByPlanCode(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error)
+	GetDistributionByPlanCode(ctx context.Context) ([]SubscriptionDistributionDTO, error)
 	ListAdmin(ctx context.Context, filter AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error)
 }

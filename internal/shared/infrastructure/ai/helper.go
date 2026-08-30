@@ -1,8 +1,6 @@
 package ai
 
 import (
-	"bufio"
-	"io"
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
 	"strings"
@@ -50,33 +48,4 @@ func executeWithFallback[T any](
 	}
 
 	return result, nil
-}
-
-// parseSSEStream reads SSE stream data from reader and invokes callback for each line starting with "data:"
-func parseSSEStream(reader io.Reader, onData func(data string) error) error {
-	bufReader := bufio.NewReader(reader)
-	for {
-		line, err := bufReader.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "data:") {
-			continue
-		}
-
-		data := strings.TrimPrefix(line, "data:")
-		data = strings.TrimSpace(data)
-		if data == "" {
-			continue
-		}
-
-		if err := onData(data); err != nil {
-			return err
-		}
-	}
 }

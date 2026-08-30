@@ -199,19 +199,6 @@ func ApplyTransition(sub *entities.UserSubscription, plan *entities.Subscription
 	return resolution, event, nil
 }
 
-func applyCurrent(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, snapshot entities.JSONDocument, started time.Time, expiry *time.Time) {
-	sub.SubscriptionPlanID = plan.ID
-	sub.SubscriptionPlan = plan
-	sub.CurrentPlanCode = plan.Slug
-	sub.CurrentTierRank = plan.TierRank
-	sub.CurrentPlanKind = plan.PlanKind
-	sub.CurrentBenefitSnapshot = snapshot
-	sub.StartedAt = started
-	sub.ExpiresAt = expiry
-	if plan.PlanKind != plankind.Finite {
-		sub.IsAutoRenewEnabled = false
-	}
-}
 func expiryFor(plan *entities.SubscriptionPlan, base time.Time) *time.Time {
 	if plan.PlanKind != plankind.Finite || plan.DurationDays == nil {
 		return nil

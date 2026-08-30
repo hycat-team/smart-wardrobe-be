@@ -21,12 +21,3 @@ func isValidBrandStatus(status brandstatus.BrandStatus) bool {
 		return false
 	}
 }
-
-func isValidBrandMemberRole(role brandmemberrole.BrandMemberRole) bool {
-	switch role {
-	case brandmemberrole.Owner, brandmemberrole.Staff:
-		return true
-	default:
-		return false
-	}
-}

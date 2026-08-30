@@ -93,7 +93,9 @@ func (c *ElasticsearchClient) doRequest(ctx context.Context, method, urlPath str
 			zap.String("response", string(respBody)),
 		)
 
-		return nil, apperror.NewError(resp.StatusCode, "Hệ thống gặp sự cố", string(respBody))
+		// The ES response body stays in the log above; the client-facing
+		// error must be static so the raw body never reaches callers.
+		return nil, apperror.NewUpstreamUnavailable(fmt.Errorf("elasticsearch error status %d", resp.StatusCode))
 	}
 
 	return respBody, nil

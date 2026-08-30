@@ -5062,7 +5062,6 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Cho phép owner thêm nhiều thành viên với vai trò staff bằng email hoặc tên đăng nhập. API này không tạo owner mới.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5072,7 +5071,6 @@ const docTemplate = `{
                 "tags": [
                     "Brand Member"
                 ],
-                "summary": "Thêm thành viên vào brand",
                 "parameters": [
                     {
                         "type": "string",

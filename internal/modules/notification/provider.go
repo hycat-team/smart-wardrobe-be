@@ -15,5 +15,6 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(usecase.IEmailSender), new(*communication.SmtpSender)),
 	contract.NewNotificationContract,
 	email.NewEmailUseCase,
+	email.NewOutboxEmailUseCase,
 	worker.NewEmailWorker,
 )

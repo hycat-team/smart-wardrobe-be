@@ -64,14 +64,6 @@ func ErrDepositInitFailed() *apperror.Error {
 	return apperror.NewInternalError("Không thể khởi tạo giao dịch nạp tiền.")
 }
 
-func ErrDepositMustBeInteger() *apperror.Error {
-	return apperror.NewBadRequest("Số tiền nạp vào ví phải là số tiền nguyên theo đơn vị VND.")
-}
-
-func ErrPaymentLinkUpdateFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể cập nhật thông tin liên kết thanh toán.")
-}
-
 func ErrQueryWalletBalanceFailed() *apperror.Error {
 	return apperror.NewInternalError("Không thể truy vấn thông tin số dư ví.")
 }
@@ -80,24 +72,8 @@ func ErrWalletInsufficientBalance() *apperror.Error {
 	return apperror.NewBadRequest("Số dư ví không đủ để thực hiện giao dịch.")
 }
 
-func ErrWalletCreateFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể khởi tạo ví mới.")
-}
-
-func ErrWalletBalanceUpdateFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể cập nhật số dư ví.")
-}
-
-func ErrWalletStatementSaveFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể lưu lịch sử giao dịch ví.")
-}
-
 func ErrUserSubscriptionNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy gói hội viên của tài khoản.")
-}
-
-func ErrSubscriptionExpiredAutoRenew() *apperror.Error {
-	return apperror.NewBadRequest("Gói hội viên của bạn đã hết hạn, không thể thiết lập tự động gia hạn.")
 }
 
 func ErrSubscriptionPlanNotFinite() *apperror.Error {
@@ -130,10 +106,6 @@ func ErrFreePlanDirectPurchase() *apperror.Error {
 
 func ErrDirectPurchaseCreateFailed() *apperror.Error {
 	return apperror.NewInternalError("Không thể tạo giao dịch thanh toán trực tiếp.")
-}
-
-func ErrPaymentLinkCreateFailed() *apperror.Error {
-	return apperror.NewInternalError("Không thể liên kết địa chỉ thanh toán.")
 }
 
 func ErrSearchPlanFailed() *apperror.Error {

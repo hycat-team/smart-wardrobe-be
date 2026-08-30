@@ -12,12 +12,17 @@ type ValidationErrorItem struct {
 	Message string `json:"message"`
 }
 
+// GenericInternalMessage is the only client-facing message for unrecognized
+// errors; raw error text must never leak into Message (see FR-005 Phase 9).
+const GenericInternalMessage = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau."
+
 type Error struct {
-	Status     int                   `json:"status"`
-	Title      string                `json:"title,omitempty"`
-	Message    string                `json:"message,omitempty"`
-	Errors     []ValidationErrorItem `json:"errors,omitempty"`
-	StackTrace any                   `json:"stackTrace,omitempty"`
+	Status       int                   `json:"status"`
+	Title        string                `json:"title,omitempty"`
+	Message      string                `json:"message,omitempty"`
+	DebugMessage string                `json:"debugMessage,omitempty"`
+	Errors       []ValidationErrorItem `json:"errors,omitempty"`
+	StackTrace   any                   `json:"stackTrace,omitempty"`
 
 	Cause    error  `json:"-"`
 	rawStack string `json:"-"`
@@ -86,11 +91,9 @@ func Wrap(err error, fallbackMsg ...string) error {
 		return appErr
 	}
 
-	msg := "Đã xảy ra lỗi hệ thống"
+	msg := GenericInternalMessage
 	if len(fallbackMsg) > 0 && fallbackMsg[0] != "" {
 		msg = fallbackMsg[0]
-	} else if err.Error() != "" {
-		msg = err.Error()
 	}
 
 	return &Error{
@@ -116,15 +119,9 @@ func From(err error) *Error {
 		return NewBadRequest("Định dạng mã nhận diện (UUID) không hợp lệ.")
 	}
 
-	if err.Error() == "" {
-		return NewInternalError("Đã xảy ra lỗi hệ thống")
-	}
-
-	wrapped := Wrap(err, err.Error())
-	var converted *Error
-	if errors.As(wrapped, &converted) {
-		return converted
-	}
-
-	return NewInternalError(err.Error())
+	// Unrecognized errors must not surface their raw text to the client; the
+	// original error stays available as Cause for server-side logging.
+	unrecognized := NewInternalError(GenericInternalMessage)
+	unrecognized.Cause = err
+	return unrecognized
 }

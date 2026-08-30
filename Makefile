@@ -43,7 +43,7 @@ FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*'
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
+.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate hygiene-scan fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
 help:
 	@echo "========================================================================"
@@ -62,6 +62,7 @@ dev-help:
 	@echo "  make wire             : Generate dependency injection code (Google Wire)"
 	@echo "  make swagger          : Generate Swagger API specifications"
 	@echo "  make generate         : Run both Wire and Swagger code generation"
+	@echo "  make hygiene-scan     : Run codebase hygiene scan (feature 017, report in specs/)"
 	@echo "  make fmt              : Format all Go source files"
 	@echo "  make tidy             : Tidy Go modules"
 	@echo "  make run              : Build and run the Go backend locally"
@@ -126,6 +127,11 @@ swagger:
 	@go run ./internal/tools/swagger-split -master $(SWAG_OUTPUT_DIR)/swagger.json -mapping $(SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(SWAG_OUTPUT_DIR)/modules
 
 generate: wire swagger
+
+hygiene-scan:
+	@echo "Running codebase hygiene scan (specs/017-codebase-hygiene-refactor)..."
+	@go run ./internal/tools/hygiene-scan
+	@echo "Hygiene scan finished. Report: specs/017-codebase-hygiene-refactor/reports/scan-report.md"
 
 fmt:
 	@echo Formatting Go source files...

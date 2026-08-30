@@ -74,10 +74,6 @@ func ErrBenefitUnlockTypeNotSupported() *apperror.Error {
 	return apperror.NewBadRequest("Loại mở khóa quyền lợi không được hỗ trợ.")
 }
 
-func ErrBenefitRequiredPointsNotMet() *apperror.Error {
-	return apperror.NewBadRequest("Quyền lợi yêu cầu số điểm cao hơn số dư hiện tại.")
-}
-
 func ErrBenefitRequiredTierNotMet() *apperror.Error {
 	return apperror.NewBadRequest("Tier của bạn không đạt yêu cầu để nhận quyền lợi này.")
 }

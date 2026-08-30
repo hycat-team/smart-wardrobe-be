@@ -120,26 +120,6 @@ func (r *FashionItemRepository) buildHybridCandidates(
 	return candidates, nil
 }
 
-// buildRecommendationTSQueryOR sinh chuỗi truy vấn tsquery của PostgreSQL nối với nhau bằng toán tử "OR" (||) từ danh sách các từ khóa văn bản, đồng thời chuẩn hóa Lowercase và loại bỏ dấu tiếng Việt (unaccent).
-func buildRecommendationTSQueryOR(terms []string) (string, []any) {
-	var parts []string
-	args := make([]any, 0, len(terms))
-	seen := map[string]bool{}
-	for _, term := range terms {
-		term = strings.TrimSpace(strings.ToLower(term))
-		if term == "" || seen[term] {
-			continue
-		}
-		seen[term] = true
-		parts = append(parts, "plainto_tsquery('simple', immutable_unaccent(lower(?)))")
-		args = append(args, term)
-	}
-	if len(parts) == 0 {
-		return "", nil
-	}
-	return strings.Join(parts, " || "), args
-}
-
 // buildRecommendationSeasonalityCondition xây dựng điều kiện SQL (SQL Where condition) để lọc các món đồ có mùa vụ (seasonality) phù hợp với mùa yêu cầu hoặc hỗ trợ tất cả các mùa (all-season).
 func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
 	aliases := recommendationSeasonalityAliases(seasons)
@@ -205,32 +185,6 @@ func recommendationSeasonalityAliases(seasons []string) []string {
 	}
 	sort.Strings(aliases)
 	return aliases
-}
-
-// recommendationSearchDocumentSQL định nghĩa cấu trúc tsvector của PostgreSQL bằng cách ghép nối tất cả các thuộc tính văn bản của tủ đồ (color, style, description, v.v.) để tìm kiếm toàn văn (FTS).
-func recommendationSearchDocumentSQL(includeCategory bool) string {
-	fields := []string{
-		"recommendation_fashion_items.color",
-		"recommendation_fashion_items.style",
-		"recommendation_fashion_items.material",
-		"recommendation_fashion_items.pattern",
-		"recommendation_fashion_items.fit",
-		"recommendation_fashion_items.seasonality",
-		"recommendation_fashion_items.description",
-	}
-	if includeCategory {
-		fields = append([]string{
-			"recommendation_categories.slug",
-			"recommendation_categories.name",
-		}, fields...)
-	}
-
-	parts := make([]string, 0, len(fields))
-	for _, field := range fields {
-		parts = append(parts, "coalesce("+field+", '')")
-	}
-
-	return "to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + ")))"
 }
 
 // recommendationSearchDocumentSQLWithJoin returns a tsvector expression using LEFT JOIN

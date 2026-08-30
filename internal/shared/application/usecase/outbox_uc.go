@@ -8,54 +8,45 @@ import (
 
 	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/pkg/logger"
-	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	"smart-wardrobe-be/internal/shared/application/event"
+	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type OutboxUseCase struct {
-	outboxRepo messaging.OutboxRepository
-	rabbitMQ   *messaging.RabbitMQClient
+	outboxRepo shared_repos.OutboxRepository
+	publisher  event.IRawMessagePublisher
+	gaugeProbe event.IOutboxGaugeProbe
 	cfg        *config.Config
 	logger     logger.Interface
 }
 
 func NewOutboxUseCase(
-	outboxRepo messaging.OutboxRepository,
-	rabbitMQ *messaging.RabbitMQClient,
+	outboxRepo shared_repos.OutboxRepository,
+	publisher event.IRawMessagePublisher,
+	gaugeProbe event.IOutboxGaugeProbe,
 	cfg *config.Config,
 	l logger.Interface,
 ) *OutboxUseCase {
 	return &OutboxUseCase{
 		outboxRepo: outboxRepo,
-		rabbitMQ:   rabbitMQ,
+		publisher:  publisher,
+		gaugeProbe: gaugeProbe,
 		cfg:        cfg,
 		logger:     l,
 	}
 }
 
-// RefreshGauges cập nhật gauges vận hành: outbox_pending từ DB,
-// queue_depth/dlq_depth từ RabbitMQ Management API. Lỗi chỉ log warn —
-// metrics không được phép giết worker.
+// RefreshGauges cập nhật gauge outbox_pending từ DB; queue_depth/dlq_depth
+// được probe infra-side. Lỗi chỉ log warn — metrics không được phép giết worker.
 func (uc *OutboxUseCase) RefreshGauges(ctx context.Context) {
 	pending, err := uc.outboxRepo.CountPending(ctx)
 	if err != nil {
 		uc.logger.Warn("[OutboxUseCase] Failed to count pending outbox records", zap.Error(err))
+		return
 	}
-
-	mgmtPort := uc.cfg.RabbitMQ.ManagementPort
-	if mgmtPort <= 0 {
-		mgmtPort = 15672
-	}
-	var queueDepth, dlqDepth int64
-	queueDepth, dlqDepth, err = messaging.FetchQueueDepths(ctx, uc.cfg.RabbitMQ.Host, mgmtPort,
-		uc.cfg.RabbitMQ.User, uc.cfg.RabbitMQ.Password, uc.logger)
-	if err != nil {
-		uc.logger.Warn("[OutboxUseCase] Failed to fetch queue depths from management API", zap.Error(err))
-	}
-
-	messaging.SetGauges(pending, queueDepth, dlqDepth)
+	uc.gaugeProbe.ProbeGauges(ctx, pending)
 }
 
 func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryMax int, retryAfter time.Duration) (int, error) {
@@ -84,7 +75,7 @@ func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryM
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			headers := amqp.Table{}
+			headers := map[string]any{}
 			if len(record.Headers) > 0 && string(record.Headers) != "{}" {
 				var h map[string]any
 				if err := json.Unmarshal(record.Headers, &h); err == nil {
@@ -96,7 +87,7 @@ func (uc *OutboxUseCase) PublishBatch(ctx context.Context, batchSize int, retryM
 					}
 				}
 			}
-			if err := uc.rabbitMQ.PublishDirect(ctx, record.Topic, record.Payload, headers); err != nil {
+			if err := uc.publisher.PublishDirect(ctx, record.Topic, record.Payload, headers); err != nil {
 				results[i] = result{id: record.ID.String(), publishErr: err}
 				return
 			}

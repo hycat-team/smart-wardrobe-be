@@ -120,14 +120,6 @@ func MapBrandMember(member *entities.BrandMember) *dto.BrandMemberRes {
 	}
 }
 
-func MapBrandMembers(members []*entities.BrandMember) []*dto.BrandMemberRes {
-	res := make([]*dto.BrandMemberRes, len(members))
-	for idx, member := range members {
-		res[idx] = MapBrandMember(member)
-	}
-	return res
-}
-
 func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserBriefRes) *dto.BrandMemberRes {
 	if member == nil {
 		return nil
@@ -190,14 +182,6 @@ func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserB
 		User:                 user,
 		LoyaltyAccount:       loyaltyAccount,
 	}
-}
-
-func MapBrandCustomers(customers []*entities.BrandCustomer) []*dto.BrandCustomerRes {
-	res := make([]*dto.BrandCustomerRes, len(customers))
-	for idx, customer := range customers {
-		res[idx] = MapBrandCustomer(customer, nil)
-	}
-	return res
 }
 
 func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandCustomerRes {

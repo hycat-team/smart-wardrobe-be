@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
 	"time"
 
 	"smart-wardrobe-be/internal/shared/application/constants/analyzetaskstatus"
@@ -55,10 +56,7 @@ type DashboardCategoryDTO struct {
 	Name string    `json:"name"`
 }
 
-type DashboardFashionItemCategoryDTO struct {
-	FashionItemID uuid.UUID  `json:"fashionItemId"`
-	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
-}
+type DashboardFashionItemCategoryDTO = repositories.DashboardFashionItemCategoryDTO
 
 type CategoryRes struct {
 	ID        uuid.UUID `json:"id"`

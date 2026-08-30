@@ -2,7 +2,7 @@ package dto
 
 import (
 	"smart-wardrobe-be/internal/modules/identity/domain/constants/userstatus"
-	"smart-wardrobe-be/internal/modules/identity/domain/entities"
+	"smart-wardrobe-be/internal/modules/identity/domain/repositories"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 	"time"
@@ -54,11 +54,7 @@ type UserSubscriptionRes struct {
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
 }
 
-type UserStyleProfileRes struct {
-	UserID          uuid.UUID                 `json:"userId"`
-	TasteEmbedding  entities.Vector           `json:"tasteEmbedding,omitempty"`
-	PreferredColors *entities.PreferredColors `json:"preferredColors,omitempty"`
-}
+type UserStyleProfileRes = repositories.UserStyleProfileRes
 
 type UserBodyProfileRes struct {
 	HeightCM       float64                  `json:"heightCm"`

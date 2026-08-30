@@ -102,7 +102,7 @@ func TestIntegration_OutboxPublishBatch(t *testing.T) {
 	defer client.Close()
 
 	outboxRepo := messaging.NewOutboxRepository(db)
-	uc := shared_uc.NewOutboxUseCase(outboxRepo, client, cfg, l)
+	uc := shared_uc.NewOutboxUseCase(outboxRepo, client, messaging.NewOutboxGaugeProbe(cfg, l), cfg, l)
 
 	queueBaseline, err := fetchQueueDepth(t, eventconstants.QueueAuditLog)
 	if err != nil {

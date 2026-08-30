@@ -23,21 +23,6 @@ func (uc *BrandItemUseCase) mapToRes(ctx context.Context, item *entities.BrandIt
 	return mapper.MapToBrandItemRes(item, fi)
 }
 
-func (uc *BrandItemUseCase) mapToBriefRes(ctx context.Context, item *entities.BrandItem) *dto.BrandItemBriefRes {
-	if item == nil {
-		return nil
-	}
-	brand, _ := uc.brandRepo.GetByID(ctx, item.BrandID)
-	var fi *fashion_dto.FashionItemBriefRes
-	if item.FashionItemID != nil {
-		briefs, _ := uc.fashionContract.ListFashionItemsBrief(ctx, []uuid.UUID{*item.FashionItemID})
-		if len(briefs) > 0 {
-			fi = briefs[0]
-		}
-	}
-	return mapper.MapBrandItemBrief(item, brand, fi)
-}
-
 func (uc *BrandItemUseCase) mapSliceToRes(ctx context.Context, items []*entities.BrandItem) []*dto.BrandItemRes {
 	if len(items) == 0 {
 		return []*dto.BrandItemRes{}

@@ -28,15 +28,3 @@ func IsItemLocked(items []*entities.WardrobeItem, itemID uuid.UUID, maxItems int
 	}
 	return false
 }
-
-// FilterActiveItems filters out locked items and returns only active (unlocked) items
-// according to the subscription plan limit.
-func FilterActiveItems(items []*entities.WardrobeItem, maxItems int) []*entities.WardrobeItem {
-	var activeItems []*entities.WardrobeItem
-	for idx, item := range items {
-		if idx < maxItems {
-			activeItems = append(activeItems, item)
-		}
-	}
-	return activeItems
-}

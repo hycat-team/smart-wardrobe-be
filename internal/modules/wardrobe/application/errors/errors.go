@@ -6,21 +6,6 @@ import (
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 )
 
-// ErrItemNotFoundWithID returns a not found error for a specific wardrobe item.
-func ErrItemNotFoundWithID(itemID any) *apperror.Error {
-	return apperror.NewNotFound(fmt.Sprintf("Không tìm thấy trang phục (Mã: %s).", itemID))
-}
-
-// ErrItemForbiddenWithID returns a forbidden error for a specific wardrobe item.
-func ErrItemForbiddenWithID(itemID any) *apperror.Error {
-	return apperror.NewForbidden(fmt.Sprintf("Trang phục (Mã: %s) không thuộc tủ đồ của bạn.", itemID))
-}
-
-// ErrItemSoldWithID returns a bad request error when a sold item is reused incorrectly.
-func ErrItemSoldWithID(itemID any) *apperror.Error {
-	return apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) đã được bán nên không thể đăng bài.", itemID))
-}
-
 // ErrWardrobeLimitExceededForClone returns a quota error for clone requests.
 func ErrWardrobeLimitExceededForClone(currentCount, maxItems, quantity int) *apperror.Error {
 	return apperror.NewForbidden(fmt.Sprintf("Số lượng bản sao vượt quá giới hạn tủ đồ của gói dịch vụ hiện tại (Tủ đồ: %d/%d, yêu cầu thêm: %d).", currentCount, maxItems, quantity))
@@ -56,14 +41,6 @@ func ErrOutfitItemInvalidOrForbidden(itemID any) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemID))
 }
 
-func ErrInvalidChatIDFormat() *apperror.Error {
-	return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
-}
-
-func ErrInvalidOutfitIDFormat() *apperror.Error {
-	return apperror.NewBadRequest("Định dạng mã bộ phối đồ không hợp lệ.")
-}
-
 func ErrSearchItemsFailed() *apperror.Error {
 	return apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
 }
@@ -84,24 +61,12 @@ func ErrCategoryNotFound() *apperror.Error {
 	return apperror.NewNotFound("Không tìm thấy danh mục.")
 }
 
-func ErrProcessFashionTextFailed() *apperror.Error {
-	return apperror.NewInternalError("Hệ thống không thể xử lý nội dung văn bản thời trang lúc này.")
-}
-
 func ErrRetryWardrobeAnalysisForbidden() *apperror.Error {
 	return apperror.NewBadRequest("Chỉ có thể thử phân tích lại trang phục đang lỗi hoặc cần rà soát.")
 }
 
 func ErrRetryWardrobeAnalysisInProgress() *apperror.Error {
 	return apperror.NewBadRequest("Trang phục này đang được xử lý hoặc không còn có thể thử phân tích lại.")
-}
-
-func ErrRetryWardrobeAnalysisCooldown() *apperror.Error {
-	return apperror.NewBadRequest("Bạn vừa thử phân tích lại trang phục này. Vui lòng đợi một chút rồi thử lại.")
-}
-
-func ErrItemToCloneNotFound() *apperror.Error {
-	return apperror.NewNotFound("Không tìm thấy trang phục cần sao chép.")
 }
 
 func ErrInvalidCloneQuantity() *apperror.Error {
@@ -130,26 +95,6 @@ func ErrCatalogItemNotFound() *apperror.Error {
 
 func ErrUploadImagesEmpty() *apperror.Error {
 	return apperror.NewBadRequest("Danh sách hình ảnh tải lên không được để trống.")
-}
-
-func ErrNoSuitableItemsForOutfit() *apperror.Error {
-	return apperror.NewBadRequest("Tủ đồ của bạn chưa có trang phục thích hợp để phối đồ.")
-}
-
-func ErrMinimumWardrobeItemsRequired() *apperror.Error {
-	return apperror.NewBadRequest("Tủ đồ của bạn cần có ít nhất 5 trang phục để hệ thống có thể tiến hành phối đồ. Hãy đăng tải thêm đồ nhé!")
-}
-
-func ErrNoOutfitsFound() *apperror.Error {
-	return apperror.NewBadRequest("Không tìm thấy bộ phối đồ nào phù hợp trong tủ đồ của bạn.")
-}
-
-func ErrChatNotFound() *apperror.Error {
-	return apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
-}
-
-func ErrInvalidOutfitStructure() *apperror.Error {
-	return apperror.NewInternalError("Cấu trúc bộ phối đồ từ AI không hợp lệ.")
 }
 
 func ErrOutfitNotFound() *apperror.Error {

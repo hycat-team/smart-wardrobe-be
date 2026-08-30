@@ -1,7 +1,6 @@
 package errorutils
 
 import (
-	"net/http"
 	"path/filepath"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	"strings"
@@ -194,18 +193,6 @@ func ToAppError(err error, fallbackMsg ...string) *apperror.Error {
 	}
 
 	return apperror.From(err)
-}
-
-func MapErrorToProblem(err error) (int, string, string) {
-	if err == nil {
-		return http.StatusOK, "", ""
-	}
-
-	if appErr := ToAppError(err); appErr != nil {
-		return appErr.Status, appErr.Title, appErr.Message
-	}
-
-	return http.StatusInternalServerError, "Lỗi hệ thống", err.Error()
 }
 
 func WrapError(err error, fallbackMsg ...string) error {

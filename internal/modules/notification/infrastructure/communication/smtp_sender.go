@@ -1,7 +1,6 @@
 package communication
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -108,12 +107,4 @@ func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) err
 	}
 	_ = conn.Quit()
 	return nil
-}
-
-func (s *SmtpSender) renderAndSend(ctx context.Context, tmpl *template.Template, to, subject string, data any) error {
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return fmt.Errorf("render template: %w", err)
-	}
-	return s.Send(ctx, to, subject, buf.String())
 }

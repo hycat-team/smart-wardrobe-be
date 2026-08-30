@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	aiexecutor_entities "smart-wardrobe-be/internal/modules/aiexecutor/domain/entities"
 
@@ -22,11 +21,11 @@ type IAICostRepository interface {
 	ExpireGrantsByUserID(ctx context.Context, userID uuid.UUID, now time.Time) error
 	CreateGrant(ctx context.Context, grant *aiexecutor_entities.AIPolicyGrant) error
 	CreateEvent(ctx context.Context, event *aiexecutor_entities.AIUsageEvent) error
-	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*dto.AIUsageAdminStatsDTO, error)
-	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]dto.AIEventDrillDownDTO, int64, error)
-	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]dto.AIUsageByOperationDTO, error)
+	GetAdminAIUsageStats(ctx context.Context, snapshotDate time.Time) (*AIUsageAdminStatsDTO, error)
+	GetAIEventsDrillDown(ctx context.Context, status string, page, limit int) ([]AIEventDrillDownDTO, int64, error)
+	GetAIUsageByOperation(ctx context.Context, fromDate, toDate time.Time) ([]AIUsageByOperationDTO, error)
 	GetTotalAIRequestCount(ctx context.Context, fromDate, toDate time.Time) (int64, error)
-	GetAIErrorBreakdown(ctx context.Context) ([]dto.AIErrorBreakdownDTO, error)
+	GetAIErrorBreakdown(ctx context.Context) ([]AIErrorBreakdownDTO, error)
 	GetUsageByUser(ctx context.Context, userID uuid.UUID, fromDate, toDate *time.Time, page, limit int) ([]*aiexecutor_entities.AIUsageEvent, int64, error)
 	ListGrantsByUser(ctx context.Context, userID uuid.UUID) ([]*aiexecutor_entities.AIPolicyGrant, error)
 	GetPolicyByID(ctx context.Context, policyID uuid.UUID) (*aiexecutor_entities.AICostPolicy, error)

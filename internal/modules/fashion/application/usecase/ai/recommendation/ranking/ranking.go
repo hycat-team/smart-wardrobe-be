@@ -122,31 +122,6 @@ func FallbackSourcePenalty(source types.CandidateSource) float64 {
 	}
 }
 
-// RetrievalScoreStats thu thập các thống kê (nhỏ nhất, lớn nhất, trung bình) trên điểm tìm kiếm gốc của các ứng viên trước khi xếp hạng lại.
-func RetrievalScoreStats(candidates []types.CandidateForRanking) types.RerankStats {
-	if len(candidates) == 0 {
-		return types.RerankStats{}
-	}
-	minScore := candidates[0].RetrievalScore
-	maxScore := candidates[0].RetrievalScore
-	total := 0.0
-	for _, candidate := range candidates {
-		score := candidate.RetrievalScore
-		if score < minScore {
-			minScore = score
-		}
-		if score > maxScore {
-			maxScore = score
-		}
-		total += score
-	}
-	return types.RerankStats{
-		MinScore: minScore,
-		MaxScore: maxScore,
-		AvgScore: total / float64(len(candidates)),
-	}
-}
-
 // RankedCandidateScoreStats thu thập các thống kê trên điểm số xếp hạng lại (reranking) cuối cùng của các ứng viên.
 func RankedCandidateScoreStats(candidates []types.RankedCandidate) types.RerankStats {
 	if len(candidates) == 0 {

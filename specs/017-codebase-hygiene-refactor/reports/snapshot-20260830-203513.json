@@ -1,0 +1,881 @@
+{
+  "run_id": "20260830-203513",
+  "generated_at": "2026-08-30T20:35:13.4723697+07:00",
+  "scope": {
+    "scanned_files": 635,
+    "test_files": 57,
+    "exclusions": [
+      "api/swagger/** (generated swagger artifacts)",
+      "bin/** (build output)",
+      "deployments/** (deployment configuration, no Go source)",
+      "specs/** (specification documents)",
+      "docs/** (documentation)",
+      "database/** (goose SQL migrations)",
+      ".git/** (vcs metadata)"
+    ]
+  },
+  "summary": {
+    "by_rule": {
+      "H1": {
+        "fail": 0,
+        "warning": 50,
+        "needsConfirmation": 0
+      }
+    },
+    "by_module": {
+      "aiexecutor": {
+        "fail": 0,
+        "warning": 2,
+        "needsConfirmation": 0
+      },
+      "brand": {
+        "fail": 0,
+        "warning": 7,
+        "needsConfirmation": 0
+      },
+      "dashboard": {
+        "fail": 0,
+        "warning": 3,
+        "needsConfirmation": 0
+      },
+      "fashion": {
+        "fail": 0,
+        "warning": 8,
+        "needsConfirmation": 0
+      },
+      "identity": {
+        "fail": 0,
+        "warning": 2,
+        "needsConfirmation": 0
+      },
+      "internal/bootstrap": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "internal/pkg": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "internal/shared": {
+        "fail": 0,
+        "warning": 8,
+        "needsConfirmation": 0
+      },
+      "internal/tools": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "notification": {
+        "fail": 0,
+        "warning": 1,
+        "needsConfirmation": 0
+      },
+      "subscription": {
+        "fail": 0,
+        "warning": 7,
+        "needsConfirmation": 0
+      },
+      "wardrobe": {
+        "fail": 0,
+        "warning": 9,
+        "needsConfirmation": 0
+      }
+    }
+  },
+  "metrics": {
+    "files_over_500": 0,
+    "files_over_800": 0,
+    "cross_module_prohibited_imports": 0,
+    "layer_skips": 0
+  },
+  "violations": [
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/bootstrap/app.go",
+        "line": 78,
+        "symbol": "App.Run"
+      },
+      "severity": "warning",
+      "detail": "function spans 102 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/cost/usecase.go",
+        "line": 43,
+        "symbol": "CostUseCase.Prepare"
+      },
+      "severity": "warning",
+      "detail": "function spans 93 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
+        "line": 193,
+        "symbol": "OrchestratorUseCase.GenerateChatTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 92 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/benefit/usecase_test.go"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: test file length accepted (table-driven fixtures); threshold already relaxed +50%",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/brand/member_uc.go",
+        "line": 17,
+        "symbol": "BrandUseCase.AddBrandMembers"
+      },
+      "severity": "warning",
+      "detail": "function spans 164 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/claim/usecase.go",
+        "line": 146,
+        "symbol": "BrandClaimUseCase.ClaimBrandCustomer"
+      },
+      "severity": "warning",
+      "detail": "function spans 85 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/crud_uc.go",
+        "line": 30,
+        "symbol": "BrandItemUseCase.CreateBrandItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/item/eligibility_uc.go",
+        "line": 20,
+        "symbol": "BrandItemUseCase.ListEligibleBrandItemsForStyling"
+      },
+      "severity": "warning",
+      "detail": "function spans 97 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/loyalty/helper.go",
+        "line": 109,
+        "symbol": "BrandLoyaltyUseCase.resolveBrandCustomerForPoints"
+      },
+      "severity": "warning",
+      "detail": "function spans 96 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/application/usecase/loyalty/points_uc.go",
+        "line": 21,
+        "symbol": "BrandLoyaltyUseCase.GrantLoyaltyPoints"
+      },
+      "severity": "warning",
+      "detail": "function spans 131 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/brand/presentation/router/router.go",
+        "line": 37,
+        "symbol": "Router.Init"
+      },
+      "severity": "warning",
+      "detail": "function spans 121 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/admin_dashboard_uc_impl.go",
+        "line": 103,
+        "symbol": "AdminDashboardUseCase.GetAIMarginAnalytics"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/dynamic_query_execute_uc.go",
+        "line": 20,
+        "symbol": "DynamicQueryUseCase.ExecuteDynamicQuery"
+      },
+      "severity": "warning",
+      "detail": "function spans 247 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/dashboard/application/usecase/user_dashboard_uc_impl.go",
+        "line": 110,
+        "symbol": "UserDashboardUseCase.GetWardrobeInsights"
+      },
+      "severity": "warning",
+      "detail": "function spans 87 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+        "line": 27,
+        "symbol": "buildChatSystemPromptWithLimits"
+      },
+      "severity": "warning",
+      "detail": "function spans 119 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/parser/parser.go",
+        "line": 114,
+        "symbol": "LocalNLPParser.Parse"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/fallback_hsl.go",
+        "line": 33,
+        "symbol": "RunLocalHSLMatching"
+      },
+      "severity": "warning",
+      "detail": "function spans 138 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/ranking/scoring.go",
+        "line": 51,
+        "symbol": "ScoreCandidateItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 189 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+        "line": 57,
+        "symbol": "buildRecommendationPrompt"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/workflow_helpers.go",
+        "line": 91,
+        "symbol": "OutfitRecommendationUseCase.filterCandidates"
+      },
+      "severity": "warning",
+      "detail": "function spans 289 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/worker/cleanup_uc.go",
+        "line": 99,
+        "symbol": "FashionWorkerUseCase.RecoverStaleProcessingItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 81 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid.go",
+        "line": 21,
+        "symbol": "FashionItemRepository.GetHybridCandidates"
+      },
+      "severity": "warning",
+      "detail": "function spans 102 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/identity/application/mapper/user_mapper.go",
+        "line": 43,
+        "symbol": "MapToUserRes"
+      },
+      "severity": "warning",
+      "detail": "function spans 87 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/identity/application/usecase/session_uc.go",
+        "line": 118,
+        "symbol": "SessionUseCase.RefreshToken"
+      },
+      "severity": "warning",
+      "detail": "function spans 106 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/notification/infrastructure/communication/smtp_sender.go",
+        "line": 28,
+        "symbol": "SmtpSender.Send"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/purchase/checkout.go",
+        "line": 24,
+        "symbol": "SubscriptionPurchaseUseCase.CreateDirectPurchase"
+      },
+      "severity": "warning",
+      "detail": "function spans 151 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/purchase/wallet.go",
+        "line": 23,
+        "symbol": "SubscriptionPurchaseUseCase.PurchasePlanWithWallet"
+      },
+      "severity": "warning",
+      "detail": "function spans 153 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/reconciliation/payment_reconciliation_usecase.go",
+        "line": 82,
+        "symbol": "PaymentReconciliationUseCase.reconcile"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
+        "line": 340,
+        "symbol": "SubscriptionUseCase.executePaidRenewal"
+      },
+      "severity": "warning",
+      "detail": "function spans 91 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/wallet/internal_wallet_transaction_workflow.go",
+        "line": 29,
+        "symbol": "ProcessWalletTransaction"
+      },
+      "severity": "warning",
+      "detail": "function spans 104 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/webhook/purchase_workflow.go",
+        "line": 19,
+        "symbol": "PaymentWebhookUseCase.executeDirectPurchaseWorkflow"
+      },
+      "severity": "warning",
+      "detail": "function spans 126 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/subscription/infrastructure/payment/payos/payos_service_impl.go",
+        "line": 57,
+        "symbol": "PayOSService.CreateCheckoutSession"
+      },
+      "severity": "warning",
+      "detail": "function spans 98 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/mapper/search_mapper.go",
+        "line": 13,
+        "symbol": "MapToSearchDocumentDTO"
+      },
+      "severity": "warning",
+      "detail": "function spans 91 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go",
+        "line": 74,
+        "symbol": "OutfitUseCase.SaveOutfit"
+      },
+      "severity": "warning",
+      "detail": "function spans 119 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/outfit/outfit_uc.go",
+        "line": 194,
+        "symbol": "OutfitUseCase.UpdateOutfit"
+      },
+      "severity": "warning",
+      "detail": "function spans 115 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/catalog/catalog_uc.go",
+        "line": 117,
+        "symbol": "WardrobeCatalogUseCase.InitClosetFromCatalog"
+      },
+      "severity": "warning",
+      "detail": "function spans 103 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_read.go",
+        "line": 90,
+        "symbol": "WardrobeItemUseCase.GetWardrobeItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 114 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go",
+        "line": 27,
+        "symbol": "WardrobeItemUseCase.CloneWardrobeItem"
+      },
+      "severity": "warning",
+      "detail": "function spans 138 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/item/item_uc_write.go",
+        "line": 386,
+        "symbol": "WardrobeItemUseCase.BatchUploadWardrobeItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 90 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/infrastructure/search/wardrobe_helper.go",
+        "line": 14,
+        "symbol": "WardrobeSearchService.parseSearchWardrobeItemRes"
+      },
+      "severity": "warning",
+      "detail": "function spans 84 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/modules/wardrobe/infrastructure/search/wardrobe_search.go",
+        "line": 15,
+        "symbol": "WardrobeSearchService.SearchItems"
+      },
+      "severity": "warning",
+      "detail": "function spans 81 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/pkg/logger/logger.go",
+        "line": 27,
+        "symbol": "New"
+      },
+      "severity": "warning",
+      "detail": "function spans 82 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/google/google_text.go",
+        "line": 17,
+        "symbol": "CallTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 123 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/google/google_text.go",
+        "line": 142,
+        "symbol": "CallText"
+      },
+      "severity": "warning",
+      "detail": "function spans 100 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/openai/openai.go",
+        "line": 19,
+        "symbol": "CallTextStream"
+      },
+      "severity": "warning",
+      "detail": "function spans 116 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/openai/openai.go",
+        "line": 137,
+        "symbol": "CallText"
+      },
+      "severity": "warning",
+      "detail": "function spans 84 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/ai/vision_embedding_service.go",
+        "line": 80,
+        "symbol": "AIService.EstimatePromptTokens"
+      },
+      "severity": "warning",
+      "detail": "function spans 83 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/infrastructure/messaging/rabbitmq_connection.go",
+        "line": 12,
+        "symbol": "RabbitMQClient.connect"
+      },
+      "severity": "warning",
+      "detail": "function spans 117 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/presentation/middleware/error_handler.go",
+        "line": 14,
+        "symbol": "GlobalErrorHandler"
+      },
+      "severity": "warning",
+      "detail": "function spans 89 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/shared/presentation/middleware/swagger_lock.go",
+        "line": 12,
+        "symbol": "SwaggerLockMiddleware"
+      },
+      "severity": "warning",
+      "detail": "function spans 193 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H1",
+      "location": {
+        "file": "internal/tools/swagger-split/main.go",
+        "line": 44,
+        "symbol": "run"
+      },
+      "severity": "warning",
+      "detail": "function spans 116 lines (threshold 80)",
+      "status": "open"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/modules/dashboard/domain/entities/dashboard_snapshots.go"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: three daily-snapshot aggregates (admin/brand/user) serve the same dashboard concern",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/shared/application/event/consumer.go"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: Message/PermanentError/RetryableError serve one concern — the event consumer contract",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H2",
+      "location": {
+        "file": "internal/shared/domain/entities/jsonb.go"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: JSONDocument plus its small parse helpers serve one concern (JSONB column handling)",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go",
+        "line": 30,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: one-off parse-guard errors inside summary JSON extraction; no chain to wrap",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go",
+        "line": 64,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: one-off parse-guard errors inside summary JSON extraction; no chain to wrap",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 71,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 147,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H8",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
+        "line": 154,
+        "symbol": "errors.New"
+      },
+      "severity": "warning",
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
+        "line": 148,
+        "symbol": "unreachable func: isWardrobeRelatedQuery"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by helpers_test.go to lock keyword-detection behavior",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
+        "line": 38,
+        "symbol": "unreachable func: BuildRecommendationPrompt"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by synthesis_test.go to lock the stylist prompt contract",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go",
+        "line": 58,
+        "symbol": "unreachable func: FallbackCandidateCounts.Total"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by ranking tests (scoring_test.go) to assert fallback candidate counts",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
+        "line": 124,
+        "symbol": "unreachable func: buildRecommendationSeasonalityCondition"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by fashion_item_repo_hybrid_test.go to assert seasonality SQL",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 139,
+        "symbol": "unreachable func: RestoreLifetimeFallbackIfExpired"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: exported state-machine transition, covered by state_machine_test.go",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 202,
+        "symbol": "unreachable func: expiryFor"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by RestoreLifetimeFallbackIfExpired cluster and state_machine_test.go",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 210,
+        "symbol": "unreachable func: AddProductDays"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by expiryFor and state_machine_test.go",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
+        "line": 217,
+        "symbol": "unreachable func: clearFallback"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by RestoreLifetimeFallbackIfExpired",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/lifecycle_decay.go",
+        "line": 13,
+        "symbol": "unreachable func: CalculateLifecycleDecayFactor"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: used by lifecycle_decay_test.go to lock decay formula",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/domain/entities/jsonb.go",
+        "line": 120,
+        "symbol": "unreachable func: JSONDocument.Scan"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: implements sql.Scanner — GORM contract, called by the database driver",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/domain/entities/vector.go",
+        "line": 29,
+        "symbol": "unreachable func: Vector.Scan"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: implements sql.Scanner — GORM contract for pgvector column",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/middleware/ratelimit.go",
+        "line": 78,
+        "symbol": "unreachable func: RateLimitMiddleware.Stop"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: shutdown hook for the cleanup goroutine started in NewRateLimitMiddleware",
+      "status": "accepted-with-reason"
+    },
+    {
+      "ruleId": "H5",
+      "location": {
+        "file": "internal/shared/presentation/worker/base_worker.go",
+        "line": 50,
+        "symbol": "unreachable func: BaseWorker.Name"
+      },
+      "severity": "needs-confirmation",
+      "detail": "accepted-keep: BaseWorker framework accessor (pair with Start/Stop/Context/SetHealthCheck)",
+      "status": "accepted-with-reason"
+    }
+  ],
+  "acceptedKeeps": 22
+}

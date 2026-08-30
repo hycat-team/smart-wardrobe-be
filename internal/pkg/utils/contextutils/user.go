@@ -64,20 +64,6 @@ func GetRoleSlug(c *gin.Context) (roleslug.RoleSlug, error) {
 	return roleslug.RoleSlug(role), nil
 }
 
-func GetEmail(c *gin.Context) (string, error) {
-	val, exists := c.Get(CtxEmail)
-	if !exists {
-		return "", apperror.ErrUnauthorized()
-	}
-
-	email, ok := val.(string)
-	if !ok {
-		return "", apperror.ErrUnauthorized()
-	}
-
-	return email, nil
-}
-
 func GetAccessToken(c *gin.Context) (string, error) {
 	val, exists := c.Get(CtxAccessToken)
 	if !exists {
@@ -90,27 +76,6 @@ func GetAccessToken(c *gin.Context) (string, error) {
 	}
 
 	return token, nil
-}
-
-// GetBrandID returns the resolved brand ID stored on the context by the brand
-// role middleware, or ErrUnauthorized if not present.
-func GetBrandID(c *gin.Context) (uuid.UUID, error) {
-	val, exists := c.Get(CtxBrandId)
-	if !exists {
-		return uuid.Nil, apperror.ErrUnauthorized()
-	}
-	switch v := val.(type) {
-	case uuid.UUID:
-		return v, nil
-	case string:
-		parsed, err := uuid.Parse(v)
-		if err != nil {
-			return uuid.Nil, apperror.ErrUnauthorized()
-		}
-		return parsed, nil
-	default:
-		return uuid.Nil, apperror.ErrUnauthorized()
-	}
 }
 
 // GetBrandRole returns the verified brand member role stored on the context by

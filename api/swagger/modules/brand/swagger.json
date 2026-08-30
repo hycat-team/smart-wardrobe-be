@@ -2415,7 +2415,6 @@
         "consumes": [
           "application/json"
         ],
-        "description": "Cho phép owner thêm nhiều thành viên với vai trò staff bằng email hoặc tên đăng nhập. API này không tạo owner mới.",
         "parameters": [
           {
             "description": "ID brand",
@@ -2457,7 +2456,6 @@
             }
           }
         },
-        "summary": "Thêm thành viên vào brand",
         "tags": [
           "Brand Member"
         ]

@@ -16,7 +16,7 @@ import (
 // PublishDirect bypasses the outbox (no durability) — MUST only be called by
 // OutboxUseCase. Every other caller MUST use Publish(), which writes to outbox
 // and keeps the publish durable across broker outages.
-func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body []byte, headers amqp.Table) error {
+func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body []byte, headers map[string]any) error {
 	r.publisherMu.Lock()
 	defer r.publisherMu.Unlock()
 
@@ -55,7 +55,7 @@ func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body [
 			DeliveryMode:  amqp.Persistent,
 			ContentType:   "application/json",
 			Body:          body,
-			Headers:       headers,
+			Headers:       amqp.Table(headers),
 			CorrelationId: correlationID,
 			MessageId:     uuid.NewString(),
 			Timestamp:     time.Now().UTC(),

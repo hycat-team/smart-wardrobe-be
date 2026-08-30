@@ -22,10 +22,6 @@ func ErrOtpCooldown() *apperror.Error {
 	return apperror.NewTooManyRequest("Vui lòng đợi 1 phút trước khi yêu cầu OTP mới.")
 }
 
-func ErrOtpGenericCooldown() *apperror.Error {
-	return apperror.NewBadRequest("Vui lòng đợi một lát trước khi yêu cầu mã mới.")
-}
-
 func ErrOtpEmailSendFailed() *apperror.Error {
 	return apperror.NewInternalError("Lỗi khi gửi email xác nhận OTP")
 }
@@ -44,14 +40,6 @@ func ErrOtpDataInvalid() *apperror.Error {
 
 func ErrOtpValidationInvalid() *apperror.Error {
 	return apperror.NewBadRequest("Dữ liệu xác thực không hợp lệ.")
-}
-
-func ErrOtpNotFound() *apperror.Error {
-	return apperror.NewBadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.")
-}
-
-func ErrOtpTooManyAttempts() *apperror.Error {
-	return apperror.NewTooManyRequest("Vui lòng thử lại sau. Bạn đã nhập sai mã OTP quá nhiều lần.")
 }
 
 func ErrInvalidDob() *apperror.Error {

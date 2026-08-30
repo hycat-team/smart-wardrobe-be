@@ -3,25 +3,29 @@ package contract
 import (
 	"context"
 
+	"smart-wardrobe-be/internal/modules/notification/application/dto"
+
 	"github.com/google/uuid"
 )
 
-type ChannelEnum string
+// Channel/Template enums are owned by application/dto (feature 017); aliased
+// here to keep the contract API unchanged.
+type ChannelEnum = dto.ChannelEnum
+
+type TemplateEnum = dto.TemplateEnum
 
 const (
-	ChannelEmail ChannelEnum = "email"
+	ChannelEmail = dto.ChannelEmail
 )
 
-type TemplateEnum string
-
 const (
-	TemplateOtp                   TemplateEnum = "otp"
-	TemplatePaymentSuccess        TemplateEnum = "payment_success"
-	TemplateTopupSuccess          TemplateEnum = "topup_success"
-	TemplateRenewalSuccess        TemplateEnum = "renewal_success"
-	TemplateRenewalFailed         TemplateEnum = "renewal_failed"
-	TemplateWalletWarning         TemplateEnum = "wallet_warning"
-	TemplateWalletPurchaseSuccess TemplateEnum = "wallet_purchase_success"
+	TemplateOtp                   = dto.TemplateOtp
+	TemplatePaymentSuccess        = dto.TemplatePaymentSuccess
+	TemplateTopupSuccess          = dto.TemplateTopupSuccess
+	TemplateRenewalSuccess        = dto.TemplateRenewalSuccess
+	TemplateRenewalFailed         = dto.TemplateRenewalFailed
+	TemplateWalletWarning         = dto.TemplateWalletWarning
+	TemplateWalletPurchaseSuccess = dto.TemplateWalletPurchaseSuccess
 )
 
 type INotificationContract interface {
