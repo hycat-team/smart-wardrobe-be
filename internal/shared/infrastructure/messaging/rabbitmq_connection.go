@@ -42,6 +42,12 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 	}
 	if err := r.publisherCh.Confirm(false); err != nil {
 		r.logger.Warn("Failed to enable publisher confirms", zap.Error(err))
+	} else {
+		// T023: mỗi publish trên channel này có đúng 1 confirmation (theo thứ tự);
+		// PublishDirect đợi ack trước khi trả nil để OutboxUseCase chỉ MarkPublished
+		// khi broker đã thực nhận. publisherMu serialize publish nên confirmation
+		// đọc ra luôn thuộc về publish vừa gọi.
+		r.confirms = r.publisherCh.NotifyPublish(make(chan amqp.Confirmation, 256))
 	}
 
 	// 1. Initialize flexible Topic Exchange, standard event-driven Pub/Sub

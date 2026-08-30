@@ -33,17 +33,36 @@ func (r *OutboxRepositoryImpl) Create(ctx context.Context, record *OutboxRecord)
 	return r.SendNotification(ctx)
 }
 
+// outboxStaleProcessingSeconds là thời gian 1 record bị kẹt ở 'processing'
+// (worker crash giữa claim và publish) trước khi được reclaim.
+const outboxStaleProcessingSeconds = 60
+
+// ClaimToPublish claims up to `limit` outbox records ready to be published:
+// pending records, failed records past their retry backoff, and stale
+// 'processing' records (crashed worker). The claim atomically flips status to
+// 'processing' inside the same transaction that holds the row locks, so two
+// replicas can never claim the same record (T007).
 func (r *OutboxRepositoryImpl) ClaimToPublish(ctx context.Context, limit int, maxAttempts int, retryAfter time.Duration) ([]OutboxRecord, error) {
 	var records []OutboxRecord
 	retryAfterSeconds := int(retryAfter.Seconds())
 	err := r.baseDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Raw(`SELECT * FROM outbox_records
-			WHERE status = ?
-			   OR (status = ? AND attempts < ? AND updated_at < NOW() - ? * INTERVAL '1 second')
-			ORDER BY created_at ASC LIMIT ?
-			FOR UPDATE SKIP LOCKED`,
-			OutboxStatusPending, OutboxStatusFailed, maxAttempts, retryAfterSeconds, limit).
-			Scan(&records).Error
+		return tx.Raw(`UPDATE outbox_records SET status = ?, updated_at = NOW()
+			WHERE id IN (
+				SELECT id FROM outbox_records
+				WHERE status = ?
+				   OR (status = ? AND attempts < ? AND updated_at < NOW() - ? * INTERVAL '1 second')
+				   OR (status = ? AND updated_at < NOW() - ? * INTERVAL '1 second')
+				ORDER BY created_at ASC
+				LIMIT ?
+				FOR UPDATE SKIP LOCKED
+			)
+			RETURNING *`,
+			OutboxStatusProcessing,
+			OutboxStatusPending,
+			OutboxStatusFailed, maxAttempts, retryAfterSeconds,
+			OutboxStatusProcessing, outboxStaleProcessingSeconds,
+			limit,
+		).Scan(&records).Error
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to claim outbox records ready to publish: %w", err)

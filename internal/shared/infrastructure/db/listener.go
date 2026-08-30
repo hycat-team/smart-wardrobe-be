@@ -14,7 +14,6 @@ import (
 
 const outboxChannel = "outbox_channel"
 const reconnectBackoff = 2 * time.Second
-const maxReconnectAttempts = 3
 
 type OutboxListener struct {
 	connStr    string

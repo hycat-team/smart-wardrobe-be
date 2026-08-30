@@ -30,6 +30,7 @@ type RabbitMQClient struct {
 	conn           *amqp.Connection
 	ch             *amqp.Channel
 	publisherCh    *amqp.Channel
+	confirms       <-chan amqp.Confirmation
 	mu             sync.RWMutex
 	publisherMu    sync.Mutex
 	isReconnecting bool
