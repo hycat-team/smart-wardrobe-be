@@ -29,6 +29,34 @@
 - Q: Khi nào commit được thực hiện? → A: (Cập nhật yêu cầu 2026-08-30) Chỉ commit SAU KHI toàn
   bộ tasks.md hoàn tất — các cụm refactor vẫn chia nhỏ để tổ chức công việc và dễ review, nhưng
   git mutation chỉ thực hiện một lần ở cuối feature, khi developer chỉ định.
+- Q: T044 chặn leak error ra client làm thay đổi message client (xung đột FR-005 "giữ nguyên
+  hành vi") — thuộc feature 017 hay tách riêng? → A: (Phase 9 Convergence 2026-08-30) Thuộc
+  Phase 9 của 017, coi là security fix có chủ đích; FR-005 bổ sung ngoại lệ rõ ràng cho lỗi
+  không nhận diện được ở biên mapper.
+- Q: Ở môi trường dev, text lỗi thật được lộ cho client theo cách nào? → A: (Phase 9 Convergence
+  2026-08-30) Thêm trường JSON riêng (vd `debugMessage`) chỉ xuất hiện khi `appEnv ==
+  "development"`; `Message` luôn generic ở mọi môi trường — pattern tách biệt message người dùng
+  và chi tiết debug.
+- Q: Các mục H5/H8 đã được duyệt giữ (keep-reason) hiển thị thế nào ở các lần scan sau? → A:
+  (Phase 9 Convergence 2026-08-30) hygiene-scan đọc một keep-list file (vd
+  `internal/tools/hygiene-scan/accepted.json` sinh từ Phase 9) và đánh dấu mục đã duyệt thành
+  trạng thái riêng "accepted-keep" — không tính vào tổng vi phạm, vẫn in minh bạch trong báo cáo.
+- Q: Phase 9 (26 task H5/H8/leak) commit theo chính sách nào? → A: (Phase 9 Convergence
+  2026-08-30) 3 commit theo cụm rủi ro: (1) leak fix + test (T044–T045, T068), (2) H8 `%w` +
+  sentinel audit + keep-list tool (T046–T054), (3) H5 dead-code triage + kiểm chứng chốt
+  (T055–T069). Mỗi commit vẫn theo git-workflow và luôn chờ developer chỉ định trước khi thực hiện.
+- Q: Tiêu chí khách quan để heuristic H8 nhận diện sentinel `errors.New` hợp lệ là gì? → A:
+  (Phase 9 Convergence 2026-08-30) Chỉ miễn `errors.New` được gán vào biến package-level có tên
+  tiền tố `Err` (quy ước sentinel chuẩn Go); `errors.New` dựng bên trong hàm vẫn bị báo warning.
+- Q: Lỗi từ bên thứ 3 (AI provider, ES, Redis...) làm sao hiển thị cho user mà không bị "nuốt
+  lỗi" và không leak? → A: (Phase 9 Convergence, sau audit integration 2026-08-30) Lỗi bên thứ 3
+  MUST được map tường minh thành `apperror` NGAY TẠI BIÊN integration của từng module (message
+  người dùng từ catalog cố định, status 502/503 khi upstream lỗi), giữ Cause cho log; nghiêm cấm
+  passthrough `err.Error()` của provider. Mapper central chỉ là lưới an toàn cuối — áp dụng cho
+  MỌI kênh client-facing gồm JSON response, SSE event và event payload được chuyển tiếp ra SSE.
+  Audit phát hiện 3 kênh bypass mapper cần sửa riêng: (1) SSE chat stream gửi `err.Error()` thẳng
+  browser, (2) payload.Error từ worker phân tích ảnh chảy qua RabbitMQ ra SSE task, (3)
+  `elasticsearch.go` tự dựng apperror với Message = body thô của ES.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -200,17 +228,33 @@ có ngưỡng định lượng hoặc quy tắc kiểm định được, và m�
   (4) ranh giới module & phân lớp, (5) dead code, (6) trùng lặp, (7) naming consistency,
   (8) error handling consistency.
 - **FR-003**: Mỗi mục checklist MUST có ngưỡng định lượng hoặc quy tắc kiểm định khách quan,
-  được chốt trong văn bản quy ước chính thức trước khi chấm vi phạm.
+  được chốt trong văn bản quy ước chính thức trước khi chấm vi phạm. **Quy tắc sentinel chốt
+  (Phase 9 Convergence, 2026-08-30)**: `errors.New` gán vào biến package-level có tên tiền tố
+  `Err` là sentinel hợp lệ — heuristic H8 miễn; `errors.New` dựng bên trong hàm vẫn bị báo
+  warning.
 - **FR-004**: Scan MUST chạy lặp lại được (re-runnable) với cùng một chuẩn để đối chiếu trước/sau
   refactor, không phải thao tác thủ công one-off. Báo cáo và snapshot từng lần scan MUST được lưu
   trong `specs/017-codebase-hygiene-refactor/reports/` để so sánh trực quan giữa các lần scan.
 - **FR-005**: Mọi refactor MUST giữ nguyên hành vi hệ thống: không thay đổi hợp đồng API, không
   sửa logic nghiệp vụ; mỗi cụm refactor phải được xác nhận bằng build + lint + toàn bộ bộ test
-  (kèm race check theo quy trình hiện hành) trước khi kết thúc.
+  (kèm race check theo quy trình hiện hành) trước khi kết thúc. **Ngoại lệ chốt (Phase 9
+  Convergence, 2026-08-30)**: việc chặn rò rỉ message lỗi nội bộ ra client tại biên mapper
+  (`apperror.From`, `apperror.Wrap`, `errorutils.MapErrorToProblem`) là security fix có chủ đích —
+  error không nhận diện được trả message generic từ catalog cố định thay vì `err.Error()`; chi
+  tiết lỗi chỉ nằm trong log (kèm Cause). **Cơ chế dev (chốt 2026-08-30)**: text lỗi thật chỉ
+  xuất hiện trong trường JSON riêng (vd `debugMessage`) khi `appEnv == "development"`; `Message`
+  luôn generic ở mọi môi trường. **Bổ sung sau audit integration (2026-08-30)**: quy tắc không
+  passthrough `err.Error()` áp dụng cho MỌI kênh client-facing — JSON response, SSE event, và
+  event payload chuyển tiếp qua RabbitMQ rồi phát lại qua SSE; lỗi bên thứ 3 phải được map tường
+  minh thành `apperror` (message catalog cố định, status 502/503 cho upstream lỗi) ngay tại biên
+  integration, không phụ thuộc mapper central. Đây là thay đổi hành vi duy nhất được phép trong feature.
 - **FR-006**: Refactor MUST được chia thành các cụm nhỏ có ranh giới rõ theo phase của tasks.md
   để tổ chức công việc, review và xác minh từng bước; tuy nhiên git mutation (commit) chỉ thực
   hiện MỘT LẦN sau khi toàn bộ tasks.md hoàn tất và `make check` + `make test-race` pass toàn
-  repo — theo yêu cầu cập nhật của developer (2026-08-30).
+  repo — theo yêu cầu cập nhật của developer (2026-08-30). **Bổ sung Phase 9 (2026-08-30)**: sau
+  commit chính của Phase 1–8, Phase 9 (Convergence) được commit theo 3 cụm rủi ro — (1) leak fix
+  + test, (2) H8 `%w` + sentinel audit + keep-list tool, (3) H5 dead-code triage + kiểm chứng
+  chốt — mỗi cụm vẫn phải pass wire + lint + test-race và chờ developer chỉ định trước khi commit.
 - **FR-007**: Vi phạm ranh giới module (import bị cấm, bỏ qua tầng) MUST được sửa theo đúng quy
   tắc kiến trúc hiện hành của dự án, không được "né" bằng cách tạo exception ad-hoc.
 - **FR-008**: Loại bỏ dead code MUST kèm bằng chứng không tham chiếu; các trường hợp không chắc
@@ -223,6 +267,11 @@ có ngưỡng định lượng hoặc quy tắc kiểm định được, và m�
   `docs/development/code-hygiene.md` (checklist + ngưỡng định lượng), với `design-pattern.md` và
   tài liệu quy tắc làm việc của agent chỉ thêm tham chiếu — để các scan lần sau và các agent làm
   việc trên repo đối chiếu về cùng một nguồn duy nhất.
+- **FR-011** (Phase 9 Convergence, 2026-08-30): hygiene-scan MUST hỗ trợ keep-list (vd
+  `internal/tools/hygiene-scan/accepted.json`): mục advisory (H5/H8) đã được duyệt giữ với
+  keep-reason được đánh dấu trạng thái "accepted-keep" — không tính vào tổng vi phạm warning/fail
+  nhưng vẫn được liệt kê minh bạch trong báo cáo, kèm trỏ về keep-reason trong
+  `docs/development/code-hygiene.md`.
 
 ### Key Entities *(include if feature involves data)*
 

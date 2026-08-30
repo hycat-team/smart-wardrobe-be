@@ -312,3 +312,162 @@ thống nhất theo design-pattern.md.
   validate, không commit (FR-006 bản cập nhật 2026-08-30)
 - [P] tasks = different files, no dependencies
 - Stop at any checkpoint để validate độc lập từng story
+
+---
+
+## Phase 9: Convergence — xử lý dứt điểm H5 dead-code (32 candidate) & H8 error handling (41 cảnh báo + leak)
+
+> Nguồn: `/speckit-converge` chạy 2026-08-30 sau khi T001–T043 hoàn tất và commit 27c69ab.
+> Truy vết: `reports/h5-verification.json` (32 mục kind `referenced`), `reports/snapshot-20260830-180210.json`
+> (41 violation H8), đánh giá leak client tại `apperror/error.go:105-130` + `errorutils/errorutils.go:208`.
+> Quy tắc: task H5 mỗi symbol phải kết thúc bằng MỘT trong hai kết luận — **xóa** (kèm grep chứng minh
+> không caller thật) hoặc **keep-reason** (ghi 1 dòng lý do vào `docs/development/code-hygiene.md`
+> mục "Advisory backlog"). Task H8 KHÔNG đổi message/status trả về client (FR-005), chỉ sửa chuỗi
+> error nội bộ. Sau mỗi task: `make wire && make lint && make test-race`.
+
+### Chặn rò rỉ error ra client (ưu tiên cao nhất — làm TRƯỚC các task %w)
+
+- [x] T044 [H8/leak] Chặn rò rỉ message nội bộ ở biên mapper: sửa `apperror.From` và
+  `apperror.Wrap` (internal/shared/application/constants/apperror/error.go) để error không nhận
+  diện được trả Message generic từ catalog cố định (không dùng `err.Error()` làm Message), giữ
+  `Cause` nguyên vẹn cho log; sửa `errorutils.MapErrorToProblem` (errorutils.go:208) tương tự.
+  Bổ sung chế độ lộ chi tiết chỉ bật khi `appEnv == "development"` (mô phỏng cách StackTrace đang
+  làm ở middleware/error_handler.go:86) per FR-005 (partial)
+- [x] T045 [H8/leak] Cập nhật test theo hành vi mới của T044: `middleware/error_handler_test.go`,
+  `errorutils/errorutils_test.go`, `apperror/error_test.go` — client nhận message generic, log vẫn
+  chứa chi tiết `rawErr`/cause; thêm test case error GORM/RabbitMQ thô không lộ text nội bộ per
+  FR-005 (partial)
+
+### H8: chuyển `fmt.Errorf` thiếu `%w` sang wrap chuẩn (MEDIUM — làm sau T044)
+
+- [x] T046 [P] [H8] `internal/modules/aiexecutor/application/usecase/orchestrator/plan.go:21` và
+  `internal/modules/aiexecutor/application/usecase/pricing/usecase.go:43`: chuyển `fmt.Errorf`
+  mất chain sang `%w` (hoặc `apperror.Wrap` nếu error chảy lên handler) per US4/T036 (partial)
+- [x] T047 [P] [H8] `internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go`
+  — 6 vị trí: dòng 83, 173, 217, 220, 231, 246: chuyển sang `%w` per US4/T036 (partial)
+- [x] T048 [P] [H8] `internal/modules/fashion/application/usecase/ai/recommendation/synthesis/` —
+  7 vị trí: `generation.go` dòng 69, 90; `json.go` dòng 38, 52, 57, 61; `prompt.go` dòng 54:
+  chuyển sang `%w` per US4/T036 (partial)
+- [x] T049 [P] [H8] `internal/modules/fashion/application/usecase/worker/analyze_uc.go:187` và
+  `worker/shared/fashion_helper.go:32`: chuyển sang `%w` per US4/T036 (partial)
+- [x] T050 [P] [H8] `internal/modules/notification/application/usecase/email/outbox_email_uc.go`
+  — 3 vị trí: dòng 53, 58, 94: chuyển sang `%w` per US4/T036 (partial)
+- [x] T051 [P] [H8] `internal/modules/subscription/application/usecase/subscription/state_machine.go`
+  — 6 vị trí: dòng 67, 73, 78, 85, 90, 180: chuyển sang `%w` per US4/T036 (partial)
+- [x] T052 [P] [H8] `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go`
+  — 6 vị trí: dòng 134, 267, 435, 440, 443, 449: chuyển sang `%w` per US4/T036 (partial)
+- [x] T053 [P] [H8] `internal/modules/wardrobe/application/usecase/wardrobe/search_sync/search_sync_uc.go:57`:
+  chuyển sang `%w` per US4/T036 (partial)
+
+### H8: audit sentinel `errors.New` bare (LOW)
+
+- [x] T054 [H8] Audit 8 vị trí `errors.New` bare: `aiexecutor/orchestrator/orchestrator.go` dòng
+  93, 151, 221; `fashion/.../ai/chat/summary.go` dòng 30, 64; `fashion/.../llm_rewriter.go` dòng
+  71, 147, 154 — từng cái: nếu là sentinel error dùng lặp lại thì chuyển về package errors chuẩn
+  của module; nếu là lỗi one-off thì giữ và ghi keep-reason. Cập nhật
+  `docs/development/code-hygiene.md`: sentinel `errors.New` là acceptable + thêm loại trừ tương
+  ứng vào heuristic H8 trong `internal/tools/hygiene-scan/rules_advisory.go` per US4/T036 (partial)
+
+### H5: verify 32 dead-code candidate `referenced` (xóa hoặc ghi keep-reason từng symbol)
+
+- [x] T055 [P] [H5] `internal/modules/admin/application/errors/errors.go`: verify 4 sentinel —
+  `ErrUserNotFound` (fileCount=12), `ErrBrandMemberNotFound`, `ErrCannotRemoveLastOwner`,
+  `ErrCannotDemoteLastOwner` (fileCount=3): xác định caller thật qua interface/alias; xóa nếu
+  chết, ngược lại ghi keep-reason per US4/T033 (partial)
+- [x] T056 [P] [H5] `internal/modules/brand/application/mapper/brand.go`: verify
+  `MapBrandMembers` (fileCount=3), `MapBrandCustomers` (fileCount=2) per US4/T033 (partial)
+- [x] T057 [P] [H5] `internal/modules/brand/application/usecase/benefit/helper.go`: verify
+  `parseValidDurationDays` (fileCount=5) per US4/T033 (partial)
+- [x] T058 [P] [H5] `internal/modules/fashion/application/errors/chat_errors.go`: verify
+  `ErrInvalidChatIDFormat` (fileCount=2) — đối chiếu với bản trùng tên ở
+  `internal/modules/wardrobe/application/errors/errors.go` per US4/T033 (partial)
+- [x] T059 [P] [H5] `internal/modules/fashion/application/usecase/ai/chat/helper.go`: verify
+  `buildChatSystemPrompt`, `isWardrobeRelatedQuery` (fileCount=2) per US4/T033 (partial)
+- [x] T060 [P] [H5] `internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go`:
+  verify `BuildRecommendationPrompt` (fileCount=3) per US4/T033 (partial)
+- [x] T061 [P] [H5] `internal/modules/fashion/application/usecase/ai/recommendation/types/structs.go`:
+  verify method `Total` (fileCount=98 — nghi là trùng tên phổ biến, cần phân tích chính xác) per
+  US4/T033 (partial)
+- [x] T062 [P] [H5] `internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go`:
+  verify `buildRecommendationSeasonalityCondition` (fileCount=3),
+  `recommendationSearchDocumentSQL` (fileCount=2) per US4/T033 (partial)
+- [x] T063 [P] [H5] `internal/modules/subscription/application/usecase/subscription/state_machine.go`:
+  verify 4 symbol — `RestoreLifetimeFallbackIfExpired`, `expiryFor`, `AddProductDays`,
+  `clearFallback` (fileCount=2) per US4/T033 (partial)
+- [x] T064 [P] [H5] `internal/modules/wardrobe/application/errors/errors.go`: verify 3 sentinel —
+  `ErrInvalidChatIDFormat`, `ErrMinimumWardrobeItemsRequired`, `ErrChatNotFound` per US4/T033 (partial)
+- [x] T065 [P] [H5] `internal/modules/wardrobe/application/usecase/wardrobe/shared/`: verify
+  `lifecycle_decay.go: CalculateLifecycleDecayFactor` (fileCount=2) và
+  `string_helper.go: RemoveVietnameseSigns` (fileCount=4) per US4/T033 (partial)
+- [x] T066 [P] [H5] `internal/shared/domain/entities/`: verify method `Scan` trong `jsonb.go` và
+  `vector.go` (fileCount=26 — dự kiến keep vì thỏa interface `sql.Scanner` của GORM) per US4/T033 (partial)
+- [x] T067 [P] [H5] `internal/shared/infrastructure/`: verify 6 symbol —
+  `ai/helper.go: parseSSEStream` (fileCount=4), `httptransport/transport.go: DefaultClient`
+  (fileCount=2), `repositories/pagination.go: Offset` (fileCount=10) + `BuildPaginationMetadata`
+  (fileCount=19), `middleware/ratelimit.go: Stop` (fileCount=33 — nghi thỏa interface),
+  `worker/base_worker.go: Name` (fileCount=156 — nghi thỏa interface worker) per US4/T033 (partial)
+- [x] T068 [H5] `internal/pkg/utils/errorutils/errorutils.go: MapErrorToProblem` (fileCount=2):
+  quyết định chung với T044 — nếu T044 giữ hàm (đã fix leak) thì kiểm tra caller thật và xác nhận
+  keep-reason; nếu không còn caller nào sau T044 thì xóa per US4/T033 (partial)
+
+### Kiểm chứng chốt Phase 9
+
+- [x] T069 [H5/H8] Kiểm chứng chốt: chạy `make hygiene-scan` — mọi H5/H8 còn lại trong báo cáo
+  đều có keep-reason tương ứng trong `docs/development/code-hygiene.md` (mục Advisory backlog);
+  chạy `make wire && make lint && make test-race` pass toàn bộ; cập nhật snapshot mới +
+  `reports/scan-report.md` (section Final Audit bổ sung Phase 9) per SC-004, SC-005 (partial)
+
+### Mở rộng Phase 9: map lỗi bên thứ 3 tại biên integration (kết quả audit 2026-08-30)
+
+> Nguồn: audit toàn bộ 7 integration (OpenAI, Gemini, Cloudinary, SMTP, Elasticsearch, Redis,
+> RabbitMQ) theo yêu cầu developer — mapper central (T044) chỉ là lưới an toàn cuối; các kênh
+> bypass mapper phải sửa tại nguồn. Các task này thuộc cụm commit (1) leak fix + test theo
+> chính sách 3 commit của Phase 9.
+
+- [x] T070 [P] [leak-HIGH] AI clients map tường minh tại biên: `internal/shared/infrastructure/ai/openai/openai.go`
+  (dòng 77, 183, 268, 328 — error đang nhúng toàn bộ response body của provider) và
+  `internal/shared/infrastructure/ai/google/google_text.go` (dòng 77, 192) +
+  `google_vision_embed.go` (dòng 68, 147): chuyển HTTP-status error thành `apperror` static
+  (502/503, message catalog "Dịch vụ AI đang bận, vui lòng thử lại sau"), response body chỉ log
+  qua zap, không nằm trong text error; giữ sentinel safe-path hiện có per FR-005 (partial)
+- [x] T071 [leak-HIGH] SSE chat stream không gửi `err.Error()`: `internal/modules/fashion/presentation/handler/fashion_ai_handler.go:319-322`
+  — event `error` trong SSE phải chứa message generic an toàn (chi tiết lỗi chỉ vào log);
+  kiểm tra cả nhánh partial-content rồi fail per FR-005 (partial)
+- [x] T072 [leak-HIGH] Đứt kênh payload.Error từ worker ra SSE: `internal/modules/fashion/application/usecase/worker/analyze_uc.go:113`
+  đưa `err.Error()` (raw "Google Vision API error...") vào event payload →
+  `internal/modules/wardrobe/application/usecase/wardrobe/fashion_event_uc.go:118,174` phát qua
+  SSE `/api/v1/wardrobe-items/tasks/{taskId}/sse` — thay bằng reason code / message an toàn từ
+  catalog, chi tiết chỉ log; cập nhật SSEEventPayload nếu cần per FR-005 (partial)
+- [x] T073 [leak-MED] Elasticsearch client không nhúng body vào Message:
+  `internal/shared/infrastructure/search/elasticsearch.go:96` đang `apperror.NewError(status,
+  "Hệ thống gặp sự cố", string(respBody))` — Message đổi thành static, body chỉ log; đối chiếu
+  nhánh circuit breaker (dòng 204) và 404 per FR-005 (partial)
+- [x] T074 [leak-MED] Redis OTP không lộ topology mạng: `internal/modules/identity/infrastructure/caching/redis_otp_service.go`
+  (GenerateOtp/VerifyOtp/IsInResendCooldown trả raw redis error) — map tại biên register_uc /
+  password_recovery_uc thành `apperror` 503 "tạm thời không khả dụng", log cause đầy đủ per
+  FR-005 (partial)
+- [x] T075 [leak-LOW] SMTP mapping điểm client-facing log cause trước khi map static:
+  `internal/modules/identity/application/usecase/register_uc.go:119-125,198-204` và
+  `password_recovery_uc.go:92-97` — thêm log chi tiết SMTP error (hiện bị mất) trước khi trả
+  static apperror per FR-005 (partial)
+- [x] T076 [leak] Kiểm chứng leak-fix: test `GlobalErrorHandler` + SSE handler + task SSE với
+  error giả lập từ GORM/Redis/AI provider — client không bao giờ thấy text chứa SQL, constraint,
+  dial tcp, response body provider; dev môi trường thấy qua `debugMessage` per FR-005 (missing)
+
+---
+
+## Phase 10: Convergence (lần 2) — đồng bộ tài liệu contract với hành vi FR-003/FR-011
+
+> Nguồn: `/speckit-converge` chạy 2026-08-30 sau khi Phase 9 (T044–T076) hoàn tất. Tool đã
+> implement keep-list + heuristic mới nhưng 2 tài liệu design chưa phản ánh — cập nhật doc thuần,
+> không đụng code.
+
+- [x] T077 [FR-011/FR-003] Cập nhật `specs/017-codebase-hygiene-refactor/contracts/hygiene-scan-cli.md`:
+  (1) mục Output contract bổ sung keep-list `internal/tools/hygiene-scan/accepted.json` và ý nghĩa
+  status `accepted-with-reason` (loại khỏi tổng đếm, vẫn in trong bảng Violations kèm reason);
+  (2) Behavioral guarantees bổ sung dòng console `accepted-keep: N`; (3) ghi exemption H8:
+  sentinel `var ErrXxx = errors.New(...)` package-level và `fmt.Errorf` message-only không bị
+  flag per FR-003 (partial)
+- [x] T078 [FR-011/FR-003] Cập nhật `specs/017-codebase-hygiene-refactor/data-model.md`: thêm
+  field `acceptedKeeps` vào schema ScanRun §3; cập nhật mô tả rule H8 ở bảng rule để phản ánh
+  sentinel/message-only exemption per FR-003 (partial)

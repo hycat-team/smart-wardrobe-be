@@ -31,9 +31,3 @@ func NewClient(timeout time.Duration) *http.Client {
 		Timeout:   timeout,
 	}
 }
-
-func DefaultClient() *http.Client {
-	return &http.Client{
-		Transport: defaultTransport,
-	}
-}

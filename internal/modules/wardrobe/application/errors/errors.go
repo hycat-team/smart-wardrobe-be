@@ -41,10 +41,6 @@ func ErrOutfitItemInvalidOrForbidden(itemID any) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Trang phục (Mã: %s) không tồn tại hoặc không thuộc tủ đồ của bạn.", itemID))
 }
 
-func ErrInvalidChatIDFormat() *apperror.Error {
-	return apperror.NewBadRequest("Định dạng mã cuộc trò chuyện không hợp lệ.")
-}
-
 func ErrSearchItemsFailed() *apperror.Error {
 	return apperror.NewInternalError("Đã xảy ra lỗi hệ thống trong quá trình tìm kiếm trang phục.")
 }
@@ -99,14 +95,6 @@ func ErrCatalogItemNotFound() *apperror.Error {
 
 func ErrUploadImagesEmpty() *apperror.Error {
 	return apperror.NewBadRequest("Danh sách hình ảnh tải lên không được để trống.")
-}
-
-func ErrMinimumWardrobeItemsRequired() *apperror.Error {
-	return apperror.NewBadRequest("Tủ đồ của bạn cần có ít nhất 5 trang phục để hệ thống có thể tiến hành phối đồ. Hãy đăng tải thêm đồ nhé!")
-}
-
-func ErrChatNotFound() *apperror.Error {
-	return apperror.NewNotFound("Không tìm thấy cuộc trò chuyện này.")
 }
 
 func ErrOutfitNotFound() *apperror.Error {

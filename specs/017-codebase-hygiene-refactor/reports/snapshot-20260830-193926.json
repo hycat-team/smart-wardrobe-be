@@ -1,8 +1,8 @@
 {
-  "run_id": "20260830-174633",
-  "generated_at": "2026-08-30T17:46:33.1563208+07:00",
+  "run_id": "20260830-193926",
+  "generated_at": "2026-08-30T19:39:26.711454+07:00",
   "scope": {
-    "scanned_files": 637,
+    "scanned_files": 635,
     "test_files": 58,
     "exclusions": [
       "api/swagger/** (generated swagger artifacts)",
@@ -26,37 +26,27 @@
         "warning": 9,
         "needsConfirmation": 0
       },
-      "H5": {
-        "fail": 0,
-        "warning": 0,
-        "needsConfirmation": 32
-      },
       "H6": {
         "fail": 0,
         "warning": 20,
-        "needsConfirmation": 0
-      },
-      "H8": {
-        "fail": 0,
-        "warning": 41,
         "needsConfirmation": 0
       }
     },
     "by_module": {
       "admin": {
         "fail": 0,
-        "warning": 3,
-        "needsConfirmation": 4
+        "warning": 2,
+        "needsConfirmation": 0
       },
       "aiexecutor": {
         "fail": 0,
-        "warning": 18,
+        "warning": 14,
         "needsConfirmation": 0
       },
       "brand": {
         "fail": 0,
         "warning": 15,
-        "needsConfirmation": 3
+        "needsConfirmation": 0
       },
       "dashboard": {
         "fail": 0,
@@ -65,8 +55,8 @@
       },
       "fashion": {
         "fail": 0,
-        "warning": 30,
-        "needsConfirmation": 7
+        "warning": 10,
+        "needsConfirmation": 0
       },
       "identity": {
         "fail": 0,
@@ -81,12 +71,12 @@
       "internal/pkg": {
         "fail": 0,
         "warning": 1,
-        "needsConfirmation": 1
+        "needsConfirmation": 0
       },
       "internal/shared": {
         "fail": 0,
         "warning": 10,
-        "needsConfirmation": 8
+        "needsConfirmation": 0
       },
       "internal/tools": {
         "fail": 0,
@@ -95,18 +85,18 @@
       },
       "notification": {
         "fail": 0,
-        "warning": 4,
+        "warning": 1,
         "needsConfirmation": 0
       },
       "subscription": {
         "fail": 0,
-        "warning": 20,
-        "needsConfirmation": 4
+        "warning": 8,
+        "needsConfirmation": 0
       },
       "wardrobe": {
         "fail": 0,
-        "warning": 11,
-        "needsConfirmation": 5
+        "warning": 10,
+        "needsConfirmation": 0
       }
     }
   },
@@ -143,7 +133,7 @@
       "ruleId": "H1",
       "location": {
         "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
-        "line": 189,
+        "line": 193,
         "symbol": "OrchestratorUseCase.GenerateChatTextStream"
       },
       "severity": "warning",
@@ -273,7 +263,7 @@
       "ruleId": "H1",
       "location": {
         "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
-        "line": 32,
+        "line": 27,
         "symbol": "buildChatSystemPromptWithLimits"
       },
       "severity": "warning",
@@ -651,7 +641,7 @@
         "symbol": "GlobalErrorHandler"
       },
       "severity": "warning",
-      "detail": "function spans 81 lines (threshold 80)",
+      "detail": "function spans 85 lines (threshold 80)",
       "status": "open"
     },
     {
@@ -760,16 +750,6 @@
     {
       "ruleId": "H6",
       "location": {
-        "file": "internal/modules/admin/application/errors/errors.go",
-        "symbol": "errors.go"
-      },
-      "severity": "warning",
-      "detail": "potential duplication: file errors.go exists in 7 modules (internal/modules/admin, internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
-      "status": "open"
-    },
-    {
-      "ruleId": "H6",
-      "location": {
         "file": "internal/modules/admin/presentation/router/router.go",
         "symbol": "router.go"
       },
@@ -795,6 +775,16 @@
       },
       "severity": "warning",
       "detail": "potential duplication: file dashboard_dto.go exists in 4 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/identity, internal/modules/wardrobe); audit before merging",
+      "status": "open"
+    },
+    {
+      "ruleId": "H6",
+      "location": {
+        "file": "internal/modules/aiexecutor/application/errors/errors.go",
+        "symbol": "errors.go"
+      },
+      "severity": "warning",
+      "detail": "potential duplication: file errors.go exists in 6 modules (internal/modules/aiexecutor, internal/modules/brand, internal/modules/dashboard, internal/modules/identity, internal/modules/subscription, internal/modules/wardrobe); audit before merging",
       "status": "open"
     },
     {
@@ -960,68 +950,13 @@
     {
       "ruleId": "H8",
       "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
-        "line": 93,
-        "symbol": "errors.New"
-      },
-      "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
-        "line": 151,
-        "symbol": "errors.New"
-      },
-      "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/orchestrator.go",
-        "line": 221,
-        "symbol": "errors.New"
-      },
-      "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/orchestrator/plan.go",
-        "line": 21,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/aiexecutor/application/usecase/pricing/usecase.go",
-        "line": 43,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
         "file": "internal/modules/fashion/application/usecase/ai/chat/summary.go",
         "line": 30,
         "symbol": "errors.New"
       },
       "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
+      "detail": "accepted-keep: one-off parse-guard errors inside summary JSON extraction; no chain to wrap",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H8",
@@ -1031,8 +966,8 @@
         "symbol": "errors.New"
       },
       "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
+      "detail": "accepted-keep: one-off parse-guard errors inside summary JSON extraction; no chain to wrap",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H8",
@@ -1042,19 +977,8 @@
         "symbol": "errors.New"
       },
       "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 83,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H8",
@@ -1064,8 +988,8 @@
         "symbol": "errors.New"
       },
       "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H8",
@@ -1075,448 +999,19 @@
         "symbol": "errors.New"
       },
       "severity": "warning",
-      "detail": "use case constructs bare errors.New; use apperror factory or domain error constructor",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 173,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 217,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 220,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 231,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/retrieval/llm_rewriter.go",
-        "line": 246,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/generation.go",
-        "line": 69,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/generation.go",
-        "line": 90,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
-        "line": 38,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
-        "line": 52,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
-        "line": 57,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/json.go",
-        "line": 61,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/recommendation/synthesis/prompt.go",
-        "line": 54,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/worker/analyze_uc.go",
-        "line": 187,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/worker/shared/fashion_helper.go",
-        "line": 32,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
-        "line": 53,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
-        "line": 58,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/notification/application/usecase/email/outbox_email_uc.go",
-        "line": 94,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 67,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 73,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 78,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 85,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 90,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/state_machine.go",
-        "line": 180,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 134,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 267,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 435,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 440,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 443,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go",
-        "line": 449,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H8",
-      "location": {
-        "file": "internal/modules/wardrobe/application/usecase/wardrobe/search_sync/search_sync_uc.go",
-        "line": 57,
-        "symbol": "fmt.Errorf"
-      },
-      "severity": "warning",
-      "detail": "use case uses fmt.Errorf without %w; wrap the cause or use apperror",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/admin/application/errors/errors.go",
-        "line": 7,
-        "symbol": "unreachable func: ErrUserNotFound"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/admin/application/errors/errors.go",
-        "line": 11,
-        "symbol": "unreachable func: ErrBrandMemberNotFound"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/admin/application/errors/errors.go",
-        "line": 15,
-        "symbol": "unreachable func: ErrCannotRemoveLastOwner"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/admin/application/errors/errors.go",
-        "line": 19,
-        "symbol": "unreachable func: ErrCannotDemoteLastOwner"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/brand/application/mapper/brand.go",
-        "line": 123,
-        "symbol": "unreachable func: MapBrandMembers"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/brand/application/mapper/brand.go",
-        "line": 195,
-        "symbol": "unreachable func: MapBrandCustomers"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/brand/application/usecase/benefit/helper.go",
-        "line": 9,
-        "symbol": "unreachable func: parseValidDurationDays"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/fashion/application/errors/chat_errors.go",
-        "line": 11,
-        "symbol": "unreachable func: ErrInvalidChatIDFormat"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: one-off defensive parse guards; no chain to wrap",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
       "location": {
         "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
-        "line": 20,
-        "symbol": "unreachable func: buildChatSystemPrompt"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/fashion/application/usecase/ai/chat/helper.go",
-        "line": 153,
+        "line": 148,
         "symbol": "unreachable func: isWardrobeRelatedQuery"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by helpers_test.go to lock keyword-detection behavior",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1526,8 +1021,8 @@
         "symbol": "unreachable func: BuildRecommendationPrompt"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by synthesis_test.go to lock the stylist prompt contract",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1537,8 +1032,8 @@
         "symbol": "unreachable func: FallbackCandidateCounts.Total"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by ranking tests (scoring_test.go) to assert fallback candidate counts",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1548,19 +1043,8 @@
         "symbol": "unreachable func: buildRecommendationSeasonalityCondition"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/fashion/infrastructure/persistence/fashion_item_repo_hybrid_helpers.go",
-        "line": 191,
-        "symbol": "unreachable func: recommendationSearchDocumentSQL"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by fashion_item_repo_hybrid_test.go to assert seasonality SQL",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1570,8 +1054,8 @@
         "symbol": "unreachable func: RestoreLifetimeFallbackIfExpired"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: exported state-machine transition, covered by state_machine_test.go",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1581,8 +1065,8 @@
         "symbol": "unreachable func: expiryFor"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by RestoreLifetimeFallbackIfExpired cluster and state_machine_test.go",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1592,8 +1076,8 @@
         "symbol": "unreachable func: AddProductDays"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by expiryFor and state_machine_test.go",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1603,41 +1087,8 @@
         "symbol": "unreachable func: clearFallback"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/wardrobe/application/errors/errors.go",
-        "line": 44,
-        "symbol": "unreachable func: ErrInvalidChatIDFormat"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/wardrobe/application/errors/errors.go",
-        "line": 104,
-        "symbol": "unreachable func: ErrMinimumWardrobeItemsRequired"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/wardrobe/application/errors/errors.go",
-        "line": 108,
-        "symbol": "unreachable func: ErrChatNotFound"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by RestoreLifetimeFallbackIfExpired",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1647,30 +1098,8 @@
         "symbol": "unreachable func: CalculateLifecycleDecayFactor"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/modules/wardrobe/application/usecase/wardrobe/shared/string_helper.go",
-        "line": 6,
-        "symbol": "unreachable func: RemoveVietnameseSigns"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/pkg/utils/errorutils/errorutils.go",
-        "line": 199,
-        "symbol": "unreachable func: MapErrorToProblem"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: used by lifecycle_decay_test.go to lock decay formula",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1680,8 +1109,8 @@
         "symbol": "unreachable func: JSONDocument.Scan"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: implements sql.Scanner — GORM contract, called by the database driver",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1691,52 +1120,8 @@
         "symbol": "unreachable func: Vector.Scan"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/shared/infrastructure/ai/helper.go",
-        "line": 56,
-        "symbol": "unreachable func: parseSSEStream"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/shared/infrastructure/httptransport/transport.go",
-        "line": 35,
-        "symbol": "unreachable func: DefaultClient"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/shared/infrastructure/repositories/pagination.go",
-        "line": 8,
-        "symbol": "unreachable func: Offset"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
-    },
-    {
-      "ruleId": "H5",
-      "location": {
-        "file": "internal/shared/infrastructure/repositories/pagination.go",
-        "line": 17,
-        "symbol": "unreachable func: BuildPaginationMetadata"
-      },
-      "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: implements sql.Scanner — GORM contract for pgvector column",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1746,8 +1131,8 @@
         "symbol": "unreachable func: RateLimitMiddleware.Stop"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: shutdown hook for the cleanup goroutine started in NewRateLimitMiddleware",
+      "status": "accepted-with-reason"
     },
     {
       "ruleId": "H5",
@@ -1757,8 +1142,9 @@
         "symbol": "unreachable func: BaseWorker.Name"
       },
       "severity": "needs-confirmation",
-      "detail": "unreachable from any entry point per deadcode; verify references (reflection/interfaces) before removing",
-      "status": "open"
+      "detail": "accepted-keep: BaseWorker framework accessor (pair with Start/Stop/Context/SetHealthCheck)",
+      "status": "accepted-with-reason"
     }
-  ]
+  ],
+  "acceptedKeeps": 18
 }

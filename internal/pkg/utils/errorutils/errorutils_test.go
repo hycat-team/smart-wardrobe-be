@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 )
 
 func TestToAppErrorWrapsPlainError(t *testing.T) {
@@ -19,17 +17,6 @@ func TestToAppErrorWrapsPlainError(t *testing.T) {
 	}
 	if appErr.Stack() == "" {
 		t.Fatal("expected stack to be present")
-	}
-}
-
-func TestMapErrorToProblemMapsSentinel(t *testing.T) {
-	status, title, message := MapErrorToProblem(apperror.ErrForbidden())
-
-	if status != 403 {
-		t.Fatalf("expected 403, got %d", status)
-	}
-	if title == "" || message == "" {
-		t.Fatalf("expected mapped title/message, got %q / %q", title, message)
 	}
 }
 

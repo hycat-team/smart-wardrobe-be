@@ -24,7 +24,7 @@ và quy trình scan. Được thiết lập bởi feature
 | **H5** | Dead code | Hàm/kiểu unreachable (theo `deadcode`) = needs-confirmation. Bắt buộc xác nhận tay (grep tham chiếu, interface, reflection) trước khi xóa. Không bao giờ xóa tự động. | needs-confirmation |
 | **H6** | Trùng lặp | File/hàm cùng tên xuất hiện ở ≥ 2 module = gợi ý audit. Quyết định gộp hay giữ nguyên là audit tay; ranh giới module ưu tiên hơn de-dup — nếu gộp vi phạm §II thì giữ nguyên với lý do. | warning |
 | **H7** | Naming | Method repository dùng tiền tố `Get...` thay vì `Find...` (design-pattern.md); tên file khớp struct chính; helper dùng-1-lần đuôi `_helper.go`. | warning |
-| **H8** | Error handling | Handler không tự tạo error nghiệp vụ (`errors.New`/`fmt.Errorf`) — delegate xuống use case. Use case không tạo `errors.New` trần — dùng `apperror` factory hoặc domain error constructor; `fmt.Errorf` phải wrap `%w`. | warning |
+| **H8** | Error handling | Handler không tự tạo error nghiệp vụ (`errors.New`/`fmt.Errorf`) — delegate xuống use case. Use case không tạo `errors.New` trần — dùng `apperror` factory hoặc domain error constructor; ngoại lệ: sentinel package-level `var ErrXxx = errors.New(...)` (quy ước Go). `fmt.Errorf` có argument kiểu error phải wrap `%w`; `fmt.Errorf` message-only (không có error argument) được chấp nhận. | warning |
 
 ### Ngoại lệ H4 được phép (sanctioned)
 
@@ -51,6 +51,21 @@ và quy trình scan. Được thiết lập bởi feature
 
 **Module lưu trữ (archived)**: scan vẫn phát hiện nhưng chỉ ghi nhận (`accepted-with-reason`),
 không refactor — giữ nguyên cấu trúc thư mục theo governance.
+
+## 3b. Keep-list (accepted-with-reason) — FR-011
+
+Các finding advisory (H5/H8) đã được team review và quyết định giữ được ghi vào
+`internal/tools/hygiene-scan/accepted.json` (rule + file + symbol + reason). Khi scan:
+
+- Mục khớp keep-list được đánh dấu `accepted-with-reason` — **không tính** vào tổng vi phạm
+  fail/warning/needs-confirmation, nhưng vẫn được in minh bạch trong bảng Violations kèm reason.
+- Mục mới chưa có trong keep-list vẫn hiển thị bình thường — vi phạm thật luôn nổi bật.
+- Quy trình review: xác minh tham chiếu thật (interface/test/reflection) → xóa nếu chết thật,
+  hoặc thêm entry vào `accepted.json` kèm reason → commit cùng cụm thay đổi.
+
+Sentinel `errors.New` package-level (`var ErrXxx = errors.New(...)`) và `fmt.Errorf`
+message-only (không có argument kiểu error) được heuristic H8 miễn sẵn — không cần thêm vào
+keep-list.
 
 ## 4. Quy trình scan
 

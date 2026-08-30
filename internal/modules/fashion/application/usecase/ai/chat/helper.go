@@ -16,11 +16,6 @@ import (
 var reWardrobeKeywords = regexp.MustCompile(`\b(tu do|ao|quan|vay|chan vay|dam|giay|ao-khoac|ao khoac|do cua|mac|phoi|style|gu|mac gi|goi y|bo do|do)\b`)
 var transitionRegex = regexp.MustCompile(`([\r\n.?!])([A-ZĐÂĂÊÔƠƯ][a-zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ])`)
 
-// buildChatSystemPrompt creates a compact fashion-aware system prompt for chat generation.
-func buildChatSystemPrompt(summary string, brandItems []*brand_dto.BrandItemRes, recent []*fashion_entities.Message, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
-	return buildChatSystemPromptWithLimits(summary, brandItems, recent, 4000, 1500, fashionItemMap)
-}
-
 func truncateRunes(value string, limit int) string {
 	runes := []rune(value)
 	if limit <= 0 || len(runes) <= limit {
