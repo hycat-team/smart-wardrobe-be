@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
-	"smart-wardrobe-be/internal/modules/wardrobe/application/interface/event"
-	usecase_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
+	uc_interfaces "smart-wardrobe-be/internal/modules/wardrobe/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
+	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -15,19 +15,19 @@ import (
 
 type WardrobeCleanupWorker struct {
 	*worker.BaseWorker
-	eventConsumer event.IWardrobeCleanupEventConsumer
-	useCase       usecase_interfaces.IWardrobeFashionEventUseCase
+	messageClient *shared_msg.RabbitMQClient
+	useCase       uc_interfaces.IWardrobeFashionEventUseCase
 	logger        logger.Interface
 }
 
 func NewWardrobeCleanupWorker(
-	eventConsumer event.IWardrobeCleanupEventConsumer,
-	useCase usecase_interfaces.IWardrobeFashionEventUseCase,
+	messageClient *shared_msg.RabbitMQClient,
+	useCase uc_interfaces.IWardrobeFashionEventUseCase,
 	l logger.Interface,
 ) *WardrobeCleanupWorker {
 	return &WardrobeCleanupWorker{
 		BaseWorker:    worker.NewBaseWorker("wardrobe_cleanup"),
-		eventConsumer: eventConsumer,
+		messageClient: messageClient,
 		useCase:       useCase,
 		logger:        l,
 	}
@@ -35,23 +35,23 @@ func NewWardrobeCleanupWorker(
 
 func (w *WardrobeCleanupWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	go w.startConsume(ctx)
+	if err := shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueWardrobeCleanup, w.handle, shared_msg.ConsumerOpts{}); err != nil {
+		w.logger.Error("Failed to register wardrobe cleanup consumer", zap.Error(err))
+	}
 }
 
-func (w *WardrobeCleanupWorker) startConsume(ctx context.Context) {
-	err := w.eventConsumer.ConsumeEvents(ctx, func(ctx context.Context, payload dto.WardrobeEventPayload) error {
-		run := workerlog.New("wardrobe_cleanup", workerlog.TriggerQueue)
-		run.LogReceived(w.logger, zap.String("itemId", payload.ItemID.String()))
-		if err := w.useCase.HandleWardrobeDeleted(ctx, payload); err != nil {
-			run.LogFailure(w.logger, err, zap.String("itemId", payload.ItemID.String()))
-			return err
-		}
-		run.LogSuccessIfData(w.logger, zap.String("itemId", payload.ItemID.String()))
-		return nil
-	})
-	if err != nil {
-		w.logger.Error("Failed to initiate wardrobe cleanup consumption", zap.Error(err))
+func (w *WardrobeCleanupWorker) handle(ctx context.Context, payload dto.WardrobeEventPayload) error {
+	run := workerlog.New("wardrobe_cleanup", workerlog.TriggerQueue)
+	run.LogReceived(w.logger,
+		zap.String("correlationId", shared_msg.CorrelationIdFromContext(ctx)),
+		zap.String("itemId", payload.ItemID.String()),
+	)
+	if err := w.useCase.HandleWardrobeDeleted(ctx, payload); err != nil {
+		run.LogFailure(w.logger, err, zap.String("itemId", payload.ItemID.String()))
+		return err
 	}
+	run.LogSuccessIfData(w.logger, zap.String("itemId", payload.ItemID.String()))
+	return nil
 }
 
 func (w *WardrobeCleanupWorker) Stop() {

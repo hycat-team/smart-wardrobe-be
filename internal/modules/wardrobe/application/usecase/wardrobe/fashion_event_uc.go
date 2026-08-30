@@ -43,6 +43,16 @@ func NewWardrobeFashionEventUseCase(
 	}
 }
 
+// HandleFashionEvent dispatch theo status payload. Trước đây nằm ở
+// presentation worker — chuyển vào usecase để worker thin (FR-020)
+// và dispatch được test độc lập.
+func (uc *WardrobeFashionEventUseCase) HandleFashionEvent(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
+	if payload.Status == analyzetaskstatus.Failed {
+		return uc.HandleFashionFailed(ctx, payload)
+	}
+	return uc.HandleFashionAnalyzed(ctx, payload)
+}
+
 func (uc *WardrobeFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
 	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.ItemID)
 	if err != nil {
