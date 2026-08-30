@@ -662,11 +662,36 @@ func (w *SomeWorker) Stop() {
 }
 ```
 
+#### Queue consumer registration (`event.RegisterTypedConsumer`)
+
+Event-consuming workers MUST register through the shared generic helper (application layer `event` package) — no per-module consumer adapters, no manual `RegisterConsumer` + unmarshal, no direct dependency on the infrastructure client:
+
+```go
+func (w *SomeWorker) Start(ctx context.Context) {
+    w.BaseWorker.Start(ctx)    // MUST call first
+    if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueSomeQueue, w.handle, event.ConsumerOpts{}); err != nil {
+        w.logger.Error("Failed to register consumer", zap.Error(err))
+    }
+}
+
+func (w *SomeWorker) handle(ctx context.Context, payload SomePayloadDTO) error {
+    // log correlationId propagated by the helper:
+    // zap.String("correlationId", event.CorrelationIdFromContext(ctx))
+    // delegate to use case — no unmarshal, no error classification here
+}
+```
+
+- `w.messageClient` is the `event.IMessageConsumer` interface — wire binds it to the infrastructure client; workers never import infrastructure packages (queue names live in `eventconstants` with the topic names).
+- `ConsumerOpts{}` reads `Prefetch`/`Concurrency` defaults from `topology.go`.
+- Unmarshal failure → `PermanentError` → DLQ (handled by helper); handler errors → `RetryableError` → requeue (handled by `startConsumerLoop`).
+- `correlationId` from message headers is injected into the per-message context by the helper.
+
 ### Rules
 
 - Workers MUST be **thin wrappers** — delegate business logic to use cases via interfaces in `application/interface/usecase/`.
 - Workers MUST NOT contain business logic directly. If a worker has complex logic (error classification, retry loops, orchestration), move it to the use case layer.
 - Workers MUST embed `*worker.BaseWorker` and call `w.BaseWorker.Start(ctx)` / `w.BaseWorker.Stop()`.
+- Additional worker goroutines (consume loops, initial sync) MUST use `w.Context()` — the derived context cancelled by `Stop()` — not the raw `Start(ctx)` parameter.
 - All workers in `AppWorkers` struct MUST use concrete pointer types — interfaces are not allowed for worker fields.
 
 ### Use cases

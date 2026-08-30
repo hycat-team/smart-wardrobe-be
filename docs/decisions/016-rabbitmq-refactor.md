@@ -16,6 +16,8 @@ Hệ thống RabbitMQ trước 016 loạn do làm tới đâu sửa tới đó: 
 
 3.  **Đổi routing hậu tố `.wardrobe/.brand`** cho `fashion.event.analyzed/failed` và `fashion.item.created` để broker routing đúng, xóa filter `ItemType` ở `wardrobe/brand` consumers (loại bỏ ACK-drop 50%). Wildcard thống nhất `.#`. Tách `publisherChannel` (Confirm) + consumer channel riêng `Qos(prefetch=20, global=false)`, `ConsumerOpts` per-queue, `RegisterTypedConsumer[T]` generic, `PermanentError` vs `RetryableError` (sleep xóa), `correlationId` trong `OutboxRecord.Headers`.
 
+4.  **De-scope `traceparent` header** (Decision Date: 2026-08-30). `OutboxRecord.Headers` chỉ mang `correlationId/eventVersion/publishedAt`, không inject W3C `traceparent`. Lý do: hệ thống là modular monolith — publisher và 13 consumer chạy trong cùng 1 process, `correlationId` (đã propagate qua context per-message và log 2 đầu) đáp ứng đủ nhu cầu trace; `traceparent` chỉ phát huy giá trị khi message đi qua ≥2 process khác nhau với OpenTelemetry SDK + tracing backend (Jaeger/Tempo) — làm bây giờ là xây hạ tầng cho nhu cầu chưa tồn tại. Headers là additive nên bổ sung sau không phá gì. **Reconsider khi**: lần đầu có message đi qua 2 process khác nhau (worker tách deploy, service thứ hai consume cùng broker). Chi tiết: `specs/016-rabbitmq-messaging-refactor/contracts/outbox-headers.contract.md` (task T059).
+
 ## 3. Consequences
 
 - **Positive**: Thêm queue chỉ sửa `topology.go` + 1 worker; 0 message mất (poison→DLQ, transient→requeue, `delivery-limit`); burst 100 ≥3x nhanh hơn; 6 cơ chế mô tả đúng trong docs không exhaustive; single-node quorum-ready, dễ nâng 3-node sau.

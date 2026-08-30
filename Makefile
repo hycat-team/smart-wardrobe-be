@@ -27,21 +27,23 @@ RUN_BIN := .\$(subst /,\,$(GO_BIN_OUT))
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
 CLEAN_SWAGGER_CMD := if exist api\swagger rmdir /S /Q api\swagger
-FMT_CMD := powershell -NoProfile -ExecutionPolicy Bypass -Command "$$files = @(Get-ChildItem -Path . -Filter '*.go' -File -Recurse | Where-Object { $$_.FullName -notmatch '[\\/](vendor)[\\/]' }); foreach ($$file in $$files) { & gofmt -w $$file.FullName; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE } }"
-FMT_CHECK_CMD := powershell -NoProfile -ExecutionPolicy Bypass -Command "$$files = @(Get-ChildItem -Path . -Filter '*.go' -File -Recurse | Where-Object { $$_.FullName -notmatch '[\\/](vendor)[\\/]' }); $$bad = @(); foreach ($$file in $$files) { $$result = & gofmt -l $$file.FullName; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE }; if ($$result) { $$bad += $$result } }; if ($$bad.Count -gt 0) { Write-Host 'The following Go files are not formatted:'; $$bad | ForEach-Object { Write-Host $$_ }; exit 1 }"
-TEST_CMD := go test ./... 2>&1 | findstr /V /C:"no test files"
 else
 GO_BIN_OUT := $(BIN_DIR)/main
 RUN_BIN := ./$(GO_BIN_OUT)
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 CLEAN_SWAGGER_CMD := rm -rf ./api/swagger
+endif
+
+# FMT/TEST command dùng chung 2 OS — make luôn chạy qua sh (Git Bash trên
+# Windows), powershell one-liner cũ bị vỡ quoting và findstr bị MSYS
+# path-conversion (T043).
 FMT_CMD := find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w {} +
 FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)"
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
-endif
+RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
+.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
 help:
 	@echo "========================================================================"
@@ -73,6 +75,9 @@ quality-help:
 	@echo "  make generate-check   : Verify generated Wire and Swagger files are up-to-date"
 	@echo "  make vet              : Run static analysis using 'go vet'"
 	@echo "  make test             : Run all Go unit and integration tests"
+	@echo "  make test-race        : Run all Go tests with race detector enabled"
+	@echo "  make test-integration : Run messaging integration tests (needs TEST_RABBITMQ_URL / TEST_DATABASE_URL)"
+	@echo "  make lint             : Run fmt-check + go vet"
 	@echo "  make build            : Compile Go backend binary"
 	@echo "  make check            : Run all checks sequentially (CI check suite)"
 
@@ -157,6 +162,19 @@ test:
 	@echo Running Go tests...
 	@$(TEST_CMD)
 	@echo Go tests finished.
+
+test-race:
+	@echo Running Go tests with race detector...
+	@$(RACE_TEST_CMD)
+	@echo Go race tests finished.
+
+lint: fmt-check vet
+	@echo Lint finished.
+
+test-integration:
+	@echo Running integration tests - requires TEST_RABBITMQ_URL / TEST_DATABASE_URL...
+	@go test -race -run Integration ./internal/shared/infrastructure/messaging/
+	@echo Integration tests finished.
 
 build:
 	@echo Building application for the current operating system...

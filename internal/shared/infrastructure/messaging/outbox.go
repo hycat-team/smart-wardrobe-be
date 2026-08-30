@@ -11,9 +11,10 @@ import (
 type OutboxStatus string
 
 const (
-	OutboxStatusPending   OutboxStatus = "pending"
-	OutboxStatusPublished OutboxStatus = "published"
-	OutboxStatusFailed    OutboxStatus = "failed"
+	OutboxStatusPending    OutboxStatus = "pending"
+	OutboxStatusProcessing OutboxStatus = "processing"
+	OutboxStatusPublished  OutboxStatus = "published"
+	OutboxStatusFailed     OutboxStatus = "failed"
 )
 
 type OutboxRecord struct {
@@ -44,5 +45,7 @@ type OutboxRepository interface {
 	MarkFailed(ctx context.Context, id uuid.UUID, err error) error
 	// DeletePublishedBefore deletes published records older than `since` (cleanup).
 	DeletePublishedBefore(ctx context.Context, since time.Time) (int64, error)
+	// CountPending trả về số record còn chờ publish (gauge outbox_pending).
+	CountPending(ctx context.Context) (int64, error)
 	SendNotification(ctx context.Context) error
 }

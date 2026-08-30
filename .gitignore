@@ -739,3 +739,5 @@ backups/
 *.sql.gz
 
 *.drawio.bkp
+.zcode/
+

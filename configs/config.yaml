@@ -59,6 +59,7 @@ rabbitmq:
     prefetch: 20
     consumer_concurrency: 1
     delivery_limit: 5
+    management_port: 15672
 outbox:
     retry_max_attempts: 3
     retry_interval_minutes: 5

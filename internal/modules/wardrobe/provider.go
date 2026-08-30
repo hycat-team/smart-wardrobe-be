@@ -7,7 +7,6 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
-	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	"smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	"smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
@@ -23,12 +22,6 @@ var ProviderSet = wire.NewSet(
 	persistence.NewOutfitRepository,
 	search.NewWardrobeSearchService,
 	search.NewWardrobeSearchIndexService,
-	messaging.NewSearchSyncEventConsumer,
-	messaging.NewWardrobeFashionAnalyzedEventConsumer,
-	messaging.NewWardrobeCleanupEventConsumer,
-	messaging.NewWardrobeProcessingExhaustedEventConsumer,
-	messaging.NewWardrobeFashionBindEventConsumer,
-	messaging.NewElasticsearchProcessingExhaustedEventConsumer,
 
 	item.NewWardrobeItemUseCase,
 	catalog.NewWardrobeCatalogUseCase,

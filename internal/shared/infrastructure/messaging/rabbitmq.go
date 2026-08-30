@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -29,12 +30,15 @@ type RabbitMQClient struct {
 	conn           *amqp.Connection
 	ch             *amqp.Channel
 	publisherCh    *amqp.Channel
+	confirms       <-chan amqp.Confirmation
 	mu             sync.RWMutex
 	publisherMu    sync.Mutex
 	isReconnecting bool
 	consumers      []consumerRegistration
 	consumerMu     sync.Mutex
 	outboxRepo     OutboxRepository
+	baseCtx        context.Context
+	baseCancel     context.CancelFunc
 }
 
 func NewRabbitMQClient(cfg *config.Config, l logger.Interface, outboxRepo OutboxRepository) (*RabbitMQClient, error) {
@@ -43,6 +47,7 @@ func NewRabbitMQClient(cfg *config.Config, l logger.Interface, outboxRepo Outbox
 		logger:     l,
 		outboxRepo: outboxRepo,
 	}
+	client.baseCtx, client.baseCancel = context.WithCancel(context.Background())
 
 	err := resilience.RunStartupRetry(cfg, l, "rabbitmq", func(timeout time.Duration) error {
 		return client.connect(timeout)
@@ -57,6 +62,9 @@ func (r *RabbitMQClient) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if r.baseCancel != nil {
+		r.baseCancel()
+	}
 	if r.publisherCh != nil {
 		_ = r.publisherCh.Close()
 	}
@@ -105,11 +113,12 @@ func (r *RabbitMQClient) reRegisterConsumers() {
 
 func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(event.Message) error, deliveries <-chan amqp.Delivery) {
 	for d := range deliveries {
-		if err := handler(event.Message{Body: d.Body}); err != nil {
+		msg := event.Message{Body: d.Body, Headers: amqpTableToMap(d.Headers)}
+		if err := handler(msg); err != nil {
 			r.logger.Error("Consumer handler error", zap.String("queue", queueName), zap.Error(err))
 			incNack()
-			var pe PermanentError
-			var re RetryableError
+			var pe event.PermanentError
+			var re event.RetryableError
 			switch {
 			case errors.As(err, &pe):
 				_ = d.Nack(false, false)
@@ -123,4 +132,15 @@ func (r *RabbitMQClient) startConsumerLoop(queueName string, handler func(event.
 			_ = d.Ack(false)
 		}
 	}
+}
+
+func amqpTableToMap(t amqp.Table) map[string]any {
+	if t == nil {
+		return nil
+	}
+	m := make(map[string]any, len(t))
+	for k, v := range t {
+		m[k] = v
+	}
+	return m
 }

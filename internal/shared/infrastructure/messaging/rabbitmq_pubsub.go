@@ -13,8 +13,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// PublishDirect publishes directly to RabbitMQ — MUST only be called by OutboxUseCase (constitution §III, FR-018).
-// Other usecases must use Publish() which writes to outbox.
+// PublishDirect bypasses the outbox (no durability) — MUST only be called by
+// OutboxUseCase. Every other caller MUST use Publish(), which writes to outbox
+// and keeps the publish durable across broker outages.
 func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body []byte, headers amqp.Table) error {
 	r.publisherMu.Lock()
 	defer r.publisherMu.Unlock()
@@ -62,11 +63,47 @@ func (r *RabbitMQClient) PublishDirect(ctx context.Context, topic string, body [
 	)
 	if err != nil {
 		incPublishFailed()
-	} else {
-		incPublishTotal()
+		return err
+	}
+	incPublishTotal()
+
+	// Publish chỉ thành công khi broker xác nhận (publisher confirm);
+	// Nếu nack hoặc timeout, trả lỗi để OutboxUseCase MarkFailed và retry sau.
+	if err := r.waitForPublishConfirm(ctx); err != nil {
+		incPublishFailed()
+		return fmt.Errorf("publisher confirm failed for topic %s: %w", topic, err)
 	}
 
-	return err
+	return nil
+}
+
+// publishConfirmTimeout là thời gian tối đa chờ broker xác nhận 1 publish.
+const publishConfirmTimeout = 5 * time.Second
+
+func (r *RabbitMQClient) waitForPublishConfirm(ctx context.Context) error {
+	r.mu.RLock()
+	confirms := r.confirms
+	r.mu.RUnlock()
+
+	if confirms == nil {
+		// Confirm mode không bật được (đã warn khi connect) — không có gì để chờ.
+		return nil
+	}
+
+	select {
+	case c, ok := <-confirms:
+		if !ok {
+			return fmt.Errorf("confirm channel closed (connection may be down)")
+		}
+		if !c.Ack {
+			return fmt.Errorf("broker nacked publish (deliveryTag %d)", c.DeliveryTag)
+		}
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("cancelled while waiting for publisher confirm: %w", ctx.Err())
+	case <-time.After(publishConfirmTimeout):
+		return fmt.Errorf("timeout after %s waiting for publisher confirm", publishConfirmTimeout)
+	}
 }
 
 func (r *RabbitMQClient) Publish(ctx context.Context, topic string, payload any) error {

@@ -9,7 +9,7 @@ import (
 	"smart-wardrobe-be/internal/shared/infrastructure/messaging"
 )
 
-// burst_test.go — dùng để benchmark burst 100 message (quickstart §6)
+// burst_test.go — dùng để benchmark burst 100 message
 // Chạy: go run ./scripts/burst_test.go --count 100 --topic fashion.event.analyze
 func main() {
 	fmt.Println("Burst test placeholder — dùng Outbox Publish để gửi 100 message")

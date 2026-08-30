@@ -36,3 +36,6 @@ jobs:
 
             - name: Run project checks
               run: make check
+
+            - name: Run race detector tests
+              run: make test-race

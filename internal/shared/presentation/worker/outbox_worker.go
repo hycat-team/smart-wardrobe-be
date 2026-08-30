@@ -14,6 +14,7 @@ import (
 )
 
 const outboxFallbackInterval = 2 * time.Second
+const outboxGaugeInterval = 30 * time.Second
 
 type OutboxWorker struct {
 	*BaseWorker
@@ -54,6 +55,9 @@ func (w *OutboxWorker) runLoop(ctx context.Context) {
 	cleanupTicker := time.NewTicker(cleanupInterval)
 	defer cleanupTicker.Stop()
 
+	gaugeTicker := time.NewTicker(outboxGaugeInterval)
+	defer gaugeTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,10 +67,17 @@ func (w *OutboxWorker) runLoop(ctx context.Context) {
 			w.processBatch(ctx)
 		case <-pollTicker.C:
 			w.processBatch(ctx)
+		case <-gaugeTicker.C:
+			w.refreshGauges(ctx)
 		case <-cleanupTicker.C:
 			w.cleanupPublished(ctx)
 		}
 	}
+}
+
+// refreshGauges cập nhật gauges outbox_pending/queue_depth/dlq_depth.
+func (w *OutboxWorker) refreshGauges(ctx context.Context) {
+	w.outboxUC.RefreshGauges(ctx)
 }
 
 func (w *OutboxWorker) processBatch(ctx context.Context) {

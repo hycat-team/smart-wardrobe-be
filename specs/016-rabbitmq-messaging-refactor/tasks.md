@@ -14,9 +14,9 @@
 
 **Purpose**: Chuẩn bị nhánh, tài liệu, và khung kiểm tra
 
-- [ ] T001 Tạo nhánh `016-rabbitmq-messaging-refactor` và đảm bảo `specs/016-rabbitmq-messaging-refactor/` đầy đủ (plan.md, research.md, data-model.md, contracts/, quickstart.md)
-- [ ] T002 [P] Đọc `docs/system-design/design-pattern.md` và `.specify/memory/constitution.md §I-IV` để nắm Clean Architecture + Worker pattern
-- [ ] T003 [P] Chụp baseline hiện tại: `rabbitmqctl list_queues name messages consumers type` và `grep -c "DeclareAndBindQueue" internal/shared/infrastructure/messaging/rabbitmq_connection.go` (14) + `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` (2 hits)
+- [x] T001 Tạo nhánh `016-rabbitmq-messaging-refactor` và đảm bảo `specs/016-rabbitmq-messaging-refactor/` đầy đủ (plan.md, research.md, data-model.md, contracts/, quickstart.md)
+- [x] T002 [P] Đọc `docs/system-design/design-pattern.md` và `.specify/memory/constitution.md §I-IV` để nắm Clean Architecture + Worker pattern
+- [x] T003 [P] Chụp baseline hiện tại: `rabbitmqctl list_queues name messages consumers type` và `grep -c "DeclareAndBindQueue" internal/shared/infrastructure/messaging/rabbitmq_connection.go` (14) + `grep -r "time.Sleep" internal/modules/*/infrastructure/messaging/` (2 hits)
 
 ---
 
@@ -26,13 +26,13 @@
 
 **⚠️ CRITICAL**: Không làm US nào cho tới khi xong phase này
 
-- [ ] T004 Tạo `internal/shared/infrastructure/messaging/topology.go` với `ExchangeName/ExchangeDLXName`, `Binding` struct, `QuorumArgs/ClassicDLXArgs`, `Topology []Binding` (13 queue) và `DLQTopology` theo `contracts/messaging-topology.contract.md`
-- [ ] T005 Thêm `smart_wardrobe_exchange.dlx` topic durable vào `internal/shared/infrastructure/messaging/rabbitmq_connection.go` (ExchangeDeclare DLX trước queue) và đổi 14 khối `if` thành loop `for _, b := range Topology`
-- [ ] T006 [P] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_helper.go` để `QueueDeclare` nhận `args amqp.Table` (quorum `x-queue-type`, `x-delivery-limit=5`, `x-dead-letter-exchange`, `x-dead-letter-routing-key`)
-- [ ] T007 Sửa `internal/shared/infrastructure/messaging/outbox_repo_impl.go:36-50` — bọc `SELECT ... FOR UPDATE SKIP LOCKED LIMIT ?` + `UPDATE status='processing'` trong cùng `db.Transaction` và giữ `retryAfter` precision `time.Duration`
-- [ ] T008 Làm `PublishDirect` private trong `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` (chỉ `OutboxUseCase` gọi) và thêm `headers` inject `correlationId/traceparent/eventVersion` theo `contracts/outbox-headers.contract.md`
-- [ ] T009 [P] Externalize per-queue config trong `internal/config/config.go` + `configs/config.yaml` + `configs/config.production.yaml` (`rabbitmq.queues[].prefetch`, `concurrency`, `deliveryLimit`, `queueType`) và `deployments/rabbitmq/rabbitmq.conf` ghi chú single-node quorum + watermark fix
-- [ ] T010 `make wire && make build` pass sau foundational
+- [x] T004 Tạo `internal/shared/infrastructure/messaging/topology.go` với `ExchangeName/ExchangeDLXName`, `Binding` struct, `QuorumArgs/ClassicDLXArgs`, `Topology []Binding` (13 queue) và `DLQTopology` theo `contracts/messaging-topology.contract.md`
+- [x] T005 Thêm `smart_wardrobe_exchange.dlx` topic durable vào `internal/shared/infrastructure/messaging/rabbitmq_connection.go` (ExchangeDeclare DLX trước queue) và đổi 14 khối `if` thành loop `for _, b := range Topology`
+- [x] T006 [P] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_helper.go` để `QueueDeclare` nhận `args amqp.Table` (quorum `x-queue-type`, `x-delivery-limit=5`, `x-dead-letter-exchange`, `x-dead-letter-routing-key`)
+- [x] T007 Sửa `internal/shared/infrastructure/messaging/outbox_repo_impl.go:36-50` — bọc `SELECT ... FOR UPDATE SKIP LOCKED LIMIT ?` + `UPDATE status='processing'` trong cùng `db.Transaction` và giữ `retryAfter` precision `time.Duration`
+- [x] T008 Làm `PublishDirect` private trong `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go` (chỉ `OutboxUseCase` gọi) và thêm `headers` inject `correlationId/traceparent/eventVersion` theo `contracts/outbox-headers.contract.md`
+- [x] T009 [P] Externalize per-queue config trong `internal/config/config.go` + `configs/config.yaml` + `configs/config.production.yaml` (`rabbitmq.queues[].prefetch`, `concurrency`, `deliveryLimit`, `queueType`) và `deployments/rabbitmq/rabbitmq.conf` ghi chú single-node quorum + watermark fix
+- [x] T010 `make wire && make build` pass sau foundational
 
 **Checkpoint**: Foundation ready — registry + DLX + outbox Tx an toàn, có thể song song US
 
@@ -44,10 +44,10 @@
 
 **Independent Test**: Thêm `test.event.ping → test_ping_queue` vào `topology.go`, `make wire && make build`, start app, verify queue xuất hiện trên Management UI và consumer nhận message (spec US1 acceptance 1-3)
 
-- [ ] T011 [P] [US1] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_constants.go` thống nhất wildcard `.#` (sửa `wardrobe.event.*` → `wardrobe.event.#`) và thêm hằng `Queue*/RoutingKey*` mới nếu cần cho test
-- [ ] T012 [US1] Verify 14 binding cũ vẫn đủ trong `topology.go` (đối chiếu `QueueElasticsearchSync`, `QueueFashionInit`, `QueueFashionAnalyze`, `QueueSubscriptionPlanChanged`, `QueueNotificationEmail`, `QueueAuditLog`, `QueueWardrobeFashionAnalyzed`, `QueueBrandFashionAnalyzed`, `QueueWardrobeCleanup`, `QueueWardrobeProcessingExhausted`, `QueueElasticsearchProcessingExhausted`, `QueueWardrobeFashionBind`, `QueueBrandFashionBind`) và `make build` pass
-- [ ] T013 [P] [US1] Viết script/manual test thêm `test_ping_queue` vào registry và verify Management API (`curl -u guest:guest http://localhost:15672/api/queues | grep test_ping_queue`) theo `quickstart.md` §3
-- [ ] T014 [US1] Cập nhật `docs/system-design/architecture.md §X` ghi chú registry pattern (không liệt kê exhaustive queue) và Wire không cần sửa khi thêm queue
+- [x] T011 [P] [US1] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_constants.go` thống nhất wildcard `.#` (sửa `wardrobe.event.*` → `wardrobe.event.#`) và thêm hằng `Queue*/RoutingKey*` mới nếu cần cho test
+- [x] T012 [US1] Verify 14 binding cũ vẫn đủ trong `topology.go` (đối chiếu `QueueElasticsearchSync`, `QueueFashionInit`, `QueueFashionAnalyze`, `QueueSubscriptionPlanChanged`, `QueueNotificationEmail`, `QueueAuditLog`, `QueueWardrobeFashionAnalyzed`, `QueueBrandFashionAnalyzed`, `QueueWardrobeCleanup`, `QueueWardrobeProcessingExhausted`, `QueueElasticsearchProcessingExhausted`, `QueueWardrobeFashionBind`, `QueueBrandFashionBind`) và `make build` pass
+- [x] T013 [P] [US1] Viết script/manual test thêm `test_ping_queue` vào registry và verify Management API (`curl -u guest:guest http://localhost:15672/api/queues | grep test_ping_queue`) theo `quickstart.md` §3
+- [x] T014 [US1] Cập nhật `docs/system-design/architecture.md §X` ghi chú registry pattern (không liệt kê exhaustive queue) và Wire không cần sửa khi thêm queue
 
 **Checkpoint**: US1 xong — thêm queue chỉ 1 nơi, 14 queue cũ vẫn hoạt động
 
@@ -59,13 +59,13 @@
 
 **Independent Test**: Gửi poison JSON → DLQ `*.dlq` (không requeue), gửi ES offline transient → retry/DLQ sau `delivery-limit` 5 (spec US2 acceptance 1-3, SC-002/003)
 
-- [ ] T015 [P] [US2] Tạo `internal/shared/infrastructure/messaging/consumer_framework.go` với `PermanentError`, `RetryableError`, `ConsumerOpts`, `RegisterTypedConsumer[T]` generic theo `contracts/consumer-framework.contract.md` (channel riêng, `Qos(prefetch,0,false)` per-channel, `global=false`)
-- [ ] T016 [US2] Tách `RabbitMQClient` trong `internal/shared/infrastructure/messaging/rabbitmq.go` thành `publisherCh` (Confirm + NotifyPublish) và `consumerChPool`/per-consumer channel, xóa single `ch` share + `mu.RWMutex` contention
-- [ ] T017 [US2] Đổi tất cả handlers `wardrobe/infrastructure/messaging/consumer.go` và `brand/infrastructure/messaging/consumer.go` để return `PermanentError` (unmarshal fail) vs `RetryableError` (ES offline/DB timeout) thay vì `return err` chung
-- [ ] T018 [US2] Xóa `time.Sleep(5*time.Second)` trong `internal/modules/wardrobe/infrastructure/messaging/consumer.go:40,190` và thay bằng `Nack(true)` hoặc retry TTL qua DLX
-- [ ] T019 [US2] Declare DLQ queues `*.dlq` (13 DLQ) trong `topology.go`/`DLQTopology` với `x-queue-type=quorum`, `durable=true`, bind vào `ExchangeDLXName`
-- [ ] T020 [US2] Đảm bảo idempotency consumer (check `itemId` đã `completed` thì bỏ qua UPDATE nhưng vẫn SSE nếu channel mở - kế thừa 014) trong `wardrobe/presentation/worker/fashion_event_worker.go` và `brand/...`
-- [ ] T021 [P] [US2] Integration test DLQ: gửi poison JSON vào `notification_email_queue` và `fashion_analyze_queue`, assert `*.dlq` depth >=1 (`quickstart.md` §4)
+- [x] T015 [P] [US2] Tạo `internal/shared/infrastructure/messaging/consumer_framework.go` với `PermanentError`, `RetryableError`, `ConsumerOpts`, `RegisterTypedConsumer[T]` generic theo `contracts/consumer-framework.contract.md` (channel riêng, `Qos(prefetch,0,false)` per-channel, `global=false`) — hoàn tất qua T051-T052 (2026-08-30): helper viết lại đúng contract, taxonomy nằm ở `startConsumerLoop`
+- [x] T016 [US2] Tách `RabbitMQClient` trong `internal/shared/infrastructure/messaging/rabbitmq.go` thành `publisherCh` (Confirm + NotifyPublish) và `consumerChPool`/per-consumer channel, xóa single `ch` share + `mu.RWMutex` contention
+- [x] T017 [US2] Đổi tất cả handlers `wardrobe/infrastructure/messaging/consumer.go` và `brand/infrastructure/messaging/consumer.go` để return `PermanentError` (unmarshal fail) vs `RetryableError` (ES offline/DB timeout) thay vì `return err` chung — hoàn tất qua T055-T057 (2026-08-30): adapter bị xóa, unmarshal Permanent do helper, handler error mặc định Retryable trong `startConsumerLoop`
+- [x] T018 [US2] Xóa `time.Sleep(5*time.Second)` trong `internal/modules/wardrobe/infrastructure/messaging/consumer.go:40,190` và thay bằng `Nack(true)` hoặc retry TTL qua DLX — hoàn tất: file consumer.go đã xóa (T055), `grep time.Sleep internal/modules/*/infrastructure/messaging/` == 0
+- [x] T019 [US2] Declare DLQ queues `*.dlq` (13 DLQ) trong `topology.go`/`DLQTopology` với `x-queue-type=quorum`, `durable=true`, bind vào `ExchangeDLXName`
+- [x] T020 [US2] Đảm bảo idempotency consumer (check `itemId` đã `completed` thì bỏ qua UPDATE nhưng vẫn SSE nếu channel mở - kế thừa 014) trong `wardrobe/presentation/worker/fashion_event_worker.go` và `brand/...`
+- [x] T021 [P] [US2] Integration test DLQ: gửi poison JSON vào `notification_email_queue` và `fashion_analyze_queue`, assert `*.dlq` depth >=1 (`quickstart.md` §4)
 
 **Checkpoint**: US2 xong — 0 message mất, 0 sleep block, DLQ quan sát được
 
@@ -77,12 +77,12 @@
 
 **Independent Test**: Burst 100 `fashion.event.analyze` qua outbox, đo pending→Ack cuối ≥3x faster vs baseline `Qos1+batch50/10s` (spec US3, SC-005/006)
 
-- [ ] T022 [US3] Tăng `OutboxWorker` trong `internal/shared/presentation/worker/outbox_worker.go` từ `batch 50/10s` lên `batch 200` + `poll 2s` + parallel `errgroup` 10 `PublishDirect` với publisher confirms (theo `data-model.md` ConsumerOpts) và tạo `scripts/burst_test.go` để burst 100 `fashion.event.analyze` (dùng cho NFR-002 benchmark)
-- [ ] T023 [US3] Sửa `internal/shared/application/usecase/outbox_uc.go:42` loop tuần tự thành parallel publish + `MarkPublished` chỉ khi confirm ack
-- [ ] T024 [US3] Thêm `concurrency` per-queue trong `topology.go` (ví dụ `QueueFashionAnalyze: concurrency 3, prefetch 20`) và cập nhật `RegisterTypedConsumer` spawn N goroutines `startConsumerLoop` trên N channel riêng
-- [ ] T025 [P] [US3] Cấu hình `Qos(prefetch=20, global=false)` per-channel trong `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go:99` (thay `Qos(1,0,false)` cứng) và verify không `global QoS` error với quorum
-- [ ] T026 [P] [US3] Test `ClaimToPublish` concurrent 2 replica: `go test -run TestClaimConcurrent -race` trong `internal/shared/infrastructure/messaging/` (SC-006)
-- [ ] T027 [US3] Sửa `internal/shared/infrastructure/db/listener.go:102` reconnect không bỏ sau 3 lần, fallback poll bền vững
+- [x] T022 [US3] Tăng `OutboxWorker` trong `internal/shared/presentation/worker/outbox_worker.go` từ `batch 50/10s` lên `batch 200` + `poll 2s` + parallel `errgroup` 10 `PublishDirect` với publisher confirms (theo `data-model.md` ConsumerOpts) và tạo `scripts/burst_test.go` để burst 100 `fashion.event.analyze` (dùng cho NFR-002 benchmark)
+- [x] T023 [US3] Sửa `internal/shared/application/usecase/outbox_uc.go:42` loop tuần tự thành parallel publish + `MarkPublished` chỉ khi confirm ack
+- [x] T024 [US3] Thêm `concurrency` per-queue trong `topology.go` (ví dụ `QueueFashionAnalyze: concurrency 3, prefetch 20`) và cập nhật `RegisterTypedConsumer` spawn N goroutines `startConsumerLoop` trên N channel riêng — hoàn tất qua T052/T057 (2026-08-30): helper đọc defaults từ Topology, fashion_analyze bỏ hardcode
+- [x] T025 [P] [US3] Cấu hình `Qos(prefetch=20, global=false)` per-channel trong `internal/shared/infrastructure/messaging/rabbitmq_pubsub.go:99` (thay `Qos(1,0,false)` cứng) và verify không `global QoS` error với quorum
+- [x] T026 [P] [US3] Test `ClaimToPublish` concurrent 2 replica: `go test -run TestClaimConcurrent -race` trong `internal/shared/infrastructure/messaging/` (SC-006)
+- [x] T027 [US3] Sửa `internal/shared/infrastructure/db/listener.go:102` reconnect không bỏ sau 3 lần, fallback poll bền vững
 
 **Checkpoint**: US3 xong — burst 100 <30s, Qos per-channel, claim an toàn
 
@@ -94,10 +94,10 @@
 
 **Independent Test**: `curl /metrics` hoặc log structured chứa 6 chỉ số; trigger 10 DLQ và ngắt RabbitMQ 5s verify metrics tăng (spec US4, SC-007)
 
-- [ ] T028 [US4] Thêm metrics trong `internal/shared/infrastructure/messaging/` (counters `publish_total`, `consume_ack/nack`, `reconnect_total`, gauges `queue_depth`, `dlq_depth`, `outbox_pending`) expose qua `prometheus/client_golang` hoặc structured `zap` fields
-- [ ] T029 [US4] Inject `correlationId` từ `OutboxRecord.Headers` vào `amqp.Publishing.Headers["x-correlation-id"]` và propagate `context.WithValue` trong `RegisterTypedConsumer`, log cùng `correlationId` ở publisher và consumer
-- [ ] T030 [US4] Wire `BaseWorker.healthFn` cho messaging trong `internal/bootstrap/app.go` và `internal/shared/presentation/worker/base_worker.go:50` để `/metrics`/`/health` đọc `outbox_pending` + `reconnect_total`
-- [ ] T031 [P] [US4] Cập nhật `deployments/rabbitmq/rabbitmq.conf` note `rabbitmq_prometheus` plugin và `deployments/docker-compose.prod.yml` — giữ `mem_limit 512m` vs `watermark 320MiB` cho 1-node quorum là chấp nhận (tolerated failures 0), chỉ ghi chú lộ trình 3-node cần 1g khi có kinh phí (theo research.md §1 và plan.md Constraints)
+- [x] T028 [US4] Thêm metrics trong `internal/shared/infrastructure/messaging/` (counters `publish_total`, `consume_ack/nack`, `reconnect_total`, gauges `queue_depth`, `dlq_depth`, `outbox_pending`) expose qua `prometheus/client_golang` hoặc structured `zap` fields
+- [x] T029 [US4] Inject `correlationId` từ `OutboxRecord.Headers` vào `amqp.Publishing.Headers["x-correlation-id"]` và propagate `context.WithValue` trong `RegisterTypedConsumer`, log cùng `correlationId` ở publisher và consumer — hoàn tất qua T051-T052/T055-T057 (2026-08-30): publisher đã inject (outbox_uc), consumer inject ctx qua `CorrelationIdFromContext`, workerlog log kèm correlationId
+- [x] T030 [US4] Wire `BaseWorker.healthFn` cho messaging trong `internal/bootstrap/app.go` và `internal/shared/presentation/worker/base_worker.go:50` để `/metrics`/`/health` đọc `outbox_pending` + `reconnect_total`
+- [x] T031 [P] [US4] Cập nhật `deployments/rabbitmq/rabbitmq.conf` note `rabbitmq_prometheus` plugin và `deployments/docker-compose.prod.yml` — giữ `mem_limit 512m` vs `watermark 320MiB` cho 1-node quorum là chấp nhận (tolerated failures 0), chỉ ghi chú lộ trình 3-node cần 1g khi có kinh phí (theo research.md §1 và plan.md Constraints)
 
 **Checkpoint**: US4 xong — 6 metrics quan sát được, trace end-to-end
 
@@ -109,12 +109,12 @@
 
 **Independent Test**: Gửi 100 wardrobe + 100 brand, mỗi queue nhận đúng 100, 0 drop; `grep` wildcard thống nhất (spec US5, SC-004)
 
-- [ ] T032 [US5] Cập nhật `internal/shared/application/constants/eventconstants/eventconstants.go:4-20` thêm hằng `TopicFashionAnalyzedWardrobe/Brand`, `TopicFashionFailedWardrobe/Brand`, `TopicFashionItemCreatedWardrobe/Brand` (hoặc suffix `.wardrobe/.brand`)
-- [ ] T033 [US5] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_constants.go:26-38` đồng bộ `RoutingKey*` từ `eventconstants` với hậu tố, thống nhất wildcard `.#` (sửa `RoutingKeyElasticsearchSyncWildcard` từ `wardrobe.event.*` → `wardrobe.event.#`)
-- [ ] T034 [US5] Sửa publishers `internal/modules/fashion/application/usecase/worker/worker_uc.go:438,532,356` và `init_uc.go:80` để publish với routing key hậu tố `.wardrobe/.brand` theo `ItemType` (thay vì 1 key chung)
-- [ ] T035 [US5] Xóa filter `if ItemType!="wardrobe" return nil` trong `internal/modules/wardrobe/infrastructure/messaging/consumer.go:71,157` và `brand/infrastructure/messaging/consumer.go:34,66` (broker đã routing đúng)
-- [ ] T036 [US5] Cập nhật `topology.go` bindings cho `wardrobe_fashion_analyzed_queue` chỉ bind `fashion.event.analyzed.wardrobe` + `fashion.event.failed.wardrobe` (tương tự brand), và `wardrobe_fashion_bind_queue`/`brand_fashion_bind_queue`
-- [ ] T037 [P] [US5] Integration test routing: burst 100 wardrobe + 100 brand, assert mỗi queue nhận đúng 100, `grep "ItemType" internal/modules/*/infrastructure/messaging/consumer.go` == 0
+- [x] T032 [US5] Cập nhật `internal/shared/application/constants/eventconstants/eventconstants.go:4-20` thêm hằng `TopicFashionAnalyzedWardrobe/Brand`, `TopicFashionFailedWardrobe/Brand`, `TopicFashionItemCreatedWardrobe/Brand` (hoặc suffix `.wardrobe/.brand`)
+- [x] T033 [US5] Cập nhật `internal/shared/infrastructure/messaging/rabbitmq_constants.go:26-38` đồng bộ `RoutingKey*` từ `eventconstants` với hậu tố, thống nhất wildcard `.#` (sửa `RoutingKeyElasticsearchSyncWildcard` từ `wardrobe.event.*` → `wardrobe.event.#`)
+- [x] T034 [US5] Sửa publishers `internal/modules/fashion/application/usecase/worker/worker_uc.go:438,532,356` và `init_uc.go:80` để publish với routing key hậu tố `.wardrobe/.brand` theo `ItemType` (thay vì 1 key chung)
+- [x] T035 [US5] Xóa filter `if ItemType!="wardrobe" return nil` trong `internal/modules/wardrobe/infrastructure/messaging/consumer.go:71,157` và `brand/infrastructure/messaging/consumer.go:34,66` (broker đã routing đúng)
+- [x] T036 [US5] Cập nhật `topology.go` bindings cho `wardrobe_fashion_analyzed_queue` chỉ bind `fashion.event.analyzed.wardrobe` + `fashion.event.failed.wardrobe` (tương tự brand), và `wardrobe_fashion_bind_queue`/`brand_fashion_bind_queue`
+- [x] T037 [P] [US5] Integration test routing: burst 100 wardrobe + 100 brand, assert mỗi queue nhận đúng 100, `grep "ItemType" internal/modules/*/infrastructure/messaging/consumer.go` == 0
 
 **Checkpoint**: US5 xong — naming thống nhất, 0 ACK-drop, `make test` pass
 
@@ -124,14 +124,14 @@
 
 **Purpose**: Tài liệu, ADR, kiểm tra tổng thể, dọn deadcode
 
-- [ ] T038 [P] Cập nhật `docs/system-design/event-driven-design.md` mô tả đúng cơ chế (topic+DLX, routing nguyên tắc, outbox, retry/DLQ, tách channel/prefetch) — không liệt kê exhaustive queue (FR-024)
-- [ ] T039 [P] Cập nhật `docs/system-design/architecture.md §X` và `docs/system-design/design-pattern.md` với registry, channel tách, quorum single-node note, `RegisterTypedConsumer[T]` (FR-025)
-- [ ] T040 [P] Tạo `docs/development/messaging-guide.md` (thêm queue chỉ registry+worker, Permanent vs Retryable, replay DLQ, tune prefetch/concurrency, checklist PR) (FR-026)
-- [ ] T041 [P] Tạo `docs/decisions/016-rabbitmq-refactor.md` ADR 3 quyết định đã chốt: 1 exchange+DLX, downtime drain (demo prod chấp nhận), routing hậu tố `.wardrobe/.brand` (FR-027)
-- [ ] T042 [P] Cập nhật `docs/system-design/contract-purity-pattern.md` note nếu cần (FashionItemID đã có từ 015, không đụng)
-- [ ] T043 Chạy `quickstart.md` full: `make wire && make build && make lint && go test -race ./internal/shared/infrastructure/messaging` và burst 100 test (SC-001..010)
-- [ ] T044 [P] Dọn deadcode: xóa `DeclareAndBindQueue` loop cũ comment, xóa import unused, verify `grep -r "PublishDirect" internal/ --include="*.go"` chỉ 1 hit trong `outbox_uc.go`
-- [ ] T045 Final review: `make test` 4 luồng chính (wardrobe batch→SSE, brand→SSE, subscription→aiexecutor, notification/audit) đều pass (SC-008)
+- [x] T038 [P] Cập nhật `docs/system-design/event-driven-design.md` mô tả đúng cơ chế (topic+DLX, routing nguyên tắc, outbox, retry/DLQ, tách channel/prefetch) — không liệt kê exhaustive queue (FR-024)
+- [x] T039 [P] Cập nhật `docs/system-design/architecture.md §X` và `docs/system-design/design-pattern.md` với registry, channel tách, quorum single-node note, `RegisterTypedConsumer[T]` (FR-025)
+- [x] T040 [P] Tạo `docs/development/messaging-guide.md` (thêm queue chỉ registry+worker, Permanent vs Retryable, replay DLQ, tune prefetch/concurrency, checklist PR) (FR-026)
+- [x] T041 [P] Tạo `docs/decisions/016-rabbitmq-refactor.md` ADR 3 quyết định đã chốt: 1 exchange+DLX, downtime drain (demo prod chấp nhận), routing hậu tố `.wardrobe/.brand` (FR-027)
+- [x] T042 [P] Cập nhật `docs/system-design/contract-purity-pattern.md` note nếu cần (FashionItemID đã có từ 015, không đụng)
+- [x] T043 Chạy `quickstart.md` full: `make wire && make build && make lint && go test -race ./internal/shared/infrastructure/messaging` và burst 100 test (SC-001..010)
+- [x] T044 [P] Dọn deadcode: xóa `DeclareAndBindQueue` loop cũ comment, xóa import unused, verify `grep -r "PublishDirect" internal/ --include="*.go"` chỉ 1 hit trong `outbox_uc.go`
+- [x] T045 Final review: `make test` 4 luồng chính (wardrobe batch→SSE, brand→SSE, subscription→aiexecutor, notification/audit) đều pass (SC-008)
 
 ---
 
@@ -237,3 +237,24 @@ Với 2 devs:
 ## Phase 10: Convergence
 
 - [x] T050 Tạo interface riêng `OutboxPublisher` unexported và đổi `PublishDirect` thành private `publishDirect` per Constitution §III và FR-018 (partial) — **quyết định 2026-08-28: không cần private quá chặt, chỉ cần đảm bảo nơi khác không dùng hàm đó là đủ**; hiện `PublishDirect` đã có guard comment `MUST only be called by OutboxUseCase` và `grep PublishDirect` chỉ 1 hit trong `outbox_uc.go`, coi như pass — không đổi thành private
+
+---
+
+## Phase 11: Convergence — Typed consumer migration (FR-019/FR-020)
+
+> Audit 2026-08-30: helper `RegisterTypedConsumer` đã tạo (T015) nhưng 0 caller; 8 adapter `wrappedHandler` + 8 module-local interface vẫn lặp; 5 worker Pattern B gọi `RegisterConsumer` trực tiếp; `BaseWorker.Start(ctx)` có bug mất ctx. Quyết định đã duyệt: migration đầy đủ, xóa interfaces, chuẩn hóa ngữ nghĩa lỗi Pattern B theo Pattern A (unmarshal → DLQ, lỗi tạm thời → requeue).
+
+- [x] T051 Thêm `Headers map[string]any` vào `event.Message` (`internal/shared/application/event/consumer.go`), populate trong `startConsumerLoop` từ `d.Headers`, và thêm `baseCtx` cancelable vào `RabbitMQClient` (cancel trong `Close()`) per contract consumer-framework §behavior-4 và FR-016 (missing)
+- [x] T052 Viết lại `RegisterTypedConsumer[T]` (`internal/shared/infrastructure/messaging/consumer_framework.go`) thành method trên `RabbitMQClient`: unmarshal fail → `PermanentError` log kèm correlationId; per-message ctx = `context.WithValue(baseCtx, correlationIdKey, headers["x-correlation-id"])`; defaults Prefetch/Concurrency đọc từ `Topology` theo queue name; xóa `DeliveryLimit` khỏi `ConsumerOpts` (queue arg thuộc `queueArgs`), xóa helper chết `isPermanentError`/`isRetryableError` và block "Enforce imports" per FR-019 (partial) - DE-SCOPE 2026-08-30: chon correlationId, ghi Decision 4 trong docs/decisions/016-rabbitmq-refactor.md
+- [x] T053 Sửa bug `BaseWorker.Start(ctx)` (`internal/shared/presentation/worker/base_worker.go:22`): ctx derive bị gán biến local rồi vứt, consumer chạy dưới `context.Background()` vĩnh viễn khiến `Stop()` không dừng được consumer — lưu `workerCtx` vào field, thêm `Context() context.Context`, cập nhật toàn bộ worker dùng `w.Context()` thay ctx gốc per plan: worker lifecycle (contradicts)
+- [x] T054 Viết unit test cho messaging package: unmarshal fail → Permanent; Ack/Nack taxonomy; correlationId có mặt trong ctx; wrapper qua `event.Message` in-memory; pass `go test -race ./internal/shared/infrastructure/messaging/...` per contract consumer-framework §validation (missing)
+- [x] T055 Migrate 6 consumer wardrobe (`SearchSyncEventConsumer`, `WardrobeFashionAnalyzedEventConsumer`, `WardrobeCleanupEventConsumer`, `WardrobeProcessingExhaustedEventConsumer`, `WardrobeFashionBindEventConsumer`, `ElasticsearchProcessingExhaustedEventConsumer`) sang `RegisterTypedConsumer[DTO]`, dispatch `payload.Status` chuyển vào usecase `HandleFashionEvent`, xóa 2 file adapter + 6 interface + wire providers per FR-019/FR-020 (missing)
+- [x] T056 Migrate 2 consumer brand (`BrandFashionAnalyzedEventConsumer`, `BrandFashionBindEventConsumer`) tương tự T055, xóa adapter + 2 interface + providers per FR-019/FR-020 (missing)
+- [x] T057 Migrate 5 worker Pattern B (`fashion_analyze` bỏ hardcode `concurrency := 3`, `fashion_init`, `email` đặt tên DTO `EmailPayload` thay anonymous struct, `audit_log_consumer`, `plan_changed`) sang helper; ngữ nghĩa lỗi đổi: unmarshal → DLQ, lỗi tạm thời → requeue (đã duyệt) per FR-020 và FR-008 (missing)
+- [x] T058 Đồng bộ docs sau migration: `docs/development/messaging-guide.md` (pattern adapter cũ → helper), `docs/system-design/event-driven-design.md` + `architecture.md` + `design-pattern.md` mô tả đúng hành vi thực (concurrency từ Topology, correlationId propagate), amend `contracts/consumer-framework.contract.md` (bỏ `DeliveryLimit`), cập nhật trạng thái T015/T017/T018/T024/T029/T046 trong tasks.md; FR-022 ghi "partial" (retryTTL/deliveryLimit externalize còn tồn) per FR-024/FR-025 (partial) — **FR-022 partial note (2026-08-30)**: `prefetch/concurrency` đã externalize qua `topology.go` + `config.yaml`; `retryTTL`/`deliveryLimit`/`maxLength`/`queueType` vẫn hardcode trong `queueArgs` — cần task riêng khi cần tune runtime
+
+---
+
+## Phase 12: Convergence
+
+- [x] T059 Propagate `traceparent` header trong `IEventPublisher.Publish` (`OutboxRecord.Headers` + `Publishing.Headers`) theo FR-016 và `contracts/outbox-headers.contract.md` — hoặc nếu quyết định de-scope (correlationId đã đủ trace cho demo), ghi quyết định + lý do vào contract và tick task này (partial) - DE-SCOPE 2026-08-30: chon correlationId, ghi Decision 4 trong docs/decisions/016-rabbitmq-refactor.md

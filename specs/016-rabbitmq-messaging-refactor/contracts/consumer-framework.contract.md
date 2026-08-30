@@ -9,7 +9,8 @@ Thay thế 8 wrapper `IWardrobeFashionAnalyzedEventConsumer`... lặp unmarshal+
 ## Interface
 
 ```go
-// internal/shared/application/event/consumer.go
+// Types ở application layer: internal/shared/application/event/consumer.go
+// (worker chỉ import event + eventconstants — không import infrastructure).
 
 package event
 
@@ -21,16 +22,33 @@ type RetryableError struct{ Err error }
 func (e RetryableError) Error() string { return e.Err.Error() }
 
 type ConsumerOpts struct {
-    Prefetch      int // default 20
-    Concurrency   int // default 1
-    DeliveryLimit int // quorum: 5
+    Prefetch    int // 0 = đọc từ Topology theo queue (fallback 20)
+    Concurrency int // 0 = đọc từ Topology theo queue (fallback 1)
 }
 
 type TypedHandler[T any] func(ctx context.Context, payload T) error
 
-// Shared messaging implements:
-func RegisterTypedConsumer[T any](queue string, handler TypedHandler[T], opts ConsumerOpts) error
+// IMessageConsumer có thêm method non-generic (impl: messaging.RabbitMQClient):
+func (r *RabbitMQClient) RegisterTypedHandler(queue string,
+    handler func(ctx context.Context, msg event.Message) error, opts event.ConsumerOpts) error
+
+// Generic helper (application layer, delegate xuống RegisterTypedHandler):
+func RegisterTypedConsumer[T any](mc IMessageConsumer, queue string, handler TypedHandler[T], opts ConsumerOpts) error
+func CorrelationIdFromContext(ctx context.Context) string
 ```
+
+> **Amend 2026-08-30 (T052)**: bỏ `DeliveryLimit` khỏi `ConsumerOpts` — đó là
+> **queue argument** (`x-delivery-limit` trong `queueArgs`, `topology.go`), không
+> phải consumer option; helper không thể enforce nó lúc runtime. Defaults
+> Prefetch/Concurrency đọc từ registry `Topology` (single source of truth).
+>
+> **Amend 2026-08-30 (DIP refactor)**: types + generic helper chuyển về
+> `event` (application layer) đúng như văn bản gốc của contract này; worker giữ
+> `IMessageConsumer` interface, queue constants chuyển sang `eventconstants`
+> (shared vocabulary, cùng chỗ topic names) — presentation không import
+> infrastructure. Helper tái dùng `RegisterConsumer` registry nên
+> `reRegisterConsumers` trên reconnect tự hoạt động; per-message ctx derive từ
+> `baseCtx` của client (cancel khi `Close()`).
 
 ## Behavior
 
@@ -45,8 +63,11 @@ func RegisterTypedConsumer[T any](queue string, handler TypedHandler[T], opts Co
 // internal/modules/wardrobe/presentation/worker/fashion_event_worker.go
 func (w *WardrobeFashionEventWorker) Start(ctx context.Context) {
     w.BaseWorker.Start(ctx)
-    _ = messaging.RegisterTypedConsumer(messaging.QueueWardrobeFashionAnalyzed, w.useCase.HandleFashionAnalyzed, event.ConsumerOpts{Prefetch:20, Concurrency:1})
+    _ = shared_msg.RegisterTypedConsumer(w.messageClient, shared_msg.QueueWardrobeFashionAnalyzed, w.handle, shared_msg.ConsumerOpts{})
 }
+
+// w.handle(ctx, payload) log workerlog + delegate usecase;
+// dispatch payload.Status nằm ở usecase HandleFashionEvent (FR-020).
 ```
 
 ## Validation

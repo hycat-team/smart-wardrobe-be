@@ -440,7 +440,7 @@ func (uc *UserUseCase) GetUserDetail(ctx context.Context, userID uuid.UUID) (*dt
 
 // CreateUserByAdmin allows an admin to create a new user account (defaults to user role)
 func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.UUID, req dto.CreateAdminUserReq) (*dto.UserRes, error) {
-	// FR-012: Check role: only "user" is permitted unless special admin seed creation
+	// Check role: only "user" is permitted unless special admin seed creation
 	role := roleslug.User
 	if req.RoleSlug != nil {
 		if *req.RoleSlug == roleslug.Admin {
@@ -514,7 +514,7 @@ func (uc *UserUseCase) UpdateUserRole(ctx context.Context, adminUserID uuid.UUID
 		return nil, identityerrors.ErrCannotModifyAdminRole()
 	}
 
-	// FR-012: Regular admins cannot promote anyone to admin
+	// Regular admins cannot promote anyone to admin
 	if req.RoleSlug == roleslug.Admin {
 		return nil, identityerrors.ErrAdminCannotPromoteAdmin()
 	}

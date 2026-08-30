@@ -5,7 +5,7 @@
 *   **No autonomous git**: Agent **MUST NOT** run any `git` command (`commit`, `push`, `tag`, `branch`, `checkout`, `merge`, `rebase`, `reset`, `pull`) without explicit developer permission or request. Agent may read `git status/log/diff` for inspection.
 *   **English only**: All `commit` messages, `pull request` titles/descriptions, `tag` messages, and related git artifacts **MUST be in English**. Follow Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
 *   **Branch naming**: `feat/<name>`, `fix/<name>`, `chore/<name>` or `###-feature-name` for Spec-kit features.
-*   **Commit hygiene**: One logical change per commit, `make wire && make test` must pass before commit.
+*   **Commit hygiene**: Commits must be **large enough to be meaningful** — batch related small changes (code + its tests + doc touch-ups) into one commit instead of splitting into fragmented micro-commits; no commit spam (one-line typos, stray file removals, ticked checkboxes alone). A commit should represent a complete, buildable unit of work. `make wire && make test` must pass before commit.
 
 ## 2. Tag & Push Tag for Deployment (CI/CD)
 

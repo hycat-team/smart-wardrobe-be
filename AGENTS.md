@@ -16,6 +16,10 @@
     - **Small/trivial tasks** (simple fixes, doc edits, configs): Spec-kit workflow is optional, but you MUST still follow the **core principles** in agent-workflow.md §IV.
     - **Always suggest the next command/skill** for the dev to run after completing any workflow step.
 - **Only apply speckit when requested**: If the user does not invoke `@[/speckit-*]`, there is no need to run the speckit workflow, but you MUST still follow the docs in `docs/development/` and `docs/system-design/`.
+- **MANDATORY** — Git operations MUST follow [git-workflow.md](docs/development/git-workflow.md):
+    - **No autonomous git**: Agent MUST NOT run any git mutation (`commit`, `push`, `tag`, `branch`, `checkout`, `merge`, `rebase`, `reset`, `amend`, history rewrite) without the dev's explicit permission or request. Read-only inspection (`git status/log/diff`) is allowed. This applies even when the dev approved a plan that mentions committing — each git mutation still requires explicit instruction.
+    - Commit messages in English, Conventional Commits, commits large enough to avoid noise (see git-workflow.md §1).
+    - Before proposing a commit: `make wire && make lint && make test-race` must pass.
 
 ## 3. Code Compliance
 

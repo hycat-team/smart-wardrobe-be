@@ -33,6 +33,7 @@ type IBrandItemUseCase interface {
 }
 
 type IBrandFashionEventUseCase interface {
+	HandleFashionEvent(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionAnalyzed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error

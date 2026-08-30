@@ -2,12 +2,12 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 
+	"smart-wardrobe-be/internal/modules/notification/application/dto"
 	"smart-wardrobe-be/internal/modules/notification/application/interface/usecase"
 	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
 	"smart-wardrobe-be/internal/shared/application/event"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	"smart-wardrobe-be/internal/shared/observability/workerlog"
 	"smart-wardrobe-be/internal/shared/presentation/worker"
 
@@ -36,47 +36,34 @@ func NewEmailWorker(
 
 func (w *EmailWorker) Start(ctx context.Context) {
 	w.BaseWorker.Start(ctx)
-	go w.startConsume(ctx)
+	if err := event.RegisterTypedConsumer(w.messageClient, eventconstants.QueueNotificationEmail, w.handle, event.ConsumerOpts{}); err != nil {
+		w.logger.Error("Failed to register email consumer", zap.Error(err))
+	}
 }
 
-func (w *EmailWorker) startConsume(ctx context.Context) {
-	handler := func(msg event.Message) error {
-		var payload struct {
-			To      string `json:"to"`
-			Subject string `json:"subject"`
-			Body    string `json:"body"`
-			Channel string `json:"channel"`
-		}
-		if err := json.Unmarshal(msg.Body, &payload); err != nil {
-			w.logger.Error("[EmailWorker] Failed to unmarshal message", zap.Error(err))
-			return err
-		}
+func (w *EmailWorker) handle(ctx context.Context, payload dto.EmailPayload) error {
+	run := workerlog.New("email", workerlog.TriggerQueue)
+	run.LogReceived(w.logger,
+		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
+		zap.String("to", payload.To),
+		zap.String("subject", payload.Subject),
+	)
 
-		run := workerlog.New("email", workerlog.TriggerQueue)
-		run.LogReceived(w.logger,
+	if err := w.emailUC.SendEmail(ctx, payload.To, payload.Subject, payload.Body); err != nil {
+		run.LogFailure(w.logger, err,
 			zap.String("to", payload.To),
 			zap.String("subject", payload.Subject),
 		)
-
-		if err := w.emailUC.SendEmail(ctx, payload.To, payload.Subject, payload.Body); err != nil {
-			run.LogFailure(w.logger, err,
-				zap.String("to", payload.To),
-				zap.String("subject", payload.Subject),
-			)
-			return err
-		}
-
-		run.AddTotal(1)
-		run.AddSuccess(1)
-		run.LogSuccessIfData(w.logger,
-			zap.String("to", payload.To),
-			zap.String("subject", payload.Subject),
-		)
-		return nil
+		return err
 	}
 
-	w.messageClient.RegisterConsumer(shared_msg.QueueNotificationEmail, handler)
-	w.logger.Info("[EmailWorker] Registered consumer for queue", zap.String("queue", shared_msg.QueueNotificationEmail))
+	run.AddTotal(1)
+	run.AddSuccess(1)
+	run.LogSuccessIfData(w.logger,
+		zap.String("to", payload.To),
+		zap.String("subject", payload.Subject),
+	)
+	return nil
 }
 
 func (w *EmailWorker) Stop() {

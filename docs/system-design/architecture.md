@@ -384,7 +384,7 @@ Cross-module write side effects **must prefer event publishing** over direct con
 - **Exchange**: `smart_wardrobe_exchange` (topic) + DLX `smart_wardrobe_exchange.dlx`; wire qua `internal/shared/infrastructure/messaging/topology.go` (registry).
 - **Routing**: `module.event.action` với hậu tố `.wardrobe/.brand` cho fashion, wildcard `.#` thống nhất; point-to-point (1 key→1 queue) vs pub/sub (1 key→2 queue) ở mức cơ chế.
 - **Queue**: quorum-ready single-node (1 node prod, `x-queue-type=quorum`, `x-delivery-limit=5`, `x-dead-letter-exchange`); downtime drain chấp nhận do demo chưa release.
-- **Channel**: `publisherChannel` (Confirm) + consumer channel riêng `Qos(prefetch=20, global=false)`, `concurrency` per-queue, `RegisterTypedConsumer[T]` generic.
+- **Channel**: `publisherChannel` (Confirm) + consumer channel riêng `Qos(prefetch=20, global=false)`, `prefetch/concurrency` per-queue đọc từ registry `topology.go`; consumer đăng ký qua generic helper `event.RegisterTypedConsumer[T]` (application layer; unmarshal + `correlationId` ctx do helper xử lý, impl `RegisterTypedHandler` ở messaging).
 - **Luồng**: `outbox → exchange → queue → consumer → Ack/Nack (Permanent→DLQ, Retryable→requeue)` với `correlationId` trace.
 
 Chi tiết queue không liệt kê exhaustive; xem `topology.go` và `docs/system-design/event-driven-design.md` (đúng 6 cơ chế: exchange+DLS, routing, outbox, DLQ/retry, channel/prefetch, flow).

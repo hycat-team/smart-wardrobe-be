@@ -16,6 +16,7 @@ import (
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
+	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	sharedWorker "smart-wardrobe-be/internal/shared/presentation/worker"
 	"syscall"
 	"time"
@@ -95,6 +96,16 @@ func (a *App) Run() error {
 	fmt.Println("==========================================================")
 
 	ctxWorker := context.Background()
+
+	// Health check đọc outbox backlog.
+	a.Workers.OutboxWorker.SetHealthCheck(func(ctx context.Context) error {
+		const outboxBacklogThreshold = 10000
+		metrics := shared_msg.GetMetrics()
+		if pending := metrics["outbox_pending"]; pending > outboxBacklogThreshold {
+			return fmt.Errorf("outbox backlog high: %d pending records", pending)
+		}
+		return nil
+	})
 
 	a.Workers.RenewalWorker.Start(ctxWorker)
 	a.Workers.PaymentReconciliationWorker.Start(ctxWorker)

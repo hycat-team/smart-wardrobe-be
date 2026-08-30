@@ -36,7 +36,6 @@ import (
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/item/contractuc"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/loyalty"
 	caching3 "smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
-	messaging3 "smart-wardrobe-be/internal/modules/brand/infrastructure/messaging"
 	persistence4 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	contract5 "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	handler5 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
@@ -94,7 +93,6 @@ import (
 	contractuc2 "smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/item"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/usecase/wardrobe/search_sync"
-	messaging2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/messaging"
 	persistence3 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/persistence"
 	search2 "smart-wardrobe-be/internal/modules/wardrobe/infrastructure/search"
 	contract7 "smart-wardrobe-be/internal/modules/wardrobe/presentation/contract"
@@ -292,10 +290,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	webhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
 	aiUsageReconciliationWorker := worker2.NewAIUsageReconciliationWorker(iaiCostUseCase, l, cfg)
 	loyaltyPointExpiryWorker := worker3.NewLoyaltyPointExpiryWorker(iBrandLoyaltyUseCase, l, cfg)
-	iSearchSyncEventConsumer := messaging2.NewSearchSyncEventConsumer(rabbitMQClient, l)
 	iWardrobeSearchIndexService := search2.NewWardrobeSearchIndexService(elasticsearchClient)
 	iSearchSyncUseCase := search_sync.NewSearchSyncUseCase(iWardrobeSearchIndexService, iWardrobeItemRepository, iFashionContract, l)
-	searchSyncWorker := worker4.NewSearchSyncWorker(iSearchSyncEventConsumer, iSearchSyncUseCase, l)
+	searchSyncWorker := worker4.NewSearchSyncWorker(rabbitMQClient, iSearchSyncUseCase, l)
 	iFashionInitUseCase := worker5.NewFashionInitUseCase(cfg, l, iFashionItemRepository, rabbitMQClient, iUnitOfWork)
 	fashionInitWorker := worker6.NewFashionInitWorker(rabbitMQClient, iFashionInitUseCase, l)
 	visionCategoryCache := worker5.NewVisionCategoryCache(cfg, iCategoryRepository, l)
@@ -307,7 +304,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	planChangedWorker := worker2.NewPlanChangedWorker(rabbitMQClient, iGrantUseCase, l)
 	iDashboardAggregatorUseCase := usecase2.NewDashboardAggregatorUseCase(l, iDashboardRepository, iUserDashboardReader, iBrandDashboardReader, iaiCostDashboardReader, iSubscriptionDashboardReader)
 	dashboardAggregatorWorker := worker7.NewDashboardAggregatorWorker(l, iDashboardAggregatorUseCase)
-	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, l)
+	outboxUseCase := usecase4.NewOutboxUseCase(outboxRepository, rabbitMQClient, cfg, l)
 	outboxListener, err := db.NewOutboxListener(cfg, l)
 	if err != nil {
 		return nil, nil, err
@@ -318,22 +315,15 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	emailWorker := worker9.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
 	auditLogConsumerWorker := worker10.NewAuditLogConsumerWorker(rabbitMQClient, iAuditLogUseCase, l)
 	auditCleanupWorker := worker10.NewAuditCleanupWorker(iAuditLogUseCase, cfg, l)
-	iWardrobeFashionAnalyzedEventConsumer := messaging2.NewWardrobeFashionAnalyzedEventConsumer(rabbitMQClient, l)
 	iWardrobeFashionEventUseCase := wardrobe.NewWardrobeFashionEventUseCase(iWardrobeItemRepository, sseManager, rabbitMQClient, iUnitOfWork, l)
-	wardrobeFashionEventWorker := worker4.NewWardrobeFashionEventWorker(iWardrobeFashionAnalyzedEventConsumer, iWardrobeFashionEventUseCase, l)
-	iBrandFashionAnalyzedEventConsumer := messaging3.NewBrandFashionAnalyzedEventConsumer(rabbitMQClient, l)
+	wardrobeFashionEventWorker := worker4.NewWardrobeFashionEventWorker(rabbitMQClient, iWardrobeFashionEventUseCase, l)
 	iBrandFashionEventUseCase := item2.NewBrandFashionEventUseCase(iBrandItemRepository, sseManager, l)
-	brandFashionEventWorker := worker3.NewBrandFashionEventWorker(iBrandFashionAnalyzedEventConsumer, iBrandFashionEventUseCase, l)
-	iWardrobeCleanupEventConsumer := messaging2.NewWardrobeCleanupEventConsumer(rabbitMQClient, l)
-	wardrobeCleanupWorker := worker4.NewWardrobeCleanupWorker(iWardrobeCleanupEventConsumer, iWardrobeFashionEventUseCase, l)
-	iWardrobeProcessingExhaustedEventConsumer := messaging2.NewWardrobeProcessingExhaustedEventConsumer(rabbitMQClient, l)
-	wardrobeProcessingExhaustedWorker := worker4.NewWardrobeProcessingExhaustedWorker(iWardrobeProcessingExhaustedEventConsumer, iWardrobeFashionEventUseCase, l)
-	iWardrobeFashionBindEventConsumer := messaging2.NewWardrobeFashionBindEventConsumer(rabbitMQClient, l)
-	wardrobeFashionBindWorker := worker4.NewWardrobeFashionBindWorker(iWardrobeFashionBindEventConsumer, iWardrobeFashionEventUseCase, l)
-	iElasticsearchProcessingExhaustedEventConsumer := messaging2.NewElasticsearchProcessingExhaustedEventConsumer(rabbitMQClient, l)
-	elasticsearchProcessingExhaustedWorker := worker4.NewElasticsearchProcessingExhaustedWorker(iElasticsearchProcessingExhaustedEventConsumer, iSearchSyncUseCase, l)
-	iBrandFashionBindEventConsumer := messaging3.NewBrandFashionBindEventConsumer(rabbitMQClient, l)
-	brandFashionBindWorker := worker3.NewBrandFashionBindWorker(iBrandFashionBindEventConsumer, iBrandFashionEventUseCase, l)
+	brandFashionEventWorker := worker3.NewBrandFashionEventWorker(rabbitMQClient, iBrandFashionEventUseCase, l)
+	wardrobeCleanupWorker := worker4.NewWardrobeCleanupWorker(rabbitMQClient, iWardrobeFashionEventUseCase, l)
+	wardrobeProcessingExhaustedWorker := worker4.NewWardrobeProcessingExhaustedWorker(rabbitMQClient, iWardrobeFashionEventUseCase, l)
+	wardrobeFashionBindWorker := worker4.NewWardrobeFashionBindWorker(rabbitMQClient, iWardrobeFashionEventUseCase, l)
+	elasticsearchProcessingExhaustedWorker := worker4.NewElasticsearchProcessingExhaustedWorker(rabbitMQClient, iSearchSyncUseCase, l)
+	brandFashionBindWorker := worker3.NewBrandFashionBindWorker(rabbitMQClient, iBrandFashionEventUseCase, l)
 	appWorkers := &bootstrap.AppWorkers{
 		RenewalWorker:                          subscriptionRenewalWorker,
 		PaymentReconciliationWorker:            paymentReconciliationWorker,

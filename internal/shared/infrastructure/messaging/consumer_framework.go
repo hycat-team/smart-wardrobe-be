@@ -2,76 +2,74 @@ package messaging
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"smart-wardrobe-be/internal/shared/application/event"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
-// PermanentError indicates a poison message that should go to DLQ (no requeue).
-type PermanentError struct{ Err error }
-
-func (e PermanentError) Error() string { return e.Err.Error() }
-func (e PermanentError) Unwrap() error { return e.Err }
-
-// RetryableError indicates a transient failure that should be requeued/retried.
-type RetryableError struct{ Err error }
-
-func (e RetryableError) Error() string { return e.Err.Error() }
-func (e RetryableError) Unwrap() error { return e.Err }
-
-// ConsumerOpts controls per-queue QoS and concurrency.
-type ConsumerOpts struct {
-	Prefetch      int
-	Concurrency   int
-	DeliveryLimit int
-}
-
-// TypedHandler processes a typed payload.
-type TypedHandler[T any] func(ctx context.Context, payload T) error
-
-// RegisterTypedConsumer registers a typed consumer for the given queue.
-// It unmarshals JSON into T and delegates to handler, classifying errors.
-func RegisterTypedConsumer[T any](r *RabbitMQClient, queue string, handler TypedHandler[T], opts ConsumerOpts) error {
-	if opts.Prefetch <= 0 {
-		opts.Prefetch = 20
-	}
+// RegisterTypedHandler đăng ký 1 handler nhận (ctx, event.Message) cho queue:
+// resolve Prefetch/Concurrency defaults từ Topology registry (single source
+// of truth cho cấu hình per-queue), inject correlationId vào context
+// per-message, rồi spawn Concurrency consumer goroutines qua RegisterConsumer
+// (registry này cũng được reRegisterConsumers tái sử dụng khi reconnect).
+// Handler trả event.PermanentError → DLQ, event.RetryableError → requeue
+// (quyết định ack/nack nằm ở startConsumerLoop).
+func (r *RabbitMQClient) RegisterTypedHandler(queue string, handler func(ctx context.Context, msg event.Message) error, opts event.ConsumerOpts) error {
 	if opts.Concurrency <= 0 {
-		opts.Concurrency = 1
+		opts.Concurrency = topologyConcurrency(queue)
+	}
+	if opts.Prefetch <= 0 {
+		opts.Prefetch = topologyPrefetch(queue)
 	}
 
-	// Wrapper that unmarshals and propagates correlationId
-	wrapper := func(msg event.Message) error {
-		var payload T
-		if err := json.Unmarshal(msg.Body, &payload); err != nil {
-			return PermanentError{Err: err}
+	wrapped := func(msg event.Message) error {
+		ctx := event.ContextWithCorrelationId(r.baseCtx, msg)
+		if err := handler(ctx, msg); err != nil {
+			var pe event.PermanentError
+			logFields := []zap.Field{
+				zap.String("queue", queue),
+				zap.String("correlationId", msg.CorrelationId()),
+				zap.Error(err),
+			}
+			if errors.As(err, &pe) {
+				r.logger.Error("[TypedHandler] Poison message, dead-lettering", logFields...)
+			} else {
+				r.logger.Error("[TypedHandler] Handler error, will retry", logFields...)
+			}
+			return err
 		}
-		// Build context with correlationId if available (from headers not in event.Message Body, so try payload field)
-		ctx := context.Background()
-		return handler(ctx, payload)
+		return nil
 	}
 
 	for i := 0; i < opts.Concurrency; i++ {
-		r.RegisterConsumer(queue, wrapper)
+		r.RegisterConsumer(queue, wrapped)
 	}
+	r.logger.Info("[TypedHandler] Registered typed handler",
+		zap.String("queue", queue),
+		zap.Int("concurrency", opts.Concurrency),
+		zap.Int("prefetch", opts.Prefetch),
+	)
 	return nil
 }
 
-// startConsumerLoopWithTaxonomy is an alternative loop that respects error taxonomy.
-// Kept for reference; actual taxonomy handling is in rabbitmq.go startConsumerLoop.
-func isPermanentError(err error) bool {
-	var pe PermanentError
-	return errors.As(err, &pe)
+// topologyConcurrency/topologyPrefetch đọc cấu hình per-queue từ registry
+// Topology — single source of truth cho cấu hình queue, fallback 1/20.
+func topologyConcurrency(queue string) int {
+	for _, b := range Topology {
+		if b.Queue == queue && b.Concurrency > 0 {
+			return b.Concurrency
+		}
+	}
+	return 1
 }
 
-func isRetryableError(err error) bool {
-	var re RetryableError
-	return errors.As(err, &re)
+func topologyPrefetch(queue string) int {
+	for _, b := range Topology {
+		if b.Queue == queue && b.Prefetch > 0 {
+			return b.Prefetch
+		}
+	}
+	return 20
 }
-
-// Enforce imports used
-var _ = amqp.Table{}
-var _ = zap.NewNop
