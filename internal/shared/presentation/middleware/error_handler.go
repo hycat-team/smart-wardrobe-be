@@ -34,7 +34,9 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 					Message: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên.",
 				}
 
-				if appEnv == "development" || gin.Mode() == gin.DebugMode {
+				// Debug details are gated strictly on the configured env, not
+				// gin.Mode() — staging/unset envs must not leak internals.
+				if appEnv == "development" {
 					res.StackTrace = errorutils.FilterStackTraceArray(rawStack)
 				}
 
@@ -84,7 +86,9 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 		res := *appErr
 		res.StackTrace = nil
 		res.DebugMessage = ""
-		if appEnv == "development" || gin.Mode() == gin.DebugMode {
+		// Debug details are gated strictly on the configured env, not
+		// gin.Mode() — staging/unset envs must not leak internals.
+		if appEnv == "development" {
 			if rawErr != nil && rawErr.Error() != appErr.Message {
 				res.DebugMessage = rawErr.Error()
 			}

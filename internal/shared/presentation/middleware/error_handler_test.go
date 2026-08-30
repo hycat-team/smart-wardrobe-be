@@ -181,3 +181,22 @@ func TestGlobalErrorHandlerExposesDebugMessageInDevelopment(t *testing.T) {
 		t.Fatalf("expected raw error detail in debugMessage, got %q", body.DebugMessage)
 	}
 }
+
+func TestGlobalErrorHandlerHidesDebugDetailsOutsideDevelopment(t *testing.T) {
+	gin.SetMode(gin.DebugMode) // gin debug mode alone must not expose details
+
+	router := gin.New()
+	router.Use(GlobalErrorHandler(testLogger{}, "staging"))
+	router.GET("/db-fail", func(c *gin.Context) {
+		c.Error(errors.New(`pq: duplicate key value violates unique constraint "idx_x"`))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/db-fail", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if strings.Contains(body, "duplicate key") || strings.Contains(body, "debugMessage") || strings.Contains(body, "stackTrace") {
+		t.Fatalf("non-development env must omit debugMessage and stackTrace even in gin debug mode, got %s", body)
+	}
+}
