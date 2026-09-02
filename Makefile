@@ -27,19 +27,22 @@ RUN_BIN := .\$(subst /,\,$(GO_BIN_OUT))
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
 CLEAN_SWAGGER_CMD := if exist api\swagger rmdir /S /Q api\swagger
+FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write-Error ($$files -join [Environment]::NewLine); exit 1 }"
+TEST_CMD := go test ./... 2>&1 | findstr /V /C:"no test files"
+RACE_TEST_CMD := go test -race ./... 2>&1 | findstr /V /C:"no test files"
 else
 GO_BIN_OUT := $(BIN_DIR)/main
 RUN_BIN := ./$(GO_BIN_OUT)
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 CLEAN_SWAGGER_CMD := rm -rf ./api/swagger
-endif
-
-# FMT/TEST command dùng chung 2 OS — sử dụng gofmt trực tiếp (gofmt -w . tự động đệ quy tất cả các file .go)
-FMT_CMD := gofmt -w .
 FMT_CHECK_CMD := test -z "$$(gofmt -l .)"
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
+endif
+
+# FMT command dùng chung 2 OS (gofmt -w . tự động đệ quy tất cả các file .go)
+FMT_CMD := gofmt -w .
 
 .PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate hygiene-scan fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
 
@@ -121,8 +124,9 @@ wire:
 
 swagger:
 	@echo Generating Swagger specifications...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community > $(TEMP)\swagger_out.tmp 2>&1 && (echo Swagger generation finished.) || (echo Swagger generation FAILED. && type $(TEMP)\swagger_out.tmp)
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community
 	@go run ./internal/tools/swagger-split -master $(SWAG_OUTPUT_DIR)/swagger.json -mapping $(SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(SWAG_OUTPUT_DIR)/modules
+	@echo Swagger generation finished.
 
 generate: wire swagger
 
