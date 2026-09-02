@@ -16,26 +16,36 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    verify:
+    check:
+        name: Codebase & Lint Checks
         runs-on: ubuntu-latest
-
         steps:
             - name: Checkout source
               uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
 
             - name: Set up Go 1.25
               uses: actions/setup-go@v5
               with:
                   go-version: "1.25.x"
                   cache: true
-
-            - name: Verify Go version
-              run: go version
+                  cache-dependency-path: go.sum
 
             - name: Run project checks
               run: make check
+
+    test-race:
+        name: Race Detector Tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: go.sum
 
             - name: Run race detector tests
               run: make test-race
