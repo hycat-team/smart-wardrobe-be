@@ -232,7 +232,7 @@ func TestIntegration_RoutingBurstSeparation(t *testing.T) {
 		for i := 0; i < burst; i++ {
 			err := ch.PublishWithContext(context.Background(), ExchangeName, target.key,
 				false, false,
-				amqp.Publishing{ContentType: "application/json", Body: []byte(fmt.Sprintf(`{"burst":%q}`, uuid.NewString())), DeliveryMode: amqp.Persistent},
+				amqp.Publishing{ContentType: "application/json", Body: fmt.Appendf(nil, `{"burst":%q}`, uuid.NewString()), DeliveryMode: amqp.Persistent},
 			)
 			if err != nil {
 				t.Fatalf("publish %s #%d: %v", target.name, i, err)

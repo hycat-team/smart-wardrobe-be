@@ -35,11 +35,9 @@ CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 CLEAN_SWAGGER_CMD := rm -rf ./api/swagger
 endif
 
-# FMT/TEST command dùng chung 2 OS — make luôn chạy qua sh (Git Bash trên
-# Windows), powershell one-liner cũ bị vỡ quoting và findstr bị MSYS
-# path-conversion (T043).
-FMT_CMD := find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w {} +
-FMT_CHECK_CMD := test -z "$$(find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)"
+# FMT/TEST command dùng chung 2 OS — sử dụng gofmt trực tiếp (gofmt -w . tự động đệ quy tất cả các file .go)
+FMT_CMD := gofmt -w .
+FMT_CHECK_CMD := test -z "$$(gofmt -l .)"
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
 

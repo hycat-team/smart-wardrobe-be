@@ -61,10 +61,7 @@ func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemRes, fashionItemMap map[u
 }
 
 func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
-	if item == nil || item.FashionItem == nil {
-		return nil
-	}
-	return fashionItemMap[item.FashionItem.ID]
+	return mapper.FashionForItemFromMap(item, fashionItemMap)
 }
 
 // ============================================================================
@@ -72,29 +69,27 @@ func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map
 // ============================================================================
 
 func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
-	if item.FashionItem != nil {
-		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.Category != nil {
-			slug := strings.ToLower(strings.TrimSpace(fi.Category.Slug))
-			if strings.Contains(slug, "ao-khoac") {
-				return "ao-khoac"
-			}
-			if strings.Contains(slug, "chan-vay") {
-				return "chan-vay"
-			}
-			if strings.Contains(slug, "ao") {
-				return "ao"
-			}
-			if strings.Contains(slug, "quan") {
-				return "quan"
-			}
-			if strings.Contains(slug, "giay") {
-				return "giay"
-			}
-			if strings.Contains(slug, "dam") {
-				return "dam"
-			}
-			return slug
+	if fi := fashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
+		slug := strings.ToLower(strings.TrimSpace(fi.Category.Slug))
+		if strings.Contains(slug, "ao-khoac") {
+			return "ao-khoac"
 		}
+		if strings.Contains(slug, "chan-vay") {
+			return "chan-vay"
+		}
+		if strings.Contains(slug, "ao") {
+			return "ao"
+		}
+		if strings.Contains(slug, "quan") {
+			return "quan"
+		}
+		if strings.Contains(slug, "giay") {
+			return "giay"
+		}
+		if strings.Contains(slug, "dam") {
+			return "dam"
+		}
+		return slug
 	}
 	return ""
 }
@@ -126,12 +121,12 @@ func buildItemGroup(
 		if len(alternatives) >= 2 {
 			break
 		}
-		fi := fashionItemMap[item.FashionItem.ID]
+		fi := fashionForItemFromMap(item, fashionItemMap)
 		cand := candidateMap[item.ID]
 		alternatives = append(alternatives, mapper.MapToRecommendedItemRes(item, fi, cand))
 	}
 
-	primaryFI := fashionItemMap[primary.FashionItem.ID]
+	primaryFI := fashionForItemFromMap(primary, fashionItemMap)
 	cand := candidateMap[primary.ID]
 	return &dto.RecommendedItemGroup{
 		Role:         role,

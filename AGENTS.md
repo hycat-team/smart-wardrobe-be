@@ -26,7 +26,7 @@
 - **MANDATORY** — Full compliance with all documents in:
     - `docs/development/` — development process, coding conventions, handler standards, validation, routing, testing, migration
     - `docs/system-design/` — overall architecture, design patterns, event-driven design, AI pipeline, module boundaries
-- **MANDATORY** — [code-hygiene.md](docs/development/code-hygiene.md): structural limits (file/function length, struct-per-file, module boundary scan) with thresholds and the `make hygiene-scan` workflow. Run `make hygiene-scan` after structural refactors and before proposing commits for hygiene-sensitive changes.
+- **MANDATORY** — [code-hygiene.md](docs/development/code-hygiene.md): structural limits (file/function length, struct-per-file, module boundary scan) with thresholds. The `make hygiene-scan` command **MUST ONLY be executed when explicitly permitted or requested by the developer**; NEVER run it autonomously as it generates report files that clutter the source repository.
 - When writing code, you **MUST** read and cross-reference the relevant docs for the task before proceeding.
 - If conflicts arise between documents, priority order: Constitution > system-design > development > other docs.
 

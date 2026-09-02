@@ -155,6 +155,68 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 	}
 }
 
+func TestMapLLMResponseToGroupsHandlesNilFashionItemField(t *testing.T) {
+	itemID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	fashionID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+
+	item := &wardrobeDto.WardrobeItemRes{
+		ID:            itemID,
+		FashionItemID: &fashionID,
+		FashionItem:   nil, // Simulating Wardrobe Contract output where FashionItem is nil
+	}
+
+	fi := &dto.FashionItemRes{
+		ID:       fashionID,
+		ImageUrl: "https://example.com/item.jpg",
+		Color:    stringPtr("red"),
+		Category: &dto.CategoryBriefRes{
+			ID:   uuid.New(),
+			Name: "Ao",
+			Slug: "ao",
+		},
+	}
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{fashionID: fi}
+
+	candidates := []types.CandidateForPrompt{
+		{
+			Item: item,
+		},
+	}
+
+	llmRes := types.LlmOutfitResponse{
+		Title:       "Outfit 1",
+		Explanation: "Simple outfit",
+		Items: []struct {
+			Role           string   `json:"role"`
+			PrimaryID      string   `json:"primary_id"`
+			AlternativeIDs []string `json:"alternative_ids"`
+		}{
+			{
+				Role:           "top",
+				PrimaryID:      "A1",
+				AlternativeIDs: []string{},
+			},
+		},
+	}
+
+	groups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes, fashionItemMap)
+	if len(groups) != 1 {
+		t.Fatalf("expected 1 mapped group, got %d", len(groups))
+	}
+	primary := groups[0].Primary
+	if primary == nil || primary.FashionItem == nil {
+		t.Fatalf("expected primary.FashionItem to be populated, got nil")
+	}
+	if primary.FashionItem.ImageUrl != "https://example.com/item.jpg" {
+		t.Fatalf("expected ImageUrl to be populated, got %s", primary.FashionItem.ImageUrl)
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
 func TestClassifyFallbackTraceClassifiesCorrectly(t *testing.T) {
 	err := NewFallbackTraceError("invalid_json", errors.New("unexpected EOF"), "user prompt", "raw response")
 	kind, providerHint, promptLen, responsePreview := ClassifyFallbackTrace(err)

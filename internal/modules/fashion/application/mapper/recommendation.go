@@ -91,6 +91,19 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionI
 	return res
 }
 
+func FashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+	if item == nil {
+		return nil
+	}
+	if item.FashionItemID != nil {
+		return fashionItemMap[*item.FashionItemID]
+	}
+	if item.FashionItem != nil {
+		return fashionItemMap[item.FashionItem.ID]
+	}
+	return nil
+}
+
 // MapLLMResponseToGroups ánh xạ các gợi ý về ID và vai trò trang phục trong phản hồi của AI/LLM về lại các món đồ ứng viên thực tế trong tủ đồ của người dùng.
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
@@ -115,20 +128,15 @@ func MapLLMResponseToGroups(
 		}
 
 		actualRole := role
-		if primary.FashionItem != nil {
-			if fi := fashionItemMap[primary.FashionItem.ID]; fi != nil && fi.Category != nil {
-				actualRole = CategorySlugToWearingRole(fi.Category.Slug)
-			}
+		fashionItemRes := FashionForItemFromMap(primary, fashionItemMap)
+		if fashionItemRes != nil && fashionItemRes.Category != nil {
+			actualRole = CategorySlugToWearingRole(fashionItemRes.Category.Slug)
 		}
 
 		if actualRole == "fullbody" {
 			hasFullbody = true
 		}
 
-		var fashionItemRes *dto.FashionItemRes
-		if primary.FashionItem != nil {
-			fashionItemRes = fashionItemMap[primary.FashionItem.ID]
-		}
 		cand, _ := promptCandidateMap[primary.ID]
 		primaryDTO := MapToRecommendedItemRes(primary, fashionItemRes, cand)
 
@@ -184,11 +192,9 @@ func resolvePrimaryCandidate(
 	}
 
 	for _, c := range candidates {
-		if c.Item.FashionItem != nil {
-			if fi := fashionItemMap[c.Item.FashionItem.ID]; fi != nil && fi.Category != nil {
-				if CategorySlugToWearingRole(fi.Category.Slug) == role {
-					return c.Item
-				}
+		if fi := FashionForItemFromMap(c.Item, fashionItemMap); fi != nil && fi.Category != nil {
+			if CategorySlugToWearingRole(fi.Category.Slug) == role {
+				return c.Item
 			}
 		}
 	}
@@ -231,10 +237,7 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		var fashionItemRes *dto.FashionItemRes
-		if altItem.FashionItem != nil {
-			fashionItemRes = fashionItemMap[altItem.FashionItem.ID]
-		}
+		fashionItemRes := FashionForItemFromMap(altItem, fashionItemMap)
 		altDTO := MapToRecommendedItemRes(altItem, fashionItemRes, promptCandidateMap[altItem.ID])
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
@@ -262,10 +265,7 @@ func resolveAlternativeCandidates(
 			continue
 		}
 
-		var fashionItemRes *dto.FashionItemRes
-		if item.FashionItem != nil {
-			fashionItemRes = fashionItemMap[item.FashionItem.ID]
-		}
+		fashionItemRes := FashionForItemFromMap(item, fashionItemMap)
 		altDTO := MapToRecommendedItemRes(item, fashionItemRes, candidate)
 		alternatives = append(alternatives, altDTO)
 		if len(alternatives) == 2 {
@@ -277,10 +277,8 @@ func resolveAlternativeCandidates(
 }
 
 func matchesRole(item *wardrobeDto.WardrobeItemRes, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
-	if item.FashionItem != nil {
-		if fi := fashionItemMap[item.FashionItem.ID]; fi != nil && fi.Category != nil {
-			return CategorySlugToWearingRole(fi.Category.Slug) == role
-		}
+	if fi := FashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
+		return CategorySlugToWearingRole(fi.Category.Slug) == role
 	}
 	return true
 }
