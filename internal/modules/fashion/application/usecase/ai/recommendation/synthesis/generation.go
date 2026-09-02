@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"smart-wardrobe-be/internal/config"
 	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiexecutor_contract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
@@ -15,6 +14,8 @@ import (
 	fashion_mapper "smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/pkg/utils/stringutils"
+
+	"github.com/google/uuid"
 )
 
 // GenerateOutfitRecommendation điều phối toàn bộ quá trình tạo gợi ý trang phục bằng AI.
@@ -50,7 +51,7 @@ func GenerateOutfitRecommendation(
 	}
 	responseText, err := aiService.GenerateRecommendationText(
 		ctx,
-		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony.",
+		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. A valid outfit MUST be either a single fullbody item (dress) OR a combination of at least 1 top and 1 bottom item. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony.",
 		userPrompt,
 		aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)
@@ -84,10 +85,10 @@ func GenerateOutfitRecommendation(
 	resolveOutfitAliases(&llmRes, candidates)
 
 	validGroups := fashion_mapper.MapLLMResponseToGroups(candidates, llmRes, fashionItemMap)
-	if len(validGroups) == 0 {
+	if len(validGroups) == 0 || !HasValidOutfitStructureGroups(validGroups) {
 		return nil, NewFallbackTraceError(
 			"invalid_outfit_structure",
-			fmt.Errorf("AI returned an invalid outfit structure"),
+			fmt.Errorf("AI returned an invalid outfit structure: missing required top or bottom role"),
 			userPrompt,
 			cleanedResponse,
 		)
@@ -98,6 +99,24 @@ func GenerateOutfitRecommendation(
 		Explanation: llmRes.Explanation,
 		Items:       validGroups,
 	}, nil
+}
+
+// HasValidOutfitStructureGroups checks whether outfit groups contain (top AND bottom) OR fullbody.
+func HasValidOutfitStructureGroups(groups []*dto.RecommendedItemGroup) bool {
+	hasFullbody := false
+	hasTop := false
+	hasBottom := false
+	for _, g := range groups {
+		switch g.Role {
+		case "fullbody":
+			hasFullbody = true
+		case "top":
+			hasTop = true
+		case "bottom":
+			hasBottom = true
+		}
+	}
+	return hasFullbody || (hasTop && hasBottom)
 }
 
 func outfitResponseSchema() any {

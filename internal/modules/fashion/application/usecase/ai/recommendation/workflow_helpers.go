@@ -375,6 +375,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		fashionItemMap,
 	)
 
+	if !ranking.HasValidOutfitStructurePrompts(ranked, fashionItemMap) {
+		return nil, nil, fashioerrors.ErrInsufficientOutfitComponents()
+	}
+
 	return ranked, fashionItemMap, nil
 }
 

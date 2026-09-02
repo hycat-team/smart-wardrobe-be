@@ -22,3 +22,17 @@ Các hằng số dùng trong Fashion/AI Styling APIs:
     - `completed`: Phân tích thành công.
     - `failed`: Phân tích thất bại.
     - `needs_review`: Cần xem xét lại thủ công.
+
+## 4. Danh mục Category Slugs cố định (Read-Only) & Vai trò ghép đồ (Wearing Role)
+
+Danh mục 9 Category Slugs cố định hệ thống và bảng ánh xạ sang vai trò trong phối đồ (`WearingRole`):
+
+- **Ánh xạ Category Slug sang Wearing Role:**
+    - `ao` $\rightarrow$ `top` (Áo rời)
+    - `quan`, `chan-vay` $\rightarrow$ `bottom` (Quần / Chân váy rời)
+    - `dam` $\rightarrow$ `fullbody` (Đầm / Váy liền thân)
+    - `ao-khoac` $\rightarrow$ `outerwear` (Áo khoác)
+    - `giay` $\rightarrow$ `footwear` (Giày dép)
+    - `mu` $\rightarrow$ `headwear` (Mũ nón)
+    - `phu-kien`, `other` $\rightarrow$ `accessory` / `other` (Phụ kiện & mục khác)
+

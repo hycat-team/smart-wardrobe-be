@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/internal/modules/fashion/domain/repositories"
@@ -78,7 +79,83 @@ func EnsureMinimumCandidatePool(
 	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceRelaxedFallback, minimumPool, fashionItemMap)
 	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceGeneralFallback, minimumPool, fashionItemMap)
 
+	// Category Guarantee: Ensure candidates have (top AND bottom) OR fullbody
+	if !HasValidOutfitStructure(rankingCandidates, fashionItemMap) {
+		for _, item := range activeItems {
+			if item == nil || taken[item.ID] {
+				continue
+			}
+			if !FallbackCandidateEligible(item, retrievalQuery, types.CandidateSourceGeneralFallback, fashionItemMap) {
+				continue
+			}
+			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+				Item:            item,
+				Source:          types.CandidateSourceGeneralFallback,
+				RetrievalScore:  0,
+				RetrievalRank:   len(rankingCandidates) + 1,
+				RetrievalSource: string(types.CandidateSourceGeneralFallback),
+			})
+			taken[item.ID] = true
+			if HasValidOutfitStructure(rankingCandidates, fashionItemMap) {
+				break
+			}
+		}
+	}
+
 	return rankingCandidates, counts
+}
+
+// HasValidOutfitStructure checks whether the candidate pool contains (top AND bottom) OR fullbody.
+func HasValidOutfitStructure(candidates []types.CandidateForRanking, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+	hasFullbody := false
+	hasTop := false
+	hasBottom := false
+
+	for _, c := range candidates {
+		if c.Item == nil {
+			continue
+		}
+		fi := fashionForItemFromMap(c.Item, fashionItemMap)
+		if fi != nil && fi.Category != nil {
+			role := mapper.CategorySlugToWearingRole(fi.Category.Slug)
+			switch role {
+			case "fullbody":
+				hasFullbody = true
+			case "top":
+				hasTop = true
+			case "bottom":
+				hasBottom = true
+			}
+		}
+	}
+
+	return hasFullbody || (hasTop && hasBottom)
+}
+
+// HasValidOutfitStructurePrompts checks whether prompt candidates contain (top AND bottom) OR fullbody.
+func HasValidOutfitStructurePrompts(candidates []types.CandidateForPrompt, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+	hasFullbody := false
+	hasTop := false
+	hasBottom := false
+
+	for _, c := range candidates {
+		if c.Item == nil {
+			continue
+		}
+		fi := fashionForItemFromMap(c.Item, fashionItemMap)
+		if fi != nil && fi.Category != nil {
+			role := mapper.CategorySlugToWearingRole(fi.Category.Slug)
+			if role == "fullbody" {
+				hasFullbody = true
+			} else if role == "top" {
+				hasTop = true
+			} else if role == "bottom" {
+				hasBottom = true
+			}
+		}
+	}
+
+	return hasFullbody || (hasTop && hasBottom)
 }
 
 // appendFallbackCandidates duyệt qua danh sách các món đồ hoạt động của người dùng để chọn lọc và đưa các món đồ đủ điều kiện vào bể ứng viên cho đến khi đạt đủ số lượng tối thiểu.

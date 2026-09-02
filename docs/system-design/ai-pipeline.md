@@ -91,7 +91,15 @@ This means:
 - The backend does not need to open a separate swap flow for each item change
 - Local swap does not consume additional new outfit quotas
 - The number of local swaps is not limited by the backend per swap turn
-- The actual limit lies only in the number of alternatives currently available in the recommendation payload
+### 4. Outfit Combination & Validation Rules
+
+To enforce core fashion domain validity, all outfit recommendations produced by LLM synthesis or HSL fallback MUST strictly adhere to one of the following two structural formulas:
+
+- **Structure 1 (One-piece Outfit):** Must contain exactly 1 item of category `dam` (`fullbody`). MUST NOT contain any item of category `ao`, `quan`, or `chan-vay`.
+- **Structure 2 (Separates Outfit):** Must contain exactly 1 item of category `ao` (`top`) AND 1 item of category `quan` or `chan-vay` (`bottom`). MUST NOT contain any item of category `dam`.
+
+#### Early Guard & Error Reporting
+If a user's active wardrobe or query filters result in a candidate pool lacking the minimum body items (i.e. no `dam` AND no `ao` available, even after automatic candidate pool recovery), the system halts early in Stage 1/2 and returns `ErrInsufficientOutfitComponents` (HTTP 400 Bad Request) without deducting daily AI quota or invoking LLM generation.
 
 ### 3. Context-Augmented AI Stylist Chat
 

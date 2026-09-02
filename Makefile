@@ -124,7 +124,7 @@ wire:
 
 swagger:
 	@echo Generating Swagger specifications...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community --quiet
 	@go run ./internal/tools/swagger-split -master $(SWAG_OUTPUT_DIR)/swagger.json -mapping $(SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(SWAG_OUTPUT_DIR)/modules
 	@echo Swagger generation finished.
 

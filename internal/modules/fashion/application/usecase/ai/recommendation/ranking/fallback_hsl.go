@@ -143,15 +143,11 @@ func RunLocalHSLMatching(
 	} else {
 		if len(dresses) > 0 {
 			items = append(items, buildItemGroup(roleForItem(dresses[0], "dam", fashionItemMap), dresses[0], dresses, fashionItemMap, candidateMap))
-		} else {
-			if len(tops) > 0 {
-				items = append(items, buildItemGroup(roleForItem(tops[0], "ao", fashionItemMap), tops[0], tops, fashionItemMap, candidateMap))
-			}
-			if len(bottoms) > 0 {
-				items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan", fashionItemMap), bottoms[0], bottoms, fashionItemMap, candidateMap))
-			}
+		} else if len(tops) > 0 && len(bottoms) > 0 {
+			items = append(items, buildItemGroup(roleForItem(tops[0], "ao", fashionItemMap), tops[0], tops, fashionItemMap, candidateMap))
+			items = append(items, buildItemGroup(roleForItem(bottoms[0], "quan", fashionItemMap), bottoms[0], bottoms, fashionItemMap, candidateMap))
 		}
-		if len(shoes) > 0 {
+		if len(items) > 0 && len(shoes) > 0 {
 			items = append(items, buildItemGroup(roleForItem(shoes[0], "giay", fashionItemMap), shoes[0], shoes, fashionItemMap, candidateMap))
 		}
 	}

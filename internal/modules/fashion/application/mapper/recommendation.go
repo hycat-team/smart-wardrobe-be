@@ -168,7 +168,57 @@ func MapLLMResponseToGroups(
 		deduped = append(deduped, g)
 	}
 
+	if !hasFullbody {
+		hasTop := false
+		hasBottom := false
+		for _, g := range deduped {
+			switch g.Role {
+			case "top":
+				hasTop = true
+			case "bottom":
+				hasBottom = true
+			}
+		}
+
+		if !hasTop {
+			if topCand := findCandidateByRole(candidates, "top", fashionItemMap); topCand != nil {
+				fashionItemRes := FashionForItemFromMap(topCand.Item, fashionItemMap)
+				topDTO := MapToRecommendedItemRes(topCand.Item, fashionItemRes, *topCand)
+				deduped = append(deduped, &dto.RecommendedItemGroup{
+					Role:         "top",
+					Primary:      topDTO,
+					Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, "top", topCand.Item.ID, nil, fashionItemMap),
+				})
+				hasTop = true
+			}
+		}
+
+		if !hasBottom {
+			if bottomCand := findCandidateByRole(candidates, "bottom", fashionItemMap); bottomCand != nil {
+				fashionItemRes := FashionForItemFromMap(bottomCand.Item, fashionItemMap)
+				bottomDTO := MapToRecommendedItemRes(bottomCand.Item, fashionItemRes, *bottomCand)
+				deduped = append(deduped, &dto.RecommendedItemGroup{
+					Role:         "bottom",
+					Primary:      bottomDTO,
+					Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, "bottom", bottomCand.Item.ID, nil, fashionItemMap),
+				})
+				hasBottom = true
+			}
+		}
+	}
+
 	return deduped
+}
+
+func findCandidateByRole(candidates []types.CandidateForPrompt, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *types.CandidateForPrompt {
+	for i := range candidates {
+		if fi := FashionForItemFromMap(candidates[i].Item, fashionItemMap); fi != nil && fi.Category != nil {
+			if CategorySlugToWearingRole(fi.Category.Slug) == role {
+				return &candidates[i]
+			}
+		}
+	}
+	return nil
 }
 
 // resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI.

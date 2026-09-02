@@ -53,6 +53,25 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 	}
 }
 
+func TestRunLocalHSLMatchingRequiresTopAndBottomForSeparates(t *testing.T) {
+	pants, f1 := newHSLTestItem("quan")
+	shoes, f2 := newHSLTestItem("giay")
+
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+		pants.FashionItem.ID: f1,
+		shoes.FashionItem.ID: f2,
+	}
+
+	res := RunLocalHSLMatching([]types.CandidateForPrompt{
+		{Item: pants},
+		{Item: shoes},
+	}, dto.RecommendOutfitReq{}, fashionItemMap)
+
+	if len(res.Items) != 0 {
+		t.Fatalf("expected 0 items when top is missing for separates, got %d", len(res.Items))
+	}
+}
+
 func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemRes, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	catID := uuid.New()
