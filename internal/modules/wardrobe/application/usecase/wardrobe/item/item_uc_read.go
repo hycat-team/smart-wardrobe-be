@@ -25,6 +25,7 @@ import (
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/application/event"
 	"smart-wardrobe-be/internal/shared/application/media"
+	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -76,7 +77,7 @@ func NewWardrobeItemUseCase(
 	}
 }
 
-func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error) {
+func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context, userID uuid.UUID, role roleslug.RoleSlug) (*dto.WardrobeUploadSignatureRes, error) {
 	folder := uc.cfg.Cloudinary.ItemFolder
 	if folder == "" {
 		folder = "smart_wardrobe/items"
@@ -84,7 +85,46 @@ func (uc *WardrobeItemUseCase) GetUploadSignature(ctx context.Context) (*shared_
 	params := shared_dto.UploadSignatureParams{
 		Folder: folder,
 	}
-	return uc.mediaService.GenerateUploadSignature(ctx, params)
+
+	if role == roleslug.Admin {
+		sig, err := uc.mediaService.GenerateUploadSignature(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		return &dto.WardrobeUploadSignatureRes{
+			UploadSignatureResult: *sig,
+			RemainingSlots:        -1,
+			MaxItems:              -1,
+			CurrentItems:          0,
+		}, nil
+	}
+
+	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	currentCount, err := uc.wardrobeRepo.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	remainingSlots := subOverview.MaxWardrobeItems - int(currentCount)
+	if remainingSlots <= 0 {
+		return nil, wardrobeerrors.ErrWardrobeLimitExceededForUpload(int(currentCount), subOverview.MaxWardrobeItems, 1)
+	}
+
+	sig, err := uc.mediaService.GenerateUploadSignature(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.WardrobeUploadSignatureRes{
+		UploadSignatureResult: *sig,
+		RemainingSlots:        remainingSlots,
+		MaxItems:              subOverview.MaxWardrobeItems,
+		CurrentItems:          int(currentCount),
+	}, nil
 }
 
 func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemBriefRes], error) {
@@ -163,14 +203,10 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, bi := range brandItems {
-				var brandName string
-				if bi.Brand != nil {
-					brandName = bi.Brand.Name
-				}
 				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
 					ID:          bi.ID,
-					BrandID:     bi.Brand.ID,
-					BrandName:   brandName,
+					BrandID:     bi.BrandID,
+					BrandName:   bi.BrandName,
 					ProductCode: bi.ProductCode,
 					Name:        bi.Name,
 					Price:       bi.Price,

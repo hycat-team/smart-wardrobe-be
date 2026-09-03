@@ -9,10 +9,10 @@ import (
 
 // CandidateForPrompt đại diện cho một món đồ ứng viên đã chuẩn bị đầy đủ thông tin (kèm tag thời trang) để đưa vào prompt gửi cho LLM.
 type CandidateForPrompt struct {
-	Item        *wardrobeDto.WardrobeItemRes
+	Item        *wardrobeDto.WardrobeItemContractDTO
 	Tags        []string
 	ItemContext outfititemcontext.OutfitItemContext
-	BrandItem   *brandDto.BrandItemRes
+	BrandItem   *brandDto.BrandItemContractDTO
 }
 
 // RerankStats lưu trữ các thông số thống kê phục vụ cho việc chấm điểm và đa dạng hóa danh sách ứng viên sau khi xếp hạng.
@@ -25,7 +25,7 @@ type RerankStats struct {
 
 // CandidateForRanking đại diện cho một món đồ ứng viên đang được xử lý trong pipeline chấm điểm và xếp hạng.
 type CandidateForRanking struct {
-	Item            *wardrobeDto.WardrobeItemRes
+	Item            *wardrobeDto.WardrobeItemContractDTO
 	Source          CandidateSource
 	VectorScore     float64
 	LexicalScore    float64
@@ -33,18 +33,18 @@ type CandidateForRanking struct {
 	RetrievalRank   int
 	RetrievalSource string // Đây là nguồn từ DB (vector, lexical, hybrid), giữ kiểu string để tương thích với repositories.HybridCandidate.RetrievalSource
 	ItemContext     outfititemcontext.OutfitItemContext
-	BrandItem       *brandDto.BrandItemRes
+	BrandItem       *brandDto.BrandItemContractDTO
 }
 
 // RankedCandidate đại diện cho một món đồ ứng viên đã được tính điểm và sắp xếp thứ hạng hoàn chỉnh.
 type RankedCandidate struct {
-	Item          *wardrobeDto.WardrobeItemRes
+	Item          *wardrobeDto.WardrobeItemContractDTO
 	Score         float64
 	Tags          []string
 	Source        CandidateSource
 	RetrievalRank int
 	ItemContext   outfititemcontext.OutfitItemContext
-	BrandItem     *brandDto.BrandItemRes
+	BrandItem     *brandDto.BrandItemContractDTO
 }
 
 // FallbackCandidateCounts đếm số lượng ứng viên tìm được qua các tầng lọc dự phòng khác nhau (Strict, Relaxed, General).

@@ -19,6 +19,6 @@ func NewCategoryContract(categoryUC uc_interfaces.ICategoryUseCase) ICategoryCon
 	}
 }
 
-func (c *CategoryContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
+func (c *CategoryContract) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryContractDTO, error) {
 	return c.categoryUC.GetCategory(ctx, id)
 }

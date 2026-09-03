@@ -11,7 +11,7 @@ import (
 )
 
 type IWardrobeItemUseCase interface {
-	GetUploadSignature(ctx context.Context) (*shared_dto.UploadSignatureResult, error)
+	GetUploadSignature(ctx context.Context, userID uuid.UUID, role roleslug.RoleSlug) (*dto.WardrobeUploadSignatureRes, error)
 	GetWardrobeItems(ctx context.Context, userID uuid.UUID, query dto.GetWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.WardrobeItemBriefRes], error)
 	GetWardrobeItemByID(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*dto.WardrobeItemRes, error)
 	UpdateWardrobeItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.UpdateWardrobeItemReq) (*dto.WardrobeItemRes, error)

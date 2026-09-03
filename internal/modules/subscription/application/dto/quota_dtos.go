@@ -22,18 +22,6 @@ type UserSubscriptionDTO struct {
 	LastResetDate        time.Time  `json:"lastResetDate"`
 }
 
-type UserSubscriptionOverviewDTO struct {
-	PlanID             uuid.UUID  `json:"planID"`
-	PlanName           string     `json:"planName"`
-	PlanSlug           string     `json:"planSlug"`
-	ExpiresAt          *time.Time `json:"expiresAt"`
-	IsAutoRenewEnabled bool       `json:"isAutoRenewEnabled"`
-	MaxWardrobeItems   int        `json:"maxWardrobeItems"`
-	MaxOutfits         int        `json:"maxOutfits"`
-	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
-	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
-}
-
 type AdminUserSubscriptionItemDTO struct {
 	UserID             uuid.UUID         `json:"userId"`
 	PlanID             uuid.UUID         `json:"planId"`

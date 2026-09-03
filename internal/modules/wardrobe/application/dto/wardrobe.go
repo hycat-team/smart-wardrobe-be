@@ -161,3 +161,10 @@ type WardrobeStatsRes struct {
 
 type WardrobeItemListBriefDTO = shared_dto.PaginationResult[*WardrobeItemBriefRes]
 type OutfitListBriefDTO = shared_dto.PaginationResult[*OutfitBriefRes]
+
+type WardrobeUploadSignatureRes struct {
+	shared_dto.UploadSignatureResult
+	RemainingSlots int `json:"remainingSlots"`
+	MaxItems       int `json:"maxItems"`
+	CurrentItems   int `json:"currentItems"`
+}

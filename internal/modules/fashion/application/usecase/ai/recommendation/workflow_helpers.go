@@ -40,7 +40,7 @@ import (
 func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]*wardrobeDto.WardrobeItemRes, *sub_dto.UserSubscriptionDTO, error) {
+) ([]*wardrobeDto.WardrobeItemContractDTO, *sub_dto.UserSubscriptionDTO, error) {
 	quotaDTO, err := uc.userQuotaCtr.GetAndResetDailyQuota(ctx, userID)
 	if err != nil {
 		return nil, nil, err
@@ -91,7 +91,7 @@ func (uc *OutfitRecommendationUseCase) validateAndGetActiveItems(
 func (uc *OutfitRecommendationUseCase) filterCandidates(
 	ctx context.Context,
 	userID uuid.UUID,
-	activeItems []*wardrobeDto.WardrobeItemRes,
+	activeItems []*wardrobeDto.WardrobeItemContractDTO,
 	input dto.RecommendOutfitReq,
 ) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemRes, error) {
 	intent := uc.parseRecommendationIntent(input)
@@ -154,7 +154,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 			}
 
 			type brandCandidate struct {
-				brandItem   *brand_dto.BrandItemRes
+				brandItem   *brand_dto.BrandItemContractDTO
 				fashionItem *dto.FashionItemRes
 				category    string
 			}
@@ -181,12 +181,9 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 				cand := items[0]
 				candidatesByCategory[slug] = items[1:]
 
-				mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
+				mockWardrobeItem := &wardrobeDto.WardrobeItemContractDTO{
 					ID:            cand.brandItem.FashionItemID,
 					FashionItemID: &cand.brandItem.FashionItemID,
-					FashionItem: &wardrobeDto.FashionItemRes{
-						ID: cand.fashionItem.ID,
-					},
 				}
 				rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 					Item:            mockWardrobeItem,
@@ -223,12 +220,9 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 						// reuse addBrandCandidate but skip seen
 						if seenCategory[cand.category] {
 							// Already seen, take additional item from this category
-							mockWardrobeItem := &wardrobeDto.WardrobeItemRes{
+							mockWardrobeItem := &wardrobeDto.WardrobeItemContractDTO{
 								ID:            cand.brandItem.FashionItemID,
 								FashionItemID: &cand.brandItem.FashionItemID,
-								FashionItem: &wardrobeDto.FashionItemRes{
-									ID: cand.fashionItem.ID,
-								},
 							}
 							rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
 								Item:            mockWardrobeItem,
@@ -269,13 +263,13 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 	userFashionItemIDs = sliceutils.UniqueUUIDs(userFashionItemIDs)
-	filteredItems := make([]*wardrobeDto.WardrobeItemRes, 0, len(activeItems))
+	filteredItems := make([]*wardrobeDto.WardrobeItemContractDTO, 0, len(activeItems))
 	for _, item := range activeItems {
 		if item.FashionItemID != nil {
 			filteredItems = append(filteredItems, item)
 		}
 	}
-	activeByFashionID := sliceutils.IndexBy(filteredItems, func(item *wardrobeDto.WardrobeItemRes) uuid.UUID { return *item.FashionItemID })
+	activeByFashionID := sliceutils.IndexBy(filteredItems, func(item *wardrobeDto.WardrobeItemContractDTO) uuid.UUID { return *item.FashionItemID })
 
 	candidates, err := uc.fashionItemRepo.GetHybridCandidates(
 		ctx,

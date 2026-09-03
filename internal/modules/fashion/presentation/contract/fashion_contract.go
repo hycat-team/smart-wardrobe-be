@@ -9,8 +9,8 @@ import (
 )
 
 type IFashionContract interface {
-	GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemRes, error)
-	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error)
+	GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemContractDTO, error)
+	ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemContractDTO, error)
 	ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemBriefRes, error)
 	CreateFashionItem(ctx context.Context, input dto.CreateFashionItemInput) error
 	BulkCreateFashionItems(ctx context.Context, inputs []dto.CreateFashionItemInput) error

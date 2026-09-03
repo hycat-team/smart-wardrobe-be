@@ -15,9 +15,9 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 	shoes, f3 := newHSLTestItem("giay")
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
-		top.FashionItem.ID:   f1,
-		skirt.FashionItem.ID: f2,
-		shoes.FashionItem.ID: f3,
+		*top.FashionItemID:   f1,
+		*skirt.FashionItemID: f2,
+		*shoes.FashionItemID: f3,
 	}
 
 	res := RunLocalHSLMatching([]types.CandidateForPrompt{
@@ -39,8 +39,8 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 	shoes, f2 := newHSLTestItem("giay")
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
-		dress.FashionItem.ID: f1,
-		shoes.FashionItem.ID: f2,
+		*dress.FashionItemID: f1,
+		*shoes.FashionItemID: f2,
 	}
 
 	res := RunLocalHSLMatching([]types.CandidateForPrompt{
@@ -58,8 +58,8 @@ func TestRunLocalHSLMatchingRequiresTopAndBottomForSeparates(t *testing.T) {
 	shoes, f2 := newHSLTestItem("giay")
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
-		pants.FashionItem.ID: f1,
-		shoes.FashionItem.ID: f2,
+		*pants.FashionItemID: f1,
+		*shoes.FashionItemID: f2,
 	}
 
 	res := RunLocalHSLMatching([]types.CandidateForPrompt{
@@ -72,15 +72,13 @@ func TestRunLocalHSLMatchingRequiresTopAndBottomForSeparates(t *testing.T) {
 	}
 }
 
-func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemRes, *dto.FashionItemRes) {
+func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	catID := uuid.New()
 	name := slug
-	item := &wardrobeDto.WardrobeItemRes{
-		ID: uuid.New(),
-		FashionItem: &wardrobeDto.FashionItemRes{
-			ID: fashionID,
-		},
+	item := &wardrobeDto.WardrobeItemContractDTO{
+		ID:            uuid.New(),
+		FashionItemID: &fashionID,
 	}
 	res := &dto.FashionItemRes{
 		ID: fashionID,

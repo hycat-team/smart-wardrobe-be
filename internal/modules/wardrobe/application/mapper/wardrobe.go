@@ -99,10 +99,41 @@ func MapToWardrobeItemBrief(item *entities.WardrobeItem, fiBrief *fashion_dto.Fa
 		ID:            item.ID,
 		Price:         item.Price,
 		Status:        item.Status,
+		IsLocked:      false,
 		LastUsedAt:    item.LastUsedAt,
 		FashionItem:   MapToFashionItemBrief(fiBrief),
 		FashionItemID: item.FashionItemID,
 		BrandItem:     brandItem,
 		TaskID:        item.TaskID,
 	}
+}
+
+func MapToWardrobeItemContractDTO(item *entities.WardrobeItem) *dto.WardrobeItemContractDTO {
+	if item == nil {
+		return nil
+	}
+	return &dto.WardrobeItemContractDTO{
+		ID:            item.ID,
+		UserID:        item.UserID,
+		Price:         item.Price,
+		Status:        item.Status,
+		FashionItemID: item.FashionItemID,
+		CreatedAt:     item.CreatedAt,
+		LastUsedAt:    item.LastUsedAt,
+		IsDeleted:     item.IsDeleted,
+		TaskID:        item.TaskID,
+	}
+}
+
+func MapToWardrobeItemContractDTOList(items []*entities.WardrobeItem) []*dto.WardrobeItemContractDTO {
+	if items == nil {
+		return []*dto.WardrobeItemContractDTO{}
+	}
+	result := make([]*dto.WardrobeItemContractDTO, 0, len(items))
+	for _, item := range items {
+		if contractDTO := MapToWardrobeItemContractDTO(item); contractDTO != nil {
+			result = append(result, contractDTO)
+		}
+	}
+	return result
 }

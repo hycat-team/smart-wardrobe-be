@@ -9,5 +9,5 @@ import (
 )
 
 type ICategoryContract interface {
-	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error)
+	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryContractDTO, error)
 }

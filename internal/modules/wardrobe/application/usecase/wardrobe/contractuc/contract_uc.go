@@ -24,56 +24,40 @@ func NewWardrobeContractUseCase(
 	}
 }
 
-func (uc *WardrobeContractUseCase) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeContractUseCase) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemContractDTO, error) {
 	items, err := uc.wardrobeRepo.GetByUserID(ctx, userID, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*dto.WardrobeItemRes, 0, len(items))
-	for _, item := range items {
-		result = append(result, mapper.MapToWardrobeItemRes(item, nil))
-	}
-	return result, nil
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }
 
-func (uc *WardrobeContractUseCase) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeContractUseCase) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	items, err := uc.wardrobeRepo.GetActiveByUserID(ctx, userID, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*dto.WardrobeItemRes, 0, len(items))
-	for _, item := range items {
-		result = append(result, mapper.MapToWardrobeItemRes(item, nil))
-	}
-	return result, nil
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }
 
-func (uc *WardrobeContractUseCase) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeContractUseCase) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	items, err := uc.wardrobeRepo.GetFailedItemsForCleanup(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*dto.WardrobeItemRes, 0, len(items))
-	for _, item := range items {
-		result = append(result, mapper.MapToWardrobeItemRes(item, nil))
-	}
-	return result, nil
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }
 
-func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemRes, error) {
+func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	items, err := uc.wardrobeRepo.GetStaleProcessingItems(ctx, staleBefore, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*dto.WardrobeItemRes, 0, len(items))
-	for _, item := range items {
-		result = append(result, mapper.MapToWardrobeItemRes(item, nil))
-	}
-	return result, nil
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }
 
 func (uc *WardrobeContractUseCase) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {

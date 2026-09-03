@@ -128,14 +128,10 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, bi := range brandItems {
-				var brandName string
-				if bi.Brand != nil {
-					brandName = bi.Brand.Name
-				}
 				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
 					ID:          bi.ID,
-					BrandID:     bi.Brand.ID,
-					BrandName:   brandName,
+					BrandID:     bi.BrandID,
+					BrandName:   bi.BrandName,
 					ProductCode: bi.ProductCode,
 					Name:        bi.Name,
 					Price:       bi.Price,

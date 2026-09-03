@@ -35,7 +35,7 @@ func RunLocalHSLMatching(
 	input dto.RecommendOutfitReq,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) *dto.RecommendedOutfitRes {
-	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobeDto.WardrobeItemRes
+	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobeDto.WardrobeItemContractDTO
 
 	for _, candidate := range candidates {
 		item := candidate.Item

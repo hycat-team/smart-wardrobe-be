@@ -19,11 +19,11 @@ func NewFashionContract(fashionItemUC uc_interfaces.IFashionItemUseCase) IFashio
 	}
 }
 
-func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemRes, error) {
+func (c *FashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemContractDTO, error) {
 	return c.fashionItemUC.GetFashionItem(ctx, id)
 }
 
-func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error) {
+func (c *FashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemContractDTO, error) {
 	return c.fashionItemUC.ListFashionItems(ctx, ids)
 }
 

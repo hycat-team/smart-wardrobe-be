@@ -388,10 +388,6 @@ func (uc *BrandDashboardUseCase) GetDigitalSampleLabAnalytics(ctx context.Contex
 		if bi, err := uc.brandItem.GetBrandItemByID(ctx, itemID); err == nil && bi != nil {
 			name := bi.Name
 			brandItemName = &name
-			if bi.FashionItem != nil {
-				img := bi.FashionItem.ImageUrl
-				brandItemImageURL = &img
-			}
 		}
 	}
 

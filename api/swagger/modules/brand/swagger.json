@@ -6268,22 +6268,25 @@
         "category": {
           "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
         },
+        "category_id": {
+          "type": "string"
+        },
         "color": {
           "type": "string"
         },
-        "colorHex": {
+        "color_hex": {
           "type": "string"
         },
-        "colorHue": {
+        "color_hue": {
           "type": "number"
         },
-        "colorLightness": {
+        "color_lightness": {
           "type": "number"
         },
-        "colorSaturation": {
+        "color_saturation": {
           "type": "number"
         },
-        "createdAt": {
+        "created_at": {
           "type": "string"
         },
         "description": {
@@ -6295,7 +6298,7 @@
         "id": {
           "type": "string"
         },
-        "imageUrl": {
+        "image_url": {
           "type": "string"
         },
         "material": {
@@ -6310,7 +6313,7 @@
         "style": {
           "type": "string"
         },
-        "updatedAt": {
+        "updated_at": {
           "type": "string"
         }
       },
@@ -7496,7 +7499,7 @@
         "maxWardrobeItems": {
           "type": "integer"
         },
-        "planID": {
+        "planId": {
           "type": "string"
         },
         "planName": {
@@ -8110,6 +8113,35 @@
           "type": "integer"
         },
         "outfitsCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "currentItems": {
+          "type": "integer"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "maxItems": {
+          "type": "integer"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "remainingSlots": {
+          "type": "integer"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
           "type": "integer"
         }
       },

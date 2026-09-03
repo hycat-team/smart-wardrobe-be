@@ -83,24 +83,24 @@ func (m *mockFashionItemRepoForWorker) MarkProcessingFailed(ctx context.Context,
 type mockWardrobeContractForWorker struct {
 	wardrobe_contract.IWardrobeContract
 	updateItemStatusFn         func(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error
-	getItemsByIDsFn            func(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error)
-	getStaleProcessingItemsFn  func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error)
-	getFailedItemsForCleanupFn func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error)
+	getItemsByIDsFn            func(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error)
+	getStaleProcessingItemsFn  func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
+	getFailedItemsForCleanupFn func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
 }
 
 func (m *mockWardrobeContractForWorker) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
 	return m.updateItemStatusFn(ctx, itemID, status)
 }
 
-func (m *mockWardrobeContractForWorker) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error) {
+func (m *mockWardrobeContractForWorker) GetItemsByIDs(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
 	return m.getItemsByIDsFn(ctx, itemIDs)
 }
 
-func (m *mockWardrobeContractForWorker) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
+func (m *mockWardrobeContractForWorker) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
 	return m.getStaleProcessingItemsFn(ctx, staleBefore, limit)
 }
 
-func (m *mockWardrobeContractForWorker) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
+func (m *mockWardrobeContractForWorker) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
 	if m.getFailedItemsForCleanupFn != nil {
 		return m.getFailedItemsForCleanupFn(ctx, limit)
 	}
@@ -204,11 +204,10 @@ func TestRecoverStaleProcessingItemsRepublishes(t *testing.T) {
 	uc := &FashionWorkerUseCase{
 		cfg: &config.Config{Wardrobe: config.WardrobeProcessing{MaxRetryCount: 3}},
 		wardrobeContract: &mockWardrobeContractForWorker{
-			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{
+			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				return []*wardrobeDto.WardrobeItemContractDTO{{
 					ID:            itemID,
 					UserID:        userID,
-					FashionItem:   &wardrobeDto.FashionItemRes{ID: fashionItemID},
 					FashionItemID: &fashionItemID,
 				}}, nil
 			},
@@ -264,11 +263,10 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 	uc := &FashionWorkerUseCase{
 		cfg: &config.Config{Wardrobe: config.WardrobeProcessing{MaxRetryCount: 3}},
 		wardrobeContract: &mockWardrobeContractForWorker{
-			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{
+			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				return []*wardrobeDto.WardrobeItemContractDTO{{
 					ID:            itemID,
 					UserID:        userID,
-					FashionItem:   &wardrobeDto.FashionItemRes{ID: fashionItemID},
 					FashionItemID: &fashionItemID,
 				}}, nil
 			},
@@ -317,12 +315,14 @@ func TestCleanupFailedItemsPublishes(t *testing.T) {
 	fashionItemID := uuid.New()
 	userID := uuid.New()
 	publishCalls := 0
+	var getFailedCount int
 	var publishedTopic string
 	uc := &FashionWorkerUseCase{
 		wardrobeContract: &mockWardrobeContractForWorker{
-			getFailedItemsForCleanupFn: func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemRes, error) {
-				if limit == 100 {
-					return []*wardrobeDto.WardrobeItemRes{{
+			getFailedItemsForCleanupFn: func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				if getFailedCount == 0 {
+					getFailedCount++
+					return []*wardrobeDto.WardrobeItemContractDTO{{
 						ID:            itemID,
 						UserID:        userID,
 						FashionItemID: &fashionItemID,
@@ -407,8 +407,8 @@ func TestRaceConditionClaimSingleWinner(t *testing.T) {
 			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
 				return nil
 			},
-			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{ID: itemID}}, nil
+			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				return []*wardrobeDto.WardrobeItemContractDTO{{ID: itemID}}, nil
 			},
 		},
 		eventPublisher: &mockEventPublisherForWorker{
@@ -462,8 +462,8 @@ func TestClaimRetryLatencyWithinBudget(t *testing.T) {
 			updateItemStatusFn: func(ctx context.Context, id uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
 				return nil
 			},
-			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemRes, error) {
-				return []*wardrobeDto.WardrobeItemRes{{ID: itemID}}, nil
+			getItemsByIDsFn: func(ctx context.Context, ids []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+				return []*wardrobeDto.WardrobeItemContractDTO{{ID: itemID}}, nil
 			},
 		},
 		eventPublisher: &mockEventPublisherForWorker{

@@ -39,7 +39,7 @@ func NewBrandItemContractUseCase(
 	}
 }
 
-func (uc *BrandItemContractUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, error) {
+func (uc *BrandItemContractUseCase) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemContractDTO, error) {
 	customers, err := uc.customerRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -92,15 +92,23 @@ func (uc *BrandItemContractUseCase) ListEligibleBrandItemsForStyling(ctx context
 		}
 	}
 
-	eligibleDTOS := make([]*dto.BrandItemRes, 0, len(eligibleItems))
+	brandIDs := make([]uuid.UUID, 0, len(eligibleItems))
 	for _, item := range eligibleItems {
-		eligibleDTOS = append(eligibleDTOS, mapper.MapToBrandItemRes(item, nil))
+		brandIDs = append(brandIDs, item.BrandID)
+	}
+	brandIDs = sliceutils.UniqueUUIDs(brandIDs)
+	brandNameMap := make(map[uuid.UUID]string, len(brandIDs))
+	if len(brandIDs) > 0 {
+		brands, _ := uc.brandRepo.GetByIDs(ctx, brandIDs)
+		for _, b := range brands {
+			brandNameMap[b.ID] = b.Name
+		}
 	}
 
-	return eligibleDTOS, nil
+	return mapper.MapToBrandItemContractDTOList(eligibleItems, brandNameMap), nil
 }
 
-func (uc *BrandItemContractUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, error) {
+func (uc *BrandItemContractUseCase) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemContractDTO, error) {
 	brandItem, err := uc.brandItemRepo.GetByFashionItemID(ctx, fashionItemID)
 	if err != nil {
 		return false, nil, err
@@ -135,7 +143,7 @@ func (uc *BrandItemContractUseCase) CheckBrandItemEligibility(ctx context.Contex
 		}
 	}
 
-	return true, mapper.MapToBrandItemRes(brandItem, nil), nil
+	return true, mapper.MapToBrandItemContractDTO(brandItem, brand.Name), nil
 }
 
 func (uc *BrandItemContractUseCase) ListActiveBrandItemFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
@@ -171,7 +179,7 @@ func (uc *BrandItemContractUseCase) UpdateBrandItemStatusDirect(ctx context.Cont
 	return uc.brandItemRepo.Update(ctx, item)
 }
 
-func (uc *BrandItemContractUseCase) GetBrandItemByIDDirect(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemRes, error) {
+func (uc *BrandItemContractUseCase) GetBrandItemByIDDirect(ctx context.Context, brandItemID uuid.UUID) (*dto.BrandItemContractDTO, error) {
 	item, err := uc.brandItemRepo.GetByID(ctx, brandItemID)
 	if err != nil {
 		return nil, err
@@ -179,12 +187,21 @@ func (uc *BrandItemContractUseCase) GetBrandItemByIDDirect(ctx context.Context, 
 	if item == nil {
 		return nil, nil
 	}
-	return mapper.MapToBrandItemRes(item, nil), nil
+	brandName := ""
+	if item.Brand != nil {
+		brandName = item.Brand.Name
+	} else {
+		brand, _ := uc.brandRepo.GetByID(ctx, item.BrandID)
+		if brand != nil {
+			brandName = brand.Name
+		}
+	}
+	return mapper.MapToBrandItemContractDTO(item, brandName), nil
 }
 
-func (uc *BrandItemContractUseCase) GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemBriefRes, error) {
+func (uc *BrandItemContractUseCase) GetBrandItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.BrandItemContractDTO, error) {
 	if len(fashionItemIDs) == 0 {
-		return []*dto.BrandItemBriefRes{}, nil
+		return []*dto.BrandItemContractDTO{}, nil
 	}
 	items, err := uc.brandItemRepo.GetByFashionItemIDs(ctx, fashionItemIDs)
 	if err != nil {
@@ -203,33 +220,38 @@ func (uc *BrandItemContractUseCase) GetBrandItemsByFashionItemIDs(ctx context.Co
 		brandIDs = append(brandIDs, item.BrandID)
 	}
 	brandIDs = sliceutils.UniqueUUIDs(brandIDs)
-	brandMap := make(map[uuid.UUID]*entities.Brand, len(brandIDs))
+	brandNameMap := make(map[uuid.UUID]string, len(brandIDs))
 	if len(brandIDs) > 0 {
 		brands, _ := uc.brandRepo.GetByIDs(ctx, brandIDs)
 		for _, b := range brands {
-			brandMap[b.ID] = b
+			brandNameMap[b.ID] = b.Name
 		}
 	}
 
-	res := make([]*dto.BrandItemBriefRes, len(filtered))
-	for i, item := range filtered {
-		res[i] = mapper.MapBrandItemBrief(item, brandMap[item.BrandID], nil)
-	}
-	return res, nil
+	return mapper.MapToBrandItemContractDTOList(filtered, brandNameMap), nil
 }
 
-func (uc *BrandItemContractUseCase) GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemRes, error) {
+func (uc *BrandItemContractUseCase) GetBrandItemsByIDs(ctx context.Context, brandItemIDs []uuid.UUID) ([]*dto.BrandItemContractDTO, error) {
 	if len(brandItemIDs) == 0 {
-		return []*dto.BrandItemRes{}, nil
+		return []*dto.BrandItemContractDTO{}, nil
 	}
 	items, err := uc.brandItemRepo.GetByIDs(ctx, brandItemIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]*dto.BrandItemRes, len(items))
-	for i, item := range items {
-		res[i] = mapper.MapToBrandItemRes(item, nil)
+	brandIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		brandIDs = append(brandIDs, item.BrandID)
 	}
-	return res, nil
+	brandIDs = sliceutils.UniqueUUIDs(brandIDs)
+	brandNameMap := make(map[uuid.UUID]string, len(brandIDs))
+	if len(brandIDs) > 0 {
+		brands, _ := uc.brandRepo.GetByIDs(ctx, brandIDs)
+		for _, b := range brands {
+			brandNameMap[b.ID] = b.Name
+		}
+	}
+
+	return mapper.MapToBrandItemContractDTOList(items, brandNameMap), nil
 }

@@ -103,8 +103,8 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 
 	for candidateIndex, candidate := range candidates {
 		fashion := (*dto.FashionItemRes)(nil)
-		if candidate.Item.FashionItem != nil {
-			fashion = fashionItemMap[candidate.Item.FashionItem.ID]
+		if candidate.Item.FashionItemID != nil {
+			fashion = fashionItemMap[*candidate.Item.FashionItemID]
 		}
 		candidatePayload := map[string]any{
 			"id": fmt.Sprintf("A%d", candidateIndex+1),

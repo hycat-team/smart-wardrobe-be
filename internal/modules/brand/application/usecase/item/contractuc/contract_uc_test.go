@@ -95,10 +95,6 @@ func TestCheckBrandItemEligibility_ReturnsPureBrandItem(t *testing.T) {
 		t.Fatalf("expected brand item to be eligible")
 	}
 
-	if res.FashionItem != nil {
-		t.Errorf("expected FashionItem to be nil (pure contract), got %v", res.FashionItem)
-	}
-
 	if res.FashionItemID == uuid.Nil || res.FashionItemID != fashionItemID {
 		t.Errorf("expected FashionItemID to be %v, got %v", fashionItemID, res.FashionItemID)
 	}

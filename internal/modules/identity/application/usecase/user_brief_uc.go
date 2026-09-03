@@ -24,7 +24,7 @@ func NewUserBriefUseCase(
 	}
 }
 
-func (uc *UserBriefUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserBriefRes, error) {
+func (uc *UserBriefUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserBriefContractDTO, error) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -35,9 +35,9 @@ func (uc *UserBriefUseCase) GetByID(ctx context.Context, userID uuid.UUID) (*dto
 	return mapper.MapToUserBrief(user), nil
 }
 
-func (uc *UserBriefUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefRes, error) {
+func (uc *UserBriefUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*dto.UserBriefContractDTO, error) {
 	if len(userIDs) == 0 {
-		return []*dto.UserBriefRes{}, nil
+		return []*dto.UserBriefContractDTO{}, nil
 	}
 	users, err := uc.userRepo.GetByIDs(ctx, userIDs)
 	if err != nil {
@@ -50,7 +50,7 @@ func (uc *UserBriefUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) (
 		}
 		usersByID[user.ID] = user
 	}
-	result := make([]*dto.UserBriefRes, 0, len(userIDs))
+	result := make([]*dto.UserBriefContractDTO, 0, len(userIDs))
 	for _, userID := range userIDs {
 		user := usersByID[userID]
 		if user == nil {
@@ -61,7 +61,7 @@ func (uc *UserBriefUseCase) GetByIDs(ctx context.Context, userIDs []uuid.UUID) (
 	return result, nil
 }
 
-func (uc *UserBriefUseCase) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserBriefRes, error) {
+func (uc *UserBriefUseCase) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserBriefContractDTO, error) {
 	if len(identifiers) == 0 {
 		return nil, nil
 	}
@@ -72,7 +72,7 @@ func (uc *UserBriefUseCase) GetByUsernamesOrEmails(ctx context.Context, identifi
 	if len(users) == 0 {
 		return nil, nil
 	}
-	result := make([]*dto.UserBriefRes, 0, len(users))
+	result := make([]*dto.UserBriefContractDTO, 0, len(users))
 	for _, user := range users {
 		if user == nil || user.IsDeleted {
 			continue

@@ -49,7 +49,7 @@ const (
 //
 //	(1.65, []string{"style-match:minimalist", "new-item-bonus", ...})
 func ScoreCandidateItem(
-	item *wardrobeDto.WardrobeItemRes,
+	item *wardrobeDto.WardrobeItemContractDTO,
 	intent dto.ParsedIntent,
 	retrievalQuery types.RecommendationRetrievalQuery,
 	recentlyWornDays,
@@ -254,8 +254,8 @@ func recommendationWeatherState(values []string) string {
 }
 
 // isOuterwearItem kiểm tra xem danh mục của món đồ có thuộc nhóm áo khoác/đồ mặc ngoài hay không.
-func isOuterwearItem(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
-	if item == nil || item.FashionItem == nil {
+func isOuterwearItem(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+	if item == nil {
 		return false
 	}
 	fi := fashionForItemFromMap(item, fashionItemMap)
@@ -272,7 +272,7 @@ func isOuterwearItem(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.
 }
 
 // CandidateMatchesAnyTerm kiểm tra xem tài liệu tìm kiếm của món đồ có chứa bất kỳ từ khóa nào trong danh sách hay không.
-func CandidateMatchesAnyTerm(item *wardrobeDto.WardrobeItemRes, terms []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func CandidateMatchesAnyTerm(item *wardrobeDto.WardrobeItemContractDTO, terms []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if item == nil {
 		return false
 	}
@@ -287,12 +287,12 @@ func CandidateMatchesAnyTerm(item *wardrobeDto.WardrobeItemRes, terms []string, 
 }
 
 // CandidateMatchesRainySignal kiểm tra xem món đồ có chứa các thuộc tính phù hợp để đi mưa hay không.
-func CandidateMatchesRainySignal(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func CandidateMatchesRainySignal(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	return CandidateMatchesAnyTerm(item, retrieval.RainyWeatherTerms(), fashionItemMap)
 }
 
 // excludedWeatherPenalty tính điểm phạt (penalty) và trả về nhãn lý do nếu món đồ không phù hợp với kiểu thời tiết người dùng muốn tránh.
-func excludedWeatherPenalty(item *wardrobeDto.WardrobeItemRes, excludedWeather []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) (float64, string) {
+func excludedWeatherPenalty(item *wardrobeDto.WardrobeItemContractDTO, excludedWeather []string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) (float64, string) {
 	if item == nil {
 		return 0, ""
 	}

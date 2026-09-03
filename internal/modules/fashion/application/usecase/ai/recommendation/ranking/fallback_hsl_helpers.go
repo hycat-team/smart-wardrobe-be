@@ -17,7 +17,7 @@ import (
 // ============================================================================
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func isNeutral(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
@@ -29,7 +29,7 @@ func isNeutral(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*
 }
 
 // colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
-func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if isNeutral(item1, fashionItemMap) || isNeutral(item2, fashionItemMap) {
 		return true
 	}
@@ -60,7 +60,7 @@ func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemRes, fashionItemMap map[u
 	return deltaH >= 165.0 && deltaH <= 195.0
 }
 
-func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+func fashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
 	return mapper.FashionForItemFromMap(item, fashionItemMap)
 }
 
@@ -68,7 +68,7 @@ func fashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map
 // Category & Role Normalization Helpers
 // ============================================================================
 
-func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func itemCategorySlug(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if fi := fashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
 		slug := strings.ToLower(strings.TrimSpace(fi.Category.Slug))
 		if strings.Contains(slug, "ao-khoac") {
@@ -94,7 +94,7 @@ func itemCategorySlug(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid
 	return ""
 }
 
-func roleForItem(item *wardrobeDto.WardrobeItemRes, fallback string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func roleForItem(item *wardrobeDto.WardrobeItemContractDTO, fallback string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
 	if slug := itemCategorySlug(item, fashionItemMap); slug != "" {
 		return mapper.CategorySlugToWearingRole(slug)
 	}
@@ -108,8 +108,8 @@ func roleForItem(item *wardrobeDto.WardrobeItemRes, fallback string, fashionItem
 // buildItemGroup xây dựng cấu trúc [RecommendedItemGroup] cho một vai trò phối đồ cụ thể, bao gồm món đồ chính và tối đa 2 món đồ thay thế từ danh sách.
 func buildItemGroup(
 	role string,
-	primary *wardrobeDto.WardrobeItemRes,
-	all []*wardrobeDto.WardrobeItemRes,
+	primary *wardrobeDto.WardrobeItemContractDTO,
+	all []*wardrobeDto.WardrobeItemContractDTO,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 	candidateMap map[uuid.UUID]types.CandidateForPrompt,
 ) *dto.RecommendedItemGroup {

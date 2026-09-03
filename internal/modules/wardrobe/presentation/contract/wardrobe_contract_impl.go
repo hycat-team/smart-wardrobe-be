@@ -18,19 +18,19 @@ func NewWardrobeContract(wardrobeContractUC uc_interfaces.IWardrobeContractUseCa
 	return &WardrobeContract{wardrobeContractUC: wardrobeContractUC}
 }
 
-func (c *WardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemRes, error) {
+func (c *WardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*dto.WardrobeItemContractDTO, error) {
 	return c.wardrobeContractUC.GetWardrobeItemsByUserID(ctx, userID)
 }
 
-func (c *WardrobeContract) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemRes, error) {
+func (c *WardrobeContract) GetActiveWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	return c.wardrobeContractUC.GetActiveWardrobeItemsByUserID(ctx, userID, limit)
 }
 
-func (c *WardrobeContract) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemRes, error) {
+func (c *WardrobeContract) GetFailedItemsForCleanup(ctx context.Context, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	return c.wardrobeContractUC.GetFailedItemsForCleanup(ctx, limit)
 }
 
-func (c *WardrobeContract) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemRes, error) {
+func (c *WardrobeContract) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*dto.WardrobeItemContractDTO, error) {
 	return c.wardrobeContractUC.GetStaleProcessingItems(ctx, staleBefore, limit)
 }
 

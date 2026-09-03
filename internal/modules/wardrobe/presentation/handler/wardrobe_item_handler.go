@@ -58,10 +58,20 @@ func NewWardrobeItemHandler(
 // @Description Lấy chữ ký bảo mật từ Cloudinary để client tải trực tiếp ảnh trang phục lên
 // @Tags Wardrobe
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=shared_dto.UploadSignatureResult} "Chữ ký và thông tin upload"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeUploadSignatureRes} "Chữ ký và thông tin upload"
 // @Router /api/v1/wardrobe-items/upload-signature [get]
 func (h *WardrobeItemHandler) GetUploadSignature(c *gin.Context) error {
-	signatureRes, err := h.itemUseCase.GetUploadSignature(c.Request.Context())
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+
+	role, err := contextutils.GetRoleSlug(c)
+	if err != nil {
+		return err
+	}
+
+	signatureRes, err := h.itemUseCase.GetUploadSignature(c.Request.Context(), userID, role)
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,7 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 		Name: "Ao",
 		Slug: "ao",
 	}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -62,7 +62,7 @@ func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.
 			Name: "ao",
 			Slug: "ao",
 		}
-		fashionItemMap[item.FashionItem.ID] = fi
+		fashionItemMap[*item.FashionItemID] = fi
 		candidates[i] = types.CandidateForPrompt{
 			Item: item,
 			Tags: []string{"one", "two", "three"},
@@ -122,7 +122,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 		Slug: "ao",
 	}
 	item.ID = itemID
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{item.FashionItem.ID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -159,10 +159,9 @@ func TestMapLLMResponseToGroupsHandlesNilFashionItemField(t *testing.T) {
 	itemID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	fashionID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
-	item := &wardrobeDto.WardrobeItemRes{
+	item := &wardrobeDto.WardrobeItemContractDTO{
 		ID:            itemID,
 		FashionItemID: &fashionID,
-		FashionItem:   nil, // Simulating Wardrobe Contract output where FashionItem is nil
 	}
 
 	fi := &dto.FashionItemRes{
@@ -269,9 +268,9 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	accessoryItem.ID = accessoryID
 
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
-		topItem.FashionItem.ID:       topFi,
-		fullbodyItem.FashionItem.ID:  fullbodyFi,
-		accessoryItem.FashionItem.ID: accessoryFi,
+		*topItem.FashionItemID:       topFi,
+		*fullbodyItem.FashionItemID:  fullbodyFi,
+		*accessoryItem.FashionItemID: accessoryFi,
 	}
 
 	candidates := []types.CandidateForPrompt{
@@ -319,14 +318,12 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	}
 }
 
-func newSynthItem() (*wardrobeDto.WardrobeItemRes, *dto.FashionItemRes) {
+func newSynthItem() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemRes) {
 	fashionID := uuid.New()
 	catID := uuid.New()
-	item := &wardrobeDto.WardrobeItemRes{
-		ID: uuid.New(),
-		FashionItem: &wardrobeDto.FashionItemRes{
-			ID: fashionID,
-		},
+	item := &wardrobeDto.WardrobeItemContractDTO{
+		ID:            uuid.New(),
+		FashionItemID: &fashionID,
 	}
 	res := &dto.FashionItemRes{
 		ID:       fashionID,

@@ -287,7 +287,7 @@ type fakeEmptyWardrobeContract struct {
 	wardrobe_contract.IWardrobeContract
 }
 
-func (f fakeEmptyWardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*wardrobe_dto.WardrobeItemRes, error) {
+func (f fakeEmptyWardrobeContract) GetWardrobeItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*wardrobe_dto.WardrobeItemContractDTO, error) {
 	return nil, nil
 }
 

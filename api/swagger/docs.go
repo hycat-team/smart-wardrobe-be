@@ -7755,7 +7755,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.UploadSignatureResult"
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes"
                                         }
                                     }
                                 }
@@ -10899,22 +10899,25 @@ const docTemplate = `{
                 "category": {
                     "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
                 },
+                "category_id": {
+                    "type": "string"
+                },
                 "color": {
                     "type": "string"
                 },
-                "colorHex": {
+                "color_hex": {
                     "type": "string"
                 },
-                "colorHue": {
+                "color_hue": {
                     "type": "number"
                 },
-                "colorLightness": {
+                "color_lightness": {
                     "type": "number"
                 },
-                "colorSaturation": {
+                "color_saturation": {
                     "type": "number"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
                 "description": {
@@ -10926,7 +10929,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "imageUrl": {
+                "image_url": {
                     "type": "string"
                 },
                 "material": {
@@ -10941,7 +10944,7 @@ const docTemplate = `{
                 "style": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -12127,7 +12130,7 @@ const docTemplate = `{
                 "maxWardrobeItems": {
                     "type": "integer"
                 },
-                "planID": {
+                "planId": {
                     "type": "string"
                 },
                 "planName": {
@@ -12741,6 +12744,35 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "outfitsCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "currentItems": {
+                    "type": "integer"
+                },
+                "folder": {
+                    "type": "string"
+                },
+                "maxItems": {
+                    "type": "integer"
+                },
+                "publicId": {
+                    "type": "string"
+                },
+                "remainingSlots": {
+                    "type": "integer"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "timestamp": {
                     "type": "integer"
                 }
             }

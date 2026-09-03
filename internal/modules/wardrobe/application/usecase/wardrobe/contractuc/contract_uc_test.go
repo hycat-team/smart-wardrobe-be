@@ -48,8 +48,4 @@ func TestGetWardrobeItemsByUserID_ReturnsPureItems(t *testing.T) {
 	if res[0].FashionItemID == nil || *res[0].FashionItemID != fashionID {
 		t.Errorf("expected FashionItemID to be %v, got %v", fashionID, res[0].FashionItemID)
 	}
-
-	if res[0].FashionItem != nil {
-		t.Errorf("expected FashionItem to be nil (pure contract), got %v", res[0].FashionItem)
-	}
 }

@@ -99,10 +99,6 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 		for _, bi := range brandItems {
 			name := bi.Name
 			brandItemNameMap[bi.ID] = &name
-			if bi.FashionItem != nil {
-				img := bi.FashionItem.ImageUrl
-				brandItemImageMap[bi.ID] = &img
-			}
 		}
 	}
 

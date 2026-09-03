@@ -102,3 +102,49 @@ func MapDigitalSampleResponseWithUser(res *entities.DigitalSampleResponse, userB
 		CreatedAt:    res.CreatedAt,
 	}
 }
+
+func MapToBrandItemContractDTO(item *entities.BrandItem, brandName string) *dto.BrandItemContractDTO {
+	if item == nil {
+		return nil
+	}
+	var fashionItemID uuid.UUID
+	if item.FashionItemID != nil {
+		fashionItemID = *item.FashionItemID
+	}
+	name := brandName
+	if name == "" && item.Brand != nil {
+		name = item.Brand.Name
+	}
+	return &dto.BrandItemContractDTO{
+		ID:            item.ID,
+		BrandID:       item.BrandID,
+		BrandName:     name,
+		FashionItemID: fashionItemID,
+		ProductCode:   item.ProductCode,
+		Name:          item.Name,
+		Description:   item.Description,
+		Price:         item.Price,
+		ItemType:      item.ItemType,
+		Status:        item.Status,
+		CreatedAt:     item.CreatedAt,
+		UpdatedAt:     item.UpdatedAt,
+		TaskID:        item.TaskID,
+	}
+}
+
+func MapToBrandItemContractDTOList(items []*entities.BrandItem, brandNameMap map[uuid.UUID]string) []*dto.BrandItemContractDTO {
+	if items == nil {
+		return []*dto.BrandItemContractDTO{}
+	}
+	result := make([]*dto.BrandItemContractDTO, 0, len(items))
+	for _, item := range items {
+		brandName := ""
+		if brandNameMap != nil {
+			brandName = brandNameMap[item.BrandID]
+		}
+		if contractDTO := MapToBrandItemContractDTO(item, brandName); contractDTO != nil {
+			result = append(result, contractDTO)
+		}
+	}
+	return result
+}

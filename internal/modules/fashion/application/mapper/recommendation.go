@@ -45,7 +45,7 @@ func parseAliasIndex(alias string) (int, bool) {
 	return -1, false
 }
 
-func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
+func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
 	if item == nil {
 		return nil
 	}
@@ -91,15 +91,12 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemRes, fi *dto.FashionI
 	return res
 }
 
-func FashionForItemFromMap(item *wardrobeDto.WardrobeItemRes, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
 	if item == nil {
 		return nil
 	}
 	if item.FashionItemID != nil {
 		return fashionItemMap[*item.FashionItemID]
-	}
-	if item.FashionItem != nil {
-		return fashionItemMap[item.FashionItem.ID]
 	}
 	return nil
 }
@@ -110,7 +107,7 @@ func MapLLMResponseToGroups(
 	llmRes types.LlmOutfitResponse,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
 ) []*dto.RecommendedItemGroup {
-	candidateMap := map[uuid.UUID]*wardrobeDto.WardrobeItemRes{}
+	candidateMap := map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
 	for _, candidate := range candidates {
 		candidateMap[candidate.Item.ID] = candidate.Item
@@ -223,12 +220,12 @@ func findCandidateByRole(candidates []types.CandidateForPrompt, role string, fas
 
 // resolvePrimaryCandidate tìm kiếm món đồ chính được đề xuất bởi AI.
 func resolvePrimaryCandidate(
-	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemRes,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO,
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
-) *wardrobeDto.WardrobeItemRes {
+) *wardrobeDto.WardrobeItemContractDTO {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
 			return candidates[idx].Item
@@ -254,7 +251,7 @@ func resolvePrimaryCandidate(
 
 // resolveAlternativeCandidates tìm kiếm tối đa 2 món đồ thay thế cho vai trò được đề xuất.
 func resolveAlternativeCandidates(
-	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemRes,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO,
 	candidates []types.CandidateForPrompt,
 	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
 	role string,
@@ -264,7 +261,7 @@ func resolveAlternativeCandidates(
 ) []*dto.RecommendedItemRes {
 	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
-		var altItem *wardrobeDto.WardrobeItemRes
+		var altItem *wardrobeDto.WardrobeItemContractDTO
 		if idx, ok := parseAliasIndex(altID); ok {
 			if idx >= 0 && idx < len(candidates) {
 				altItem = candidates[idx].Item
@@ -326,7 +323,7 @@ func resolveAlternativeCandidates(
 	return alternatives
 }
 
-func matchesRole(item *wardrobeDto.WardrobeItemRes, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func matchesRole(item *wardrobeDto.WardrobeItemContractDTO, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
 	if fi := FashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
 		return CategorySlugToWearingRole(fi.Category.Slug) == role
 	}
