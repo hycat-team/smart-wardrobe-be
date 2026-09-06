@@ -95,10 +95,10 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Independent Test**: curl gzip giảm ≥50% kích thước, giải nén khớp 100%; SSE không nén; 2 tiến trình migration đồng thời không xung đột. Xem quickstart.md §US4.
 
-- [ ] T023 [US4] Đăng ký gzip middleware trong `internal/api/routes/router.go` (`gin-contrib/gzip`, toggle `server.gzip_enabled`, `WithExcludedPaths` cho route stream `/api/v1/ai/chat/sessions/*/messages/stream`)
-- [ ] T024 [P] [US4] Inject logger vào `internal/shared/infrastructure/db/migration.go`: thay `fmt.Println` bằng log có cấu trúc (bắt đầu/kết thúc/từng migration/kết quả lock) — giữ nguyên session locker
-- [ ] T025 [US4] Integration test `internal/shared/infrastructure/db/migration_integration_test.go` (env-skip, hàm test tiền tố `TestIntegration...`): 2 provider `RunMigrations` đồng thời trên cùng DB — không xung đột, kết quả idempotent
-- [ ] T026 [US4] Xác minh quickstart.md §US4: curl gzip size ≤50% + giải nén diff 100% khớp; SSE trả không nén
+- [x] T023 [US4] Đăng ký gzip middleware trong `internal/api/routes/router.go` (`gin-contrib/gzip`, toggle `server.gzip_enabled`, `WithExcludedPaths` cho route stream `/api/v1/ai/chat/sessions/*/messages/stream`)
+- [x] T024 [P] [US4] Inject logger vào `internal/shared/infrastructure/db/migration.go`: thay `fmt.Println` bằng log có cấu trúc (bắt đầu/kết thúc/từng migration/kết quả lock) — giữ nguyên session locker
+- [x] T025 [US4] Integration test `internal/shared/infrastructure/db/migration_integration_test.go` (env-skip, hàm test tiền tố `TestIntegration...`): 2 provider `RunMigrations` đồng thời trên cùng DB — không xung đột, kết quả idempotent
+- [x] T026 [US4] Xác minh quickstart.md §US4: curl gzip size ≤50% + giải nén diff 100% khớp; SSE trả không nén
 
 ---
 

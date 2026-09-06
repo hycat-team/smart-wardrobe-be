@@ -15,6 +15,7 @@ import (
 	notificationWorker "smart-wardrobe-be/internal/modules/notification/presentation/worker"
 	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
 	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
+	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/infrastructure/db"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
 	sharedWorker "smart-wardrobe-be/internal/shared/presentation/worker"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -57,6 +59,7 @@ type App struct {
 	Workers   *AppWorkers
 	Validator StartupValidator
 	DB        *gorm.DB
+	Log       logger.Interface
 }
 
 func NewApp(
@@ -65,6 +68,7 @@ func NewApp(
 	workers *AppWorkers,
 	validator StartupValidator,
 	dbConn *gorm.DB,
+	log logger.Interface,
 ) *App {
 	return &App{
 		Config:    cfg,
@@ -72,6 +76,7 @@ func NewApp(
 		Workers:   workers,
 		Validator: validator,
 		DB:        dbConn,
+		Log:       log,
 	}
 }
 
@@ -80,7 +85,7 @@ func (a *App) Run() error {
 		return fmt.Errorf("server hardening config validation failed: %w", err)
 	}
 
-	if err := db.RunMigrations(context.Background(), a.DB); err != nil {
+	if err := db.RunMigrations(context.Background(), a.DB, a.Log); err != nil {
 		return fmt.Errorf("database migration failed: %w", err)
 	}
 
@@ -97,10 +102,10 @@ func (a *App) Run() error {
 		IdleTimeout:  time.Duration(a.Config.Server.IdleTimeoutSeconds) * time.Second,
 	}
 
-	fmt.Println("==========================================================")
-	fmt.Printf("SmartWardrobe BE is running on port: %s\n", port)
-	fmt.Printf("Swagger UI is available at: http://localhost:%s/swagger\n", port)
-	fmt.Println("==========================================================")
+	a.Log.Info("SmartWardrobe BE is running",
+		zap.String("port", port),
+		zap.String("swagger", "http://localhost:"+port+"/swagger"),
+	)
 
 	ctxWorker := context.Background()
 
@@ -140,7 +145,7 @@ func (a *App) Run() error {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Listen error: %s\n", err)
+			a.Log.Error("HTTP listen failed", zap.Error(err))
 		}
 	}()
 
@@ -148,7 +153,7 @@ func (a *App) Run() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	<-quit
-	fmt.Println("\nReceived shutdown signal...")
+	a.Log.Info("Received shutdown signal")
 
 	a.Workers.RenewalWorker.Stop()
 	a.Workers.PaymentReconciliationWorker.Stop()
@@ -177,7 +182,7 @@ func (a *App) Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	fmt.Println("Shutting down Gin server...")
+	a.Log.Info("Shutting down Gin server")
 	if err := srv.Shutdown(ctx); err != nil {
 		return fmt.Errorf("Server forced to shutdown: %w", err)
 	}

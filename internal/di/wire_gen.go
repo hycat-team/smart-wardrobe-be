@@ -355,7 +355,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		BrandFashionBindWorker:                 brandFashionBindWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
-	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)
+	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB, l)
 	return app, func() {
 	}, nil
 }
