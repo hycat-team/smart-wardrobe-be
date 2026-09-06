@@ -41,7 +41,7 @@ func (w *BrandFashionBindWorker) Start(ctx context.Context) {
 	}
 }
 
-func (w *BrandFashionBindWorker) handle(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error {
+func (w *BrandFashionBindWorker) handle(ctx context.Context, payload fashion_dto.FashionItemCreatedEventPayload) error {
 	run := workerlog.New("brand_fashion_bind", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),

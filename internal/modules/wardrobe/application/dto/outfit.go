@@ -3,7 +3,9 @@ package dto
 import (
 	"time"
 
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfitstatus"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -45,22 +47,17 @@ type OutfitBriefRes struct {
 	CreatedAt     time.Time                 `json:"createdAt"`
 }
 
-type FashionItemBriefRes struct {
-	ID       uuid.UUID         `json:"id"`
-	ImageUrl string            `json:"imageUrl,omitempty"`
-	Color    *string           `json:"color,omitempty"`
-	ColorHex *string           `json:"colorHex,omitempty"`
-	Style    *string           `json:"style,omitempty"`
-	Category *CategoryBriefRes `json:"category,omitempty"`
+type OutfitItemRes struct {
+	ID          uuid.UUID                        `json:"id"`
+	ItemContext string                           `json:"itemContext"`
+	FashionItem *fashion_dto.FashionItemBriefRes `json:"fashionItem,omitempty"`
+	PositionX   float64                          `json:"positionX"`
+	PositionY   float64                          `json:"positionY"`
+	Scale       float64                          `json:"scale"`
+	LayerOrder  int16                            `json:"layerOrder"`
+	IsAvailable bool                             `json:"isAvailable"`
 }
 
-type OutfitItemRes struct {
-	ID          uuid.UUID            `json:"id"`
-	ItemContext string               `json:"itemContext"`
-	FashionItem *FashionItemBriefRes `json:"fashionItem,omitempty"`
-	PositionX   float64              `json:"positionX"`
-	PositionY   float64              `json:"positionY"`
-	Scale       float64              `json:"scale"`
-	LayerOrder  int16                `json:"layerOrder"`
-	IsAvailable bool                 `json:"isAvailable"`
+type GetOutfitsQueryReq struct {
+	shared_dto.PaginationQuery
 }

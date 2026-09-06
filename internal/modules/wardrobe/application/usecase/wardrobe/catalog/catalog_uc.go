@@ -90,17 +90,17 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		return nil, err
 	}
 
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemContractDTO{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemContractDTO) uuid.UUID { return f.ID })
 		}
 	}
 
 	resList := make([]*dto.WardrobeItemRes, len(items))
 	for i, item := range items {
-		var fi *fashion_dto.FashionItemRes
+		var fi *fashion_dto.FashionItemContractDTO
 		if item.FashionItemID != nil {
 			fi = fashionMap[*item.FashionItemID]
 		}
@@ -178,12 +178,12 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		}
 	}
 
-	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	brandItemMap := map[uuid.UUID]*shared_dto.BrandItemBriefRes{}
 	if len(fashionIDs) > 0 && uc.brandContract != nil {
 		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, bi := range brandItems {
-				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+				brandItemMap[bi.FashionItemID] = &shared_dto.BrandItemBriefRes{
 					ID:          bi.ID,
 					BrandID:     bi.BrandID,
 					BrandName:   bi.BrandName,
@@ -203,7 +203,7 @@ func (uc *WardrobeCatalogUseCase) InitClosetFromCatalog(ctx context.Context, use
 		if newItems[i].FashionItemID != nil {
 			fiBrief = fashionBriefMap[*newItems[i].FashionItemID]
 		}
-		var brandItem *dto.BrandItemBriefRes
+		var brandItem *shared_dto.BrandItemBriefRes
 		if newItems[i].FashionItemID != nil {
 			brandItem = brandItemMap[*newItems[i].FashionItemID]
 		}
@@ -248,7 +248,7 @@ func (uc *WardrobeCatalogUseCase) UpdateSystemCatalogItem(ctx context.Context, i
 		return nil, err
 	}
 
-	var fi *fashion_dto.FashionItemRes
+	var fi *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}

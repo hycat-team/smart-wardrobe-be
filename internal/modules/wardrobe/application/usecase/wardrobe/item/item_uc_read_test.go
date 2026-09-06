@@ -35,14 +35,14 @@ func (m *mockMediaService) GenerateUploadSignature(ctx context.Context, params s
 
 type mockSubContract struct {
 	sub_contract.IUserSubscriptionContract
-	getOverviewFn func(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionOverviewDTO, error)
+	getOverviewFn func(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionContractDTO, error)
 }
 
-func (m *mockSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionOverviewDTO, error) {
+func (m *mockSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionContractDTO, error) {
 	if m.getOverviewFn != nil {
 		return m.getOverviewFn(ctx, userID)
 	}
-	return &sub_dto.UserSubscriptionOverviewDTO{
+	return &sub_dto.UserSubscriptionContractDTO{
 		MaxWardrobeItems: 50,
 	}, nil
 }

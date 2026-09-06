@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
+)
 
 type GetAIMarginAnalyticsQueryReq struct {
 	FromDate string `form:"fromDate" json:"fromDate"`
@@ -45,6 +49,9 @@ type AdminOverviewRes struct {
 
 // SubscriptionDistribution
 
+// SubscriptionDistributionDTO is a presentation projection of
+// subscription_dto.SubscriptionDistributionDTO (int user count + percentage
+// computed downstream) — keep field names in sync with the source read model.
 type SubscriptionDistributionDTO struct {
 	PlanCode   string  `json:"planCode"`
 	UserCount  int     `json:"userCount"`
@@ -56,8 +63,9 @@ type SubscriptionDistributionRes struct {
 	TotalUsers   int                           `json:"totalUsers"`
 }
 
-// RevenueBreakdown
-
+// RevenueBreakdownDTO is a presentation projection of
+// subscription_dto.RevenueBreakdownDTO (month formatted as string, revenue as
+// VND float) — keep field names in sync with the source read model.
 type RevenueBreakdownDTO struct {
 	PlanCode         string  `json:"planCode"`
 	Month            string  `json:"month"`
@@ -74,6 +82,9 @@ type RevenueBreakdownRes struct {
 
 // AI Usage by Operation
 
+// AIUsageByOperationDTO is a presentation projection of
+// aiexecutor_dto.AIUsageByOperationDTO (micro-VND cost converted to VND float)
+// — keep field names in sync with the source read model.
 type AIUsageByOperationDTO struct {
 	Operation         string  `json:"operation"`
 	LogicalRoute      string  `json:"logicalRoute"`
@@ -91,18 +102,11 @@ type AIUsageByOperationRes struct {
 
 // AI Error Breakdown
 
-type AIErrorBreakdownDTO struct {
-	ErrorCode  string `json:"errorCode"`
-	Provider   string `json:"provider"`
-	Model      string `json:"model"`
-	ErrorCount int64  `json:"errorCount"`
-}
-
 type AIErrorBreakdownRes struct {
-	TotalErrors   int64                 `json:"totalErrors"`
-	TotalRequests int64                 `json:"totalRequests"`
-	ErrorRate     float64               `json:"errorRate"`
-	Breakdown     []AIErrorBreakdownDTO `json:"breakdown"`
+	TotalErrors   int64                                `json:"totalErrors"`
+	TotalRequests int64                                `json:"totalRequests"`
+	ErrorRate     float64                              `json:"errorRate"`
+	Breakdown     []aiexecutor_dto.AIErrorBreakdownDTO `json:"breakdown"`
 }
 
 // Renewal Stats

@@ -3,8 +3,6 @@ package dto
 import (
 	"time"
 
-	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
-
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -22,6 +20,8 @@ type AIModelConfigDTO struct {
 	EffectiveTo         *time.Time      `json:"effectiveTo,omitempty"`
 }
 
+// PricingConfigDTO re-exports the admin pricing config shape for the pricing
+// cache (application <-> infrastructure) — single source of truth stays AIModelConfigDTO.
 type PricingConfigDTO = AIModelConfigDTO
 
 type UpdatePricingReq struct {
@@ -68,5 +68,3 @@ type AICostPolicyBriefRes struct {
 	Name    string    `json:"name"`
 	Version int64     `json:"version"`
 }
-
-type AIUsageListRes = shared_dto.PaginationResult[*AIUsageItemDTO]

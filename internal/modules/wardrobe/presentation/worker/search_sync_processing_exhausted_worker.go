@@ -41,7 +41,7 @@ func (w *ElasticsearchProcessingExhaustedWorker) Start(ctx context.Context) {
 	}
 }
 
-func (w *ElasticsearchProcessingExhaustedWorker) handle(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error {
+func (w *ElasticsearchProcessingExhaustedWorker) handle(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error {
 	run := workerlog.New("elasticsearch_processing_exhausted", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),

@@ -17,7 +17,7 @@ import (
 // ============================================================================
 
 // isNeutral kiểm tra xem màu sắc của món đồ có phải là màu trung tính (ví dụ: đen, trắng, xám hoặc màu có độ bão hòa rất thấp) dựa trên độ sáng (lightness) và độ bão hòa (saturation).
-func isNeutral(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func isNeutral(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) bool {
 	fashion := fashionForItemFromMap(item, fashionItemMap)
 	if fashion == nil || fashion.ColorLightness == nil || fashion.ColorSaturation == nil {
 		return true
@@ -29,7 +29,7 @@ func isNeutral(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uui
 }
 
 // colorsMatch kiểm tra xem hai món đồ có màu sắc phối hợp hài hòa với nhau theo thuật toán HSL hay không.
-func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) bool {
 	if isNeutral(item1, fashionItemMap) || isNeutral(item2, fashionItemMap) {
 		return true
 	}
@@ -60,7 +60,7 @@ func colorsMatch(item1, item2 *wardrobeDto.WardrobeItemContractDTO, fashionItemM
 	return deltaH >= 165.0 && deltaH <= 195.0
 }
 
-func fashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+func fashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) *dto.FashionItemContractDTO {
 	return mapper.FashionForItemFromMap(item, fashionItemMap)
 }
 
@@ -68,7 +68,7 @@ func fashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionIte
 // Category & Role Normalization Helpers
 // ============================================================================
 
-func itemCategorySlug(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func itemCategorySlug(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
 	if fi := fashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
 		slug := strings.ToLower(strings.TrimSpace(fi.Category.Slug))
 		if strings.Contains(slug, "ao-khoac") {
@@ -94,7 +94,7 @@ func itemCategorySlug(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap 
 	return ""
 }
 
-func roleForItem(item *wardrobeDto.WardrobeItemContractDTO, fallback string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func roleForItem(item *wardrobeDto.WardrobeItemContractDTO, fallback string, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
 	if slug := itemCategorySlug(item, fashionItemMap); slug != "" {
 		return mapper.CategorySlugToWearingRole(slug)
 	}
@@ -110,7 +110,7 @@ func buildItemGroup(
 	role string,
 	primary *wardrobeDto.WardrobeItemContractDTO,
 	all []*wardrobeDto.WardrobeItemContractDTO,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 	candidateMap map[uuid.UUID]types.CandidateForPrompt,
 ) *dto.RecommendedItemGroup {
 	alternatives := make([]*dto.RecommendedItemRes, 0, 2)

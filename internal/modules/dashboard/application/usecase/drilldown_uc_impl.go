@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/dashboard/application/dto"
 	dashboarderrors "smart-wardrobe-be/internal/modules/dashboard/application/errors"
 	uc_interfaces "smart-wardrobe-be/internal/modules/dashboard/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/dashboard/application/mapper"
 	identity_dto "smart-wardrobe-be/internal/modules/identity/application/dto"
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
@@ -83,11 +84,11 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 		brandItemIDs = append(brandItemIDs, item.ItemID)
 	}
 
-	userBriefs := make([]*identity_dto.UserBriefRes, 0)
+	userBriefs := make([]*identity_dto.UserBriefContractDTO, 0)
 	if uc.userBriefContract != nil {
 		userBriefs, _ = uc.userBriefContract.GetByIDs(ctx, userIDs)
 	}
-	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO, len(userBriefs))
 	for _, ub := range userBriefs {
 		userMap[ub.ID] = ub
 	}
@@ -111,7 +112,7 @@ func (uc *DrillDownUseCase) GetSampleLabFeedbacksDrillDown(ctx context.Context, 
 			Rating:            item.Rating,
 			Comment:           item.Comment,
 			CreatedAt:         item.CreatedAt,
-			User:              userMap[item.UserID],
+			User:              mapper.MapIdentityUserBrief(userMap[item.UserID]),
 			BrandItemName:     brandItemNameMap[item.ItemID],
 			BrandItemImageURL: brandItemImageMap[item.ItemID],
 		})

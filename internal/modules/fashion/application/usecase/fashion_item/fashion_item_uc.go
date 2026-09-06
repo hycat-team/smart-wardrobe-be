@@ -19,7 +19,7 @@ func NewFashionItemUseCase(fashionItemRepo repositories.IFashionItemRepository) 
 	return &FashionItemUseCase{fashionItemRepo: fashionItemRepo}
 }
 
-func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
+func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemContractDTO {
 	if fi == nil {
 		return nil
 	}
@@ -31,7 +31,7 @@ func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
 			Slug: fi.Category.Slug,
 		}
 	}
-	return &dto.FashionItemRes{
+	return &dto.FashionItemContractDTO{
 		ID:              fi.ID,
 		Category:        category,
 		ImageUrl:        fi.ImageUrl,
@@ -52,7 +52,7 @@ func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemRes {
 	}
 }
 
-func (uc *FashionItemUseCase) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemRes, error) {
+func (uc *FashionItemUseCase) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemContractDTO, error) {
 	item, err := uc.fashionItemRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -60,12 +60,12 @@ func (uc *FashionItemUseCase) GetFashionItem(ctx context.Context, id uuid.UUID) 
 	return mapToFashionItemRes(item), nil
 }
 
-func (uc *FashionItemUseCase) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemRes, error) {
+func (uc *FashionItemUseCase) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemContractDTO, error) {
 	items, err := uc.fashionItemRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*dto.FashionItemRes, len(items))
+	res := make([]*dto.FashionItemContractDTO, len(items))
 	for i, item := range items {
 		res[i] = mapToFashionItemRes(item)
 	}

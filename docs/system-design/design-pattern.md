@@ -567,6 +567,66 @@ For the full canonical module layout and directory structure, see `architecture.
 
 ---
 
+## DTO Convention (`application/dto/`)
+
+Every module owns a single DTO package at `internal/modules/<module>/application/dto/` (package name `dto`). It holds **all data shapes that cross a layer or module boundary**: HTTP request/response payloads, cross-module contract payloads, event payloads, and repository read-model aliases. Types that never cross such a boundary (use case options, orchestration plans, internal decisions) do **not** belong here.
+
+### File organization
+
+| File | Contents |
+|---|---|
+| `contract_dto.go` | **REQUIRED** for every module exposing `presentation/contract/`. Contains only `XxxContractDTO` structs — nothing else. |
+| `<feature>.go` | Request **and** response DTOs of one feature/domain, grouped in the same file (e.g., `brand_item.go`, `outfit.go`, `billing.go`). |
+| `dashboard_dto.go` | Read-model / statistics DTOs feeding dashboards and analytics (usually type aliases of the module's `domain/repositories/readmodels.go`). |
+| `event_payload.go` (optional) | Event payload structs when a module publishes/consumes many messages; small modules may keep payloads inside the related `<feature>.go` file. |
+
+Rules:
+
+- Group files by **feature**, not by role — do NOT split into `xxx_req.go` / `xxx_res.go` file pairs, and do NOT leave single-struct orphan files; fold them into the nearest feature file.
+- Enums and constants do not live in `dto` — they belong in `domain/constants/`.
+- Empty placeholder packages (e.g., an unused `presentation/dto/`) are not allowed.
+
+### Naming rules
+
+| Role | Pattern | Example |
+|---|---|---|
+| Request body | `<Verb>XxxReq` (`Create`, `Update`, …) | `CreateBrandItemReq` |
+| Query parameter binding | `GetXxxQueryReq` | `GetBrandItemsQueryReq` |
+| API response (full detail) | `XxxRes` | `BrandItemRes` |
+| API response (summary) | `XxxBriefRes` | `WardrobeItemBriefRes` |
+| Paginated list (alias) | `XxxListRes = shared_dto.PaginationResult[*XxxRes]`; brief variant `XxxBriefListRes` | `BrandItemBriefListRes` |
+| Cross-module contract payload | `XxxContractDTO` (only in `contract_dto.go`) | `WardrobeItemContractDTO` |
+| Read-model / analytics struct | `XxxStatsDTO`, `XxxAnalyticsDTO`, `XxxDrillDownDTO` | `BrandAdminStatsDTO` |
+| Event payload | `XxxEventPayload` | `FashionItemCreatedPayload` |
+| Non-HTTP operation input | `XxxInput` | `RecordAuditLogInput` |
+
+- A struct has exactly **one role**. Never reuse one struct as both an API response and a contract payload, and never alias one to the other (`type XxxRes = XxxContractDTO` is prohibited) — a contract payload is a pure data container while an API response may gain client-only enrichment, so the two roles evolve independently.
+- Query-parameter binding structs MUST use the `GetXxxQueryReq` pattern (normalize variants such as `ListXxxQueryReq` or `GetXxxAdminQueryReq`).
+
+### Three data-shape tiers
+
+```
+HTTP client  ↔  Req / Res            (application/dto/<feature>.go)
+Other module ↔  XxxContractDTO       (application/dto/contract_dto.go)
+Repository   ↔  Filter / read models (domain/repositories/readmodels.go)
+```
+
+1. **API transport (`Req`/`Res`)** — bound in handlers via `validation.BindJSON`/`BindQuery`, serialized to clients. JSON tags MUST be camelCase with `binding` and Vietnamese `label` tags for validation (see Constitution — Naming Standards).
+2. **Contract payloads (`XxxContractDTO`)** — pure data containers per [`contract-purity-pattern.md`](contract-purity-pattern.md): only domain-native fields and `uuid.UUID`/`*uuid.UUID` foreign keys; MUST NOT contain pointers to other modules' DTOs or entities. They also carry camelCase `json` tags (contracts may be serialized by workers/SSE flows). List-typed results MUST return an empty slice (`[]*XxxContractDTO{}`), never `nil`.
+3. **Repository read models** — `Filter`, `ListResult`, and statistics structs live in `domain/repositories/readmodels.go` (domain layer, zero outward dependencies). `application/dto` re-exports them via type aliases when they cross into the application/presentation flow. If a client-facing response needs fields beyond the read model, define a dedicated `XxxRes` and map it in `application/mapper` instead of inflating the domain struct.
+
+### Cross-module DTO reuse
+
+- A consumer MAY import another module's `application/dto` (Constitution §II) instead of re-declaring the shape.
+- Re-declaring a struct with an identical shape that already exists in the providing module's `application/dto` is prohibited (drift hazard).
+- A deliberately flattened projection (the consumer only needs a subset, e.g., wardrobe flattening brand item fields) is allowed but MUST carry a doc comment naming the source: `// Flattened projection of brand BrandItemBriefRes — keep JSON fields in sync with the source.`
+
+### Shared DTOs (`internal/shared/application/dto/`)
+
+Only shapes with **no owning module** and used by two or more modules live here: `PaginationQuery`, `PaginationResult[T]`, `PaginationMetadata`, `UploadSignatureParams`/`UploadSignatureResult`. Never move a module-specific DTO into shared for convenience — cross-module sharing goes through the owning module's `application/dto`.
+
+---
+
 ## Cross-Module Contracts
 
 Modules communicate across boundaries through contract packages located at `presentation/contract/`. This section describes the implementation conventions. For architectural rules and constraints, see `architecture.md §IV`.
@@ -597,7 +657,7 @@ func (c *NotificationContract) SendEmail(ctx context.Context, input SendEmailInp
 
 ### Rules
 
-- Contracts expose **only DTOs** (defined in `application/dto/`), never domain entities.
+- Contracts expose **only DTOs** (defined in `application/dto/contract_dto.go`, see [DTO Convention](#dto-convention-applicationdto)), never domain entities.
 - The contract struct implementation must delegate execution to application use cases via usecase interfaces.
 - A module must **never import** another module's `domain/entities/`, `domain/repositories/`, or `infrastructure/persistence/`.
 - Workers call use cases through interfaces defined in `application/interface/usecase/`.

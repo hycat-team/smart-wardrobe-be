@@ -101,7 +101,7 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context
 
 	brief := &dto.WardrobeItemBriefRes{
 		ID:          item.ID,
-		FashionItem: mapFashionBriefToWardrobe(payload.FashionBrief),
+		FashionItem: payload.FashionBrief,
 		Price:       item.Price,
 		Status:      item.Status,
 		LastUsedAt:  item.LastUsedAt,
@@ -157,7 +157,7 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionFailed(ctx context.Context, 
 
 	brief := &dto.WardrobeItemBriefRes{
 		ID:          item.ID,
-		FashionItem: mapFashionBriefToWardrobe(payload.FashionBrief),
+		FashionItem: payload.FashionBrief,
 		Price:       item.Price,
 		Status:      item.Status,
 		LastUsedAt:  item.LastUsedAt,
@@ -184,7 +184,7 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionFailed(ctx context.Context, 
 	return nil
 }
 
-func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedPayload) error {
+func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedEventPayload) error {
 	if payload.ItemType != "" && payload.ItemType != "wardrobe" {
 		return nil
 	}
@@ -216,7 +216,7 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Cont
 	return nil
 }
 
-func (uc *WardrobeFashionEventUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error {
+func (uc *WardrobeFashionEventUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error {
 	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.WardrobeItemID)
 	if err != nil {
 		uc.logger.Error("Failed to fetch wardrobe item for processing exhausted event",
@@ -270,26 +270,4 @@ func (uc *WardrobeFashionEventUseCase) HandleWardrobeDeleted(ctx context.Context
 		return err
 	}
 	return nil
-}
-
-func mapFashionBriefToWardrobe(fb *fashionDto.FashionItemBriefRes) *dto.FashionItemBriefRes {
-	if fb == nil {
-		return nil
-	}
-	var cat *dto.CategoryBriefRes
-	if fb.Category != nil {
-		cat = &dto.CategoryBriefRes{
-			ID:   fb.Category.ID,
-			Name: fb.Category.Name,
-			Slug: fb.Category.Slug,
-		}
-	}
-	return &dto.FashionItemBriefRes{
-		ID:       fb.ID,
-		ImageUrl: fb.ImageUrl,
-		Color:    fb.Color,
-		ColorHex: fb.ColorHex,
-		Style:    fb.Style,
-		Category: cat,
-	}
 }

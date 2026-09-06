@@ -101,7 +101,7 @@ func (uc *BrandItemUseCase) CreateBrandItem(ctx context.Context, staffUserID uui
 		return nil, err
 	}
 
-	fi := &fashion_dto.FashionItemRes{
+	fi := &fashion_dto.FashionItemContractDTO{
 		ID:            fashionItemID,
 		ImageUrl:      input.ImageUrl,
 		ImagePublicID: input.ImagePublicID,

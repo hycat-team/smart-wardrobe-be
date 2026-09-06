@@ -144,7 +144,7 @@ func (uc *BrandBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUser
 	return mapper.MapBrandBenefit(benefit), nil
 }
 
-func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
+func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	var unlockType *benefitunlocktype.BenefitUnlockType
 	if query.UnlockType != nil {
 		val := benefitunlocktype.BenefitUnlockType(strings.ToLower(*query.UnlockType))
@@ -185,7 +185,7 @@ func (uc *BrandBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, st
 	}, nil
 }
 
-func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
+func (uc *BrandBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	brand, err := uc.brandRepo.GetByID(ctx, brandID)
 	if err != nil {
 		return nil, err

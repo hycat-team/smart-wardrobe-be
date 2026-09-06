@@ -16,7 +16,7 @@ func (uc *BrandItemUseCase) mapToRes(ctx context.Context, item *entities.BrandIt
 	if item == nil {
 		return nil
 	}
-	var fi *fashion_dto.FashionItemRes
+	var fi *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -34,15 +34,15 @@ func (uc *BrandItemUseCase) mapSliceToRes(ctx context.Context, items []*entities
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionItemMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*fashion_dto.FashionItemContractDTO{}
 	if len(fashionIDs) > 0 {
 		fashionContractItems, _ := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
-		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+		fashionItemMap = sliceutils.IndexBy(fashionContractItems, func(f *fashion_dto.FashionItemContractDTO) uuid.UUID { return f.ID })
 	}
 
 	res := make([]*dto.BrandItemRes, len(items))
 	for i, item := range items {
-		var fi *fashion_dto.FashionItemRes
+		var fi *fashion_dto.FashionItemContractDTO
 		if item.FashionItemID != nil {
 			fi = fashionItemMap[*item.FashionItemID]
 		}

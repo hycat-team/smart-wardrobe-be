@@ -86,7 +86,7 @@ type LoyaltyTierDetailRes struct {
 	Benefits []*BrandBenefitRes `json:"benefits,omitempty"`
 }
 
-type ListBrandBenefitsQueryReq struct {
+type GetBrandBenefitsQueryReq struct {
 	Page        int     `form:"page" binding:"omitempty,min=1" label:"trang"`
 	Limit       int     `form:"limit" binding:"omitempty,min=1,max=100" label:"số lượng"`
 	UnlockType  *string `form:"unlockType" binding:"omitempty" label:"loại mở khóa"`
@@ -103,7 +103,7 @@ type LoyaltyPointLotRes struct {
 	CreatedAt         time.Time  `json:"createdAt"`
 }
 
-type ListLoyaltyPointLotsQueryReq struct {
+type GetLoyaltyPointLotsQueryReq struct {
 	Status    *string    `form:"status" binding:"omitempty" label:"trạng thái lô điểm"`
 	ExpiresAt *time.Time `form:"expiresAt" binding:"omitempty" label:"ngày hết hạn"`
 	Page      int        `form:"page" binding:"omitempty,min=1" label:"trang"`

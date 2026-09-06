@@ -41,7 +41,7 @@ func (w *EmailWorker) Start(ctx context.Context) {
 	}
 }
 
-func (w *EmailWorker) handle(ctx context.Context, payload dto.EmailPayload) error {
+func (w *EmailWorker) handle(ctx context.Context, payload dto.EmailEventPayload) error {
 	run := workerlog.New("email", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),

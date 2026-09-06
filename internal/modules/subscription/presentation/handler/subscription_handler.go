@@ -41,7 +41,7 @@ func NewSubscriptionHandler(subUseCase usecase_interfaces.ISubscriptionUseCase) 
 // @Tags Subscription
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.UserSubscriptionOverviewDTO} "Thông tin gói hội viên hiện tại"
+// @Success 200 {object} shared_pres.APIResponse{data=sub_dto.UserSubscriptionOverviewRes} "Thông tin gói hội viên hiện tại"
 // @Router /api/v1/subscriptions/me [get]
 func (h *SubscriptionHandler) GetUserSubscriptionOverview(c *gin.Context) error {
 	userID, err := contextutils.GetUserId(c)

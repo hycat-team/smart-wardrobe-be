@@ -31,8 +31,8 @@ func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 	}
 }
 
-// BuildUserSubscriptionOverviewDTO constructs a contract UserSubscriptionOverviewDTO from the database structures.
-func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *dto.UserSubscriptionOverviewDTO {
+// BuildUserSubscriptionOverviewRes constructs the HTTP API response overview from the database structures.
+func BuildUserSubscriptionOverviewRes(sub *entities.UserSubscription, plan *entities.SubscriptionPlan) *dto.UserSubscriptionOverviewRes {
 	if sub == nil || plan == nil {
 		return nil
 	}
@@ -41,7 +41,7 @@ func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *enti
 		expiresAt = nil
 		autoRenew = false
 	}
-	return &dto.UserSubscriptionOverviewDTO{
+	return &dto.UserSubscriptionOverviewRes{
 		PlanID:             plan.ID,
 		PlanName:           plan.Name,
 		PlanSlug:           plan.Slug,
@@ -51,6 +51,25 @@ func BuildUserSubscriptionOverviewDTO(sub *entities.UserSubscription, plan *enti
 		MaxOutfits:         plan.MaxOutfits,
 		AiOutfitDailyQuota: plan.AiOutfitDailyQuota,
 		AiChatDailyQuota:   plan.AiChatDailyQuota,
+	}
+}
+
+// MapUserSubscriptionOverviewToContractDTO converts the API response overview
+// into the pure cross-module contract payload served by IUserSubscriptionContract.
+func MapUserSubscriptionOverviewToContractDTO(res *dto.UserSubscriptionOverviewRes) *dto.UserSubscriptionContractDTO {
+	if res == nil {
+		return nil
+	}
+	return &dto.UserSubscriptionContractDTO{
+		PlanID:             res.PlanID,
+		PlanName:           res.PlanName,
+		PlanSlug:           res.PlanSlug,
+		ExpiresAt:          res.ExpiresAt,
+		IsAutoRenewEnabled: res.IsAutoRenewEnabled,
+		MaxWardrobeItems:   res.MaxWardrobeItems,
+		MaxOutfits:         res.MaxOutfits,
+		AiOutfitDailyQuota: res.AiOutfitDailyQuota,
+		AiChatDailyQuota:   res.AiChatDailyQuota,
 	}
 }
 

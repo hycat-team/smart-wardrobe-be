@@ -274,7 +274,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
 		if err == nil {
@@ -288,7 +288,7 @@ func (uc *WardrobeChatUseCase) buildChatGenerationInput(ctx context.Context, use
 						Slug: fi.Category.Slug,
 					}
 				}
-				fashionItemMap[id] = &dto.FashionItemRes{
+				fashionItemMap[id] = &dto.FashionItemContractDTO{
 					ID:              fi.ID,
 					Category:        category,
 					ImageUrl:        fi.ImageUrl,

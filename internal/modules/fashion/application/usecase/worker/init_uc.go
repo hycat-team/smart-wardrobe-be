@@ -71,7 +71,7 @@ func (uc *FashionInitUseCase) ProcessInitJob(ctx context.Context, job dto.Fashio
 			return fmt.Errorf("failed to create fashion item: %w", err)
 		}
 
-		createdPayload := dto.FashionItemCreatedPayload{
+		createdPayload := dto.FashionItemCreatedEventPayload{
 			ItemID:        job.ItemID,
 			FashionItemID: fashionItemID,
 			ItemType:      job.ItemType,

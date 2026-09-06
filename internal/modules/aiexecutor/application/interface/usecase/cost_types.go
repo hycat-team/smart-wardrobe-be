@@ -1,4 +1,4 @@
-package dto
+package usecase
 
 import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
@@ -8,11 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
-type AITokenEstimationMeta struct {
-	EstimatedPromptTokens int64
-	TokenEstimationMethod tokenestimationmethod.Method
-	TokenCountLatencyMs   *int64
-}
+// Cost-control types internal to the AI pipeline (orchestrator <-> cost use case).
+// They never cross a transport or module boundary, so they live next to the use
+// case interfaces instead of application/dto (DTO Convention, design-pattern.md).
 
 type ExecutionPlan struct {
 	RequestID             uuid.UUID
@@ -41,4 +39,10 @@ type AIUsage struct {
 	FinishReason   string
 	Provider       string
 	Model          string
+}
+
+type AITokenEstimationMeta struct {
+	EstimatedPromptTokens int64
+	TokenEstimationMethod tokenestimationmethod.Method
+	TokenCountLatencyMs   *int64
 }

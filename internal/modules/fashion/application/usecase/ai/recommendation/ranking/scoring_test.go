@@ -71,7 +71,7 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackHardFilteredItems(t *testing.T
 	item2, f2 := newTestItemWithFashion()
 	f2.Seasonality = &winter
 	activeItems := []*wardrobeDto.WardrobeItemContractDTO{item1, item2}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 	}
@@ -116,7 +116,7 @@ func TestEnsureMinimumCandidatePoolDoesNotFallbackExcludedTerms(t *testing.T) {
 	item2, f2 := newTestItemWithFashion()
 	f2.Color = &white
 	activeItems := []*wardrobeDto.WardrobeItemContractDTO{item1, item2}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 	}
@@ -144,7 +144,7 @@ func TestEnsureMinimumCandidatePoolUsesRelaxedFallbackWhenStrictLexicalDoesNotMa
 	item1, f1 := newTestItemWithFashion()
 	f1.Color = &white
 	activeItems := []*wardrobeDto.WardrobeItemContractDTO{item1}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*item1.FashionItemID: f1,
 	}
 
@@ -216,7 +216,7 @@ func TestRankCandidatesUsesRetrievalRelevanceWhenRuleScoresAreClose(t *testing.T
 func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -231,7 +231,7 @@ func TestScoreCandidateItemDoesNotPenalizeOuterwearWhenWeatherUnspecified(t *tes
 func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"winter"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -246,7 +246,7 @@ func TestScoreCandidateItemBoostsColdLikeOuterwear(t *testing.T) {
 func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"summer"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -261,7 +261,7 @@ func TestScoreCandidateItemPenalizesHotLikeOuterwear(t *testing.T) {
 func TestScoreCandidateItemDoesNotTreatRainyAsCold(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -277,7 +277,7 @@ func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	desc := "waterproof rain jacket"
 	fi.Description = &desc
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	_, tags := ScoreCandidateItem(item, dto.ParsedIntent{PositiveConstraints: []string{"rainy"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -289,7 +289,7 @@ func TestScoreCandidateItemBoostsExplicitRainySignal(t *testing.T) {
 func TestScoreCandidateItemAppliesExcludedWeatherPenalty(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "ao-khoac", Slug: "ao-khoac"}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{ExcludedWeather: []string{"cold"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -305,7 +305,7 @@ func TestScoreCandidateItemMatchesOccasionTaxonomy(t *testing.T) {
 	item, fi := newTestItemWithFashion()
 	style := "office"
 	fi.Style = &style
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	score, tags := ScoreCandidateItem(item, dto.ParsedIntent{Occasion: []string{"work"}}, types.RecommendationRetrievalQuery{}, 3, 14, fashionItemMap)
 
@@ -349,7 +349,7 @@ func TestDiversifyRankedCandidates(t *testing.T) {
 	item5, f5 := newTestItemWithFashion()
 	f5.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "quan", Slug: "quan"}
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*item1.FashionItemID: f1,
 		*item2.FashionItemID: f2,
 		*item3.FashionItemID: f3,
@@ -400,12 +400,12 @@ func newTestItem() *wardrobeDto.WardrobeItemContractDTO {
 	}
 }
 
-func newTestItemWithFashion() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemRes) {
+func newTestItemWithFashion() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemContractDTO) {
 	fashionID := uuid.New()
 	item := &wardrobeDto.WardrobeItemContractDTO{
 		ID:            uuid.New(),
 		FashionItemID: &fashionID,
 	}
-	res := &dto.FashionItemRes{ID: fashionID}
+	res := &dto.FashionItemContractDTO{ID: fashionID}
 	return item, res
 }

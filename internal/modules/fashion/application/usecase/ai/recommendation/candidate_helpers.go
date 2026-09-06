@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/dto"
+	season "smart-wardrobe-be/internal/modules/fashion/domain/constants/season"
 	"smart-wardrobe-be/internal/modules/fashion/domain/entities"
 
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
@@ -68,7 +69,7 @@ func (uc *OutfitRecommendationUseCase) parseRecommendationIntent(
 		intent.PositiveConstraints = sliceutils.AppendUniqueStringCaseInsensitive(intent.PositiveConstraints, weather)
 		hasExplicitOptions = true
 	}
-	if input.Season != nil && *input.Season != "" && *input.Season != dto.SeasonAll {
+	if input.Season != nil && *input.Season != "" && *input.Season != season.All {
 		intent.PositiveConstraints = sliceutils.AppendUniqueStringCaseInsensitive(intent.PositiveConstraints, string(*input.Season))
 		hasExplicitOptions = true
 	}

@@ -43,7 +43,7 @@ func GenerateOutfitRecommendation(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
 	cfg *config.Config,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) (*dto.RecommendedOutfitRes, error) {
 	userPrompt, err := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{CandidateLimit: cfg.AI.RecommendationPromptCandidateLimit, DescriptionMaxCharacters: cfg.AI.RecommendationDescriptionMaxCharacters, TagsLimit: cfg.AI.RecommendationTagsLimit, PromptMaxCharacters: cfg.AI.RecommendationPromptMaxCharacters}, fashionItemMap)
 	if err != nil {

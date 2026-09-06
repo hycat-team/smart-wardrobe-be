@@ -263,7 +263,7 @@ func TestHandleFashionItemCreated_SetsID(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
+	payload := fashionDto.FashionItemCreatedEventPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
 	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestHandleFashionItemCreated_Idempotent(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
+	payload := fashionDto.FashionItemCreatedEventPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "wardrobe"}
 	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestHandleFashionProcessingExhausted_MarksFailed(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionProcessingExhaustedPayload{WardrobeItemID: itemID, FashionItemID: fashionItemID, Reason: "exhausted"}
+	payload := fashionDto.FashionProcessingExhaustedEventPayload{WardrobeItemID: itemID, FashionItemID: fashionItemID, Reason: "exhausted"}
 	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestHandleFashionProcessingExhausted_Idempotent(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionProcessingExhaustedPayload{WardrobeItemID: itemID, FashionItemID: uuid.New(), Reason: "exhausted"}
+	payload := fashionDto.FashionProcessingExhaustedEventPayload{WardrobeItemID: itemID, FashionItemID: uuid.New(), Reason: "exhausted"}
 	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

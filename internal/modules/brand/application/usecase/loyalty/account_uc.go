@@ -107,7 +107,7 @@ func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyTransactions(ctx context.Conte
 	return mapper.MapLoyaltyPointTransactionsBrief(transactions), nil
 }
 
-func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+func (uc *BrandLoyaltyUseCase) GetUserBrandLoyaltyLots(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
 	customer, err := uc.customerRepo.GetByBrandAndUser(ctx, brandID, userID)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountTransactionsForStaff(ctx context
 	}, nil
 }
 
-func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+func (uc *BrandLoyaltyUseCase) GetLoyaltyAccountLotsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, loyaltyAccountID uuid.UUID, query dto.GetLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
 	account, err := uc.accountRepo.GetByID(ctx, loyaltyAccountID)
 	if err != nil {
 		return nil, err

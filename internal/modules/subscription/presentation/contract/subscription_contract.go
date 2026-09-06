@@ -10,8 +10,8 @@ import (
 
 // IUserSubscriptionContract manages active user subscriptions and overview queries
 type IUserSubscriptionContract interface {
-	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error)
-	GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error)
+	GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionContractDTO, error)
+	GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionContractDTO, error)
 }
 
 // IUserQuotaContract manages daily quota evaluations, updates, and constraints

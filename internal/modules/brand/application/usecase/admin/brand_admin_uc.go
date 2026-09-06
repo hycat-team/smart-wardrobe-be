@@ -67,7 +67,7 @@ func (uc *BrandAdminUseCase) ListMembers(ctx context.Context, brandID uuid.UUID)
 		users = nil
 	}
 
-	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(users))
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO, len(users))
 	for _, u := range users {
 		userMap[u.ID] = u
 	}

@@ -35,12 +35,12 @@ type PromptLimits struct {
 // Đầu ra mẫu:
 //
 //	"Role: senior fashion stylist and wardrobe editor...\nCONTEXT={\"occasion\":\"đi chơi\"}\nCANDIDATES=\n{\"id\":\"uuid-1\",...}\n"
-func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func BuildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
 	prompt, _ := BuildRecommendationPromptWithLimits(candidates, input, PromptLimits{}, fashionItemMap)
 	return prompt
 }
 
-func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) (string, error) {
+func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) (string, error) {
 	if limits.CandidateLimit > 0 && len(candidates) > limits.CandidateLimit {
 		candidates = candidates[:limits.CandidateLimit]
 	}
@@ -54,7 +54,7 @@ func BuildRecommendationPromptWithLimits(candidates []types.CandidateForPrompt, 
 	return "", fmt.Errorf("recommendation prompt exceeds configured character limit")
 }
 
-func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) string {
+func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.RecommendOutfitReq, limits PromptLimits, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
 	var builder strings.Builder
 	builder.WriteString("Role: senior fashion stylist and wardrobe editor.\n")
 	builder.WriteString("Task: recommend exactly one outfit from the provided wardrobe candidates.\n")
@@ -102,7 +102,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("CANDIDATES=\n")
 
 	for candidateIndex, candidate := range candidates {
-		fashion := (*dto.FashionItemRes)(nil)
+		fashion := (*dto.FashionItemContractDTO)(nil)
 		if candidate.Item.FashionItemID != nil {
 			fashion = fashionItemMap[*candidate.Item.FashionItemID]
 		}

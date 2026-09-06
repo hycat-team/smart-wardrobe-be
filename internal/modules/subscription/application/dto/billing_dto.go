@@ -15,6 +15,21 @@ type GetWalletStatementsQueryReq struct {
 	shared_dto.PaginationQuery
 }
 
+// UserSubscriptionOverviewRes is the HTTP API response for GET /api/v1/subscriptions/me.
+// Field set mirrors UserSubscriptionContractDTO (the inter-module payload) but the two
+// types evolve independently per the DTO Convention (design-pattern.md).
+type UserSubscriptionOverviewRes struct {
+	PlanID             uuid.UUID  `json:"planId"`
+	PlanName           string     `json:"planName"`
+	PlanSlug           string     `json:"planSlug"`
+	ExpiresAt          *time.Time `json:"expiresAt"`
+	IsAutoRenewEnabled bool       `json:"isAutoRenewEnabled"`
+	MaxWardrobeItems   int        `json:"maxWardrobeItems"`
+	MaxOutfits         int        `json:"maxOutfits"`
+	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
+	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
+}
+
 type WalletDTO struct {
 	UserID    uuid.UUID         `json:"userID"`
 	Balance   float64           `json:"balance"`
@@ -155,4 +170,9 @@ type DepositTransactionRes struct {
 // PurchaseWithWalletReq dùng cho endpoint mua gói bằng ví nội bộ
 type PurchaseWithWalletReq struct {
 	PlanSlug string `json:"planSlug" binding:"required" label:"gói hội viên"`
+}
+
+// SetAutoRenewReq represents the request to update auto renew status
+type SetAutoRenewReq struct {
+	Enabled *bool `json:"enabled" binding:"required" label:"trạng thái tự động gia hạn"`
 }

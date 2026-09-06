@@ -142,7 +142,7 @@ type mockFashionContractForBrand struct {
 	fashionContract.IFashionContract
 }
 
-func (m *mockFashionContractForBrand) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashionDTO.FashionItemRes, error) {
+func (m *mockFashionContractForBrand) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashionDTO.FashionItemContractDTO, error) {
 	return nil, nil
 }
 

@@ -22,7 +22,10 @@ Quy định chuẩn hóa về Contract DTO giữa các module trong hệ thống
 | `wardrobe` | `internal/modules/wardrobe/application/dto/` | `contract_dto.go` | `WardrobeItemContractDTO` |
 | `brand` | `internal/modules/brand/application/dto/` | `contract_dto.go` | `BrandItemContractDTO` |
 | `identity` | `internal/modules/identity/application/dto/` | `contract_dto.go` | `UserBriefContractDTO` |
-| `subscription` | `internal/modules/subscription/application/dto/` | `contract_dto.go` | `UserSubscriptionContractDTO`, `UserQuotaContractDTO` |
+| `subscription` | `internal/modules/subscription/application/dto/` | `contract_dto.go` | `UserSubscriptionContractDTO` |
 | `fashion` | `internal/modules/fashion/application/dto/` | `contract_dto.go` | `FashionItemContractDTO`, `CategoryContractDTO` |
-| `admin` | `internal/modules/admin/application/dto/` | `contract_dto.go` | `AuditLogContractDTO` |
-| `notification` | `internal/modules/notification/application/dto/` | `contract_dto.go` | `NotificationContractDTO` |
+| `aiexecutor` | `internal/modules/aiexecutor/application/dto/` | `contract_dto.go` | — (contract đầu vào dùng `OrchestratorOptions`) |
+| `admin` | `internal/modules/admin/application/dto/` | `contract_dto.go` | — (contract đầu vào dùng `RecordAuditLogInput`) |
+| `notification` | `internal/modules/notification/application/dto/` | `contract_dto.go` | — (contract đầu vào dùng `SendEmailInput`) |
+
+> **Ghi chú**: Các module chỉ có method kiểu "command/input" (không trả payload dữ liệu chéo module) không bắt buộc có struct `XxxContractDTO`; input của contract khi đó dùng quy ước `XxxInput` theo DTO Convention trong `docs/system-design/design-pattern.md`. File `contract_dto.go` vẫn bắt buộc tồn tại cho mọi module có `presentation/contract/`.

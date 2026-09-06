@@ -151,7 +151,7 @@ func (uc *SubscriptionUseCase) GetUserSubscription(ctx context.Context, userID u
 }
 
 // GetUserSubscriptionOverview loads ONLY subscription details without high-frequency daily quota metrics
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error) {
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewRes, error) {
 	sub, err := uc.stateSupport.GetOrCreateUserSubscription(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -162,11 +162,11 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverview(ctx context.Context, 
 		return nil, err
 	}
 
-	return mapper.BuildUserSubscriptionOverviewDTO(sub, plan), nil
+	return mapper.BuildUserSubscriptionOverviewRes(sub, plan), nil
 }
 
-func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error) {
-	result := make(map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, len(userIDs))
+func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewRes, error) {
+	result := make(map[uuid.UUID]*dto.UserSubscriptionOverviewRes, len(userIDs))
 	if len(userIDs) == 0 {
 		return result, nil
 	}
@@ -206,7 +206,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 			return nil, subscriptionerrors.ErrSubscriptionPlanNotFound()
 		}
 
-		result[sub.UserID] = mapper.BuildUserSubscriptionOverviewDTO(sub, plan)
+		result[sub.UserID] = mapper.BuildUserSubscriptionOverviewRes(sub, plan)
 		foundUserIDs[sub.UserID] = struct{}{}
 	}
 
@@ -239,7 +239,7 @@ func (uc *SubscriptionUseCase) GetUserSubscriptionOverviews(ctx context.Context,
 		}
 
 		for _, sub := range newSubs {
-			result[sub.UserID] = mapper.BuildUserSubscriptionOverviewDTO(sub, defaultPlan)
+			result[sub.UserID] = mapper.BuildUserSubscriptionOverviewRes(sub, defaultPlan)
 		}
 	}
 

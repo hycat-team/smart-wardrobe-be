@@ -7,9 +7,9 @@ import (
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/gender"
 )
 
-// MapToUserBrief maps user identity into a minimal display response DTO.
+// MapToUserBrief maps user identity into the pure cross-module contract payload.
 // Lightweight: does not fetch subscription or body profile.
-func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
+func MapToUserBrief(user *entities.User) *dto.UserBriefContractDTO {
 	if user == nil {
 		return nil
 	}
@@ -27,7 +27,7 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
 		genderVal = *user.Gender
 	}
 
-	return &dto.UserBriefRes{
+	return &dto.UserBriefContractDTO{
 		ID:        user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
@@ -39,8 +39,25 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefRes {
 	}
 }
 
+// MapUserBriefToRes converts the contract payload into the HTTP API response.
+func MapUserBriefToRes(brief *dto.UserBriefContractDTO) *dto.UserBriefRes {
+	if brief == nil {
+		return nil
+	}
+	return &dto.UserBriefRes{
+		ID:        brief.ID,
+		Username:  brief.Username,
+		Email:     brief.Email,
+		FirstName: brief.FirstName,
+		LastName:  brief.LastName,
+		Gender:    brief.Gender,
+		Status:    brief.Status,
+		AvatarUrl: brief.AvatarUrl,
+	}
+}
+
 // MapToUserRes maps user identity and subscription plan metrics into a coherent response DTO
-func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionOverviewDTO) *dto.UserRes {
+func MapToUserRes(user *entities.User, sub *subscription_dto.UserSubscriptionContractDTO) *dto.UserRes {
 	if user == nil {
 		return nil
 	}

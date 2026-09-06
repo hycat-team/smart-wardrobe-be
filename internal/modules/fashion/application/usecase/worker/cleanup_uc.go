@@ -130,7 +130,7 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 			continue
 		}
 		if fi.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
-			payload := dto.FashionProcessingExhaustedPayload{
+			payload := dto.FashionProcessingExhaustedEventPayload{
 				WardrobeItemID: item.ID,
 				FashionItemID:  fi.ID,
 				Reason:         autoRetryExceededMessage,

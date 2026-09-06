@@ -33,7 +33,7 @@ import (
 func RunLocalHSLMatching(
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) *dto.RecommendedOutfitRes {
 	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobeDto.WardrobeItemContractDTO
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
 	aiContract "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	brandContract "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	dashboard_app "smart-wardrobe-be/internal/modules/dashboard/application"
@@ -310,15 +311,12 @@ func (uc *AdminDashboardUseCase) GetAIErrorBreakdown(ctx context.Context) (*dto.
 	}
 
 	totalErrors := int64(0)
-	breakdown := make([]dto.AIErrorBreakdownDTO, 0, len(rows))
+	breakdown := rows
+	if breakdown == nil {
+		breakdown = make([]aiexecutor_dto.AIErrorBreakdownDTO, 0)
+	}
 	for _, r := range rows {
 		totalErrors += r.ErrorCount
-		breakdown = append(breakdown, dto.AIErrorBreakdownDTO{
-			ErrorCode:  r.ErrorCode,
-			Provider:   r.Provider,
-			Model:      r.Model,
-			ErrorCount: r.ErrorCount,
-		})
 	}
 
 	// Query total requests in last 30 days for error rate calculation

@@ -13,9 +13,9 @@ import (
 
 type IBrandItemUseCase interface {
 	GetBrandItemUploadSignature(ctx context.Context, userID uuid.UUID, brandID uuid.UUID) (*shared_dto.UploadSignatureResult, error)
-	ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemRes, error)
+	ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemRes, []*fashion_dto.FashionItemContractDTO, error)
 	ListActiveBrandItemFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (map[uuid.UUID]bool, error)
-	CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_dto.FashionItemRes, error)
+	CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemRes, *fashion_dto.FashionItemContractDTO, error)
 	CreateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandItemReq) (*dto.BrandItemRes, error)
 	GetBrandItemsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID) ([]*dto.BrandItemRes, error)
 	GetBrandItemForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error)
@@ -36,5 +36,5 @@ type IBrandFashionEventUseCase interface {
 	HandleFashionEvent(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionAnalyzed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
-	HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error
+	HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedEventPayload) error
 }

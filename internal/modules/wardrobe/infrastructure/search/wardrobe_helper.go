@@ -2,6 +2,7 @@ package search
 
 import (
 	"encoding/json"
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/internal/modules/wardrobe/application/errors"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
@@ -67,16 +68,16 @@ func (s *WardrobeSearchService) parseSearchWardrobeItemRes(respBytes []byte) ([]
 			return &s
 		}
 
-		var category *dto.CategoryBriefRes
+		var category *fashion_dto.CategoryBriefRes
 		if hit.Source.Category.ID != "" && hit.Source.Category.ID != uuid.Nil.String() {
-			category = &dto.CategoryBriefRes{
+			category = &fashion_dto.CategoryBriefRes{
 				ID:   catID,
 				Name: hit.Source.Category.Name,
 				Slug: hit.Source.Category.Slug,
 			}
 		}
 
-		fashionItem := &dto.FashionItemBriefRes{
+		fashionItem := &fashion_dto.FashionItemBriefRes{
 			ID:       fiID,
 			Category: category,
 			ImageUrl: hit.Source.ImageUrl,

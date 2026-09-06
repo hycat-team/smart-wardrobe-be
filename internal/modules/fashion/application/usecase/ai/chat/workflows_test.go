@@ -67,8 +67,8 @@ type fakeUserSubContract struct {
 	sub_contract.IUserSubscriptionContract
 }
 
-func (f fakeUserSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionOverviewDTO, error) {
-	return &sub_dto.UserSubscriptionOverviewDTO{
+func (f fakeUserSubContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*sub_dto.UserSubscriptionContractDTO, error) {
+	return &sub_dto.UserSubscriptionContractDTO{
 		MaxWardrobeItems: 100,
 	}, nil
 }

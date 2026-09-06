@@ -1,20 +1,10 @@
 package dto
 
 import (
-	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
+	season "smart-wardrobe-be/internal/modules/fashion/domain/constants/season"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
-)
-
-// Season represents the fashion seasonality
-type Season string
-
-const (
-	SeasonSpring Season = "spring"
-	SeasonSummer Season = "summer"
-	SeasonAutumn Season = "autumn"
-	SeasonWinter Season = "winter"
-	SeasonAll    Season = "all"
 )
 
 type RecommendOutfitReq struct {
@@ -24,7 +14,7 @@ type RecommendOutfitReq struct {
 	StyleTarget *string `json:"styleTarget" example:"minimalist"`
 	// Mùa phối đồ
 	// @enums spring,summer,autumn,winter,all
-	Season *Season `json:"season" swaggertype:"string" enums:"spring,summer,autumn,winter,all"`
+	Season *season.Season `json:"season" swaggertype:"string" enums:"spring,summer,autumn,winter,all"`
 	// Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)
 	Weather *string `json:"weather" example:"warm"`
 	// Ghi chú thêm bằng tay (free text)
@@ -36,18 +26,18 @@ type RecommendOutfitReq struct {
 }
 
 type RecommendedFashionItemBriefRes struct {
-	ID       uuid.UUID                     `json:"id"`
-	Category *wardrobeDto.CategoryBriefRes `json:"category,omitempty"`
-	ImageUrl string                        `json:"imageUrl,omitempty"`
-	Color    *string                       `json:"color,omitempty"`
-	ColorHex *string                       `json:"colorHex,omitempty"`
-	Style    *string                       `json:"style,omitempty"`
+	ID       uuid.UUID         `json:"id"`
+	Category *CategoryBriefRes `json:"category,omitempty"`
+	ImageUrl string            `json:"imageUrl,omitempty"`
+	Color    *string           `json:"color,omitempty"`
+	ColorHex *string           `json:"colorHex,omitempty"`
+	Style    *string           `json:"style,omitempty"`
 }
 
 type RecommendedItemRes struct {
 	ID          uuid.UUID                       `json:"id"`
 	ItemContext string                          `json:"itemContext,omitempty"`
-	BrandItem   *wardrobeDto.BrandItemBriefRes  `json:"brandItem,omitempty"`
+	BrandItem   *shared_dto.BrandItemBriefRes   `json:"brandItem,omitempty"`
 	FashionItem *RecommendedFashionItemBriefRes `json:"fashionItem,omitempty"`
 }
 

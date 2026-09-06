@@ -14,7 +14,7 @@ func TestRunLocalHSLMatchingTreatsChanVayAsBottom(t *testing.T) {
 	skirt, f2 := newHSLTestItem("chan-vay")
 	shoes, f3 := newHSLTestItem("giay")
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*top.FashionItemID:   f1,
 		*skirt.FashionItemID: f2,
 		*shoes.FashionItemID: f3,
@@ -38,7 +38,7 @@ func TestRunLocalHSLMatchingTreatsDamAsOnePiece(t *testing.T) {
 	dress, f1 := newHSLTestItem("dam")
 	shoes, f2 := newHSLTestItem("giay")
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*dress.FashionItemID: f1,
 		*shoes.FashionItemID: f2,
 	}
@@ -57,7 +57,7 @@ func TestRunLocalHSLMatchingRequiresTopAndBottomForSeparates(t *testing.T) {
 	pants, f1 := newHSLTestItem("quan")
 	shoes, f2 := newHSLTestItem("giay")
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*pants.FashionItemID: f1,
 		*shoes.FashionItemID: f2,
 	}
@@ -72,7 +72,7 @@ func TestRunLocalHSLMatchingRequiresTopAndBottomForSeparates(t *testing.T) {
 	}
 }
 
-func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemRes) {
+func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemContractDTO) {
 	fashionID := uuid.New()
 	catID := uuid.New()
 	name := slug
@@ -80,7 +80,7 @@ func newHSLTestItem(slug string) (*wardrobeDto.WardrobeItemContractDTO, *dto.Fas
 		ID:            uuid.New(),
 		FashionItemID: &fashionID,
 	}
-	res := &dto.FashionItemRes{
+	res := &dto.FashionItemContractDTO{
 		ID: fashionID,
 		Category: &dto.CategoryBriefRes{
 			ID:   catID,

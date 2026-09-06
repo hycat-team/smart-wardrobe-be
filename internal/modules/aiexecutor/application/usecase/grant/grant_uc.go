@@ -33,8 +33,8 @@ func NewGrantUseCase(
 	return &GrantUseCase{aiCostRepo: aiCostRepo, policyRepo: policyRepo}
 }
 
-func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecutor_dto.PlanChangedPayload) error {
-	event := parsePlanChangedPayload(payload)
+func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecutor_dto.PlanChangedEventPayload) error {
+	event := parsePlanChangedEventPayload(payload)
 	switch event.EventType {
 	case "EXTENDED", "RENEWED":
 		return nil
@@ -51,7 +51,7 @@ func (uc *GrantUseCase) HandlePlanChanged(ctx context.Context, payload aiexecuto
 	return uc.createGrant(ctx, event)
 }
 
-func parsePlanChangedPayload(p aiexecutor_dto.PlanChangedPayload) PlanChangedEvent {
+func parsePlanChangedEventPayload(p aiexecutor_dto.PlanChangedEventPayload) PlanChangedEvent {
 	userID, _ := uuid.Parse(p.UserID)
 	policyID, _ := uuid.Parse(p.AICostPolicyID)
 	occurredAt, _ := time.Parse(time.RFC3339Nano, p.OccurredAt)

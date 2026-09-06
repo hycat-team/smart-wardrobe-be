@@ -39,7 +39,7 @@ type IWardrobeFashionEventUseCase interface {
 	HandleFashionEvent(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
 	HandleFashionAnalyzed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
-	HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedPayload) error
-	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error
+	HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedEventPayload) error
+	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error
 	HandleWardrobeDeleted(ctx context.Context, payload dto.WardrobeEventPayload) error
 }

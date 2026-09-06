@@ -41,7 +41,7 @@ func (w *WardrobeProcessingExhaustedWorker) Start(ctx context.Context) {
 	}
 }
 
-func (w *WardrobeProcessingExhaustedWorker) handle(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload) error {
+func (w *WardrobeProcessingExhaustedWorker) handle(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error {
 	run := workerlog.New("wardrobe_processing_exhausted", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),

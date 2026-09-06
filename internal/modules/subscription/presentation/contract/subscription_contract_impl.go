@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 
 	"github.com/google/uuid"
 )
@@ -17,12 +18,24 @@ func NewUserSubscriptionContract(subUC uc_interfaces.ISubscriptionUseCase) IUser
 	return &UserSubscriptionContract{subUC: subUC}
 }
 
-func (c *UserSubscriptionContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionOverviewDTO, error) {
-	return c.subUC.GetUserSubscriptionOverview(ctx, userID)
+func (c *UserSubscriptionContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionContractDTO, error) {
+	res, err := c.subUC.GetUserSubscriptionOverview(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MapUserSubscriptionOverviewToContractDTO(res), nil
 }
 
-func (c *UserSubscriptionContract) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionOverviewDTO, error) {
-	return c.subUC.GetUserSubscriptionOverviews(ctx, userIDs)
+func (c *UserSubscriptionContract) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionContractDTO, error) {
+	resMap, err := c.subUC.GetUserSubscriptionOverviews(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]*dto.UserSubscriptionContractDTO, len(resMap))
+	for userID, res := range resMap {
+		result[userID] = mapper.MapUserSubscriptionOverviewToContractDTO(res)
+	}
+	return result, nil
 }
 
 type UserQuotaContract struct {

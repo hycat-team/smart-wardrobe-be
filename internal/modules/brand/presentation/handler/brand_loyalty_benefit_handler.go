@@ -63,7 +63,7 @@ func (h *BrandLoyaltyHandler) ListBrandBenefitsForStaff(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	var query dto.ListBrandBenefitsQueryReq
+	var query dto.GetBrandBenefitsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (h *BrandLoyaltyHandler) ListActiveBenefitsForUser(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	var query dto.ListBrandBenefitsQueryReq
+	var query dto.GetBrandBenefitsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func (h *BrandLoyaltyHandler) ListBenefitRedemptionsForUser(c *gin.Context) erro
 		return err
 	}
 
-	var query dto.ListBenefitRedemptionsQueryReq
+	var query dto.GetBenefitRedemptionsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}

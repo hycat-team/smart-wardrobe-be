@@ -120,21 +120,21 @@ func MapBrandMember(member *entities.BrandMember) *dto.BrandMemberRes {
 	}
 }
 
-func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserBriefRes) *dto.BrandMemberRes {
+func MapBrandMemberWithUser(member *entities.BrandMember, user *identity_dto.UserBriefContractDTO) *dto.BrandMemberRes {
 	if member == nil {
 		return nil
 	}
 	res := MapBrandMember(member)
 	if user != nil {
-		res.User = user
+		res.User = MapIdentityUserBrief(user)
 	}
 	return res
 }
 
-func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandMemberRes {
+func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.UUID]*identity_dto.UserBriefContractDTO) []*dto.BrandMemberRes {
 	res := make([]*dto.BrandMemberRes, len(members))
 	for idx, member := range members {
-		var user *identity_dto.UserBriefRes
+		var user *identity_dto.UserBriefContractDTO
 		if u, ok := userMap[member.UserID]; ok {
 			user = u
 		}
@@ -143,7 +143,7 @@ func MapBrandMembersWithUsers(members []*entities.BrandMember, userMap map[uuid.
 	return res
 }
 
-func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserBriefRes) *dto.BrandCustomerRes {
+func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserBriefContractDTO) *dto.BrandCustomerRes {
 	if customer == nil {
 		return nil
 	}
@@ -179,15 +179,15 @@ func MapBrandCustomer(customer *entities.BrandCustomer, user *identity_dto.UserB
 		CreatedByMemberID:    customer.CreatedByMemberID,
 		CreatedAt:            customer.CreatedAt,
 		UpdatedAt:            customer.UpdatedAt,
-		User:                 user,
+		User:                 MapIdentityUserBrief(user),
 		LoyaltyAccount:       loyaltyAccount,
 	}
 }
 
-func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserBriefRes) []*dto.BrandCustomerRes {
+func MapBrandCustomersWithUsers(customers []*entities.BrandCustomer, userMap map[uuid.UUID]*identity_dto.UserBriefContractDTO) []*dto.BrandCustomerRes {
 	res := make([]*dto.BrandCustomerRes, 0, len(customers))
 	for _, customer := range customers {
-		var user *identity_dto.UserBriefRes
+		var user *identity_dto.UserBriefContractDTO
 		if customer.UserID != nil {
 			user = userMap[*customer.UserID]
 		}
@@ -333,7 +333,7 @@ func MapBenefitBrief(benefit *entities.BrandBenefit) *dto.BenefitBriefRes {
 	}
 }
 
-func MapBrandCustomerBrief(customer *entities.BrandCustomer, userBrief *identity_dto.UserBriefRes) *dto.BrandCustomerBriefRes {
+func MapBrandCustomerBrief(customer *entities.BrandCustomer, userBrief *identity_dto.UserBriefContractDTO) *dto.BrandCustomerBriefRes {
 	if customer == nil {
 		return nil
 	}
@@ -354,7 +354,7 @@ func MapBrandCustomerBrief(customer *entities.BrandCustomer, userBrief *identity
 		Status:         customer.Status,
 		JoinedAt:       customer.JoinedAt,
 		LoyaltyAccount: loyaltyAccount,
-		User:           userBrief,
+		User:           MapIdentityUserBrief(userBrief),
 	}
 }
 
@@ -374,7 +374,7 @@ func MapBrandConversationUser(conv *entities.BrandConversation, brand *entities.
 	}
 }
 
-func MapBrandConversationMessageWithUser(msg *entities.BrandConversationMessage, sender *identity_dto.UserBriefRes) *dto.BrandConversationMessageRes {
+func MapBrandConversationMessageWithUser(msg *entities.BrandConversationMessage, sender *identity_dto.UserBriefContractDTO) *dto.BrandConversationMessageRes {
 	if msg == nil {
 		return nil
 	}
@@ -383,7 +383,7 @@ func MapBrandConversationMessageWithUser(msg *entities.BrandConversationMessage,
 		ConversationID: msg.ConversationID,
 		SenderRole:     string(msg.SenderRole),
 		SenderUserID:   msg.SenderUserID,
-		Sender:         sender,
+		Sender:         MapIdentityUserBrief(sender),
 		Message:        msg.Message,
 		CreatedAt:      msg.CreatedAt,
 	}

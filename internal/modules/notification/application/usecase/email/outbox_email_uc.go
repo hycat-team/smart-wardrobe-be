@@ -8,9 +8,10 @@ import (
 	"html/template"
 
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
-	"smart-wardrobe-be/internal/modules/notification/application/dto"
 	usecase_interfaces "smart-wardrobe-be/internal/modules/notification/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/notification/application/templates"
+	nchannel "smart-wardrobe-be/internal/modules/notification/domain/constants/channel"
+	ntemplate "smart-wardrobe-be/internal/modules/notification/domain/constants/template"
 	shared_repos "smart-wardrobe-be/internal/shared/domain/repositories"
 
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
@@ -24,7 +25,7 @@ import (
 // layer behind the notification contract (feature 017).
 type OutboxEmailUseCase struct {
 	outboxRepo        shared_repos.OutboxRepository
-	tmplCache         map[dto.TemplateEnum]*template.Template
+	tmplCache         map[ntemplate.Template]*template.Template
 	userBriefContract identity_contract.IUserBriefContract
 }
 
@@ -32,14 +33,14 @@ func NewOutboxEmailUseCase(
 	outboxRepo shared_repos.OutboxRepository,
 	userBriefContract identity_contract.IUserBriefContract,
 ) usecase_interfaces.IOutboxEmailUseCase {
-	tmplCache := map[dto.TemplateEnum]*template.Template{
-		dto.TemplateOtp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
-		dto.TemplatePaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
-		dto.TemplateTopupSuccess:          template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
-		dto.TemplateRenewalSuccess:        template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
-		dto.TemplateRenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
-		dto.TemplateWalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
-		dto.TemplateWalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
+	tmplCache := map[ntemplate.Template]*template.Template{
+		ntemplate.Otp:                   template.Must(template.New("otp").Parse(templates.OtpTemplate)),
+		ntemplate.PaymentSuccess:        template.Must(template.New("payment_success").Parse(templates.PaymentSuccessTemplate)),
+		ntemplate.TopupSuccess:          template.Must(template.New("topup_success").Parse(templates.TopupSuccessTemplate)),
+		ntemplate.RenewalSuccess:        template.Must(template.New("renewal_success").Parse(templates.RenewalSuccessTemplate)),
+		ntemplate.RenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
+		ntemplate.WalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
+		ntemplate.WalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 	}
 	return &OutboxEmailUseCase{
 		outboxRepo:        outboxRepo,
@@ -48,8 +49,8 @@ func NewOutboxEmailUseCase(
 	}
 }
 
-func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel dto.ChannelEnum, tmplEnum dto.TemplateEnum, params map[string]any, to string) error {
-	if channel != dto.ChannelEmail {
+func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel, tmplEnum ntemplate.Template, params map[string]any, to string) error {
+	if channel != nchannel.Email {
 		return fmt.Errorf("unsupported channel: %s", channel)
 	}
 
@@ -85,7 +86,7 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel dto.ChannelEnum,
 	return uc.outboxRepo.Create(ctx, record)
 }
 
-func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel dto.ChannelEnum, tmplEnum dto.TemplateEnum, params map[string]any, userID uuid.UUID) error {
+func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel nchannel.Channel, tmplEnum ntemplate.Template, params map[string]any, userID uuid.UUID) error {
 	user, err := uc.userBriefContract.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("get user for notification: %w", err)
@@ -96,21 +97,21 @@ func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel dto.Chan
 	return uc.Send(ctx, channel, tmplEnum, params, user.Email)
 }
 
-func resolveSubject(tmplEnum dto.TemplateEnum) string {
+func resolveSubject(tmplEnum ntemplate.Template) string {
 	switch tmplEnum {
-	case dto.TemplateOtp:
+	case ntemplate.Otp:
 		return "Mã xác thực OTP"
-	case dto.TemplatePaymentSuccess:
+	case ntemplate.PaymentSuccess:
 		return "Xác nhận thanh toán thành công"
-	case dto.TemplateTopupSuccess:
+	case ntemplate.TopupSuccess:
 		return "Nạp tiền vào ví thành công"
-	case dto.TemplateRenewalSuccess:
+	case ntemplate.RenewalSuccess:
 		return "Gia hạn gói thành công"
-	case dto.TemplateRenewalFailed:
+	case ntemplate.RenewalFailed:
 		return "Gia hạn gói thất bại"
-	case dto.TemplateWalletWarning:
+	case ntemplate.WalletWarning:
 		return "Cảnh báo số dư ví không đủ"
-	case dto.TemplateWalletPurchaseSuccess:
+	case ntemplate.WalletPurchaseSuccess:
 		return "Mua gói thành công qua ví nội bộ"
 	default:
 		return "Thông báo từ SmartWardrobe"

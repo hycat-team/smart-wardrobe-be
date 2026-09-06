@@ -40,7 +40,7 @@ var freeOperations = map[aioperation.AIOperation]bool{
 	aioperation.Embedding: true,
 }
 
-func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.ExecutionPlan) (*aiexecutor_dto.AICostDecision, error) {
+func (uc *CostUseCase) Prepare(ctx context.Context, plan *uc_interfaces.ExecutionPlan) (*uc_interfaces.AICostDecision, error) {
 	now := time.Now()
 
 	if freeOperations[plan.Operation] {
@@ -62,7 +62,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 		if err := uc.repo.CreateEvent(ctx, event); err != nil {
 			return nil, err
 		}
-		return &aiexecutor_dto.AICostDecision{
+		return &uc_interfaces.AICostDecision{
 			RequestID:       plan.RequestID,
 			Route:           airoute.Free,
 			MaxInputTokens:  plan.MaxInputTokens,
@@ -125,7 +125,7 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 		return uc.PrepareFree(ctx, plan.RequestID, plan.UserID, plan.Operation, 0, maxOut)
 	}
 	_ = ledger
-	return &aiexecutor_dto.AICostDecision{
+	return &uc_interfaces.AICostDecision{
 		RequestID:       plan.RequestID,
 		Route:           route,
 		MaxInputTokens:  maxIn,
@@ -134,15 +134,15 @@ func (uc *CostUseCase) Prepare(ctx context.Context, plan *aiexecutor_dto.Executi
 	}, nil
 }
 
-func (uc *CostUseCase) PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*aiexecutor_dto.AICostDecision, error) {
+func (uc *CostUseCase) PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*uc_interfaces.AICostDecision, error) {
 	now := time.Now()
 	subOverview, err := uc.userSubContract.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
+		return &uc_interfaces.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
 	}
 	grant, policy, op, err := uc.repo.ResolvePolicy(ctx, subOverview.PlanID, userID, operation, now)
 	if err != nil {
-		return &aiexecutor_dto.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
+		return &uc_interfaces.AICostDecision{RequestID: requestID, Route: airoute.Local}, nil
 	}
 	event := &aiexecutor_entities.AIUsageEvent{
 		RequestID: requestID,
@@ -160,7 +160,7 @@ func (uc *CostUseCase) PrepareFree(ctx context.Context, requestID uuid.UUID, use
 	}
 	_, _, _ = grant, policy, op
 	_ = uc.repo.CreateEvent(ctx, event)
-	return &aiexecutor_dto.AICostDecision{
+	return &uc_interfaces.AICostDecision{
 		RequestID:       requestID,
 		Route:           airoute.Free,
 		MaxInputTokens:  op.NormalMaxInputTokens,
@@ -173,7 +173,7 @@ func (uc *CostUseCase) MarkInFlight(ctx context.Context, requestID uuid.UUID) er
 	return uc.repo.MarkInFlight(ctx, requestID, time.Now())
 }
 
-func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage aiexecutor_dto.AIUsage) error {
+func (uc *CostUseCase) Confirm(ctx context.Context, requestID uuid.UUID, usage uc_interfaces.AIUsage) error {
 	if usage.Provider == "" && usage.Model == "" {
 		_ = uc.repo.Confirm(ctx, requestID, 0, 0, 0, 0, "", "", "", time.Now())
 		return nil

@@ -5,23 +5,16 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/itemtype"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 )
 
-func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
+func MapToFashionItemRes(fi *fashion_dto.FashionItemContractDTO) *dto.FashionItemRes {
 	if fi == nil {
 		return nil
 	}
-	var category *dto.CategoryBriefRes
-	if fi.Category != nil {
-		category = &dto.CategoryBriefRes{
-			ID:   fi.Category.ID,
-			Name: fi.Category.Name,
-			Slug: fi.Category.Slug,
-		}
-	}
 	return &dto.FashionItemRes{
 		ID:          fi.ID,
-		Category:    category,
+		Category:    fi.Category,
 		ImageUrl:    fi.ImageUrl,
 		Color:       fi.Color,
 		ColorHex:    fi.ColorHex,
@@ -36,7 +29,7 @@ func MapToFashionItemRes(fi *fashion_dto.FashionItemRes) *dto.FashionItemRes {
 	}
 }
 
-func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemRes) *dto.WardrobeItemRes {
+func MapToWardrobeItemRes(item *entities.WardrobeItem, fi *fashion_dto.FashionItemContractDTO) *dto.WardrobeItemRes {
 	if item == nil {
 		return nil
 	}
@@ -64,34 +57,12 @@ func MapToSearchWardrobeItemRes(item *entities.WardrobeItem, fiBrief *fashion_dt
 		ID:          item.ID,
 		Price:       item.Price,
 		IsSystem:    item.ItemType == itemtype.SystemCatalogItem,
-		FashionItem: MapToFashionItemBrief(fiBrief),
+		FashionItem: fiBrief,
 	}
 	return res
 }
 
-func MapToFashionItemBrief(fi *fashion_dto.FashionItemBriefRes) *dto.FashionItemBriefRes {
-	if fi == nil {
-		return nil
-	}
-	var category *dto.CategoryBriefRes
-	if fi.Category != nil {
-		category = &dto.CategoryBriefRes{
-			ID:   fi.Category.ID,
-			Name: fi.Category.Name,
-			Slug: fi.Category.Slug,
-		}
-	}
-	return &dto.FashionItemBriefRes{
-		ID:       fi.ID,
-		ImageUrl: fi.ImageUrl,
-		Color:    fi.Color,
-		ColorHex: fi.ColorHex,
-		Style:    fi.Style,
-		Category: category,
-	}
-}
-
-func MapToWardrobeItemBrief(item *entities.WardrobeItem, fiBrief *fashion_dto.FashionItemBriefRes, brandItem *dto.BrandItemBriefRes) *dto.WardrobeItemBriefRes {
+func MapToWardrobeItemBrief(item *entities.WardrobeItem, fiBrief *fashion_dto.FashionItemBriefRes, brandItem *shared_dto.BrandItemBriefRes) *dto.WardrobeItemBriefRes {
 	if item == nil {
 		return nil
 	}
@@ -101,7 +72,7 @@ func MapToWardrobeItemBrief(item *entities.WardrobeItem, fiBrief *fashion_dto.Fa
 		Status:        item.Status,
 		IsLocked:      false,
 		LastUsedAt:    item.LastUsedAt,
-		FashionItem:   MapToFashionItemBrief(fiBrief),
+		FashionItem:   fiBrief,
 		FashionItemID: item.FashionItemID,
 		BrandItem:     brandItem,
 		TaskID:        item.TaskID,

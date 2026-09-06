@@ -9,12 +9,12 @@ import (
 )
 
 type ICategoryUseCase interface {
-	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error)
-	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error)
-	GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error)
-	GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryRes, error)
-	GetCategoryByName(ctx context.Context, name string) (*dto.CategoryRes, error)
-	CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error)
-	UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error)
+	GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryContractDTO, error)
+	ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryContractDTO, error)
+	GetAllCategories(ctx context.Context) ([]*dto.CategoryContractDTO, error)
+	GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryContractDTO, error)
+	GetCategoryByName(ctx context.Context, name string) (*dto.CategoryContractDTO, error)
+	CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryContractDTO, error)
+	UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryContractDTO, error)
 	DeleteCategory(ctx context.Context, id uuid.UUID) error
 }

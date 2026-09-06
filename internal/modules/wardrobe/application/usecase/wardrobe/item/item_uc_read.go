@@ -198,12 +198,12 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		}
 	}
 
-	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	brandItemMap := map[uuid.UUID]*shared_dto.BrandItemBriefRes{}
 	if len(fashionIDs) > 0 && uc.brandContract != nil {
 		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, bi := range brandItems {
-				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+				brandItemMap[bi.FashionItemID] = &shared_dto.BrandItemBriefRes{
 					ID:          bi.ID,
 					BrandID:     bi.BrandID,
 					BrandName:   bi.BrandName,
@@ -223,7 +223,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		if item.FashionItemID != nil {
 			fiBrief = fashionBriefMap[*item.FashionItemID]
 		}
-		var brandItem *dto.BrandItemBriefRes
+		var brandItem *shared_dto.BrandItemBriefRes
 		if item.FashionItemID != nil {
 			brandItem = brandItemMap[*item.FashionItemID]
 		}
@@ -260,7 +260,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItemByID(ctx context.Context, userID u
 
 	isLocked := shared.IsItemLocked(items, id, subOverview.MaxWardrobeItems)
 
-	var fi *fashion_dto.FashionItemRes
+	var fi *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -413,12 +413,12 @@ func (uc *WardrobeItemUseCase) GetUnderutilizedItems(ctx context.Context, userID
 		}
 	}
 
-	var fashionItems []*fashion_dto.FashionItemRes
+	var fashionItems []*fashion_dto.FashionItemContractDTO
 	if len(fashionIDs) > 0 && uc.fashionContract != nil {
 		fashionItems, _ = uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 	}
 
-	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID {
+	fashionMap := sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemContractDTO) uuid.UUID {
 		return f.ID
 	})
 

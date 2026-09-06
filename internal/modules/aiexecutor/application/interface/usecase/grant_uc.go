@@ -7,5 +7,5 @@ import (
 )
 
 type IGrantUseCase interface {
-	HandlePlanChanged(ctx context.Context, payload dto.PlanChangedPayload) error
+	HandlePlanChanged(ctx context.Context, payload dto.PlanChangedEventPayload) error
 }

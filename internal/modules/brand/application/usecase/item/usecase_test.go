@@ -371,13 +371,13 @@ func (m *mockDigitalSampleResponseRepo) GetByIDs(ctx context.Context, ids []uuid
 
 type mockUserBriefContract struct{}
 
-func (m *mockUserBriefContract) GetByID(ctx context.Context, id uuid.UUID) (*identity_dto.UserBriefRes, error) {
-	return &identity_dto.UserBriefRes{ID: id, Username: "test_user"}, nil
+func (m *mockUserBriefContract) GetByID(ctx context.Context, id uuid.UUID) (*identity_dto.UserBriefContractDTO, error) {
+	return &identity_dto.UserBriefContractDTO{ID: id, Username: "test_user"}, nil
 }
-func (m *mockUserBriefContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserBriefRes, error) {
+func (m *mockUserBriefContract) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*identity_dto.UserBriefContractDTO, error) {
 	return nil, nil
 }
-func (m *mockUserBriefContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserBriefRes, error) {
+func (m *mockUserBriefContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserBriefContractDTO, error) {
 	return nil, nil
 }
 
@@ -389,16 +389,16 @@ func (f fakeUnitOfWork) Execute(ctx context.Context, fn func(txCtx context.Conte
 
 type mockFashionContract struct{}
 
-func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
-	return &fashion_dto.FashionItemRes{
+func (m *mockFashionContract) GetFashionItem(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemContractDTO, error) {
+	return &fashion_dto.FashionItemContractDTO{
 		ID:       id,
 		ImageUrl: "http://example.com/image.jpg",
 	}, nil
 }
-func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemRes, error) {
-	var list []*fashion_dto.FashionItemRes
+func (m *mockFashionContract) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemContractDTO, error) {
+	var list []*fashion_dto.FashionItemContractDTO
 	for _, id := range ids {
-		list = append(list, &fashion_dto.FashionItemRes{ID: id, ImageUrl: "http://example.com/image.jpg"})
+		list = append(list, &fashion_dto.FashionItemContractDTO{ID: id, ImageUrl: "http://example.com/image.jpg"})
 	}
 	return list, nil
 }
@@ -409,31 +409,31 @@ func (m *mockFashionContract) ListFashionItemsBrief(ctx context.Context, ids []u
 	}
 	return list, nil
 }
-func (m *mockFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) GetCategory(ctx context.Context, id uuid.UUID) (*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) GetAllCategories(ctx context.Context) ([]*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) GetCategoryBySlug(ctx context.Context, slug string) (*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) GetCategoryByName(ctx context.Context, name string) (*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) CreateCategory(ctx context.Context, input fashion_dto.CreateCategoryInput) (*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) CreateCategory(ctx context.Context, input fashion_dto.CreateCategoryInput) (*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
-func (m *mockFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_dto.UpdateCategoryInput) (*fashion_dto.CategoryRes, error) {
+func (m *mockFashionContract) UpdateCategory(ctx context.Context, id uuid.UUID, input fashion_dto.UpdateCategoryInput) (*fashion_dto.CategoryContractDTO, error) {
 	return nil, nil
 }
 func (m *mockFashionContract) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
-func (m *mockFashionContract) GetFashionItemDirect(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemRes, error) {
+func (m *mockFashionContract) GetFashionItemDirect(ctx context.Context, id uuid.UUID) (*fashion_dto.FashionItemContractDTO, error) {
 	return nil, nil
 }
 func (m *mockFashionContract) MapAnalyzeJobToFashionItemEntity(ctx context.Context, job *fashion_dto.FashionAnalyzeJobDTO) (any, error) {
@@ -495,10 +495,10 @@ func (m *mockBenefitUseCase) CheckBrandFeatureAccess(ctx context.Context, userID
 func (m *mockBenefitUseCase) CreateBrandBenefit(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, input dto.CreateBrandBenefitReq) (*dto.BrandBenefitRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
+func (m *mockBenefitUseCase) ListBrandBenefitsForStaff(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	return nil, nil
 }
-func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.ListBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
+func (m *mockBenefitUseCase) ListActiveBenefitsForUser(ctx context.Context, brandID uuid.UUID, query dto.GetBrandBenefitsQueryReq) (*dto.BrandBenefitListRes, error) {
 	return nil, nil
 }
 func (m *mockBenefitUseCase) GetActiveBenefitForUser(ctx context.Context, userID uuid.UUID, benefitID uuid.UUID) (*dto.BrandBenefitRes, error) {

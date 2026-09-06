@@ -10,7 +10,7 @@ import (
 
 type ISearchSyncUseCase interface {
 	ProcessSyncEvent(ctx context.Context, eventPayload dto.WardrobeEventPayload, run *workerlog.Run) error
-	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedPayload, run *workerlog.Run) error
+	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload, run *workerlog.Run) error
 	TryInitialSync(ctx context.Context, run *workerlog.Run) (bool, error)
 	IsOfflineError(err error) bool
 	RunInitialSyncWithRetry(ctx context.Context, log logger.Interface)

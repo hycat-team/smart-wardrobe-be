@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func MapToSearchDocumentDTO(item *entities.WardrobeItem, fashionItem *fashion_dto.FashionItemRes) *dto.SearchDocumentDTO {
+func MapToSearchDocumentDTO(item *entities.WardrobeItem, fashionItem *fashion_dto.FashionItemContractDTO) *dto.SearchDocumentDTO {
 	if item == nil {
 		return nil
 	}

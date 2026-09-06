@@ -164,7 +164,7 @@ func (h *BrandLoyaltyHandler) GetUserBrandLoyaltyLots(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-	var query dto.ListLoyaltyPointLotsQueryReq
+	var query dto.GetLoyaltyPointLotsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (h *BrandLoyaltyHandler) GetLoyaltyAccountLotsForStaff(c *gin.Context) erro
 	if err != nil {
 		return err
 	}
-	var query dto.ListLoyaltyPointLotsQueryReq
+	var query dto.GetLoyaltyPointLotsQueryReq
 	if err := validation.BindQuery(c, &query); err != nil {
 		return err
 	}

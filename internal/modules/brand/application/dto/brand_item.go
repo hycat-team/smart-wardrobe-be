@@ -37,20 +37,20 @@ type UpdateBrandItemStatusReq struct {
 }
 
 type BrandItemRes struct {
-	ID            uuid.UUID                       `json:"id"`
-	BrandID       uuid.UUID                       `json:"brandId"`
-	BrandName     string                          `json:"brandName,omitempty"`
-	FashionItemID uuid.UUID                       `json:"fashionItemId"`
-	ProductCode   *string                         `json:"productCode"`
-	Name          string                          `json:"name"`
-	Description   *string                         `json:"description"`
-	Price         *float64                        `json:"price"`
-	ItemType      branditemtype.BrandItemType     `json:"itemType"`
-	Status        branditemstatus.BrandItemStatus `json:"status"`
-	FashionItem   *fashion_dto.FashionItemRes     `json:"fashionItem,omitempty"`
-	CreatedAt     time.Time                       `json:"createdAt"`
-	UpdatedAt     time.Time                       `json:"updatedAt"`
-	TaskID        *uuid.UUID                      `json:"taskId,omitempty"`
+	ID            uuid.UUID                           `json:"id"`
+	BrandID       uuid.UUID                           `json:"brandId"`
+	BrandName     string                              `json:"brandName,omitempty"`
+	FashionItemID uuid.UUID                           `json:"fashionItemId"`
+	ProductCode   *string                             `json:"productCode"`
+	Name          string                              `json:"name"`
+	Description   *string                             `json:"description"`
+	Price         *float64                            `json:"price"`
+	ItemType      branditemtype.BrandItemType         `json:"itemType"`
+	Status        branditemstatus.BrandItemStatus     `json:"status"`
+	FashionItem   *fashion_dto.FashionItemContractDTO `json:"fashionItem,omitempty"`
+	CreatedAt     time.Time                           `json:"createdAt"`
+	UpdatedAt     time.Time                           `json:"updatedAt"`
+	TaskID        *uuid.UUID                          `json:"taskId,omitempty"`
 }
 
 type SubmitSampleFeedbackReq struct {

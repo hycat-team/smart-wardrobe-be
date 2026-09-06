@@ -8,6 +8,7 @@ import (
 	"smart-wardrobe-be/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	wardrobeDto "smart-wardrobe-be/internal/modules/wardrobe/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/outfititemcontext"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
 	"github.com/google/uuid"
 )
@@ -45,23 +46,15 @@ func parseAliasIndex(alias string) (int, bool) {
 	return -1, false
 }
 
-func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.FashionItemRes, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
+func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.FashionItemContractDTO, cand types.CandidateForPrompt) *dto.RecommendedItemRes {
 	if item == nil {
 		return nil
 	}
 	var fRes *dto.RecommendedFashionItemBriefRes
 	if fi != nil {
-		var category *wardrobeDto.CategoryBriefRes
-		if fi.Category != nil {
-			category = &wardrobeDto.CategoryBriefRes{
-				ID:   fi.Category.ID,
-				Name: fi.Category.Name,
-				Slug: fi.Category.Slug,
-			}
-		}
 		fRes = &dto.RecommendedFashionItemBriefRes{
 			ID:       fi.ID,
-			Category: category,
+			Category: fi.Category,
 			ImageUrl: fi.ImageUrl,
 			Color:    fi.Color,
 			ColorHex: fi.ColorHex,
@@ -77,7 +70,7 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.
 		res.ItemContext = string(outfititemcontext.UserWardrobe)
 	}
 	if cand.ItemContext == outfititemcontext.BrandItem && cand.BrandItem != nil {
-		res.BrandItem = &wardrobeDto.BrandItemBriefRes{
+		res.BrandItem = &shared_dto.BrandItemBriefRes{
 			ID:          cand.BrandItem.ID,
 			BrandID:     cand.BrandItem.BrandID,
 			BrandName:   cand.BrandItem.BrandName,
@@ -91,7 +84,7 @@ func MapToRecommendedItemRes(item *wardrobeDto.WardrobeItemContractDTO, fi *dto.
 	return res
 }
 
-func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *dto.FashionItemRes {
+func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) *dto.FashionItemContractDTO {
 	if item == nil {
 		return nil
 	}
@@ -105,7 +98,7 @@ func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionIte
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) []*dto.RecommendedItemGroup {
 	candidateMap := map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO{}
 	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
@@ -207,7 +200,7 @@ func MapLLMResponseToGroups(
 	return deduped
 }
 
-func findCandidateByRole(candidates []types.CandidateForPrompt, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) *types.CandidateForPrompt {
+func findCandidateByRole(candidates []types.CandidateForPrompt, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) *types.CandidateForPrompt {
 	for i := range candidates {
 		if fi := FashionForItemFromMap(candidates[i].Item, fashionItemMap); fi != nil && fi.Category != nil {
 			if CategorySlugToWearingRole(fi.Category.Slug) == role {
@@ -224,7 +217,7 @@ func resolvePrimaryCandidate(
 	candidates []types.CandidateForPrompt,
 	role string,
 	primaryID string,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) *wardrobeDto.WardrobeItemContractDTO {
 	if idx, ok := parseAliasIndex(primaryID); ok {
 		if idx >= 0 && idx < len(candidates) {
@@ -257,7 +250,7 @@ func resolveAlternativeCandidates(
 	role string,
 	primaryID uuid.UUID,
 	alternativeIDs []string,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) []*dto.RecommendedItemRes {
 	alternatives := make([]*dto.RecommendedItemRes, 0, 2)
 	for _, altID := range alternativeIDs {
@@ -323,7 +316,7 @@ func resolveAlternativeCandidates(
 	return alternatives
 }
 
-func matchesRole(item *wardrobeDto.WardrobeItemContractDTO, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) bool {
+func matchesRole(item *wardrobeDto.WardrobeItemContractDTO, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) bool {
 	if fi := FashionForItemFromMap(item, fashionItemMap); fi != nil && fi.Category != nil {
 		return CategorySlugToWearingRole(fi.Category.Slug) == role
 	}

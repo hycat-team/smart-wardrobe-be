@@ -220,7 +220,7 @@ func TestBrandHandleFashionItemCreated_SetsID(t *testing.T) {
 		},
 	}
 	uc := NewBrandFashionEventUseCase(repo, &mockBrandSSEManagerForEvent{}, &mockBrandLoggerForEvent{})
-	payload := fashion_dto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
+	payload := fashion_dto.FashionItemCreatedEventPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
 	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestBrandHandleFashionItemCreated_Idempotent(t *testing.T) {
 		},
 	}
 	uc := NewBrandFashionEventUseCase(repo, &mockBrandSSEManagerForEvent{}, &mockBrandLoggerForEvent{})
-	payload := fashion_dto.FashionItemCreatedPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
+	payload := fashion_dto.FashionItemCreatedEventPayload{ItemID: itemID, FashionItemID: fashionItemID, ItemType: "brand"}
 	if err := uc.HandleFashionItemCreated(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

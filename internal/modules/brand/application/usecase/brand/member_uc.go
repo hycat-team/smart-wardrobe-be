@@ -39,7 +39,7 @@ func (uc *BrandUseCase) AddBrandMembers(ctx context.Context, userID uuid.UUID, b
 		return nil, err
 	}
 
-	userByIdentifier := make(map[string]*identity_dto.UserBriefRes, len(fetchedUsers)*2)
+	userByIdentifier := make(map[string]*identity_dto.UserBriefContractDTO, len(fetchedUsers)*2)
 	for _, u := range fetchedUsers {
 		if u == nil {
 			continue
@@ -185,7 +185,7 @@ func (uc *BrandUseCase) GetBrandMembers(ctx context.Context, userID uuid.UUID, b
 		return nil, err
 	}
 
-	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO)
 	if len(members) > 0 {
 		userIDs := make([]uuid.UUID, len(members))
 		for i, m := range members {

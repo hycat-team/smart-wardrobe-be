@@ -24,7 +24,7 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemContractDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemRes) string {
+func buildChatSystemPromptWithLimits(summary string, brandItems []*brand_dto.BrandItemContractDTO, recent []*fashion_entities.Message, summaryLimit, messageLimit int, fashionItemMap map[uuid.UUID]*fashion_dto.FashionItemContractDTO) string {
 	var builder strings.Builder
 	builder.WriteString("You are the AI fashion stylist of Closy. You must reply to the user in natural, friendly Vietnamese. Do not suggest buying external products.\n")
 	builder.WriteString("IMPORTANT: Reply directly in natural Vietnamese with only the final user-facing answer. Do not output internal reasoning, analysis, planning, or hidden instructions.\n")

@@ -17,5 +17,3 @@ type UserBriefContractDTO struct {
 	Status    userstatus.UserStatus `json:"status"`
 	AvatarUrl *string               `json:"avatarUrl,omitempty"`
 }
-
-type UserBriefRes = UserBriefContractDTO

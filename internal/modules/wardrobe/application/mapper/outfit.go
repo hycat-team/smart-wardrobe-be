@@ -17,21 +17,14 @@ func MapToOutfitRes(outfit *entities.Outfit, items []*entities.OutfitItem, fashi
 	itemDTOs = make([]*dto.OutfitItemRes, len(items))
 	for idx, item := range items {
 		fi := fashionItemMap[item.FashionItemID]
-		var briefDTO *dto.FashionItemBriefRes
+		var briefDTO *fashion_dto.FashionItemBriefRes
 		if fi != nil {
-			var category *dto.CategoryBriefRes
-			if fi.Category != nil {
-				category = &dto.CategoryBriefRes{
-					ID:   fi.Category.ID,
-					Name: fi.Category.Name,
-					Slug: fi.Category.Slug,
-				}
-			}
-			briefDTO = &dto.FashionItemBriefRes{
+			// Keep the selective projection (Color/Style intentionally omitted).
+			briefDTO = &fashion_dto.FashionItemBriefRes{
 				ID:       fi.ID,
 				ImageUrl: fi.ImageUrl,
 				ColorHex: fi.ColorHex,
-				Category: category,
+				Category: fi.Category,
 			}
 		}
 		isAvailable := availableFashionIDs == nil

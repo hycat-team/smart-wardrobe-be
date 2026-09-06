@@ -135,7 +135,7 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 			}
 			subEvent = innerSubEvent
 
-			payload := aiexecutor_dto.PlanChangedPayload{
+			payload := aiexecutor_dto.PlanChangedEventPayload{
 				UserID:         userID.String(),
 				EventType:      subEvent.EventType,
 				ToPlanCode:     plan.Slug,

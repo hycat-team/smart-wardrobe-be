@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemRes) *dto.BrandItemRes {
+func MapToBrandItemRes(item *entities.BrandItem, fi *fashion_dto.FashionItemContractDTO) *dto.BrandItemRes {
 	if item == nil {
 		return nil
 	}
@@ -81,7 +81,7 @@ func MapBrandItemBrief(item *entities.BrandItem, brand *entities.Brand, fi *fash
 	}
 }
 
-func MapDigitalSampleResponseWithUser(res *entities.DigitalSampleResponse, userBrief *identity_dto.UserBriefRes) *dto.DigitalSampleResponseRes {
+func MapDigitalSampleResponseWithUser(res *entities.DigitalSampleResponse, userBrief *identity_dto.UserBriefContractDTO) *dto.DigitalSampleResponseRes {
 	if res == nil {
 		return nil
 	}
@@ -98,7 +98,7 @@ func MapDigitalSampleResponseWithUser(res *entities.DigitalSampleResponse, userB
 		VoteType:     voteStr,
 		Rating:       res.Rating,
 		FeedbackText: res.FeedbackText,
-		User:         userBrief,
+		User:         MapIdentityUserBrief(userBrief),
 		CreatedAt:    res.CreatedAt,
 	}
 }

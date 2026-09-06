@@ -17,13 +17,3 @@ type UserSubscriptionContractDTO struct {
 	AiOutfitDailyQuota int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota   int        `json:"aiChatDailyQuota"`
 }
-
-type UserSubscriptionOverviewDTO = UserSubscriptionContractDTO
-
-type UserQuotaContractDTO struct {
-	UserID               uuid.UUID `json:"user_id"`
-	AiOutfitDailyQuota   int       `json:"ai_outfit_daily_quota"`
-	OutfitRecommendCount int       `json:"outfit_recommend_count"`
-	AiChatDailyQuota     int       `json:"ai_chat_daily_quota"`
-	AiUsageCount         int       `json:"ai_usage_count"`
-}

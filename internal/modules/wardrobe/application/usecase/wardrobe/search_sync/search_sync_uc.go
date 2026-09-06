@@ -63,7 +63,7 @@ func (uc *SearchSyncUseCase) ProcessSyncEvent(ctx context.Context, eventPayload 
 			return nil
 		}
 
-		var fashionItem *fashion_dto.FashionItemRes
+		var fashionItem *fashion_dto.FashionItemContractDTO
 		if item.FashionItemID != nil {
 			fashionItem, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 		}
@@ -134,17 +134,17 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemRes{}
+	fashionMap := map[uuid.UUID]*fashion_dto.FashionItemContractDTO{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionContract.ListFashionItems(ctx, fashionIDs)
 		if err == nil {
-			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemRes) uuid.UUID { return f.ID })
+			fashionMap = sliceutils.IndexBy(fashionItems, func(f *fashion_dto.FashionItemContractDTO) uuid.UUID { return f.ID })
 		}
 	}
 
 	successCount := 0
 	for _, item := range items {
-		var fashionItem *fashion_dto.FashionItemRes
+		var fashionItem *fashion_dto.FashionItemContractDTO
 		if item.FashionItemID != nil {
 			fashionItem = fashionMap[*item.FashionItemID]
 		}
@@ -162,7 +162,7 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 	return true, nil
 }
 
-func (uc *SearchSyncUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashion_dto.FashionProcessingExhaustedPayload, run *workerlog.Run) error {
+func (uc *SearchSyncUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashion_dto.FashionProcessingExhaustedEventPayload, run *workerlog.Run) error {
 	run.AddTotal(1)
 	item, err := uc.wardrobeRepo.GetByID(ctx, payload.WardrobeItemID)
 	if err != nil {
@@ -176,7 +176,7 @@ func (uc *SearchSyncUseCase) HandleFashionProcessingExhausted(ctx context.Contex
 		run.AddSkipped(1)
 		return nil
 	}
-	var fashionItem *fashion_dto.FashionItemRes
+	var fashionItem *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fashionItem, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}

@@ -33,11 +33,11 @@ func NewCategoryUseCase(
 	}
 }
 
-func mapToCategoryRes(cat *entities.Category) *dto.CategoryRes {
+func mapToCategoryRes(cat *entities.Category) *dto.CategoryContractDTO {
 	if cat == nil {
 		return nil
 	}
-	return &dto.CategoryRes{
+	return &dto.CategoryContractDTO{
 		ID:        cat.ID,
 		Name:      cat.Name,
 		Slug:      cat.Slug,
@@ -45,7 +45,7 @@ func mapToCategoryRes(cat *entities.Category) *dto.CategoryRes {
 	}
 }
 
-func (uc *CategoryUseCase) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) GetCategory(ctx context.Context, id uuid.UUID) (*dto.CategoryContractDTO, error) {
 	cat, err := uc.categoryRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -53,31 +53,31 @@ func (uc *CategoryUseCase) GetCategory(ctx context.Context, id uuid.UUID) (*dto.
 	return mapToCategoryRes(cat), nil
 }
 
-func (uc *CategoryUseCase) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) ListCategories(ctx context.Context, ids []uuid.UUID) ([]*dto.CategoryContractDTO, error) {
 	items, err := uc.categoryRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*dto.CategoryRes, len(items))
+	res := make([]*dto.CategoryContractDTO, len(items))
 	for i, item := range items {
 		res[i] = mapToCategoryRes(item)
 	}
 	return res, nil
 }
 
-func (uc *CategoryUseCase) GetAllCategories(ctx context.Context) ([]*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) GetAllCategories(ctx context.Context) ([]*dto.CategoryContractDTO, error) {
 	items, err := uc.categoryRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*dto.CategoryRes, len(items))
+	res := make([]*dto.CategoryContractDTO, len(items))
 	for i, item := range items {
 		res[i] = mapToCategoryRes(item)
 	}
 	return res, nil
 }
 
-func (uc *CategoryUseCase) GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) GetCategoryBySlug(ctx context.Context, slug string) (*dto.CategoryContractDTO, error) {
 	cat, err := uc.categoryRepo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (uc *CategoryUseCase) GetCategoryBySlug(ctx context.Context, slug string) (
 	return mapToCategoryRes(cat), nil
 }
 
-func (uc *CategoryUseCase) GetCategoryByName(ctx context.Context, name string) (*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) GetCategoryByName(ctx context.Context, name string) (*dto.CategoryContractDTO, error) {
 	cat, err := uc.categoryRepo.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (uc *CategoryUseCase) GetCategoryByName(ctx context.Context, name string) (
 	return mapToCategoryRes(cat), nil
 }
 
-func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateCategoryInput) (*dto.CategoryContractDTO, error) {
 	normalizedName := strings.TrimSpace(input.Name)
 	normalizedSlug := normalizeCategorySlug(input.Slug)
 
@@ -128,7 +128,7 @@ func (uc *CategoryUseCase) CreateCategory(ctx context.Context, input dto.CreateC
 	return mapToCategoryRes(cat), nil
 }
 
-func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryRes, error) {
+func (uc *CategoryUseCase) UpdateCategory(ctx context.Context, id uuid.UUID, input dto.UpdateCategoryInput) (*dto.CategoryContractDTO, error) {
 	cat, err := uc.categoryRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

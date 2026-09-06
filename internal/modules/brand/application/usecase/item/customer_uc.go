@@ -30,11 +30,11 @@ func (uc *BrandItemUseCase) GetBrandItemFeedbacks(ctx context.Context, staffUser
 	for _, f := range feedbacks {
 		userIDs = append(userIDs, f.UserID)
 	}
-	userBriefs := make([]*identity_dto.UserBriefRes, 0)
+	userBriefs := make([]*identity_dto.UserBriefContractDTO, 0)
 	if uc.userBriefContract != nil {
 		userBriefs, _ = uc.userBriefContract.GetByIDs(ctx, userIDs)
 	}
-	userBriefMap := make(map[uuid.UUID]*identity_dto.UserBriefRes, len(userBriefs))
+	userBriefMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO, len(userBriefs))
 	for _, ub := range userBriefs {
 		userBriefMap[ub.ID] = ub
 	}

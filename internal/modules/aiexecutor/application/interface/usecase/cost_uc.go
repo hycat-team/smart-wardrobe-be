@@ -11,10 +11,10 @@ import (
 )
 
 type IAICostUseCase interface {
-	Prepare(ctx context.Context, plan *dto.ExecutionPlan) (*dto.AICostDecision, error)
-	PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*dto.AICostDecision, error)
+	Prepare(ctx context.Context, plan *ExecutionPlan) (*AICostDecision, error)
+	PrepareFree(ctx context.Context, requestID uuid.UUID, userID uuid.UUID, operation aioperation.AIOperation, promptTokens int64, maxOutputTokens int) (*AICostDecision, error)
 	MarkInFlight(ctx context.Context, requestID uuid.UUID) error
-	Confirm(ctx context.Context, requestID uuid.UUID, usage dto.AIUsage) error
+	Confirm(ctx context.Context, requestID uuid.UUID, usage AIUsage) error
 	Release(ctx context.Context, requestID uuid.UUID, reason string) error
 	MarkUnknown(ctx context.Context, requestID uuid.UUID, reason string) error
 	ExpireUnknown(ctx context.Context, now time.Time, limit int) (int64, error)

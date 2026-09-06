@@ -71,7 +71,7 @@ type BenefitRedemptionRes struct {
 	UpdatedAt       time.Time        `json:"updatedAt"`
 }
 
-type ListBenefitRedemptionsQueryReq struct {
+type GetBenefitRedemptionsQueryReq struct {
 	shared_dto.PaginationQuery
 	BrandID *string `form:"brandId" binding:"omitempty,uuid4" label:"mã thương hiệu"`
 }

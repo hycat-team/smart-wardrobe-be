@@ -27,13 +27,9 @@ type FashionItemContractDTO struct {
 	UpdatedAt       time.Time         `json:"updated_at"`
 }
 
-type FashionItemRes = FashionItemContractDTO
-
 type CategoryContractDTO struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
 	SortOrder int       `json:"sort_order"`
 }
-
-type CategoryRes = CategoryContractDTO

@@ -25,7 +25,7 @@ func NewBrandContract(
 	}
 }
 
-func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemContractDTO, []*fashion_dto.FashionItemRes, error) {
+func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, userID uuid.UUID, req *dto.ListEligibleBrandItemsReq) ([]*dto.BrandItemContractDTO, []*fashion_dto.FashionItemContractDTO, error) {
 	items, err := c.itemUC.ListEligibleBrandItemsForStyling(ctx, userID, req)
 	if err != nil {
 		return nil, nil, err
@@ -33,7 +33,7 @@ func (c *BrandContract) ListEligibleBrandItemsForStyling(ctx context.Context, us
 	return items, nil, nil
 }
 
-func (c *BrandContract) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemContractDTO, *fashion_dto.FashionItemRes, error) {
+func (c *BrandContract) CheckBrandItemEligibility(ctx context.Context, userID uuid.UUID, fashionItemID uuid.UUID) (bool, *dto.BrandItemContractDTO, *fashion_dto.FashionItemContractDTO, error) {
 	eligible, item, err := c.itemUC.CheckBrandItemEligibility(ctx, userID, fashionItemID)
 	if err != nil {
 		return false, nil, nil, err

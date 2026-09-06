@@ -29,7 +29,7 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 		Name: "Ao",
 		Slug: "ao",
 	}
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -53,7 +53,7 @@ func TestBuildRecommendationPromptFormatsContextAndCandidates(t *testing.T) {
 func TestBuildRecommendationPromptWithLimitsPreservesSourceAndBudget(t *testing.T) {
 	longDescription := strings.Repeat("á", 300)
 	candidates := make([]types.CandidateForPrompt, 4)
-	fashionItemMap := make(map[uuid.UUID]*dto.FashionItemRes)
+	fashionItemMap := make(map[uuid.UUID]*dto.FashionItemContractDTO)
 	for i := range candidates {
 		item, fi := newSynthItem()
 		fi.Description = &longDescription
@@ -122,7 +122,7 @@ func TestMapLLMResponseToGroupsHandlesValidCandidates(t *testing.T) {
 		Slug: "ao",
 	}
 	item.ID = itemID
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{*item.FashionItemID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -164,7 +164,7 @@ func TestMapLLMResponseToGroupsHandlesNilFashionItemField(t *testing.T) {
 		FashionItemID: &fashionID,
 	}
 
-	fi := &dto.FashionItemRes{
+	fi := &dto.FashionItemContractDTO{
 		ID:       fashionID,
 		ImageUrl: "https://example.com/item.jpg",
 		Color:    stringPtr("red"),
@@ -175,7 +175,7 @@ func TestMapLLMResponseToGroupsHandlesNilFashionItemField(t *testing.T) {
 		},
 	}
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{fashionID: fi}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{fashionID: fi}
 
 	candidates := []types.CandidateForPrompt{
 		{
@@ -267,7 +267,7 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	accessoryFi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "phu-kien", Slug: "phu-kien"}
 	accessoryItem.ID = accessoryID
 
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
 		*topItem.FashionItemID:       topFi,
 		*fullbodyItem.FashionItemID:  fullbodyFi,
 		*accessoryItem.FashionItemID: accessoryFi,
@@ -318,14 +318,14 @@ func TestMapLLMResponseToGroupsFiltersOutTopAndBottomWhenFullbodyIsPresent(t *te
 	}
 }
 
-func newSynthItem() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemRes) {
+func newSynthItem() (*wardrobeDto.WardrobeItemContractDTO, *dto.FashionItemContractDTO) {
 	fashionID := uuid.New()
 	catID := uuid.New()
 	item := &wardrobeDto.WardrobeItemContractDTO{
 		ID:            uuid.New(),
 		FashionItemID: &fashionID,
 	}
-	res := &dto.FashionItemRes{
+	res := &dto.FashionItemContractDTO{
 		ID:       fashionID,
 		Category: &dto.CategoryBriefRes{ID: catID},
 	}

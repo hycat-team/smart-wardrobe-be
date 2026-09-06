@@ -99,7 +99,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 		}
 	}
 	senderIDs = sliceutils.UniqueUUIDs(senderIDs)
-	senderMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
+	senderMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO)
 	if len(senderIDs) > 0 {
 		senderUsers, _ := uc.userBriefContract.GetByIDs(ctx, senderIDs)
 		for _, u := range senderUsers {
@@ -109,7 +109,7 @@ func (uc *BrandChatUseCase) GetUserConversation(ctx context.Context, userID uuid
 
 	messages := make([]*dto.BrandConversationMessageRes, len(msgResult.Messages))
 	for i, msg := range msgResult.Messages {
-		var sender *identity_dto.UserBriefRes
+		var sender *identity_dto.UserBriefContractDTO
 		if msg.SenderUserID != nil {
 			sender = senderMap[*msg.SenderUserID]
 		}
@@ -195,7 +195,7 @@ func (uc *BrandChatUseCase) SendUserMessage(ctx context.Context, userID uuid.UUI
 	if uc.userBriefContract != nil {
 		senderBrief, _ := uc.userBriefContract.GetByIDs(ctx, []uuid.UUID{userID})
 		if len(senderBrief) > 0 {
-			messageRes.Sender = senderBrief[0]
+			messageRes.Sender = mapper.MapIdentityUserBrief(senderBrief[0])
 		}
 	}
 	return messageRes, nil
@@ -223,11 +223,11 @@ func (uc *BrandChatUseCase) ListBrandConversations(ctx context.Context, staffUse
 			userIDs = append(userIDs, conv.UserID)
 		}
 	}
-	userMap := map[uuid.UUID]*identity_dto.UserBriefRes{}
+	userMap := map[uuid.UUID]*identity_dto.UserBriefContractDTO{}
 	if len(userIDs) > 0 {
 		users, err := uc.userBriefContract.GetByIDs(ctx, userIDs)
 		if err == nil {
-			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserBriefRes) uuid.UUID { return u.ID })
+			userMap = sliceutils.IndexBy(users, func(u *identity_dto.UserBriefContractDTO) uuid.UUID { return u.ID })
 		}
 	}
 
@@ -446,7 +446,7 @@ func (uc *BrandChatUseCase) mapBrandConversationWithUnread(ctx context.Context, 
 	return res, nil
 }
 
-func getUserDisplayName(u *identity_dto.UserBriefRes) string {
+func getUserDisplayName(u *identity_dto.UserBriefContractDTO) string {
 	if u == nil {
 		return ""
 	}
@@ -464,7 +464,7 @@ func getUserDisplayName(u *identity_dto.UserBriefRes) string {
 	return name
 }
 
-func getUserDisplayNameFromDTO(u *identity_dto.UserBriefRes) string {
+func getUserDisplayNameFromDTO(u *identity_dto.UserBriefContractDTO) string {
 	if u == nil {
 		return ""
 	}

@@ -38,7 +38,7 @@ func RankCandidates(
 	recentlyWornPenaltyDays int,
 	longUnwornBonusDays int,
 	minimumPool int,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) ([]types.CandidateForPrompt, types.RerankStats) {
 	scored := make([]types.RankedCandidate, len(candidates))
 	for i, candidate := range candidates {
@@ -164,7 +164,7 @@ func RankedCandidateScoreStats(candidates []types.RankedCandidate) types.RerankS
 // Đầu ra mẫu:
 //
 //	[]types.RankedCandidate (chứa 3 cái áo, 2 cái quần - tối đa hóa sự đa dạng)
-func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashionItemMap map[uuid.UUID]*dto.FashionItemRes) []types.RankedCandidate {
+func DiversifyRankedCandidates(scored []types.RankedCandidate, limit int, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) []types.RankedCandidate {
 	if limit <= 0 || len(scored) <= limit {
 		return scored
 	}

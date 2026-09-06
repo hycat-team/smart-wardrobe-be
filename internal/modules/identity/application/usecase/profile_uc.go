@@ -169,7 +169,7 @@ func (uc *UserUseCase) UpdateAvatar(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 
-	return mapper.MapToUserBrief(user), nil
+	return mapper.MapUserBriefToRes(mapper.MapToUserBrief(user)), nil
 }
 
 func (uc *UserUseCase) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]*dto.UserSessionItemDTO, error) {

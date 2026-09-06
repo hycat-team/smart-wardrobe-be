@@ -177,6 +177,23 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIErrorBreakdownDTO": {
+      "properties": {
+        "errorCode": {
+          "type": "string"
+        },
+        "errorCount": {
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIModelConfigDTO": {
       "properties": {
         "currency": {
@@ -868,7 +885,7 @@
           "type": "string"
         },
         "fashionItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemContractDTO"
         },
         "fashionItemId": {
           "type": "string"
@@ -1982,28 +1999,11 @@
         "Refund"
       ]
     },
-    "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO": {
-      "properties": {
-        "errorCode": {
-          "type": "string"
-        },
-        "errorCount": {
-          "type": "integer"
-        },
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownRes": {
       "properties": {
         "breakdown": {
           "items": {
-            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_dashboard_application_dto.AIErrorBreakdownDTO"
+            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_aiexecutor_application_dto.AIErrorBreakdownDTO"
           },
           "type": "array"
         },
@@ -3028,7 +3028,7 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemRes": {
+    "smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemContractDTO": {
       "properties": {
         "category": {
           "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
@@ -3132,7 +3132,7 @@
     "smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes": {
       "properties": {
         "category": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
         },
         "color": {
           "type": "string"
@@ -3172,7 +3172,7 @@
     "smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedItemRes": {
       "properties": {
         "brandItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.BrandItemBriefRes"
         },
         "fashionItem": {
           "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes"
@@ -4244,7 +4244,7 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionOverviewDTO": {
+    "smart-wardrobe-be_internal_modules_subscription_application_dto.UserSubscriptionOverviewRes": {
       "properties": {
         "aiChatDailyQuota": {
           "type": "integer"
@@ -4417,35 +4417,6 @@
       ],
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes": {
-      "properties": {
-        "brandId": {
-          "type": "string"
-        },
-        "brandName": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "itemType": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "price": {
-          "type": "number"
-        },
-        "productCode": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq": {
       "properties": {
         "ids": {
@@ -4461,20 +4432,6 @@
       ],
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes": {
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "slug": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq": {
       "properties": {
         "quantity": {
@@ -4488,48 +4445,16 @@
       ],
       "type": "object"
     },
-    "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes": {
-      "properties": {
-        "category": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
-        },
-        "color": {
-          "type": "string"
-        },
-        "colorHex": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "imageUrl": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemRes": {
       "properties": {
         "category": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.CategoryBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.CategoryBriefRes"
         },
         "color": {
           "type": "string"
         },
         "colorHex": {
           "type": "string"
-        },
-        "colorHue": {
-          "type": "number"
-        },
-        "colorLightness": {
-          "type": "number"
-        },
-        "colorSaturation": {
-          "type": "number"
         },
         "createdAt": {
           "type": "string"
@@ -4605,7 +4530,7 @@
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.OutfitItemRes": {
       "properties": {
         "fashionItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemBriefRes"
         },
         "id": {
           "type": "string"
@@ -4724,7 +4649,7 @@
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes": {
       "properties": {
         "fashionItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemBriefRes"
         },
         "id": {
           "type": "string"
@@ -4799,10 +4724,10 @@
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemBriefRes": {
       "properties": {
         "brandItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.BrandItemBriefRes"
         },
         "fashionItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.FashionItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_fashion_application_dto.FashionItemBriefRes"
         },
         "fashionItemId": {
           "type": "string"
@@ -4831,7 +4756,7 @@
     "smart-wardrobe-be_internal_modules_wardrobe_application_dto.WardrobeItemRes": {
       "properties": {
         "brandItem": {
-          "$ref": "#/definitions/smart-wardrobe-be_internal_modules_wardrobe_application_dto.BrandItemBriefRes"
+          "$ref": "#/definitions/smart-wardrobe-be_internal_shared_application_dto.BrandItemBriefRes"
         },
         "createdAt": {
           "type": "string"
@@ -4956,6 +4881,35 @@
         "Failed",
         "NeedsReview"
       ]
+    },
+    "smart-wardrobe-be_internal_shared_application_dto.BrandItemBriefRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "brandName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "itemType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     },
     "smart-wardrobe-be_internal_shared_application_dto.PaginationMetadata": {
       "properties": {

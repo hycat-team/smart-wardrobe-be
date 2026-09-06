@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	aiexecutor_dto "smart-wardrobe-be/internal/modules/aiexecutor/application/dto"
+	uc_interfaces "smart-wardrobe-be/internal/modules/aiexecutor/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aienforcementmode"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/aioperation"
 	"smart-wardrobe-be/internal/modules/aiexecutor/domain/constants/airoute"
@@ -15,13 +15,13 @@ import (
 
 // ----- Execution Plan -----
 
-func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, meta aiexecutor_dto.AITokenEstimationMeta) (*aiexecutor_dto.ExecutionPlan, error) {
+func (uc *OrchestratorUseCase) resolveExecutionPlan(ctx context.Context, userID uuid.UUID, operation aioperation.AIOperation, meta uc_interfaces.AITokenEstimationMeta) (*uc_interfaces.ExecutionPlan, error) {
 	provider, model := uc.resolveProviderModel(operation, airoute.Paid)
 	if model == "" {
 		return nil, fmt.Errorf("unsupported operation: %s", operation)
 	}
 
-	plan := &aiexecutor_dto.ExecutionPlan{
+	plan := &uc_interfaces.ExecutionPlan{
 		RequestID:             uuid.New(),
 		UserID:                userID,
 		Operation:             operation,

@@ -41,7 +41,7 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomers(ctx context.Context, userID uui
 		return nil, err
 	}
 
-	userMap := make(map[uuid.UUID]*identity_dto.UserBriefRes)
+	userMap := make(map[uuid.UUID]*identity_dto.UserBriefContractDTO)
 	if len(result.Customers) > 0 {
 		userIDs := make([]uuid.UUID, 0, len(result.Customers))
 		for _, c := range result.Customers {
@@ -73,7 +73,7 @@ func (uc *BrandLoyaltyUseCase) GetBrandCustomer(ctx context.Context, userID uuid
 	if customer == nil || customer.BrandID != brandID {
 		return nil, branderrors.ErrCustomerNotFound()
 	}
-	var user *identity_dto.UserBriefRes
+	var user *identity_dto.UserBriefContractDTO
 	if customer.UserID != nil {
 		u, err := uc.userBriefContract.GetByID(ctx, *customer.UserID)
 		if err == nil {

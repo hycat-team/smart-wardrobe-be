@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	fashion_dto "smart-wardrobe-be/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 
@@ -15,40 +16,23 @@ type CreateWardrobeItemReq struct {
 	ImagePublicID string    `json:"imagePublicId" binding:"required" label:"mã ảnh"`
 }
 
-type CategoryBriefRes struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Slug string    `json:"slug"`
-}
-
+// FashionItemRes mirrors the fashion item data embedded in wardrobe API
+// responses (camelCase). It is a projection of fashion_dto.FashionItemContractDTO
+// minus CategoryID/ImagePublicID — keep JSON fields in sync with the source.
 type FashionItemRes struct {
-	ID              uuid.UUID         `json:"id"`
-	Category        *CategoryBriefRes `json:"category,omitempty"`
-	ImageUrl        string            `json:"imageUrl"`
-	Color           *string           `json:"color,omitempty"`
-	ColorHex        *string           `json:"colorHex,omitempty"`
-	ColorHue        *float64          `json:"colorHue,omitempty"`
-	ColorSaturation *float64          `json:"colorSaturation,omitempty"`
-	ColorLightness  *float64          `json:"colorLightness,omitempty"`
-	Style           *string           `json:"style,omitempty"`
-	Material        *string           `json:"material,omitempty"`
-	Pattern         *string           `json:"pattern,omitempty"`
-	Fit             *string           `json:"fit,omitempty"`
-	Seasonality     *string           `json:"seasonality,omitempty"`
-	Description     *string           `json:"description,omitempty"`
-	CreatedAt       time.Time         `json:"createdAt"`
-	UpdatedAt       time.Time         `json:"updatedAt"`
-}
-
-type BrandItemBriefRes struct {
-	ID          uuid.UUID `json:"id"`
-	BrandID     uuid.UUID `json:"brandId"`
-	BrandName   string    `json:"brandName"`
-	ProductCode *string   `json:"productCode,omitempty"`
-	ItemType    string    `json:"itemType"`
-	Name        string    `json:"name"`
-	Price       *float64  `json:"price,omitempty"`
-	Status      string    `json:"status"`
+	ID          uuid.UUID                     `json:"id"`
+	Category    *fashion_dto.CategoryBriefRes `json:"category,omitempty"`
+	ImageUrl    string                        `json:"imageUrl"`
+	Color       *string                       `json:"color,omitempty"`
+	ColorHex    *string                       `json:"colorHex,omitempty"`
+	Style       *string                       `json:"style,omitempty"`
+	Material    *string                       `json:"material,omitempty"`
+	Pattern     *string                       `json:"pattern,omitempty"`
+	Fit         *string                       `json:"fit,omitempty"`
+	Seasonality *string                       `json:"seasonality,omitempty"`
+	Description *string                       `json:"description,omitempty"`
+	CreatedAt   time.Time                     `json:"createdAt"`
+	UpdatedAt   time.Time                     `json:"updatedAt"`
 }
 
 type WardrobeItemRes struct {
@@ -58,7 +42,7 @@ type WardrobeItemRes struct {
 	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
 	IsLocked      bool                              `json:"isLocked"`
 	ItemContext   string                            `json:"itemContext,omitempty"`
-	BrandItem     *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	BrandItem     *shared_dto.BrandItemBriefRes     `json:"brandItem,omitempty"`
 	FashionItem   *FashionItemRes                   `json:"fashionItem,omitempty"`
 	FashionItemID *uuid.UUID                        `json:"fashionItemId,omitempty"`
 	CreatedAt     time.Time                         `json:"createdAt"`
@@ -73,9 +57,9 @@ type WardrobeItemBriefRes struct {
 	Status        wardrobestatus.WardrobeItemStatus `json:"status"`
 	IsLocked      bool                              `json:"isLocked"`
 	LastUsedAt    *time.Time                        `json:"lastUsedAt,omitempty"`
-	FashionItem   *FashionItemBriefRes              `json:"fashionItem,omitempty"`
+	FashionItem   *fashion_dto.FashionItemBriefRes  `json:"fashionItem,omitempty"`
 	FashionItemID *uuid.UUID                        `json:"fashionItemId,omitempty"`
-	BrandItem     *BrandItemBriefRes                `json:"brandItem,omitempty"`
+	BrandItem     *shared_dto.BrandItemBriefRes     `json:"brandItem,omitempty"`
 	TaskID        *uuid.UUID                        `json:"taskId,omitempty"`
 }
 
@@ -97,19 +81,11 @@ type BatchUploadWardrobeItemsReq struct {
 	Items []WardrobeBatchUploadItemReq `json:"items" binding:"required,min=1" label:"danh sách trang phục"`
 }
 
-type WardrobeEventPayload struct {
-	ItemID        uuid.UUID `json:"item_id"`
-	UserID        uuid.UUID `json:"user_id"`
-	FashionItemID uuid.UUID `json:"fashion_item_id,omitempty"`
-	ItemType      int       `json:"item_type,omitempty"`
-	Action        string    `json:"action"` // "created", "updated", "deleted"
-}
-
 type SearchWardrobeItemRes struct {
-	ID          uuid.UUID            `json:"id"`
-	Price       *float64             `json:"price,omitempty"`
-	IsSystem    bool                 `json:"isSystem"`
-	FashionItem *FashionItemBriefRes `json:"fashionItem,omitempty"`
+	ID          uuid.UUID                        `json:"id"`
+	Price       *float64                         `json:"price,omitempty"`
+	IsSystem    bool                             `json:"isSystem"`
+	FashionItem *fashion_dto.FashionItemBriefRes `json:"fashionItem,omitempty"`
 }
 
 type GetWardrobeItemsQueryReq struct {
@@ -135,10 +111,6 @@ type GetSystemCatalogItemsQueryReq struct {
 	CategorySlug *string `form:"categorySlug"`
 }
 
-type GetOutfitsQueryReq struct {
-	shared_dto.PaginationQuery
-}
-
 type UpdateSystemCatalogItemReq struct {
 	CategoryID  *uuid.UUID `json:"categoryId" label:"danh mục"`
 	Color       *string    `json:"color" label:"màu sắc"`
@@ -158,9 +130,6 @@ type WardrobeStatsRes struct {
 	ActiveItemsCount int `json:"activeItemsCount"`
 	OutfitsCount     int `json:"outfitsCount"`
 }
-
-type WardrobeItemListBriefDTO = shared_dto.PaginationResult[*WardrobeItemBriefRes]
-type OutfitListBriefDTO = shared_dto.PaginationResult[*OutfitBriefRes]
 
 type WardrobeUploadSignatureRes struct {
 	shared_dto.UploadSignatureResult

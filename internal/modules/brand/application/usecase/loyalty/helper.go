@@ -74,7 +74,7 @@ func (uc *BrandLoyaltyUseCase) expireDueLotsForAccount(ctx context.Context, loya
 	return expiredPoints, nil
 }
 
-func (uc *BrandLoyaltyUseCase) listLoyaltyLots(ctx context.Context, loyaltyAccountID uuid.UUID, query dto.ListLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
+func (uc *BrandLoyaltyUseCase) listLoyaltyLots(ctx context.Context, loyaltyAccountID uuid.UUID, query dto.GetLoyaltyPointLotsQueryReq) ([]*dto.LoyaltyPointLotRes, error) {
 	var status *loyaltypointlotstatus.LoyaltyPointLotStatus
 	if query.Status != nil && strings.TrimSpace(*query.Status) != "" {
 		value := loyaltypointlotstatus.LoyaltyPointLotStatus(strings.ToLower(strings.TrimSpace(*query.Status)))

@@ -41,7 +41,7 @@ func (w *PlanChangedWorker) Start(ctx context.Context) {
 	}
 }
 
-func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.PlanChangedPayload) error {
+func (w *PlanChangedWorker) handle(ctx context.Context, payload aiexecutor_dto.PlanChangedEventPayload) error {
 	run := workerlog.New("plan_changed", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),

@@ -93,7 +93,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 	userID uuid.UUID,
 	activeItems []*wardrobeDto.WardrobeItemContractDTO,
 	input dto.RecommendOutfitReq,
-) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemRes, error) {
+) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, error) {
 	intent := uc.parseRecommendationIntent(input)
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
@@ -116,7 +116,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 			}
 			brandFashionIDs = sliceutils.UniqueUUIDs(brandFashionIDs)
 
-			brandFashionMap := make(map[uuid.UUID]*dto.FashionItemRes)
+			brandFashionMap := make(map[uuid.UUID]*dto.FashionItemContractDTO)
 			if len(brandFashionIDs) > 0 {
 				fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, brandFashionIDs)
 				if err == nil {
@@ -130,7 +130,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 								Slug: fi.Category.Slug,
 							}
 						}
-						brandFashionMap[id] = &dto.FashionItemRes{
+						brandFashionMap[id] = &dto.FashionItemContractDTO{
 							ID:              fi.ID,
 							Category:        category,
 							ImageUrl:        fi.ImageUrl,
@@ -155,7 +155,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 			type brandCandidate struct {
 				brandItem   *brand_dto.BrandItemContractDTO
-				fashionItem *dto.FashionItemRes
+				fashionItem *dto.FashionItemContractDTO
 				category    string
 			}
 			candidatesByCategory := map[string][]brandCandidate{}
@@ -307,7 +307,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionItemMap := map[uuid.UUID]*dto.FashionItemRes{}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
 	if len(fashionIDs) > 0 {
 		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
 		if err == nil {
@@ -321,7 +321,7 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 						Slug: fi.Category.Slug,
 					}
 				}
-				fashionItemMap[id] = &dto.FashionItemRes{
+				fashionItemMap[id] = &dto.FashionItemContractDTO{
 					ID:              fi.ID,
 					Category:        category,
 					ImageUrl:        fi.ImageUrl,
@@ -391,7 +391,7 @@ func (uc *OutfitRecommendationUseCase) generateOutfitRecommendation(
 	userID uuid.UUID,
 	candidates []types.CandidateForPrompt,
 	input dto.RecommendOutfitReq,
-	fashionItemMap map[uuid.UUID]*dto.FashionItemRes,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) (*dto.RecommendedOutfitRes, error) {
 	return synthesis.GenerateOutfitRecommendation(ctx, uc.aiService, userID, candidates, input, uc.cfg, fashionItemMap)
 }

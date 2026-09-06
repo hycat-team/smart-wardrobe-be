@@ -163,7 +163,7 @@ func (uc *BrandFashionEventUseCase) HandleFashionFailed(ctx context.Context, pay
 	return nil
 }
 
-func (uc *BrandFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedPayload) error {
+func (uc *BrandFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedEventPayload) error {
 	if payload.ItemType != "" && payload.ItemType != "brand" {
 		return nil
 	}

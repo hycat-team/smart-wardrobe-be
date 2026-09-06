@@ -15,6 +15,7 @@ import (
 	"smart-wardrobe-be/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/internal/pkg/utils/sliceutils"
 	"smart-wardrobe-be/internal/shared/application/constants/eventconstants"
+	shared_dto "smart-wardrobe-be/internal/shared/application/dto"
 	"smart-wardrobe-be/internal/shared/domain/constants/roleslug"
 
 	"github.com/google/uuid"
@@ -123,12 +124,12 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		fashionBriefMap[b.ID] = b
 	}
 
-	brandItemMap := map[uuid.UUID]*dto.BrandItemBriefRes{}
+	brandItemMap := map[uuid.UUID]*shared_dto.BrandItemBriefRes{}
 	if len(fashionIDs) > 0 && uc.brandContract != nil {
 		brandItems, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, fashionIDs)
 		if err == nil {
 			for _, bi := range brandItems {
-				brandItemMap[bi.FashionItemID] = &dto.BrandItemBriefRes{
+				brandItemMap[bi.FashionItemID] = &shared_dto.BrandItemBriefRes{
 					ID:          bi.ID,
 					BrandID:     bi.BrandID,
 					BrandName:   bi.BrandName,
@@ -148,7 +149,7 @@ func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uui
 		if clonedItems[i].FashionItemID != nil {
 			fiBrief = fashionBriefMap[*clonedItems[i].FashionItemID]
 		}
-		var brandItem *dto.BrandItemBriefRes
+		var brandItem *shared_dto.BrandItemBriefRes
 		if clonedItems[i].FashionItemID != nil {
 			brandItem = brandItemMap[*clonedItems[i].FashionItemID]
 		}
@@ -194,7 +195,7 @@ func (uc *WardrobeItemUseCase) UpdateWardrobeItem(ctx context.Context, userID uu
 		return nil, err
 	}
 
-	var fi *fashion_dto.FashionItemRes
+	var fi *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fi, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -215,7 +216,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	if item.Status != wardrobestatus.Failed && item.Status != wardrobestatus.NeedsReview {
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisForbidden()
 	}
-	var existingFI *fashion_dto.FashionItemRes
+	var existingFI *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
@@ -266,7 +267,7 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, err
 	}
 
-	var fi *fashion_dto.FashionItemRes
+	var fi *fashion_dto.FashionItemContractDTO
 	if item.FashionItemID != nil {
 		fi = existingFI
 	}
