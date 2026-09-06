@@ -262,3 +262,5 @@ rag:
     recommendation_rewriter_max_semantic_length: 512
     recommendation_rewriter_max_lexical_terms: 24
     recommendation_rewriter_max_excluded_terms: 24
+cache:
+    overview_ttl_seconds: 60

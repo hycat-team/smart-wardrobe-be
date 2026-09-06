@@ -3,7 +3,6 @@ module smart-wardrobe-be
 go 1.25.7
 
 require (
-	github.com/gin-contrib/gzip v1.2.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0

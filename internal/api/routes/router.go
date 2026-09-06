@@ -9,7 +9,6 @@ import (
 	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 	"time"
 
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -33,7 +32,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
 	engine.Use(bodyLimit)
 	if cfg.Server.GzipEnabled {
-		engine.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/api/v1/ai/chat/sessions/*/messages/stream"})))
+		engine.Use(shared_middleware.GzipMinSizeMiddleware(cfg))
 	}
 	engine.Use(shared_middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())

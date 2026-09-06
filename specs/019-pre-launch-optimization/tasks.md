@@ -162,3 +162,15 @@ Phase 1 (Setup T001-T003) → Phase 2 (T004)
 - **Incremental**: US3 (hiệu năng) → US4 (vận hành) → US5 (bảo trì) mỗi story là một increment test được độc lập, commit theo story.
 - **Validation loop**: mỗi story kết thúc bằng gate riêng (mục Independent Test) trước khi sang story kế; gate toàn phần ở Phase 8 đối chiếu 8 success criteria.
 - Lưu ý Git Bash: dùng `make test`/`make test-race`/`make lint` (đã fix shell-aware), không chạy `make hygiene-scan` nếu không được phép.
+
+---
+
+## Phase 9: Convergence
+
+**Purpose**: Khoảng trống còn lại sau /speckit-implement — phát hiện bởi /speckit-converge (2026-09-06)
+
+- [x] T033 [P] Thêm unit test read-through cache ở tầng contract `internal/modules/subscription/presentation/contract/subscription_contract_impl_test.go`: cache hit → usecase KHÔNG được gọi; miss → usecase được gọi đúng 1 lần + cache được fill; usecase trả lỗi → cache không fill (SC-003, FR-007) per FR-007/SC-003 (partial)
+- [x] T034 [P] Thêm test tự động chứng minh SSE stream sống sót qua WriteTimeout `internal/shared/presentation/sse_test.go`: httptest server với WriteTimeout ngắn (vd 100ms), handler stream per-chunk qua ExtendSSEWriteDeadline kéo dài hơn nhiều lần WriteTimeout → assert đủ số chunk nhận được, không bị cắt (FR-003) per FR-003/US1 (partial)
+- [x] T035 [P] Thêm `cache.overview_ttl_seconds: 60` vào `configs/config.yaml` và `configs/config.production.yaml` để TTL cache tổng quan gói cấu hình được qua yaml đúng như spec (FR-008) per FR-008 (partial)
+- [x] T036 Thêm ngưỡng kích thước tối thiểu cho gzip (chỉ nén khi Content-Length >= 1KB, body không khai báo độ dài nén như mặc định) tại `internal/api/routes/router.go` — tránh nén vô ích cho response nhỏ per FR-009 (partial)
+- [x] T037 Ghi nhận quyết định không invalidate per-user khi admin SetPlanActive: thêm comment giải thích (TTL backstop + benefits snapshot nằm trên subscription row) tại `internal/modules/subscription/application/usecase/plan/plan_uc.go` hàm SetPlanActive per FR-008/US3 (partial)

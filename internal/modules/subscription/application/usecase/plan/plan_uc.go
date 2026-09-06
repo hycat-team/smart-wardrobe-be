@@ -161,6 +161,11 @@ func (uc *SubscriptionPlanUseCase) UpdatePlan(ctx context.Context, id uuid.UUID,
 
 // SetPlanActive toggles the active state of a subscription plan
 func (uc *SubscriptionPlanUseCase) SetPlanActive(ctx context.Context, id uuid.UUID, isActive bool) (*dto.SubscriptionPlanDTO, error) {
+	// NOTE (spec 019 FR-008): toggling plan activation is intentionally NOT
+	// invalidating the per-user subscription overview cache. The cached fields
+	// are derived from each user's subscription row (benefit snapshot), not
+	// from plan.IsActive, and a per-user sweep here would be a costly scan.
+	// The 60s overview TTL is the backstop for any user-visible staleness.
 	plan, err := uc.planRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
