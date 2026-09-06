@@ -182,6 +182,7 @@ lint: fmt-check vet
 test-integration:
 	@echo Running integration tests - requires TEST_RABBITMQ_URL / TEST_DATABASE_URL...
 	@go test -race -run Integration ./internal/shared/infrastructure/messaging/
+	@go test -race -run Integration ./internal/modules/subscription/...
 	@echo Integration tests finished.
 
 build:

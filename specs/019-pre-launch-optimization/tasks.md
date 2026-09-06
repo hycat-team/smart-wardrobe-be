@@ -65,13 +65,13 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Independent Test**: `make test-race` (unit) và `make test-integration` (integration, env-skip `TEST_DATABASE_URL`) pass; ma trận kịch bản khớp data-model.md §5.
 
-- [ ] T011 [US2] Unit test `internal/modules/subscription/application/usecase/purchase/checkout_test.go` (mock repo/uow): mua happy path; đang có giao dịch pending → tái sử dụng payment link; validate purchase thất bại
-- [ ] T012 [P] [US2] Unit test `internal/modules/subscription/application/usecase/quota/quota_test.go`: vượt hạn mức AI bị chặn với lỗi hạn mức; reset theo ngày khôi phục; ghi nhận sử dụng (outfit/chat) đúng
-- [ ] T013 [P] [US2] Unit test RBAC: `internal/modules/identity/presentation/middleware/` (roles authorize matrix: admin/user × admin routes; guest bị chặn) + test phân quyền brand portal trong `internal/modules/brand/presentation/middleware/` (owner/staff × portal routes)
-- [ ] T014 [US2] Unit test renewal workflow `internal/modules/subscription/application/usecase/subscription/renewal_test.go` (mock repo/uow/contract): phân nhánh gói finite/paid; toggle auto-renew đổi luồng; lỗi tải plan → fallback default plan
-- [ ] T015 [US2] Integration test `internal/modules/subscription/application/usecase/payment/webhook_integration_test.go` — **hàm test đặt tên tiền tố `TestIntegration...`** để khớp `-run Integration` của Makefile (pattern env-skip `TEST_DATABASE_URL` theo messaging integration_test.go): payment success apply đúng 1 lần (idempotent tái phát cùng order); giao dịch trùng bị bỏ qua an toàn; lệch số tiền → trạng thái phù hợp
-- [ ] T016 [US2] Integration test `internal/modules/subscription/application/usecase/subscription/renewal_integration_test.go` — **hàm test đặt tên tiền tố `TestIntegration...`**: gia hạn thành công apply đúng; thất bại → fallback default plan đúng trạng thái
-- [ ] T017 [US2] Mở rộng `Makefile` target `test-integration` chạy thêm `go test -race -run Integration ./internal/modules/subscription/...` (giữ nguyên messaging test hiện hành)
+- [x] T011 [US2] Unit test `internal/modules/subscription/application/usecase/purchase/checkout_test.go` (mock repo/uow): mua happy path; đang có giao dịch pending → tái sử dụng payment link; validate purchase thất bại
+- [x] T012 [P] [US2] Unit test `internal/modules/subscription/application/usecase/quota/quota_test.go`: vượt hạn mức AI bị chặn với lỗi hạn mức; reset theo ngày khôi phục; ghi nhận sử dụng (outfit/chat) đúng
+- [x] T013 [P] [US2] Unit test RBAC: `internal/modules/identity/presentation/middleware/` (roles authorize matrix: admin/user × admin routes; guest bị chặn) + test phân quyền brand portal trong `internal/modules/brand/presentation/middleware/` (owner/staff × portal routes)
+- [x] T014 [US2] Unit test renewal workflow `internal/modules/subscription/application/usecase/subscription/renewal_test.go` (mock repo/uow/contract): phân nhánh gói finite/paid; toggle auto-renew đổi luồng; lỗi tải plan → fallback default plan
+- [x] T015 [US2] Integration test `internal/modules/subscription/application/usecase/payment/webhook_integration_test.go` — **hàm test đặt tên tiền tố `TestIntegration...`** để khớp `-run Integration` của Makefile (pattern env-skip `TEST_DATABASE_URL` theo messaging integration_test.go): payment success apply đúng 1 lần (idempotent tái phát cùng order); giao dịch trùng bị bỏ qua an toàn; lệch số tiền → trạng thái phù hợp
+- [x] T016 [US2] Integration test `internal/modules/subscription/application/usecase/subscription/renewal_integration_test.go` — **hàm test đặt tên tiền tố `TestIntegration...`**: gia hạn thành công apply đúng; thất bại → fallback default plan đúng trạng thái
+- [x] T017 [US2] Mở rộng `Makefile` target `test-integration` chạy thêm `go test -race -run Integration ./internal/modules/subscription/...` (giữ nguyên messaging test hiện hành)
 
 ---
 
