@@ -207,6 +207,15 @@ type Server struct {
 	IdleTimeoutSeconds  int       `mapstructure:"idle_timeout_seconds"`
 	GzipEnabled         bool      `mapstructure:"gzip_enabled"`
 	BodyLimit           BodyLimit `mapstructure:"body_limit"`
+	SSE                 SSE       `mapstructure:"sse"`
+}
+
+// SSE configures per-event write deadlines for server-sent event streams.
+// AI chat streams get a looser window because LLM providers can stall longer
+// between tokens than local progress broadcasters.
+type SSE struct {
+	ChunkDeadlineSeconds       int `mapstructure:"chunk_deadline_seconds"`
+	AIChatChunkDeadlineSeconds int `mapstructure:"ai_chat_chunk_deadline_seconds"`
 }
 
 // BodyLimit configures the tiered request body size limit:

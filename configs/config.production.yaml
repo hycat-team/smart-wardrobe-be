@@ -9,6 +9,9 @@ server:
     write_timeout_seconds: 60
     idle_timeout_seconds: 120
     gzip_enabled: true
+    sse:
+        chunk_deadline_seconds: 90
+        ai_chat_chunk_deadline_seconds: 180
     body_limit:
         default_mb: 2
         elevated_mb: 10
