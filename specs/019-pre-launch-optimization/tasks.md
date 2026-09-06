@@ -108,10 +108,10 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Independent Test**: `wc -l` các file kết quả đạt ngưỡng; `grep fmt.Println` production rỗng; `make test-race` pass; swagger diff không đổi schema. Xem quickstart.md §US5.
 
-- [ ] T027 [US5] Tách `internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go` (501 dòng) theo ranh giới data-model.md §6: `wardrobe_item_handler.go` (CRUD item) + `wardrobe_catalog_handler.go` (system catalog + upload signature) — di chuyển message constants tương ứng, không đổi hành vi/route
-- [ ] T028 [US5] Tách `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` (495 dòng) thành orchestration + `renewal_payment.go` + `renewal_fallback.go`; extract `executePaidRenewal` (90 dòng) thành các hàm bước <80 dòng — pure refactor, không đổi logic
-- [ ] T029 [US5] Thay `fmt.Println` còn lại trong `internal/bootstrap/app.go` (banner + shutdown) bằng logger đã inject — **chạy sau T024** (migration.go cũng thay fmt.Println trong US4); xác nhận `grep -rn "fmt.Println" internal --include="*.go" | grep -v _test` trả rỗng
-- [ ] T030 [US5] Xác minh quickstart.md §US5: `wc -l` đạt ngưỡng, `make test-race` pass sau tách
+- [x] T027 [US5] Tách `internal/modules/wardrobe/presentation/handler/wardrobe_item_handler.go` (501 dòng) theo ranh giới data-model.md §6: `wardrobe_item_handler.go` (CRUD item) + `wardrobe_catalog_handler.go` (system catalog + upload signature) — di chuyển message constants tương ứng, không đổi hành vi/route
+- [x] T028 [US5] Tách `internal/modules/subscription/application/usecase/subscription/subscription_renewal_workflow.go` (495 dòng) thành orchestration + `renewal_payment.go` + `renewal_fallback.go`; extract `executePaidRenewal` (90 dòng) thành các hàm bước <80 dòng — pure refactor, không đổi logic
+- [x] T029 [US5] Thay `fmt.Println` còn lại trong `internal/bootstrap/app.go` (banner + shutdown) bằng logger đã inject — **chạy sau T024** (migration.go cũng thay fmt.Println trong US4); xác nhận `grep -rn "fmt.Println" internal --include="*.go" | grep -v _test` trả rỗng
+- [x] T030 [US5] Xác minh quickstart.md §US5: `wc -l` đạt ngưỡng, `make test-race` pass sau tách
 
 ---
 
@@ -119,8 +119,8 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Purpose**: Gate cuối cùng toàn feature
 
-- [ ] T031 Chạy `make generate` (wire + swagger) và audit swagger diff theo SC-008: không field công khai nào bị xóa/đổi — ghi kết quả vào quickstart checklist
-- [ ] T032 Chạy gate toàn phần: `make lint` + `make test-race` + `make test-integration` (khi có TEST_DATABASE_URL) + đi lần lượt quickstart.md từng section — đối chiếu SC-001..SC-008
+- [x] T031 Chạy `make generate` (wire + swagger) và audit swagger diff theo SC-008: không field công khai nào bị xóa/đổi — ghi kết quả vào quickstart checklist
+- [x] T032 Chạy gate toàn phần: `make lint` + `make test-race` + `make test-integration` (khi có TEST_DATABASE_URL) + đi lần lượt quickstart.md từng section — đối chiếu SC-001..SC-008
 
 ---
 
