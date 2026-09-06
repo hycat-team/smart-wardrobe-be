@@ -311,6 +311,9 @@ func (h *WardrobeAIHandler) StreamChatMessage(c *gin.Context) error {
 
 	var accumulated strings.Builder
 	for {
+		// Push the write deadline forward so long conversations survive the
+		// server-wide WriteTimeout (spec 019 FR-003).
+		shared_pres.ExtendSSEWriteDeadline(c)
 		select {
 		case <-c.Request.Context().Done():
 			return nil

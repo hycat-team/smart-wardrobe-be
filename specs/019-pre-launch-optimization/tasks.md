@@ -50,12 +50,12 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Independent Test**: curl body >2MB vào route mặc định → 413 chuẩn; body lớn vào route tầng nâng → không 413; slowloris unit test → đóng sau read timeout; stream handler không bị cắt write deadline (verify stream > 60s — xem T010). Xem quickstart.md §US1.
 
-- [ ] T005 [US1] Tạo middleware `internal/shared/presentation/middleware/body_limit.go`: wrap `http.MaxBytesReader` theo tier table (free registry config → elevated patterns `POST /api/v1/ai/*`, brand chat/portal/admin, user-write brand → default 2MB) — pattern chi tiết tại research.md D2; trả 413 qua `NewRequestEntityTooLarge`; log có cấu trúc method/path/tier/content-length khi từ chối
-- [ ] T006 [P] [US1] Unit test `internal/shared/presentation/middleware/body_limit_test.go`: 413 đúng envelope ở tầng default; route tầng nâng nhận >2MB; route trong free registry bỏ qua wrap; sai pattern không nắn tier
-- [ ] T007 [US1] Đăng ký `BodyLimitMiddleware` trong `internal/api/routes/router.go` (sau GlobalErrorHandler, trước rate-limit)
-- [ ] T008 [US1] Gia hạn write deadline cho SSE: handler `StreamChatMessage` trong `internal/modules/fashion/presentation/handler/fashion_ai_handler.go` dùng `http.NewResponseController(c.Writer).SetWriteDeadline(...)` theo từng chunk ghi ra (không đổi hành vi stream khác)
-- [ ] T009 [US1] Gắn `ReadTimeout/WriteTimeout/IdleTimeout` cho `http.Server` trong `internal/bootstrap/app.go` đọc từ config mới
-- [ ] T010 [US1] Xác minh theo quickstart.md §US1: chạy curl 413 + unit slowloris/timeout + **verify SSE dài: stream giả lập kéo dài > write timeout (60s) vẫn truyền dữ liệu không bị cắt**; `make test-race ./internal/shared/presentation/middleware/...` pass
+- [x] T005 [US1] Tạo middleware `internal/shared/presentation/middleware/body_limit.go`: wrap `http.MaxBytesReader` theo tier table (free registry config → elevated patterns `POST /api/v1/ai/*`, brand chat/portal/admin, user-write brand → default 2MB) — pattern chi tiết tại research.md D2; trả 413 qua `NewRequestEntityTooLarge`; log có cấu trúc method/path/tier/content-length khi từ chối
+- [x] T006 [P] [US1] Unit test `internal/shared/presentation/middleware/body_limit_test.go`: 413 đúng envelope ở tầng default; route tầng nâng nhận >2MB; route trong free registry bỏ qua wrap; sai pattern không nắn tier
+- [x] T007 [US1] Đăng ký `BodyLimitMiddleware` trong `internal/api/routes/router.go` (sau GlobalErrorHandler, trước rate-limit)
+- [x] T008 [US1] Gia hạn write deadline cho SSE: handler `StreamChatMessage` trong `internal/modules/fashion/presentation/handler/fashion_ai_handler.go` dùng `http.NewResponseController(c.Writer).SetWriteDeadline(...)` theo từng chunk ghi ra (không đổi hành vi stream khác)
+- [x] T009 [US1] Gắn `ReadTimeout/WriteTimeout/IdleTimeout` cho `http.Server` trong `internal/bootstrap/app.go` đọc từ config mới
+- [x] T010 [US1] Xác minh theo quickstart.md §US1: chạy curl 413 + unit slowloris/timeout + **verify SSE dài: stream giả lập kéo dài > write timeout (60s) vẫn truyền dữ liệu không bị cắt**; `make test-race ./internal/shared/presentation/middleware/...` pass
 
 ---
 

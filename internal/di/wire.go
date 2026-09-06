@@ -44,6 +44,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		admin.ProviderSet,
 
 		shared_middleware.NewRateLimitMiddleware,
+		shared_middleware.NewBodyLimitMiddleware,
 		routes.RouterSet,
 		routes.NewEngine,
 		wire.Struct(new(bootstrap.AppWorkers), "*"),

@@ -90,8 +90,11 @@ func (a *App) Run() error {
 	port := a.Config.Server.Port
 
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: a.Server,
+		Addr:         ":" + port,
+		Handler:      a.Server,
+		ReadTimeout:  time.Duration(a.Config.Server.ReadTimeoutSeconds) * time.Second,
+		WriteTimeout: time.Duration(a.Config.Server.WriteTimeoutSeconds) * time.Second,
+		IdleTimeout:  time.Duration(a.Config.Server.IdleTimeoutSeconds) * time.Second,
 	}
 
 	fmt.Println("==========================================================")

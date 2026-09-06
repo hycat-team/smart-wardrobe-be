@@ -283,7 +283,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		AdminRouter:        router15,
 	}
 	rateLimitMiddleware := middleware3.NewRateLimitMiddleware(cfg)
-	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
+	handlerFunc := middleware3.NewBodyLimitMiddleware(cfg, l)
+	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware, handlerFunc)
 	subscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
 	paymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)

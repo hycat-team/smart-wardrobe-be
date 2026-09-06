@@ -13,7 +13,7 @@ import (
 )
 
 // NewEngine configures the Gin engine and suppresses verbose route registration logs at startup.
-func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *shared_middleware.RateLimitMiddleware) *gin.Engine {
+func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *shared_middleware.RateLimitMiddleware, bodyLimit gin.HandlerFunc) *gin.Engine {
 	if cfg.Server.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -30,6 +30,7 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 
 	engine.Use(shared_middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
+	engine.Use(bodyLimit)
 	engine.Use(shared_middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
 

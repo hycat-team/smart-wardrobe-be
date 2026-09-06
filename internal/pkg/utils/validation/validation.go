@@ -212,6 +212,15 @@ func TranslateValidationError(err error) *apperror.Error {
 		)
 	}
 
+	// Bodies exceeding the tiered limit are capped by http.MaxBytesReader
+	// (spec 019 FR-002); the read failure surfaces here as *http.MaxBytesError.
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return apperror.NewRequestEntityTooLarge(
+			fmt.Sprintf("Dữ liệu gửi lên vượt quá giới hạn %dMB.", maxBytesErr.Limit>>20),
+		)
+	}
+
 	return apperror.NewBadRequest(err.Error())
 }
 
