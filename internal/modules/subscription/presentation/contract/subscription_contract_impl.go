@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	subscriptioncaching "smart-wardrobe-be/internal/modules/subscription/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 
@@ -11,19 +12,29 @@ import (
 )
 
 type UserSubscriptionContract struct {
-	subUC uc_interfaces.ISubscriptionUseCase
+	subUC         uc_interfaces.ISubscriptionUseCase
+	overviewCache subscriptioncaching.ISubscriptionOverviewCache
 }
 
-func NewUserSubscriptionContract(subUC uc_interfaces.ISubscriptionUseCase) IUserSubscriptionContract {
-	return &UserSubscriptionContract{subUC: subUC}
+func NewUserSubscriptionContract(subUC uc_interfaces.ISubscriptionUseCase, overviewCache subscriptioncaching.ISubscriptionOverviewCache) IUserSubscriptionContract {
+	return &UserSubscriptionContract{subUC: subUC, overviewCache: overviewCache}
 }
 
+// GetUserSubscriptionOverview serves the AI hot path from the per-user cache
+// (spec 019 FR-007): hit → contract DTO; miss/failure → use case + fill cache.
+// Daily quota counters are never cached — they flow through IUserQuotaContract.
 func (c *UserSubscriptionContract) GetUserSubscriptionOverview(ctx context.Context, userID uuid.UUID) (*dto.UserSubscriptionContractDTO, error) {
+	if entry, err := c.overviewCache.Get(ctx, userID); err == nil && entry != nil {
+		return mapper.CacheEntryToContractDTO(entry), nil
+	}
+
 	res, err := c.subUC.GetUserSubscriptionOverview(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	return mapper.MapUserSubscriptionOverviewToContractDTO(res), nil
+	contractDTO := mapper.MapUserSubscriptionOverviewToContractDTO(res)
+	_ = c.overviewCache.Set(ctx, userID, mapper.ContractDTOToCacheEntry(contractDTO))
+	return contractDTO, nil
 }
 
 func (c *UserSubscriptionContract) GetUserSubscriptionOverviews(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*dto.UserSubscriptionContractDTO, error) {

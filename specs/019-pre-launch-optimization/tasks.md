@@ -81,11 +81,11 @@ Go module `smart-wardrobe-be` — paths theo cấu trúc `internal/` hiện hàn
 
 **Independent Test**: unit cache hit/miss/fallback + invalidation; log invalidation xuất hiện khi mua/gia hạn; tắt Redis request AI vẫn chạy. Xem quickstart.md §US3.
 
-- [ ] T018 [US3] Tạo interface `ISubscriptionOverviewCache` (Get/Delete theo userID) tại `internal/modules/subscription/application/interface/caching/overview_cache.go` + cache entry struct theo data-model.md §3
-- [ ] T019 [US3] Redis impl `internal/modules/subscription/infrastructure/caching/redis_overview_cache.go` (key `sub:overview:{userID}`, TTL từ config `cache.overview_ttl_seconds` mặc định 60, lỗi Redis → miss an toàn) + wire provider trong `internal/di/wire.go`
-- [ ] T020 [US3] Read-through tại `internal/modules/subscription/presentation/contract/subscription_contract_impl.go`: cache hit trả entry → map sang `UserSubscriptionContractDTO`; miss → gọi usecase như cũ rồi fill cache (mapper tại `application/mapper/subscription.go`)
-- [ ] T021 [US3] Gọi `Delete(userID)` + log invalidation tại các mutation: apply sau checkout (`purchase/checkout.go`), renewal apply thành công (`subscription_renewal_workflow.go`), admin set plan active, set auto-renew toggle, webhook reconciliation apply
-- [ ] T022 [US3] Unit test cache: hit/miss/fallback-lỗi-Redis; invalidation được gọi ở từng mutation point; xác nhận quota (`IUserQuotaContract`) không đụng cache
+- [x] T018 [US3] Tạo interface `ISubscriptionOverviewCache` (Get/Delete theo userID) tại `internal/modules/subscription/application/interface/caching/overview_cache.go` + cache entry struct theo data-model.md §3
+- [x] T019 [US3] Redis impl `internal/modules/subscription/infrastructure/caching/redis_overview_cache.go` (key `sub:overview:{userID}`, TTL từ config `cache.overview_ttl_seconds` mặc định 60, lỗi Redis → miss an toàn) + wire provider trong `internal/di/wire.go`
+- [x] T020 [US3] Read-through tại `internal/modules/subscription/presentation/contract/subscription_contract_impl.go`: cache hit trả entry → map sang `UserSubscriptionContractDTO`; miss → gọi usecase như cũ rồi fill cache (mapper tại `application/mapper/subscription.go`)
+- [x] T021 [US3] Gọi `Delete(userID)` + log invalidation tại các mutation: apply sau checkout (`purchase/checkout.go`), renewal apply thành công (`subscription_renewal_workflow.go`), admin set plan active, set auto-renew toggle, webhook reconciliation apply
+- [x] T022 [US3] Unit test cache: hit/miss/fallback-lỗi-Redis; invalidation được gọi ở từng mutation point; xác nhận quota (`IUserQuotaContract`) không đụng cache
 
 ---
 

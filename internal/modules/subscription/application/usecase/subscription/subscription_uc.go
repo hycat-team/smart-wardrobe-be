@@ -8,6 +8,7 @@ import (
 	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
+	subscriptioncaching "smart-wardrobe-be/internal/modules/subscription/application/interface/caching"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/plankind"
@@ -37,6 +38,7 @@ type SubscriptionUseCase struct {
 	planUseCase   uc_interfaces.ISubscriptionPlanUseCase
 	quotaUseCase  uc_interfaces.IUserQuotaUseCase
 	notifContract notificationContract.INotificationContract
+	overviewCache subscriptioncaching.ISubscriptionOverviewCache
 }
 
 // NewSubscriptionUseCase builds the subscription application service and its state helpers.
@@ -54,6 +56,7 @@ func NewSubscriptionUseCase(
 	planUseCase uc_interfaces.ISubscriptionPlanUseCase,
 	quotaUseCase uc_interfaces.IUserQuotaUseCase,
 	notifContract notificationContract.INotificationContract,
+	overviewCache subscriptioncaching.ISubscriptionOverviewCache,
 ) uc_interfaces.ISubscriptionUseCase {
 	return &SubscriptionUseCase{
 		uow:                uow,
@@ -70,6 +73,7 @@ func NewSubscriptionUseCase(
 		planUseCase:        planUseCase,
 		quotaUseCase:       quotaUseCase,
 		notifContract:      notifContract,
+		overviewCache:      overviewCache,
 	}
 }
 
@@ -127,6 +131,9 @@ func (uc *SubscriptionUseCase) SetAutoRenewStatus(ctx context.Context, userID uu
 	})
 	if err != nil {
 		return false, err
+	}
+	if uc.overviewCache != nil {
+		_ = uc.overviewCache.Invalidate(ctx, userID)
 	}
 	return result, nil
 }

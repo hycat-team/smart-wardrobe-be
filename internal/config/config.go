@@ -28,6 +28,14 @@ type Config struct {
 	Outbox             OutboxConfig               `mapstructure:"outbox"`
 	Admin              AdminConfig                `mapstructure:"admin"`
 	BrandFeatureAccess BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
+	Cache              CacheConfig                `mapstructure:"cache"`
+}
+
+// CacheConfig holds TTL configuration for application caches.
+type CacheConfig struct {
+	// OverviewTTLSeconds is the TTL of the subscription overview cache served
+	// to AI hot paths via IUserSubscriptionContract (default 60 seconds).
+	OverviewTTLSeconds int `mapstructure:"overview_ttl_seconds"`
 }
 
 type AdminConfig struct {

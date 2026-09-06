@@ -190,6 +190,7 @@ func newWebhookUseCase(dbConn *gorm.DB) ucInterfaces.IPaymentWebhookUseCase {
 		&integrationNotif{},
 		&integrationBrief{},
 		zap.NewNop(),
+		nil,
 	)
 }
 

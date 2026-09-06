@@ -222,6 +222,11 @@ func (uc *SubscriptionUseCase) processSingleScheduledRenewal(
 	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		return uc.executeScheduledRenewal(txCtx, sub.UserID, freePlanID, now, &result)
 	})
+	if err == nil && (result.Status == renewalStatusRenewed || result.Status == renewalStatusDowngraded) && uc.overviewCache != nil {
+		// The overview changed (extension or downgrade) — drop the cached entry
+		// after the transaction commits (spec 019 FR-008).
+		_ = uc.overviewCache.Invalidate(ctx, sub.UserID)
+	}
 	return result, err
 }
 

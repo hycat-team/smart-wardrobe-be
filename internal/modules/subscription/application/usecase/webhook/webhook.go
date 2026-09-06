@@ -9,6 +9,7 @@ import (
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
+	subscriptioncaching "smart-wardrobe-be/internal/modules/subscription/application/interface/caching"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
@@ -61,6 +62,7 @@ type PaymentWebhookUseCase struct {
 	notifContract         notificationContract.INotificationContract
 	userBriefContract     identity_contract.IUserBriefContract
 	log                   logger.Interface
+	overviewCache         subscriptioncaching.ISubscriptionOverviewCache
 }
 
 func NewPaymentWebhookUseCase(
@@ -78,6 +80,7 @@ func NewPaymentWebhookUseCase(
 	notifContract notificationContract.INotificationContract,
 	userBriefContract identity_contract.IUserBriefContract,
 	log logger.Interface,
+	overviewCache subscriptioncaching.ISubscriptionOverviewCache,
 ) uc_interfaces.IPaymentWebhookUseCase {
 	return &PaymentWebhookUseCase{
 		cfg:                   cfg,
@@ -94,6 +97,7 @@ func NewPaymentWebhookUseCase(
 		notifContract:         notifContract,
 		userBriefContract:     userBriefContract,
 		log:                   log,
+		overviewCache:         overviewCache,
 	}
 }
 
@@ -147,6 +151,11 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	}
 	if inbox != nil {
 		_ = uc.inboxRepo.MarkProcessed(ctx, inbox.ID, time.Now().UTC())
+	}
+	// The payment may have upgraded/downgraded the subscription — drop the
+	// cached overview after success (spec 019 FR-008).
+	if uc.overviewCache != nil {
+		_ = uc.overviewCache.Invalidate(ctx, tx.UserID)
 	}
 
 	uc.log.Info("Processed payment webhook successfully",

@@ -171,5 +171,9 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		return err
 	}
 
+	if uc.overviewCache != nil {
+		_ = uc.overviewCache.Invalidate(ctx, userID)
+	}
+
 	return nil
 }

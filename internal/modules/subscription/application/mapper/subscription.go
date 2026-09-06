@@ -2,7 +2,9 @@ package mapper
 
 import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
+	caching "smart-wardrobe-be/internal/modules/subscription/application/interface/caching"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -116,4 +118,41 @@ func BuildAdminUserSubscriptionItemDTOList(subs []*entities.UserSubscription, pl
 		result = append(result, BuildAdminUserSubscriptionItemDTO(sub, plan))
 	}
 	return result
+}
+
+// ContractDTOToCacheEntry converts the contract payload into the cache entry.
+func ContractDTOToCacheEntry(dto *dto.UserSubscriptionContractDTO) *caching.SubscriptionOverviewCacheEntry {
+	if dto == nil {
+		return nil
+	}
+	return &caching.SubscriptionOverviewCacheEntry{
+		PlanID:             dto.PlanID,
+		PlanName:           dto.PlanName,
+		PlanSlug:           dto.PlanSlug,
+		ExpiresAt:          dto.ExpiresAt,
+		IsAutoRenewEnabled: dto.IsAutoRenewEnabled,
+		MaxWardrobeItems:   dto.MaxWardrobeItems,
+		MaxOutfits:         dto.MaxOutfits,
+		AiOutfitDailyQuota: dto.AiOutfitDailyQuota,
+		AiChatDailyQuota:   dto.AiChatDailyQuota,
+		CachedAt:           time.Now().UTC()}
+}
+
+// CacheEntryToContractDTO converts a cached overview entry back into the
+// contract payload served to AI hot paths.
+func CacheEntryToContractDTO(entry *caching.SubscriptionOverviewCacheEntry) *dto.UserSubscriptionContractDTO {
+	if entry == nil {
+		return nil
+	}
+	return &dto.UserSubscriptionContractDTO{
+		PlanID:             entry.PlanID,
+		PlanName:           entry.PlanName,
+		PlanSlug:           entry.PlanSlug,
+		ExpiresAt:          entry.ExpiresAt,
+		IsAutoRenewEnabled: entry.IsAutoRenewEnabled,
+		MaxWardrobeItems:   entry.MaxWardrobeItems,
+		MaxOutfits:         entry.MaxOutfits,
+		AiOutfitDailyQuota: entry.AiOutfitDailyQuota,
+		AiChatDailyQuota:   entry.AiChatDailyQuota,
+	}
 }
