@@ -189,11 +189,26 @@ type Redis struct {
 }
 
 type Server struct {
-	Port              string `mapstructure:"port"`
-	FrontEndOrigin    string `mapstructure:"front_end_origin"`
-	TimeoutSeconds    int    `mapstructure:"timeout_seconds"`
-	Env               string `mapstructure:"env"`
-	SwaggerAccessCode string `mapstructure:"swagger_access_code"`
+	Port                string    `mapstructure:"port"`
+	FrontEndOrigin      string    `mapstructure:"front_end_origin"`
+	TimeoutSeconds      int       `mapstructure:"timeout_seconds"`
+	Env                 string    `mapstructure:"env"`
+	SwaggerAccessCode   string    `mapstructure:"swagger_access_code"`
+	ReadTimeoutSeconds  int       `mapstructure:"read_timeout_seconds"`
+	WriteTimeoutSeconds int       `mapstructure:"write_timeout_seconds"`
+	IdleTimeoutSeconds  int       `mapstructure:"idle_timeout_seconds"`
+	GzipEnabled         bool      `mapstructure:"gzip_enabled"`
+	BodyLimit           BodyLimit `mapstructure:"body_limit"`
+}
+
+// BodyLimit configures the tiered request body size limit:
+// DefaultMB applies to every route, ElevatedMB to the routes matched by the
+// elevated tier patterns (see shared/presentation/middleware body limit), and
+// FreeRoutes lists `METHOD prefix` entries that bypass the limit entirely.
+type BodyLimit struct {
+	DefaultMB  int      `mapstructure:"default_mb"`
+	ElevatedMB int      `mapstructure:"elevated_mb"`
+	FreeRoutes []string `mapstructure:"free_routes"`
 }
 
 type Jwt struct {

@@ -5,6 +5,14 @@ server:
     port: "8080"
     front_end_origin: http://localhost:3000,http://localhost:8081
     timeout_seconds: 30
+    read_timeout_seconds: 30
+    write_timeout_seconds: 60
+    idle_timeout_seconds: 120
+    gzip_enabled: true
+    body_limit:
+        default_mb: 2
+        elevated_mb: 10
+        free_routes: []
     env: development
     swagger_access_code: "${SWAGGER_ACCESS_CODE}"
 startup:

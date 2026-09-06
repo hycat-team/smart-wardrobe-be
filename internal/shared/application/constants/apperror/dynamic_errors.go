@@ -18,6 +18,10 @@ func NewTooManyRequest(detail string) *Error {
 	return New(http.StatusTooManyRequests, "Quá nhiều yêu cầu", detail)
 }
 
+func NewRequestEntityTooLarge(detail string) *Error {
+	return New(http.StatusRequestEntityTooLarge, "Dữ liệu gửi lên quá lớn", detail)
+}
+
 func NewConflict(detail string) *Error {
 	return New(http.StatusConflict, "Dữ liệu bị trùng lặp", detail)
 }

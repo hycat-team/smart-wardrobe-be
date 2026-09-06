@@ -76,6 +76,10 @@ func NewApp(
 }
 
 func (a *App) Run() error {
+	if err := ValidateServerHardening(a.Config); err != nil {
+		return fmt.Errorf("server hardening config validation failed: %w", err)
+	}
+
 	if err := db.RunMigrations(context.Background(), a.DB); err != nil {
 		return fmt.Errorf("database migration failed: %w", err)
 	}
