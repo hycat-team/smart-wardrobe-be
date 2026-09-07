@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -92,15 +93,8 @@ func TestLoadConfigValidatesRequiredSecret(t *testing.T) {
 
 func TestLoadConfigRejectsProductionWildcardOrigin(t *testing.T) {
 	prepareConfigTest(t, func(value string) string {
-		value = strings.Replace(value, "env: development", "env: production", 1)
-		lines := strings.Split(value, "\n")
-		for i, line := range lines {
-			if strings.Contains(line, "front_end_origin:") {
-				lines[i] = "    front_end_origin: '*'"
-				break
-			}
-		}
-		return strings.Join(lines, "\n")
+		value = regexp.MustCompile(`(?m)^(\s*env:).*$`).ReplaceAllString(value, "${1} production")
+		return regexp.MustCompile(`(?m)^(\s*front_end_origin:).*$`).ReplaceAllString(value, "${1} '*'")
 	})
 	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "wildcard") {
 		t.Fatalf("expected production validation error, got %v", err)
@@ -151,9 +145,10 @@ func TestLoadConfigBindsOutboxConfig(t *testing.T) {
 
 func TestLoadConfigRejectsInvalidOutboxConfig(t *testing.T) {
 	prepareConfigTest(t, func(value string) string {
-		return strings.Replace(value, "    retry_max_attempts: 3", "    retry_max_attempts: 0", 1)
+		return regexp.MustCompile(`(?m)^(\s*retry_max_attempts:).*$`).ReplaceAllString(value, "${1} 0")
 	})
 	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "outbox") {
 		t.Fatalf("expected outbox validation error, got %v", err)
 	}
 }
+

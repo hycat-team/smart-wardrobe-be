@@ -2,270 +2,270 @@
 # Application Core
 # ============================================================
 server:
-  port: "8080"
-  front_end_origin: http://localhost:3000,http://localhost:8081
-  timeout_seconds: 300
-  read_timeout_seconds: 30
-  write_timeout_seconds: 60
-  idle_timeout_seconds: 120
-  gzip_enabled: true
-  sse:
-    chunk_deadline_seconds: 90
-    ai_chat_chunk_deadline_seconds: 180
-  body_limit:
-    default_mb: 2
-    elevated_mb: 10
-    free_routes: []
-  env: development
-  swagger_access_code: "${SWAGGER_ACCESS_CODE}"
+    port: "8080"
+    front_end_origin: http://localhost:3000,http://localhost:8081
+    timeout_seconds: 300
+    read_timeout_seconds: 30
+    write_timeout_seconds: 60
+    idle_timeout_seconds: 120
+    gzip_enabled: true
+    sse:
+        chunk_deadline_seconds: 90
+        ai_chat_chunk_deadline_seconds: 180
+    body_limit:
+        default_mb: 2
+        elevated_mb: 10
+        free_routes: []
+    env: development
+    swagger_access_code: "${SWAGGER_ACCESS_CODE}"
 startup:
-  retry_attempt_1_seconds: 5
-  retry_attempt_2_seconds: 15
-  retry_attempt_3_seconds: 30
+    retry_attempt_1_seconds: 5
+    retry_attempt_2_seconds: 15
+    retry_attempt_3_seconds: 30
 logger:
-  log_level: info
-  file_path: ./logs/app.log
-  log_to_file: false
+    log_level: info
+    file_path: ./logs/app.log
+    log_to_file: false
 jwt:
-  secret: "${JWT_SECRET}"
-  issuer: SmartWardrobe
-  audience: SmartWardrobeUsers
-  access_expiration_minutes: 60
-  refresh_expiration_days: 30
-  forgot_password_expiration_minutes: 15
+    secret: "${JWT_SECRET}"
+    issuer: SmartWardrobe
+    audience: SmartWardrobeUsers
+    access_expiration_minutes: 60
+    refresh_expiration_days: 30
+    forgot_password_expiration_minutes: 15
 
 # ============================================================
 # Infrastructure - Data Stores
 # ============================================================
 database:
-  host: localhost
-  port: 5432
-  user: "${DB_USER}"
-  password: "${DB_PASSWORD}"
-  db_name: "${DB_NAME}"
-  ssl_mode: disable
-  time_zone: Asia/Ho_Chi_Minh
-  max_idle_conns: 10
-  max_open_conns: 30
-  conn_max_lifetime: 1h
-  search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+    host: localhost
+    port: 5432
+    user: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    db_name: "${DB_NAME}"
+    ssl_mode: disable
+    time_zone: Asia/Ho_Chi_Minh
+    max_idle_conns: 10
+    max_open_conns: 30
+    conn_max_lifetime: 1h
+    search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
 redis:
-  host: localhost
-  port: 6379
-  password: "${REDIS_PASSWORD}"
-  db: 0
+    host: localhost
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    db: 0
 elasticsearch:
-  addresses: [http://localhost:9200]
-  user: "${ELASTICSEARCH_USER}"
-  password: "${ELASTICSEARCH_PASSWORD}"
+    addresses: [http://localhost:9200]
+    user: "${ELASTICSEARCH_USER}"
+    password: "${ELASTICSEARCH_PASSWORD}"
 
 # ============================================================
 # Infrastructure - Messaging & Events
 # ============================================================
 rabbitmq:
-  host: localhost
-  port: 5672
-  user: "${RABBITMQ_USER}"
-  password: "${RABBITMQ_PASSWORD}"
-  prefetch: 5
-  consumer_concurrency: 1
-  delivery_limit: 5
-  management_port: 15672
+    host: localhost
+    port: 5672
+    user: "${RABBITMQ_USER}"
+    password: "${RABBITMQ_PASSWORD}"
+    prefetch: 5
+    consumer_concurrency: 1
+    delivery_limit: 5
+    management_port: 15672
 outbox:
-  retry_max_attempts: 3
-  retry_interval_minutes: 5
-  cleanup_retention_days: 7
-  cleanup_interval_minutes: 60
-  batch_size: 50
+    retry_max_attempts: 3
+    retry_interval_minutes: 5
+    cleanup_retention_days: 7
+    cleanup_interval_minutes: 60
+    batch_size: 50
 
 # ============================================================
 # Infrastructure - External Services
 # ============================================================
 cloudinary:
-  cloud_name: "${CLOUDINARY_CLOUD_NAME}"
-  api_key: "${CLOUDINARY_API_KEY}"
-  api_secret: "${CLOUDINARY_API_SECRET}"
-  api_url: "${CLOUDINARY_API_URL}"
-  avatar_folder: smart_wardrobe/avatars
-  brands_folder: smart_wardrobe/brands
-  item_folder: smart_wardrobe/items
-  outfit_folder: smart_wardrobe/outfits
-  post_folder: smart_wardrobe/posts
+    cloud_name: "${CLOUDINARY_CLOUD_NAME}"
+    api_key: "${CLOUDINARY_API_KEY}"
+    api_secret: "${CLOUDINARY_API_SECRET}"
+    api_url: "${CLOUDINARY_API_URL}"
+    avatar_folder: smart_wardrobe/avatars
+    brands_folder: smart_wardrobe/brands
+    item_folder: smart_wardrobe/items
+    outfit_folder: smart_wardrobe/outfits
+    post_folder: smart_wardrobe/posts
 email:
-  host: smtp.resend.com
-  port: 587
-  sender_name: SmartWardrobe
-  sender_email: "${EMAIL_SENDER_EMAIL}"
-  smtp_user: "${EMAIL_SMTP_USER}"
-  smtp_key: "${EMAIL_SMTP_KEY}"
-  reply_to: "${EMAIL_REPLY_TO}"
+    host: smtp.resend.com
+    port: 587
+    sender_name: SmartWardrobe
+    sender_email: "${EMAIL_SENDER_EMAIL}"
+    smtp_user: "${EMAIL_SMTP_USER}"
+    smtp_key: "${EMAIL_SMTP_KEY}"
+    reply_to: "${EMAIL_REPLY_TO}"
 payos:
-  client_id: "${PAYOS_CLIENT_ID}"
-  api_key: "${PAYOS_API_KEY}"
-  checksum_key: "${PAYOS_CHECKSUM_KEY}"
-  endpoint: "${PAYOS_ENDPOINT}"
-  return_url: http://localhost:3000
-  cancel_url: http://localhost:3000
-  expired_minutes: 15
-  reconciliation_cron: "0 */10 * * * *"
-  reconciliation_batch_size: 50
-  reconciliation_lease_seconds: 45
-  reconciliation_max_attempts: 20
-  reconciliation_max_age_hours: 168
+    client_id: "${PAYOS_CLIENT_ID}"
+    api_key: "${PAYOS_API_KEY}"
+    checksum_key: "${PAYOS_CHECKSUM_KEY}"
+    endpoint: "${PAYOS_ENDPOINT}"
+    return_url: http://localhost:3000
+    cancel_url: http://localhost:3000
+    expired_minutes: 15
+    reconciliation_cron: "0 */10 * * * *"
+    reconciliation_batch_size: 50
+    reconciliation_lease_seconds: 45
+    reconciliation_max_attempts: 20
+    reconciliation_max_age_hours: 168
 
 # ============================================================
 # Security & Rate Limiting
 # ============================================================
 rate_limit:
-  token_limit: 100
-  tokens_per_period: 20
-  replenishment_seconds: 10
+    token_limit: 100
+    tokens_per_period: 20
+    replenishment_seconds: 10
 claim_rate_limit:
-  ip_limit: 20
-  user_limit: 10
-  token_limit: 5
-  window_seconds: 600
+    ip_limit: 20
+    user_limit: 10
+    token_limit: 5
+    window_seconds: 600
 
 # ============================================================
 # Business - User & Auth
 # ============================================================
 otp:
-  max_attempts: 5
-  expiry_minutes: 5
-  resend_interval_seconds: 60
+    max_attempts: 5
+    expiry_minutes: 5
+    resend_interval_seconds: 60
 quota:
-  default_wardrobe_limit: 100
-  default_ai_outfit_limit: 3
-  default_ai_chat_limit: 3
+    default_wardrobe_limit: 100
+    default_ai_outfit_limit: 3
+    default_ai_chat_limit: 3
 
 # ============================================================
 # Business - Brand & Loyalty
 # ============================================================
 loyalty:
-  expiry_worker_enabled: true
-  expiry_worker_interval: 1h
-  expiry_worker_batch_size: 100
+    expiry_worker_enabled: true
+    expiry_worker_interval: 1h
+    expiry_worker_batch_size: 100
 brand_membership:
-  ttl: 5m
+    ttl: 5m
 brand_feature_access:
-  ttl: 15m
+    ttl: 15m
 
 # ============================================================
 # Business - Domain Features
 # ============================================================
 community:
-  max_personalized_window: 100
+    max_personalized_window: 100
 wardrobe:
-  retry_delay_1_seconds: 60
-  retry_delay_2_seconds: 300
-  retry_delay_3_seconds: 900
-  stale_minutes: 20
-  max_retry_count: 3
-  recovery_scan_cron: "0 */5 * * * *"
-  category_cache_ttl_seconds: 300
+    retry_delay_1_seconds: 60
+    retry_delay_2_seconds: 300
+    retry_delay_3_seconds: 900
+    stale_minutes: 20
+    max_retry_count: 3
+    recovery_scan_cron: "0 */5 * * * *"
+    category_cache_ttl_seconds: 300
 subscription:
-  max_retry_attempts: 3
-  wallet_balance_warning_days: 7
+    max_retry_attempts: 3
+    wallet_balance_warning_days: 7
 admin:
-  audit_retention_months: 12
+    audit_retention_months: 12
 
 # ============================================================
 # AI & Recommendation
 # ============================================================
 ai:
-  vision_primary:
-    provider: "${VISION_PRIMARY_PROVIDER}"
-    api_key: "${VISION_PRIMARY_API_KEY}"
-    endpoint: "${VISION_PRIMARY_ENDPOINT}"
-    model: "${VISION_PRIMARY_MODEL}"
-  vision_fallback:
-    provider: "${VISION_FALLBACK_PROVIDER}"
-    api_key: "${VISION_FALLBACK_API_KEY}"
-    endpoint: "${VISION_FALLBACK_ENDPOINT}"
-    model: "${VISION_FALLBACK_MODEL}"
-  embedding_primary:
-    provider: "${EMBEDDING_PRIMARY_PROVIDER}"
-    api_key: "${EMBEDDING_PRIMARY_API_KEY}"
-    endpoint: "${EMBEDDING_PRIMARY_ENDPOINT}"
-    model: "${EMBEDDING_PRIMARY_MODEL}"
-  embedding_fallback:
-    provider: "${EMBEDDING_FALLBACK_PROVIDER}"
-    api_key: "${EMBEDDING_FALLBACK_API_KEY}"
-    endpoint: "${EMBEDDING_FALLBACK_ENDPOINT}"
-    model: "${EMBEDDING_FALLBACK_MODEL}"
-  chat_text_primary:
-    provider: "${CHAT_TEXT_PRIMARY_PROVIDER}"
-    api_key: "${CHAT_TEXT_PRIMARY_API_KEY}"
-    endpoint: "${CHAT_TEXT_PRIMARY_ENDPOINT}"
-    model: "${CHAT_TEXT_PRIMARY_MODEL}"
-  chat_text_fallback:
-    provider: "${CHAT_TEXT_FALLBACK_PROVIDER}"
-    api_key: "${CHAT_TEXT_FALLBACK_API_KEY}"
-    endpoint: "${CHAT_TEXT_FALLBACK_ENDPOINT}"
-    model: "${CHAT_TEXT_FALLBACK_MODEL}"
-  recommendation_text_primary:
-    provider: "${RECOMMENDATION_TEXT_PRIMARY_PROVIDER}"
-    api_key: "${RECOMMENDATION_TEXT_PRIMARY_API_KEY}"
-    endpoint: "${RECOMMENDATION_TEXT_PRIMARY_ENDPOINT}"
-    model: "${RECOMMENDATION_TEXT_PRIMARY_MODEL}"
-  recommendation_text_fallback:
-    provider: "${RECOMMENDATION_TEXT_FALLBACK_PROVIDER}"
-    api_key: "${RECOMMENDATION_TEXT_FALLBACK_API_KEY}"
-    endpoint: "${RECOMMENDATION_TEXT_FALLBACK_ENDPOINT}"
-    model: "${RECOMMENDATION_TEXT_FALLBACK_MODEL}"
-  free_text_primary:
-    provider: "${FREE_TEXT_PRIMARY_PROVIDER}"
-    api_key: "${FREE_TEXT_PRIMARY_API_KEY}"
-    endpoint: "${FREE_TEXT_PRIMARY_ENDPOINT}"
-    model: "${FREE_TEXT_PRIMARY_MODEL}"
-  free_text_fallback:
-    provider: "${FREE_TEXT_FALLBACK_PROVIDER}"
-    api_key: "${FREE_TEXT_FALLBACK_API_KEY}"
-    endpoint: "${FREE_TEXT_FALLBACK_ENDPOINT}"
-    model: "${FREE_TEXT_FALLBACK_MODEL}"
-  chat_text_timeout_seconds: 30
-  recommendation_text_timeout_seconds: 30
-  vision_timeout_seconds: 20
-  embedding_timeout_seconds: 20
-  chat_text_rpm_limit: 15
-  recommendation_text_rpm_limit: 5
-  vision_rpm_limit: 5
-  embedding_rpm_limit: 50
-  chat_max_input_characters: 2000
-  chat_history_message_max_characters: 500
-  chat_max_output_tokens: 500
-  summary_source_max_characters: 3000
-  summary_previous_max_characters: 800
-  summary_max_output_tokens: 400
-  rewriter_prompt_max_characters: 1000
-  rewriter_max_output_tokens: 250
-  recommendation_details_max_characters: 1000
-  recommendation_prompt_candidate_limit: 24
-  recommendation_description_max_characters: 180
-  recommendation_tags_limit: 8
-  recommendation_prompt_max_characters: 18000
-  recommendation_max_output_tokens: 600
-  free_text_timeout_seconds: 30
-  free_text_rpm_limit: 15
-  usage_reconcile_cron: "0 */10 * * * *"
-  usage_reconcile_batch_size: 100
-  token_estimation:
-    chars_per_token: 4.0
-    local_safety_multiplier: 1.25
-    count_tokens_threshold_ratio: 0.70
-    count_tokens_timeout: 1500ms
+    vision_primary:
+        provider: "${VISION_PRIMARY_PROVIDER}"
+        api_key: "${VISION_PRIMARY_API_KEY}"
+        endpoint: "${VISION_PRIMARY_ENDPOINT}"
+        model: "${VISION_PRIMARY_MODEL}"
+    vision_fallback:
+        provider: "${VISION_FALLBACK_PROVIDER}"
+        api_key: "${VISION_FALLBACK_API_KEY}"
+        endpoint: "${VISION_FALLBACK_ENDPOINT}"
+        model: "${VISION_FALLBACK_MODEL}"
+    embedding_primary:
+        provider: "${EMBEDDING_PRIMARY_PROVIDER}"
+        api_key: "${EMBEDDING_PRIMARY_API_KEY}"
+        endpoint: "${EMBEDDING_PRIMARY_ENDPOINT}"
+        model: "${EMBEDDING_PRIMARY_MODEL}"
+    embedding_fallback:
+        provider: "${EMBEDDING_FALLBACK_PROVIDER}"
+        api_key: "${EMBEDDING_FALLBACK_API_KEY}"
+        endpoint: "${EMBEDDING_FALLBACK_ENDPOINT}"
+        model: "${EMBEDDING_FALLBACK_MODEL}"
+    chat_text_primary:
+        provider: "${CHAT_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${CHAT_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${CHAT_TEXT_PRIMARY_ENDPOINT}"
+        model: "${CHAT_TEXT_PRIMARY_MODEL}"
+    chat_text_fallback:
+        provider: "${CHAT_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${CHAT_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${CHAT_TEXT_FALLBACK_ENDPOINT}"
+        model: "${CHAT_TEXT_FALLBACK_MODEL}"
+    recommendation_text_primary:
+        provider: "${RECOMMENDATION_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${RECOMMENDATION_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${RECOMMENDATION_TEXT_PRIMARY_ENDPOINT}"
+        model: "${RECOMMENDATION_TEXT_PRIMARY_MODEL}"
+    recommendation_text_fallback:
+        provider: "${RECOMMENDATION_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${RECOMMENDATION_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${RECOMMENDATION_TEXT_FALLBACK_ENDPOINT}"
+        model: "${RECOMMENDATION_TEXT_FALLBACK_MODEL}"
+    free_text_primary:
+        provider: "${FREE_TEXT_PRIMARY_PROVIDER}"
+        api_key: "${FREE_TEXT_PRIMARY_API_KEY}"
+        endpoint: "${FREE_TEXT_PRIMARY_ENDPOINT}"
+        model: "${FREE_TEXT_PRIMARY_MODEL}"
+    free_text_fallback:
+        provider: "${FREE_TEXT_FALLBACK_PROVIDER}"
+        api_key: "${FREE_TEXT_FALLBACK_API_KEY}"
+        endpoint: "${FREE_TEXT_FALLBACK_ENDPOINT}"
+        model: "${FREE_TEXT_FALLBACK_MODEL}"
+    chat_text_timeout_seconds: 30
+    recommendation_text_timeout_seconds: 30
+    vision_timeout_seconds: 20
+    embedding_timeout_seconds: 20
+    chat_text_rpm_limit: 15
+    recommendation_text_rpm_limit: 5
+    vision_rpm_limit: 5
+    embedding_rpm_limit: 50
+    chat_max_input_characters: 2000
+    chat_history_message_max_characters: 500
+    chat_max_output_tokens: 500
+    summary_source_max_characters: 3000
+    summary_previous_max_characters: 800
+    summary_max_output_tokens: 400
+    rewriter_prompt_max_characters: 1000
+    rewriter_max_output_tokens: 250
+    recommendation_details_max_characters: 1000
+    recommendation_prompt_candidate_limit: 24
+    recommendation_description_max_characters: 180
+    recommendation_tags_limit: 8
+    recommendation_prompt_max_characters: 18000
+    recommendation_max_output_tokens: 600
+    free_text_timeout_seconds: 30
+    free_text_rpm_limit: 15
+    usage_reconcile_cron: "0 */10 * * * *"
+    usage_reconcile_batch_size: 100
+    token_estimation:
+        chars_per_token: 4.0
+        local_safety_multiplier: 1.25
+        count_tokens_threshold_ratio: 0.70
+        count_tokens_timeout: 1500ms
 rag:
-  recently_worn_penalty_days: 3
-  long_unworn_bonus_days: 14
-  rrf_k_parameter: 30
-  recommendation_candidate_limit: 40
-  recommendation_minimum_candidate_pool: 20
-  recommendation_embedding_dimension: 768
-  recommendation_embedding_timeout_seconds: 2
-  recommendation_llm_rewriter_enabled: false
-  recommendation_llm_rewriter_timeout_seconds: 2
-  recommendation_rewriter_max_semantic_length: 512
-  recommendation_rewriter_max_lexical_terms: 24
-  recommendation_rewriter_max_excluded_terms: 24
+    recently_worn_penalty_days: 3
+    long_unworn_bonus_days: 14
+    rrf_k_parameter: 30
+    recommendation_candidate_limit: 40
+    recommendation_minimum_candidate_pool: 20
+    recommendation_embedding_dimension: 768
+    recommendation_embedding_timeout_seconds: 2
+    recommendation_llm_rewriter_enabled: false
+    recommendation_llm_rewriter_timeout_seconds: 2
+    recommendation_rewriter_max_semantic_length: 512
+    recommendation_rewriter_max_lexical_terms: 24
+    recommendation_rewriter_max_excluded_terms: 24
 cache:
-  overview_ttl_seconds: 60
+    overview_ttl_seconds: 60
