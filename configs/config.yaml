@@ -3,7 +3,7 @@
 # ============================================================
 server:
     port: "8080"
-    front_end_origin: http://localhost:3000,http://localhost:8081
+    front_end_origin: http://localhost:3000,http://localhost:8081,http://localhost:50639
     timeout_seconds: 300
     read_timeout_seconds: 30
     write_timeout_seconds: 60
