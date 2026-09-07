@@ -61,6 +61,9 @@ func (h *BrandPortalHandler) SubscribeBrandItemTaskSSE(c *gin.Context) error {
 	defer h.sseManager.Unsubscribe(taskId, ch)
 
 	c.Stream(func(w io.Writer) bool {
+		// Keep long analysis streams alive past the server-wide WriteTimeout
+		// (spec 019 FR-003).
+		shared_pres.ExtendSSEWriteDeadline(c)
 		select {
 		case <-c.Request.Context().Done():
 			return false

@@ -8,6 +8,7 @@ import (
 	identity_contract "smart-wardrobe-be/internal/modules/identity/presentation/contract"
 	notificationContract "smart-wardrobe-be/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
+	subscriptioncaching "smart-wardrobe-be/internal/modules/subscription/application/interface/caching"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
@@ -33,6 +34,7 @@ type SubscriptionPurchaseUseCase struct {
 	cfg               *config.Config
 	notifContract     notificationContract.INotificationContract
 	userBriefContract identity_contract.IUserBriefContract
+	overviewCache     subscriptioncaching.ISubscriptionOverviewCache
 }
 
 func NewSubscriptionPurchaseUseCase(
@@ -48,6 +50,7 @@ func NewSubscriptionPurchaseUseCase(
 	cfg *config.Config,
 	notifContract notificationContract.INotificationContract,
 	userBriefContract identity_contract.IUserBriefContract,
+	overviewCache subscriptioncaching.ISubscriptionOverviewCache,
 ) uc_interfaces.ISubscriptionPurchaseUseCase {
 	return &SubscriptionPurchaseUseCase{
 		walletRepo:        walletRepo,
@@ -62,6 +65,7 @@ func NewSubscriptionPurchaseUseCase(
 		cfg:               cfg,
 		notifContract:     notifContract,
 		userBriefContract: userBriefContract,
+		overviewCache:     overviewCache,
 	}
 }
 

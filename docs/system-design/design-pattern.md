@@ -765,3 +765,30 @@ func (w *SomeWorker) handle(ctx context.Context, payload SomePayloadDTO) error {
 - **Scheduled tasks:** renewal, expiry, reconciliation (e.g., `SubscriptionRenewalWorker`)
 - **Event consumers:** async AI processing, search indexing (e.g., `FashionInitWorker`)
 - **Background cleanup:** stale data removal (e.g., `FailedItemsCleanupWorker`)
+
+## Rate Limiting Pattern (Two-Layer)
+
+Rate limiting is intentionally split into two layers with different algorithms and different infrastructure. They serve different questions and MUST NOT be merged into one mechanism "for consistency" without re-deriving the trade-offs below.
+
+### Layer 1 — Global per-IP shield (in-memory token bucket)
+
+- **Where:** `internal/shared/presentation/middleware/ratelimit.go`, applied globally in `routes.NewEngine` (after `GlobalTimeoutMiddleware`).
+- **Algorithm:** token bucket (`golang.org/x/time/rate`) keyed by `c.ClientIP()` — smooth throttling with burst (`rate_limit.token_limit` burst, `tokens_per_period`/`replenishment_seconds` sustained rate).
+- **Answers:** "Is this IP flooding us?" — a coarse volumetric shield, not a precise quota.
+- **Infrastructure:** in-process `sync.Map` — zero latency, zero external dependency, never fails because Redis is down.
+- **Known trade-off:** state is per-process, so with N app instances the effective limit is N× the configured rate. Acceptable for a flood shield; do not use this layer for business quotas.
+
+### Layer 2 — Business subject quotas (Redis fixed window)
+
+- **Where:** `internal/shared/infrastructure/caching/redis_rate_limiter.go` implementing `shared/application/interface/caching.IRateLimiter` (`Allow(ctx, key, limit, window)`), consumed at the **use case layer** (e.g., brand claim `checkClaimRateLimit` keys by IP + user + token).
+- **Algorithm:** fixed window via atomic Redis `INCR` + `EXPIRE` (Lua) — exact "N times per period" semantics per subject.
+- **Answers:** "How many times may this subject perform this business action?" — a hard business rule, naturally expressed as quota-per-period, exact across instances.
+- **Known trade-off:** fixed windows allow a ~2× burst at window boundaries — harmless for business quotas; boundary burst properties differ from Layer 1 by design.
+
+### Rules
+
+- Choose the layer by semantics, not preference: rate-shaped protection → Layer 1; per-subject business quota → Layer 2.
+- New business quotas MUST go through `IRateLimiter` (use case layer), never through the global middleware.
+- Both layers' config is validated at startup (`internal/config/validation.go`): a zero token limit means zero burst and is rejected.
+- **Migration path (multi-instance):** if global per-IP limiting must become exact across instances, add a token-bucket implementation of `IRateLimiter` (e.g., GCRA) for the middleware — do NOT reuse the fixed-window limiter, whose burst semantics do not fit a shield; keep the Layer-2 fixed window as-is for business quotas.
+- Per-IP correctness depends on Gin trusted-proxy configuration: behind a reverse proxy/LB, verify `ClientIP()` resolves to the real client address, otherwise all users share one bucket.

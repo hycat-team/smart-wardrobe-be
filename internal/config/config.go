@@ -28,6 +28,14 @@ type Config struct {
 	Outbox             OutboxConfig               `mapstructure:"outbox"`
 	Admin              AdminConfig                `mapstructure:"admin"`
 	BrandFeatureAccess BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
+	Cache              CacheConfig                `mapstructure:"cache"`
+}
+
+// CacheConfig holds TTL configuration for application caches.
+type CacheConfig struct {
+	// OverviewTTLSeconds is the TTL of the subscription overview cache served
+	// to AI hot paths via IUserSubscriptionContract (default 60 seconds).
+	OverviewTTLSeconds int `mapstructure:"overview_ttl_seconds"`
 }
 
 type AdminConfig struct {
@@ -189,11 +197,35 @@ type Redis struct {
 }
 
 type Server struct {
-	Port              string `mapstructure:"port"`
-	FrontEndOrigin    string `mapstructure:"front_end_origin"`
-	TimeoutSeconds    int    `mapstructure:"timeout_seconds"`
-	Env               string `mapstructure:"env"`
-	SwaggerAccessCode string `mapstructure:"swagger_access_code"`
+	Port                string    `mapstructure:"port"`
+	FrontEndOrigin      string    `mapstructure:"front_end_origin"`
+	TimeoutSeconds      int       `mapstructure:"timeout_seconds"`
+	Env                 string    `mapstructure:"env"`
+	SwaggerAccessCode   string    `mapstructure:"swagger_access_code"`
+	ReadTimeoutSeconds  int       `mapstructure:"read_timeout_seconds"`
+	WriteTimeoutSeconds int       `mapstructure:"write_timeout_seconds"`
+	IdleTimeoutSeconds  int       `mapstructure:"idle_timeout_seconds"`
+	GzipEnabled         bool      `mapstructure:"gzip_enabled"`
+	BodyLimit           BodyLimit `mapstructure:"body_limit"`
+	SSE                 SSE       `mapstructure:"sse"`
+}
+
+// SSE configures per-event write deadlines for server-sent event streams.
+// AI chat streams get a looser window because LLM providers can stall longer
+// between tokens than local progress broadcasters.
+type SSE struct {
+	ChunkDeadlineSeconds       int `mapstructure:"chunk_deadline_seconds"`
+	AIChatChunkDeadlineSeconds int `mapstructure:"ai_chat_chunk_deadline_seconds"`
+}
+
+// BodyLimit configures the tiered request body size limit:
+// DefaultMB applies to every route, ElevatedMB to the routes matched by the
+// elevated tier patterns (see shared/presentation/middleware body limit), and
+// FreeRoutes lists `METHOD prefix` entries that bypass the limit entirely.
+type BodyLimit struct {
+	DefaultMB  int      `mapstructure:"default_mb"`
+	ElevatedMB int      `mapstructure:"elevated_mb"`
+	FreeRoutes []string `mapstructure:"free_routes"`
 }
 
 type Jwt struct {
@@ -228,7 +260,11 @@ type Email struct {
 	Port        int    `mapstructure:"port"`
 	SenderName  string `mapstructure:"sender_name"`
 	SenderEmail string `mapstructure:"sender_email"`
-	AppPassword string `mapstructure:"app_password"`
+	// SmtpUser is the SMTP auth username; falls back to SenderEmail when empty
+	SmtpUser string `mapstructure:"smtp_user"`
+	SmtpKey  string `mapstructure:"smtp_key"`
+	// ReplyTo is optional — when empty, no Reply-To header is emitted.
+	ReplyTo string `mapstructure:"reply_to"`
 }
 
 type Subscription struct {

@@ -21,7 +21,7 @@ import (
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/grant"
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/orchestrator"
 	"smart-wardrobe-be/internal/modules/aiexecutor/application/usecase/pricing"
-	caching4 "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/caching"
+	caching5 "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/caching"
 	persistence7 "smart-wardrobe-be/internal/modules/aiexecutor/infrastructure/persistence"
 	contract8 "smart-wardrobe-be/internal/modules/aiexecutor/presentation/contract"
 	handler7 "smart-wardrobe-be/internal/modules/aiexecutor/presentation/handler"
@@ -35,7 +35,7 @@ import (
 	item2 "smart-wardrobe-be/internal/modules/brand/application/usecase/item"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/item/contractuc"
 	"smart-wardrobe-be/internal/modules/brand/application/usecase/loyalty"
-	caching3 "smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
+	caching4 "smart-wardrobe-be/internal/modules/brand/infrastructure/caching"
 	persistence4 "smart-wardrobe-be/internal/modules/brand/infrastructure/persistence"
 	contract5 "smart-wardrobe-be/internal/modules/brand/presentation/contract"
 	handler5 "smart-wardrobe-be/internal/modules/brand/presentation/handler"
@@ -81,6 +81,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook"
 	"smart-wardrobe-be/internal/modules/subscription/application/usecase/webhook_inbox"
 	"smart-wardrobe-be/internal/modules/subscription/application/validator"
+	caching3 "smart-wardrobe-be/internal/modules/subscription/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	persistence2 "smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 	contract3 "smart-wardrobe-be/internal/modules/subscription/presentation/contract"
@@ -149,8 +150,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iUserSubscriptionEventRepository := persistence2.NewUserSubscriptionEventRepository(gormDB)
 	iSubscriptionPlanUseCase := plan.NewSubscriptionPlanUseCase(iSubscriptionPlanRepository)
 	iUserQuotaUseCase := quota.NewUserQuotaUseCase(iUserDailyQuotaRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository)
-	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, iSubscriptionRenewalAttemptRepository, iUserSubscriptionEventRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase, iNotificationContract)
-	iUserSubscriptionContract := contract3.NewUserSubscriptionContract(iSubscriptionUseCase)
+	iSubscriptionOverviewCache := caching3.NewRedisSubscriptionOverviewCache(iCacheService, cfg, l)
+	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, iSubscriptionRenewalAttemptRepository, iUserSubscriptionEventRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase, iNotificationContract, iSubscriptionOverviewCache)
+	iUserSubscriptionContract := contract3.NewUserSubscriptionContract(iSubscriptionUseCase, iSubscriptionOverviewCache)
 	iMediaService := media.NewCloudinaryService(cfg)
 	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iMediaService, cfg)
 	meHandler := handler.NewMeHandler(iUserUseCase)
@@ -166,10 +168,10 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iDepositTransactionRepository := persistence2.NewDepositTransactionRepository(gormDB)
 	iPaymentGatewayService := payos.NewPayOSService(cfg)
 	iWalletUseCase := wallet.NewWalletUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iPaymentGatewayService, iUnitOfWork, cfg, iNotificationContract, iUserBriefContract)
-	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserSubscriptionEventRepository, rabbitMQClient, iPaymentGatewayService, iUnitOfWork, cfg, iNotificationContract, iUserBriefContract)
+	iSubscriptionPurchaseUseCase := purchase.NewSubscriptionPurchaseUseCase(iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iUserSubscriptionEventRepository, rabbitMQClient, iPaymentGatewayService, iUnitOfWork, cfg, iNotificationContract, iUserBriefContract, iSubscriptionOverviewCache)
 	iPaymentEventRepository := persistence2.NewPaymentEventRepository(gormDB)
 	iWebhookInboxRepository := persistence2.NewWebhookInboxRepository(gormDB)
-	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, iNotificationContract, iUserBriefContract, l)
+	iPaymentWebhookUseCase := webhook.NewPaymentWebhookUseCase(cfg, iUserWalletRepository, iDepositTransactionRepository, iWalletStatementRepository, iSubscriptionPlanRepository, iUserSubscriptionRepository, iPaymentGatewayService, iUnitOfWork, iPaymentEventRepository, iWebhookInboxRepository, iUserSubscriptionEventRepository, iNotificationContract, iUserBriefContract, l, iSubscriptionOverviewCache)
 	billingHandler := handler2.NewBillingHandler(l, iWalletUseCase, iSubscriptionPurchaseUseCase, iPaymentWebhookUseCase)
 	iAdminBillingUseCase := admin.NewAdminBillingUseCase(iDepositTransactionRepository)
 	iPaymentResolutionUseCase := resolution.NewPaymentResolutionUseCase(iDepositTransactionRepository, iPaymentWebhookUseCase, iUnitOfWork)
@@ -189,7 +191,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iBrandBenefitRepository := persistence4.NewBrandBenefitRepository(gormDB)
 	iBenefitRedemptionRepository := persistence4.NewBenefitRedemptionRepository(gormDB)
 	iLoyaltyTierRepository := persistence4.NewLoyaltyTierRepository(gormDB)
-	iBrandFeatureAccessCache := caching3.NewRedisBrandFeatureAccessCache(iCacheService, cfg)
+	iBrandFeatureAccessCache := caching4.NewRedisBrandFeatureAccessCache(iCacheService, cfg)
 	iBrandBenefitUseCase := benefit.NewBrandBenefitUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iLoyaltyAccountRepository, iLoyaltyPointTransactionRepository, iLoyaltyPointLotRepository, iBrandBenefitRepository, iBenefitRedemptionRepository, iLoyaltyTierRepository, iUnitOfWork, iBrandFeatureAccessCache)
 	iBrandItemRepository := persistence4.NewBrandItemRepository(gormDB)
 	iBrandItemContractUseCase := contractuc.NewBrandItemContractUseCase(iBrandRepository, iBrandCustomerRepository, iBrandItemRepository, iBrandBenefitUseCase)
@@ -211,14 +213,14 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	router10 := router3.NewRouter(wardrobeItemHandler, outfitHandler, authMiddleware)
 	iDashboardRepository := persistence6.NewDashboardRepository(gormDB)
 	iDigitalSampleResponseRepository := persistence4.NewDigitalSampleResponseRepository(gormDB)
-	iBrandMembershipCache := caching3.NewRedisBrandMembershipCache(iCacheService, cfg)
+	iBrandMembershipCache := caching4.NewRedisBrandMembershipCache(iCacheService, cfg)
 	iBrandUseCase := brand.NewBrandUseCase(iBrandRepository, iBrandMemberRepository, iBrandCustomerRepository, iDigitalSampleResponseRepository, iBenefitRedemptionRepository, iUserBriefContract, iMediaService, iUnitOfWork, cfg, iBrandMembershipCache)
 	iBrandDashboardAnalyticsUseCase := brand.NewBrandDashboardAnalyticsUseCase(iBrandCustomerRepository, iLoyaltyAccountRepository, iLoyaltyPointLotRepository, iBenefitRedemptionRepository, iBrandItemRepository)
 	iBrandDashboardReader := contract5.NewBrandDashboardReader(iBrandUseCase, iBrandDashboardAnalyticsUseCase)
 	iDynamicQueryUseCase := usecase2.NewDynamicQueryUseCase(iDashboardRepository, iBrandDashboardReader)
 	iaiCostRepository := persistence7.NewAICostRepository(gormDB)
 	iaiModelConfigRepository := persistence7.NewPricingConfigRepository(gormDB)
-	iPricingCacheService := caching4.NewRedisPricingCacheService(iCacheService)
+	iPricingCacheService := caching5.NewRedisPricingCacheService(iCacheService)
 	iPricingUseCase := pricing.NewPricingUseCase(iaiModelConfigRepository, iPricingCacheService)
 	iaiCostUseCase := cost.NewCostUseCase(iaiCostRepository, iPricingUseCase, iUserSubscriptionContract)
 	iaiCostDashboardReader := contract8.NewAICostDashboardReader(iaiCostUseCase)
@@ -283,7 +285,8 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		AdminRouter:        router15,
 	}
 	rateLimitMiddleware := middleware3.NewRateLimitMiddleware(cfg)
-	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware)
+	handlerFunc := middleware3.NewBodyLimitMiddleware(cfg, l)
+	engine := routes.NewEngine(cfg, appRouter, l, rateLimitMiddleware, handlerFunc)
 	subscriptionRenewalWorker := worker.NewSubscriptionRenewalWorker(iSubscriptionUseCase, l)
 	iPaymentReconciliationUseCase := reconciliation.NewPaymentReconciliationUseCase(iDepositTransactionRepository, iPaymentGatewayService, iPaymentWebhookUseCase, iUnitOfWork, l, cfg)
 	paymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
@@ -352,7 +355,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		BrandFashionBindWorker:                 brandFashionBindWorker,
 	}
 	startupValidator := validator.NewSubscriptionCatalogValidator(iSubscriptionPlanRepository, cfg)
-	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB)
+	app := bootstrap.NewApp(cfg, engine, appWorkers, startupValidator, gormDB, l)
 	return app, func() {
 	}, nil
 }

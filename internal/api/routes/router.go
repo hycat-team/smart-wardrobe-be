@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/internal/pkg/logger"
 	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
+	shared_pres "smart-wardrobe-be/internal/shared/presentation"
 	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 // NewEngine configures the Gin engine and suppresses verbose route registration logs at startup.
-func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *shared_middleware.RateLimitMiddleware) *gin.Engine {
+func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit *shared_middleware.RateLimitMiddleware, bodyLimit gin.HandlerFunc) *gin.Engine {
 	if cfg.Server.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -22,6 +23,10 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 	gin.DebugPrintRouteFunc = func(string, string, string, int) {}
 
 	engine := gin.New()
+	shared_pres.ConfigureSSEDeadlines(
+		time.Duration(cfg.Server.SSE.ChunkDeadlineSeconds)*time.Second,
+		time.Duration(cfg.Server.SSE.AIChatChunkDeadlineSeconds)*time.Second,
+	)
 	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Skip: func(c *gin.Context) bool {
 			return c.Request.URL.Path == "/api/v1/health" && c.Writer.Status() == http.StatusOK
@@ -30,6 +35,10 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 
 	engine.Use(shared_middleware.GlobalErrorHandler(log, cfg.Server.Env))
 	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
+	engine.Use(bodyLimit)
+	if cfg.Server.GzipEnabled {
+		engine.Use(shared_middleware.GzipMinSizeMiddleware(cfg))
+	}
 	engine.Use(shared_middleware.GlobalTimeoutMiddleware(time.Duration(cfg.Server.TimeoutSeconds) * time.Second))
 	engine.Use(rateLimit.Handle())
 

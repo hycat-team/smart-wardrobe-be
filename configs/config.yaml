@@ -4,7 +4,18 @@
 server:
     port: "8080"
     front_end_origin: http://localhost:3000,http://localhost:8081
-    timeout_seconds: 30
+    timeout_seconds: 300
+    read_timeout_seconds: 30
+    write_timeout_seconds: 60
+    idle_timeout_seconds: 120
+    gzip_enabled: true
+    sse:
+        chunk_deadline_seconds: 90
+        ai_chat_chunk_deadline_seconds: 180
+    body_limit:
+        default_mb: 2
+        elevated_mb: 10
+        free_routes: []
     env: development
     swagger_access_code: "${SWAGGER_ACCESS_CODE}"
 startup:
@@ -35,7 +46,7 @@ database:
     ssl_mode: disable
     time_zone: Asia/Ho_Chi_Minh
     max_idle_conns: 10
-    max_open_conns: 90
+    max_open_conns: 30
     conn_max_lifetime: 1h
     search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
 redis:
@@ -56,7 +67,7 @@ rabbitmq:
     port: 5672
     user: "${RABBITMQ_USER}"
     password: "${RABBITMQ_PASSWORD}"
-    prefetch: 20
+    prefetch: 5
     consumer_concurrency: 1
     delivery_limit: 5
     management_port: 15672
@@ -81,11 +92,13 @@ cloudinary:
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts
 email:
-    host: smtp.gmail.com
+    host: smtp.resend.com
     port: 587
     sender_name: SmartWardrobe
     sender_email: "${EMAIL_SENDER_EMAIL}"
-    app_password: "${EMAIL_APP_PASSWORD}"
+    smtp_user: "${EMAIL_SMTP_USER}"
+    smtp_key: "${EMAIL_SMTP_KEY}"
+    reply_to: "${EMAIL_REPLY_TO}"
 payos:
     client_id: "${PAYOS_CLIENT_ID}"
     api_key: "${PAYOS_API_KEY}"
@@ -254,3 +267,5 @@ rag:
     recommendation_rewriter_max_semantic_length: 512
     recommendation_rewriter_max_lexical_terms: 24
     recommendation_rewriter_max_excluded_terms: 24
+cache:
+    overview_ttl_seconds: 60

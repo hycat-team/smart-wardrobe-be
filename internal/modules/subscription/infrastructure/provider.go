@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"smart-wardrobe-be/internal/modules/subscription/infrastructure/caching"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/payment/payos"
 	"smart-wardrobe-be/internal/modules/subscription/infrastructure/persistence"
 
@@ -19,5 +20,6 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWebhookInboxRepository,
 	persistence.NewUserSubscriptionEventRepository,
 	persistence.NewSubscriptionRenewalAttemptRepository,
+	caching.NewRedisSubscriptionOverviewCache,
 	payos.NewPayOSService,
 )

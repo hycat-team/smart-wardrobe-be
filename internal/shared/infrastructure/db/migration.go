@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"smart-wardrobe-be/database/migrations"
+	"smart-wardrobe-be/internal/pkg/logger"
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // RunMigrations executes embedded Goose SQL migrations using a Postgres session-level advisory lock
 // to prevent concurrent migration execution in multi-replica deployments.
-func RunMigrations(ctx context.Context, db *gorm.DB) error {
+func RunMigrations(ctx context.Context, db *gorm.DB, log logger.Interface) error {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get sql.DB from gorm: %w", err)
@@ -39,16 +41,16 @@ func RunMigrations(ctx context.Context, db *gorm.DB) error {
 	}
 
 	// 4. Run up migrations
-	fmt.Println("Running database migrations...")
+	log.Info("Running database migrations...")
 	results, err := provider.Up(ctx)
 	if err != nil {
 		return fmt.Errorf("database migrations failed: %w", err)
 	}
 
 	for _, res := range results {
-		fmt.Printf("Migrated: %s (%s)\n", res.Source.Path, res.Duration)
+		log.Info("Migration applied", zap.String("migration", res.Source.Path), zap.Duration("duration", res.Duration))
 	}
 
-	fmt.Println("Database migrations applied successfully.")
+	log.Info("Database migrations applied successfully.")
 	return nil
 }
