@@ -151,4 +151,3 @@ func TestLoadConfigRejectsInvalidOutboxConfig(t *testing.T) {
 		t.Fatalf("expected outbox validation error, got %v", err)
 	}
 }
-
