@@ -98,22 +98,25 @@ func (uc *OutboxEmailUseCase) SendByUserID(ctx context.Context, channel nchannel
 }
 
 func resolveSubject(tmplEnum ntemplate.Template) string {
+	const prefix = "[Closy] "
+	var subject string
 	switch tmplEnum {
 	case ntemplate.Otp:
-		return "Mã xác thực OTP"
+		subject = "Mã xác thực OTP"
 	case ntemplate.PaymentSuccess:
-		return "Xác nhận thanh toán thành công"
+		subject = "Xác nhận thanh toán thành công"
 	case ntemplate.TopupSuccess:
-		return "Nạp tiền vào ví thành công"
+		subject = "Nạp tiền vào ví thành công"
 	case ntemplate.RenewalSuccess:
-		return "Gia hạn gói thành công"
+		subject = "Gia hạn gói thành công"
 	case ntemplate.RenewalFailed:
-		return "Gia hạn gói thất bại"
+		subject = "Gia hạn gói thất bại"
 	case ntemplate.WalletWarning:
-		return "Cảnh báo số dư ví không đủ"
+		subject = "Cảnh báo số dư ví không đủ"
 	case ntemplate.WalletPurchaseSuccess:
-		return "Mua gói thành công qua ví nội bộ"
+		subject = "Mua gói thành công qua ví nội bộ"
 	default:
-		return "Thông báo từ SmartWardrobe"
+		subject = "Thông báo"
 	}
+	return prefix + subject
 }

@@ -2,19 +2,23 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Cảnh báo số dư ví</title>
+    <title>[Closy] Cảnh báo số dư ví</title>
 </head>
 <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <h2 style="color: #ffc107; text-align: center;">Cảnh Báo Số Dư Ví</h2>
+        <h2 style="color: #ffc107; text-align: center;">[Closy] Cảnh Báo Số Dư Ví</h2>
         <p>Chào bạn,</p>
         <p>Gói dịch vụ của bạn sắp hết hạn và số dư ví hiện tại không đủ để gia hạn tự động.</p>
-        <div style="text-align: center; margin: 30px 0; padding: 15px; background-color: #fffbe6; border-radius: 5px;">
-            <p style="font-size: 16px; color: #333;">Số dư hiện tại: <strong>{{.Balance}}</strong></p>
-            <p style="font-size: 16px; color: #333;">Số tiền cần: <strong>{{.RequiredAmount}}</strong></p>
-            <p style="font-size: 14px; color: #dc3545;">Còn <strong>{{.DaysRemaining}}</strong> ngày trước khi hết hạn</p>
+        <div style="margin: 20px 0; padding: 15px; background-color: #fffbe6; border-radius: 5px;">
+            <p style="font-size: 16px; color: #333; margin: 8px 0;">Số dư hiện tại: <strong>{{.Balance}}</strong></p>
+            <p style="font-size: 16px; color: #333; margin: 8px 0;">Số tiền cần: <strong>{{.RequiredAmount}}</strong></p>
+            <p style="font-size: 14px; color: #dc3545; margin: 8px 0;">Còn <strong>{{.DaysRemaining}}</strong> ngày trước khi hết hạn</p>
         </div>
         <p style="color: #666;">Vui lòng nạp thêm tiền vào ví để đảm bảo dịch vụ được gia hạn tự động.</p>
+        <div style="margin-top: 24px; color: #555555; line-height: 1.5;">
+            <p style="margin: 0;">Xin cảm ơn,</p>
+            <p style="margin: 0; font-weight: bold; color: #222222;">HYCAT</p>
+        </div>
         <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />
         <p style="font-size: 12px; color: #999999; text-align: center;">Đây là email tự động, vui lòng không phản hồi email này.</p>
     </div>
