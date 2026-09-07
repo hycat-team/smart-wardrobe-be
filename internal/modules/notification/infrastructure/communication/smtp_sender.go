@@ -27,8 +27,7 @@ func NewSmtpSender(cfg *config.Config) *SmtpSender {
 
 func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) error {
 	from := s.cfg.Email.SenderEmail
-	// SMTP username: providers like Brevo use the account email, not the
-	// sender address — fall back to the sender email for Gmail-style servers.
+	// SMTP username: not the sender address — fall back to the sender email for Gmail-style servers.
 	user := s.cfg.Email.SmtpUser
 	if user == "" {
 		user = from
