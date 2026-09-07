@@ -174,3 +174,7 @@ Phase 1 (Setup T001-T003) → Phase 2 (T004)
 - [x] T035 [P] Thêm `cache.overview_ttl_seconds: 60` vào `configs/config.yaml` và `configs/config.production.yaml` để TTL cache tổng quan gói cấu hình được qua yaml đúng như spec (FR-008) per FR-008 (partial)
 - [x] T036 Thêm ngưỡng kích thước tối thiểu cho gzip (chỉ nén khi Content-Length >= 1KB, body không khai báo độ dài nén như mặc định) tại `internal/api/routes/router.go` — tránh nén vô ích cho response nhỏ per FR-009 (partial)
 - [x] T037 Ghi nhận quyết định không invalidate per-user khi admin SetPlanActive: thêm comment giải thích (TTL backstop + benefits snapshot nằm trên subscription row) tại `internal/modules/subscription/application/usecase/plan/plan_uc.go` hàm SetPlanActive per FR-008/US3 (partial)
+
+## Phase 10: Convergence
+
+- [x] T038 Thêm unit test slowloris chứng minh kết nối mở nhưng không gửi dữ liệu bị server đóng sau `read_timeout_seconds` (httptest `Config.ReadTimeout` ngắn, raw TCP conn giữ im lặng, assert conn bị đóng trong ngưỡng) — đặt tại `internal/bootstrap` cạnh chỗ dựng `http.Server` per SC-001/US1 (partial)

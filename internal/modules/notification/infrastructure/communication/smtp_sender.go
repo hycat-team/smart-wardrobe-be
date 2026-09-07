@@ -27,18 +27,28 @@ func NewSmtpSender(cfg *config.Config) *SmtpSender {
 
 func (s *SmtpSender) Send(ctx context.Context, to, subject, htmlBody string) error {
 	from := s.cfg.Email.SenderEmail
-	password := s.cfg.Email.AppPassword
+	// SMTP username: providers like Brevo use the account email, not the
+	// sender address — fall back to the sender email for Gmail-style servers.
+	user := s.cfg.Email.SmtpUser
+	if user == "" {
+		user = from
+	}
+	password := s.cfg.Email.SmtpKey
 	smtpHost := s.cfg.Email.Host
 	smtpPort := s.cfg.Email.Port
 
 	addr := fmt.Sprintf("%s:%d", smtpHost, smtpPort)
-	auth := smtp.PlainAuth("", from, password, smtpHost)
+	auth := smtp.PlainAuth("", user, password, smtpHost)
 
 	headerSubject := fmt.Sprintf("Subject: %s\r\n", subject)
 	headerTo := fmt.Sprintf("To: %s\r\n", to)
 	headerFrom := fmt.Sprintf("From: %s <%s>\r\n", s.cfg.Email.SenderName, from)
+	headerReplyTo := ""
+	if s.cfg.Email.ReplyTo != "" {
+		headerReplyTo = fmt.Sprintf("Reply-To: %s\r\n", s.cfg.Email.ReplyTo)
+	}
 	headerMime := "MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n"
-	msg := []byte(headerFrom + headerTo + headerSubject + headerMime + htmlBody)
+	msg := []byte(headerFrom + headerReplyTo + headerTo + headerSubject + headerMime + htmlBody)
 
 	if smtpPort == 465 {
 		tlsConfig := &tls.Config{

@@ -260,7 +260,12 @@ type Email struct {
 	Port        int    `mapstructure:"port"`
 	SenderName  string `mapstructure:"sender_name"`
 	SenderEmail string `mapstructure:"sender_email"`
-	AppPassword string `mapstructure:"app_password"`
+	// SmtpUser is the SMTP auth username; falls back to SenderEmail when empty
+	// (Gmail-style servers) because providers like Brevo use the account email.
+	SmtpUser string `mapstructure:"smtp_user"`
+	SmtpKey  string `mapstructure:"smtp_key"`
+	// ReplyTo is optional — when empty, no Reply-To header is emitted.
+	ReplyTo string `mapstructure:"reply_to"`
 }
 
 type Subscription struct {

@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"smart-wardrobe-be/internal/config"
@@ -109,12 +110,7 @@ func resolveBodyLimit(method, path string, free []bodyLimitFreeRule, defaultLimi
 }
 
 func bodyLimitMethodMatch(methods []string, method string) bool {
-	for _, m := range methods {
-		if m == method {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(methods, method)
 }
 
 func bodyLimitDetail(limit int64) string {

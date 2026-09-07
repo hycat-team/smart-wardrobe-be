@@ -25,6 +25,11 @@ func ValidateServerHardening(cfg *config.Config) error {
 		return nil
 	}
 
+	if cfg.Server.TimeoutSeconds <= 0 {
+		// GlobalTimeoutMiddleware wraps every request in context.WithTimeout;
+		// a zero value would expire each request context immediately.
+		return fmt.Errorf("server.timeout_seconds must be > 0 in production")
+	}
 	if cfg.Server.ReadTimeoutSeconds <= 0 {
 		return fmt.Errorf("server.read_timeout_seconds must be > 0 in production")
 	}

@@ -54,6 +54,10 @@ func validateConfig(cfg *Config) error {
 	if cfg.ClaimRateLimit.IPLimit <= 0 || cfg.ClaimRateLimit.UserLimit <= 0 || cfg.ClaimRateLimit.TokenLimit <= 0 || cfg.ClaimRateLimit.WindowSeconds <= 0 {
 		return fmt.Errorf("claim rate limit configuration is invalid")
 	}
+	if cfg.RateLimit.TokenLimit <= 0 || cfg.RateLimit.TokensPerPeriod <= 0 || cfg.RateLimit.ReplenishmentSeconds <= 0 {
+		// A zero token_limit means zero burst — every request would be rejected.
+		return fmt.Errorf("global rate limit configuration is invalid")
+	}
 	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
 		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}
