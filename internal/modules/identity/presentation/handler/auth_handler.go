@@ -129,7 +129,7 @@ func (h *AuthHandler) ResendRegisterOtp(c *gin.Context) error {
 // @Accept json
 // @Produce json
 // @Param body body dto.LoginReq true "Thông tin đăng nhập"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.TokenRes} "Đăng nhập thành công, trả token qua JSON body và cookie"
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) error {
 	var input dto.LoginReq
@@ -175,7 +175,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, successLogin, nil)
+	shared_pres.Success(c, successLogin, output)
 	return nil
 }
 
@@ -185,6 +185,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
+// @Param body body dto.LogoutReq false "Refresh token khi không dùng cookie (dành cho Mobile)"
 // @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) error {
@@ -195,6 +196,13 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 	refreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
 	if err != nil || len(refreshToken) == 0 {
+		var req dto.LogoutReq
+		if bindErr := c.ShouldBindJSON(&req); bindErr == nil && len(req.RefreshToken) > 0 {
+			refreshToken = req.RefreshToken
+		}
+	}
+
+	if len(refreshToken) == 0 {
 		return identityerrors.ErrCookieTokenMissing()
 	}
 
@@ -235,24 +243,31 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 
 // RefreshToken refresh JWT token
 // @Summary Xoay vòng token (Refresh Token)
-// @Description Sử dụng refresh token trong cookie để lấy access token mới và xoay vòng refresh token
+// @Description Sử dụng refresh token trong cookie hoặc JSON body (nếu không có cookie) để lấy access token mới và xoay vòng refresh token
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} shared_pres.APIResponse "Xoay vòng token thành công. Token mới được set qua Set-Cookie headers (accessToken, refreshToken)."
+// @Param body body dto.RefreshTokenReq false "Thông tin xoay vòng token khi không dùng cookie (dành cho Mobile)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.TokenRes} "Xoay vòng token thành công. Token mới được trả về qua JSON body và Set-Cookie headers."
 // @Router /api/v1/auth/refresh-token [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) error {
+	var input dto.RefreshTokenReq
 	oldRefreshToken, err := c.Cookie(contextutils.CookieRefreshToken)
-	if err != nil || len(oldRefreshToken) == 0 {
-		return identityerrors.ErrCookieTokenMissing()
+	if err == nil && len(oldRefreshToken) > 0 {
+		input.OldRefreshToken = oldRefreshToken
+	} else {
+		if bindErr := c.ShouldBindJSON(&input); bindErr != nil || len(input.OldRefreshToken) == 0 {
+			return identityerrors.ErrCookieTokenMissing()
+		}
 	}
 
 	clientIP := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
-	input := dto.RefreshTokenReq{
-		OldRefreshToken: oldRefreshToken,
-		DeviceIP:        &clientIP,
-		UserAgent:       &userAgent,
+	if input.DeviceIP == nil && clientIP != "" {
+		input.DeviceIP = &clientIP
+	}
+	if input.UserAgent == nil && userAgent != "" {
+		input.UserAgent = &userAgent
 	}
 
 	output, err := h.sessionUC.RefreshToken(c.Request.Context(), input)
@@ -284,7 +299,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, successRefreshToken, nil)
+	shared_pres.Success(c, successRefreshToken, output)
 	return nil
 }
 
@@ -338,12 +353,12 @@ func (h *AuthHandler) ResendForgotPasswordOtp(c *gin.Context) error {
 
 // ConfirmForgotPasswordOtp confirm forgot password OTP
 // @Summary Xác thực OTP khôi phục mật khẩu
-// @Description Xác thực mã OTP khôi phục mật khẩu và lưu token tạm thời vào cookie
+// @Description Xác thực mã OTP khôi phục mật khẩu, lưu token tạm thời vào cookie và trả về trong JSON body (dành cho Mobile)
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param body body dto.ConfirmForgotPasswordOtpReq true "Mã OTP và Email"
-// @Success 200 {object} shared_pres.APIResponse
+// @Success 200 {object} shared_pres.APIResponse{data=dto.ConfirmForgotPasswordOtpRes}
 // @Router /api/v1/auth/forgot-password/confirm-otp [post]
 func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 	var input dto.ConfirmForgotPasswordOtpReq
@@ -369,17 +384,19 @@ func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 		true,
 	)
 
-	shared_pres.Success(c, successConfirmForgotPassword, nil)
+	shared_pres.Success(c, successConfirmForgotPassword, dto.ConfirmForgotPasswordOtpRes{
+		ResetToken: resetToken,
+	})
 	return nil
 }
 
 // ResetPassword reset user password
 // @Summary Đặt lại mật khẩu
-// @Description Sử dụng token tạm thời từ cookie để tiến hành đặt mật khẩu mới
+// @Description Sử dụng token tạm thời từ cookie hoặc JSON body (nếu không có cookie) để tiến hành đặt mật khẩu mới
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param body body dto.ResetPasswordReq true "Mật khẩu mới và mật khẩu xác nhận"
+// @Param body body dto.ResetPasswordReq true "Mật khẩu mới, xác nhận và resetToken tùy chọn nếu dùng mobile"
 // @Success 200 {object} shared_pres.APIResponse
 // @Router /api/v1/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) error {
@@ -390,7 +407,11 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 
 	resetToken, err := c.Cookie(contextutils.CookieForgotPasswordToken)
 	if err != nil || len(resetToken) == 0 {
-		return identityerrors.ErrTokenExpiredRecovery()
+		if input.ResetToken != nil && len(*input.ResetToken) > 0 {
+			resetToken = *input.ResetToken
+		} else {
+			return identityerrors.ErrTokenExpiredRecovery()
+		}
 	}
 
 	_, err = h.recoveryUC.ResetPassword(c.Request.Context(), input, resetToken)

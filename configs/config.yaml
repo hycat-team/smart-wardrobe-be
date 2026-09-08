@@ -92,7 +92,7 @@ cloudinary:
     outfit_folder: smart_wardrobe/outfits
     post_folder: smart_wardrobe/posts
 email:
-    host: smtp.resend.com
+    host: smtp-relay.brevo.com
     port: 587
     sender_name: SmartWardrobe
     sender_email: "${EMAIL_SENDER_EMAIL}"

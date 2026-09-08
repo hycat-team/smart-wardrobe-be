@@ -91,7 +91,7 @@ cloudinary:
     outfit_folder: closy/outfits
     post_folder: closy/posts
 email:
-    host: smtp.resend.com
+    host: smtp-relay.brevo.com
     port: 587
     sender_name: HYCAT Support
     sender_email: "${EMAIL_SENDER_EMAIL}"
