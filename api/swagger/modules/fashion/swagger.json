@@ -3810,6 +3810,14 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpRes": {
+      "properties": {
+        "resetToken": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq": {
       "properties": {
         "email": {
@@ -3910,6 +3918,40 @@
       ],
       "type": "object"
     },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.LogoutReq": {
+      "properties": {
+        "accessToken": {
+          "type": "string"
+        },
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "accessToken"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.RefreshTokenReq": {
+      "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "oldRefreshToken": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oldRefreshToken"
+      ],
+      "type": "object"
+    },
     "smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq": {
       "properties": {
         "address": {
@@ -3981,6 +4023,9 @@
         },
         "newPassword": {
           "type": "string"
+        },
+        "resetToken": {
+          "type": "string"
         }
       },
       "required": [
@@ -3998,6 +4043,17 @@
       "required": [
         "email"
       ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_internal_modules_identity_application_dto.TokenRes": {
+      "properties": {
+        "accessToken": {
+          "type": "string"
+        },
+        "refreshToken": {
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_internal_modules_identity_application_dto.UpdateAvatarReq": {

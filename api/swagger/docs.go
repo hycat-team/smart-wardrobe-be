@@ -2769,7 +2769,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/forgot-password/confirm-otp": {
             "post": {
-                "description": "Xác thực mã OTP khôi phục mật khẩu và lưu token tạm thời vào cookie",
+                "description": "Xác thực mã OTP khôi phục mật khẩu, lưu token tạm thời vào cookie và trả về trong JSON body (dành cho Mobile)",
                 "consumes": [
                     "application/json"
                 ],
@@ -2795,7 +2795,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2861,9 +2873,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Đăng nhập thành công, trả token qua JSON body và cookie",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.TokenRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -2882,6 +2906,16 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "summary": "Đăng xuất",
+                "parameters": [
+                    {
+                        "description": "Refresh token khi không dùng cookie (dành cho Mobile)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.LogoutReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2894,7 +2928,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/refresh-token": {
             "post": {
-                "description": "Sử dụng refresh token trong cookie để lấy access token mới và xoay vòng refresh token",
+                "description": "Sử dụng refresh token trong cookie hoặc JSON body (nếu không có cookie) để lấy access token mới và xoay vòng refresh token",
                 "consumes": [
                     "application/json"
                 ],
@@ -2905,11 +2939,33 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "summary": "Xoay vòng token (Refresh Token)",
+                "parameters": [
+                    {
+                        "description": "Thông tin xoay vòng token khi không dùng cookie (dành cho Mobile)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.RefreshTokenReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Xoay vòng token thành công. Token mới được set qua Set-Cookie headers (accessToken, refreshToken).",
+                        "description": "Xoay vòng token thành công. Token mới được trả về qua JSON body và Set-Cookie headers.",
                         "schema": {
-                            "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/smart-wardrobe-be_internal_shared_presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_internal_modules_identity_application_dto.TokenRes"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -3019,7 +3075,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/reset-password": {
             "post": {
-                "description": "Sử dụng token tạm thời từ cookie để tiến hành đặt mật khẩu mới",
+                "description": "Sử dụng token tạm thời từ cookie hoặc JSON body (nếu không có cookie) để tiến hành đặt mật khẩu mới",
                 "consumes": [
                     "application/json"
                 ],
@@ -3032,7 +3088,7 @@ const docTemplate = `{
                 "summary": "Đặt lại mật khẩu",
                 "parameters": [
                     {
-                        "description": "Mật khẩu mới và mật khẩu xác nhận",
+                        "description": "Mật khẩu mới, xác nhận và resetToken tùy chọn nếu dùng mobile",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -11186,6 +11242,14 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmForgotPasswordOtpRes": {
+            "type": "object",
+            "properties": {
+                "resetToken": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.ConfirmRegisterOtpReq": {
             "type": "object",
             "required": [
@@ -11286,6 +11350,40 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.LogoutReq": {
+            "type": "object",
+            "required": [
+                "accessToken"
+            ],
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.RefreshTokenReq": {
+            "type": "object",
+            "required": [
+                "oldRefreshToken"
+            ],
+            "properties": {
+                "deviceIp": {
+                    "type": "string"
+                },
+                "deviceName": {
+                    "type": "string"
+                },
+                "oldRefreshToken": {
+                    "type": "string"
+                },
+                "userAgent": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_internal_modules_identity_application_dto.RegisterReq": {
             "type": "object",
             "required": [
@@ -11362,6 +11460,9 @@ const docTemplate = `{
                 },
                 "newPassword": {
                     "type": "string"
+                },
+                "resetToken": {
+                    "type": "string"
                 }
             }
         },
@@ -11372,6 +11473,17 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_internal_modules_identity_application_dto.TokenRes": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "refreshToken": {
                     "type": "string"
                 }
             }
