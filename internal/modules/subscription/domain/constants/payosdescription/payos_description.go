@@ -6,7 +6,7 @@ import (
 
 const (
 	BrandPrefix    = "CLOSY"
-	TransactionFmt = BrandPrefix + "-%d"
+	TransactionFmt = BrandPrefix + "%d"
 )
 
 func FormatTransactionDescription(orderCode int64) string {
