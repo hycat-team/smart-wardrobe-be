@@ -270,11 +270,13 @@ func TestCreateDirectPurchaseSuccessCreatesPendingTransaction(t *testing.T) {
 func TestCreateDirectPurchaseReusesActivePendingTransaction(t *testing.T) {
 	cfg := checkoutTestConfig()
 	plan := paidPlan()
+	future := time.Now().Add(10 * time.Minute)
 	existing := &entities.DepositTransaction{
 		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
 		OrderCode:       123456,
 		Status:          depositstatus.Pending,
 		PaymentUrl:      strPtr("https://pay.example.com/existing"),
+		ExpiresAt:       &future,
 	}
 	txRepo := &fakeDepositTxRepo{active: existing}
 	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, &fakeGateway{})
@@ -288,6 +290,40 @@ func TestCreateDirectPurchaseReusesActivePendingTransaction(t *testing.T) {
 	}
 	if len(txRepo.created) != 0 {
 		t.Fatalf("expected no new transaction, got %d", len(txRepo.created))
+	}
+}
+
+func TestCreateDirectPurchaseLazyExpiresOutdatedTransaction(t *testing.T) {
+	cfg := checkoutTestConfig()
+	plan := paidPlan()
+	past := time.Now().Add(-10 * time.Minute)
+	existing := &entities.DepositTransaction{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		OrderCode:       123456,
+		Status:          depositstatus.Pending,
+		PaymentUrl:      strPtr("https://pay.example.com/expired-link"),
+		ExpiresAt:       &past,
+	}
+	txRepo := &fakeDepositTxRepo{active: existing}
+	gateway := &fakeGateway{result: &payment.CheckoutSessionResult{
+		Outcome:       payment.OutcomeSucceeded,
+		CheckoutURL:   "https://pay.example.com/new-fresh-link",
+		PaymentLinkID: "plink-new",
+	}}
+	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, gateway)
+
+	res, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if existing.Status != depositstatus.Expired {
+		t.Fatalf("expected old transaction to be marked Expired, got %v", existing.Status)
+	}
+	if res.PaymentUrl != "https://pay.example.com/new-fresh-link" {
+		t.Fatalf("expected new fresh link created, got %q", res.PaymentUrl)
+	}
+	if len(txRepo.created) != 1 {
+		t.Fatalf("expected 1 new transaction created, got %d", len(txRepo.created))
 	}
 }
 

@@ -31,9 +31,19 @@ func GzipMinSizeMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		w := &gzipThresholdWriter{ResponseWriter: c.Writer, threshold: GzipMinSizeBytes}
+		orig := c.Writer
+		w := &gzipThresholdWriter{ResponseWriter: orig, threshold: GzipMinSizeBytes}
 		c.Writer = w
 		c.Next()
+		if w.buf.Len() == 0 && !orig.Written() {
+			// Nothing was written (e.g., a middleware aborted with c.Error
+			// like AuthMiddleware on missing token). Restoring the original
+			// writer keeps the response untouched so the outer
+			// GlobalErrorHandler can still write the real status (401...).
+			// Flushing here would send an empty 200 and swallow the error.
+			c.Writer = orig
+			return
+		}
 		w.finalize()
 	}
 }
@@ -71,6 +81,12 @@ type gzipThresholdWriter struct {
 	gz         *gzip.Writer
 	decided    bool
 	compressed bool
+	statusCode int
+}
+
+func (w *gzipThresholdWriter) WriteHeader(code int) {
+	w.statusCode = code
+	w.ResponseWriter.WriteHeader(code)
 }
 
 func (w *gzipThresholdWriter) WriteString(s string) (int, error) {

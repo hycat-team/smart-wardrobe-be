@@ -21,6 +21,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const directPurchaseExpirationBuffer = 1 * time.Minute
+
 func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context, userID uuid.UUID, req *dto.DirectPurchaseReq) (*dto.PaymentLinkDTO, error) {
 	plan, err := uc.planRepo.GetBySlug(ctx, req.PlanSlug)
 	if err != nil {
@@ -34,23 +36,26 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		return nil, subscriptionerrors.ErrFreePlanDirectPurchase()
 	}
 
+	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
+	usableUntil := now.Add(directPurchaseExpirationBuffer)
 	if active, err := uc.depositTxRepo.GetActiveDirectPurchase(ctx, userID); err != nil {
 		return nil, err
 	} else if active != nil {
-		url := ""
-		if active.PaymentUrl != nil {
-			url = *active.PaymentUrl
+		if active.ExpiresAt != nil && active.ExpiresAt.After(usableUntil) {
+			url := ""
+			if active.PaymentUrl != nil {
+				url = *active.PaymentUrl
+			}
+			return &dto.PaymentLinkDTO{
+				PaymentUrl:           url,
+				OrderCode:            active.OrderCode,
+				PaymentStatus:        active.Status,
+				ExpiresAt:            active.ExpiresAt,
+				NextReconciliationAt: active.NextReconciliationAt,
+			}, nil
 		}
-		return &dto.PaymentLinkDTO{
-			PaymentUrl:           url,
-			OrderCode:            active.OrderCode,
-			PaymentStatus:        active.Status,
-			ExpiresAt:            active.ExpiresAt,
-			NextReconciliationAt: active.NextReconciliationAt,
-		}, nil
 	}
 
-	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
 	snapshotBytes, err := json.Marshal(map[string]any{
 		"maxWardrobeItems":   plan.MaxWardrobeItems,
 		"maxOutfits":         plan.MaxOutfits,
@@ -71,6 +76,21 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 		if err := uc.validatePurchase(txCtx, userID, plan, sub, now); err != nil {
 			return err
 		}
+
+		if active, err := uc.depositTxRepo.GetActiveDirectPurchase(txCtx, userID); err != nil {
+			return err
+		} else if active != nil {
+			if active.ExpiresAt != nil && !active.ExpiresAt.After(usableUntil) {
+				active.Status = depositstatus.Expired
+				active.ExpiredAt = &now
+				if err := uc.depositTxRepo.Update(txCtx, active); err != nil {
+					return err
+				}
+			} else {
+				return subscriptionerrors.ErrPendingPaymentExists()
+			}
+		}
+
 		planCode, planName, tierRank, kind, pricingVersion := plan.Slug, plan.Name, plan.TierRank, plan.PlanKind, plan.PricingVersion
 		tx = &entities.DepositTransaction{
 			UserID:                userID,

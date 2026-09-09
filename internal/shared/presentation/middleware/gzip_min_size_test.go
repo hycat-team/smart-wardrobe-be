@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 
 	"github.com/gin-gonic/gin"
 )
@@ -97,6 +99,58 @@ func TestGzipMinSizeSkipsSSEAcceptHeader(t *testing.T) {
 
 	if w.Header().Get("Content-Encoding") == "gzip" {
 		t.Fatal("expected text/event-stream request to bypass gzip compression")
+	}
+}
+
+// gzipErrorChainRouter reproduces the production middleware order in
+// internal/api/routes/router.go: GlobalErrorHandler (outer) wraps
+// GzipMinSizeMiddleware, which wraps a handler that fails via c.Error
+// without writing any body — exactly what AuthMiddleware.Handle() does on
+// a missing/invalid access token.
+func gzipErrorChainRouter(t *testing.T) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	cfg := config.Config{}
+	cfg.Server.GzipEnabled = true
+	r := gin.New()
+	r.Use(GlobalErrorHandler(testLogger{}, "test"))
+	r.Use(GzipMinSizeMiddleware(&cfg))
+	r.GET("/api/v1/me", func(c *gin.Context) {
+		c.Error(apperror.ErrUnauthorized())
+		c.Abort()
+	})
+	return r
+}
+
+func TestGzipDoesNotSwallowAuthError(t *testing.T) {
+	r := gzipErrorChainRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d (body %q)", w.Code, w.Body.String())
+	}
+	var body struct {
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("expected JSON error body, got %q: %v", w.Body.String(), err)
+	}
+	if body.Status != http.StatusUnauthorized {
+		t.Fatalf("expected error status 401 in body, got %+v", body)
+	}
+}
+
+func TestGzipErrorWithoutClientGzipStill401(t *testing.T) {
+	r := gzipErrorChainRouter(t)
+
+	w := doGzipRequest(r, "/api/v1/me", "")
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d (body %q)", w.Code, w.Body.String())
 	}
 }
 
