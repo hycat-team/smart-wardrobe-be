@@ -86,6 +86,20 @@ func TestGzipMinSizeSkipsExcludedStreamPath(t *testing.T) {
 	}
 }
 
+func TestGzipMinSizeSkipsSSEAcceptHeader(t *testing.T) {
+	r := gzipTestRouter(t, true)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboard/overview", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Accept", "text/event-stream")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Header().Get("Content-Encoding") == "gzip" {
+		t.Fatal("expected text/event-stream request to bypass gzip compression")
+	}
+}
+
 func TestGzipMinSizeSkipsWhenDisabledOrClientUnsupported(t *testing.T) {
 	r := gzipTestRouter(t, false)
 	w := doGzipRequest(r, "/api/v1/dashboard/overview", "gzip")

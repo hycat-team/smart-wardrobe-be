@@ -119,5 +119,9 @@ func (m *AuthMiddleware) extractToken(c *gin.Context) string {
 		return strings.TrimPrefix(authHeader, "Bearer ")
 	}
 
+	if queryToken := c.Query("token"); queryToken != "" {
+		return queryToken
+	}
+
 	return ""
 }

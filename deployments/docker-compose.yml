@@ -49,6 +49,7 @@ services:
             - "${SERVER_PORT}:8080"
         environment:
             - CONFIG_FILE=/app/config/config.production.yaml
+            - FRONT_END_ORIGIN=${FRONT_END_ORIGIN:-http://localhost:8081,http://localhost:3000,http://127.0.0.1:8081,http://localhost:8080,https://closy.hycat.online}
         env_file:
             - ../.env
         depends_on:

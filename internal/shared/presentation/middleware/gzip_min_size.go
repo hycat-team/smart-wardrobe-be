@@ -14,7 +14,11 @@ import (
 // compressing tiny payloads costs more than it saves (spec 019 FR-009).
 const GzipMinSizeBytes = 1 << 10
 
-var gzipExcludedPaths = []string{"/api/v1/ai/chat/sessions/*/messages/stream"}
+var gzipExcludedPaths = []string{
+	"/api/v1/ai/chat/sessions/*/messages/stream",
+	"/api/v1/wardrobe-items/tasks/*/sse",
+	"/brand-portal/brands/*/items/tasks/*/sse",
+}
 
 // GzipMinSizeMiddleware compresses JSON responses with gzip only when the
 // client accepts it and the response reaches GzipMinSizeBytes. The decision is
@@ -22,7 +26,7 @@ var gzipExcludedPaths = []string{"/api/v1/ai/chat/sessions/*/messages/stream"}
 // payloads and SSE streams pass through uncompressed and unbuffered.
 func GzipMinSizeMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !cfg.Server.GzipEnabled || !clientAcceptsGzip(c) || isExcludedGzipPath(c.FullPath()) {
+		if isSSEAccept(c) || !cfg.Server.GzipEnabled || !clientAcceptsGzip(c) || isExcludedGzipPath(c.FullPath()) {
 			c.Next()
 			return
 		}
@@ -32,6 +36,10 @@ func GzipMinSizeMiddleware(cfg *config.Config) gin.HandlerFunc {
 		c.Next()
 		w.finalize()
 	}
+}
+
+func isSSEAccept(c *gin.Context) bool {
+	return strings.Contains(c.GetHeader("Accept"), "text/event-stream")
 }
 
 func clientAcceptsGzip(c *gin.Context) bool {

@@ -3,7 +3,7 @@
 # ============================================================
 server:
     port: "8080"
-    front_end_origin: https://closy.hycat.online
+    front_end_origin: "${FRONT_END_ORIGIN:-https://closy.hycat.online}"
     timeout_seconds: 300
     read_timeout_seconds: 30
     write_timeout_seconds: 60

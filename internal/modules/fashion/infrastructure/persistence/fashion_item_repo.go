@@ -176,9 +176,9 @@ func (r *FashionItemRepository) MarkProcessingFailed(ctx context.Context, itemID
 	result := r.GetDB(ctx).Model(&entities.FashionItem{}).
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).
 		Updates(map[string]any{
-			"processing_error_reason: ": reason,
-			"review_reason":             reviewReason,
-			"updated_at":                time.Now().UTC(),
+			"processing_error_reason": reason,
+			"review_reason":           reviewReason,
+			"updated_at":              time.Now().UTC(),
 		})
 	return result.RowsAffected > 0, result.Error
 }
