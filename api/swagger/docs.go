@@ -11352,13 +11352,7 @@ const docTemplate = `{
         },
         "smart-wardrobe-be_internal_modules_identity_application_dto.LogoutReq": {
             "type": "object",
-            "required": [
-                "accessToken"
-            ],
             "properties": {
-                "accessToken": {
-                    "type": "string"
-                },
                 "refreshToken": {
                     "type": "string"
                 }

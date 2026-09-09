@@ -3431,16 +3431,10 @@
     },
     "smart-wardrobe-be_internal_modules_identity_application_dto.LogoutReq": {
       "properties": {
-        "accessToken": {
-          "type": "string"
-        },
         "refreshToken": {
           "type": "string"
         }
       },
-      "required": [
-        "accessToken"
-      ],
       "type": "object"
     },
     "smart-wardrobe-be_internal_modules_identity_application_dto.RefreshTokenReq": {

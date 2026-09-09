@@ -35,7 +35,7 @@ type RefreshTokenReq struct {
 }
 
 type LogoutReq struct {
-	AccessToken  string `json:"accessToken" binding:"required" label:"access token"`
+	AccessToken  string `json:"-" binding:"omitempty" label:"access token"`
 	RefreshToken string `json:"refreshToken" binding:"omitempty" label:"refresh token"`
 }
 

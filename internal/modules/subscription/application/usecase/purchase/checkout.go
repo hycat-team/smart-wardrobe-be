@@ -110,7 +110,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	if cancelURL == "" {
 		cancelURL = uc.cfg.PayOS.CancelUrl
 	}
-	description := payosdescription.FormatDirectPurchase(tx.OrderCode, plan.Name, payosdescription.FormatAmountShort(tx.Amount))
+	description := payosdescription.FormatTransactionDescription(tx.OrderCode)
 	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{
 		OrderCode:   tx.OrderCode,
 		Amount:      tx.Amount,

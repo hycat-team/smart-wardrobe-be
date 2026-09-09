@@ -169,7 +169,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 	if cancelURL == "" {
 		cancelURL = uc.cfg.PayOS.CancelUrl
 	}
-	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: payosdescription.FormatWalletTopup(tx.OrderCode, payosdescription.FormatAmountShort(tx.Amount)), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
+	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: payosdescription.FormatTransactionDescription(tx.OrderCode), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
 	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, tx.OrderCode)
 		if err != nil || locked == nil {
