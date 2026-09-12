@@ -11017,7 +11017,7 @@ const docTemplate = `{
                     "description": "Ghi chú thêm bằng tay (free text)",
                     "type": "string"
                 },
-                "include_brand_items": {
+                "includeBrandItems": {
                     "description": "Cho phép phối đồ của brand (tỷ lệ tối đa 30%)",
                     "type": "boolean",
                     "example": true

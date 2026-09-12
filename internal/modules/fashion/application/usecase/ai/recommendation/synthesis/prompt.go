@@ -64,7 +64,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Alternative rule: items in alternative_ids must be viable, high-quality fashion substitutes for the primary_id that maintain the overall color harmony, style target, weather compatibility, and aesthetic of the recommended outfit.\n")
 	builder.WriteString("Output contract: return exactly one minified JSON object with keys title, explanation, items.\n")
 	builder.WriteString("Language: title and explanation must be natural Vietnamese with proper diacritics.\n")
-	builder.WriteString("Rules: use only candidate aliases from CANDIDATES (for example A1); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
+	builder.WriteString("Rules: aliases (A1, A2, ...) are internal IDs and MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation (no \"(A1)\", no bare \"A1\"); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
 	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
 	builder.WriteString("Outfit rules:\n")
 	builder.WriteString("- A complete outfit MUST include exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
@@ -95,7 +95,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ phù hợp\",\"explanation\":\"Giải thích ngắn gọn bằng tiếng Việt.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố thoải mái\",\"explanation\":\"Chiếc áo thun trắng nhẹ nhàng kết hợp cùng quần jeans xanh tạo tổng thể hài hòa và thoải mái.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")

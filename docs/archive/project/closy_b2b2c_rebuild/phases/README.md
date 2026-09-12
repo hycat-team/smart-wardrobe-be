@@ -35,8 +35,8 @@ Các quyết định cuối đã chốt:
 - Brand không tạo `users` cho khách offline chưa chủ động dùng Closy.
 - Khách offline được lưu trong `brand_customers` với `user_id` nullable, có thể claim/link về tài khoản Closy thật sau này bằng claim code/QR.
 - Brand không được xem raw wardrobe cá nhân của user.
-- AI outfit recommendation chỉ có `include_brand_items`; không có `required_brand_item_id`.
-- Hệ thống tự tìm brand items hợp lệ khi `include_brand_items = true`.
+- AI outfit recommendation chỉ có `includeBrandItems`; không có `required_brand_item_id`.
+- Hệ thống tự tìm brand items hợp lệ khi `includeBrandItems = true`.
 - Tier loyalty dựa trên `total_spend`, không dựa trên `current_points`.
 - Một API loyalty points thống nhất nhận `user_id` hoặc `phone`, nhưng phone chỉ dùng để tìm/tạo `brand_customers` offline, không tạo `users`.
 

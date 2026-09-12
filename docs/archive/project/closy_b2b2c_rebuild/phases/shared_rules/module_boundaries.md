@@ -91,7 +91,7 @@ create GenerateSampleTrialStyling usecase
 Styling input chỉ thêm:
 
 ```text
-include_brand_items boolean
+includeBrandItems boolean
 ```
 
 Không thêm:

@@ -180,16 +180,16 @@ Request body gợi ý:
 
 ```json
 {
-  "user_id": "nullable",
-  "phone": "nullable",
-  "customer_name": "nullable",
-  "external_customer_code": "nullable",
-  "purchase_amount": 500000,
-  "points_delta": null,
-  "reason": "Offline purchase",
-  "reference_type": "MANUAL_PURCHASE",
-  "reference_id": "nullable",
-  "idempotency_key": "nullable"
+    "user_id": "nullable",
+    "phone": "nullable",
+    "customer_name": "nullable",
+    "external_customer_code": "nullable",
+    "purchase_amount": 500000,
+    "points_delta": null,
+    "reason": "Offline purchase",
+    "reference_type": "MANUAL_PURCHASE",
+    "reference_id": "nullable",
+    "idempotency_key": "nullable"
 }
 ```
 
@@ -285,13 +285,13 @@ Không dùng:
 AI outfit recommendation chỉ mở rộng bằng flag:
 
 ```text
-include_brand_items = true/false
+includeBrandItems = true/false
 ```
 
 Rule:
 
-- Nếu `include_brand_items = false`, chỉ dùng wardrobe items của user.
-- Nếu `include_brand_items = true`, `styling` gọi `brand/contract.ListEligibleBrandItemsForStyling(userID, filter)`.
+- Nếu `includeBrandItems = false`, chỉ dùng wardrobe items của user.
+- Nếu `includeBrandItems = true`, `styling` gọi `brand/contract.ListEligibleBrandItemsForStyling(userID, filter)`.
 - `styling` không tự query brand/loyalty tables.
 - `brand` module tự quyết định brand item hợp lệ dựa trên brand active, item active, brand customer active/linked nếu cần, benefit/feature access nếu item là sample hoặc feature đặc biệt.
 - AI tự chọn brand item phù hợp, không ép user truyền `required_brand_item_id`.
@@ -341,7 +341,7 @@ Phase 05: Brand module
   05e Brand chat
   05f Privacy visibility
 Phase 06: Brand items and sample feedback
-Phase 07: Styling brand integration với include_brand_items
+Phase 07: Styling brand integration với includeBrandItems
 Phase 08: Seed demo and final validation
 ```
 
@@ -366,4 +366,3 @@ Không làm trong MVP:
 - complex rule engine
 - multiple active loyalty programs per brand
 - rolling yearly tier reset
-

@@ -212,6 +212,56 @@ func TestMapLLMResponseToGroupsHandlesNilFashionItemField(t *testing.T) {
 	}
 }
 
+func TestBuildRecommendationPromptForbidsAliasesInNarrative(t *testing.T) {
+	item, fi := newSynthItem()
+	fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Ao", Slug: "ao"}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{*item.FashionItemID: fi}
+	prompt := BuildRecommendationPrompt([]types.CandidateForPrompt{{Item: item}}, dto.RecommendOutfitReq{}, fashionItemMap)
+	if !strings.Contains(prompt, "NEVER write aliases in title or explanation") {
+		t.Fatalf("expected prompt to forbid aliases in narrative, got: %s", prompt)
+	}
+}
+
+func TestSanitizeOutfitNarrativeRemovesAliases(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		contains []string
+	}{
+		{
+			name:     "parenthesized aliases",
+			input:    "Lựa chọn chiếc váy ngắn màu xám than (A7) với thiết kế tối giản. Kết hợp cùng giày sneaker Onitsuka Tiger (A2) hài hòa.",
+			contains: []string{"váy ngắn màu xám than", "Onitsuka Tiger"},
+		},
+		{
+			name:     "bare alias",
+			input:    "Phối áo A1 cùng quần A3 rất đẹp.",
+			contains: []string{"Phối áo", "quần"},
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			contains: []string{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := SanitizeOutfitNarrative(tc.input)
+			if matched := bareAliasPattern.FindString(got); matched != "" {
+				t.Fatalf("expected no alias in output, found %q in %q", matched, got)
+			}
+			if parenthesizedAliasPattern.FindString(got) != "" {
+				t.Fatalf("expected no parenthesized alias in output, got %q", got)
+			}
+			for _, want := range tc.contains {
+				if !strings.Contains(got, want) {
+					t.Fatalf("expected output to keep %q, got %q", want, got)
+				}
+			}
+		})
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
 }

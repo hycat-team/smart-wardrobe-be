@@ -190,7 +190,7 @@ MVP simple rule:
 
 ```text
 PRODUCT brand item:
-  user must be ACTIVE brand_customer and include_brand_items = true.
+  user must be ACTIVE brand_customer and includeBrandItems = true.
   BRAND_ITEM_RECOMMENDATION benefit can be used later if brand wants gating.
 
 SAMPLE brand item:

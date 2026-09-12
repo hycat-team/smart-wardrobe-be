@@ -114,11 +114,11 @@ Input AI outfit recommendation chỉ mở rộng tối thiểu:
 
 ```json
 {
-  "include_brand_items": true
+    "includeBrandItems": true
 }
 ```
 
-Nếu `include_brand_items = true`, hệ thống tự tìm brand items hợp lệ qua `brand/contract.ListEligibleBrandItemsForStyling`.
+Nếu `includeBrandItems = true`, hệ thống tự tìm brand items hợp lệ qua `brand/contract.ListEligibleBrandItemsForStyling`.
 
 `styling` không tự query brand/loyalty tables.
 

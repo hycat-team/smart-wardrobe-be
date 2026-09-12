@@ -121,7 +121,7 @@ Expected:
 ### Case 3: Wardrobe-only AI recommendation
 
 ```text
-include_brand_items = false
+includeBrandItems = false
 ```
 
 Expected:
@@ -134,7 +134,7 @@ Expected:
 ### Case 4: Brand item AI recommendation
 
 ```text
-include_brand_items = true
+includeBrandItems = true
 ```
 
 Expected:
