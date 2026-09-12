@@ -16,8 +16,8 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    check:
-        name: Codebase & Lint Checks
+    static:
+        name: Static Checks
         runs-on: ubuntu-latest
         steps:
             - name: Checkout source
@@ -30,8 +30,59 @@ jobs:
                   cache: true
                   cache-dependency-path: go.sum
 
-            - name: Run project checks
-              run: make check
+            - name: Run static checks
+              run: make fmt-check && make tidy-check && make generate-check
+
+    vet:
+        name: Go Vet
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: go.sum
+
+            - name: Run go vet
+              run: make vet
+
+    test:
+        name: Unit and Integration Tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: go.sum
+
+            - name: Run tests
+              run: make test
+
+    build:
+        name: Build Binary
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: go.sum
+
+            - name: Build backend
+              run: make build
 
     test-race:
         name: Race Detector Tests
