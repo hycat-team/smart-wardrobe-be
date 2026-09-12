@@ -2,6 +2,7 @@ package purchase
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
+	"smart-wardrobe-be/internal/shared/application/constants/apperror"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -70,7 +72,16 @@ func (f *fakeDepositTxRepo) GetActiveDirectPurchase(ctx context.Context, userID 
 	return f.active, nil
 }
 func (f *fakeDepositTxRepo) HasPendingDirectPurchase(ctx context.Context, userID uuid.UUID) (bool, error) {
-	return f.hasPending, nil
+	if f.hasPending {
+		return true, nil
+	}
+	for _, tx := range f.lockedByCode {
+		switch tx.Status {
+		case depositstatus.Pending, depositstatus.Creating, depositstatus.ReconciliationRequired, depositstatus.Reconciling:
+			return true, nil
+		}
+	}
+	return false, nil
 }
 func (f *fakeDepositTxRepo) Create(ctx context.Context, e *entities.DepositTransaction) error {
 	f.created = append(f.created, e)
@@ -81,12 +92,33 @@ func (f *fakeDepositTxRepo) Create(ctx context.Context, e *entities.DepositTrans
 	return nil
 }
 func (f *fakeDepositTxRepo) GetByOrderCodeWithLock(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {
-	return f.lockedByCode[orderCode], nil
+	if tx, ok := f.lockedByCode[orderCode]; ok {
+		return tx, nil
+	}
+	if f.active != nil && f.active.OrderCode == orderCode {
+		return f.active, nil
+	}
+	return nil, nil
 }
 func (f *fakeDepositTxRepo) Update(ctx context.Context, e *entities.DepositTransaction) error {
+	if f.lockedByCode == nil {
+		f.lockedByCode = map[int64]*entities.DepositTransaction{}
+	}
+	for code, v := range f.lockedByCode {
+		if v == e && code != e.OrderCode {
+			delete(f.lockedByCode, code)
+		}
+	}
+	f.lockedByCode[e.OrderCode] = e
 	return nil
 }
 func (f *fakeDepositTxRepo) GetByOrderCode(ctx context.Context, orderCode int64) (*entities.DepositTransaction, error) {
+	if tx, ok := f.lockedByCode[orderCode]; ok {
+		return tx, nil
+	}
+	if f.active != nil && f.active.OrderCode == orderCode {
+		return f.active, nil
+	}
 	return nil, nil
 }
 func (f *fakeDepositTxRepo) GetByGatewayReference(ctx context.Context, reference string) (*entities.DepositTransaction, error) {
@@ -175,10 +207,29 @@ func (f *fakeSubRepo) BatchUpdateMap(ctx context.Context, ids []uuid.UUID, value
 }
 
 type fakeGateway struct {
-	result *payment.CheckoutSessionResult
+	result    *payment.CheckoutSessionResult
+	results   []*payment.CheckoutSessionResult
+	calls     int
+	requests  []*payment.CheckoutSessionReq
+	cancelled []int64
+	cancelErr error
+}
+
+func duplicateOrderResult() *payment.CheckoutSessionResult {
+	return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, Retryable: true, ErrorCode: payment.ErrCodeDuplicateOrder}
 }
 
 func (f *fakeGateway) CreateCheckoutSession(ctx context.Context, req *payment.CheckoutSessionReq) (*payment.CheckoutSessionResult, error) {
+	f.calls++
+	f.requests = append(f.requests, req)
+	if len(f.results) > 0 {
+		r := f.results[0]
+		f.results = f.results[1:]
+		if r.Outcome == payment.OutcomeSucceeded {
+			return r, nil
+		}
+		return r, errors.New("payos returned business error code " + r.ErrorCode)
+	}
 	return f.result, nil
 }
 func (f *fakeGateway) VerifyWebhook(ctx context.Context, rawBody []byte, signatureHeader string) error {
@@ -188,7 +239,8 @@ func (f *fakeGateway) GetPaymentLinkInfo(ctx context.Context, orderCode int64) (
 	return nil, nil
 }
 func (f *fakeGateway) CancelPaymentLink(ctx context.Context, orderCode int64, reason string) error {
-	return nil
+	f.cancelled = append(f.cancelled, orderCode)
+	return f.cancelErr
 }
 
 // ---- Helpers ----
@@ -358,6 +410,144 @@ func TestCreateDirectPurchaseRejectsWhenPendingExists(t *testing.T) {
 	_, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
 	if err == nil {
 		t.Fatal("expected pending payment rejection, got nil error")
+	}
+}
+
+func TestCreateDirectPurchaseRetriesOnDuplicateOrderCode(t *testing.T) {
+	cfg := checkoutTestConfig()
+	plan := paidPlan()
+	txRepo := &fakeDepositTxRepo{}
+	gateway := &fakeGateway{results: []*payment.CheckoutSessionResult{
+		duplicateOrderResult(),
+		{Outcome: payment.OutcomeSucceeded, CheckoutURL: "https://pay.example.com/retry-link", PaymentLinkID: "plink-retry"},
+	}}
+	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, gateway)
+
+	res, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
+	if err != nil {
+		t.Fatalf("expected retry to recover from 231, got error: %v", err)
+	}
+	if res.PaymentStatus != depositstatus.Pending || res.PaymentUrl != "https://pay.example.com/retry-link" {
+		t.Fatalf("expected pending retry link, got %+v", res)
+	}
+	if gateway.calls != 2 {
+		t.Fatalf("expected 2 gateway calls, got %d", gateway.calls)
+	}
+	first, second := gateway.requests[0].OrderCode, gateway.requests[1].OrderCode
+	if first == second {
+		t.Fatalf("expected rotated order code on retry, got same %d", first)
+	}
+	for _, code := range []int64{first, second} {
+		if code < 1_000_000_000_000 {
+			t.Fatalf("expected time-ordered order code, got %d", code)
+		}
+	}
+	if len(txRepo.created) != 1 {
+		t.Fatalf("expected exactly one transaction row (update-in-place), got %d", len(txRepo.created))
+	}
+	if res.OrderCode != second || txRepo.created[0].OrderCode != second {
+		t.Fatalf("expected persisted order code %d, got res %+v created %+v", second, res, txRepo.created[0])
+	}
+}
+
+func TestCreateDirectPurchaseConflictsWhenDuplicatePersists(t *testing.T) {
+	cfg := checkoutTestConfig()
+	plan := paidPlan()
+	txRepo := &fakeDepositTxRepo{}
+	gateway := &fakeGateway{results: []*payment.CheckoutSessionResult{
+		duplicateOrderResult(),
+		duplicateOrderResult(),
+		duplicateOrderResult(),
+	}}
+	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, gateway)
+
+	_, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
+	if err == nil {
+		t.Fatal("expected conflict after exhausted 231 retries, got nil error")
+	}
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Status != 409 {
+		t.Fatalf("expected HTTP 409 conflict, got %v", err)
+	}
+	if gateway.calls != 3 {
+		t.Fatalf("expected 3 gateway calls, got %d", gateway.calls)
+	}
+	if txRepo.created[0].Status != depositstatus.CreationFailed {
+		t.Fatalf("expected exhausted duplicate marked CreationFailed, got %v", txRepo.created[0].Status)
+	}
+}
+
+func shortLivedPendingTransaction() *entities.DepositTransaction {
+	soon := time.Now().Add(3 * time.Minute)
+	return &entities.DepositTransaction{
+		AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
+		OrderCode:       654321,
+		Status:          depositstatus.Pending,
+		PaymentUrl:      strPtr("https://pay.example.com/old-link"),
+		PaymentLinkID:   strPtr("plink-old"),
+		ExpiresAt:       &soon,
+	}
+}
+
+func TestCreateDirectPurchaseRotatesShortLivedLink(t *testing.T) {
+	cfg := checkoutTestConfig()
+	plan := paidPlan()
+	old := shortLivedPendingTransaction()
+	txRepo := &fakeDepositTxRepo{active: old}
+	gateway := &fakeGateway{result: &payment.CheckoutSessionResult{
+		Outcome:       payment.OutcomeSucceeded,
+		CheckoutURL:   "https://pay.example.com/fresh-link",
+		PaymentLinkID: "plink-fresh",
+	}}
+	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, gateway)
+
+	res, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
+	if err != nil {
+		t.Fatalf("expected rotation to fresh link, got error: %v", err)
+	}
+	if res.PaymentUrl != "https://pay.example.com/fresh-link" {
+		t.Fatalf("expected fresh link, got %q", res.PaymentUrl)
+	}
+	if res.OrderCode == 654321 {
+		t.Fatalf("expected new order code, got reused %d", res.OrderCode)
+	}
+	if len(gateway.cancelled) != 1 || gateway.cancelled[0] != 654321 {
+		t.Fatalf("expected old link 654321 cancelled, got %v", gateway.cancelled)
+	}
+	if old.Status != depositstatus.Expired {
+		t.Fatalf("expected old transaction Expired, got %v", old.Status)
+	}
+	if len(txRepo.created) != 1 {
+		t.Fatalf("expected exactly one new transaction, got %d", len(txRepo.created))
+	}
+}
+
+func TestCreateDirectPurchaseFailsSafeWhenCancelFails(t *testing.T) {
+	cfg := checkoutTestConfig()
+	plan := paidPlan()
+	old := shortLivedPendingTransaction()
+	txRepo := &fakeDepositTxRepo{active: old}
+	gateway := &fakeGateway{
+		result: &payment.CheckoutSessionResult{
+			Outcome:     payment.OutcomeSucceeded,
+			CheckoutURL: "https://pay.example.com/should-not-happen",
+		},
+		cancelErr: errors.New("payos cancel boom"),
+	}
+	uc := newCheckoutUseCase(cfg, &fakePlanRepo{plansBySlug: map[string]*entities.SubscriptionPlan{"premium": plan}}, txRepo, &fakeSubRepo{}, gateway)
+
+	res, err := uc.CreateDirectPurchase(context.Background(), uuid.New(), &dto.DirectPurchaseReq{PlanSlug: "premium"})
+	if err != nil {
+		t.Fatalf("expected fail-safe old link, got error: %v", err)
+	}
+	if res.OrderCode != 654321 || res.PaymentUrl != "https://pay.example.com/old-link" {
+		t.Fatalf("expected old link returned untouched, got %+v", res)
+	}
+	if len(txRepo.created) != 0 {
+		t.Fatalf("expected no new transaction when cancel fails, got %d", len(txRepo.created))
+	}
+	if gateway.calls != 0 {
+		t.Fatalf("expected no checkout call when cancel fails, got %d", gateway.calls)
 	}
 }
 

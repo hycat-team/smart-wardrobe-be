@@ -140,16 +140,29 @@ func (uc *SubscriptionPurchaseUseCase) validatePurchase(
 	currentSub *entities.UserSubscription,
 	now time.Time,
 ) error {
+	return uc.validatePurchaseWithPendingCheck(ctx, userID, targetPlan, currentSub, now, true)
+}
+
+func (uc *SubscriptionPurchaseUseCase) validatePurchaseWithPendingCheck(
+	ctx context.Context,
+	userID uuid.UUID,
+	targetPlan *entities.SubscriptionPlan,
+	currentSub *entities.UserSubscription,
+	now time.Time,
+	checkPending bool,
+) error {
 	if !targetPlan.IsActive {
 		return subscriptionerrors.ErrPlanInactive()
 	}
 
-	hasPending, err := uc.depositTxRepo.HasPendingDirectPurchase(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if hasPending {
-		return subscriptionerrors.ErrPendingPaymentExists()
+	if checkPending {
+		hasPending, err := uc.depositTxRepo.HasPendingDirectPurchase(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if hasPending {
+			return subscriptionerrors.ErrPendingPaymentExists()
+		}
 	}
 
 	if currentSub == nil {

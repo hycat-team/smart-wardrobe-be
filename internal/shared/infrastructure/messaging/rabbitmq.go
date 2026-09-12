@@ -93,7 +93,7 @@ func (r *RabbitMQClient) RegisterConsumer(queueName string, handler func(event.M
 		return
 	}
 	go r.startConsumerLoop(queueName, handler, deliveries)
-	r.logger.Info("Registered consumer for queue", zap.String("queue", queueName))
+	r.logger.Debug("Registered consumer for queue", zap.String("queue", queueName))
 }
 
 func (r *RabbitMQClient) reRegisterConsumers() {

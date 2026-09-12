@@ -102,10 +102,12 @@ func (a *App) Run() error {
 		IdleTimeout:  time.Duration(a.Config.Server.IdleTimeoutSeconds) * time.Second,
 	}
 
+	a.Log.Info("======================================================================")
 	a.Log.Info("SmartWardrobe BE is running",
 		zap.String("port", port),
 		zap.String("swagger", "http://localhost:"+port+"/swagger"),
 	)
+	a.Log.Info("======================================================================")
 
 	ctxWorker := context.Background()
 

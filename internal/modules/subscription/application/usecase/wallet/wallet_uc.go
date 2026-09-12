@@ -12,9 +12,9 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/internal/modules/subscription/application/interface/usecase"
 	"smart-wardrobe-be/internal/modules/subscription/application/mapper"
+	"smart-wardrobe-be/internal/modules/subscription/application/ordercode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/payosdescription"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/internal/pkg/utils/errorutils"
@@ -151,6 +151,7 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 			Currency:             currency.VND,
 			Status:               depositstatus.Creating,
 			TransactionType:      deposittransactiontype.WalletTopup,
+			OrderCode:            ordercode.Generate(),
 			ExpiresAt:            &expiresAt,
 			NextReconciliationAt: &nextReconcile,
 		}
@@ -169,28 +170,15 @@ func (uc *WalletUseCase) CreateWalletTopUp(ctx context.Context, userID uuid.UUID
 	if cancelURL == "" {
 		cancelURL = uc.cfg.PayOS.CancelUrl
 	}
-	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{OrderCode: tx.OrderCode, Amount: tx.Amount, Description: payosdescription.FormatTransactionDescription(tx.OrderCode), ReturnUrl: returnURL, CancelUrl: cancelURL, ExpiresAt: expiresAt})
-	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, tx.OrderCode)
-		if err != nil || locked == nil {
-			return subscriptionerrors.ErrLockTransactionFailed()
-		}
-		if gatewayErr == nil && result != nil && result.Outcome == payment.OutcomeSucceeded {
-			locked.Status = depositstatus.Pending
-			locked.PaymentUrl = &result.CheckoutURL
-		} else if result != nil && result.Outcome == payment.OutcomeKnownFailure && !result.Retryable {
-			locked.Status = depositstatus.CreationFailed
-			locked.FailureReason = &result.ErrorCode
-		} else {
-			locked.Status = depositstatus.ReconciliationRequired
-			locked.ReconciliationAttempts++
-		}
-		if err := uc.depositTxRepo.Update(txCtx, locked); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
+	result, gatewayErr := uc.requestTopUpCheckoutWithRetry(ctx, tx, returnURL, cancelURL, expiresAt)
+	if result == nil && gatewayErr != nil {
+		return nil, gatewayErr
+	}
+	if err := uc.applyTopUpCheckoutOutcome(ctx, tx, result, gatewayErr); err != nil {
 		return nil, err
+	}
+	if gatewayErr != nil && payment.IsDuplicateOrderCode(result) {
+		return nil, subscriptionerrors.ErrPaymentOrderConflict()
 	}
 	if gatewayErr != nil && result != nil && result.Outcome == payment.OutcomeKnownFailure {
 		return nil, errorutils.WrapError(gatewayErr, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")

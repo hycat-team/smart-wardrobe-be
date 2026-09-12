@@ -11,6 +11,7 @@ import (
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
+	"smart-wardrobe-be/internal/modules/subscription/domain/constants/webhookprocessingstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/pkg/utils/timeutils"
 	"smart-wardrobe-be/internal/shared/domain/constants/shared/currency"
@@ -153,7 +154,7 @@ func (uc *PaymentWebhookUseCase) persistWebhookInbox(ctx context.Context, payloa
 		return nil, subscriptionerrors.ErrInvalidAmount()
 	}
 	ref, link := payload.Data.Reference, payload.Data.PaymentLinkId
-	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: "RECEIVED", ReceivedAt: time.Now().UTC()}
+	inbox := &entities.ProviderWebhookInbox{Provider: "PAYOS", ProviderReference: &ref, EventCode: payload.Data.Code, OrderCode: payload.Data.OrderCode, PaymentLinkID: &link, Amount: amount, Currency: currency.Currency(payload.Data.Currency), CanonicalPayloadHash: hash, RawPayload: entities.JSONDocument(canonical), ProcessingStatus: string(webhookprocessingstatus.Received), ReceivedAt: time.Now().UTC()}
 	if err := uc.inboxRepo.Create(ctx, inbox); err != nil {
 		return nil, err
 	}

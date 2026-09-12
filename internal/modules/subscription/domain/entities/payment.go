@@ -23,7 +23,7 @@ type DepositTransaction struct {
 	TransactionType             deposittransactiontype.DepositTransactionType `gorm:"type:varchar(50);not null"`
 	SubscriptionPlanID          *uuid.UUID                                    `gorm:"type:uuid"`
 	SubscriptionPlan            *SubscriptionPlan                             `gorm:"foreignKey:SubscriptionPlanID;constraint:OnDelete:SET NULL"`
-	OrderCode                   int64                                         `gorm:"type:bigint;autoIncrement;uniqueIndex;not null"`
+	OrderCode                   int64                                         `gorm:"type:bigint;uniqueIndex;not null"`
 	Provider                    string                                        `gorm:"type:varchar(50);not null;default:'PAYOS'"`
 	PaymentLinkID               *string                                       `gorm:"type:varchar(255)"`
 	ProviderStatus              *string                                       `gorm:"type:varchar(50)"`

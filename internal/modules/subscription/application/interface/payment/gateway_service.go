@@ -32,6 +32,17 @@ type CheckoutSessionResult struct {
 	ErrorCode     string
 }
 
+// ErrCodeDuplicateOrder is the PayOS business error returned when orderCode was
+// already registered on the merchant. It is retryable with a freshly generated
+// order code (see application/ordercode).
+const ErrCodeDuplicateOrder = "231"
+
+// IsDuplicateOrderCode reports whether the checkout result failed only because
+// the order code already exists on the payment provider.
+func IsDuplicateOrderCode(result *CheckoutSessionResult) bool {
+	return result != nil && result.ErrorCode == ErrCodeDuplicateOrder
+}
+
 type ProviderPaymentStatus string
 
 const (

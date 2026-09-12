@@ -235,7 +235,7 @@ func (h *BillingHandler) ProcessPayOSWebhook(c *gin.Context) error {
 
 	err = h.paymentWebhookUseCase.ProcessWebhook(c.Request.Context(), rawBytes, req.Signature)
 	if err != nil {
-		h.logger.Error("Error verifying webhook signature", zap.Error(err))
+		h.logger.Error("Failed to process PayOS webhook", zap.Error(err))
 		return err
 	}
 

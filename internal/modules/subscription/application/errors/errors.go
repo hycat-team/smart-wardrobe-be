@@ -136,6 +136,10 @@ func ErrPendingPaymentExists() *apperror.Error {
 	return apperror.NewConflict("Bạn đang có giao dịch thanh toán chờ xử lý. Vui lòng hoàn tất giao dịch cũ hoặc đợi cho đến khi hết hạn.")
 }
 
+func ErrPaymentOrderConflict() *apperror.Error {
+	return apperror.NewConflict("Không thể khởi tạo liên kết thanh toán do trùng mã đơn hàng với cổng ngân hàng. Vui lòng thử lại.")
+}
+
 func ErrAlreadyRegisteredUnlimitedPlan() *apperror.Error {
 	return apperror.NewConflict("Bạn đã đăng ký gói hội viên không giới hạn thời gian này.")
 }

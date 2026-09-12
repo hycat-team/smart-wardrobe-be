@@ -147,7 +147,8 @@ func (s *PayOSService) CreateCheckoutSession(ctx context.Context, req *payment.C
 	}
 
 	if res.Code != "00" {
-		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, ErrorCode: res.Code}, fmt.Errorf("payos returned business error code %s: %s", res.Code, res.Desc)
+		retryable := res.Code == payment.ErrCodeDuplicateOrder
+		return &payment.CheckoutSessionResult{Outcome: payment.OutcomeKnownFailure, Retryable: retryable, ErrorCode: res.Code}, fmt.Errorf("payos returned business error code %s: %s", res.Code, res.Desc)
 	}
 
 	return &payment.CheckoutSessionResult{CheckoutURL: res.Data.CheckoutURL, Outcome: payment.OutcomeSucceeded}, nil

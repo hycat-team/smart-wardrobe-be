@@ -9,9 +9,9 @@ import (
 	"smart-wardrobe-be/internal/modules/subscription/application/dto"
 	subscriptionerrors "smart-wardrobe-be/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/internal/modules/subscription/application/interface/payment"
+	"smart-wardrobe-be/internal/modules/subscription/application/ordercode"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/internal/modules/subscription/domain/constants/deposittransactiontype"
-	"smart-wardrobe-be/internal/modules/subscription/domain/constants/payosdescription"
 	"smart-wardrobe-be/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/internal/pkg/utils/errorutils"
 	"smart-wardrobe-be/internal/pkg/utils/timeutils"
@@ -20,8 +20,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-const directPurchaseExpirationBuffer = 1 * time.Minute
 
 func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context, userID uuid.UUID, req *dto.DirectPurchaseReq) (*dto.PaymentLinkDTO, error) {
 	plan, err := uc.planRepo.GetBySlug(ctx, req.PlanSlug)
@@ -37,23 +35,11 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	}
 
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-	usableUntil := now.Add(directPurchaseExpirationBuffer)
+	reuseUntil := now.Add(linkReuseMinTTL)
 	if active, err := uc.depositTxRepo.GetActiveDirectPurchase(ctx, userID); err != nil {
 		return nil, err
-	} else if active != nil {
-		if active.ExpiresAt != nil && active.ExpiresAt.After(usableUntil) {
-			url := ""
-			if active.PaymentUrl != nil {
-				url = *active.PaymentUrl
-			}
-			return &dto.PaymentLinkDTO{
-				PaymentUrl:           url,
-				OrderCode:            active.OrderCode,
-				PaymentStatus:        active.Status,
-				ExpiresAt:            active.ExpiresAt,
-				NextReconciliationAt: active.NextReconciliationAt,
-			}, nil
-		}
+	} else if isReusableDirectPurchaseLink(active, reuseUntil) {
+		return mapDepositTransactionToPaymentLinkDTO(active), nil
 	}
 
 	snapshotBytes, err := json.Marshal(map[string]any{
@@ -67,28 +53,87 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	}
 	expiresAt := now.Add(time.Duration(uc.cfg.PayOS.ExpiredMinutes) * time.Minute)
 	nextReconcile := now.Add(30 * time.Second)
-	tx := &entities.DepositTransaction{}
+	var (
+		tx              = &entities.DepositTransaction{}
+		reusable        *entities.DepositTransaction
+		paidMeanwhile   *entities.DepositTransaction
+		rotateOrderCode int64
+		needRotate      bool
+		staleCodes      []int64
+	)
+	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, userID)
+		if err != nil {
+			return err
+		}
+		if err := uc.validatePurchaseWithPendingCheck(txCtx, userID, plan, sub, now, false); err != nil {
+			return err
+		}
+		active, err := uc.depositTxRepo.GetActiveDirectPurchase(txCtx, userID)
+		if err != nil {
+			return err
+		}
+		if active == nil {
+			return nil
+		}
+		if isReusableDirectPurchaseLink(active, reuseUntil) {
+			reusable = active
+			return nil
+		}
+		if isExpiredDirectPurchaseLink(active, now) {
+			active.Status = depositstatus.Expired
+			active.ExpiredAt = &now
+			if err := uc.depositTxRepo.Update(txCtx, active); err != nil {
+				return err
+			}
+			staleCodes = append(staleCodes, active.OrderCode)
+			return nil
+		}
+		if active.PaymentUrl == nil && active.PaymentLinkID == nil {
+			return subscriptionerrors.ErrPendingPaymentExists()
+		}
+		rotateOrderCode, needRotate = active.OrderCode, true
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if reusable != nil {
+		return mapDepositTransactionToPaymentLinkDTO(reusable), nil
+	}
+	if needRotate {
+		if cerr := uc.paymentGateway.CancelPaymentLink(ctx, rotateOrderCode, cancelReasonSuperseded); cerr != nil {
+			old, gerr := uc.depositTxRepo.GetByOrderCode(ctx, rotateOrderCode)
+			if gerr != nil || old == nil {
+				return nil, subscriptionerrors.ErrPendingPaymentExists()
+			}
+			return mapDepositTransactionToPaymentLinkDTO(old), nil
+		}
+	}
+	for _, code := range staleCodes {
+		_ = uc.paymentGateway.CancelPaymentLink(ctx, code, cancelReasonStale)
+	}
 	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if needRotate {
+			locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, rotateOrderCode)
+			if err != nil || locked == nil {
+				return subscriptionerrors.ErrLockTransactionFailed()
+			}
+			if locked.Status == depositstatus.Success {
+				paidMeanwhile = locked
+				return nil
+			}
+			locked.Status = depositstatus.Expired
+			locked.ExpiredAt = &now
+			if err := uc.depositTxRepo.Update(txCtx, locked); err != nil {
+				return err
+			}
+		}
 		sub, err := uc.userSubRepo.GetByUserIDWithLock(txCtx, userID)
 		if err != nil {
 			return err
 		}
 		if err := uc.validatePurchase(txCtx, userID, plan, sub, now); err != nil {
 			return err
-		}
-
-		if active, err := uc.depositTxRepo.GetActiveDirectPurchase(txCtx, userID); err != nil {
-			return err
-		} else if active != nil {
-			if active.ExpiresAt != nil && !active.ExpiresAt.After(usableUntil) {
-				active.Status = depositstatus.Expired
-				active.ExpiredAt = &now
-				if err := uc.depositTxRepo.Update(txCtx, active); err != nil {
-					return err
-				}
-			} else {
-				return subscriptionerrors.ErrPendingPaymentExists()
-			}
 		}
 
 		planCode, planName, tierRank, kind, pricingVersion := plan.Slug, plan.Name, plan.TierRank, plan.PlanKind, plan.PricingVersion
@@ -99,6 +144,7 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 			Currency:              currency.VND,
 			Status:                depositstatus.Creating,
 			TransactionType:       deposittransactiontype.DirectPurchase,
+			OrderCode:             ordercode.Generate(),
 			SubscriptionPlanID:    &plan.ID,
 			PlanCode:              &planCode,
 			PlanName:              &planName,
@@ -121,6 +167,9 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if paidMeanwhile != nil {
+		return mapDepositTransactionToPaymentLinkDTO(paidMeanwhile), nil
+	}
 
 	returnURL := req.ReturnUrl
 	if returnURL == "" {
@@ -130,46 +179,16 @@ func (uc *SubscriptionPurchaseUseCase) CreateDirectPurchase(ctx context.Context,
 	if cancelURL == "" {
 		cancelURL = uc.cfg.PayOS.CancelUrl
 	}
-	description := payosdescription.FormatTransactionDescription(tx.OrderCode)
-	result, gatewayErr := uc.paymentGateway.CreateCheckoutSession(ctx, &payment.CheckoutSessionReq{
-		OrderCode:   tx.OrderCode,
-		Amount:      tx.Amount,
-		Description: description,
-		ReturnUrl:   returnURL,
-		CancelUrl:   cancelURL,
-		ExpiresAt:   expiresAt,
-	})
+	result, gatewayErr := uc.requestDirectPurchaseCheckoutWithRetry(ctx, tx, returnURL, cancelURL, expiresAt)
+	if result == nil && gatewayErr != nil {
+		return nil, gatewayErr
+	}
 
-	applyErr := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		locked, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, tx.OrderCode)
-		if err != nil || locked == nil {
-			return subscriptionerrors.ErrLockTransactionFailed()
-		}
-		if locked.Status != depositstatus.Creating {
-			return nil
-		}
-		if gatewayErr == nil && result != nil && result.Outcome == payment.OutcomeSucceeded {
-			locked.Status = depositstatus.Pending
-			locked.PaymentUrl = &result.CheckoutURL
-			if result.PaymentLinkID != "" {
-				locked.PaymentLinkID = &result.PaymentLinkID
-			}
-		} else if result != nil && result.Outcome == payment.OutcomeKnownFailure && !result.Retryable {
-			locked.Status = depositstatus.CreationFailed
-			locked.FailureReason = &result.ErrorCode
-		} else {
-			locked.Status = depositstatus.ReconciliationRequired
-			locked.ReconciliationAttempts++
-			if result != nil {
-				locked.LastProviderErrorCode = &result.ErrorCode
-			}
-			t := now
-			locked.LastProviderErrorAt = &t
-		}
-		return uc.depositTxRepo.Update(txCtx, locked)
-	})
-	if applyErr != nil {
+	if applyErr := uc.applyDirectPurchaseCheckoutOutcome(ctx, tx, result, gatewayErr, now); applyErr != nil {
 		return nil, applyErr
+	}
+	if gatewayErr != nil && payment.IsDuplicateOrderCode(result) {
+		return nil, subscriptionerrors.ErrPaymentOrderConflict()
 	}
 	if gatewayErr != nil && result != nil && result.Outcome == payment.OutcomeKnownFailure {
 		return nil, errorutils.WrapError(gatewayErr, "Không thể khởi tạo liên kết thanh toán với cổng ngân hàng")
