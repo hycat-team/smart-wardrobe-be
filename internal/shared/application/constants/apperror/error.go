@@ -16,6 +16,11 @@ type ValidationErrorItem struct {
 // errors; raw error text must never leak into Message (see FR-005 Phase 9).
 const GenericInternalMessage = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau."
 
+// PanicRecoveryMessage is the client-facing message for recovered panics.
+// It stays distinct from GenericInternalMessage because a panic signals a
+// crash-level failure where directing the user to the administrator is apt.
+const PanicRecoveryMessage = "Hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên."
+
 type Error struct {
 	Status       int                   `json:"status"`
 	Title        string                `json:"title,omitempty"`
