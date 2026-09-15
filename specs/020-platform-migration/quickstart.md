@@ -11,7 +11,7 @@ Tham chiếu: [spec.md](./spec.md) · [data-model.md](./data-model.md) · [contr
 - Go 1.25+, Docker Desktop, GNU Make.
 - `buf` CLI (cài qua `make tool`) cho sinh mã gRPC.
 - Postgres + Redis + RabbitMQ local qua `deployments/docker-compose.yml`.
-- Tài khoản funded (Cloudflare Pro, Supabase Pro, CloudAMQP Tiger, Redis Cloud Essentials) +
+- Tài khoản funded (Cloudflare Pro — funded nhưng **KHÔNG nằm trong đường API**, xem ADR 023; Supabase Pro, CloudAMQP Tiger, Redis Cloud Essentials) +
   trial GCP có billing cap cho scenario Cloud.
 - Biến môi trường copy từ `.env.example`.
 
@@ -48,40 +48,43 @@ go build ./services/account/... ./services/commerce/... ./services/ai/...
 implementation xuyên service fail ở compile-time. Trong CI, job build 3 binary bắt buộc pass
 (FR-020). Tag `monolith-legacy` tồn tại và frozen.
 
-## VS4 — Topology 3 service + JWT + origin-auth (US5, FR-019/FR-022..024, FR-028)
+## VS4 — Topology 3 service + JWT + ingress auth (US5, FR-019/FR-022..024, FR-033)
 
 1. Chạy `account`, `commerce`, `ai` local với gRPC bật; gọi API liên service (ví dụ tạo outfit
    cần dữ liệu fashion + subscription quota).
    - **Kỳ vọng**: kết quả đúng; giao tiếp liên service qua gRPC; correlation ID xuyên suốt.
-2. Gọi service thiếu `X-Gateway-Secret`.
-   - **Kỳ vọng**: 401/403 (trừ `/api/v1/health` vẫn 200).
+2. Auth ở ingress là **Cloud Run IAM** (không `allUsers`); app không yêu cầu header gateway secret.
+   - **Kỳ vọng**: request tới Cloud Run thiếu ID token hợp lệ bị 401/403; `Authorization` (Closy JWT)
+     tới app nguyên vẹn.
 3. Verify JWT ES256 bằng public key cục bộ (không gọi mạng); blacklist qua Redis.
 4. **Contract test**: bộ test hành vi contract (in-process + gRPC) — cả hai adapter pass.
 5. **Generate-check**: `buf lint && buf generate` → không có diff.
 6. **Swagger parity**: hợp docs 3 service đủ 9 section; thiếu section là fail.
 
-## VS5 — Repatriation về VPS: 3 service + Nginx gateway (US4/US7, SC-004, SC-008)
+## VS5 — Repatriation về VPS: 3 service + Nginx (US4/US7, SC-004, SC-008)
 
 1. Từ Supabase (môi trường Cloud) tạo dump; dựng VPS (hoặc local prod-like) theo
    `deployments/docker-compose.prod.yml` (3 service + postgres/redis/rabbitmq + nginx).
 2. Restore dump; đặt profile `vps`: DB trỏ docker host, `sslmode=disable`, TLS tắt,
-   `migrate_on_start=true`; Nginx gateway dùng route sinh từ single-source.
+   `migrate_on_start=true`; Nginx route `api-v2` tới 3 service.
 3. Trỏ DNS test về VPS; gọi ma trận host × route + SSE + auth + upload.
 4. **Kỳ vọng**: hệ thống chạy đầy đủ; chỉ khác biệt cấu hình/DNS, không sửa code; đo thời gian
    cán đích ≤ 4h (SC-004).
-5. Route parity Worker ↔ Nginx 100% (SC-012).
+5. Smoke test route `api-v2` tới đủ 3 service (SC-012).
 
-## VS6 — Cutover drill trên môi trường Cloud: NS-delegate → Worker → SaaS (US3, FR-027, SC-003, SC-009)
+## VS6 — Song song trên môi trường Cloud: Vercel DNS → VPS Nginx → Cloud Run (US3, FR-013..017, FR-025..029, FR-033..040, SC-003/SC-009/SC-013/SC-016)
 
-Thực hiện runbook trên môi trường Cloud:
+Thực hiện runbook trên môi trường Cloud (song song; **không cutover**):
 
-1. NS-delegate `api-v2...` → zone Cloudflare Pro active → Worker route → 3 Cloud Run (môi trường Cloud).
-2. Migrate dữ liệu VPS → Supabase (1 database dùng chung); drill dùng `database.drill_schema` rồi
-   xoá; smoke host × route; test SSE dài (heartbeat 15s, chunk deadline 30s)
-   (align timeout 3 tầng); test rate-limit (2 rule) + WAF managed.
-3. Drill SaaS custom hostname + redirect `api-v2` → domain chính.
-4. **Kỳ vọng**: cutover production-like hoàn tất; health + smoke pass; đo thời gian ≤ 2h.
-5. Chạy reverse cutover (về VPS) trong cùng đợt drill; đo thời gian; ghi lại bước lệch vào runbook.
+1. Thêm bản ghi Vercel cho `api-v2.closy.hycat.online` → VPS; mở rộng cert Let's Encrypt; thêm
+   server block Nginx `api-v2` route tới 3 Cloud Run; **giữ nguyên** `api.closy` → monolith.
+2. Deploy token helper + Nginx `auth_request`; bật Cloud Run IAM (`run.invoker`, không `allUsers`);
+   smoke test: thiếu ID token bị từ chối; có token → 200; `Authorization` tới app đúng.
+3. Migrate dữ liệu VPS → Supabase (1 database dùng chung); drill dùng `database.drill_schema` rồi
+   xoá; smoke host × route; test SSE dài (heartbeat 15s, chunk deadline 30s, buffering off).
+4. **Kỳ vọng**: `api-v2` chạy qua Nginx↔Cloud Run; `api.closy` **0 thay đổi routing**; 0 request
+   `api-v2` đi qua Cloudflare (SC-016).
+5. Kiểm tra `api.closy` vẫn phục vụ monolith bình thường trong suốt quá trình.
 
 ## VS7 — Kiểm tra chất lượng bắt buộc
 
@@ -99,6 +102,16 @@ make wire && make lint && make test-race
    restore vào Postgres local, verify checksum (SC-008/SC-011).
 3. **Kỳ vọng**: teardown sạch; restore drill pass; checklist T-minus có người ký xác nhận.
 
+## VS9 — Cutover thủ công `api.closy` → Cloud Run + rollback (FR-041, SC-015)
+
+Chỉ chạy **khi owner quyết định** `api-v2` đủ ổn định. Drill trên môi trường Cloud trước:
+
+1. Chạy runbook `docs/operations/manual-cutover-api-closy-to-cloudrun.md`: điều kiện tiên quyết
+   (`api-v2` ổn định, dữ liệu đã đồng bộ), đổi Nginx `api.closy` → Cloud Run (hoặc DNS), kiểm thử.
+2. **Rollback**: đổi Nginx/DNS `api.closy` về monolith; xác nhận API cũ hoạt động lại.
+3. **Kỳ vọng**: cutover + rollback chạy được theo runbook; đo thời gian; không sửa mã nghiệp vụ;
+   ghi lại bước lệch.
+
 ## Ma trận truy vết (rút gọn)
 
 | Scenario | User Story | FR | SC |
@@ -106,8 +119,9 @@ make wire && make lint && make test-race
 | VS1 | US1 | FR-001..003 | SC-001, SC-007 |
 | VS2 | US2 | FR-009..012 | SC-002 |
 | VS3 | US5 | FR-018..021 | SC-006 |
-| VS4 | US5 | FR-019/FR-022..024/FR-028/FR-030 | SC-012 |
+| VS4 | US5 | FR-019/FR-022..024/FR-030/FR-033 | SC-012, SC-013 |
 | VS5 | US4/US7 | FR-004..008/FR-032 | SC-004, SC-005, SC-008, SC-012 |
-| VS6 | US3 | FR-013..017, FR-025..029 | SC-003, SC-009 |
+| VS6 | US3 | FR-013..017, FR-025..029, FR-033..040 | SC-003, SC-009, SC-013, SC-016 |
 | VS7 | — | Governance | — |
 | VS8 | US6/US7 | FR-031/FR-032 | SC-008, SC-010, SC-011 |
+| VS9 | US3 (cutover thủ công) | FR-041 | SC-015 |

@@ -8,27 +8,31 @@
 
 ## Summary
 
-Di chuyển SmartWardrobe Backend từ VPS self-hosted sang bộ nền tảng được tài trợ trong 3 tháng
-(Cloudflare Pro, Supabase Pro, CloudAMQP Tough Tiger, Redis Cloud Essentials; compute Cloud Run
-trial + teardown), đồng thời tách mã nguồn thành 3 service triển khai độc lập trên multi-module
-Go workspace (`go.work`) — **bỏ monolith khỏi `main`**, giữ tag `monolith-legacy` frozen.
+Di chuyển SmartWardrobe Backend sang kiến trúc 3 service độc lập trên **Cloud Run** (multi-module Go
+workspace, `go.work`; bỏ monolith khỏi `main`, giữ tag `monolith-legacy` frozen), phục vụ qua **VPS
+Nginx hiện hữu làm ingress**, chạy **song song** với monolith đang phục vụ `api.closy...`.
 
-Edge là Cloudflare Pro gắn vào **subdomain zone `api-v2.closy.hycat.online`** (NS-delegate từ
-Vercel, không move zone gốc) + Worker edge-router; cutover `api.closy...` bằng SaaS custom
-hostname. Hết 3 tháng: **repatriation bắt buộc toàn bộ về VPS** (3 service compose + Nginx
-gateway + dữ liệu migrate ngược).
+`api-v2.closy.hycat.online` → Vercel DNS → **VPS Nginx** → 3 Cloud Run (`run.app`), xác thực bằng
+**Cloud Run IAM** (Google ID token gửi ở `X-Serverless-Authorization`; token do token helper trên VPS
+sinh/cache). `api.closy...` → VPS Nginx → `http://backend:8080` (monolith) — **giữ nguyên**; cutover
+`api.closy...` sang Cloud Run là **thao tác thủ công có runbook**, timing do owner quyết định dựa trên
+độ ổn định của `api-v2`. Cloudflare Pro là hạng mục funded nhưng **không nằm trong đường API**.
+Data: Supabase Pro (1 database dùng chung) + CloudAMQP + Redis Cloud; compute Cloud Run trial +
+billing cap + teardown. Hết 3 tháng: repatriation về VPS (3 service compose + Nginx + migrate ngược).
 
 Cách tiếp cận kỹ thuật:
 1. Bổ sung cờ cấu hình để cùng image chạy mọi môi trường (ES optional, TLS cache/broker,
-   migrate-on-start, outbox listener tách DSN, gateway secret).
+   migrate-on-start, outbox listener tách DSN).
 2. Tách thành 3 Go module service (trong `services/`) + module `shared` + module `contracts` trên
-   `go.work`; ranh giới service do compiler
-   enforce; hợp đồng liên service qua gRPC (4 proto domain), nội service in-process.
-3. Route table edge định nghĩa một lần (single-source), sinh Worker routes (Cloud) và Nginx
-   includes (VPS), CI check parity — để repatriation không mất routing.
-4. Swagger generate theo từng service, hợp 3 service giữ đủ 9 section, CI parity check.
-5. Bộ runbook 2 chiều viết song song từ bây giờ: lên Cloud, cutover, teardown trial,
-   repatriation về VPS + funding clock T-30/14/7/1.
+   `go.work`; ranh giới service do compiler enforce; hợp đồng liên service qua gRPC (4 proto domain),
+   nội service in-process.
+3. **Ingress = Nginx hiện hữu**: thêm server block `api-v2` route tới 3 Cloud Run; `api.closy` giữ
+   nguyên route monolith. Route map single-source trong Nginx + smoke test.
+4. **Ingress auth**: token helper trên VPS sinh/cache ID token (audience = `run.app` URL); Nginx
+   inject `X-Serverless-Authorization`; không bật `allUsers`.
+5. Swagger generate theo từng service, hợp 3 service giữ đủ 9 section, CI parity check.
+6. Bộ runbook song song từ bây giờ: lên Cloud (api-v2), teardown trial, repatriation về VPS +
+   funding clock T-30/14/7/1.
 
 ## Technical Context
 
@@ -55,17 +59,21 @@ Cách tiếp cận kỹ thuật:
   durable) do code tự khai báo.
 - Elasticsearch: **optional, mặc định tắt** (`ELASTICSEARCH_ENABLED=false`), fallback database.
 
-**Edge**:
-- Cloudflare Pro subdomain zone `api-v2...` (NS-delegate) + Worker router (~30 longest-prefix
-  rule, xử lý chồng lấn `/me/*`, `/admin/*`); WAF Managed + OWASP Core; 2 rate-limit rule;
-  Worker tiêm `X-Gateway-Secret`.
-- SaaS custom hostname cho `api.closy...` lúc cutover; Redirect Rule `api-v2` → `api.closy` sau đó.
-- SSE/AI streaming qua Worker (passthrough): heartbeat 15s, `ai_chat_chunk_deadline_seconds` = 30s
-  (thống nhất mọi môi trường), origin trả `X-Accel-Buffering: no`, fallback `run.app` khi vượt
-  Workers Free; test stream thật trước cutover.
+**Ingress (VPS Nginx hiện hữu)**:
+- `api.closy...` → `http://backend:8080` (monolith) — **giữ nguyên**, không đổi routing.
+- `api-v2.closy...` → `https://<service>.run.app` (3 Cloud Run), route longest-prefix (xử lý chồng
+  lấn `/me/*`, `/admin/*`).
+- **DNS**: bản ghi trên **Vercel** trỏ về VPS (A/CNAME). Không NS-delegate, không Cloudflare DNS.
+- **Auth**: Cloud Run IAM (`roles/run.invoker`, không `allUsers`); Nginx inject ID token qua
+  `X-Serverless-Authorization` (token helper trên VPS, audience = `run.app` URL); `Authorization`
+  (Closy JWT) giữ nguyên.
+- **TLS**: Nginx terminate cho cả 2 hostname; cert Let's Encrypt mở rộng gồm `api-v2`.
+- **Không** dùng Cloudflare / Load Balancer / API Gateway trong đường API.
+- **SSE**: Nginx tắt buffering; heartbeat 15s; `ai_chat_chunk_deadline_seconds` = 30s.
 
 **Testing**: `make test`, `make test-race`; test adapter gRPC/in-process, cờ cấu hình,
-fallback search, parity swagger (9 section), parity route Worker↔Nginx.
+fallback search, parity swagger (9 section), smoke test route `api-v2` tới 3 service qua Nginx, và
+smoke test request thiếu ID token bị Cloud Run từ chối.
 
 **Target Platform**:
 - Managed (3 tháng): Cloud Run `asia-southeast1` (HTTP scale-to-zero; worker min-instances≥1,
@@ -80,8 +88,8 @@ fallback search, parity swagger (9 section), parity route Worker↔Nginx.
 repatriation ≤ 4h (gồm migrate ngược) trong maintenance window.
 
 **Constraints**:
-- Chỉ dùng 4 hạng mục funded + trial compute; không LB/Armor/DB-managed ngoài danh sách.
-- Không vendor lock-in ngoài pgvector và routing edge (portability 2 chiều).
+- Chỉ dùng 4 hạng mục funded + trial compute; **không** LB / API Gateway chỉ để làm ingress.
+- Không vendor lock-in ngoài pgvector và routing Nginx (portability 2 chiều).
 - Mọi tham số hạ tầng qua biến môi trường; không hardcode host/endpoint.
 - App khởi động dù `LISTEN` không khả dụng; ES tắt không sinh lỗi hàng loạt.
 - CI build 3 service binary; tag `monolith-legacy` frozen, không nhận code mới.
@@ -168,13 +176,13 @@ smart-wardrobe-be/
 ├── contracts/                     # MODULE generated contracts (module path smart-wardrobe-be/contracts)
 │   ├── go.mod
 │   └── <owner>/v1/                #   *.proto, *.pb.go, client/
-├── edge/worker/                   # Cloudflare Worker router + routes.yaml (single-source)
 ├── configs/                       # YAML parameter hoá (dùng chung mọi môi trường)
 ├── database/init/                 # SQL khởi tạo hạ tầng local (KHÔNG phải migration)
 ├── deployments/
 │   ├── docker-compose.yml         # Local dev (3 service + infra local)
-│   ├── docker-compose.prod.yml    # VPS: 3 service + infra + nginx gateway (repatriation)
-│   ├── nginx/                     # gateway config (route sinh từ routes.yaml)
+│   ├── docker-compose.prod.yml    # VPS: 3 service + infra (repatriation)
+│   ├── nginx/                     # Ingress config: server block api.closy (giữ nguyên) + api-v2 (route tới Cloud Run) + token-helper
+│   ├── token-helper/              # helper sinh/cache Google ID token cho Cloud Run (chạy trên VPS)
 │   └── rabbitmq/
 ├── buf.yaml / buf.gen.yaml        # buf tooling (sinh proto → contracts/)
 ├── Makefile                       # viết lại: target per-service + target workspace
@@ -188,7 +196,7 @@ smart-wardrobe-be/
    gom trong `services/`, `cmd/server` bỏ khỏi `main` (giữ tag `monolith-legacy` frozen), hợp đồng
    liên service ở module `contracts/`. Khác với single-module multi-binary (1 `go.mod`, nhiều `cmd/`).
 1. **Gom service vào `services/`** để tách bạch deployable (`services/*`) với thư viện dùng chung
-   (`shared/`), hợp đồng (`contracts/`) và edge (`edge/`). Module path khớp thư mục
+   (`shared/`), hợp đồng (`contracts/`) và ingress (`deployments/nginx`). Module path khớp thư mục
    (`smart-wardrobe-be/services/account`).
 2. **Dockerfile tách riêng theo service** (`services/account/Dockerfile`,
    `services/commerce/Dockerfile`, `services/ai/Dockerfile`) — không dùng chung 1 file/ARG để mỗi
@@ -207,6 +215,9 @@ smart-wardrobe-be/
    bảng version riêng** (Account giữ `goose_db_version`, Commerce/AI có bảng hậu tố) + allow-out-of-order;
    advisory lock dùng chung (cùng lock id) để serialize.
 8. **Makefile viết lại cho multi-module**: xem mục "Tooling & Makefile" bên dưới.
+9. **Ingress = VPS Nginx hiện hữu** (không Cloudflare/LB/API Gateway trong đường API): thêm server
+   block `api-v2` route tới 3 Cloud Run; `api.closy` giữ nguyên; token helper trên VPS inject
+   `X-Serverless-Authorization`; DNS ở Vercel; cert Let's Encrypt mở rộng gồm `api-v2`.
 
 **Tooling & Makefile (bắt buộc viết lại — FR-038)**:
 
@@ -226,40 +237,43 @@ Makefile hiện tại gắn cứng monolith, phải thay thế các biến/targe
 
 Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`,
 `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`,
-`worker-deploy`, `service-boundary-check` (nếu còn dùng), `check` (CI suite theo workspace).
+`nginx-reload` (render + `nginx -t` + reload), `token-helper-build`, `check` (CI suite theo workspace).
 
 **Adapter layout**:
 - **Inbound** — gRPC **server** ở `services/<service>/internal/modules/<owner>/presentation/grpc/`,
   phụ thuộc **contract interface** (không inject usecase trực tiếp).
 - **Outbound** — gRPC **client** ở `contracts/<owner>/v1/client/`, implements contract của owner.
-- Swagger: mỗi service `swag init` trên các module nó chứa; docs index ở edge.
+- Swagger: mỗi service `swag init` trên các module nó chứa; docs index phục vụ qua Nginx.
 
 **Map phase plan ↔ tasks**: Phase A ≈ tasks Phase 1–2; Phase B ≈ Phase 5; Phase C ≈ Phase 6;
-Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7.
+Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7; Phase G ≈ Phase 9.
 
 ## Phase Plan (tóm tắt — chi tiết ở tasks.md)
 
 - **Phase A — Config portability (P1)**: ES flag + no-op + skip sync; TLS Redis/RabbitMQ;
   `migrate_on_start` (per-service, bật cho managed); outbox listener tách DSN + non-fatal/poll
-  fallback; gateway secret; parameter hoá configs; hạ `ai_chat_chunk_deadline_seconds` 180s → 30s
-  + heartbeat 15s (thống nhất mọi môi trường); **viết lại Makefile cho multi-module (FR-038)**;
-  entry-point test cho workspace.
+  fallback; parameter hoá configs; hạ `ai_chat_chunk_deadline_seconds` 180s → 30s + heartbeat 15s
+  (thống nhất mọi môi trường); **viết lại Makefile cho multi-module (FR-038)**; entry-point test cho
+  workspace.
 - **Phase B — Tách 3 service module C (P1, blocked bởi A)**: `go.work` + module layout;
-  `contracts/` + buf; adapter gRPC; composition `cmd/<service>`; JWT bất đối xứng; origin-auth
-  middleware (verify `X-Gateway-Secret`); CI build 3 binary (compiler-boundary, không
-  manifest-check); tag `monolith-legacy`.
-- **Phase C — Edge + Compute (P1)**: NS-delegate + zone Pro + Worker router (single-source
-  route table); WAF/rate-limit; Cloud Run HTTP+worker + billing cap; **per-service migration chạy
-  khi khởi động (advisory lock)**; SaaS custom hostname (chuẩn bị, chưa bật); SSE qua Worker
-  passthrough (heartbeat 15s, chunk deadline 30s).
-- **Phase D — Data + Cutover (P1, mốc chấm bài)**: Supabase **1 database dùng chung** + migration
-  ownership (Account giữ lịch sử); CloudAMQP/Redis wiring + verify giới hạn gói; runbook cutover;
-  drill bằng schema tạm; dump VPS → Supabase tại merge/cutover; cutover `api.closy` trước ngày chấm.
-- **Phase E — Docs & Runbook 2 chiều (P2, song song)**: `docs/operations/*` (lên Cloud,
-  cutover, teardown, repatriation), ADR 021 (xong), microservices guides, README/local-setup.
+  `contracts/` + buf; adapter gRPC; composition `cmd/<service>`; JWT bất đối xứng; CI build 3 binary
+  (compiler-boundary, không manifest-check); tag `monolith-legacy`.
+- **Phase C — Ingress + Compute (P1)**: thêm server block Nginx `api-v2` route tới 3 Cloud Run
+  (giữ nguyên `api.closy`); DNS record trên Vercel; mở rộng cert Let's Encrypt; **token helper** sinh
+  ID token; Cloud Run HTTP+worker + billing cap + IAM (`roles/run.invoker`, không `allUsers`);
+  per-service migration on-start (advisory lock); SSE qua Nginx (buffering off, heartbeat 15s,
+  deadline 30s).
+- **Phase D — Data + Song song (P1)**: Supabase **1 database dùng chung** + migration ownership
+  (Account giữ lịch sử); CloudAMQP/Redis wiring + verify giới hạn gói; runbook song song; drill bằng
+  schema tạm; smoke test `api-v2` qua Nginx. Cutover `api.closy` **không** nằm trong phase này.
+- **Phase E — Docs & Runbook 2 chiều (P2, song song)**: `docs/operations/*` (lên Cloud, song song,
+  teardown, repatriation), ADR 021 + ADR 023, microservices guides, README/local-setup.
 - **Phase F — Repatriation gồm teardown trial (P2, theo funding clock)**: teardown trial + bill
-  verify (một bước trong repatriation); compose VPS 3-service + Nginx gateway (từ route
-  single-source); migrate ngược; DNS về VPS; tắt funded items trước renew; drill VS5/VS8.
+  verify (một bước trong repatriation); compose VPS 3-service + Nginx; migrate ngược; DNS về VPS;
+  tắt funded items trước renew; drill VS5/VS8.
+- **Phase G — Cutover thủ công (owner-triggered; docs deliverable, sau E/F)**: viết runbook cutover
+  `api.closy` → Cloud Run + rollback (FR-041); drill trên môi trường Cloud; **thực thi chỉ khi owner
+  quyết định** `api-v2` đủ ổn định. Chỉ đổi Nginx/DNS + đồng bộ dữ liệu, không sửa mã nghiệp vụ.
 
 ## Complexity Tracking
 

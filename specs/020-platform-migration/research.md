@@ -5,11 +5,12 @@
 Tài liệu này chốt các quyết định kỹ thuật còn để mở trong `Technical Context` và trong quá trình
 lập plan. Mọi mục dùng định dạng Decision / Rationale / Alternatives.
 
-> **Ghi chú cập nhật 2026-09-15 (hiến pháp 3.0.0 + ADR 021)**: multi-module + `go.work`
-> thay thế single-module; monolith bị loại khỏi `main` (tag `monolith-legacy`); edge là Cloudflare
-> subdomain zone + Worker (không Nginx-VPS-gateway-cho-api-v2, không GCP LB, không Firebase);
-> compute trial + teardown; Supabase 1 project **1 database dùng chung**; repatriation bắt buộc sau 3 tháng.
-> Các mục R2.1, R9, R12 dưới đây được giữ để truy vết nhưng đã ghi chú supersede tương ứng.
+> **Ghi chú cập nhật 2026-09-15 (hiến pháp 3.0.0 + ADR 021 + ADR 023)**: multi-module + `go.work`
+> thay thế single-module; monolith bị loại khỏi `main` (tag `monolith-legacy`); **ingress là VPS Nginx
+> hiện hữu — không Cloudflare/Worker trong đường API** (R14/R15 superseded bởi R22); DNS ở Vercel;
+> compute trial + teardown; Supabase 1 project **1 database dùng chung**; repatriation bắt buộc sau 3
+> tháng.
+> Các mục R2.1, R9, R12, R14, R15, R20, R21 dưới đây được giữ để truy vết nhưng đã ghi chú supersede.
 
 ---
 
@@ -256,11 +257,11 @@ rồi override bằng `os.LookupEnv` trong `loadConfig()`.
 
 **Decision**:
 - Drill: dùng **schema tạm** trong database dùng chung (xoá sau khi drill); CloudAMQP vhost riêng;
-  Redis Cloud; Cloud Run + CF zone api-v2, để chạy thử runbook (FR-027, SC-009).
+  Redis Cloud; Cloud Run (truy cập qua **ingress VPS Nginx**, không Cloudflare — cf. R22), để chạy thử runbook (FR-027, SC-009).
 - CI/CD: thêm workflow `deploy-platform.yml` (build **3** service binary → deploy Cloud Run
   HTTP + worker); giữ `deploy-production.yml` (VPS legacy song song, không disable cho tới khi
   repatriation xong); CI build kiểm tra 3 binary (FR-020).
-- Docs: `docs/operations/ha-tang/` + `docs/operations/` (worker/saas/teardown/repatriate) +
+- Docs: `docs/operations/ha-tang/` + `docs/operations/` (ingress/nginx, teardown, repatriate) +
   `docs/system-design/microservices/` + ADR `docs/decisions/021-funded-platforms-and-repatriation.md`;
   cập nhật `README.md`, `local-setup.md`.
 
@@ -288,6 +289,9 @@ rồi override bằng `os.LookupEnv` trong `loadConfig()`.
 
 ## R14. Edge: Cloudflare subdomain zone + Worker router (thay Nginx-VPS-gateway/LB/Firebase)
 
+> **SUPERSEDED 2026-09-15 (đợt 4) bởi R22**: KHÔNG dùng Cloudflare/Worker trong đường API.
+> Ingress là **VPS Nginx hiện hữu**; DNS ở Vercel. Nội dung dưới giữ lại để truy vết.
+
 **Decision**: NS-delegate `api-v2.closy.hycat.online` thành zone Cloudflare riêng, gắn Pro Plan
 theo zone (zone gốc ở lại Vercel, không move). Worker edge-router định tuyến longest-prefix
 (~30 rule, xử lý chồng lấn `/me/*`, `/admin/*`) tới 3 Cloud Run `run.app` nội bộ (không publish).
@@ -309,6 +313,9 @@ cùng Worker phục vụ.
 ---
 
 ## R15. Cutover `api.closy` bằng SaaS custom hostname + redirect
+
+> **SUPERSEDED 2026-09-15 (đợt 4) bởi R22**: giai đoạn đầu **không cutover**; chạy song song.
+> `api.closy` giữ nguyên monolith; cutover là **thao tác thủ công** có runbook (FR-041).
 
 **Decision**: `api.closy...` thành custom hostname trên zone api-v2 (1 CNAME trên Vercel);
 sau cutover `api-v2...` redirect 301 về `api.closy...` bằng Redirect Rule. VPS giữ stopped
@@ -362,7 +369,7 @@ client gRPC ở `contracts/<owner>/v1/client`; server bind contract interface.
 ## R20. Repatriation bắt buộc sau 3 tháng + funding clock
 
 **Decision**: Phase repatriation: 3 service image chạy compose trên VPS + Nginx gateway
-(route single-source với Worker, CI parity) + migrate ngược (Supabase→Postgres, CloudAMQP→RMQ
+(route map trong Nginx) + migrate ngược (Supabase→Postgres, CloudAMQP→RMQ
 drain, Redis Cloud→Redis) + DNS về VPS + tắt funded items trước renew. Funding clock
 T-30/14/7/1 có xác nhận. Runbook repatriation viết song song từ bây giờ.
 
@@ -371,10 +378,67 @@ bị charge thêm chu kỳ.
 
 ---
 
-## R21. Swagger per-service, giữ 9 section + route single-source
+## R21. Swagger per-service, giữ 9 section + Nginx route map
 
-**Decision**: Mỗi service `swag init` trên module nó chứa; edge expose docs index + route docs
-từng service; CI assert đủ 9 section (fail nếu thiếu). Route edge định nghĩa một lần, sinh
-Worker routes + Nginx includes, CI parity 100%.
+> **Cập nhật 2026-09-15 (đợt 4)**: bỏ "Worker routes"; route map nằm trong Nginx (single source);
+> CI parity Worker↔Nginx không còn áp dụng.
+
+**Decision**: Mỗi service `swag init` trên module nó chứa; **Nginx** phục vụ docs index + route docs
+từng service; CI assert đủ 9 section (fail nếu thiếu).
 
 **Rationale**: FR-030, SC-012; annotation giữ nguyên (không gộp tay); repatriation không mất routing.
+
+---
+
+## R22. Ingress = VPS Nginx hiện hữu (bỏ Cloudflare/Worker khỏi đường API)
+
+**Decision**: Giữ **VPS Nginx hiện hữu** làm reverse proxy/ingress. `api.closy...` → `http://backend:8080`
+(monolith, giữ nguyên). Thêm server block cho `api-v2.closy.hycat.online` → 3 Cloud Run `run.app`,
+route longest-prefix (xử lý `/me/*`, `/admin/*`). DNS ở **Vercel** (bản ghi A/CNAME trỏ VPS); **không**
+NS-delegate, **không** chuyển nameserver, **không** Cloudflare/Worker trong đường API. Không thêm
+GCP LB / API Gateway chỉ để làm ingress.
+
+**Rationale**: FR-025/FR-028/FR-029; VPS đã được đầu tư và đang có Nginx + TLS + hardening sẵn;
+giảm thành phần mới, giữ `api.closy` không đổi; Cloudflare không cần thiết cho API path.
+
+**Alternatives considered**:
+- NS-delegate/Cloudflare zone + Worker (R14 cũ): bỏ — không cần và làm phức tạp DNS/path.
+- GCP LB + serverless NEG: ngoài ngân sách và thêm hạ tầng không cần.
+- Cloud Run domain mapping: preview, không khuyến nghị production.
+
+---
+
+## R23. Cloud Run IAM + token helper trên VPS (giữ `Authorization`)
+
+**Decision**: Cloud Run services **không** bật `allUsers`; grant `roles/run.invoker` cho service
+account của token helper. Nginx gửi Google ID token ở **`X-Serverless-Authorization: Bearer <token>`**
+(Cloud Run strip header này trước khi tới container) → app-level `Authorization: Bearer <Closy JWT>`
+được giữ nguyên. Audience mặc định = URL `run.app` của service (custom audience nếu cần).
+**Token helper** chạy trên VPS: sinh/cache/refresh ID token; credential least-privilege + rotation.
+
+**Trade-off chọn cách lấy credential**:
+- **Service account key (JSON)** — chọn: đơn giản, chạy được ngoài GCP, hỗ trợ bởi auth libraries;
+  nhược: secret dài hạn → giảm thiểu bằng least-privilege (`run.invoker` đúng 3 service), file 0600,
+  rotation định kỳ, helper bind localhost.
+- **Workload Identity Federation** — an toàn hơn (không key tĩnh) nhưng cần IdP/OIDC issuer cho VPS;
+  phức tạp hơn đáng kể so với kiến trúc hiện tại → chưa chọn, ghi nhận làm hướng nâng cấp.
+- **Metadata server** — không dùng được ngoài GCP.
+- **`gcloud` impersonation** — phụ thuộc user credential, không phù hợp chạy tự động.
+
+**Rationale**: FR-033/FR-039; giữ app Authorization nguyên vẹn, chặn gọi thẳng `run.app`, không
+dùng `allUsers`.
+
+---
+
+## R24. TLS (Let's Encrypt) & DNS cho `api-v2`
+
+**Decision**: Nginx VPS tiếp tục terminate TLS cho cả `api.closy...` và `api-v2.closy.hycat.online`.
+Mở rộng cert hiện có để gồm hostname mới bằng **`certbot --expand`/`--cert-name`** (liệt kê đủ domain
+cũ + mới) hoặc cert riêng; giữ cơ chế renew hiện có (webroot/nginx plugin trong Docker).
+DNS: thêm bản ghi `api-v2` trên **Vercel** trỏ VPS.
+
+**Rationale**: FR-029/FR-040; cert hiện tại chưa chắc gồm `api-v2` → phải cấp/mở rộng trước khi bật DNS.
+
+**Alternatives considered**:
+- Cloudflare/Google-managed cert: không dùng vì ingress là Nginx.
+- Standalone certbot: chọn webroot/nginx plugin để hợp với Nginx đang chạy trong Docker.

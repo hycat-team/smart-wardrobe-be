@@ -76,27 +76,29 @@ Bổ sung/đổi trong `internal/config/config.go` (mapstructure key trong ngo�
 | `local` | docker postgres | docker, no TLS | tắt | docker compose (3 service) | trực tiếp | `deployments/docker-compose.yml` |
 | `vps-legacy` | docker postgres (self-host) | docker, no TLS | tắt | `monolith-legacy` tag (frozen) | nginx + certbot | song song giai đoạn đầu, sau đó stopped |
 | `vps` (repatriation) | docker postgres + pgvector | docker, no TLS | tắt | 3 service compose | nginx gateway + certbot | đích sau 3 tháng |
-| `managed` | Supabase **1 database dùng chung** | Redis Cloud TLS + CloudAMQP amqps | tắt | Cloud Run trial + caps | CF zone api-v2 + Worker → SaaS api.closy | gồm cả drill (dùng schema tạm) |
-| `managed-drill` | Supabase (cùng DB, **schema tạm**) | Redis Cloud TLS + CloudAMQP amqps | tắt | Cloud Run trial | CF zone api-v2 + Worker | chỉ khi chạy drill runbook; xoá schema sau khi xong |
+| `managed` | Supabase **1 database dùng chung** | Redis Cloud TLS + CloudAMQP amqps | tắt | Cloud Run trial + caps | VPS Nginx: `api.closy`→monolith, `api-v2`→Cloud Run | gồm cả drill (dùng schema tạm) |
+| `managed-drill` | Supabase (cùng DB, **schema tạm**) | Redis Cloud TLS + CloudAMQP amqps | tắt | Cloud Run trial | VPS Nginx (`api-v2`) | chỉ khi chạy drill runbook; xoá schema sau khi xong |
 
-**Ghi chú**: chỉ có **một** môi trường Cloud dùng chung 1 database; `api-v2` (test nội bộ) và
-`api.closy` (sau cutover) cùng trỏ database đó. Drill không tách database mà dùng schema tạm.
+**Ghi chú**: chỉ có **một** môi trường Cloud dùng chung 1 database; `api-v2` và monolith (`api.closy`)
+cùng trỏ database đó khi cần. Drill không tách database mà dùng schema tạm. **Ingress là VPS Nginx**
+cho cả hai hostname; Cloudflare **không** nằm trong đường API.
 
-### 1.8 Edge, gateway secret và migration
+### 1.8 Ingress auth, Cloud Run và migration
 
 | Field | Key | Kiểu | Default | Ý nghĩa |
 |-------|-----|------|---------|---------|
-| GatewaySecret | `edge.gateway_secret` | string | bắt buộc ở managed | Worker tiêm `X-Gateway-Secret`, service verify (trừ healthcheck) |
-| AccountBaseURL | `edge.account_base_url` | string (https `run.app`, không publish) | `""` | Worker → Account |
-| CommerceBaseURL | `edge.commerce_base_url` | string | `""` | Worker → Commerce |
-| AIBaseURL | `edge.ai_base_url` | string | `""` | Worker → AI |
-| RunAppFallbackEnabled | `edge.run_app_fallback_enabled` | bool | `false` | Bật fallback gọi trực tiếp `run.app` cho SSE khi vượt Workers Free |
+| AccountBaseURL | `ingress.account_base_url` | string (https `run.app`) | `""` | Nginx → Account Cloud Run |
+| CommerceBaseURL | `ingress.commerce_base_url` | string | `""` | Nginx → Commerce Cloud Run |
+| AIBaseURL | `ingress.ai_base_url` | string | `""` | Nginx → AI Cloud Run |
+| TokenHelperURL | `ingress.token_helper_url` | string (localhost) | `http://127.0.0.1:9000` | Helper sinh/cache ID token dùng bởi `auth_request` |
+| TokenAudience | `ingress.token_audience` | string | = service `run.app` URL | Audience của Google ID token (mặc định là run.app URL; custom audience nếu cần) |
+| AuthHeader | `ingress.auth_header` | string | `X-Serverless-Authorization` | Header Nginx inject ID token; giữ nguyên `Authorization` cho app |
 | DrillSchema | `database.drill_schema` | string | `""` | Schema tạm cho drill runbook; xoá sau khi xong |
 | MigrateOnStart | `database.migrate_on_start` | bool | `true` ở managed | Service tự chạy migration của mình khi boot (FR-035) |
 | MigrationTable | `database.migration_table` | string | `goose_db_version` (Account) / `goose_db_version_commerce` / `goose_db_version_ai` | **Bảng version riêng mỗi service** — tránh lệch ordering giữa các service |
 | AllowOutOfOrder | `database.migration_allow_out_of_order` | bool | `true` | Cho phép migration merge muộn trong cùng service (goose `WithAllowOutofOrder`) |
 | MigrationLock | `database.migration_lock_id` | int64 | dùng chung, cố định | Advisory lock serialize migration giữa các instance/service |
-| SSEHeartbeatSeconds | `server.sse.heartbeat_seconds` | int | `15` | Giữ dưới idle timeout 100s của Cloudflare |
+| SSEHeartbeatSeconds | `server.sse.heartbeat_seconds` | int | `15` | Giữ stream sống qua Nginx (và dưới mọi idle timeout trung gian) |
 | AIChunkDeadline | `server.sse.ai_chat_chunk_deadline_seconds` | int | `30` | Thống nhất mọi môi trường (dùng chung `configs/`) |
 
 ---
@@ -218,20 +220,21 @@ phải RPC.
 
 ## 4. Mô hình triển khai (Deployment Topology)
 
-### 4.1 Managed (Cloud Run + Cloudflare, 3 tháng funded + trial compute)
+### 4.1 Managed (VPS Nginx ingress + Cloud Run, 3 tháng funded + trial compute)
 
 | Unit | Loại | Scale | CPU | Ghi chú |
 |------|------|-------|-----|---------|
-| account-http | HTTP | scale-to-zero | theo request | API công khai qua Worker |
+| account-http | HTTP | scale-to-zero | theo request | API qua VPS Nginx (IAM ID token) |
 | account-worker | worker | min=1 | always | consumer/outbox |
 | commerce-http | HTTP | scale-to-zero | theo request | |
 | commerce-worker | worker | min=1 | always | ES no-op, fashion |
-| ai-http | HTTP | scale-to-zero | theo request | SSE stream (align timeout 3 tầng) |
+| ai-http | HTTP | scale-to-zero | theo request | SSE stream (Nginx buffering off) |
 | ai-worker | worker | min=1 | always | AI reconcile |
 
-Biên: Cloudflare Pro subdomain zone `api-v2...` (NS-delegate) + Worker router + WAF + 2
-rate-limit rule + gateway secret. `api.closy...` là SaaS custom hostname lúc cutover;
-`api-v2` redirect 301 sau đó. Trial GCP: billing cap + teardown (US6).
+Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `http://backend:8080`) và
+`api-v2` (→ 3 Cloud Run `run.app`); route map trong Nginx; xác thực Cloud Run IAM qua
+`X-Serverless-Authorization` (token helper trên VPS). DNS ở **Vercel**. Cloudflare **không** nằm trong
+đường API. Trial GCP: billing cap + teardown (US6).
 
 ### 4.2 Self-hosted VPS
 
@@ -250,12 +253,12 @@ rate-limit rule + gateway secret. `api.closy...` là SaaS custom hostname lúc c
 
 | Trạng thái | DNS | Compute | DB |
 |-----------|-----|---------|-----|
-| VPS Legacy Active | → VPS IP | monolith-legacy | docker postgres |
-| Cutover | NS-delegate api-v2; SaaS api.closy | song song ngắn | dump→restore Supabase |
-| Managed Active | CF Worker → Cloud Run | 3 service | Supabase (+ Tiger/Redis Cloud) |
+| VPS Legacy Active | `api.closy` → VPS | monolith-legacy | docker postgres |
+| Song song | `api-v2` → VPS (A/CNAME Vercel) | monolith + 3 Cloud Run | VPS DB; Supabase cho `api-v2` |
+| Managed Active | `api-v2` → VPS Nginx → Cloud Run | 3 service | Supabase (+ Tiger/Redis Cloud) |
 | Teardown trial | giữ nguyên | xóa resource trial | giữ funded |
-| Repatriation | → VPS IP | 3 service compose | migrate ngược về docker postgres |
-| VPS 3-service Active | → VPS IP | 3 service + nginx gateway | docker postgres |
+| Repatriation | → VPS | 3 service compose | migrate ngược về docker postgres |
+| VPS 3-service Active | → VPS | 3 service + Nginx | docker postgres |
 
 ---
 
@@ -264,17 +267,17 @@ rate-limit rule + gateway secret. `api.closy...` là SaaS custom hostname lúc c
 | Hiện vật | Đường dẫn | Nội dung |
 |----------|-----------|----------|
 | Tổng quan hạ tầng | `docs/operations/ha-tang/00-tong-quan.md` | ma trận thay thế, hybrid, cảnh báo constitution |
-| Runbook nền tảng | `docs/operations/ha-tang/01..06` | Supabase, Redis Cloud, CloudAMQP, Cloud Run, Cloudflare (zone+Worker), ES-off |
+| Runbook nền tảng | `docs/operations/ha-tang/01..06` | Supabase, Redis Cloud, CloudAMQP, Cloud Run, **VPS Nginx ingress + token helper**, ES-off |
 | Bảng biến môi trường | `docs/operations/ha-tang/07-bang-bien-moi-truong.md` | mapping cũ → mới, gồm migrate session-DSN |
-| Tách VPS + cutover | `docs/operations/ha-tang/08..10` | tổng quan, dữ liệu VPS→Supabase, SaaS hostname + redirect + CI/CD |
+| Song song + Cloud Run | `docs/operations/ha-tang/08..10` | tổng quan, dữ liệu VPS→Supabase, DNS Vercel + CI/CD |
 | Repatriation | `docs/operations/ha-tang/11-ve-lai-vps.md` | verify/rollback, migrate ngược, funding clock, tắt funded, DNS về VPS |
 | Vận hành | `docs/operations/ha-tang/12..13` | ngừng VPS/thu hồi secret, monitoring + teardown trial |
-| Edge router | `docs/operations/cf-worker-edge-router.md` | sở hữu route table single-source, deploy worker, rotate gateway secret, parity Nginx |
-| Cutover SaaS | `docs/operations/cutover-api-domain-saas.md` | custom hostname + CNAME + redirect + rollback |
+| Ingress Nginx + auth | `docs/operations/nginx-ingress-cloudrun-auth.md` | route map single-source, token helper, rotate SA key, smoke test IAM |
+| Cutover thủ công | `docs/operations/manual-cutover-api-closy-to-cloudrun.md` | runbook cutover `api.closy` → Cloud Run + rollback (FR-041), owner-triggered |
 | Teardown | `docs/operations/gcp-trial-teardown.md` | xóa resource trial + verify bill |
 | Repatriation | `docs/operations/repatriate-to-vps.md` | runbook về VPS 2 chiều đầy đủ (viết song song từ bây giờ) |
 | Services guides | `docs/system-design/microservices/00..06` | ranh giới, gRPC/event, adapter, JWT, repo/CI, lộ trình (mô hình C, không monolith) |
-| ADR | `docs/decisions/021-funded-platforms-and-repatriation.md` | quyết định + hệ quả + rollback (thay ADR platform cũ) |
+| ADR | `docs/decisions/021-...` + `docs/decisions/023-...` | funded platforms + repatriation; **ingress VPS Nginx + Cloud Run IAM** (supersede phần Cloudflare của ADR 021) |
 
 ---
 
@@ -283,4 +286,4 @@ rate-limit rule + gateway secret. `api.closy...` là SaaS custom hostname lúc c
 - Schema nghiệp vụ (45 bảng, 8 schema) — giữ nguyên, migration hiện có.
 - API HTTP công khai — giữ nguyên đường dẫn/hợp đồng (`/api/v1/...`).
 - Luồng nghiệp vụ AI/thanh toán/outbox — giữ nguyên logic.
-- Không GCP LB/Armor/Cloud SQL/Memorystore; không Firebase; không Nginx-on-Cloud-Run.
+- Không GCP LB/Armor/Cloud SQL/Memorystore; không Firebase; không Nginx-on-Cloud-Run; **không Cloudflare/Cloudflare Workers trong đường API**.

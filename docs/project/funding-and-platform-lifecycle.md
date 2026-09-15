@@ -11,7 +11,7 @@ và `specs/020-platform-migration/`.
 
 | Hạng mục | Gói | Vai trò |
 |---|---|---|
-| Cloudflare | Pro Plan | Edge: DNS zone `api-v2...`, WAF, rate-limit, Worker router |
+| Cloudflare | Pro Plan | Funded, **KHÔNG nằm trong đường API** (theo ADR 023); dùng cho mục đích khác nếu cần |
 | Supabase | Pro Plan | Postgres + pgvector (1 project, **1 database dùng chung**, không tách schema staging/prod) |
 | CloudAMQP | Tough Tiger | RabbitMQ managed |
 | Redis Cloud | Essentials 250MB | Cache managed |

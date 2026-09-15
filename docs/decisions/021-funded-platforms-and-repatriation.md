@@ -1,6 +1,6 @@
 # ADR 021 - Nền tảng được tài trợ, kiến trúc Cloudflare + Cloud Run và lộ trình repatriation 3 tháng
 
-*   **Status**: Accepted
+*   **Status**: Accepted (**đã supersede một phần** bởi **ADR 023**: bỏ Cloudflare/Worker và NS-delegate khỏi đường API; ingress là VPS Nginx; cutover giai đoạn đầu bị hoãn)
 *   **Decision Date**: 2026-09-15
 *   **Decision Maker**: Duck (+ Muse Spark đối chiếu)
 *   **Supersedes**: Mọi giả định trial/LB/GCP-managed-DB trong `specs/020-platform-migration` trước ngày này.
@@ -26,6 +26,12 @@ Ràng buộc cứng:
 - Hết 3 tháng: toàn bộ phải về lại VPS.
 
 ## 2. Decision
+
+> **Lưu ý supersede (2026-09-15, ADR 023)**: các quyết định liên quan tới **Cloudflare/Worker và ingress**
+> dưới đây **không còn hiệu lực**: §2.1 (Cloudflare zone + Worker), §2.2 (cutover SaaS — hoãn sang phase
+> sau), §2.6 (origin-auth `X-Gateway-Secret`), §2.7 (SSE qua Worker), §2.8 (route table single-source với
+> Worker). Thay thế: **ingress = VPS Nginx hiện hữu**; auth = **Cloud Run IAM (ID token)**; DNS ở **Vercel**.
+> Các quyết định về compute, database, queue/cache, migration, repatriation, funding clock vẫn giữ nguyên.
 
 1.  **Edge = Cloudflare Pro trên subdomain zone `api-v2.closy.hycat.online`** (NS-delegate từ
     Vercel, plan gắn theo zone). Worker edge-router định tuyến longest-prefix (~30 rule) tới 3
@@ -59,8 +65,9 @@ Ràng buộc cứng:
     repatriation viết **song song** với forward runbook. Teardown trial nằm trong bước này.
 9.  **Funding clock**: hard deadline + checkpoint T-30/T-14/T-7/T-1 (verify backup, drill
     restore, rehearsal DNS rollback) ghi trong plan 020.
-10. **Mốc cứng chấm bài**: cả `api-v2...` và `api.closy...` phải chạy trên Cloud trước ngày chấm
-    → cutover không thể trễ hơn mốc đó; ưu tiên US3/US5 là P1.
+10. **Mốc chấm bài (điều chỉnh bởi ADR 023)**: chỉ **`api-v2...` bắt buộc chạy trên Cloud** trước
+    ngày chấm; **cutover `api.closy` KHÔNG còn mốc cứng** — do owner quyết định khi `api-v2` đủ ổn
+    định, có runbook cutover/rollback (FR-041, SC-015). Ưu tiên US3/US5 là P1.
 
 ## 3. Consequences
 

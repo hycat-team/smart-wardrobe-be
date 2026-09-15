@@ -239,9 +239,9 @@ theo đúng quy tắc trên.
 
 ## 6. HTTP API công khai
 
-Không thay đổi đường dẫn/schema (`/api/v1/...`). Cloudflare Worker định tuyến theo path tới
-service (`api-v2...` lúc song song, `api.closy...` qua SaaS custom hostname lúc cutover);
-Nginx gateway phục vụ cùng path khi repatriation về VPS (route single-source, parity CI).
+Không thay đổi đường dẫn/schema (`/api/v1/...`). **VPS Nginx hiện hữu** là ingress: `api.closy...`
+→ monolith `http://backend:8080` (giữ nguyên); `api-v2.closy...` → 3 Cloud Run `run.app`. DNS do
+Vercel quản lý; không NS-delegate, không Cloudflare.
 
 ---
 
@@ -255,10 +255,14 @@ Nginx gateway phục vụ cùng path khi repatriation về VPS (route single-sou
 
 ---
 
-## 8. Origin-auth: gateway secret (hợp đồng vận hành)
+## 8. Ingress auth: Cloud Run IAM (hợp đồng vận hành)
 
-Mọi request từ edge (Cloudflare Worker lúc managed, Nginx gateway lúc VPS) vào service MUST mang
-`X-Gateway-Secret` (Worker/Nginx tiêm từ secret của môi trường; xem data-model §1.8
-`edge.gateway_secret`). Service MUST từ chối request thiếu/sai secret, **trừ** healthcheck hạ
-tầng (`/api/v1/health` và probe nội bộ). Đây là lớp chống bypass `run.app`/origin trực tiếp,
-chạy cùng với verify JWT nghiệp vụ (hai lớp độc lập: origin-auth ở edge, user-auth ở service).
+- **Managed**: request từ VPS Nginx tới Cloud Run MUST mang **Google-signed ID token** ở header
+  `X-Serverless-Authorization: Bearer <token>` (Cloud Run IAM, `roles/run.invoker`; **KHÔNG** bật
+  `allUsers`). Cloud Run strip header này trước khi tới container, nên **`Authorization` của ứng
+  dụng (Closy JWT) được giữ nguyên**. Audience mặc định = URL `run.app` của service (có thể dùng
+  custom audience nếu cần).
+- **Token**: do **token helper trên VPS** sinh/cache/refresh (xem data-model §1.8). Healthcheck hạ
+  tầng (`/api/v1/health`) vẫn phải qua IAM như mọi request khác (không ngoại lệ ở tầng Cloud Run).
+- **Repatriation (VPS)**: khi chạy 3 service compose sau Nginx, không còn Cloud Run IAM; auth tại
+  ingress lúc đó do Nginx/network nội bộ quyết định (ghi rõ trong runbook repatriation).
