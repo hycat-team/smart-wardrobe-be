@@ -1,6 +1,6 @@
 # ADR 020 - Hardening Config Pre-launch: Pool Connection, Timeout, và Các Nợ Vận Hành Chấp Nhận
 
-*   **Status**: Accepted
+*   **Status**: Accepted (**§2.3 Email: superseded by ADR 022 — Brevo thay Resend**)
 *   **Decision Date**: 2026-09-06
 *   **Decision Maker**: Duck (review config pre-launch sau spec 019)
 
@@ -14,9 +14,10 @@ Sau spec 019 (hardening HTTP server) và trước khi mở cửa đón người 
 
 2.  **`database.ssl_mode: disable` — giữ nguyên, ghi nhận là rủi ro chấp nhận.** Hiện trạng toàn bộ hạ tầng (app, Postgres, Redis, Elasticsearch) chạy trên cùng 1 VPS trong docker network nội bộ — traffic DB không rời khỏi host, bật TLS đòi hỏi Postgres cấu hình cert (self-signed cùng host = phức tạp config, không tăng bảo mật thật). **Trigger reconsider (bắt buộc):** tách DB sang server/VPS riêng, hoặc mở port Postgres ra ngoài host → phải đổi sang `require` (lý tưởng `verify-full` với cert chuẩn).
 
-3.  **Email: chuyển Gmail SMTP sang Resend (SMTP relay, thay vì Brevo).** Ban đầu ghi nhận Gmail SMTP là nợ chấp nhận (giới hạn ~500 email/ngày của app-password, rủi ro Google khóa key, không có domain reputation) và từng cân nhắc Brevo. Quyết định chính thức: chuyển sang **Resend** qua SMTP relay (`smtp.resend.com:587`) vì Resend cấp DKIM/SPF/DMARC riêng cho domain thương hiệu (`hycat.online`), deliverability cao và tích hợp đơn giản. Thay đổi: block `email:` trỏ `smtp.resend.com:587`, tách `smtp_user` (`resend` hoặc account email) khỏi `sender_email` (branded address), đổi env `EMAIL_APP_PASSWORD` → `EMAIL_SMTP_KEY` (Resend API key `re_...`), thêm `reply_to` optional (env trống = không set header). **Điều kiện để send production thực sự hoạt động:** owner verify domain `hycat.online` trên DNS Vercel (DKIM/SPF/DMARC records do Resend cung cấp). **Trigger reconsider:** vượt hạn mức gói free của Resend (3.000 email/tháng, 100 email/ngày) → nâng gói Pro hoặc cân nhắc AWS SES ($0.10/1.000).
+3.  **Email: chuyển Gmail SMTP sang Resend (SMTP relay, thay vì Brevo).** *(ĐÃ SUPERSEDED bởi **ADR 022** — nhà cung cấp chốt lại là **Brevo** (`smtp-relay.brevo.com`) vì hạn mức free cao hơn; phần cấu trúc config bên dưới vẫn giữ nguyên.)* Ban đầu ghi nhận Gmail SMTP là nợ chấp nhận (giới hạn ~500 email/ngày của app-password, rủi ro Google khóa key, không có domain reputation) và từng cân nhắc Brevo. Quyết định chính thức: chuyển sang **Resend** qua SMTP relay (`smtp.resend.com:587`) vì Resend cấp DKIM/SPF/DMARC riêng cho domain thương hiệu (`hycat.online`), deliverability cao và tích hợp đơn giản. Thay đổi: block `email:` trỏ `smtp.resend.com:587`, tách `smtp_user` (`resend` hoặc account email) khỏi `sender_email` (branded address), đổi env `EMAIL_APP_PASSWORD` → `EMAIL_SMTP_KEY` (Resend API key `re_...`), thêm `reply_to` optional (env trống = không set header). **Điều kiện để send production thực sự hoạt động:** owner verify domain `hycat.online` trên DNS Vercel (DKIM/SPF/DMARC records do Resend cung cấp). **Trigger reconsider:** vượt hạn mức gói free của Resend (3.000 email/tháng, 100 email/ngày) → nâng gói Pro hoặc cân nhắc AWS SES ($0.10/1.000).
 
 4.  **`server.timeout_seconds`: dev `30 → 300`, production giữ `300`.**
+    - *(Lưu ý sau ADR 021: `ai_chat_chunk_deadline_seconds` đã hạ 180s → 30s và thống nhất mọi môi trường; quyết định giữ `server.timeout_seconds = 300` vẫn hợp lệ vì bao trọn stream 1–3 phút, nhưng lập luận "300s ≈ 1.67× chunk deadline" bên dưới không còn áp dụng.)*
     - Production 300s là con số hợp lý hiện tại: phải vượt tổng thời lượng stream chat AI hợp lệ (từng khoảng lặng giữa các chunk tối đa 180s theo `sse.ai_chat_chunk_deadline_seconds`, tổng stream thực tế 1–3 phút); đồng thời đủ ngắn để giải phóng connection kẹt. 300s ≈ 1.67× chunk deadline — biên an toàn mà không ôm connection vô hạn.
     - Dev 30s trước đây tự cắt luồng AI chat ở giây 30 (nhỏ hơn cả chunk deadline 180s) — dev không thể test được một stream hoàn chỉnh qua curl. Dev không có rủi ro internet nên 300s vô hại và đồng bộ với prod, giảm khác biệt môi trường.
 
@@ -32,7 +33,7 @@ Sau spec 019 (hardening HTTP server) và trước khi mở cửa đón người 
 | `database.ssl_mode` | disable (thêm comment) | disable (thêm comment) | ADR §2.2 |
 | `server.timeout_seconds` | 30 → 300 | giữ 300 | ADR §2.4 |
 | `rabbitmq.prefetch` | 20 → 5 | 20 → 5 | ADR §2.6 |
-| `email.*` | Gmail → Resend (`smtp.resend.com:587`), tách `smtp_user`, thêm `reply_to`, env `EMAIL_APP_PASSWORD` → `EMAIL_SMTP_KEY` | như dev | ADR §2.3 |
+| `email.*` | Gmail → Resend (`smtp.resend.com:587`), tách `smtp_user`, thêm `reply_to`, env `EMAIL_APP_PASSWORD` → `EMAIL_SMTP_KEY` (**nay: Brevo `smtp-relay.brevo.com` — ADR 022**) | như dev | ADR §2.3 |
 | BOM đầu `config.production.yaml` | — | đã xóa | dọn noise |
 
 Giữ nguyên (đã cân nhắc và quyết định không đổi): `payos.return_url` trùng `cancel_url` (PayOS append query param để client phân biệt), `logger.log_to_file: false` (deploy thu stdout qua docker logs).
@@ -40,5 +41,5 @@ Giữ nguyên (đã cân nhắc và quyết định không đổi): `payos.retur
 ## 4. Consequences
 
 - **Positive**: Pool connection an toàn trước trần Postgres và kịch bản multi-instance; dev/prod timeout đồng nhất — không còn "dev chạy được prod fail" (hoặc ngược lại) trên luồng AI chat; các nợ vận hành có trigger reconsider rõ ràng thay vì bị lãng quên.
-- **Negative**: DB vẫn không TLS trong docker network (chấp nhận có chủ đích, xem §2.2); email chuyển Resend nhưng cần owner verify domain `hycat.online` trên DNS Vercel trước khi send branded thực sự đạt deliverability (§2.3); swagger vẫn lộ surface ở prod sau access code (§2.5).
+- **Negative**: DB vẫn không TLS trong docker network (chấp nhận có chủ đích, xem §2.2); email cần owner verify domain `hycat.online` trên DNS Vercel trước khi send branded thực sự đạt deliverability (§2.3; nhà cung cấp hiện tại là Brevo — ADR 022); swagger vẫn lộ surface ở prod sau access code (§2.5).
 - **Follow-up**: khi bất kỳ trigger nào ở §2.2/2.3/2.5 kích hoạt, mở ADR mới thay vì sửa trực tiếp ADR này.

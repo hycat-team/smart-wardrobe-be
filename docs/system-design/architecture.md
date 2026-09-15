@@ -1,5 +1,11 @@
 # ARCHITECTURE & TECHNICAL DEVELOPMENT RULES
 
+> **⚠️ BASELINE CŨ (đã lỗi thời cho giai đoạn 020)**: tài liệu này còn mô tả modular monolith
+> một binary (`cmd/server`, `internal/modules` ở root, `internal/shared`), `Qos(prefetch=20)`, và
+> "1 connection chung". Đây KHÔNG phải nguồn chân lý cho feature 020. Nguồn chân lý là
+> `specs/020-platform-migration/` (3 service, multi-module `go.work`, `services/`). Tài liệu này
+> sẽ được cập nhật ở **T111**. Không dùng nội dung bên dưới làm baseline khi implement 020.
+
 ## I. SYSTEM ARCHITECTURE PARADIGM
 
 The backend is implemented as a **pragmatic modular monolith** in Go with **strict clean layer boundaries** (detailed in Constitution §IV), but not every module is shaped identically.
