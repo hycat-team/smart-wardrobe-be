@@ -36,13 +36,13 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Khởi tạo workspace, tooling, khung service, thư mục docs, chốt tag legacy.
 
-- [ ] T001 Khởi tạo `go.work` + `go.mod` cho 5 module (`services/account`, `services/commerce`, `services/ai`, `shared`, `contracts`); `go work sync` pass
+- [ ] T001 Khởi tạo `go.work` + `go.mod` cho 5 module (`services/account`, `services/commerce`, `services/ai`, `shared`, `contracts`); tạo `services/<service>/database/migrations/` (Account sẽ giữ 24 migration lịch sử); `go work sync` pass
 - [ ] T002 [P] Add gRPC/protobuf dependencies (`google.golang.org/grpc`, `google.golang.org/protobuf`) và `go mod tidy` từng module dùng gRPC
 - [ ] T003 [P] Add buf tooling tại root: `buf.yaml` + `buf.gen.yaml` (output `contracts/`, plugin `protoc-gen-go`, `protoc-gen-go-grpc`)
 - [ ] T004 [P] Tạo skeleton mỗi service trong `services/`: `services/account/cmd/account/main.go`, `services/commerce/cmd/commerce/main.go`, `services/ai/cmd/ai/main.go` + `services/<service>/internal/bootstrap` + `services/<service>/internal/di` (minimal boot, chưa routes) + `services/<service>/Dockerfile` **riêng từng service**
 - [ ] T005 [P] Tạo skeleton `edge/worker/` (router + `routes.yaml` single-source + deploy script `wrangler.toml`)
 - [ ] T006 Tag `monolith-legacy` tại commit baseline = **HEAD của `main` ngay trước commit 020 đầu tiên** (commit monolith-green cuối cùng); ghi chú frozen vào tag message
-- [ ] T007 Makefile targets: `buf-gen`, `buf-lint`, `worker-deploy`, `tool`; entry-point test workspace (`go build ./...` qua `go.work`); extend `generate`/`generate-check`
+- [ ] T007 **Viết lại Makefile cho multi-module (FR-038)**: thay `WIRE_PATH`/`SWAG_MAIN_FILE`/`GO_BUILD_PACKAGE` gắn monolith bằng target per-service + workspace (`wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`, `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`, `worker-deploy`); cập nhật `tidy`/`vet`/`test` theo `go.work`; di chuyển `hygiene-scan` tool vào một module; sửa `test-integration` path; `docker-build svc=`
 - [ ] T008 [P] Tạo skeleton `docs/operations/` (runbook 2 chiều) và cập nhật `docs/system-design/microservices/` (bỏ nội dung monolith)
 
 ---
@@ -51,10 +51,10 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Mô hình cấu hình dùng chung cho mọi story. **PHẢI xong trước US1–US7.**
 
-- [ ] T009 Add config fields trong `shared/config/config.go`: `Elasticsearch.Enabled`, `Database.MigrateOnStart`, `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Database.MigrationJobMode`, `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Edge.GatewaySecret/AccountBaseURL/CommerceBaseURL/AIBaseURL/RunAppFallbackEnabled`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
-- [ ] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; gateway secret bắt buộc ở managed; drill schema chỉ dùng khi chạy drill; migration job mode bắt buộc ở managed)
+- [ ] T009 Add config fields trong `shared/config/config.go`: `Elasticsearch.Enabled`, `Database.MigrateOnStart` (per-service, bật ở managed), `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Edge.GatewaySecret/AccountBaseURL/CommerceBaseURL/AIBaseURL/RunAppFallbackEnabled`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
+- [ ] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; gateway secret bắt buộc ở managed; drill schema chỉ dùng khi chạy drill; `migrate_on_start` bật ở managed cho từng service)
 - [ ] T011 Parameterize `configs/config.yaml` và `configs/config.production.yaml`: thay host/endpoint literal bằng `${DB_HOST}`, `${REDIS_HOST}`, `${RABBITMQ_HOST}`, `${ELASTICSEARCH_ADDRESSES}`; đặt `server.sse.ai_chat_chunk_deadline_seconds: 30` và `server.sse.heartbeat_seconds: 15` **giống nhau ở cả hai môi trường**
-- [ ] T012 Update `.env.example` và `.env.production.example` (ES enabled, TLS toggles, migrate_on_start, listener_*, drill_schema, migration_job_mode, JWT keys, edge URLs/secret/fallback)
+- [ ] T012 Update `.env.example` và `.env.production.example` (ES enabled, TLS toggles, migrate_on_start, listener_*, drill_schema, JWT keys, edge URLs/secret/fallback)
 
 **Checkpoint**: 5 profile (local / vps-legacy / vps / managed / managed-drill) load được, workspace build xanh.
 
@@ -121,7 +121,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Module split + dual adapter
 
-- [ ] T031 [US5] Chuyển module identity/subscription/admin/notification vào `services/account/internal/modules/` (giữ nguyên logic, đổi import path)
+- [ ] T031 [US5] Chuyển module identity/subscription/admin/notification vào `services/account/internal/modules/` (giữ nguyên logic, đổi import path); đồng thời chuyển **24 migration lịch sử** từ `database/migrations/` sang `services/account/database/migrations/` (kèm `embed.go`)
 - [ ] T032 [US5] Chuyển module wardrobe/fashion/brand/dashboard vào `services/commerce/internal/modules/`
 - [ ] T033 [US5] Chuyển module aiexecutor vào `services/ai/internal/modules/`; tách `internal/shared/**` thành module `shared/` (đặt HTTP/SSE/middleware tại `shared/presentation`; bootstrap chuyển về `services/<service>/internal/bootstrap`)
 - [ ] T034 [US5] Xóa `cmd/server` khỏi `main`; verify workspace không còn reference monolith
@@ -176,7 +176,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ## Phase 6: User Story 3 - Edge + Compute + Cutover (Priority: P1)
 
-**Goal**: Cloudflare zone + Worker, Cloud Run trial có cap, migration job, data wiring đúng giới hạn gói, SSE ổn định, runbook cutover, drill bằng schema tạm.
+**Goal**: Cloudflare zone + Worker, Cloud Run trial có cap, per-service migration on-start, data wiring đúng giới hạn gói, SSE ổn định, runbook cutover, drill bằng schema tạm.
 **Independent Test**: quickstart VS6.
 
 ### Code (TLS + managed wiring)
@@ -203,7 +203,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 ### Data (đúng giới hạn gói funded)
 
 - [ ] T076 [US3] Supabase: **1 database dùng chung** + credential riêng; pooler app / direct listener; verify `LISTEN` (FR-025)
-- [ ] T077 [US3] Migration job riêng chạy Goose trước deploy; bật `database.migration_job_mode`; service không tự migrate khi boot (FR-035)
+- [ ] T077 [US3] **Per-service migration on-start (FR-035)**: mỗi service chạy Goose provider trên `services/<service>/database/migrations` khi khởi động, dùng **bảng version riêng** (`goose.WithTableName`: Account giữ `goose_db_version`, Commerce/AI dùng bảng hậu tố) + **`goose.WithAllowOutofOrder(true)`** + **advisory lock dùng chung** (session locker, cùng lock id); verify không chạy lại 24 migration lịch sử khi Account khởi động
 - [ ] T078 [US3] CloudAMQP Tiger: vhost riêng; verify quorum queue (fallback classic durable + ADR nếu không hỗ trợ); share trong 100 connections, prefetch 5
 - [ ] T079 [US3] Redis Cloud Essentials: TLS, share trong 256 connections; verify throughput/bandwidth cho tải demo
 - [ ] T080 [US3] Drill runbook dùng `database.drill_schema` rồi xoá, không đụng schema chính (FR-027)
@@ -284,7 +284,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - Proto trước stubs trước adapters trước composition.
 - Route single-source trước Worker trước Nginx trước parity check.
 - Backup/verify trước mọi thao tác dữ liệu production.
-- Migration job (T077) phải xong trước khi deploy service lần đầu.
+- Migration per-service (T077) phải xong trước khi deploy service lần đầu (Account phải chạy trước AI/Commerce vì giữ 24 migration lịch sử).
 
 ### Parallel Opportunities
 
@@ -309,7 +309,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 1. MVP (US1+US2) → managed data layer.
 2. US5 (3 service module C) → image 3 service.
-3. US3 (edge + compute + migration job + cutover) → `api-v2` live.
+3. US3 (edge + compute + migration on-start + cutover) → `api-v2` live.
 4. US4/US6/US7 (VPS 3-service + repatriation gồm teardown) → đường về sẵn sàng trước khi cutover prod.
 5. Cutover prod (trước mốc chấm) → funding clock → repatriation.
 6. Polish.

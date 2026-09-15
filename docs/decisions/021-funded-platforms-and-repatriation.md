@@ -44,7 +44,9 @@ Ràng buộc cứng:
     trong giới hạn gói; ES giữ disabled.
 6.  **Origin-auth**: Worker tiêm `X-Gateway-Secret`, service verify (trừ healthcheck) để chặn gọi
     thẳng `run.app`. gRPC liên service xác thực hai lớp: Cloud Run ID token + JWT bất đối xứng.
-    Goose migration chạy bằng **migration job riêng**, không service nào tự migrate khi boot.
+    Migration do **chính service chạy khi khởi động**: **mỗi service một bảng version riêng**
+    (Account giữ `goose_db_version`; Commerce/AI có bảng hậu tố) + `WithAllowOutofOrder` + advisory
+    lock dùng chung; 24 migration lịch sử do Account giữ.
 7.  **SSE/AI streaming đi qua Worker** (passthrough stream, Workers Free; fallback gọi trực tiếp
     `run.app` nếu vượt hạn mức). Do Cloudflare proxy có **idle timeout 100s** và có thể buffer SSE:
     bắt buộc heartbeat ~15s, origin trả `X-Accel-Buffering: no`, và hạ
@@ -78,4 +80,6 @@ Ràng buộc cứng:
 - SSE/AI streaming qua Worker: đo CPU < 10ms (Workers Free), xác nhận heartbeat 15s giữ dưới idle
   timeout 100s, origin trả `X-Accel-Buffering: no`, và test stream thật dài trước cutover.
 - NS-delegate `api-v2` làm bước đầu tiên vì cả plan phụ thuộc vào nó.
-- Migration job riêng + origin-auth secret: chạy thử trên môi trường Cloud trước khi cutover prod.
+- Per-service migration on-start (advisory lock dùng chung, không chạy lại 24 migration lịch sử) +
+  origin-auth secret: chạy thử trên môi trường Cloud trước khi cutover prod.
+- Makefile viết lại cho multi-module (FR-038): CI/dev không còn dùng path monolith.

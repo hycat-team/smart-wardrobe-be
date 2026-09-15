@@ -30,7 +30,7 @@ Bổ sung/đổi trong `internal/config/config.go` (mapstructure key trong ngo�
 | Host/Port/User/Password/DbName/SslMode | `database.*` | — | hiện có | Runtime (pooler transaction mode) |
 | MaxIdleConns/MaxOpenConns/ConnMaxLifetime | `database.*` | — | hiện có | Pool |
 | SearchPath | `database.search_path` | string | default 8 schema | Giữ nguyên |
-| **MigrateOnStart** | `database.migrate_on_start` | bool | `true` | Tắt ở managed (FR-011) |
+| **MigrateOnStart** | `database.migrate_on_start` | bool | `true` | Per-service; bật ở managed để service tự chạy migration của mình (FR-035) |
 | **ListenerHost** | `database.listener_host` | string | = Host | Kênh session cho `LISTEN` |
 | **ListenerPort** | `database.listener_port` | int | = Port | Supabase session `5432` |
 | **ListenerSslMode** | `database.listener_ssl_mode` | string | = SslMode | TLS cho listener |
@@ -92,7 +92,10 @@ Bổ sung/đổi trong `internal/config/config.go` (mapstructure key trong ngo�
 | AIBaseURL | `edge.ai_base_url` | string | `""` | Worker → AI |
 | RunAppFallbackEnabled | `edge.run_app_fallback_enabled` | bool | `false` | Bật fallback gọi trực tiếp `run.app` cho SSE khi vượt Workers Free |
 | DrillSchema | `database.drill_schema` | string | `""` | Schema tạm cho drill runbook; xoá sau khi xong |
-| MigrationJobMode | `database.migration_job_mode` | bool | `true` ở managed | Migration chạy bằng job riêng; service không tự migrate khi boot |
+| MigrateOnStart | `database.migrate_on_start` | bool | `true` ở managed | Service tự chạy migration của mình khi boot (FR-035) |
+| MigrationTable | `database.migration_table` | string | `goose_db_version` (Account) / `goose_db_version_commerce` / `goose_db_version_ai` | **Bảng version riêng mỗi service** — tránh lệch ordering giữa các service |
+| AllowOutOfOrder | `database.migration_allow_out_of_order` | bool | `true` | Cho phép migration merge muộn trong cùng service (goose `WithAllowOutofOrder`) |
+| MigrationLock | `database.migration_lock_id` | int64 | dùng chung, cố định | Advisory lock serialize migration giữa các instance/service |
 | SSEHeartbeatSeconds | `server.sse.heartbeat_seconds` | int | `15` | Giữ dưới idle timeout 100s của Cloudflare |
 | AIChunkDeadline | `server.sse.ai_chat_chunk_deadline_seconds` | int | `30` | Thống nhất mọi môi trường (dùng chung `configs/`) |
 

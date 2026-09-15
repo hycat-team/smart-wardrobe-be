@@ -202,7 +202,10 @@ concerns and live in `docs/project/funding-and-platform-lifecycle.md`, not here.
   database-backed search when disabled or unavailable.
 - **Goose Database Migrations**: All database schema changes MUST be implemented via Goose SQL
   migration files (`make migration-create` and `make migration-up`). Directly editing initial
-  database scripts in `/init-db` is strictly prohibited.
+  database scripts in `/init-db` is strictly prohibited. **Note (020 service topology)**: the
+  Makefile targets become per-service (`make migration-create svc=<name>`, `make migration-up
+  svc=<name>`); each service owns and runs its migrations on start with a shared advisory lock
+  (FR-035/FR-038).
 - **Database Schema**: Core tables, schema-per-module separation, FK rules, and access matrix
   are documented in `docs/system-design/architecture.md §VII`. **Note (giai đoạn 020)**: khi
   `architecture.md` còn là baseline cũ, nguồn chuẩn cho schema/config là

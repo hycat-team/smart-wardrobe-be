@@ -41,8 +41,14 @@ Cách tiếp cận kỹ thuật:
 **Storage**:
 - PostgreSQL (Supabase Pro, extension `pgvector`), 8 schema theo module, **1 project + 1 database
   dùng chung** cho môi trường Cloud (không tách schema staging/prod; drill dùng schema tạm).
-  Runtime qua Supavisor pooler (transaction mode, 6543); migration (qua **migration job riêng**) +
-  `LISTEN` qua direct connection (5432). `sslmode=require`.
+  Runtime qua Supavisor pooler (transaction mode, 6543); **migration do chính service chạy khi khởi
+  động** + `LISTEN` qua direct connection (5432), có **advisory lock dùng chung**. `sslmode=require`.
+  - **Migration ownership**: 24 migration lịch sử thuộc `services/account/database/migrations/`;
+    migration mới đặt trong `services/<service>/database/migrations/` của service phát sinh.
+  - **Bảng version riêng mỗi service**: Account giữ `goose_db_version` (đã có 24 lịch sử);
+    Commerce/AI dùng `goose_db_version_commerce` / `goose_db_version_ai` → tránh lệch ordering.
+  - Bật `goose.WithAllowOutofOrder(true)` (chịu migration merge muộn trong cùng service); advisory
+    lock dùng chung (cùng lock id) để serialize.
 - Redis Cloud Essentials 250MB — kết nối TLS (`rediss`), share trong 256 connections.
 - RabbitMQ CloudAMQP Tough Tiger — `amqps` TLS, share trong 100 connections; topology
   (quorum queue + DLX + delivery-limit, **verify quorum trên shared plan**, fallback classic
@@ -129,6 +135,7 @@ smart-wardrobe-be/
 │   │   │   ├── di/                # composition root riêng của Account
 │   │   │   └── modules/{identity,subscription,admin,notification}/
 │   │   ├── api/swagger/           # Swagger per-service (4 module)
+│   │   ├── database/migrations/   # 24 migration lịch sử (Account giữ) + migration mới của Account
 │   │   └── Dockerfile             # image riêng, KHÔNG dùng chung
 │   ├── commerce/                  # MODULE service Commerce Core
 │   │   ├── go.mod
@@ -138,6 +145,7 @@ smart-wardrobe-be/
 │   │   │   ├── di/
 │   │   │   └── modules/{wardrobe,fashion,brand,dashboard}/
 │   │   ├── api/swagger/           # 4 module
+│   │   ├── database/migrations/   # migration mới do Commerce sở hữu
 │   │   └── Dockerfile             # image riêng
 │   └── ai/                        # MODULE service AI Engine
 │       ├── go.mod
@@ -147,6 +155,7 @@ smart-wardrobe-be/
 │       │   ├── di/
 │       │   └── modules/aiexecutor/
 │       ├── api/swagger/           # 1 module
+│       ├── database/migrations/   # migration mới do AI sở hữu
 │       └── Dockerfile             # image riêng
 ├── shared/                        # MODULE dùng chung (module path smart-wardrobe-be/shared)
 │   ├── go.mod
@@ -161,9 +170,14 @@ smart-wardrobe-be/
 │   └── <owner>/v1/                #   *.proto, *.pb.go, client/
 ├── edge/worker/                   # Cloudflare Worker router + routes.yaml (single-source)
 ├── configs/                       # YAML parameter hoá (dùng chung mọi môi trường)
+├── database/init/                 # SQL khởi tạo hạ tầng local (KHÔNG phải migration)
 ├── deployments/
 │   ├── docker-compose.yml         # Local dev (3 service + infra local)
-│   └── docker-compose.prod.yml    # VPS: 3 service + infra + nginx gateway (repatriation)
+│   ├── docker-compose.prod.yml    # VPS: 3 service + infra + nginx gateway (repatriation)
+│   ├── nginx/                     # gateway config (route sinh từ routes.yaml)
+│   └── rabbitmq/
+├── buf.yaml / buf.gen.yaml        # buf tooling (sinh proto → contracts/)
+├── Makefile                       # viết lại: target per-service + target workspace
 └── docs/
     ├── operations/                # Runbook 2 chiều (tiếng Việt)
     └── system-design/microservices/
@@ -188,6 +202,31 @@ smart-wardrobe-be/
 6. **Logic nghiệp vụ không di chuyển nội dung**: tách chỉ đổi vị trí thành
    `services/<service>/internal/modules/*` và composition root theo service; ranh giới service do
    compiler enforce (service module không thấy implementation của module thuộc service khác).
+7. **Migration ownership**: 24 migration lịch sử đặt trong **Account**; migration mới đặt trong
+   service phát sinh; mỗi service **tự chạy migration của mình khi khởi động**; **mỗi service một
+   bảng version riêng** (Account giữ `goose_db_version`, Commerce/AI có bảng hậu tố) + allow-out-of-order;
+   advisory lock dùng chung (cùng lock id) để serialize.
+8. **Makefile viết lại cho multi-module**: xem mục "Tooling & Makefile" bên dưới.
+
+**Tooling & Makefile (bắt buộc viết lại — FR-038)**:
+
+Makefile hiện tại gắn cứng monolith, phải thay thế các biến/target sau:
+
+| Hiện tại (monolith) | Vấn đề sau khi tách | Thay bằng |
+|---|---|---|
+| `WIRE_PATH := ./internal/di` | chỉ có 1 composition root | `wire` chạy per-service: `wire svc=account` → `<service>/internal/di` |
+| `SWAG_MAIN_FILE := ./cmd/server/main.go` | không còn `cmd/server` | per-service swagger: `swagger svc=account` → `services/<svc>/api/swagger` |
+| `GO_BUILD_PACKAGE := ./cmd/server` | không còn cmd/server | `build svc=<name>` + `build-all` (3 binary) |
+| `WIRE_PATH`/`swagger`/`build`/`run`/`dev` | gắn path monolith | per-service + workspace |
+| `MIGRATION_DIR := ./database/migrations` | 1 thư mục duy nhất | per-service: `migrate-up svc=account`, `migrate-create svc=x name=y` |
+| `tidy` / `vet` / `test` / `fmt` | dùng `./...` (1 module) | chạy trong `go.work` hoặc per-service (`go work sync`, `go test ./services/...`) |
+| `hygiene-scan` (`./internal/tools/hygiene-scan`) | tool ở root, không thuộc module | chuyển tool vào một module (đề xuất `shared/tools` hoặc module riêng) |
+| `test-integration` path `./internal/...` | path monolith | cập nhật theo `services/<svc>/...` |
+| `docker-build` (root Dockerfile) | bị thay bởi 3 Dockerfile | `docker-build svc=<name>` build `services/<svc>/Dockerfile` |
+
+Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`,
+`migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`,
+`worker-deploy`, `service-boundary-check` (nếu còn dùng), `check` (CI suite theo workspace).
 
 **Adapter layout**:
 - **Inbound** — gRPC **server** ở `services/<service>/internal/modules/<owner>/presentation/grpc/`,
@@ -201,20 +240,21 @@ Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7.
 ## Phase Plan (tóm tắt — chi tiết ở tasks.md)
 
 - **Phase A — Config portability (P1)**: ES flag + no-op + skip sync; TLS Redis/RabbitMQ;
-  `migrate_on_start`; outbox listener tách DSN + non-fatal/poll fallback; gateway secret;
-  parameter hoá configs; hạ `ai_chat_chunk_deadline_seconds` 180s → 30s + heartbeat 15s
-  (thống nhất mọi môi trường); entry-point test cho workspace.
+  `migrate_on_start` (per-service, bật cho managed); outbox listener tách DSN + non-fatal/poll
+  fallback; gateway secret; parameter hoá configs; hạ `ai_chat_chunk_deadline_seconds` 180s → 30s
+  + heartbeat 15s (thống nhất mọi môi trường); **viết lại Makefile cho multi-module (FR-038)**;
+  entry-point test cho workspace.
 - **Phase B — Tách 3 service module C (P1, blocked bởi A)**: `go.work` + module layout;
   `contracts/` + buf; adapter gRPC; composition `cmd/<service>`; JWT bất đối xứng; origin-auth
   middleware (verify `X-Gateway-Secret`); CI build 3 binary (compiler-boundary, không
   manifest-check); tag `monolith-legacy`.
 - **Phase C — Edge + Compute (P1)**: NS-delegate + zone Pro + Worker router (single-source
-  route table); WAF/rate-limit; Cloud Run HTTP+worker + billing cap; **migration job riêng**;
-  SaaS custom hostname (chuẩn bị, chưa bật); SSE qua Worker passthrough (heartbeat 15s,
-  chunk deadline 30s).
+  route table); WAF/rate-limit; Cloud Run HTTP+worker + billing cap; **per-service migration chạy
+  khi khởi động (advisory lock)**; SaaS custom hostname (chuẩn bị, chưa bật); SSE qua Worker
+  passthrough (heartbeat 15s, chunk deadline 30s).
 - **Phase D — Data + Cutover (P1, mốc chấm bài)**: Supabase **1 database dùng chung** + migration
-  job; CloudAMQP/Redis wiring + verify giới hạn gói; runbook cutover; drill bằng schema tạm;
-  dump VPS → Supabase tại merge/cutover; cutover `api.closy` trước ngày chấm.
+  ownership (Account giữ lịch sử); CloudAMQP/Redis wiring + verify giới hạn gói; runbook cutover;
+  drill bằng schema tạm; dump VPS → Supabase tại merge/cutover; cutover `api.closy` trước ngày chấm.
 - **Phase E — Docs & Runbook 2 chiều (P2, song song)**: `docs/operations/*` (lên Cloud,
   cutover, teardown, repatriation), ADR 021 (xong), microservices guides, README/local-setup.
 - **Phase F — Repatriation gồm teardown trial (P2, theo funding clock)**: teardown trial + bill

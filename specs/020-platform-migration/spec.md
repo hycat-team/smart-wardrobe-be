@@ -37,13 +37,21 @@
 10. **Auth**: JWT bất đối xứng (ES256) cho user; Cloud Run ID token (`run.invoker`) cho gRPC nội bộ;
     session revocation qua Redis blacklist.
 11. **Origin-auth**: edge tiêm `X-Gateway-Secret`; service verify, miễn trừ healthcheck hạ tầng.
-12. **Migration**: chạy bằng Cloud Run Job riêng (Goose) trước deploy; service **không** tự migrate khi boot.
-13. **SSE**: đi qua Worker dạng passthrough; heartbeat 15s; `ai_chat_chunk_deadline_seconds = 30s`
+12. **Migration**: mỗi service sở hữu migration của mình và **tự chạy khi khởi động** (Goose).
+    **Mỗi service một bảng version riêng** — Account giữ `goose_db_version` (đã có 24 lịch sử),
+    Commerce/AI dùng `goose_db_version_commerce` / `goose_db_version_ai` — để **không lệch version
+    giữa các service**; bật **allow-out-of-order** để chịu được migration merge muộn trong cùng
+    service. **Advisory lock dùng chung** (cùng lock id) để serialize. Toàn bộ **24 migration lịch
+    sử do Account giữ**; migration mới được tạo trong chính service phát sinh.
+13. **Dev tooling**: Makefile MUST được thiết kế lại cho multi-module workspace — target per-service
+    (build / wire / swagger / migrate / test) và target toàn workspace; MUST NOT còn phụ thuộc path
+    monolith (`./cmd/server`, `./internal/di`, `./api/swagger`).
+14. **SSE**: đi qua Worker dạng passthrough; heartbeat 15s; `ai_chat_chunk_deadline_seconds = 30s`
     **thống nhất mọi môi trường**; fallback gọi trực tiếp `run.app` khi vượt Workers Free.
-14. **Swagger**: generate per-service, hợp đủ **9 section**, expose sau `swagger_access_code`.
-15. **Repatriation**: về VPS bằng 3 service compose + Nginx gateway; **teardown trial là một bước trong
+15. **Swagger**: generate per-service, hợp đủ **9 section**, expose sau `swagger_access_code`.
+16. **Repatriation**: về VPS bằng 3 service compose + Nginx gateway; **teardown trial là một bước trong
     repatriation**; funding clock T-30/T-14/T-7/T-1; runbook viết song song từ bây giờ.
-16. **Vòng đời kinh phí**: 4 hạng mục funded duy trì 3 tháng; chi tiết ở
+17. **Vòng đời kinh phí**: 4 hạng mục funded duy trì 3 tháng; chi tiết ở
     `docs/project/funding-and-platform-lifecycle.md` (không thuộc hiến pháp).
 
 ## Trạng thái tài liệu (đọc trước khi code)
@@ -56,6 +64,9 @@
   implement 020.
 - **Thứ tự đọc đề xuất**: spec.md (mục này) → plan.md (Structure Decisions + Technical Context) →
   data-model.md → contracts/ → tasks.md → quickstart.md (verify).
+- **Cấu trúc thư mục đích**: xem `plan.md` mục "Source Code (repository root — mô hình C, gom trong
+  `services/`)" và "Structure Decisions". Spec này **không** liệt kê cây thư mục (giữ ở mức
+  requirement, không phải implementation detail).
 
 ## Thuật ngữ
 
@@ -107,8 +118,15 @@
 - Q: SSE/AI streaming đi đường nào? → A: Đi qua Cloudflare Worker (passthrough stream) cùng hostname `api-v2`; dùng Workers Free, fallback gọi trực tiếp `run.app` nếu vượt hạn mức.
 - Q: Xử lý idle timeout 100s của Cloudflare proxy? → A: Heartbeat ~15s và hạ `ai_chat_chunk_deadline_seconds` xuống 30s, **thống nhất mọi môi trường** (dùng chung `configs/`, tránh phân nhánh config theo môi trường).
 - Q: Xác thực gọi gRPC giữa 3 service? → A: Cloud Run ID token (`run.invoker`) cho tầng hạ tầng + JWT bất đối xứng cho tầng ứng dụng (hai lớp độc lập).
-- Q: Ai chạy Goose migration trên DB dùng chung? → A: Một migration job riêng chạy trước khi deploy service; không service nào tự migrate lúc khởi động.
+- Q: Ai chạy Goose migration trên DB dùng chung? → A: Một migration job riêng chạy trước khi deploy service; không service nào tự migrate lúc khởi động. *(Đợt 3 thay đổi: mỗi service tự chạy migration của mình khi khởi động, dùng chung advisory lock; 24 migration lịch sử do Account giữ.)*
 - Q: Tài liệu API phơi ở đâu trên managed? → A: Giữ expose sau `swagger_access_code`, hợp của 3 service phải đủ 9 section (9 module: identity, subscription, admin, notification, wardrobe, fashion, brand, dashboard, aiexecutor).
+
+### Session 2026-09-15 (đợt 3 — migration ownership & dev tooling)
+
+- Q: Migration cũ và migration mới thuộc về ai? → A: Toàn bộ 24 migration lịch sử đặt trong **Account service**; migration mới tạo trong chính service phát sinh.
+- Q: Ai chạy migration và khi nào? → A: Chính service **tự chạy khi khởi động** (Goose provider trong service), không dùng migration job tách rời.
+- Q: Đồng bộ giữa các service khi DB dùng chung? → A: Dùng **advisory lock dùng chung** (Goose session locker, cùng lock id) để serialize; **mỗi service một bảng version riêng** (Account giữ `goose_db_version`; Commerce/AI dùng bảng hậu tố) + `WithAllowOutofOrder` để tránh lệch ordering giữa các service.
+- Q: Makefile sau khi tách microservice xử lý thế nào? → A: Viết lại Makefile cho multi-module — target per-service + target workspace; bỏ mọi path monolith (`./cmd/server`, `./internal/di`, `./api/swagger`).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -240,6 +258,8 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - Trong giai đoạn song song, dữ liệu `api-v2` (Supabase) lệch dần so với VPS vì VPS vẫn nhận ghi của người dùng thật → phải dump lại tại cutover và xác nhận không mất ghi nào trong cửa sổ chuyển.
 - Cloudflare proxy idle timeout 100s trong khi stream AI có khoảng lặng lâu → Error 524; phải có heartbeat và hạ chunk deadline (thống nhất mọi môi trường).
 - Chấm bài diễn ra trước khi cutover hoàn tất → không thoả yêu cầu "chạy trên Cloud" cho `api.closy`; cutover là mốc cứng phải xong trước ngày chấm.
+- Nhiều instance/ba service migrate đồng thời khi khởi động trên cùng DB → advisory lock dùng chung phải serialize; **mỗi service một bảng version riêng** để không lệch ordering, và allow-out-of-order cho case migration merge muộn trong cùng service.
+- Makefile cũ còn path monolith → CI/dev gãy sau khi tách; bắt buộc viết lại (FR-038).
 
 ## Requirements *(mandatory)*
 
@@ -302,12 +322,16 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 - **FR-033**: Mọi request từ edge vào service MUST mang `X-Gateway-Secret` do edge tiêm; service MUST từ chối request thiếu/sai secret, **trừ** healthcheck hạ tầng. CI MUST có test xác nhận request thiếu secret bị từ chối.
 - **FR-034**: Giao tiếp gRPC giữa các service MUST xác thực hai lớp: Cloud Run ID token (`run.invoker`) ở tầng hạ tầng và JWT bất đối xứng ở tầng ứng dụng.
-- **FR-035**: Cập nhật cấu trúc dữ liệu MUST được chạy bởi **một migration job riêng** trước khi deploy service; không service nào tự chạy migration lúc khởi động.
+- **FR-035**: Cập nhật cấu trúc dữ liệu MUST do **chính service sở hữu chạy khi khởi động** (Goose) với **advisory lock dùng chung** trên database chia schema; **MUST dùng bảng version riêng cho mỗi service** (tránh lệch ordering giữa các service) và bật **allow-out-of-order** (chịu migration merge muộn trong cùng service); MUST NOT phụ thuộc migration job tách rời. Toàn bộ migration lịch sử MUST do **Account service** giữ; migration mới MUST được tạo và chạy trong chính service phát sinh.
 
 **SSE/AI streaming sau edge**
 
 - **FR-036**: SSE/AI streaming MUST đi qua Cloudflare Worker dạng passthrough stream; MUST có heartbeat (~15s) để không vượt idle timeout 100s của Cloudflare; `ai_chat_chunk_deadline_seconds` MUST được đặt thống nhất **30s cho mọi môi trường** (dùng chung `configs/`).
 - **FR-037**: Nếu vượt hạn mức Workers Free, hệ thống MUST có đường fallback gọi trực tiếp `run.app` cho SSE mà không cần đổi mã nghiệp vụ.
+
+**Dev tooling cho multi-module**
+
+- **FR-038**: Bộ dev tooling (`Makefile`) MUST được thiết kế lại cho multi-module workspace: mọi target liên quan build / generate / wire / swagger / migration / test MUST chạy được **theo từng service** hoặc **toàn workspace**, và MUST NOT còn phụ thuộc path monolith (`./cmd/server`, `./internal/di`, `./api/swagger`).
 
 ### Key Entities *(include if feature involves data)*
 

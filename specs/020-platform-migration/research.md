@@ -128,16 +128,25 @@ tiếp tục chạy bằng **poll ticker** (`outboxFallbackInterval` hiện có)
 
 ## R5. Migration-on-start có kiểm soát
 
-**Decision**: Thêm cờ `database.migrate_on_start` (default `true`). Production/managed đặt `false`;
-migration chạy bằng **migration job riêng** (Cloud Run Job) với DSN session/direct trước khi deploy
-(FR-035). Giữ nguyên Goose provider + session advisory lock cho môi trường hỗ trợ.
+**Decision**: Mỗi service **tự chạy migration của mình khi khởi động** (Goose provider trên
+`services/<service>/database/migrations`), dùng **advisory lock dùng chung** (Goose session locker,
+cùng lock id) để serialize giữa các instance/service. **Mỗi service một bảng version riêng**
+(Account giữ `goose_db_version` đã có 24 lịch sử; Commerce/AI dùng bảng có hậu tố) + bật
+`goose.WithAllowOutofOrder(true)`. Cờ `database.migrate_on_start` bật ở managed.
 
-**Rationale**: FR-011/FR-012/FR-035; tránh migration tự động lỗi trên pooler và tránh nhiều instance
-Cloud Run cùng chạy migration.
+**Rationale**: FR-011/FR-012/FR-035; mỗi service sở hữu schema của mình. Bảng version dùng chung gây
+**lệch ordering**: service B apply version cao trước, service A apply version thấp sau → goose mặc
+định báo lỗi out-of-order. Tách bảng version theo service biến vấn đề này thành không tồn tại;
+`WithAllowOutofOrder` xử lý case còn lại trong cùng một service (2 PR merge lệch thứ tự).
 
 **Alternatives considered**:
-- Chạy migration trong service lúc boot: đã loại vì pooler + nhiều instance tranh nhau.
-- Chạy migration qua `make migration-up` thủ công: giữ làm đường vận hành/khẩn cấp, không phải đường chính.
+- 1 bảng version dùng chung (bug đã phát hiện): gây lỗi out-of-order khi 2 service sinh migration
+  lệch timestamp → loại.
+- Dùng offset block cho version (account=1xxx, commerce=2xxx): vẫn so sánh toàn cục nên vẫn lỗi →
+  loại.
+- Migration job tách rời (Cloud Run Job) chạy trước deploy: đã bỏ — thêm hạ tầng và tách quyền sở
+  hữu migration khỏi service.
+- Chạy qua `make migration-up` thủ công: giữ làm đường vận hành/khẩn cấp, không phải đường chính.
 
 ---
 
