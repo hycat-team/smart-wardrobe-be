@@ -264,5 +264,12 @@ Vercel quản lý; không NS-delegate, không Cloudflare.
   custom audience nếu cần).
 - **Token**: do **token helper trên VPS** sinh/cache/refresh (xem data-model §1.8). Healthcheck hạ
   tầng (`/api/v1/health`) vẫn phải qua IAM như mọi request khác (không ngoại lệ ở tầng Cloud Run).
+- **gRPC transport (service↔service)**: Cloud Run HTTP service MUST bật **HTTP/2** (`--use-http2`;
+  container phục vụ h2c trên `PORT`) — không có cờ này gRPC sẽ fail (FR-048). gRPC client dial
+  `https://<svc>.run.app` qua TLS và gắn **hai lớp metadata tách biệt**: `authorization: Bearer <ID token>`
+  (hạ tầng, `run.invoker`) + JWT ứng dụng ở key riêng (tầng app, FR-034); bật **keepalive** và gọi
+  **`grpc.health.v1`** trước khi dùng kết nối. Nginx **KHÔNG** tham gia đường gRPC (nội bộ service↔service).
+- **Rate-limit & secrets**: rate-limit ở **tầng app (Redis-backed)**, không ở Nginx (FR-054); secrets
+  tiêm qua env từ GitHub Actions secrets (FR-052) — không thuộc hợp đồng gRPC nhưng ảnh hưởng vận hành.
 - **Repatriation (VPS)**: khi chạy 3 service compose sau Nginx, không còn Cloud Run IAM; auth tại
   ingress lúc đó do Nginx/network nội bộ quyết định (ghi rõ trong runbook repatriation).

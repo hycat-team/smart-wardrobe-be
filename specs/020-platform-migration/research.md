@@ -185,7 +185,7 @@ tương thích ngược (FR-008).
 
 **Decision**: Tạo vhost + user riêng; chỉ bật plugin cần thiết; topology (quorum queue + DLX +
 delivery-limit) do code tự khai báo (`topology.go`). Consumer/worker chạy ở Cloud Run worker
-(min-instances≥1).
+(min-instances=1 **và `max-instances=1`** — singleton theo FR-045; advisory lock cho job không idempotent).
 
 **Rationale**: FR-025/FR-026; giữ `x-queue-type: quorum` và DLX tương thích; tránh cấu hình tay
 lệch với code. Dùng management API (HTTPS) cho gauge queue depth.
@@ -201,8 +201,8 @@ lệch với code. Dùng management API (HTTPS) cho gauge queue depth.
 > **Giữ nguyên 2026-09-15**, bổ sung: region `asia-southeast1`, request-based billing,
 > billing cap cứng; teardown trial là một bước trong repatriation (compute không funded).
 
-**Decision**: Mỗi service có 2 deployment Cloud Run: một HTTP (scale-to-zero) và một worker
-(`min-instances>=1`, CPU always allocated). HTTP service phục vụ API; worker chạy consumer/outbox/
+**Decision**: Mỗi service có 2 deployment Cloud Run: một HTTP (scale-to-zero, `max-instances=2`) và một worker
+(`min-instances=1` + `max-instances=1`, CPU always allocated — FR-045/FR-047). HTTP service phục vụ API; worker chạy consumer/outbox/
 scheduler. VPS legacy chạy monolith frozen; VPS repatriation chạy 3 service compose (mỗi service
 gộp worker của nó).
 
@@ -281,7 +281,7 @@ rồi override bằng `os.LookupEnv` trong `loadConfig()`.
 | TLS managed khác self-hosted | Cờ TLS toggle mặc định false; test cả hai môi trường (Cloud + VPS) |
 | Service module hỏng khi tách | CI build 3 service là gate bắt buộc (hiến pháp 3.0.0; monolith chỉ còn tag frozen) |
 | Mất dữ liệu phát sinh sau cutover | Backup trước cutover + reverse + hạn tài trợ + funding clock T-minus; ghi rõ trong runbook |
-| Worker bị scale-to-zero | Deployment worker riêng với min-instances≥1 |
+| Worker bị scale-to-zero | Deployment worker riêng với `min-instances=1` + `max-instances=1` (FR-045) |
 | Lệch topology queue CloudAMQP | Code tự khai báo topology; không cấu hình tay |
 | Gõ/generated code lệch DTO | Contract test mapping DTO ⇄ proto + CI generate-check |
 

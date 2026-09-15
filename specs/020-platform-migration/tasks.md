@@ -19,6 +19,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - **[P]**: Có thể chạy song song (khác file, không phụ thuộc task chưa xong)
 - **[Story]**: US1..US7 tương ứng spec.md
 - Đường dẫn file cụ thể trong mỗi task
+- **ID hậu tố** (`T004a`, `T007a`...): task bổ sung sau khi chốt danh sách gốc, **không renumber** để giữ ổn định tham chiếu (chạy ngay sau task cùng tiền tố)
 
 ## Path Conventions (mô hình C)
 
@@ -27,6 +28,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - Shared module: `shared/` (config, infrastructure, presentation, domain, application, pkg)
 - Contracts: `contracts/<owner>/v1/` (proto + generated + client)
 - Ingress: `deployments/nginx/` (server block `api.closy` giữ nguyên + `api-v2` route tới Cloud Run) + `deployments/token-helper/` (sinh/cache ID token)
+- Deployment: `deployments/docker-compose.yml` (local), `deployments/docker-compose.prod.yml` (VPS + profile `rollback`), `deployments/monolith-legacy/Dockerfile` (FR-043), `.dockerignore` ở root
 - Docs: `docs/operations/`, `docs/system-design/`, `docs/decisions/`
 - Spec artifacts: `specs/020-platform-migration/`
 
@@ -39,10 +41,14 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T001 Khởi tạo `go.work` + `go.mod` cho 5 module (`services/account`, `services/commerce`, `services/ai`, `shared`, `contracts`); tạo `services/<service>/database/migrations/` (Account sẽ giữ 24 migration lịch sử); `go work sync` pass
 - [ ] T002 [P] Add gRPC/protobuf dependencies (`google.golang.org/grpc`, `google.golang.org/protobuf`) và `go mod tidy` từng module dùng gRPC
 - [ ] T003 [P] Add buf tooling tại root: `buf.yaml` + `buf.gen.yaml` (output `contracts/`, plugin `protoc-gen-go`, `protoc-gen-go-grpc`)
-- [ ] T004 [P] Tạo skeleton mỗi service trong `services/`: `services/account/cmd/account/main.go`, `services/commerce/cmd/commerce/main.go`, `services/ai/cmd/ai/main.go` + `services/<service>/internal/bootstrap` + `services/<service>/internal/di` (minimal boot, chưa routes) + `services/<service>/Dockerfile` **riêng từng service**
+- [ ] T004 [P] Tạo skeleton mỗi service trong `services/`: `services/account/cmd/account/main.go`, `services/commerce/cmd/commerce/main.go`, `services/ai/cmd/ai/main.go` + `services/<service>/internal/bootstrap` + `services/<service>/internal/di` (minimal boot, chưa routes) + `services/<service>/Dockerfile` **riêng từng service (multi-stage: golang builder → distroless static nonroot; entrypoint `cmd/<svc>`; env `PORT` mặc định 8080; healthcheck `/api/v1/health`; binary nhúng tzdata `import _ "time/tzdata"`)**
+- [ ] T004a [P] Tạo `.dockerignore` ở **repo root** (loại `.git`, `docs`, `specs`, `*_test.go`, `testdata`, `deployments`, `*.md`); ghi rõ **build context = repo root** (`docker build -f services/<svc>/Dockerfile .`) vì cần `go.work` + `shared/` + `contracts/` (FR-042)
+- [ ] T004b [P] Verify **build độc lập từng image**: `docker build` cho từng service chỉ với chính Dockerfile đó (không build/generate service khác; `contracts/` generated đã commit) → 3 image chạy được standalone (SC-017)
 - [ ] T005 [P] Tạo skeleton `deployments/nginx/` (server block `api.closy` giữ nguyên + `api-v2` route tới 3 Cloud Run) và `deployments/token-helper/` (helper sinh/cache Google ID token)
 - [ ] T006 Tag `monolith-legacy` tại commit baseline = **HEAD của `main` ngay trước commit 020 đầu tiên** (commit monolith-green cuối cùng); ghi chú frozen vào tag message
-- [ ] T007 **Viết lại Makefile cho multi-module (FR-038)**: thay `WIRE_PATH`/`SWAG_MAIN_FILE`/`GO_BUILD_PACKAGE` gắn monolith bằng target per-service + workspace (`wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`, `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`, `nginx-reload`, `token-helper-build`); cập nhật `tidy`/`vet`/`test` theo `go.work`; di chuyển `hygiene-scan` tool vào một module; sửa `test-integration` path; `docker-build svc=`
+- [ ] T006a Tạo `deployments/monolith-legacy/Dockerfile` build **image rollback monolith** từ working tree của tag `monolith-legacy` (context = repo root tại commit đó, multi-stage, cùng quy ước `PORT`/healthcheck); chỉ phục vụ nhánh rollback, MUST NOT nhận code mới (FR-043)
+- [ ] T007 **Viết lại Makefile cho multi-module (FR-038)**: thay `WIRE_PATH`/`SWAG_MAIN_FILE`/`GO_BUILD_PACKAGE` gắn monolith bằng target per-service + workspace (`wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`, `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`, `nginx-reload`, `token-helper-build`, `image-build svc=`, `image-push svc=`, `deploy svc=`, `image-build-monolith-rollback`); cập nhật `tidy`/`vet`/`test` theo `go.work`; di chuyển `hygiene-scan` tool vào một module; sửa `test-integration` path; `docker-build svc=`
+- [ ] T007a [P] Thiết lập **Artifact Registry** (`asia-southeast1-docker.pkg.dev/<project>/smart-wardrobe`) cho image Cloud Run + quy ước tag `<svc>:<git-sha>` (immutable) và `:latest` chỉ trong CI; **giữ GHCR cho image VPS** (rollback + repatriation compose, dùng token sẵn có); ghi vào runbook `deploy-platform.yml`/docs (FR-042, FR-051)
 - [ ] T008 [P] Tạo skeleton `docs/operations/` (runbook 2 chiều) và cập nhật `docs/system-design/microservices/` (bỏ nội dung monolith)
 
 ---
@@ -51,8 +57,8 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Mô hình cấu hình dùng chung cho mọi story. **PHẢI xong trước US1–US7.**
 
-- [ ] T009 Add config fields trong `shared/config/config.go`: `Elasticsearch.Enabled`, `Database.MigrateOnStart` (per-service, bật ở managed), `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Ingress.AccountBaseURL/CommerceBaseURL/AIBaseURL/TokenHelperURL/TokenAudience/AuthHeader`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
-- [ ] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; drill schema chỉ dùng khi chạy drill; `migrate_on_start` bật ở managed cho từng service; ingress URL/audience bắt buộc ở managed)
+- [ ] T009 Add config fields trong `shared/config/config.go`: `App.Mode` (`APP_MODE`: http|worker|all, mặc định `all`), `Elasticsearch.Enabled`, `Database.MigrateOnStart` (per-service, bật ở managed), `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Database.QueryExecMode` (mặc định `simple_protocol` khi dùng pooler), `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Ingress.AccountBaseURL/CommerceBaseURL/AIBaseURL/TokenHelperURL/TokenAudience/AuthHeader`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
+- [ ] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; drill schema chỉ dùng khi chạy drill; `migrate_on_start` bật ở managed cho từng service; ingress URL/audience bắt buộc ở managed; **`PORT` → `server.port` ưu tiên cao nhất**, fallback `SERVER_PORT`/YAML — FR-049)
 - [ ] T011 Parameterize `configs/config.yaml` và `configs/config.production.yaml`: thay host/endpoint literal bằng `${DB_HOST}`, `${REDIS_HOST}`, `${RABBITMQ_HOST}`, `${ELASTICSEARCH_ADDRESSES}`; đặt `server.sse.ai_chat_chunk_deadline_seconds: 30` và `server.sse.heartbeat_seconds: 15` **giống nhau ở cả hai môi trường**
 - [ ] T012 Update `.env.example` và `.env.production.example` (ES enabled, TLS toggles, migrate_on_start, listener_*, drill_schema, JWT keys, ingress URLs/audience/token helper)
 
@@ -98,6 +104,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T023 [US2] Gate `RunMigrations` theo `database.migrate_on_start` trong bootstrap
 - [ ] T024 [US2] Regenerate Wire; xác nhận boot với listener disabled
 - [ ] T025 [US2] Ghi lệnh migrate session-DSN vào runbook bảng biến môi trường
+- [ ] T025a [US2] **Tương thích Supavisor transaction pooler**: bật `default_query_exec_mode=simple_protocol` cho runtime (6543); bỏ `search_path` khỏi DSN client và set **server-side** (`ALTER ROLE`/`ALTER DATABASE` trên Supabase); test thực: query resolve đúng 9 schema, 0 lỗi prepared statement; giữ direct 5432 cho migrate/`LISTEN`/advisory lock (FR-046, SC-020)
 
 **Checkpoint**: US2 hoạt động độc lập; VS2 pass.
 
@@ -124,7 +131,9 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T031 [US5] Chuyển module identity/subscription/admin/notification vào `services/account/internal/modules/` (giữ nguyên logic, đổi import path); đồng thời chuyển **24 migration lịch sử** từ `database/migrations/` sang `services/account/database/migrations/` (kèm `embed.go`)
 - [ ] T032 [US5] Chuyển module wardrobe/fashion/brand/dashboard vào `services/commerce/internal/modules/`
 - [ ] T033 [US5] Chuyển module aiexecutor vào `services/ai/internal/modules/`; tách `internal/shared/**` thành module `shared/` (đặt HTTP/SSE/middleware tại `shared/presentation`; bootstrap chuyển về `services/<service>/internal/bootstrap`)
-- [ ] T034 [US5] Xóa `cmd/server` khỏi `main`; verify workspace không còn reference monolith
+- [ ] T034 [US5] Xóa `cmd/server` khỏi `main`; verify workspace không còn reference monolith (**phụ thuộc T097c** — phải có đường deploy monolith frozen trước khi xoá)
+- [ ] T034a [US5] **Tách bootstrap theo `APP_MODE`** (http|worker|all): `worker` chạy consumer/outbox/cron + HTTP tối giản để serve `/api/v1/health` trên `PORT`; `http` chạy HTTP+gRPC, MUST NOT start consumer/cron; `all` giữ hành vi hiện tại (local/VPS) (FR-044, SC-018)
+- [ ] T034b [US5] **Worker singleton + advisory lock**: cấu hình deploy worker `min-instances=1` **+ `max-instances=1`**; bọc advisory lock Postgres cho job không idempotent (subscription renewal, loyalty point expiry) (FR-045, SC-019)
 - [ ] T035 [P] [US5] gRPC client cho `IUserBriefContract` + `IUserDashboardReader` — `contracts/identity/v1/client/`
 - [ ] T036 [P] [US5] gRPC client cho `IUserSubscriptionContract` + `IUserQuotaContract` + `ISubscriptionDashboardReader` — `contracts/subscription/v1/client/`
 - [ ] T037 [P] [US5] gRPC client cho `IAuditLogContract` — `contracts/admin/v1/client/`
@@ -146,6 +155,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T047 [US5] JWT verify middleware mọi service + hỗ trợ legacy HS256 giai đoạn chuyển tiếp + tra cứu thu hồi phiên qua Redis blacklist dùng chung (FR-023)
 - [ ] T048 [P] [US5] Test ký/verify ES256 + từ chối HS256 khi tắt legacy + test session revocation bị chặn qua Redis blacklist (FR-023)
 - [ ] T049 [US5] Lớp hạ tầng: gRPC client gắn Cloud Run ID token (`run.invoker`) khi gọi service khác (FR-034)
+- [ ] T049a [US5] Chuyển **global rate-limit shield** trong `shared/presentation/middleware/ratelimit.go` sang backend **Redis dùng chung** (`IRateLimiter` — `redis_rate_limiter.go`) để chính xác qua nhiều instance; thêm rule **IP+user/token cho login/OTP** + rule chung API; test 2 instance mô phỏng (FR-054, SC-028)
 
 ### Swagger per-service (9 section)
 
@@ -194,11 +204,13 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T071 [US3] **Token helper** trên VPS: sinh/cache/refresh Google ID token (audience = `run.app` URL) cho service account least-privilege (`roles/run.invoker` trên đúng 3 service); Nginx `auth_request` + `auth_request_set` inject `X-Serverless-Authorization` (FR-033/FR-039)
 - [ ] T072 [US3] SSE qua Nginx: `proxy_buffering off` cho path SSE, timeout đọc đủ lớn, heartbeat 15s, `ai_chat_chunk_deadline_seconds` = 30s; test stream AI dài thật (FR-036, SC-014)
 - [ ] T073 [US3] Cloud Run IAM: tắt `allUsers`, grant `run.invoker`, verify audience = `run.app` URL; smoke test thiếu token bị từ chối (FR-033, SC-013); `proxy_ssl_server_name on` + resolve động, không pin IP (FR-037)
+- [ ] T073a [US3] **gRPC qua Cloud Run HTTP/2**: deploy 3 HTTP service với `--use-http2`; gRPC client dial `run.app` + TLS + ID token metadata + JWT metadata riêng + keepalive; verify `grpc.health.v1` + call thực Commerce→Account/AI, AI→Account (FR-048, SC-022)
+- [ ] T073b [US3] **Verify media upload** (Cloudinary) và health `GET /api/v1/health` từ Cloud Run (FR-049/FR-053, SC-027)
 
 ### Compute (Cloud Run trial + cap)
 
-- [ ] T074 [US3] Deploy 6 units (3 HTTP scale-to-zero + 3 worker min=1) region `asia-southeast1`, request-based billing
-- [ ] T075 [US3] Billing cap + alert + max-instances cap
+- [ ] T074 [US3] Deploy 6 units (3 HTTP scale-to-zero + 3 worker `min=1`/`max=1`) region `asia-southeast1`, request-based billing; set `APP_MODE=http`/`worker` tường minh cho từng deployment (FR-044/FR-045)
+- [ ] T075 [US3] Billing cap + alert + **cap autoscale theo ngân sách (FR-047)**: HTTP `max-instances=2`, worker `max-instances=1`, `concurrency=40`; verify tổng client conn ≤ giới hạn gói (Supabase pooler đo thực −20% headroom, AMQP ≤100, Redis ≤256) bằng test tải nhẹ (SC-021)
 
 ### Data (đúng giới hạn gói funded)
 
@@ -223,9 +235,10 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T091 [P] [US3] `docs/operations/ha-tang/08-kien-truc-song-song-tong-quan.md`
 - [ ] T092 [P] [US3] `docs/operations/ha-tang/09-chuyen-du-lieu-vps-supabase.md` (dump/restore + backfill + checksum)
 - [ ] T093 [P] [US3] `docs/operations/ha-tang/10-dns-vercel-ci-cd.md` (bản ghi `api-v2` trên Vercel + workflow platform)
-- [ ] T094 [US3] `.github/workflows/deploy-platform.yml` (build 3 image từ 3 Dockerfile riêng → Cloud Run HTTP + worker); giữ workflow VPS cho monolith song song
-- [ ] T095 [US3] `docs/operations/nginx-ingress-cloudrun-auth.md` (route map single-source, token helper, rotate SA key, smoke test IAM)
-- [ ] T096 [US3] `docs/operations/manual-cutover-api-closy-to-cloudrun.md`: runbook **cutover thủ công** `api.closy` → Cloud Run (điều kiện tiên quyết, đổi Nginx/DNS, đồng bộ dữ liệu, kiểm thử, **rollback về monolith**); ghi rõ timing do owner quyết định (FR-041)
+- [ ] T094 [US3] `.github/workflows/deploy-platform.yml` — **CI matrix theo từng service** (account/commerce/ai độc lập: build image từ Dockerfile riêng → push Artifact Registry theo `<svc>:<sha>` → `gcloud run deploy` HTTP + worker của service đó, **tiêm env secrets từ GitHub Actions secrets**, không in giá trị ra log) ; giữ workflow VPS cho monolith song song; 1 service fail không chặn 2 service còn lại (FR-042, FR-052)
+- [ ] T094a [US3] Verify **deploy độc lập** end-to-end: deploy riêng lẻ từng service (không rebuild service khác), pin version theo SHA từng service, chạy smoke test `api-v2` tới đúng service vừa deploy (SC-017)
+- [ ] T095 [US3] `docs/operations/nginx-ingress-cloudrun-auth.md` (route map single-source, token helper, rotate SA key, smoke test IAM, ghi residual risk không có WAF/rate-limit ở Nginx — FR-054)
+- [ ] T096 [US3] `docs/operations/manual-cutover-api-closy-to-cloudrun.md`: runbook **cutover thủ công** `api.closy` → Cloud Run (điều kiện tiên quyết, đổi Nginx/DNS, đồng bộ dữ liệu, kiểm thử, **rollback 2 mức: Cloud Run revision-level + Nginx về monolith**); ghi rõ timing do owner quyết định (FR-041)
 
 **Checkpoint**: Runbook song song thực thi được; VS6 pass (api-v2 qua Nginx, api.closy không đổi).
 
@@ -236,9 +249,12 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 **Goal**: Đường về VPS là 3 service compose + Nginx gateway (không monolith); repatriation gồm teardown trial; funding clock có chủ.
 **Independent Test**: quickstart VS5 + VS8.
 
-- [ ] T097 [US4] `deployments/docker-compose.prod.yml` mới: 3 service + postgres+pgvector/redis/rabbitmq + nginx gateway + certbot
-- [ ] T098 [US4] Nginx route map (repatriation) multi-host: **cả `api.closy` và `api-v2` → 3 service compose** (dùng chung route map, không còn monolith mặc định); monolith compose chỉ là **rollback tạm thời** nếu owner chọn; smoke test route
-- [ ] T099 [US4] Nginx ingress auth khi self-host (không còn Cloud Run IAM) + rate-limit/body-limit/timeout/security-header/logging-request-ID (ghi rõ trong runbook repatriation)
+- [ ] T097 [US4] `deployments/docker-compose.prod.yml` mới: 3 service + postgres+pgvector/redis/rabbitmq + nginx gateway + certbot; thêm **profile `rollback`** dùng image `monolith-legacy` (biến `MONOLITH_IMAGE`) để quay lại monolith tạm thời (FR-043)
+- [ ] T097a [US4] Build + push **image rollback `monolith-legacy`** vào **GHCR** (dùng token/CI sẵn có) từ tag frozen (`make image-build-monolith-rollback`) **trước khi hết cửa sổ funded**; verify profile `rollback` khởi động và phục vụ `api.closy` (SC-017, FR-051)
+- [ ] T097b [US4] `.github/workflows/deploy-vps-services.yml` mới: `workflow_dispatch` + approval environment; **matrix 3 service** build từ `services/<svc>/Dockerfile` → push **GHCR** → `docker compose -f deployments/docker-compose.prod.yml up -d <svc>`; **pin image theo digest**; dùng cho repatriation + vận hành VPS sau đó; smoke test `api.closy` (FR-056, SC-030)
+- [ ] T097c [US4] Chuyển `.github/workflows/deploy-production.yml` thành `workflow_dispatch` build **từ tag `monolith-legacy`** (checkout ref=tag) → GHCR `monolith-legacy:<sha>` → deploy qua compose **profile `rollback`** (`MONOLITH_IMAGE`, pin digest); chỉ rollback khẩn cấp; MUST NOT build monolith từ `main` (FR-056, SC-030) — **chạy trước T034**
+- [ ] T098 [US4] Nginx route map (repatriation) multi-host: **cả `api.closy` và `api-v2` → 3 service compose** (dùng chung route map, không còn monolith mặc định); `api-v2` **redirect 301 → `api.closy`** trong grace period rồi **xoá bản ghi DNS** (FR-055); monolith compose chỉ là **rollback tạm thời** nếu owner chọn; smoke test route
+- [ ] T099 [US4] Nginx ingress auth khi self-host (không còn Cloud Run IAM) + **body-limit/timeout/security-header/logging-request-ID** (rate-limit đã nằm ở app — FR-054; ghi rõ residual risk "không WAF đầy đủ" trong runbook repatriation)
 - [ ] T100 [US4] ACME challenge local cho cả 2 host + certbot renew
 - [ ] T101 [US4] `docs/operations/ha-tang/11-ve-lai-vps.md`: migrate ngược (Supabase→Postgres, drain AMQP, Redis snapshot/warmup), DNS về VPS, tắt funded trước renew
 - [ ] T102 [US4] `docs/operations/repatriate-to-vps.md`: runbook repatriation đầy đủ 2 chiều, **bao gồm bước teardown trial** (viết song song từ bây giờ)
@@ -259,9 +275,9 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T110 [P] Update `docs/development/local-setup.md` (compose 3 service local, managed environment)
 - [ ] T111 [P] Update `docs/system-design/architecture.md` (mô hình C + ES optional + ingress Nginx + Cloud Run)
 - [ ] T112 [P] Verify ADR links từ plan/spec: `docs/decisions/021-funded-platforms-and-repatriation.md` + `docs/decisions/023-vps-nginx-ingress-cloud-run-iam.md` (và ADR 022 email)
-- [ ] T113 CI gate: thêm job build 3 binary service trên mỗi PR (`make build` workspace) + parity swagger 9 section (FR-020)
-- [ ] T114 Chạy gate đầy đủ `make wire && make lint && make test-race`; kiểm tra portability (không vendor lock-in ngoài pgvector/routing) (FR-007)
-- [ ] T115 Verify quickstart VS1–VS9 end-to-end; ghi kết quả vào `specs/020-platform-migration/quickstart.md` (phụ lục kết quả)
+- [ ] T113 **Viết lại `.github/workflows/ci.yml` cho workspace**: (1) cache `cache-dependency-path: **/go.sum` (+`go.work.sum`); (2) job build matrix 3 service (`make build svc=`/`build-all`) thay `make build` monolith; (3) thêm setup `buf` + `buf lint`/proto drift; (4) job parity swagger 9 section; (5) job `image-build svc=` matrix; giữ job workspace (`fmt-check`, `tidy-check`, `vet`, `test-race`, hygiene); bỏ mọi path/build monolith (FR-020, FR-042)
+- [ ] T114 Chạy gate đầy đủ `make wire && make lint && make test-race`; kiểm tra portability (không vendor lock-in ngoài pgvector/routing) (FR-007); xác nhận build/push/deploy độc lập 3 service + image rollback monolith (SC-017)
+- [ ] T115 Verify quickstart VS1–VS10 end-to-end; ghi kết quả vào `specs/020-platform-migration/quickstart.md` (phụ lục kết quả)
 - [ ] T116 [P] Cập nhật `docs/project/funding-and-platform-lifecycle.md`: Supabase **1 database dùng chung** (không tách schema staging/prod) + **teardown là một bước trong repatriation**; đồng bộ với spec/ADR 021
 
 ---
@@ -279,12 +295,12 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: không phụ thuộc (T006 tag legacy làm sớm để frozen).
+- **Setup (Phase 1)**: không phụ thuộc (T006 tag legacy làm sớm để frozen; T006a/T004/T004a/T004b/T007a chuẩn bị container + registry).
 - **Foundational (Phase 2)**: phụ thuộc Setup; BLOCKS mọi user story.
 - **US1 (Phase 3, P1)** và **US2 (Phase 4, P1)**: sau Foundational; độc lập nhau.
-- **US5 (Phase 5, P1)**: sau Foundational; proto T026–T029 song song; split module trước adapters.
+- **US5 (Phase 5, P1)**: sau Foundational; proto T026–T029 song song; split module trước adapters; T034a (tách `APP_MODE`)/T034b (worker singleton + advisory lock) sau T034; T049a (rate-limit Redis-backed) sau T049.
 - **US3 (Phase 6, P1)**: sau Foundational + US5 (cần 3 service image để deploy). Riêng T068 (DNS + Nginx ingress) chạy được ngay sau Phase 2. **Không có cutover** trong phase này.
-- **US4/US6/US7 (Phase 7, P2)**: sau US3 (cần route map + image 3 service); runbook viết song song từ Phase 6.
+- **US4/US6/US7 (Phase 7, P2)**: sau US3 (cần route map + image 3 service); runbook viết song song từ Phase 6; T097a (image rollback monolith) + T097c (workflow monolith-frozen) phải xong **trước khi teardown AR** và **trước T034**; T097b (workflow deploy 3-service VPS) là đường deploy chính khi repatriation.
 - **Polish (Phase 8)**: sau các story mong muốn.
 - **Cutover thủ công (Phase 9)**: sau Phase 7/8; T117 (drill) bắt buộc trước T118; T118 **owner-triggered** (chỉ chạy khi owner quyết định `api-v2` ổn định).
 
@@ -299,7 +315,8 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Parallel Opportunities
 
-- T002/T003/T004/T005/T008 song song.
+- T002/T003/T004/T004a/T005/T008 song song; T004b sau T004; T007a sau T007.
+- Build/push/deploy **độc lập từng service** (T094/T094a) — 3 service không chặn nhau.
 - Proto T026–T029 song song; client adapters T035–T038 song song sau T030.
 - Swagger T050–T052 song song; docs T057–T063 song song.
 - Runbook T083–T093 song song hoàn toàn.
@@ -327,7 +344,9 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Notes
 
-- `monolith-legacy` là tag frozen; KHÔNG build monolith trong CI, KHÔNG nhận code mới.
+- `monolith-legacy` là tag frozen; KHÔNG build monolith trong CI per-commit, KHÔNG nhận code mới. Chỉ build **image rollback MỘT LẦN** (T097a) trước khi hết cửa sổ funded để giữ nhánh rollback (FR-043).
+- **Thứ tự tới hạn**: `T097c` (workflow deploy monolith từ tag) MUST xong **trước `T034`** (xoá `cmd/server`) — nếu không sẽ mất đường deploy/rollback monolith (FR-056).
+- Ba service build/push/deploy **độc lập** (image riêng, tag theo SHA, CI matrix): không rebuild service khác, không deploy all-or-nothing (FR-042, SC-017).
 - Mọi thay đổi route `api-v2` phải pass smoke test tới đủ 3 service trước khi merge; `api.closy` MUST NOT đổi routing.
 - Backup + verify checksum trước mọi thao tác dữ liệu production.
 - Không merge task nào vi phạm portability 2 chiều (§VIII).

@@ -224,12 +224,16 @@ phải RPC.
 
 | Unit | Loại | Scale | CPU | Ghi chú |
 |------|------|-------|-----|---------|
-| account-http | HTTP | scale-to-zero | theo request | API qua VPS Nginx (IAM ID token) |
-| account-worker | worker | min=1 | always | consumer/outbox |
-| commerce-http | HTTP | scale-to-zero | theo request | |
-| commerce-worker | worker | min=1 | always | ES no-op, fashion |
-| ai-http | HTTP | scale-to-zero | theo request | SSE stream (Nginx buffering off) |
-| ai-worker | worker | min=1 | always | AI reconcile |
+| account-http | HTTP (`APP_MODE=http`) | scale-to-zero, `max-instances=2` | theo request, `concurrency=40` | API qua VPS Nginx (IAM ID token) |
+| account-worker | worker (`APP_MODE=worker`) | `min=1`, `max=1` (singleton) | always | consumer/outbox/cron |
+| commerce-http | HTTP (`APP_MODE=http`) | scale-to-zero, `max-instances=2` | theo request, `concurrency=40` | |
+| commerce-worker | worker (`APP_MODE=worker`) | `min=1`, `max=1` (singleton) | always | ES no-op, fashion |
+| ai-http | HTTP (`APP_MODE=http`) | scale-to-zero, `max-instances=2` | theo request, `concurrency=40` | SSE stream (Nginx buffering off) |
+| ai-worker | worker (`APP_MODE=worker`) | `min=1`, `max=1` (singleton) | always | AI reconcile |
+
+**Cap & budget (FR-045/FR-047)**: HTTP `max-instances=2` + `concurrency=40`; worker `min=max=1` (singleton,
+advisory lock cho job không idempotent); `max_open_conns=10`/instance; tổng client conn ≤ Supabase pooler
+(đo thực, headroom ≥20%), AMQP ≤100, Redis ≤256.
 
 Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `http://backend:8080`) và
 `api-v2` (→ 3 Cloud Run `run.app`); route map trong Nginx; xác thực Cloud Run IAM qua
@@ -273,6 +277,7 @@ Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `h
 | Repatriation | `docs/operations/ha-tang/11-ve-lai-vps.md` | verify/rollback, migrate ngược, funding clock, tắt funded, DNS về VPS |
 | Vận hành | `docs/operations/ha-tang/12..13` | ngừng VPS/thu hồi secret, monitoring + teardown trial |
 | Ingress Nginx + auth | `docs/operations/nginx-ingress-cloudrun-auth.md` | route map single-source, token helper, rotate SA key, smoke test IAM |
+| Container & deploy độc lập | `docs/operations/container-images-and-independent-deploy.md` | Dockerfile multi-stage per-service, `.dockerignore`/context root, Artifact Registry + tag SHA, deploy độc lập từng service, image rollback `monolith-legacy` (FR-042/FR-043) |
 | Cutover thủ công | `docs/operations/manual-cutover-api-closy-to-cloudrun.md` | runbook cutover `api.closy` → Cloud Run + rollback (FR-041), owner-triggered |
 | Teardown | `docs/operations/gcp-trial-teardown.md` | xóa resource trial + verify bill |
 | Repatriation | `docs/operations/repatriate-to-vps.md` | runbook về VPS 2 chiều đầy đủ (viết song song từ bây giờ) |

@@ -19,6 +19,14 @@ và `specs/020-platform-migration/`.
 Compute (Cloud Run) **không thuộc diện đầu tư**: chạy bằng trial/free-tier + billing cap cứng.
 **Teardown trial là một bước trong repatriation** (không tách rời sau demo); bill trial phải về 0.
 
+**Dependency hiện hữu (KHÔNG tính vào danh mục đầu tư, không phải hạng mục mới)**:
+
+- **Cloudinary** — media/upload (`internal/shared/infrastructure/media/cloudinary_service.go`). Đã dùng
+  từ trước giai đoạn 020; **không nằm trong 4 hạng mục funded** và **không thêm mới**. Key tiêm qua
+  env ở Cloud Run (từ GitHub Actions secrets, FR-052). Không chuyển provider trong phạm vi 020.
+- **GCP Artifact Registry** — lưu image Cloud Run (native); dùng trong hạn mức free (≈0.5GB), không
+  phải dịch vụ tính phí mới (FR-051).
+
 ## 2. Nguyên tắc bắt buộc
 
 1. **Không phát sinh dịch vụ ngoài danh sách trên** (không LB/Armor/DB-managed khác).
