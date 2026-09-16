@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"smart-wardrobe-be/internal/config"
 	"smart-wardrobe-be/internal/di"
-	"smart-wardrobe-be/internal/pkg/logger"
+	"smart-wardrobe-be/shared/config"
+	"smart-wardrobe-be/shared/pkg/logger"
 
 	"go.uber.org/zap"
 )

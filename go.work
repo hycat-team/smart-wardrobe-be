@@ -1,0 +1,10 @@
+go 1.26.0
+
+use (
+	.
+	./contracts
+	./services/account
+	./services/ai
+	./services/commerce
+	./shared
+)

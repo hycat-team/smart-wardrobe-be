@@ -38,18 +38,18 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Khởi tạo workspace, tooling, khung service, thư mục docs, chốt tag legacy.
 
-- [ ] T001 Khởi tạo `go.work` + `go.mod` cho 5 module (`services/account`, `services/commerce`, `services/ai`, `shared`, `contracts`); tạo `services/<service>/database/migrations/` (Account sẽ giữ 24 migration lịch sử); `go work sync` pass
-- [ ] T002 [P] Add gRPC/protobuf dependencies (`google.golang.org/grpc`, `google.golang.org/protobuf`) và `go mod tidy` từng module dùng gRPC
-- [ ] T003 [P] Add buf tooling tại root: `buf.yaml` + `buf.gen.yaml` (output `contracts/`, plugin `protoc-gen-go`, `protoc-gen-go-grpc`)
-- [ ] T004 [P] Tạo skeleton mỗi service trong `services/`: `services/account/cmd/account/main.go`, `services/commerce/cmd/commerce/main.go`, `services/ai/cmd/ai/main.go` + `services/<service>/internal/bootstrap` + `services/<service>/internal/di` (minimal boot, chưa routes) + `services/<service>/Dockerfile` **riêng từng service (multi-stage: golang builder → distroless static nonroot; entrypoint `cmd/<svc>`; env `PORT` mặc định 8080; healthcheck `/api/v1/health`; binary nhúng tzdata `import _ "time/tzdata"`)**
-- [ ] T004a [P] Tạo `.dockerignore` ở **repo root** (loại `.git`, `docs`, `specs`, `*_test.go`, `testdata`, `deployments`, `*.md`); ghi rõ **build context = repo root** (`docker build -f services/<svc>/Dockerfile .`) vì cần `go.work` + `shared/` + `contracts/` (FR-042)
-- [ ] T004b [P] Verify **build độc lập từng image**: `docker build` cho từng service chỉ với chính Dockerfile đó (không build/generate service khác; `contracts/` generated đã commit) → 3 image chạy được standalone (SC-017)
-- [ ] T005 [P] Tạo skeleton `deployments/nginx/` (server block `api.closy` giữ nguyên + `api-v2` route tới 3 Cloud Run) và `deployments/token-helper/` (helper sinh/cache Google ID token)
-- [ ] T006 Tag `monolith-legacy` tại commit baseline = **HEAD của `main` ngay trước commit 020 đầu tiên** (commit monolith-green cuối cùng); ghi chú frozen vào tag message
-- [ ] T006a Tạo `deployments/monolith-legacy/Dockerfile` build **image rollback monolith** từ working tree của tag `monolith-legacy` (context = repo root tại commit đó, multi-stage, cùng quy ước `PORT`/healthcheck); chỉ phục vụ nhánh rollback, MUST NOT nhận code mới (FR-043)
-- [ ] T007 **Viết lại Makefile cho multi-module (FR-038)**: thay `WIRE_PATH`/`SWAG_MAIN_FILE`/`GO_BUILD_PACKAGE` gắn monolith bằng target per-service + workspace (`wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`, `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`, `nginx-reload`, `token-helper-build`, `image-build svc=`, `image-push svc=`, `deploy svc=`, `image-build-monolith-rollback`); cập nhật `tidy`/`vet`/`test` theo `go.work`; di chuyển `hygiene-scan` tool vào một module; sửa `test-integration` path; `docker-build svc=`
-- [ ] T007a [P] Thiết lập **Artifact Registry** (`asia-southeast1-docker.pkg.dev/<project>/smart-wardrobe`) cho image Cloud Run + quy ước tag `<svc>:<git-sha>` (immutable) và `:latest` chỉ trong CI; **giữ GHCR cho image VPS** (rollback + repatriation compose, dùng token sẵn có); ghi vào runbook `deploy-platform.yml`/docs (FR-042, FR-051)
-- [ ] T008 [P] Tạo skeleton `docs/operations/` (runbook 2 chiều) và cập nhật `docs/system-design/microservices/` (bỏ nội dung monolith)
+- [x] T001 Khởi tạo `go.work` + `go.mod` cho 5 module (`services/account`, `services/commerce`, `services/ai`, `shared`, `contracts`); tạo `services/<service>/database/migrations/` (Account sẽ giữ 24 migration lịch sử); `go work sync` pass
+- [x] T002 [P] Add gRPC/protobuf dependencies (`google.golang.org/grpc`, `google.golang.org/protobuf`) và `go mod tidy` từng module dùng gRPC
+- [x] T003 [P] Add buf tooling tại root: `buf.yaml` + `buf.gen.yaml` (output `contracts/`, plugin `protoc-gen-go`, `protoc-gen-go-grpc`)
+- [x] T004 [P] Tạo skeleton mỗi service trong `services/`: `services/account/cmd/account/main.go`, `services/commerce/cmd/commerce/main.go`, `services/ai/cmd/ai/main.go` + `services/<service>/internal/bootstrap` + `services/<service>/internal/di` (minimal boot, chưa routes) + `services/<service>/Dockerfile` **riêng từng service (multi-stage: golang builder → distroless static nonroot; entrypoint `cmd/<svc>`; env `PORT` mặc định 8080; healthcheck `/api/v1/health`; binary nhúng tzdata `import _ "time/tzdata"`)**
+- [x] T004a [P] Tạo `.dockerignore` ở **repo root** (loại `.git`, `docs`, `specs`, `*_test.go`, `testdata`, `deployments`, `*.md`); ghi rõ **build context = repo root** (`docker build -f services/<svc>/Dockerfile .`) vì cần `go.work` + `shared/` + `contracts/` (FR-042)
+- [x] T004b [P] Verify **build độc lập từng image**: `docker build` cho từng service chỉ với chính Dockerfile đó (không build/generate service khác; `contracts/` generated đã commit) → 3 image chạy được standalone (SC-017)
+- [x] T005 [P] Tạo skeleton `deployments/nginx/` (server block `api.closy` giữ nguyên + `api-v2` route tới 3 Cloud Run) và `deployments/token-helper/` (helper sinh/cache Google ID token)
+- [x] T006 Tag `monolith-legacy` tại commit baseline = **HEAD của `main` ngay trước commit 020 đầu tiên** (commit monolith-green cuối cùng); ghi chú frozen vào tag message
+- [x] T006a Tạo `deployments/monolith-legacy/Dockerfile` build **image rollback monolith** từ working tree của tag `monolith-legacy` (context = repo root tại commit đó, multi-stage, cùng quy ước `PORT`/healthcheck); chỉ phục vụ nhánh rollback, MUST NOT nhận code mới (FR-043)
+- [x] T007 **Viết lại Makefile cho multi-module (FR-038)**: thay `WIRE_PATH`/`SWAG_MAIN_FILE`/`GO_BUILD_PACKAGE` gắn monolith bằng target per-service + workspace (`wire svc=`, `swagger svc=`, `build svc=`, `build-all`, `test-workspace`, `migrate-up svc=`, `migrate-create svc= name=`, `migrate-status svc=`, `buf-gen`, `buf-lint`, `nginx-reload`, `token-helper-build`, `image-build svc=`, `image-push svc=`, `deploy svc=`, `image-build-monolith-rollback`); cập nhật `tidy`/`vet`/`test` theo `go.work`; di chuyển `hygiene-scan` tool vào một module; sửa `test-integration` path; `docker-build svc=`
+- [x] T007a [P] Thiết lập **Artifact Registry** (`asia-southeast1-docker.pkg.dev/<project>/smart-wardrobe`) cho image Cloud Run + quy ước tag `<svc>:<git-sha>` (immutable) và `:latest` chỉ trong CI; **giữ GHCR cho image VPS** (rollback + repatriation compose, dùng token sẵn có); ghi vào runbook `deploy-platform.yml`/docs (FR-042, FR-051)
+- [x] T008 [P] Tạo skeleton `docs/operations/` (runbook 2 chiều) và cập nhật `docs/system-design/microservices/` (bỏ nội dung monolith)
 
 ---
 
@@ -57,10 +57,10 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 **Purpose**: Mô hình cấu hình dùng chung cho mọi story. **PHẢI xong trước US1–US7.**
 
-- [ ] T009 Add config fields trong `shared/config/config.go`: `App.Mode` (`APP_MODE`: http|worker|all, mặc định `all`), `Elasticsearch.Enabled`, `Database.MigrateOnStart` (per-service, bật ở managed), `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Database.QueryExecMode` (mặc định `simple_protocol` khi dùng pooler), `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Ingress.AccountBaseURL/CommerceBaseURL/AIBaseURL/TokenHelperURL/TokenAudience/AuthHeader`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
-- [ ] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; drill schema chỉ dùng khi chạy drill; `migrate_on_start` bật ở managed cho từng service; ingress URL/audience bắt buộc ở managed; **`PORT` → `server.port` ưu tiên cao nhất**, fallback `SERVER_PORT`/YAML — FR-049)
-- [ ] T011 Parameterize `configs/config.yaml` và `configs/config.production.yaml`: thay host/endpoint literal bằng `${DB_HOST}`, `${REDIS_HOST}`, `${RABBITMQ_HOST}`, `${ELASTICSEARCH_ADDRESSES}`; đặt `server.sse.ai_chat_chunk_deadline_seconds: 30` và `server.sse.heartbeat_seconds: 15` **giống nhau ở cả hai môi trường**
-- [ ] T012 Update `.env.example` và `.env.production.example` (ES enabled, TLS toggles, migrate_on_start, listener_*, drill_schema, JWT keys, ingress URLs/audience/token helper)
+- [x] T009 Add config fields trong `shared/config/config.go`: `App.Mode` (`APP_MODE`: http|worker|all, mặc định `all`), `Elasticsearch.Enabled`, `Database.MigrateOnStart` (per-service, bật ở managed), `Database.ListenerHost/ListenerPort/ListenerSslMode`, `Database.DrillSchema`, `Database.QueryExecMode` (mặc định `simple_protocol` khi dùng pooler), `Redis.TLSEnabled`, `RabbitMQ.TLSEnabled/ManagementTLSEnabled`, `Outbox.ListenerEnabled`, `Jwt.Algorithm/PrivateKey/PublicKey`, `Ingress.AccountBaseURL/CommerceBaseURL/AIBaseURL/TokenHelperURL/TokenAudience/AuthHeader`, `Server.SSE.AIChunkDeadlineSeconds/HeartbeatSeconds`
+- [x] T010 Boolean env override + validation trong `shared/config/loader.go` và `shared/config/validation.go` (JWT key theo algorithm; drill schema chỉ dùng khi chạy drill; `migrate_on_start` bật ở managed cho từng service; ingress URL/audience bắt buộc ở managed; **`PORT` → `server.port` ưu tiên cao nhất**, fallback `SERVER_PORT`/YAML — FR-049)
+- [x] T011 Parameterize `configs/config.yaml` và `configs/config.production.yaml`: thay host/endpoint literal bằng `${DB_HOST}`, `${REDIS_HOST}`, `${RABBITMQ_HOST}`, `${ELASTICSEARCH_ADDRESSES}`; đặt `server.sse.ai_chat_chunk_deadline_seconds: 30` và `server.sse.heartbeat_seconds: 15` **giống nhau ở cả hai môi trường**
+- [x] T012 Update `.env.example` và `.env.production.example` (ES enabled, TLS toggles, migrate_on_start, listener_*, drill_schema, JWT keys, ingress URLs/audience/token helper)
 
 **Checkpoint**: 5 profile (local / vps-legacy / vps / managed / managed-drill) load được, workspace build xanh.
 
@@ -73,16 +73,16 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Unit test ES disabled client: `IndexDocument`/`DeleteDocument` no-op, `Search` trả lỗi, không start health goroutine
-- [ ] T014 [P] [US1] Unit test search fallback khi ES disabled (wardrobe item read usecase)
+- [x] T013 [P] [US1] Unit test ES disabled client: `IndexDocument`/`DeleteDocument` no-op, `Search` trả lỗi, không start health goroutine
+- [x] T014 [P] [US1] Unit test search fallback khi ES disabled (wardrobe item read usecase)
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Guard `Enabled` trong search client (bỏ health goroutine, no-op index/delete, search lỗi)
-- [ ] T016 [US1] Guard initial sync trong search_sync usecase (skip khi disabled)
-- [ ] T017 [US1] Guard `RunInitialSyncWithRetry` start trong search_sync worker
-- [ ] T018 [US1] Phơi trạng thái `elasticsearch` trong health endpoint
-- [ ] T019 [US1] Regenerate Wire; xác nhận 3 service build
+- [x] T015 [US1] Guard `Enabled` trong search client (bỏ health goroutine, no-op index/delete, search lỗi)
+- [x] T016 [US1] Guard initial sync trong search_sync usecase (skip khi disabled)
+- [x] T017 [US1] Guard `RunInitialSyncWithRetry` start trong search_sync worker
+- [x] T018 [US1] Phơi trạng thái `elasticsearch` trong health endpoint
+- [x] T019 [US1] Regenerate Wire; xác nhận 3 service build
 
 **Checkpoint**: US1 hoạt động độc lập; VS1 pass.
 
@@ -95,16 +95,16 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Unit test outbox listener no-op/non-fatal + poll fallback
-- [ ] T021 [P] [US2] Unit test `migrate_on_start=false` bỏ qua migration
+- [x] T020 [P] [US2] Unit test outbox listener no-op/non-fatal + poll fallback
+- [x] T021 [P] [US2] Unit test `migrate_on_start=false` bỏ qua migration
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Refactor outbox listener: `NewOutboxListener` không fatal; trả no-op listener khi disabled/lỗi; dùng listener DSN riêng (direct 5432)
-- [ ] T023 [US2] Gate `RunMigrations` theo `database.migrate_on_start` trong bootstrap
-- [ ] T024 [US2] Regenerate Wire; xác nhận boot với listener disabled
-- [ ] T025 [US2] Ghi lệnh migrate session-DSN vào runbook bảng biến môi trường
-- [ ] T025a [US2] **Tương thích Supavisor transaction pooler**: bật `default_query_exec_mode=simple_protocol` cho runtime (6543); bỏ `search_path` khỏi DSN client và set **server-side** (`ALTER ROLE`/`ALTER DATABASE` trên Supabase); test thực: query resolve đúng 9 schema, 0 lỗi prepared statement; giữ direct 5432 cho migrate/`LISTEN`/advisory lock (FR-046, SC-020)
+- [x] T022 [US2] Refactor outbox listener: `NewOutboxListener` không fatal; trả no-op listener khi disabled/lỗi; dùng listener DSN riêng (direct 5432)
+- [x] T023 [US2] Gate `RunMigrations` theo `database.migrate_on_start` trong bootstrap
+- [x] T024 [US2] Regenerate Wire; xác nhận boot với listener disabled
+- [x] T025 [US2] Ghi lệnh migrate session-DSN vào runbook bảng biến môi trường
+- [x] T025a [US2] **Tương thích Supavisor transaction pooler**: bật `default_query_exec_mode=simple_protocol` cho runtime (6543); bỏ `search_path` khỏi DSN client và set **server-side** (`ALTER ROLE`/`ALTER DATABASE` trên Supabase); test thực: query resolve đúng 9 schema, 0 lỗi prepared statement; giữ direct 5432 cho migrate/`LISTEN`/advisory lock (FR-046, SC-020)
 
 **Checkpoint**: US2 hoạt động độc lập; VS2 pass.
 
@@ -120,17 +120,17 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 
 ### Contracts (protobuf)
 
-- [ ] T026 [P] [US5] `contracts/identity/v1/identity.proto` (`IdentityService` + `IdentityDashboardService`)
-- [ ] T027 [P] [US5] `contracts/subscription/v1/subscription.proto` (`SubscriptionService` + `SubscriptionDashboardService`)
-- [ ] T028 [P] [US5] `contracts/admin/v1/admin.proto` (`AdminService`)
-- [ ] T029 [P] [US5] `contracts/ai/v1/ai.proto` (`AIOrchestratorService` + `AIDashboardService`)
-- [ ] T030 [US5] Generate stubs (`make buf-gen`) vào `contracts/<owner>/v1/`; commit generated code; wire vào `generate-check`
+- [x] T026 [P] [US5] `contracts/identity/v1/identity.proto` (`IdentityService` + `IdentityDashboardService`)
+- [x] T027 [P] [US5] `contracts/subscription/v1/subscription.proto` (`SubscriptionService` + `SubscriptionDashboardService`)
+- [x] T028 [P] [US5] `contracts/admin/v1/admin.proto` (`AdminService`)
+- [x] T029 [P] [US5] `contracts/ai/v1/ai.proto` (`AIOrchestratorService` + `AIDashboardService`)
+- [x] T030 [US5] Generate stubs (`make buf-gen`) vào `contracts/<owner>/v1/`; commit generated code; wire vào `generate-check`
 
 ### Module split + dual adapter
 
-- [ ] T031 [US5] Chuyển module identity/subscription/admin/notification vào `services/account/internal/modules/` (giữ nguyên logic, đổi import path); đồng thời chuyển **24 migration lịch sử** từ `database/migrations/` sang `services/account/database/migrations/` (kèm `embed.go`)
-- [ ] T032 [US5] Chuyển module wardrobe/fashion/brand/dashboard vào `services/commerce/internal/modules/`
-- [ ] T033 [US5] Chuyển module aiexecutor vào `services/ai/internal/modules/`; tách `internal/shared/**` thành module `shared/` (đặt HTTP/SSE/middleware tại `shared/presentation`; bootstrap chuyển về `services/<service>/internal/bootstrap`)
+- [x] T031 [US5] Chuyển module identity/subscription/admin/notification vào `services/account/internal/modules/` (giữ nguyên logic, đổi import path); đồng thời chuyển **24 migration lịch sử** từ `database/migrations/` sang `services/account/database/migrations/` (kèm `embed.go`)
+- [x] T032 [US5] Chuyển module wardrobe/fashion/brand/dashboard vào `services/commerce/internal/modules/`
+- [x] T033 [US5] Chuyển module aiexecutor vào `services/ai/internal/modules/`; tách `internal/shared/**` thành module `shared/` (đặt HTTP/SSE/middleware tại `shared/presentation`; bootstrap chuyển về `services/<service>/internal/bootstrap`)
 - [ ] T034 [US5] Xóa `cmd/server` khỏi `main`; verify workspace không còn reference monolith (**phụ thuộc T097c** — phải có đường deploy monolith frozen trước khi xoá)
 - [ ] T034a [US5] **Tách bootstrap theo `APP_MODE`** (http|worker|all): `worker` chạy consumer/outbox/cron + HTTP tối giản để serve `/api/v1/health` trên `PORT`; `http` chạy HTTP+gRPC, MUST NOT start consumer/cron; `all` giữ hành vi hiện tại (local/VPS) (FR-044, SC-018)
 - [ ] T034b [US5] **Worker singleton + advisory lock**: cấu hình deploy worker `min-instances=1` **+ `max-instances=1`**; bọc advisory lock Postgres cho job không idempotent (subscription renewal, loyalty point expiry) (FR-045, SC-019)
@@ -142,7 +142,7 @@ tiêu chí chấp nhận yêu cầu kiểm chứng được và người dùng y
 - [ ] T040 [US5] Wire composition `services/account/` (host gRPC Identity/Subscription/Admin; không client ngoài)
 - [ ] T041 [US5] Wire composition `services/commerce/` (client Identity/Subscription/Admin/AI + 3 read)
 - [ ] T042 [US5] Wire composition `services/ai/` (host AI; client Identity/Subscription/Admin)
-- [ ] T043 [US5] Verify compile-time: import thử implementation xuyên service và xác nhận build fail
+- [x] T043 [US5] Verify compile-time: import thử implementation xuyên service và xác nhận build fail
 
 ### Ingress auth (Cloud Run IAM — thay origin-auth cũ)
 

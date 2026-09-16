@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"smart-wardrobe-be/internal/config"
+	"smart-wardrobe-be/shared/config"
 )
 
 var bodyLimitFreeMethods = map[string]bool{

@@ -28,7 +28,8 @@
    Nginx config (single source cho `api-v2`).
 5. **Song song + cutover THỦ CÔNG**: monolith trên VPS phục vụ `api.closy`; 3 service Cloud Run phục
    vụ `api-v2`, chạy **song song**. Việc đưa `api.closy...` sang Cloud Run là **thao tác thủ công**,
-   do owner quyết định thời điểm dựa trên độ ổn định của `api-v2`; MUST có **runbook cutover + rollback**
+   do owner quyết định thời điểm khi **gate đo được** đạt (smoke test 100% pass, error-rate/p95/SSE
+   ổn định N ngày liên tiếp — ngưỡng ghi trong runbook FR-041); MUST có **runbook cutover + rollback**
    trong `docs/` (deliverable, FR-041). Trước khi cutover, `api.closy` MUST giữ nguyên routing tới monolith.
 6. **Compute**: Cloud Run `asia-southeast1`; HTTP scale-to-zero (`max-instances=2`), worker `min-instances=1` + `max-instances=1` (singleton); trial +
    billing cap + teardown.
@@ -59,9 +60,13 @@
     Nginx tắt response buffering cho path SSE và đặt timeout đọc đủ lớn.
 15. **Swagger**: generate per-service, hợp đủ **9 section**, expose sau `swagger_access_code`.
 16. **Repatriation**: về VPS bằng 3 service compose + Nginx gateway; **teardown trial là một bước trong
-    repatriation**; funding clock T-30/T-14/T-7/T-1; runbook viết song song từ bây giờ.
+    repatriation**; funding clock T-30/T-14/T-7/T-1; runbook viết song song từ bây giờ. Sau
+   repatriation, `api-v2` redirect 301 về `api.closy` trong grace period **14–30 ngày** rồi xoá DNS (FR-055).
 17. **Vòng đời kinh phí**: 4 hạng mục funded duy trì 3 tháng; chi tiết ở
     `docs/project/funding-and-platform-lifecycle.md` (không thuộc hiến pháp).
+18. **Quan trắc Cloud Run**: log JSON có cấu trúc + metrics/alert Cloud Monitoring
+    (health/latency/error cho 3 service); không yêu cầu OTEL tracing trong phạm vi 020
+    (FR-057, SC-031).
 
 ## Trạng thái tài liệu (đọc trước khi code)
 
@@ -176,6 +181,12 @@
 - Q: Rollback khi `api-v2` lỗi sau deploy? → A: Runbook ghi **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service lỗi; (2) **ingress-level** — Nginx `api.closy` về monolith (FR-041).
 - Q: Xác thực domain gửi email Brevo (SPF/DKIM trên Vercel DNS)? → A: **Ngoài phạm vi 020** — Brevo đã được cấu hình và gửi email thành công từ trước; 020 không thêm FR/task cho việc này.
 - Q: Đường deploy VPS (3 service) và monolith frozen sau khi xoá `cmd/server`? → A: Thêm workflow `deploy-vps-services.yml` (dispatch + approval, matrix 3 service → GHCR → compose, pin theo digest) cho repatriation/vận hành VPS; chuyển `deploy-production.yml` thành build **từ tag `monolith-legacy`** (dispatch) cho rollback khẩn cấp, MUST NOT build monolith từ `main`; T034 phụ thuộc T097c (FR-056, SC-030).
+
+### Session 2026-09-15 (đợt 8 — tích hợp build mode)
+
+- Q: Mức quan trắc tối thiểu cho 3 service trên Cloud Run là gì? → A: Log JSON có cấu trúc + metrics/alert Cloud Monitoring (health/latency/error); không yêu cầu OTEL tracing trong 020 (FR-057, SC-031).
+- Q: Tiêu chí nào xác định `api-v2` "đủ ổn định" để cutover thủ công `api.closy`? → A: Gate đo được — smoke 100% pass, error-rate/p95/SSE ổn định N ngày liên tiếp (ngưỡng trong runbook FR-041); owner quyết định thời điểm khi gate đạt.
+- Q: Grace period redirect 301 `api-v2` về `api.closy` sau repatriation kéo dài bao lâu? → A: **14–30 ngày** (trùm TTL/client cache), cả hai host cùng phục vụ 3-service compose; sau đó xoá DNS `api-v2` (FR-055, SC-029).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -389,7 +400,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 - **FR-039**: **Bổ trợ cho FR-033 (phần credential/helper)** — MUST có **token helper** trên VPS sinh Google ID token cho service account (audience = URL `run.app` của từng service), cache và refresh trước khi hết hạn; credential MUST least-privilege và có phương án rotation. Workload Identity Federation chỉ xem xét nếu triển khai được **không làm tăng phức tạp quá mức** (trade-off ghi trong ADR).
 - **FR-040**: Nginx MUST terminate TLS cho **cả** `api.closy...` và `api-v2.closy.hycat.online`; certificate Let's Encrypt MUST được cấp/mở rộng để gồm hostname mới và gia hạn tự động.
-- **FR-041**: MUST có runbook **cutover thủ công** `api.closy...` → Cloud Run: điều kiện tiên quyết, thứ tự bước (đổi Nginx/DNS, xác minh dữ liệu), kiểm thử, và **rollback**; MUST drill được trên môi trường Cloud. Timing do owner quyết định. Cutover thủ công MUST NOT yêu cầu sửa mã nguồn nghiệp vụ. Rollback MUST ghi rõ **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service bị lỗi (per-service, tức thời); (2) **ingress-level** — đổi Nginx `api.closy` về monolith (rollback toàn hệ).
+- **FR-041**: MUST có runbook **cutover thủ công** `api.closy...` → Cloud Run: điều kiện tiên quyết, thứ tự bước (đổi Nginx/DNS, xác minh dữ liệu), kiểm thử, và **rollback**; MUST drill được trên môi trường Cloud. Timing do owner quyết định **khi gate đo được đạt**: smoke test 100% pass, error-rate/p95 latency/SSE ổn định N ngày liên tiếp (ngưỡng ghi trong runbook). Cutover thủ công MUST NOT yêu cầu sửa mã nguồn nghiệp vụ. Rollback MUST ghi rõ **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service bị lỗi (per-service, tức thời); (2) **ingress-level** — đổi Nginx `api.closy` về monolith (rollback toàn hệ).
 
 **Container image & triển khai độc lập**
 
@@ -444,14 +455,18 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 **Vòng đời hostname sau repatriation**
 
-- **FR-055**: Sau repatriation, **`api.closy...` là host canonical duy nhất**; `api-v2.closy.hycat.online` MUST **redirect 301** về `api.closy` (qua Nginx) trong một grace period, và bản ghi DNS của `api-v2` MUST được **xoá** sau grace period. Trong grace period, cả hai hostname MUST cùng phục vụ 3-service compose trên VPS (không làm hỏng client còn cache DNS). MUST NOT xoá DNS đột ngột khi client chưa hết TTL.
+- **FR-055**: Sau repatriation, **`api.closy...` là host canonical duy nhất**; `api-v2.closy.hycat.online` MUST **redirect 301** về `api.closy` (qua Nginx) trong grace period **14–30 ngày** (trùm TTL và client cache), và bản ghi DNS của `api-v2` MUST được **xoá** sau grace period. Trong grace period, cả hai hostname MUST cùng phục vụ 3-service compose trên VPS (không làm hỏng client còn cache DNS). MUST NOT xoá DNS đột ngột khi client chưa hết TTL.
 
 **Đường deploy VPS & monolith frozen (CI/CD)**
 
 - **FR-056**: Đường deploy lên VPS MUST được tự động hoá có gate:
   - **3 service**: workflow `deploy-vps-services.yml` (`workflow_dispatch` + approval environment) — matrix theo service, build từ `services/<svc>/Dockerfile`, push **GHCR**, `docker compose -f deployments/docker-compose.prod.yml up -d <svc>`, **pin image theo digest**; dùng cho repatriation và vận hành VPS sau đó.
   - **Monolith frozen**: `deploy-production.yml` MUST được chuyển thành `workflow_dispatch` build **từ tag `monolith-legacy`** → GHCR → compose profile `rollback`; chỉ dùng rollback khẩn cấp.
-  - Sau khi `cmd/server` bị xoá khỏi `main`, CI/CD MUST NOT build/deploy monolith từ `main`.
+   - Sau khi `cmd/server` bị xoá khỏi `main`, CI/CD MUST NOT build/deploy monolith từ `main`.
+
+**Quan trắc Cloud Run (tối thiểu)**
+
+- **FR-057**: Mỗi service trên Cloud Run MUST ghi **log JSON có cấu trúc** (stdout, để Cloud Logging thu thập) và MUST có **metrics + alert Cloud Monitoring** tối thiểu cho health/latency/error-rate của 3 service (HTTP + worker). OTEL tracing liên service MUST NOT là yêu cầu trong phạm vi 020 (có thể bổ sung sau, ngoài phạm vi).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -481,7 +496,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - **SC-012**: Hợp tài liệu API của 3 service giữ đủ 9 section; route `api-v2` tới đúng 3 service qua Nginx pass 100% smoke test.
 - **SC-013**: 100% request tới Cloud Run thiếu ID token hợp lệ bị từ chối (Cloud Run IAM); 0 request `api-v2` bypass được IAM.
 - **SC-014**: Stream AI dài giữ được kết nối qua Nginx → Cloud Run với heartbeat 15s; 0 lỗi timeout do buffering.
-- **SC-015**: `api-v2` chạy trên Cloud Run qua Nginx; `api.closy` tiếp tục monolith cho tới khi owner thực hiện **cutover thủ công**; runbook cutover + rollback tồn tại và đã drill (FR-041).
+- **SC-015**: `api-v2` chạy trên Cloud Run qua Nginx; `api.closy` tiếp tục monolith cho tới khi owner thực hiện **cutover thủ công** khi gate đo được đạt (smoke 100% pass, error-rate/p95/SSE ổn định N ngày liên tiếp); runbook cutover + rollback tồn tại và đã drill (FR-041).
 - **SC-016**: 0 request của `api-v2` đi qua Cloudflare (Cloudflare nằm ngoài đường API).
 - **SC-017**: 100% (3/3) service build/push/deploy độc lập thành công mà không cần build lại service khác; image rollback `monolith-legacy` build được từ tag frozen và `docker compose` profile rollback khởi động được.
 - **SC-018**: 0 consumer/outbox/cron khởi động trong deployment `APP_MODE=http`; deployment `APP_MODE=worker` chạy liên tục (CPU always-on) và phục vụ health probe thành công.
@@ -495,8 +510,9 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - **SC-026**: 0 secret xuất hiện trong repo/image/log/CI output; 100% Cloud Run service khởi động với env secrets tiêm từ CI; rotation verify được bằng redeploy 1 service độc lập.
 - **SC-027**: Upload/media (Cloudinary) hoạt động từ Cloud Run (verify trong VS6); 0 hạng mục funded mới bị thêm và Cloudinary/Artifact Registry được ghi nhận đúng trong funding doc.
 - **SC-028**: Rate-limit cho kết quả 429 nhất quán giữa managed và self-host; với 2+ instance mô phỏng, rule login/OTP + API chung vẫn chính xác (Redis-backed); 0 ngưỡng bị reset khi instance scale.
-- **SC-029**: Sau repatriation, `api-v2` trả **301** về `api.closy`; DNS `api-v2` được xoá sau grace period; 0 client phải đổi cấu hình ngoài việc đi theo redirect.
+- **SC-029**: Sau repatriation, `api-v2` trả **301** về `api.closy` trong grace period **14–30 ngày**; DNS `api-v2` được xoá sau grace period; 0 client phải đổi cấu hình ngoài việc đi theo redirect.
 - **SC-030**: Workflow deploy VPS 3-service chạy thành công (matrix độc lập, pin digest); deploy/rollback image `monolith-legacy` từ tag chạy được; 0 lần CI build monolith từ `main`.
+- **SC-031**: 100% (3/3) service phát log JSON có cấu trúc thu thập được trên Cloud Logging; dashboard metrics + alert health/latency/error-rate hoạt động cho cả HTTP và worker (FR-057).
 
 ## Assumptions
 
@@ -513,7 +529,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - Thời điểm repatriation theo funding clock, phải hoàn tất trước ngày renew.
 - Các cửa sổ bảo trì cho phép dừng hệ thống trong thời gian ngắn để migrate dữ liệu và chuyển DNS.
 - SSE/AI streaming đi qua **Nginx → Cloud Run**; Nginx tắt buffering; heartbeat ~15s; `ai_chat_chunk_deadline_seconds` = 30s thống nhất mọi môi trường (dùng chung `configs/`).
-- Chạy **song song**: monolith ở `api.closy`, 3 service ở `api-v2`. Cutover `api.closy` là **thao tác thủ công** có runbook (FR-041), timing do owner quyết định khi `api-v2` đủ ổn định.
+- Chạy **song song**: monolith ở `api.closy`, 3 service ở `api-v2`. Cutover `api.closy` là **thao tác thủ công** có runbook (FR-041), timing do owner quyết định khi gate đo được đạt.
 - Cutover thủ công chỉ đổi Nginx/DNS + đồng bộ dữ liệu; MUST NOT sửa mã nguồn nghiệp vụ.
 - **VPS là single ingress** (đã có kinh phí, không phải constraint chi phí); Nginx hiện hữu được giữ, chỉ bổ sung server block cho `api-v2`.
 - **Token helper** chạy trên VPS dùng **service account key** (trade-off với WIF ghi ở ADR 023) để sinh ID token cho Cloud Run.

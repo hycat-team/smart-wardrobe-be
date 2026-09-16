@@ -1,0 +1,160 @@
+package messaging
+
+import (
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+const (
+	ExchangeDLXName = "smart_wardrobe_exchange.dlx"
+	ExchangeDLXType = "topic"
+)
+
+// Binding defines a queue binding to an exchange with routing keys and queue arguments.
+type Binding struct {
+	Queue       string
+	RoutingKeys []string
+	Exchange    string
+	Args        amqp.Table
+	Prefetch    int
+	Concurrency int
+}
+
+func queueArgs(queue string, isQuorum bool) amqp.Table {
+	args := amqp.Table{
+		"x-dead-letter-exchange":    ExchangeDLXName,
+		"x-dead-letter-routing-key": queue + ".dlq",
+	}
+	if isQuorum {
+		args["x-queue-type"] = "quorum"
+		args["x-delivery-limit"] = 5
+	}
+	return args
+}
+
+// Topology is the central registry for all primary queue bindings.
+// Adding a new queue only requires appending an entry here.
+var Topology = []Binding{
+	{
+		Queue:       eventconstants.QueueElasticsearchSync,
+		RoutingKeys: []string{RoutingKeyElasticsearchSyncWildcard},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueElasticsearchSync, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueFashionInit,
+		RoutingKeys: []string{RoutingKeyFashionInit},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueFashionInit, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueFashionAnalyze,
+		RoutingKeys: []string{RoutingKeyFashionAnalyze},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueFashionAnalyze, true),
+		Prefetch:    20,
+		Concurrency: 3,
+	},
+	{
+		Queue:       eventconstants.QueueSubscriptionPlanChanged,
+		RoutingKeys: []string{RoutingKeySubscriptionPlanChanged},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueSubscriptionPlanChanged, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueNotificationEmail,
+		RoutingKeys: []string{RoutingKeyNotificationEmail},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueNotificationEmail, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueAuditLog,
+		RoutingKeys: []string{RoutingKeyAuditLog},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueAuditLog, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueWardrobeFashionAnalyzed,
+		RoutingKeys: []string{RoutingKeyFashionAnalyzedWardrobe, RoutingKeyFashionFailedWardrobe},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueWardrobeFashionAnalyzed, true),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueBrandFashionAnalyzed,
+		RoutingKeys: []string{RoutingKeyFashionAnalyzedBrand, RoutingKeyFashionFailedBrand},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueBrandFashionAnalyzed, true),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueWardrobeCleanup,
+		RoutingKeys: []string{RoutingKeyWardrobeDeleted},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueWardrobeCleanup, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueWardrobeProcessingExhausted,
+		RoutingKeys: []string{RoutingKeyFashionProcessingExhausted},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueWardrobeProcessingExhausted, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueElasticsearchProcessingExhausted,
+		RoutingKeys: []string{RoutingKeyFashionProcessingExhausted},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueElasticsearchProcessingExhausted, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueWardrobeFashionBind,
+		RoutingKeys: []string{RoutingKeyFashionItemCreatedWardrobe},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueWardrobeFashionBind, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueBrandFashionBind,
+		RoutingKeys: []string{RoutingKeyFashionItemCreatedBrand},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueBrandFashionBind, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+}
+
+// DLQTopology defines dead-letter queues bound to the DLX exchange.
+var DLQTopology = []Binding{
+	{Queue: eventconstants.QueueElasticsearchSync + ".dlq", RoutingKeys: []string{eventconstants.QueueElasticsearchSync + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueFashionInit + ".dlq", RoutingKeys: []string{eventconstants.QueueFashionInit + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueFashionAnalyze + ".dlq", RoutingKeys: []string{eventconstants.QueueFashionAnalyze + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueSubscriptionPlanChanged + ".dlq", RoutingKeys: []string{eventconstants.QueueSubscriptionPlanChanged + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueNotificationEmail + ".dlq", RoutingKeys: []string{eventconstants.QueueNotificationEmail + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueAuditLog + ".dlq", RoutingKeys: []string{eventconstants.QueueAuditLog + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueWardrobeFashionAnalyzed + ".dlq", RoutingKeys: []string{eventconstants.QueueWardrobeFashionAnalyzed + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueBrandFashionAnalyzed + ".dlq", RoutingKeys: []string{eventconstants.QueueBrandFashionAnalyzed + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueWardrobeCleanup + ".dlq", RoutingKeys: []string{eventconstants.QueueWardrobeCleanup + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueWardrobeProcessingExhausted + ".dlq", RoutingKeys: []string{eventconstants.QueueWardrobeProcessingExhausted + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueElasticsearchProcessingExhausted + ".dlq", RoutingKeys: []string{eventconstants.QueueElasticsearchProcessingExhausted + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueWardrobeFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueWardrobeFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueBrandFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueBrandFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+}

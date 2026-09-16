@@ -1,16 +1,25 @@
 # Config and variables
 export
 
-WIRE_PATH := ./internal/di
-SWAG_MAIN_FILE := ./cmd/server/main.go
-SWAG_OUTPUT_DIR := ./api/swagger
-GO_BUILD_PACKAGE := ./cmd/server
-BIN_DIR := bin
-
+# ---- 020 multi-module workspace (FR-038) ----
+# Per-service targets take svc=<account|commerce|ai>, e.g. `make wire svc=account`.
+MODULES := shared contracts services/account services/commerce services/ai
 WIRE_VERSION := v0.7.0
 SWAG_VERSION := v1.16.6
+BUF_VERSION := v1.57.2
+GO_BUILD_FLAGS := -trimpath -ldflags="-s -w"
+BIN_DIR := bin
 
-# Goose Migration variables
+# Registry conventions (FR-042/FR-051, T007a):
+# - Cloud Run images → Artifact Registry (asia-southeast1), tag <svc>:<git-sha> (immutable).
+# - VPS images (rollback + repatriation) → GHCR with existing CI token.
+AR_HOST ?= asia-southeast1-docker.pkg.dev
+AR_PROJECT ?= smart-wardrobe
+AR_REPO ?= smart-wardrobe
+GHCR_OWNER ?= hycat
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+
+# Migration (Goose) connection variables (shared by all services)
 DB_HOST ?= localhost
 DB_USER ?= admin
 DB_PASSWORD ?= 123456
@@ -18,12 +27,27 @@ DB_NAME ?= smart_wardrobe_db
 DB_PORT ?= 5432
 DB_SSLMODE ?= disable
 DB_TIMEZONE ?= Asia/Ho_Chi_Minh
-MIGRATION_DIR := ./database/migrations
 MIGRATION_DSN := "host=$(DB_HOST) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) port=$(DB_PORT) sslmode=$(DB_SSLMODE) TimeZone=$(DB_TIMEZONE)"
 
+# Cloud Run deploy defaults (FR-044..FR-048; manual helper — CI uses deploy-platform.yml)
+CR_REGION ?= asia-southeast1
+CR_CONCURRENCY ?= 40
+CR_HTTP_MAX_INSTANCES ?= 2
+
+# Nginx ingress render (FR-028; runs on VPS)
+NGINX_TEMPLATES_DIR := deployments/nginx/templates
+NGINX_ROUTES_DIR := deployments/nginx/api-v2-routes
+NGINX_RENDER_DIR ?= /etc/nginx
+
+# ---- Legacy monolith (removed at T034 with cmd/server) ----
+LEGACY_WIRE_PATH := ./internal/di
+LEGACY_SWAG_MAIN_FILE := ./cmd/server/main.go
+LEGACY_SWAG_OUTPUT_DIR := ./api/swagger
+LEGACY_GO_BUILD_PACKAGE := ./cmd/server
+LEGACY_MIGRATION_DIR := ./database/migrations
+
 ifeq ($(OS),Windows_NT)
-GO_BIN_OUT := $(BIN_DIR)/main.exe
-RUN_BIN := .\$(subst /,\,$(GO_BIN_OUT))
+GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
 CLEAN_SWAGGER_CMD := if exist api\swagger rmdir /S /Q api\swagger
@@ -31,8 +55,7 @@ FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write
 TEST_CMD := go test ./... 2>&1 | findstr /V /C:"no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | findstr /V /C:"no test files"
 else
-GO_BIN_OUT := $(BIN_DIR)/main
-RUN_BIN := ./$(GO_BIN_OUT)
+GO_BIN_EXT :=
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 CLEAN_SWAGGER_CMD := rm -rf ./api/swagger
@@ -44,11 +67,20 @@ endif
 # FMT command dùng chung 2 OS (gofmt -w . tự động đệ quy tất cả các file .go)
 FMT_CMD := gofmt -w .
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help install-tools wire swagger generate hygiene-scan fmt fmt-check tidy tidy-check vet test test-race test-integration lint build run dev clean clean-swagger check generate-check docker-build migration-status migration-up migration-down migration-create migration-version install-goose docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down
+# CLI overrides: chấp nhận cả chữ thường (svc=, name= — chuẩn tasks.md, dùng ở CI Linux)
+# lẫn chữ hoa (SVC=, NAME= — một số bản make Windows nuốt override chữ thường).
+SVC := $(or $(SVC),$(svc))
+name := $(or $(name),$(NAME))
+# NOTE: bare `export` above forces make to expand every variable for each recipe
+# environment — unexport this guard so its $(error) only fires in recipes that use it.
+SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
+unexport SVC_REQ
+
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all wire-legacy swagger swagger-all swagger-legacy generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all build-legacy run run-legacy dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version migration-status migration-up migration-down migration-create migration-version docker-build docker-build-legacy image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
 
 help:
 	@echo "========================================================================"
-	@echo "SMART WARDROBE BUILD SYSTEM - HELP INDEX"
+	@echo "SMART WARDROBE BUILD SYSTEM - HELP INDEX (020 multi-module workspace)"
 	@echo "========================================================================"
 	@echo "Run one of the following commands to list specific targets:"
 	@echo "  make dev-help       : Local development workflow targets"
@@ -56,36 +88,44 @@ help:
 	@echo "  make docker-help    : Docker Compose development & production targets"
 	@echo "  make migration-help : Database migration (Goose) commands"
 	@echo "  make tools-help     : Local development tools installation helper"
+	@echo "  make platform-help  : Cloud Run / registry / ingress targets (020)"
+	@echo "Per-service targets take svc=<account|commerce|ai>, e.g. make build svc=ai"
 	@echo "========================================================================"
 
 dev-help:
 	@echo "DEVELOPMENT WORKFLOW COMMANDS:"
-	@echo "  make wire             : Generate dependency injection code (Google Wire)"
-	@echo "  make swagger          : Generate Swagger API specifications"
-	@echo "  make generate         : Run both Wire and Swagger code generation"
-	@echo "  make hygiene-scan     : Run codebase hygiene scan (feature 017, report in specs/)"
+	@echo "  make wire svc=        : Generate Wire DI for one service"
+	@echo "  make wire-all         : Generate Wire DI for all 3 services"
+	@echo "  make swagger svc=     : Generate Swagger for one service"
+	@echo "  make swagger-all      : Generate Swagger for all 3 services"
+	@echo "  make generate         : Run wire-all + swagger-all"
+	@echo "  make buf-gen          : Generate protobuf stubs into contracts/"
+	@echo "  make hygiene-scan     : Run codebase hygiene scan (report in specs/)"
 	@echo "  make fmt              : Format all Go source files"
-	@echo "  make tidy             : Tidy Go modules"
-	@echo "  make run              : Build and run the Go backend locally"
-	@echo "  make dev              : Run code generation and start backend locally"
+	@echo "  make tidy             : Tidy all Go modules (workspace)"
+	@echo "  make build svc=       : Build one service binary into bin/"
+	@echo "  make build-all        : Build all 3 service binaries"
+	@echo "  make run svc=         : Build and run one service locally"
+	@echo "  make dev              : Run code generation and start legacy backend (until T034)"
 	@echo "  make clean            : Remove generated binaries and swagger docs"
+	@echo "Legacy monolith targets (removed at T034): wire-legacy swagger-legacy build-legacy run-legacy"
 
 quality-help:
 	@echo "QUALITY ASSURANCE & TESTING COMMANDS:"
 	@echo "  make fmt-check        : Verify Go source formatting without making edits"
-	@echo "  make tidy-check       : Verify go.mod and go.sum files are clean"
+	@echo "  make tidy-check       : Verify all go.mod/go.sum files are clean"
 	@echo "  make generate-check   : Verify generated Wire and Swagger files are up-to-date"
-	@echo "  make vet              : Run static analysis using 'go vet'"
-	@echo "  make test             : Run all Go unit and integration tests"
+	@echo "  make vet              : Run static analysis using 'go vet' (all modules)"
+	@echo "  make test             : Run all Go unit and integration tests (all modules)"
+	@echo "  make test-workspace   : Alias of test across the go.work workspace"
 	@echo "  make test-race        : Run all Go tests with race detector enabled"
 	@echo "  make test-integration : Run messaging integration tests (needs TEST_RABBITMQ_URL / TEST_DATABASE_URL)"
 	@echo "  make lint             : Run fmt-check + go vet"
-	@echo "  make build            : Compile Go backend binary"
-	@echo "  make check            : Run all checks sequentially (CI check suite)"
+	@echo "  make check            : Run all checks sequentially (workspace CI suite)"
 
 docker-help:
 	@echo "DOCKER COMPOSE COMMANDS:"
-	@echo "  make docker-build     : Build local production Docker image"
+	@echo "  make docker-build svc= : Build one service production image (context = repo root)"
 	@echo "  make docker-dev-up    : Start local development stack in background"
 	@echo "  make docker-dev-stop  : Stop local development stack without removing volumes"
 	@echo "  make docker-dev-down  : Stop local development stack and remove volumes"
@@ -94,22 +134,33 @@ docker-help:
 	@echo "  make docker-prod-down : Stop production Docker stack and remove volumes"
 
 migration-help:
-	@echo "DATABASE MIGRATION COMMANDS (GOOSE):"
-	@echo "  make migration-status : Check database migration status"
-	@echo "  make migration-up     : Run pending database migrations"
-	@echo "  make migration-down   : Rollback last database migration step"
-	@echo "  make migration-create name=xxx : Create a new SQL migration file"
-	@echo "  make migration-version: View current database migration version"
+	@echo "DATABASE MIGRATION COMMANDS (GOOSE, per-service — FR-035):"
+	@echo "  make migrate-status svc=          : Check migration status for one service"
+	@echo "  make migrate-up svc=              : Run pending migrations for one service"
+	@echo "  make migrate-down svc=            : Rollback last migration step for one service"
+	@echo "  make migrate-create svc= name=xxx : Create a new SQL migration in the owning service"
+	@echo "  make migrate-version svc=         : View current migration version for one service"
+	@echo "Legacy (root database/migrations, removed at T031): migration-status/up/down/create/version"
 
 tools-help:
 	@echo "DEVELOPMENT TOOLS INSTALLATION HELPERS:"
-	@echo "  make install-tools    : Install pinned Wire and Swag tool binaries"
+	@echo "  make install-tools    : Install pinned Wire, Swag and Buf tool binaries"
 	@echo "  make install-goose    : Install Goose migration CLI binary"
+
+platform-help:
+	@echo "CLOUD RUN / REGISTRY / INGRESS COMMANDS (020):"
+	@echo "  make image-build svc= : Build one service image (tag <svc>:<git-sha>)"
+	@echo "  make image-push svc=  : Push one service image to Artifact Registry"
+	@echo "  make deploy svc=      : Deploy one service to Cloud Run (HTTP, manual helper)"
+	@echo "  make token-helper-build : Build token-helper binary + image (VPS)"
+	@echo "  make nginx-reload     : Render Nginx templates and reload (VPS)"
+	@echo "  make image-build-monolith-rollback : Build rollback image FROM tag monolith-legacy (once)"
 
 install-tools:
 	@echo Installing pinned development tools...
 	@go install github.com/google/wire/cmd/wire@$(WIRE_VERSION)
 	@go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+	@go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 	@echo Development tools installed.
 
 install-goose:
@@ -118,22 +169,58 @@ install-goose:
 	@echo Goose CLI installed.
 
 wire:
-	@echo Running Google Wire...
-	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) $(WIRE_PATH)/...
+	$(SVC_REQ)
+	@echo Running Google Wire for service $(SVC)...
+	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) ./services/$(SVC)/internal/di/...
+	@echo Google Wire finished for $(SVC).
+
+wire-all:
+	@echo Running Google Wire for all services...
+	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) ./services/account/internal/di/...
+	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) ./services/commerce/internal/di/...
+	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) ./services/ai/internal/di/...
+	@echo Google Wire finished for all services.
+
+wire-legacy:
+	@echo Running Google Wire (legacy monolith, removed at T034)...
+	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) $(LEGACY_WIRE_PATH)/...
 	@echo Google Wire finished.
 
 swagger:
-	@echo Generating Swagger specifications...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(SWAG_MAIN_FILE) --output $(SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community --quiet
-	@go run ./internal/tools/swagger-split -master $(SWAG_OUTPUT_DIR)/swagger.json -mapping $(SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(SWAG_OUTPUT_DIR)/modules
+	$(SVC_REQ)
+	@echo Generating Swagger for service $(SVC)...
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/$(SVC)/cmd/$(SVC)/main.go --output services/$(SVC)/api/swagger --parseDependency --parseInternal --quiet
+	@echo Swagger generation finished for $(SVC).
+
+swagger-all:
+	@echo Generating Swagger for all services...
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/account/cmd/account/main.go --output services/account/api/swagger --parseDependency --parseInternal --quiet
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/commerce/cmd/commerce/main.go --output services/commerce/api/swagger --parseDependency --parseInternal --quiet
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/ai/cmd/ai/main.go --output services/ai/api/swagger --parseDependency --parseInternal --quiet
+	@echo Swagger generation finished for all services.
+
+swagger-legacy:
+	@echo Generating Swagger (legacy monolith, removed at T034)...
+	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(LEGACY_SWAG_MAIN_FILE) --output $(LEGACY_SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community --quiet
+	@go run ./internal/tools/swagger-split -master $(LEGACY_SWAG_OUTPUT_DIR)/swagger.json -mapping $(LEGACY_SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(LEGACY_SWAG_OUTPUT_DIR)/modules
 	@echo Swagger generation finished.
 
-generate: wire swagger
+generate: wire-all swagger-all
+
+buf-gen:
+	@echo Generating protobuf stubs into contracts/...
+	@buf generate
+	@echo Protobuf generation finished.
+
+buf-lint:
+	@echo Linting protobuf contracts...
+	@buf lint
+	@echo Protobuf lint finished.
 
 hygiene-scan:
-	@echo "Running codebase hygiene scan (specs/017-codebase-hygiene-refactor)..."
-	@go run ./internal/tools/hygiene-scan
-	@echo "Hygiene scan finished. Report: specs/017-codebase-hygiene-refactor/reports/scan-report.md"
+	@echo "Running codebase hygiene scan..."
+	@go run ./shared/tools/hygiene-scan
+	@echo "Hygiene scan finished."
 
 fmt:
 	@echo Formatting Go source files...
@@ -146,33 +233,61 @@ fmt-check:
 	@echo Go source formatting is valid.
 
 tidy:
-	@echo Tidying Go modules...
+	@echo Tidying Go modules (workspace)...
+	@cd shared && go mod tidy
+	@cd contracts && go mod tidy
+	@cd services/account && go mod tidy
+	@cd services/commerce && go mod tidy
+	@cd services/ai && go mod tidy
 	@go mod tidy
+	@go work sync
 	@echo Go module tidy finished.
 
 tidy-check:
-	@echo Checking whether go.mod and go.sum are tidy...
+	@echo Checking whether go.mod and go.sum files are tidy...
+	@cd shared && go mod tidy -diff
+	@cd contracts && go mod tidy -diff
+	@cd services/account && go mod tidy -diff
+	@cd services/commerce && go mod tidy -diff
+	@cd services/ai && go mod tidy -diff
 	@go mod tidy -diff
 	@echo Go module files are tidy.
 
 generate-check:
 	@echo Checking generated Wire and Swagger files...
 	@$(MAKE) generate
-	@git diff --exit-code -- $(WIRE_PATH) $(SWAG_OUTPUT_DIR)
+	@git diff --exit-code -- services/account/internal/di services/commerce/internal/di services/ai/internal/di services/account/api/swagger services/commerce/api/swagger services/ai/api/swagger
 	@echo Generated files are up to date.
 
 vet:
-	@echo Running go vet...
+	@echo Running go vet (all workspace modules)...
+	@cd shared && go vet ./...
+	@cd contracts && go vet ./...
+	@cd services/account && go vet ./...
+	@cd services/commerce && go vet ./...
+	@cd services/ai && go vet ./...
 	@go vet ./...
 	@echo Go vet finished.
 
 test:
-	@echo Running Go tests...
+	@echo Running Go tests (all workspace modules)...
+	@cd shared && $(TEST_CMD)
+	@cd contracts && $(TEST_CMD)
+	@cd services/account && $(TEST_CMD)
+	@cd services/commerce && $(TEST_CMD)
+	@cd services/ai && $(TEST_CMD)
 	@$(TEST_CMD)
 	@echo Go tests finished.
 
+test-workspace: test
+
 test-race:
-	@echo Running Go tests with race detector...
+	@echo Running Go tests with race detector (all workspace modules)...
+	@cd shared && $(RACE_TEST_CMD)
+	@cd contracts && $(RACE_TEST_CMD)
+	@cd services/account && $(RACE_TEST_CMD)
+	@cd services/commerce && $(RACE_TEST_CMD)
+	@cd services/ai && $(RACE_TEST_CMD)
 	@$(RACE_TEST_CMD)
 	@echo Go race tests finished.
 
@@ -184,20 +299,41 @@ test-integration:
 	@go test -race -run Integration ./internal/shared/infrastructure/messaging/
 	@go test -race -run Integration ./internal/modules/subscription/...
 	@echo Integration tests finished.
+	@echo NOTE: extended to services/<svc>/... paths when T033 moves modules (Phase 5).
 
 build:
-	@echo Building application for the current operating system...
+	$(SVC_REQ)
+	@echo Building service $(SVC)...
 	@$(MKDIR_BIN_CMD)
-	@go build -trimpath -ldflags="-s -w" -o "$(GO_BIN_OUT)" $(GO_BUILD_PACKAGE)
-	@echo Build succeeded. Binary: $(GO_BIN_OUT)
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)" ./services/$(SVC)/cmd/$(SVC)
+	@echo Build succeeded. Binary: $(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
+
+build-all:
+	@echo Building all 3 service binaries...
+	@$(MKDIR_BIN_CMD)
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/account$(GO_BIN_EXT)" ./services/account/cmd/account
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/commerce$(GO_BIN_EXT)" ./services/commerce/cmd/commerce
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/ai$(GO_BIN_EXT)" ./services/ai/cmd/ai
+	@echo Build succeeded. Binaries in $(BIN_DIR)/
+
+build-legacy:
+	@echo Building legacy monolith (removed at T034)...
+	@$(MKDIR_BIN_CMD)
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/main$(GO_BIN_EXT)" $(LEGACY_GO_BUILD_PACKAGE)
+	@echo Build succeeded.
 
 run: build
-	@echo Starting backend...
-	@$(RUN_BIN)
+	$(SVC_REQ)
+	@echo Starting $(SVC) service...
+	@$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
 
-dev: generate run
+run-legacy: build-legacy
+	@echo Starting legacy backend...
+	@$(BIN_DIR)/main$(GO_BIN_EXT)
 
-check: fmt-check tidy-check generate-check vet test build
+dev: generate run-legacy
+
+check: fmt-check tidy-check generate-check vet test-race build-all
 
 clean-swagger:
 	@echo Cleaning generated Swagger files...
@@ -209,25 +345,96 @@ clean: clean-swagger
 	@$(CLEAN_BIN_CMD)
 	@echo Clean finished.
 
+migrate-status:
+	$(SVC_REQ)
+	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) status
+
+migrate-up:
+	$(SVC_REQ)
+	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) up
+
+migrate-down:
+	$(SVC_REQ)
+	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) down
+
+migrate-create:
+	$(SVC_REQ)
+ifndef name
+	$(error migrate-create requires name=xxx — e.g. make migrate-create svc=account name=add_feature)
+endif
+	@goose -dir ./services/$(SVC)/database/migrations create $(name) sql
+
+migrate-version:
+	$(SVC_REQ)
+	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) version
+
 migration-status:
-	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) status
+	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) status
 
 migration-up:
-	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) up
+	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) up
 
 migration-down:
-	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) down
+	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) down
 
 migration-create:
-	@goose -dir $(MIGRATION_DIR) create $(name) sql
+	@goose -dir $(LEGACY_MIGRATION_DIR) create $(name) sql
 
 migration-version:
-	@goose -dir $(MIGRATION_DIR) postgres $(MIGRATION_DSN) version
+	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) version
 
 docker-build:
-	@echo Building production Docker image...
+	$(SVC_REQ)
+	@echo Building production Docker image for $(SVC)...
+	@docker build -f services/$(SVC)/Dockerfile -t smart-wardrobe-$(SVC):local .
+	@echo Docker image build finished.
+
+docker-build-legacy:
+	@echo Building legacy monolith Docker image (removed at T034)...
 	@docker build --pull --target production -t backend-smartwardrobe:local .
 	@echo Docker image build finished.
+
+image-build:
+	$(SVC_REQ)
+	@echo Building $(SVC) image...
+	@docker build -f services/$(SVC)/Dockerfile -t $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) .
+	@echo Image built: $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA)
+
+image-push:
+	$(SVC_REQ)
+	@echo Pushing $(SVC) image to Artifact Registry...
+	@docker push $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA)
+	@echo Image pushed.
+
+deploy:
+	$(SVC_REQ)
+	@echo Deploying $(SVC) to Cloud Run (manual helper; CI uses deploy-platform.yml)...
+	@gcloud run deploy smart-wardrobe-$(SVC) --image $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) --region $(CR_REGION) --platform managed --concurrency $(CR_CONCURRENCY) --max-instances $(CR_HTTP_MAX_INSTANCES)
+	@echo Deploy finished.
+
+token-helper-build:
+	@echo Building token-helper binary and image (VPS)...
+	@$(MKDIR_BIN_CMD)
+	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/token-helper$(GO_BIN_EXT)" ./deployments/token-helper
+	@docker build -f deployments/token-helper/Dockerfile -t smart-wardrobe-token-helper:local .
+	@echo token-helper build finished.
+
+image-build-monolith-rollback:
+	@echo Building rollback image FROM tag monolith-legacy (run once before funded window ends)...
+	@git worktree add /tmp/monolith-legacy monolith-legacy
+	@cp deployments/monolith-legacy/Dockerfile /tmp/monolith-legacy/Dockerfile.legacy
+	@docker build -f /tmp/monolith-legacy/Dockerfile.legacy -t monolith-legacy:$(GIT_SHA) /tmp/monolith-legacy
+	@git worktree remove --force /tmp/monolith-legacy
+	@echo Rollback image built. Push to GHCR (T097a) with: docker tag + docker push.
+
+nginx-reload:
+	@echo Rendering Nginx templates and reloading (VPS)...
+	@mkdir -p $(NGINX_RENDER_DIR)/api-v2-routes
+	@envsubst '$${API_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE}' < $(NGINX_TEMPLATES_DIR)/default.conf.template > $(NGINX_RENDER_DIR)/default.conf
+	@envsubst '$${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE} $${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL} $${TOKEN_HELPER_URL}' < $(NGINX_TEMPLATES_DIR)/api-v2.conf.template > $(NGINX_RENDER_DIR)/api-v2.conf
+	@nginx -t
+	@nginx -s reload
+	@echo Nginx reload finished.
 
 docker-dev-up:
 	@docker compose -f deployments/docker-compose.yml --env-file .env up -d

@@ -2,12 +2,12 @@ package routes
 
 import (
 	"net/http"
-	"smart-wardrobe-be/internal/config"
-	"smart-wardrobe-be/internal/pkg/logger"
-	"smart-wardrobe-be/internal/shared/application/constants/apperror"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
-	shared_pres "smart-wardrobe-be/internal/shared/presentation"
-	shared_middleware "smart-wardrobe-be/internal/shared/presentation/middleware"
+	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/config"
+	shared_msg "smart-wardrobe-be/shared/infrastructure/messaging"
+	"smart-wardrobe-be/shared/pkg/logger"
+	shared_pres "smart-wardrobe-be/shared/presentation"
+	shared_middleware "smart-wardrobe-be/shared/presentation/middleware"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -73,6 +73,10 @@ func NewEngine(cfg *config.Config, r *AppRouter, log logger.Interface, rateLimit
 				"status":    "healthy",
 				"time":      time.Now().Format(time.RFC3339),
 				"messaging": shared_msg.GetMetrics(),
+				"elasticsearch": gin.H{
+					"enabled": r.SearchClient.Enabled(),
+					"healthy": r.SearchClient.IsHealthy(),
+				},
 			})
 		})
 

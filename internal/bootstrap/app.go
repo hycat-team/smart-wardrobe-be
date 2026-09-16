@@ -6,19 +6,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"smart-wardrobe-be/internal/config"
-	adminWorker "smart-wardrobe-be/internal/modules/admin/presentation/worker"
-	aiexecutorWorker "smart-wardrobe-be/internal/modules/aiexecutor/presentation/worker"
-	brandWorker "smart-wardrobe-be/internal/modules/brand/presentation/worker"
-	dashboardWorker "smart-wardrobe-be/internal/modules/dashboard/presentation/worker"
-	fashionWorker "smart-wardrobe-be/internal/modules/fashion/presentation/worker"
-	notificationWorker "smart-wardrobe-be/internal/modules/notification/presentation/worker"
-	subWorker "smart-wardrobe-be/internal/modules/subscription/presentation/worker"
-	wardrobeWorker "smart-wardrobe-be/internal/modules/wardrobe/presentation/worker"
-	"smart-wardrobe-be/internal/pkg/logger"
-	"smart-wardrobe-be/internal/shared/infrastructure/db"
-	shared_msg "smart-wardrobe-be/internal/shared/infrastructure/messaging"
-	sharedWorker "smart-wardrobe-be/internal/shared/presentation/worker"
+	"smart-wardrobe-be/shared/config"
+	// 020: worker types via per-service providers (monolith composition
+	// until cmd/server leaves main at T034).
+	accountproviders "smart-wardrobe-be/services/account/providers"
+	// 020: monolith runs the migration history owned by Account (FR-035).
+	"smart-wardrobe-be/services/account/database/migrations"
+	aiproviders "smart-wardrobe-be/services/ai/providers"
+	commerceproviders "smart-wardrobe-be/services/commerce/providers"
+	"smart-wardrobe-be/shared/infrastructure/db"
+	shared_msg "smart-wardrobe-be/shared/infrastructure/messaging"
+	"smart-wardrobe-be/shared/pkg/logger"
+	sharedWorker "smart-wardrobe-be/shared/presentation/worker"
 	"syscall"
 	"time"
 
@@ -28,29 +27,29 @@ import (
 )
 
 type AppWorkers struct {
-	RenewalWorker                          *subWorker.SubscriptionRenewalWorker
-	PaymentReconciliationWorker            *subWorker.PaymentReconciliationWorker
-	WebhookInboxWorker                     *subWorker.WebhookInboxWorker
-	AIUsageReconciliationWorker            *aiexecutorWorker.AIUsageReconciliationWorker
-	LoyaltyPointExpiryWorker               *brandWorker.LoyaltyPointExpiryWorker
-	ESAsyncWorker                          *wardrobeWorker.SearchSyncWorker
-	FashionInitWorker                      *fashionWorker.FashionInitWorker
-	FailedItemsCleanupWorker               *fashionWorker.FailedItemsCleanupWorker
-	ProcessingRecoveryWorker               *fashionWorker.ProcessingRecoveryWorker
-	FashionAnalyzeWorker                   *fashionWorker.FashionAnalyzeWorker
-	PlanChangedWorker                      *aiexecutorWorker.PlanChangedWorker
-	DashboardAggregatorWorker              *dashboardWorker.DashboardAggregatorWorker
+	RenewalWorker                          *accountproviders.SubscriptionRenewalWorker
+	PaymentReconciliationWorker            *accountproviders.PaymentReconciliationWorker
+	WebhookInboxWorker                     *accountproviders.WebhookInboxWorker
+	AIUsageReconciliationWorker            *aiproviders.AIUsageReconciliationWorker
+	LoyaltyPointExpiryWorker               *commerceproviders.LoyaltyPointExpiryWorker
+	ESAsyncWorker                          *commerceproviders.SearchSyncWorker
+	FashionInitWorker                      *commerceproviders.FashionInitWorker
+	FailedItemsCleanupWorker               *commerceproviders.FailedItemsCleanupWorker
+	ProcessingRecoveryWorker               *commerceproviders.ProcessingRecoveryWorker
+	FashionAnalyzeWorker                   *commerceproviders.FashionAnalyzeWorker
+	PlanChangedWorker                      *aiproviders.PlanChangedWorker
+	DashboardAggregatorWorker              *commerceproviders.DashboardAggregatorWorker
 	OutboxWorker                           *sharedWorker.OutboxWorker
-	EmailWorker                            *notificationWorker.EmailWorker
-	AuditLogConsumerWorker                 *adminWorker.AuditLogConsumerWorker
-	AuditCleanupWorker                     *adminWorker.AuditCleanupWorker
-	WardrobeFashionEventWorker             *wardrobeWorker.WardrobeFashionEventWorker
-	BrandFashionEventWorker                *brandWorker.BrandFashionEventWorker
-	WardrobeCleanupWorker                  *wardrobeWorker.WardrobeCleanupWorker
-	WardrobeProcessingExhaustedWorker      *wardrobeWorker.WardrobeProcessingExhaustedWorker
-	WardrobeFashionBindWorker              *wardrobeWorker.WardrobeFashionBindWorker
-	ElasticsearchProcessingExhaustedWorker *wardrobeWorker.ElasticsearchProcessingExhaustedWorker
-	BrandFashionBindWorker                 *brandWorker.BrandFashionBindWorker
+	EmailWorker                            *accountproviders.EmailWorker
+	AuditLogConsumerWorker                 *accountproviders.AuditLogConsumerWorker
+	AuditCleanupWorker                     *accountproviders.AuditCleanupWorker
+	WardrobeFashionEventWorker             *commerceproviders.WardrobeFashionEventWorker
+	BrandFashionEventWorker                *commerceproviders.BrandFashionEventWorker
+	WardrobeCleanupWorker                  *commerceproviders.WardrobeCleanupWorker
+	WardrobeProcessingExhaustedWorker      *commerceproviders.WardrobeProcessingExhaustedWorker
+	WardrobeFashionBindWorker              *commerceproviders.WardrobeFashionBindWorker
+	ElasticsearchProcessingExhaustedWorker *commerceproviders.ElasticsearchProcessingExhaustedWorker
+	BrandFashionBindWorker                 *commerceproviders.BrandFashionBindWorker
 }
 
 type App struct {
@@ -85,7 +84,11 @@ func (a *App) Run() error {
 		return fmt.Errorf("server hardening config validation failed: %w", err)
 	}
 
-	if err := db.RunMigrations(context.Background(), a.DB, a.Log); err != nil {
+	// FR-011: each service migrates on start only when enabled. Managed
+	// profiles keep it on; elsewhere run `make migrate-up svc=<name>` (or the
+	// legacy `make migration-up`) before deploy instead. The monolith runs the
+	// full history owned by Account (removed with cmd/server at T034).
+	if err := db.RunMigrationsIfEnabled(context.Background(), a.Config, a.DB, migrations.EmbedFS, a.Log); err != nil {
 		return fmt.Errorf("database migration failed: %w", err)
 	}
 

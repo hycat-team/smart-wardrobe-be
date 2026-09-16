@@ -51,3 +51,16 @@ README*
 *.sln
 *.swp
 *~
+
+# 7. 020 multi-module: build context = repo root cho services/<svc>/Dockerfile (FR-042).
+# Loại spec/docs/deployments/testdata khỏi context (chỉ giữ go.work, go.mod/sum,
+# shared/, contracts/, services/<svc>/). Lưu ý: image rollback monolith-legacy
+# (T006a) build từ working tree của tag nên không chịu exclusion này.
+docs/
+specs/
+.specify/
+.agents/
+deployments/
+**/*_test.go
+**/testdata/
+*.md

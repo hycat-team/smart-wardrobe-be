@@ -1,0 +1,76 @@
+package search
+
+import (
+	"context"
+	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/interface/search"
+	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/itemtype"
+	shared_search "smart-wardrobe-be/shared/infrastructure/search"
+)
+
+func NewWardrobeSearchIndexService(searchEngine *shared_search.ElasticsearchClient) search.IWardrobeSearchIndexService {
+	return &WardrobeSearchService{searchEngine: searchEngine}
+}
+
+func (s *WardrobeSearchService) IndexItem(ctx context.Context, item *dto.SearchDocumentDTO) error {
+	if item.ItemType != itemtype.SystemCatalogItem {
+		return nil
+	}
+	doc := buildItemDocument(item)
+	return s.searchEngine.IndexDocument(ctx, "wardrobe_items", item.ID.String(), doc)
+}
+
+func (s *WardrobeSearchService) DeleteItem(ctx context.Context, itemID string) error {
+	return s.searchEngine.DeleteDocument(ctx, "wardrobe_items", itemID)
+}
+
+// Enabled reports whether the underlying engine is switched on (020, FR-001).
+func (s *WardrobeSearchService) Enabled() bool {
+	return s.searchEngine.Enabled()
+}
+
+func buildItemDocument(item *dto.SearchDocumentDTO) map[string]any {
+	doc := map[string]any{
+		"id":                 item.ID.String(),
+		"user_id":            item.UserID.String(),
+		"fashion_item_id":    item.FashionItemID.String(),
+		"item_type":          int(item.ItemType),
+		"image_url":          item.ImageUrl,
+		"image_public_id":    item.ImagePublicID,
+		"color":              item.Color,
+		"style":              item.Style,
+		"material":           item.Material,
+		"pattern":            item.Pattern,
+		"fit":                item.Fit,
+		"seasonality":        item.Seasonality,
+		"description":        item.Description,
+		"status":             item.Status,
+		"created_at":         item.CreatedAt,
+		"fashion_created_at": item.FashionCreatedAt,
+		"fashion_updated_at": item.FashionUpdatedAt,
+	}
+
+	doc["category"] = map[string]any{
+		"id":   item.Category.ID,
+		"name": item.Category.Name,
+		"slug": item.Category.Slug,
+	}
+
+	if item.Price != nil {
+		doc["price"] = *item.Price
+	}
+	if item.ColorHex != nil {
+		doc["color_hex"] = *item.ColorHex
+	}
+	if item.ColorHue != nil {
+		doc["color_hue"] = *item.ColorHue
+	}
+	if item.ColorSaturation != nil {
+		doc["color_saturation"] = *item.ColorSaturation
+	}
+	if item.ColorLightness != nil {
+		doc["color_lightness"] = *item.ColorLightness
+	}
+
+	return doc
+}

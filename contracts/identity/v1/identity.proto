@@ -1,0 +1,72 @@
+// contracts/identity/v1/identity.proto — inter-service contract (020, T026).
+// Owner: Account service. Consumers: Commerce Core, AI Engine (via client/),
+// Dashboard (readers). Only these 2 services cross the boundary; everything
+// else in identity stays in-process.
+syntax = "proto3";
+
+package closy.identity.v1;
+
+option go_package = "smart-wardrobe-be/contracts/identity/v1;identityv1";
+
+import "google/protobuf/timestamp.proto";
+
+// UserBrief mirrors identity.UserBriefContractDTO (uuids as strings,
+// enums as int32: Gender Unknown=0/Male=1/Female=2/Other=3,
+// UserStatus Active=0/Inactive=1).
+message UserBrief {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+  int32 gender = 6;
+  int32 status = 7;
+  string avatar_url = 8;
+}
+
+message GetUserBriefRequest {
+  string user_id = 1;
+}
+
+message GetUserBriefsRequest {
+  repeated string user_ids = 1;
+}
+
+message GetUserBriefsByIdentifiersRequest {
+  repeated string identifiers = 1;
+}
+
+message UserBriefList {
+  repeated UserBrief users = 1;
+}
+
+// UserAdminStats mirrors identity.UserAdminStatsDTO.
+message UserAdminStats {
+  google.protobuf.Timestamp snapshot_date = 1;
+  int32 total_users = 2;
+  int32 new_users = 3;
+  int32 active_users_dau = 4;
+}
+
+message GetAdminUserStatsRequest {
+  google.protobuf.Timestamp snapshot_date = 1;
+}
+
+message GetActiveUserIDsRequest {}
+
+message UserIDList {
+  repeated string user_ids = 1;
+}
+
+// IdentityService serves user brief lookups across services.
+service IdentityService {
+  rpc GetUserBrief(GetUserBriefRequest) returns (UserBrief);
+  rpc GetUserBriefs(GetUserBriefsRequest) returns (UserBriefList);
+  rpc GetUserBriefsByIdentifiers(GetUserBriefsByIdentifiersRequest) returns (UserBriefList);
+}
+
+// IdentityDashboardService serves identity aggregates for the dashboard.
+service IdentityDashboardService {
+  rpc GetAdminUserStats(GetAdminUserStatsRequest) returns (UserAdminStats);
+  rpc GetActiveUserIDs(GetActiveUserIDsRequest) returns (UserIDList);
+}

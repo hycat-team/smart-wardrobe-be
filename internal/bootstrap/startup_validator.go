@@ -1,8 +1,9 @@
 package bootstrap
 
-import "context"
+import (
+	sharedbootstrap "smart-wardrobe-be/shared/bootstrap"
+)
 
 // StartupValidator defines the contract for validations that must run before the application fully boots.
-type StartupValidator interface {
-	Validate(ctx context.Context) error
-}
+// 020: alias of the shared contract (single identity for wire + services).
+type StartupValidator = sharedbootstrap.StartupValidator

@@ -1,0 +1,30 @@
+// contracts/admin/v1/admin.proto — inter-service contract (020, T028).
+// Owner: Account service. The audit trail is append-only via the transactional
+// outbox; Record is fire-and-forget from the caller's perspective.
+syntax = "proto3";
+
+package closy.admin.v1;
+
+option go_package = "smart-wardrobe-be/contracts/admin/v1;adminv1";
+
+import "google/protobuf/struct.proto";
+
+// RecordAuditLogRequest mirrors admin.RecordAuditLogInput. The free-form
+// payload crosses as google.protobuf.Struct (JSON-compatible).
+message RecordAuditLogRequest {
+  string actor_user_id = 1;
+  string action = 2;
+  string target_type = 3;
+  string target_id = 4;
+  bool has_target_id = 5;
+  google.protobuf.Struct payload = 6;
+  string request_ip = 7;
+  bool has_request_ip = 8;
+}
+
+message RecordAuditLogResponse {}
+
+// AdminService serves audit logging across services.
+service AdminService {
+  rpc RecordAuditLog(RecordAuditLogRequest) returns (RecordAuditLogResponse);
+}
