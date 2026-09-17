@@ -21,7 +21,7 @@ func TestToAppErrorWrapsPlainError(t *testing.T) {
 }
 
 func TestFilterStackTraceArrayKeepsProjectFrames(t *testing.T) {
-	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/internal/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/otherutils/otherutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
+	stack := "goroutine 1 [running]:\nsmart-wardrobe-be/shared/pkg/utils/otherutils.TestFilterStackTraceArrayKeepsProjectFrames()\n\t/work/pkg/utils/otherutils/otherutils_test.go:1 +0x1\nruntime.goexit()\n\t/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1\n"
 
 	filtered := FilterStackTraceArray(stack)
 	joined := strings.Join(filtered, "\n")
@@ -113,10 +113,10 @@ func TestFilterStackTraceArrayCompactsFunctionArgsAndFileLine(t *testing.T) {
 func TestFilterStackTraceArrayKeepsMiddlewareFrameWhenItIsOnlySignal(t *testing.T) {
 	stack := strings.Join([]string{
 		"goroutine 1 [running]:",
-		"smart-wardrobe-be/internal/api/routes.NewEngine.(*RateLimitMiddleware).Handle.func5(0xc0000e0300)",
-		"\t/app/internal/shared/presentation/middleware/ratelimit.go:48 +0x48",
-		"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalErrorHandler.func3(0xc0000e0300)",
-		"\t/app/internal/shared/presentation/middleware/error_handler.go:47 +0xaf",
+		"smart-wardrobe-be/shared/presentation/middleware.(*RateLimitMiddleware).Handle.func5(0xc0000e0300)",
+		"\t/app/shared/presentation/middleware/ratelimit.go:48 +0x48",
+		"smart-wardrobe-be/shared/presentation/middleware.GlobalErrorHandler.func3(0xc0000e0300)",
+		"\t/app/shared/presentation/middleware/error_handler.go:47 +0xaf",
 	}, "\n")
 
 	filtered := FilterStackTraceArray(stack)

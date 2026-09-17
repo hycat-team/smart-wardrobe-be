@@ -1,0 +1,240 @@
+name: Deploy Platform (Cloud Run)
+
+# Deploys the 3 services to Cloud Run (FR-042/FR-052, SC-017/SC-026): matrix per
+# service so one failure does not block the others. Images go to Artifact
+# Registry tagged by git SHA (immutable). Each service gets an HTTP deployment
+# (scale-to-zero) and a worker deployment (singleton, CPU always-on).
+# Secrets are injected as env vars from GitHub Actions secrets at deploy time;
+# values are never printed (FR-052). Cloud Run IAM stays closed (no allUsers);
+# ingress auth is verified by T073 (FR-033).
+
+on:
+    workflow_dispatch:
+        inputs:
+            services:
+                description: "Services to deploy (comma-separated, or 'all')"
+                required: true
+                default: all
+                type: string
+            sha:
+                description: "Git SHA to deploy (default: current HEAD)"
+                required: false
+                default: ""
+                type: string
+
+permissions:
+    contents: read
+    id-token: write
+
+concurrency:
+    group: closy-platform
+    cancel-in-progress: false
+
+env:
+    AR_HOST: asia-southeast1-docker.pkg.dev
+    AR_PROJECT: smart-wardrobe
+    AR_REPO: smart-wardrobe
+    CR_REGION: asia-southeast1
+
+jobs:
+    plan:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set.outputs.matrix }}
+            sha: ${{ steps.sha.outputs.sha }}
+        steps:
+            - name: Resolve service matrix
+              id: set
+              shell: bash
+              run: |
+                  input='${{ inputs.services }}'
+                  if [ "${input}" = "all" ] || [ -z "${input}" ]; then
+                    echo 'matrix=["account","commerce","ai"]' >> "${GITHUB_OUTPUT}"
+                  else
+                    services=$(printf '%s' "${input}" | tr -d ' ' | awk -F, '{for(i=1;i<=NF;i++) printf (i>1?",":"") "\""$i"\""}')
+                    echo "matrix=[${services}]" >> "${GITHUB_OUTPUT}"
+                  fi
+            - name: Resolve SHA
+              id: sha
+              shell: bash
+              run: |
+                  if [ -n "${{ inputs.sha }}" ]; then
+                    echo "sha=${{ inputs.sha }}" >> "${GITHUB_OUTPUT}"
+                  else
+                    echo "sha=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+                  fi
+
+    build-push:
+        needs: plan
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.plan.outputs.sha }}
+
+            - name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+
+            - name: Set up Cloud SDK
+              uses: google-github-actions/setup-gcloud@v2
+
+            - name: Configure Docker for Artifact Registry
+              shell: bash
+              run: gcloud auth configure-docker "${AR_HOST}" --quiet
+
+            - name: Build and push ${{ matrix.service }} image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: services/${{ matrix.service }}/Dockerfile
+                  push: true
+                  platforms: linux/amd64
+                  tags: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
+                  cache-from: type=gha,scope=${{ matrix.service }}
+                  cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+    deploy:
+        needs:
+            - plan
+            - build-push
+        runs-on: ubuntu-latest
+        environment: gcp-production
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        permissions:
+            contents: read
+            id-token: write
+        env:
+            IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.plan.outputs.sha }}
+
+            - name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+
+            - name: Set up Cloud SDK
+              uses: google-github-actions/setup-gcloud@v2
+
+            - name: Materialize env file from secrets
+              shell: bash
+              env:
+                  DB_USER: ${{ secrets.DB_USER }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                  DB_NAME: ${{ secrets.DB_NAME }}
+                  REDIS_HOST: ${{ secrets.REDIS_HOST }}
+                  REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+                  RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
+                  RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
+                  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+                  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+                  JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
+                  JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
+                  JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
+                  SWAGGER_ACCESS_CODE: ${{ secrets.SWAGGER_ACCESS_CODE }}
+                  CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+                  CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+                  CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+                  EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+                  EMAIL_SMTP_KEY: ${{ secrets.EMAIL_SMTP_KEY }}
+                  PAYOS_CLIENT_ID: ${{ secrets.PAYOS_CLIENT_ID }}
+                  PAYOS_API_KEY: ${{ secrets.PAYOS_API_KEY }}
+                  PAYOS_CHECKSUM_KEY: ${{ secrets.PAYOS_CHECKSUM_KEY }}
+                  INGRESS_ACCOUNT_URL: ${{ secrets.INGRESS_ACCOUNT_URL }}
+                  INGRESS_COMMERCE_URL: ${{ secrets.INGRESS_COMMERCE_URL }}
+                  INGRESS_AI_URL: ${{ secrets.INGRESS_AI_URL }}
+              run: |
+                  set -e
+                  {
+                    echo "SERVER_ENV=managed"
+                    echo "APP_MODE=__APP_MODE__"
+                    echo "DB_USER=${DB_USER}"
+                    echo "DB_PASSWORD=${DB_PASSWORD}"
+                    echo "DB_NAME=${DB_NAME}"
+                    echo "REDIS_HOST=${REDIS_HOST}"
+                    echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
+                    echo "REDIS_TLS_ENABLED=true"
+                    echo "RABBITMQ_HOST=${RABBITMQ_HOST}"
+                    echo "RABBITMQ_USER=${RABBITMQ_USER}"
+                    echo "RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}"
+                    echo "RABBITMQ_TLS_ENABLED=true"
+                    echo "RABBITMQ_MANAGEMENT_TLS_ENABLED=true"
+                    echo "JWT_SECRET=${JWT_SECRET}"
+                    echo "JWT_ALGORITHM=${JWT_ALGORITHM}"
+                    echo "JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}"
+                    echo "JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}"
+                    echo "SWAGGER_ACCESS_CODE=${SWAGGER_ACCESS_CODE}"
+                    echo "CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}"
+                    echo "CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}"
+                    echo "CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}"
+                    echo "EMAIL_SMTP_USER=${EMAIL_SMTP_USER}"
+                    echo "EMAIL_SMTP_KEY=${EMAIL_SMTP_KEY}"
+                    echo "PAYOS_CLIENT_ID=${PAYOS_CLIENT_ID}"
+                    echo "PAYOS_API_KEY=${PAYOS_API_KEY}"
+                    echo "PAYOS_CHECKSUM_KEY=${PAYOS_CHECKSUM_KEY}"
+                    echo "INGRESS_ACCOUNT_URL=${INGRESS_ACCOUNT_URL}"
+                    echo "INGRESS_COMMERCE_URL=${INGRESS_COMMERCE_URL}"
+                    echo "INGRESS_AI_URL=${INGRESS_AI_URL}"
+                    echo "DATABASE_MIGRATE_ON_START=true"
+                    echo "DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER=true"
+                    echo "ELASTICSEARCH_ENABLED=false"
+                  } > /tmp/base.env
+                  sed 's/__APP_MODE__/http/' /tmp/base.env > /tmp/http.env
+                  sed 's/__APP_MODE__/worker/' /tmp/base.env > /tmp/worker.env
+                  rm -f /tmp/base.env
+
+            - name: Deploy HTTP (scale-to-zero, HTTP/2)
+              shell: bash
+              run: |
+                  gcloud run deploy "smart-wardrobe-${{ matrix.service }}" \
+                    --image "${IMAGE}" \
+                    --region "${CR_REGION}" \
+                    --platform managed \
+                    --no-allow-unauthenticated \
+                    --use-http2 \
+                    --concurrency 40 \
+                    --max-instances 2 \
+                    --min-instances 0 \
+                    --cpu 1 --memory 512Mi \
+                    --env-vars-file /tmp/http.env \
+                    --quiet
+
+            - name: Deploy worker (singleton, CPU always-on)
+              shell: bash
+              run: |
+                  gcloud run deploy "smart-wardrobe-${{ matrix.service }}-worker" \
+                    --image "${IMAGE}" \
+                    --region "${CR_REGION}" \
+                    --platform managed \
+                    --no-allow-unauthenticated \
+                    --concurrency 1 \
+                    --max-instances 1 \
+                    --min-instances 1 \
+                    --cpu 1 --memory 512Mi \
+                    --cpu-always-allocated \
+                    --env-vars-file /tmp/worker.env \
+                    --quiet
+
+            - name: Verify HTTP health (via run.app URL is IAM-blocked; check service exists)
+              shell: bash
+              run: |
+                  gcloud run services describe "smart-wardrobe-${{ matrix.service }}" \
+                    --region "${CR_REGION}" --format="value(status.url)"

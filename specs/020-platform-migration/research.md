@@ -132,7 +132,7 @@ tiếp tục chạy bằng **poll ticker** (`outboxFallbackInterval` hiện có)
 **Decision**: Mỗi service **tự chạy migration của mình khi khởi động** (Goose provider trên
 `services/<service>/database/migrations`), dùng **advisory lock dùng chung** (Goose session locker,
 cùng lock id) để serialize giữa các instance/service. **Mỗi service một bảng version riêng**
-(Account giữ `goose_db_version` đã có 24 lịch sử; Commerce/AI dùng bảng có hậu tố) + bật
+(Account giữ `goose_db_version` — đã giữ toàn bộ migration lịch sử; Commerce/AI dùng bảng có hậu tố) + bật
 `goose.WithAllowOutofOrder(true)`. Cờ `database.migrate_on_start` bật ở managed.
 
 **Rationale**: FR-011/FR-012/FR-035; mỗi service sở hữu schema của mình. Bảng version dùng chung gây

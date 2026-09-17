@@ -6,7 +6,6 @@
 FROM golang:1.25 AS builder
 WORKDIR /src
 COPY go.work go.work.sum ./
-COPY go.mod go.sum ./
 COPY shared/go.mod ./shared/
 # NOTE: thêm `COPY shared/go.sum ./shared/` khi shared/ có external dependency (T009+).
 COPY contracts/go.mod contracts/go.sum ./contracts/
@@ -24,6 +23,7 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/commerce ./cmd/commerce
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /out/commerce /commerce
 COPY --from=builder /src/services/commerce/database/migrations /migrations
+COPY --from=builder /src/services/commerce/api/swagger /api/swagger
 # Runtime contract: cấu hình 100% qua env; PORT do Cloud Run inject (mặc định 8080).
 ENV PORT=8080
 EXPOSE 8080

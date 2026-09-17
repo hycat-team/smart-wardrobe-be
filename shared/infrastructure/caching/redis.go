@@ -17,14 +17,7 @@ func NewRedisConnection(cfg *config.Config, l logger.Interface) (*redis.Client, 
 	var client *redis.Client
 
 	err := resilience.RunStartupRetry(cfg, l, "redis", func(timeout time.Duration) error {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:         addr,
-			Password:     cfg.Redis.Password,
-			DB:           cfg.Redis.Db,
-			DialTimeout:  timeout,
-			ReadTimeout:  timeout,
-			WriteTimeout: timeout,
-		})
+		rdb := redis.NewClient(redisOptions(cfg, timeout))
 
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()

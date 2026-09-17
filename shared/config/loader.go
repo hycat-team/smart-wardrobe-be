@@ -83,6 +83,7 @@ func applyEnvOverrides(cfg *Config) {
 
 	overrideBool("ELASTICSEARCH_ENABLED", &cfg.Elasticsearch.Enabled)
 	overrideBool("DATABASE_MIGRATE_ON_START", &cfg.Database.MigrateOnStart)
+	overrideBool("DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER", &cfg.Database.MigrationAllowOutOfOrder)
 	overrideBool("REDIS_TLS_ENABLED", &cfg.Redis.TLSEnabled)
 	overrideBool("RABBITMQ_TLS_ENABLED", &cfg.RabbitMQ.TLSEnabled)
 	overrideBool("RABBITMQ_MANAGEMENT_TLS_ENABLED", &cfg.RabbitMQ.ManagementTLSEnabled)
@@ -96,6 +97,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := strings.TrimSpace(os.Getenv("DATABASE_DRILL_SCHEMA")); v != "" {
 		cfg.Database.DrillSchema = v
+	}
+	if v := strings.TrimSpace(os.Getenv("DATABASE_MIGRATION_TABLE")); v != "" {
+		cfg.Database.MigrationTable = v
 	}
 	if v := strings.TrimSpace(os.Getenv("JWT_ALGORITHM")); v != "" {
 		cfg.Jwt.Algorithm = strings.ToUpper(v)

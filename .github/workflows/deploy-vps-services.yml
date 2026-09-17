@@ -1,0 +1,174 @@
+name: Deploy VPS Services
+
+# Deploys the 3-service topology to the VPS (FR-056): matrix per service so one
+# service failing does not block the others, images pushed to GHCR and pinned by
+# digest, then `docker compose up -d <service>`. Used for repatriation and VPS
+# operations after the funded window.
+#
+# Requires the `vps-production` environment (approval gate) and the same VPS
+# secrets as the rollback workflow.
+
+on:
+    workflow_dispatch:
+        inputs:
+            services:
+                description: "Services to deploy (comma-separated, or 'all')"
+                required: true
+                default: all
+                type: string
+
+permissions:
+    contents: read
+    packages: write
+
+concurrency:
+    group: closy-vps-services
+    cancel-in-progress: false
+
+env:
+    GHCR_BASENAME: ${{ github.repository_owner }}
+
+jobs:
+    plan:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set.outputs.matrix }}
+        steps:
+            - name: Resolve service matrix
+              id: set
+              shell: bash
+              run: |
+                  input='${{ inputs.services }}'
+                  if [ "${input}" = "all" ] || [ -z "${input}" ]; then
+                    echo 'matrix=["account","commerce","ai"]' >> "${GITHUB_OUTPUT}"
+                  else
+                    services=$(printf '%s' "${input}" | tr -d ' ' | awk -F, '{for(i=1;i<=NF;i++) printf (i>1?",":"") "\""$i"\""}')
+                    echo "matrix=[${services}]" >> "${GITHUB_OUTPUT}"
+                  fi
+
+    build-push:
+        needs: plan
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        outputs:
+            account: ${{ steps.outputs.account }}
+            commerce: ${{ steps.outputs.commerce }}
+            ai: ${{ steps.outputs.ai }}
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Resolve lowercase image name
+              id: image
+              shell: bash
+              run: echo "name=ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}" >> "${GITHUB_OUTPUT}"
+
+            - name: Build and push ${{ matrix.service }} image
+              id: build
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: services/${{ matrix.service }}/Dockerfile
+                  push: true
+                  platforms: linux/amd64
+                  tags: |
+                      ${{ steps.image.outputs.name }}:${{ github.sha }}
+                      ${{ steps.image.outputs.name }}:latest
+                  cache-from: type=gha,scope=${{ matrix.service }}
+                  cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+            - name: Publish digest output
+              id: outputs
+              shell: bash
+              run: echo "${{ matrix.service }}=${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}" >> "${GITHUB_OUTPUT}"
+
+    deploy:
+        needs: build-push
+        runs-on: ubuntu-latest
+        environment: vps-production
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        steps:
+            - name: Checkout deployment files
+              uses: actions/checkout@v4
+
+            - name: Prepare SSH
+              shell: bash
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+                  chmod 600 ~/.ssh/known_hosts
+
+            - name: Resolve image digest
+              id: digest
+              shell: bash
+              run: |
+                  case '${{ matrix.service }}' in
+                    account) echo "ref=${{ needs.build-push.outputs.account }}" >> "${GITHUB_OUTPUT}" ;;
+                    commerce) echo "ref=${{ needs.build-push.outputs.commerce }}" >> "${GITHUB_OUTPUT}" ;;
+                    ai) echo "ref=${{ needs.build-push.outputs.ai }}" >> "${GITHUB_OUTPUT}" ;;
+                  esac
+
+            - name: Create deployment archive
+              shell: bash
+              run: tar -czf /tmp/closy-svc-deploy.tar.gz deployments/docker-compose.prod.yml deployments/nginx deployments/rabbitmq database/init
+
+            - name: Upload deployment archive
+              shell: bash
+              run: scp -P "${{ secrets.VPS_SSH_PORT }}" /tmp/closy-svc-deploy.tar.gz "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/closy-svc-deploy.tar.gz"
+
+            - name: Log VPS in to private GHCR
+              shell: bash
+              run: printf '%s' "${{ secrets.GHCR_READ_TOKEN }}" | ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker login ghcr.io -u '${{ secrets.GHCR_USERNAME }}' --password-stdin"
+
+            - name: Deploy pinned service image
+              shell: bash
+              run: |
+                  SERVICE='${{ matrix.service }}'
+                  UPPER=$(printf '%s' "${SERVICE}" | tr '[:lower:]' '[:upper:]')
+                  ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+                    set -e
+                    mkdir -p /opt/closy
+                    tar -xzf /tmp/closy-svc-deploy.tar.gz -C /opt/closy
+                    rm -f /tmp/closy-svc-deploy.tar.gz
+                    cd /opt/closy
+                    touch .env.deploy
+                    grep -v '^${UPPER}_IMAGE=' .env.deploy > .env.deploy.next || true
+                    printf '${UPPER}_IMAGE=%s\n' '${{ steps.digest.outputs.ref }}' >> .env.deploy.next
+                    mv .env.deploy.next .env.deploy
+                    chmod 600 .env.deploy
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml config >/dev/null
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull ${SERVICE}
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d ${SERVICE}
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps ${SERVICE}
+                  "
+
+            - name: Smoke test deployed service
+              if: vars.VPS_SMOKE_URL != ''
+              shell: bash
+              run: |
+                  for i in $(seq 1 12); do
+                    if curl --fail --silent --show-error "${{ vars.VPS_SMOKE_URL }}/api/v1/health"; then
+                      exit 0
+                    fi
+                    sleep 5
+                  done
+                  echo "smoke test failed for ${{ matrix.service }}"
+                  exit 1

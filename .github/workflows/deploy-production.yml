@@ -1,138 +1,85 @@
-name: Deploy Production
+name: Deploy Production (Monolith Legacy Rollback)
+
+# Emergency monolith rollback only (FR-043/FR-056, SC-030).
+#
+# This workflow MUST NOT build the monolith from `main` (cmd/server is removed
+# from main at T034). It builds ONCE from the frozen `monolith-legacy` tag,
+# pushes the image to GHCR, and deploys it on the VPS under the compose
+# `rollback` profile with the image pinned by digest.
+#
+# For normal VPS operation use `deploy-vps-services.yml` (3-service topology).
 
 on:
-    push:
-        tags:
-            - "v*"
+    workflow_dispatch:
+        inputs:
+            confirm:
+                description: "Type 'rollback' to confirm the monolith rollback deploy"
+                required: true
+                type: string
 
 permissions:
     contents: read
     packages: write
 
 concurrency:
-    group: closy-production
+    group: closy-production-rollback
     cancel-in-progress: false
 
 env:
-    IMAGE_BASENAME: backend-smartwardrobe
+    IMAGE_BASENAME: monolith-legacy
 
 jobs:
     validate:
         runs-on: ubuntu-latest
-        outputs:
-            version: ${{ steps.release.outputs.version }}
-            commit_sha: ${{ steps.release.outputs.commit_sha }}
-
         steps:
-            - name: Checkout tagged source
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-
-            - name: Validate production tag
-              id: release
+            - name: Refuse unless confirmed
               shell: bash
               run: |
-                  VERSION="${GITHUB_REF_NAME}"
-
-                  if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-                    echo "Invalid production tag: ${VERSION}"
-                    echo "Expected format: vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE"
+                  if [ "${{ inputs.confirm }}" != "rollback" ]; then
+                    echo "Refusing to deploy: confirmation string did not match 'rollback'."
                     exit 1
                   fi
 
-                  git fetch --force origin main
-                  COMMIT_SHA="$(git rev-list -n 1 "${VERSION}")"
+            - name: Checkout (need full history for the legacy tag)
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-                  if ! git merge-base --is-ancestor "${COMMIT_SHA}" origin/main; then
-                    echo "Tagged commit is not part of the main branch history."
+            - name: Verify frozen tag exists and is not main
+              shell: bash
+              run: |
+                  git rev-parse --verify refs/tags/monolith-legacy
+                  LEGACY_SHA="$(git rev-list -n 1 monolith-legacy)"
+                  MAIN_SHA="$(git rev-list -n 1 origin/main 2>/dev/null || git rev-list -n 1 HEAD)"
+                  echo "legacy=${LEGACY_SHA}" >> "${GITHUB_OUTPUT}"
+                  if [ "${LEGACY_SHA}" = "${MAIN_SHA}" ]; then
+                    echo "monolith-legacy must not equal main"
                     exit 1
                   fi
-
-                  echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-                  echo "commit_sha=${COMMIT_SHA}" >> "${GITHUB_OUTPUT}"
-
-    verify-static:
-        needs: validate
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Checkout released source
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ needs.validate.outputs.version }}
-                  fetch-depth: 0
-
-            - name: Set up Go 1.25
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.25.x"
-                  cache: true
-
-            - name: Run static checks
-              run: make fmt-check && make tidy-check && make generate-check
-
-    verify-vet:
-        needs: validate
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Checkout released source
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ needs.validate.outputs.version }}
-                  fetch-depth: 0
-
-            - name: Set up Go 1.25
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.25.x"
-                  cache: true
-
-            - name: Run go vet
-              run: make vet
-
-    verify-test:
-        needs: validate
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Checkout released source
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ needs.validate.outputs.version }}
-                  fetch-depth: 0
-
-            - name: Set up Go 1.25
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.25.x"
-                  cache: true
-
-            - name: Run tests
-              run: make test
+                  echo "Frozen tag verified: ${LEGACY_SHA}"
 
     build:
-        needs:
-            - validate
-            - verify-static
-            - verify-vet
-            - verify-test
+        needs: validate
         runs-on: ubuntu-latest
         outputs:
             image_name: ${{ steps.image.outputs.name }}
             image_digest: ${{ steps.build.outputs.digest }}
-
+            legacy_sha: ${{ steps.tag.outputs.legacy_sha }}
         steps:
-            - name: Checkout released source
+            - name: Checkout (compose + legacy Dockerfile come from main)
               uses: actions/checkout@v4
               with:
-                  ref: ${{ needs.validate.outputs.version }}
+                  fetch-depth: 0
 
-            - name: Resolve lowercase image name
-              id: image
+            - name: Materialize frozen tag tree
+              id: tag
               shell: bash
-              run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_BASENAME}" >> "${GITHUB_OUTPUT}"
+              run: |
+                  LEGACY_SHA="$(git rev-list -n 1 monolith-legacy)"
+                  echo "legacy_sha=${LEGACY_SHA}" >> "${GITHUB_OUTPUT}"
+                  mkdir -p _legacy
+                  git archive monolith-legacy | tar -x -C _legacy
+                  cp deployments/monolith-legacy/Dockerfile _legacy/Dockerfile.legacy
 
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v3
@@ -147,35 +94,34 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and push backend image
+            - name: Resolve lowercase image name
+              id: image
+              shell: bash
+              run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_BASENAME}" >> "${GITHUB_OUTPUT}"
+
+            - name: Build and push monolith-legacy image
               id: build
               uses: docker/build-push-action@v6
               with:
-                  context: .
-                  file: ./Dockerfile
-                  target: production
+                  context: _legacy
+                  file: _legacy/Dockerfile.legacy
                   push: true
                   platforms: linux/amd64
                   tags: |
-                      ${{ steps.image.outputs.name }}:${{ needs.validate.outputs.version }}
-                      ${{ steps.image.outputs.name }}:${{ needs.validate.outputs.commit_sha }}
+                      ${{ steps.image.outputs.name }}:${{ steps.tag.outputs.legacy_sha }}
                       ${{ steps.image.outputs.name }}:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  cache-from: type=gha,scope=monolith-legacy
+                  cache-to: type=gha,mode=max,scope=monolith-legacy
                   provenance: true
                   sbom: true
 
     deploy:
-        needs:
-            - validate
-            - build
+        needs: build
         runs-on: ubuntu-latest
-
+        environment: vps-production
         steps:
-            - name: Checkout released deployment files
+            - name: Checkout deployment files (from main)
               uses: actions/checkout@v4
-              with:
-                  ref: ${{ needs.validate.outputs.version }}
 
             - name: Prepare SSH
               shell: bash
@@ -188,52 +134,38 @@ jobs:
 
             - name: Create deployment archive
               shell: bash
-              run: tar -czf /tmp/closy-deploy.tar.gz deployments/docker-compose.prod.yml deployments/nginx deployments/rabbitmq database/init
+              run: tar -czf /tmp/closy-rollback.tar.gz deployments/docker-compose.prod.yml deployments/nginx deployments/rabbitmq database/init
 
             - name: Upload deployment archive
               shell: bash
-              run: scp -P "${{ secrets.VPS_SSH_PORT }}" /tmp/closy-deploy.tar.gz "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/closy-deploy.tar.gz"
+              run: scp -P "${{ secrets.VPS_SSH_PORT }}" /tmp/closy-rollback.tar.gz "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/closy-rollback.tar.gz"
 
             - name: Log VPS in to private GHCR
               shell: bash
               run: printf '%s' "${{ secrets.GHCR_READ_TOKEN }}" | ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker login ghcr.io -u '${{ secrets.GHCR_USERNAME }}' --password-stdin"
 
-            - name: Deploy immutable backend image
+            - name: Deploy monolith rollback (compose profile rollback)
               shell: bash
               run: |
                   ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
                     set -e
                     mkdir -p /opt/closy
-                    tar -xzf /tmp/closy-deploy.tar.gz -C /opt/closy
-                    rm -f /tmp/closy-deploy.tar.gz
+                    tar -xzf /tmp/closy-rollback.tar.gz -C /opt/closy
+                    rm -f /tmp/closy-rollback.tar.gz
                     cd /opt/closy
-                    if [ -f .env.deploy ]; then cp .env.deploy .env.deploy.previous; fi
-                    printf 'BACKEND_IMAGE=%s@%s\n' '${{ needs.build.outputs.image_name }}' '${{ needs.build.outputs.image_digest }}' > .env.deploy
+                    touch .env.deploy
+                    grep -v '^MONOLITH_IMAGE=' .env.deploy > .env.deploy.next || true
+                    printf 'MONOLITH_IMAGE=%s@%s\n' '${{ needs.build.outputs.image_name }}' '${{ needs.build.outputs.image_digest }}' >> .env.deploy.next
+                    mv .env.deploy.next .env.deploy
                     chmod 600 .env.deploy
                     docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml config >/dev/null
-                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull
-                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d --remove-orphans
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull backend
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml --profile rollback up -d backend
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml stop account commerce ai || true
                     docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
                   "
 
-            - name: Verify production health
+            - name: Verify rollback health
+              if: vars.PRODUCTION_HEALTH_URL != ''
               shell: bash
               run: curl --fail --silent --show-error --retry 12 --retry-delay 5 "${{ vars.PRODUCTION_HEALTH_URL }}"
-
-            - name: Roll back backend when deployment fails
-              if: failure()
-              shell: bash
-              run: |
-                  ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
-                    cd /opt/closy
-                    if [ -f .env.deploy.previous ]; then
-                      mv .env.deploy.previous .env.deploy
-                      docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml pull backend
-                      docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d --remove-orphans
-                    fi
-                  "
-
-            - name: Remove unused images
-              if: success()
-              shell: bash
-              run: ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker image prune -f"

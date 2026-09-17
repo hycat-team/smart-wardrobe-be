@@ -28,8 +28,8 @@
    Nginx config (single source cho `api-v2`).
 5. **Song song + cutover THỦ CÔNG**: monolith trên VPS phục vụ `api.closy`; 3 service Cloud Run phục
    vụ `api-v2`, chạy **song song**. Việc đưa `api.closy...` sang Cloud Run là **thao tác thủ công**,
-   do owner quyết định thời điểm khi **gate đo được** đạt (smoke test 100% pass, error-rate/p95/SSE
-   ổn định N ngày liên tiếp — ngưỡng ghi trong runbook FR-041); MUST có **runbook cutover + rollback**
+   do owner quyết định thời điểm khi **gate đo được** đạt (smoke test 100% pass, error-rate ≤ 1%,
+   p95 ≤ 500ms, SSE không rớt, ổn định **7 ngày liên tiếp** — chi tiết thêm trong runbook FR-041); MUST có **runbook cutover + rollback**
    trong `docs/` (deliverable, FR-041). Trước khi cutover, `api.closy` MUST giữ nguyên routing tới monolith.
 6. **Compute**: Cloud Run `asia-southeast1`; HTTP scale-to-zero (`max-instances=2`), worker `min-instances=1` + `max-instances=1` (singleton); trial +
    billing cap + teardown.
@@ -47,11 +47,12 @@
     App-level `Authorization: Bearer <Closy JWT>` MUST được giữ nguyên cho backend (Cloud Run
     strip header `X-Serverless-Authorization` trước khi tới container).
 12. **Migration**: mỗi service sở hữu migration của mình và **tự chạy khi khởi động** (Goose).
-    **Mỗi service một bảng version riêng** — Account giữ `goose_db_version` (đã có 24 lịch sử),
+    **Mỗi service một bảng version riêng** — Account giữ `goose_db_version` (đã giữ toàn bộ migration
+    lịch sử hiện có),
     Commerce/AI dùng `goose_db_version_commerce` / `goose_db_version_ai` — để **không lệch version
     giữa các service**; bật **allow-out-of-order** để chịu được migration merge muộn trong cùng
-    service. **Advisory lock dùng chung** (cùng lock id) để serialize. Toàn bộ **24 migration lịch
-    sử do Account giữ**; migration mới được tạo trong chính service phát sinh.
+    service. **Advisory lock dùng chung** (cùng lock id) để serialize. **Toàn bộ migration lịch sử
+    hiện có do Account giữ** (không gắn số cứng); migration mới được tạo trong chính service phát sinh.
 13. **Dev tooling**: Makefile MUST được thiết kế lại cho multi-module workspace — target per-service
     (build / wire / swagger / migrate / test) và target toàn workspace; MUST NOT còn phụ thuộc path
     monolith (`./cmd/server`, `./internal/di`, `./api/swagger`).
@@ -104,6 +105,7 @@
 | 9 section | 9 module tài liệu API: identity, subscription, admin, notification, wardrobe, fashion, brand, dashboard, aiexecutor |
 | DAG | Đồ thị gọi liên service không có cycle (mục 3 ở trên) |
 | Môi trường Cloud (drill) | Một môi trường Cloud duy nhất dùng chung 1 database; "drill" là chạy thử runbook bằng **schema tạm** rồi xoá. **Không có môi trường staging tách biệt.** |
+| 8 schema module | Số schema nghiệp vụ của hệ thống; `public` và `shared` là hạ tầng có trong `search_path` nhưng **không** tính là schema module. |
 
 ## Clarifications
 
@@ -180,13 +182,21 @@
 - Q: `ci.yml` hiện gắn monolith xử lý thế nào? → A: **Viết lại `ci.yml` cho workspace** (matrix 3 service + job workspace: buf lint, swagger parity 9 section), không build monolith trong CI (FR-020).
 - Q: Rollback khi `api-v2` lỗi sau deploy? → A: Runbook ghi **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service lỗi; (2) **ingress-level** — Nginx `api.closy` về monolith (FR-041).
 - Q: Xác thực domain gửi email Brevo (SPF/DKIM trên Vercel DNS)? → A: **Ngoài phạm vi 020** — Brevo đã được cấu hình và gửi email thành công từ trước; 020 không thêm FR/task cho việc này.
-- Q: Đường deploy VPS (3 service) và monolith frozen sau khi xoá `cmd/server`? → A: Thêm workflow `deploy-vps-services.yml` (dispatch + approval, matrix 3 service → GHCR → compose, pin theo digest) cho repatriation/vận hành VPS; chuyển `deploy-production.yml` thành build **từ tag `monolith-legacy`** (dispatch) cho rollback khẩn cấp, MUST NOT build monolith từ `main`; T034 phụ thuộc T097c (FR-056, SC-030).
+- Q: Đường deploy VPS (3 service) và monolith frozen sau khi xoá `cmd/server`? → A: Thêm workflow `deploy-vps-services.yml` (dispatch + approval, matrix 3 service → GHCR → compose, pin theo digest) cho repatriation/vận hành VPS; chuyển `deploy-production.yml` thành build **từ tag `monolith-legacy`** (dispatch) cho rollback khẩn cấp, MUST NOT build monolith từ   `main`; T034 phụ thuộc **T097 → T097c** (FR-056, SC-030).
 
 ### Session 2026-09-15 (đợt 8 — tích hợp build mode)
 
 - Q: Mức quan trắc tối thiểu cho 3 service trên Cloud Run là gì? → A: Log JSON có cấu trúc + metrics/alert Cloud Monitoring (health/latency/error); không yêu cầu OTEL tracing trong 020 (FR-057, SC-031).
 - Q: Tiêu chí nào xác định `api-v2` "đủ ổn định" để cutover thủ công `api.closy`? → A: Gate đo được — smoke 100% pass, error-rate/p95/SSE ổn định N ngày liên tiếp (ngưỡng trong runbook FR-041); owner quyết định thời điểm khi gate đạt.
 - Q: Grace period redirect 301 `api-v2` về `api.closy` sau repatriation kéo dài bao lâu? → A: **14–30 ngày** (trùm TTL/client cache), cả hai host cùng phục vụ 3-service compose; sau đó xoá DNS `api-v2` (FR-055, SC-029).
+
+### Session 2026-09-17
+
+- Q: Số schema chuẩn dùng trong spec là bao nhiêu? → A: **8 schema module nghiệp vụ**; `public` và `shared` là hạ tầng có trong `search_path` nhưng KHÔNG tính là schema module (`search_path` vẫn giữ 9 phần tử).
+- Q: Có gắn số cứng cho số migration lịch sử do Account giữ không? → A: **Không gắn số cứng**; dùng "**toàn bộ migration lịch sử hiện có** do Account giữ" và verify bằng "không chạy lại migration đã apply" thay vì đếm. (Các câu trả lời lịch sử ghi "24" được thay bằng cách diễn đạt này.)
+- Q: Ngưỡng gate cutover `api.closy` (N ngày, SLI) là bao nhiêu? → A: Cố định trong spec: smoke **100% pass**, error-rate **≤ 1%**, p95 **≤ 500ms**, SSE **không rớt**, ổn định **7 ngày liên tiếp**; runbook chỉ chi tiết hoá, không nới ngưỡng (FR-041, SC-015). (Thay cho cách gọi "N ngày" ở các phiên trước.)
+- Q: Literal `8080` trong code có bị coi là vi phạm SC-023 không? → A: **Cấm literal `8080` trong code** (`services/**/*.go`); default cổng cho local chỉ được đặt trong `configs/config.yaml` (`server.port`) kèm ghi chú (FR-049, SC-023).
+- Q: Xác minh SC-016 "0 request `api-v2` qua Cloudflare" bằng cách nào? → A: Verify đo được trong runbook: Nginx access log của `api-v2` + DNS `api-v2` chỉ trỏ VPS + `curl -I` không có header `cf-ray`/`server: cloudflare` (SC-016).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -400,7 +410,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 - **FR-039**: **Bổ trợ cho FR-033 (phần credential/helper)** — MUST có **token helper** trên VPS sinh Google ID token cho service account (audience = URL `run.app` của từng service), cache và refresh trước khi hết hạn; credential MUST least-privilege và có phương án rotation. Workload Identity Federation chỉ xem xét nếu triển khai được **không làm tăng phức tạp quá mức** (trade-off ghi trong ADR).
 - **FR-040**: Nginx MUST terminate TLS cho **cả** `api.closy...` và `api-v2.closy.hycat.online`; certificate Let's Encrypt MUST được cấp/mở rộng để gồm hostname mới và gia hạn tự động.
-- **FR-041**: MUST có runbook **cutover thủ công** `api.closy...` → Cloud Run: điều kiện tiên quyết, thứ tự bước (đổi Nginx/DNS, xác minh dữ liệu), kiểm thử, và **rollback**; MUST drill được trên môi trường Cloud. Timing do owner quyết định **khi gate đo được đạt**: smoke test 100% pass, error-rate/p95 latency/SSE ổn định N ngày liên tiếp (ngưỡng ghi trong runbook). Cutover thủ công MUST NOT yêu cầu sửa mã nguồn nghiệp vụ. Rollback MUST ghi rõ **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service bị lỗi (per-service, tức thời); (2) **ingress-level** — đổi Nginx `api.closy` về monolith (rollback toàn hệ).
+- **FR-041**: MUST có runbook **cutover thủ công** `api.closy...` → Cloud Run: điều kiện tiên quyết, thứ tự bước (đổi Nginx/DNS, xác minh dữ liệu), kiểm thử, và **rollback**; MUST drill được trên môi trường Cloud. Timing do owner quyết định **khi gate đo được đạt** với ngưỡng tối thiểu cố định: smoke test 100% pass, error-rate ≤ 1%, p95 latency ≤ 500ms, SSE không rớt kết nối, ổn định **7 ngày liên tiếp** (runbook chỉ chi tiết hoá thêm, không nới ngưỡng). Cutover thủ công MUST NOT yêu cầu sửa mã nguồn nghiệp vụ. Rollback MUST ghi rõ **2 mức**: (1) **Cloud Run revision-level** — shift traffic về revision trước cho service bị lỗi (per-service, tức thời); (2) **ingress-level** — đổi Nginx `api.closy` về monolith (rollback toàn hệ).
 
 **Container image & triển khai độc lập**
 
@@ -418,7 +428,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 **Tương thích connection pooler managed**
 
-- **FR-046**: Runtime DB MUST đi qua **Supavisor transaction pooler (6543)** với **prepared statement tắt** (`default_query_exec_mode=simple_protocol`, hoặc `QueryExecModeExec`/tương đương) — MUST NOT dùng named prepared statement qua pooler. `search_path` MUST được cấu hình **server-side** (`ALTER ROLE`/`ALTER DATABASE` trên Supabase), MUST NOT phụ thuộc startup parameter trong DSN client. Migration, `LISTEN/NOTIFY` và advisory lock MUST dùng **direct connection 5432** (vì là session-scoped). MUST có test thực trên Supabase chứng minh: query resolve đúng 9 schema, không lỗi prepared statement, không leak session state giữa tenant.
+- **FR-046**: Runtime DB MUST đi qua **Supavisor transaction pooler (6543)** với **prepared statement tắt** (`default_query_exec_mode=simple_protocol`, hoặc `QueryExecModeExec`/tương đương) — MUST NOT dùng named prepared statement qua pooler. `search_path` MUST được cấu hình **server-side** (`ALTER ROLE`/`ALTER DATABASE` trên Supabase), MUST NOT phụ thuộc startup parameter trong DSN client. Migration, `LISTEN/NOTIFY` và advisory lock MUST dùng **direct connection 5432** (vì là session-scoped). MUST có test thực trên Supabase chứng minh: query resolve đúng **8 schema module** nghiệp vụ (không tính `public`/`shared` hạ tầng trong `search_path`), không lỗi prepared statement, không leak session state giữa tenant.
 
 **Ngân sách connection & giới hạn autoscale**
 
@@ -434,7 +444,7 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 
 **Cổng lắng nghe (platform port)**
 
-- **FR-049**: Service MUST lấy cổng lắng nghe từ env **`PORT`** do platform inject (ưu tiên cao nhất), fallback `SERVER_PORT`/YAML cho local/VPS; MUST bind trên giá trị đó và MUST NOT hardcode 8080. Áp dụng cho cả `APP_MODE=http` và `APP_MODE=worker`.
+- **FR-049**: Service MUST lấy cổng lắng nghe từ env **`PORT`** do platform inject (ưu tiên cao nhất), fallback `SERVER_PORT`/YAML cho local/VPS; MUST bind trên giá trị đó và MUST NOT hardcode 8080. Cụ thể: literal `8080` MUST NOT xuất hiện trong **code** (`services/**/*.go` — `main.go`/bootstrap chỉ đọc từ config); default cổng cho local CHỈ được đặt trong `configs/config.yaml` (`server.port`) kèm ghi chú. Áp dụng cho cả `APP_MODE=http` và `APP_MODE=worker`.
 - **FR-050**: Runtime image MUST ở dạng **distroless static nonroot** và binary MUST **nhúng tzdata** (`import _ "time/tzdata"`) để `time.LoadLocation`/`TZ` hoạt động mà không cần cài OS package; MUST NOT thêm tzdata/alpine runtime chỉ để có timezone.
 
 **Registry & phân phối image**
@@ -496,15 +506,15 @@ Trước khi 4 hạng mục funded hết hạn (3 tháng), đội vận hành th
 - **SC-012**: Hợp tài liệu API của 3 service giữ đủ 9 section; route `api-v2` tới đúng 3 service qua Nginx pass 100% smoke test.
 - **SC-013**: 100% request tới Cloud Run thiếu ID token hợp lệ bị từ chối (Cloud Run IAM); 0 request `api-v2` bypass được IAM.
 - **SC-014**: Stream AI dài giữ được kết nối qua Nginx → Cloud Run với heartbeat 15s; 0 lỗi timeout do buffering.
-- **SC-015**: `api-v2` chạy trên Cloud Run qua Nginx; `api.closy` tiếp tục monolith cho tới khi owner thực hiện **cutover thủ công** khi gate đo được đạt (smoke 100% pass, error-rate/p95/SSE ổn định N ngày liên tiếp); runbook cutover + rollback tồn tại và đã drill (FR-041).
-- **SC-016**: 0 request của `api-v2` đi qua Cloudflare (Cloudflare nằm ngoài đường API).
+- **SC-015**: `api-v2` chạy trên Cloud Run qua Nginx; `api.closy` tiếp tục monolith cho tới khi owner thực hiện **cutover thủ công** khi gate đo được đạt (smoke 100% pass, error-rate ≤ 1%, p95 ≤ 500ms, SSE không rớt, ổn định **7 ngày liên tiếp**); runbook cutover + rollback tồn tại và đã drill (FR-041).
+- **SC-016**: 0 request của `api-v2` đi qua Cloudflare (Cloudflare nằm ngoài đường API); xác minh bằng: Nginx access log của `api-v2`, xác nhận DNS `api-v2` chỉ trỏ VPS (không proxy Cloudflare), và `curl -I` không xuất hiện header `cf-ray` / `server: cloudflare`.
 - **SC-017**: 100% (3/3) service build/push/deploy độc lập thành công mà không cần build lại service khác; image rollback `monolith-legacy` build được từ tag frozen và `docker compose` profile rollback khởi động được.
 - **SC-018**: 0 consumer/outbox/cron khởi động trong deployment `APP_MODE=http`; deployment `APP_MODE=worker` chạy liên tục (CPU always-on) và phục vụ health probe thành công.
 - **SC-019**: 0 trường hợp cron/consumer thực thi trùng trên nhiều instance (worker `max-instances=1`); 100% job không idempotent hoàn tất đúng 1 lần mỗi lịch kể cả khi instance restart.
 - **SC-020**: 0 lỗi prepared statement và 0 truy vấn sai schema khi runtime chạy qua transaction pooler 6543 (test thực trên Supabase); migration/`LISTEN`/advisory lock hoạt động đúng trên direct 5432.
 - **SC-021**: 0 lần vượt connection limit (Supabase pooler / CloudAMQP ≤100 / Redis ≤256) trong test tải; cấu hình deploy thực tế khớp bảng budget trong plan (sai lệch = 0).
 - **SC-022**: 100% gRPC call liên service (Commerce→Account, Commerce→AI, AI→Account) thành công qua Cloud Run HTTP/2; 0 lỗi framing/HTTP-2 mismatch; health check `grpc.health.v1` pass.
-- **SC-023**: Deployment Cloud Run khởi động và startup probe pass với cổng do platform inject (`PORT`); 0 chỗ hardcode 8080 trong code/config.
+- **SC-023**: Deployment Cloud Run khởi động và startup probe pass với cổng do platform inject (`PORT`); **0 literal `8080` trong code** (`services/**/*.go`); default cổng local chỉ nằm trong `configs/config.yaml` (`server.port`) và có ghi chú.
 - **SC-024**: 0 lỗi timezone (`LoadLocation`) khi chạy image distroless nonroot; giờ nghiệp vụ đúng `Asia/Ho_Chi_Minh`.
 - **SC-025**: Cloud Run pull image từ Artifact Registry thành công (0 lỗi auth); VPS pull image từ GHCR như hiện tại; 0 image private ở chế độ public.
 - **SC-026**: 0 secret xuất hiện trong repo/image/log/CI output; 100% Cloud Run service khởi động với env secrets tiêm từ CI; rotation verify được bằng redeploy 1 service độc lập.

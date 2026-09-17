@@ -219,6 +219,13 @@ type Database struct {
 	// MigrateOnStart lets each service run its own Goose migrations at boot
 	// (FR-035). Enabled on managed, safe default per profile.
 	MigrateOnStart bool `mapstructure:"migrate_on_start"`
+	// MigrationTable is the per-service Goose version table (FR-035). Account
+	// keeps `goose_db_version`; Commerce/AI use suffixed tables so version
+	// ordering never collides across services sharing one database.
+	MigrationTable string `mapstructure:"migration_table"`
+	// MigrationAllowOutOfOrder tolerates late-merged migrations within one
+	// service (FR-035). Enabled on managed.
+	MigrationAllowOutOfOrder bool `mapstructure:"migration_allow_out_of_order"`
 	// Listener* is the session-scoped direct DSN used for migration,
 	// LISTEN/NOTIFY and advisory locks — never the transaction pooler (FR-046).
 	ListenerHost    string `mapstructure:"listener_host"`

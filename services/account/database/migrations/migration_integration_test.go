@@ -37,7 +37,7 @@ func TestIntegrationRunMigrationsConcurrent(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			errs[idx] = shareddb.RunMigrations(context.Background(), gormDB, accountmigrations.EmbedFS, zap.NewNop())
+			errs[idx] = shareddb.RunMigrations(context.Background(), gormDB, accountmigrations.EmbedFS, "goose_db_version", true, zap.NewNop())
 		}(i)
 	}
 	wg.Wait()

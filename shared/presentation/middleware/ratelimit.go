@@ -2,47 +2,73 @@ package middleware
 
 import (
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	shared_caching "smart-wardrobe-be/shared/application/interface/caching"
 	"smart-wardrobe-be/shared/config"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/time/rate"
 )
 
+// RateLimitMiddleware is a Redis-backed fixed-window rate limiter (FR-054).
+// It is accurate across instances because all replicas share the same
+// IRateLimiter backend. A backend error fails open to preserve availability.
 type RateLimitMiddleware struct {
-	tokenLimit           int
-	tokensPerPeriod      int
-	replenishmentSeconds int
-	visitors             sync.Map
-	stopChan             chan struct{}
+	limiter       shared_caching.IRateLimiter
+	limit         int
+	windowSeconds int
+	keyPrefix     string
 }
 
-type visitor struct {
-	Limiter  *rate.Limiter
-	LastSeen time.Time
-	mu       sync.Mutex
-}
-
-func NewRateLimitMiddleware(cfg *config.Config) *RateLimitMiddleware {
-	m := &RateLimitMiddleware{
-		tokenLimit:           cfg.RateLimit.TokenLimit,
-		tokensPerPeriod:      cfg.RateLimit.TokensPerPeriod,
-		replenishmentSeconds: cfg.RateLimit.ReplenishmentSeconds,
-		stopChan:             make(chan struct{}),
+// NewRateLimitMiddleware builds the general API rule keyed by client IP.
+func NewRateLimitMiddleware(cfg *config.Config, limiter shared_caching.IRateLimiter) *RateLimitMiddleware {
+	return &RateLimitMiddleware{
+		limiter:       limiter,
+		limit:         cfg.RateLimit.TokenLimit,
+		windowSeconds: cfg.RateLimit.ReplenishmentSeconds,
+		keyPrefix:     "rl:api:",
 	}
-
-	go m.startCleanupJob(5*time.Minute, 1*time.Minute)
-
-	return m
 }
 
 func (m *RateLimitMiddleware) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.ClientIP()
+		m.check(c, m.keyPrefix+c.ClientIP())
+	}
+}
 
-		limiter := m.getLimiter(key)
-		if !limiter.Allow() {
+// LoginRateLimitMiddleware is the stricter login/OTP shield keyed by client
+// IP plus user/token identifier. Thresholds come from claim_rate_limit
+// (user_limit, fallback ip_limit); the window reuses
+// rate_limit.replenishment_seconds — nothing is hardcoded.
+type LoginRateLimitMiddleware struct {
+	limiter       shared_caching.IRateLimiter
+	limit         int
+	windowSeconds int
+}
+
+// NewLoginRateLimitMiddleware builds the login/OTP rule.
+func NewLoginRateLimitMiddleware(cfg *config.Config, limiter shared_caching.IRateLimiter) *LoginRateLimitMiddleware {
+	limit := cfg.ClaimRateLimit.UserLimit
+	if limit <= 0 {
+		limit = cfg.ClaimRateLimit.IPLimit
+	}
+	if limit <= 0 {
+		limit = cfg.RateLimit.TokenLimit
+	}
+	return &LoginRateLimitMiddleware{
+		limiter:       limiter,
+		limit:         limit,
+		windowSeconds: cfg.RateLimit.ReplenishmentSeconds,
+	}
+}
+
+func (m *LoginRateLimitMiddleware) Handle() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		key := "rl:login:" + c.ClientIP() + ":" + loginIdentifier(c)
+		allowed, err := m.limiter.Allow(c.Request.Context(), key, m.limit, m.windowSeconds)
+		if err != nil {
+			c.Next()
+			return
+		}
+		if !allowed {
 			c.Error(apperror.NewTooManyRequest("Bạn đang thao tác quá nhanh. Vui lòng thử lại sau ít phút."))
 			c.Abort()
 			return
@@ -51,54 +77,34 @@ func (m *RateLimitMiddleware) Handle() gin.HandlerFunc {
 	}
 }
 
-func (m *RateLimitMiddleware) getLimiter(key string) *rate.Limiter {
-	v, exists := m.visitors.Load(key)
-
-	if !exists {
-		r := rate.Limit(float64(m.tokensPerPeriod) / float64(m.replenishmentSeconds))
-		limiter := rate.NewLimiter(r, m.tokenLimit)
-		newVisitor := &visitor{Limiter: limiter, LastSeen: time.Now()}
-
-		actual, loaded := m.visitors.LoadOrStore(key, newVisitor)
-		if loaded {
-			v = actual
-		} else {
-			return limiter
-		}
+func (m *RateLimitMiddleware) check(c *gin.Context, key string) {
+	allowed, err := m.limiter.Allow(c.Request.Context(), key, m.limit, m.windowSeconds)
+	if err != nil {
+		c.Next()
+		return
 	}
-
-	vis := v.(*visitor)
-	vis.mu.Lock()
-	vis.LastSeen = time.Now()
-	vis.mu.Unlock()
-
-	return vis.Limiter
+	if !allowed {
+		c.Error(apperror.NewTooManyRequest("Bạn đang thao tác quá nhanh. Vui lòng thử lại sau ít phút."))
+		c.Abort()
+		return
+	}
+	c.Next()
 }
 
-func (m *RateLimitMiddleware) Stop() {
-	close(m.stopChan)
-}
-
-func (m *RateLimitMiddleware) startCleanupJob(expireAfter time.Duration, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-m.stopChan:
-			return
-		case <-ticker.C:
-			m.visitors.Range(func(key, value any) bool {
-				vis := value.(*visitor)
-
-				vis.mu.Lock()
-				isExpired := time.Since(vis.LastSeen) > expireAfter
-				vis.mu.Unlock()
-
-				if isExpired {
-					m.visitors.Delete(key)
-				}
-				return true
-			})
+// loginIdentifier binds the rule to the attempting account as well as the IP:
+// explicit username/email/phone/identifier, else a bearer token suffix, else
+// the IP alone.
+func loginIdentifier(c *gin.Context) string {
+	for _, field := range []string{"username", "email", "phone", "identifier", "userId"} {
+		if v := c.Query(field); v != "" {
+			return v
+		}
+		if v := c.PostForm(field); v != "" {
+			return v
 		}
 	}
+	if auth := c.GetHeader("Authorization"); len(auth) > 20 {
+		return auth[len(auth)-12:]
+	}
+	return "anonymous"
 }

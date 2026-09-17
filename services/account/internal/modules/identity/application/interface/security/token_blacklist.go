@@ -1,19 +1,10 @@
 package security
 
 import (
-	"context"
-	"time"
-
-	"github.com/google/uuid"
+	sharedsecurity "smart-wardrobe-be/shared/application/interface/security"
 )
 
-type ITokenBlacklistService interface {
-	BlacklistToken(ctx context.Context, token string, expiry time.Duration) error
-	IsTokenBlacklisted(ctx context.Context, token string) (bool, error)
-	BlacklistTokenWithPrefix(ctx context.Context, token string, prefix string, expiry time.Duration) error
-	IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error)
-	BlacklistUser(ctx context.Context, userID uuid.UUID, expiry time.Duration) error
-	IsUserBlacklisted(ctx context.Context, userID uuid.UUID) (bool, error)
-	UnblacklistUser(ctx context.Context, userID uuid.UUID) error
-	CheckBlacklist(ctx context.Context, token string, userID uuid.UUID) (tokenBlacklisted bool, userBlacklisted bool, err error)
-}
+// ITokenBlacklistService is the session-revocation port shared by every
+// service (FR-023). It is aliased here so existing account references keep
+// working; new code should import the shared package directly.
+type ITokenBlacklistService = sharedsecurity.ITokenBlacklistService

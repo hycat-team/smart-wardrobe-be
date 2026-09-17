@@ -39,18 +39,10 @@ NGINX_TEMPLATES_DIR := deployments/nginx/templates
 NGINX_ROUTES_DIR := deployments/nginx/api-v2-routes
 NGINX_RENDER_DIR ?= /etc/nginx
 
-# ---- Legacy monolith (removed at T034 with cmd/server) ----
-LEGACY_WIRE_PATH := ./internal/di
-LEGACY_SWAG_MAIN_FILE := ./cmd/server/main.go
-LEGACY_SWAG_OUTPUT_DIR := ./api/swagger
-LEGACY_GO_BUILD_PACKAGE := ./cmd/server
-LEGACY_MIGRATION_DIR := ./database/migrations
-
 ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
-CLEAN_SWAGGER_CMD := if exist api\swagger rmdir /S /Q api\swagger
 FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write-Error ($$files -join [Environment]::NewLine); exit 1 }"
 TEST_CMD := go test ./... 2>&1 | findstr /V /C:"no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | findstr /V /C:"no test files"
@@ -58,7 +50,6 @@ else
 GO_BIN_EXT :=
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
-CLEAN_SWAGGER_CMD := rm -rf ./api/swagger
 FMT_CHECK_CMD := test -z "$$(gofmt -l .)"
 TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
 RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
@@ -76,7 +67,7 @@ name := $(or $(name),$(NAME))
 SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
 unexport SVC_REQ
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all wire-legacy swagger swagger-all swagger-legacy generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all build-legacy run run-legacy dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version migration-status migration-up migration-down migration-create migration-version docker-build docker-build-legacy image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
 
 help:
 	@echo "========================================================================"
@@ -106,9 +97,8 @@ dev-help:
 	@echo "  make build svc=       : Build one service binary into bin/"
 	@echo "  make build-all        : Build all 3 service binaries"
 	@echo "  make run svc=         : Build and run one service locally"
-	@echo "  make dev              : Run code generation and start legacy backend (until T034)"
+	@echo "  make dev              : Run code generation and build all 3 services"
 	@echo "  make clean            : Remove generated binaries and swagger docs"
-	@echo "Legacy monolith targets (removed at T034): wire-legacy swagger-legacy build-legacy run-legacy"
 
 quality-help:
 	@echo "QUALITY ASSURANCE & TESTING COMMANDS:"
@@ -140,7 +130,6 @@ migration-help:
 	@echo "  make migrate-down svc=            : Rollback last migration step for one service"
 	@echo "  make migrate-create svc= name=xxx : Create a new SQL migration in the owning service"
 	@echo "  make migrate-version svc=         : View current migration version for one service"
-	@echo "Legacy (root database/migrations, removed at T031): migration-status/up/down/create/version"
 
 tools-help:
 	@echo "DEVELOPMENT TOOLS INSTALLATION HELPERS:"
@@ -181,29 +170,18 @@ wire-all:
 	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) ./services/ai/internal/di/...
 	@echo Google Wire finished for all services.
 
-wire-legacy:
-	@echo Running Google Wire (legacy monolith, removed at T034)...
-	@go run github.com/google/wire/cmd/wire@$(WIRE_VERSION) $(LEGACY_WIRE_PATH)/...
-	@echo Google Wire finished.
-
 swagger:
 	$(SVC_REQ)
 	@echo Generating Swagger for service $(SVC)...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/$(SVC)/cmd/$(SVC)/main.go --output services/$(SVC)/api/swagger --parseDependency --parseInternal --quiet
+	@cd services/$(SVC) && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/$(SVC)/main.go --output api/swagger --parseDependency --parseInternal --quiet
 	@echo Swagger generation finished for $(SVC).
 
 swagger-all:
 	@echo Generating Swagger for all services...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/account/cmd/account/main.go --output services/account/api/swagger --parseDependency --parseInternal --quiet
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/commerce/cmd/commerce/main.go --output services/commerce/api/swagger --parseDependency --parseInternal --quiet
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g services/ai/cmd/ai/main.go --output services/ai/api/swagger --parseDependency --parseInternal --quiet
+	@cd services/account && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/account/main.go --output api/swagger --parseDependency --parseInternal --quiet
+	@cd ../commerce && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/commerce/main.go --output api/swagger --parseDependency --parseInternal --quiet
+	@cd ../ai && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/ai/main.go --output api/swagger --parseDependency --parseInternal --quiet
 	@echo Swagger generation finished for all services.
-
-swagger-legacy:
-	@echo Generating Swagger (legacy monolith, removed at T034)...
-	@go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g $(LEGACY_SWAG_MAIN_FILE) --output $(LEGACY_SWAG_OUTPUT_DIR) --parseDependency --parseInternal --exclude internal/modules/community --quiet
-	@go run ./internal/tools/swagger-split -master $(LEGACY_SWAG_OUTPUT_DIR)/swagger.json -mapping $(LEGACY_SWAG_OUTPUT_DIR)/swagger-module-mapping.json -out $(LEGACY_SWAG_OUTPUT_DIR)/modules
-	@echo Swagger generation finished.
 
 generate: wire-all swagger-all
 
@@ -239,7 +217,7 @@ tidy:
 	@cd services/account && go mod tidy
 	@cd services/commerce && go mod tidy
 	@cd services/ai && go mod tidy
-	@go mod tidy
+	@cd deployments/token-helper && go mod tidy
 	@go work sync
 	@echo Go module tidy finished.
 
@@ -250,7 +228,7 @@ tidy-check:
 	@cd services/account && go mod tidy -diff
 	@cd services/commerce && go mod tidy -diff
 	@cd services/ai && go mod tidy -diff
-	@go mod tidy -diff
+	@cd deployments/token-helper && go mod tidy -diff
 	@echo Go module files are tidy.
 
 generate-check:
@@ -266,7 +244,7 @@ vet:
 	@cd services/account && go vet ./...
 	@cd services/commerce && go vet ./...
 	@cd services/ai && go vet ./...
-	@go vet ./...
+	@cd deployments/token-helper && go vet ./...
 	@echo Go vet finished.
 
 test:
@@ -276,7 +254,7 @@ test:
 	@cd services/account && $(TEST_CMD)
 	@cd services/commerce && $(TEST_CMD)
 	@cd services/ai && $(TEST_CMD)
-	@$(TEST_CMD)
+	@cd deployments/token-helper && $(TEST_CMD)
 	@echo Go tests finished.
 
 test-workspace: test
@@ -288,7 +266,7 @@ test-race:
 	@cd services/account && $(RACE_TEST_CMD)
 	@cd services/commerce && $(RACE_TEST_CMD)
 	@cd services/ai && $(RACE_TEST_CMD)
-	@$(RACE_TEST_CMD)
+	@cd deployments/token-helper && $(RACE_TEST_CMD)
 	@echo Go race tests finished.
 
 lint: fmt-check vet
@@ -296,10 +274,9 @@ lint: fmt-check vet
 
 test-integration:
 	@echo Running integration tests - requires TEST_RABBITMQ_URL / TEST_DATABASE_URL...
-	@go test -race -run Integration ./internal/shared/infrastructure/messaging/
-	@go test -race -run Integration ./internal/modules/subscription/...
+	@cd services/account && go test -race -run Integration ./internal/modules/subscription/...
+	@cd shared && go test -race -run Integration ./infrastructure/messaging/...
 	@echo Integration tests finished.
-	@echo NOTE: extended to services/<svc>/... paths when T033 moves modules (Phase 5).
 
 build:
 	$(SVC_REQ)
@@ -316,28 +293,24 @@ build-all:
 	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/ai$(GO_BIN_EXT)" ./services/ai/cmd/ai
 	@echo Build succeeded. Binaries in $(BIN_DIR)/
 
-build-legacy:
-	@echo Building legacy monolith (removed at T034)...
-	@$(MKDIR_BIN_CMD)
-	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/main$(GO_BIN_EXT)" $(LEGACY_GO_BUILD_PACKAGE)
-	@echo Build succeeded.
-
 run: build
 	$(SVC_REQ)
 	@echo Starting $(SVC) service...
-	@$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
+	@cd services/$(SVC) && ../../$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
 
-run-legacy: build-legacy
-	@echo Starting legacy backend...
-	@$(BIN_DIR)/main$(GO_BIN_EXT)
-
-dev: generate run-legacy
+dev: generate build-all
 
 check: fmt-check tidy-check generate-check vet test-race build-all
 
 clean-swagger:
 	@echo Cleaning generated Swagger files...
-	@$(CLEAN_SWAGGER_CMD)
+ifeq ($(OS),Windows_NT)
+	@if exist services\account\api\swagger rmdir /S /Q services\account\api\swagger
+	@if exist services\commerce\api\swagger rmdir /S /Q services\commerce\api\swagger
+	@if exist services\ai\api\swagger rmdir /S /Q services\ai\api\swagger
+else
+	@rm -rf services/account/api/swagger services/commerce/api/swagger services/ai/api/swagger
+endif
 	@echo Swagger clean finished.
 
 clean: clean-swagger
@@ -368,30 +341,10 @@ migrate-version:
 	$(SVC_REQ)
 	@goose -dir ./services/$(SVC)/database/migrations postgres $(MIGRATION_DSN) version
 
-migration-status:
-	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) status
-
-migration-up:
-	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) up
-
-migration-down:
-	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) down
-
-migration-create:
-	@goose -dir $(LEGACY_MIGRATION_DIR) create $(name) sql
-
-migration-version:
-	@goose -dir $(LEGACY_MIGRATION_DIR) postgres $(MIGRATION_DSN) version
-
 docker-build:
 	$(SVC_REQ)
 	@echo Building production Docker image for $(SVC)...
 	@docker build -f services/$(SVC)/Dockerfile -t smart-wardrobe-$(SVC):local .
-	@echo Docker image build finished.
-
-docker-build-legacy:
-	@echo Building legacy monolith Docker image (removed at T034)...
-	@docker build --pull --target production -t backend-smartwardrobe:local .
 	@echo Docker image build finished.
 
 image-build:
@@ -432,6 +385,9 @@ nginx-reload:
 	@mkdir -p $(NGINX_RENDER_DIR)/api-v2-routes
 	@envsubst '$${API_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE}' < $(NGINX_TEMPLATES_DIR)/default.conf.template > $(NGINX_RENDER_DIR)/default.conf
 	@envsubst '$${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE} $${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL} $${TOKEN_HELPER_URL}' < $(NGINX_TEMPLATES_DIR)/api-v2.conf.template > $(NGINX_RENDER_DIR)/api-v2.conf
+	@envsubst '$${ACCOUNT_RUN_URL}' < deployments/nginx/api-v2-routes/account.conf > $(NGINX_RENDER_DIR)/api-v2-routes/account.conf
+	@envsubst '$${COMMERCE_RUN_URL}' < deployments/nginx/api-v2-routes/commerce.conf > $(NGINX_RENDER_DIR)/api-v2-routes/commerce.conf
+	@envsubst '$${AI_RUN_URL}' < deployments/nginx/api-v2-routes/ai.conf > $(NGINX_RENDER_DIR)/api-v2-routes/ai.conf
 	@nginx -t
 	@nginx -s reload
 	@echo Nginx reload finished.

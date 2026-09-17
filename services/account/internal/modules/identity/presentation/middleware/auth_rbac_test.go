@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"smart-wardrobe-be/services/account/internal/modules/identity/presentation/middleware"
 	"smart-wardrobe-be/shared/application/constants/jwttype"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
@@ -67,7 +66,7 @@ func rbacRouter(t *testing.T, cfg config.Config, allowed ...roleslug.RoleSlug) (
 	gin.SetMode(gin.TestMode)
 	reached := false
 	r := gin.New()
-	auth := middleware.NewAuthMiddleware(&cfg, &fakeTokenBlacklistService{})
+	auth := shared_middleware.NewAuthMiddleware(&cfg, &fakeTokenBlacklistService{})
 	r.Use(auth.Handle())
 	r.Use(shared_middleware.RolesAuthorize(allowed...))
 	r.GET("/probe", func(c *gin.Context) {

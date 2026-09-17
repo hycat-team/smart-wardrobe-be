@@ -3,7 +3,7 @@
 **Branch**: `020-platform-migration` | **Date**: 2026-09-15 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/020-platform-migration/spec.md`
-**ADR**: `docs/decisions/021-funded-platforms-and-repatriation.md`
+**ADR**: `docs/decisions/021-funded-platforms-and-repatriation.md` + `docs/decisions/023-vps-nginx-ingress-cloud-run-iam.md` (và `docs/decisions/022-email-provider-brevo.md` cho email)
 **Constitution**: v3.0.0 (single service topology, multi-module workspace, portability)
 
 ## Summary
@@ -47,9 +47,9 @@ Cách tiếp cận kỹ thuật:
   dùng chung** cho môi trường Cloud (không tách schema staging/prod; drill dùng schema tạm).
   Runtime qua Supavisor pooler (transaction mode, 6543); **migration do chính service chạy khi khởi
   động** + `LISTEN` qua direct connection (5432), có **advisory lock dùng chung**. `sslmode=require`.
-  - **Migration ownership**: 24 migration lịch sử thuộc `services/account/database/migrations/`;
+  - **Migration ownership**: toàn bộ migration lịch sử hiện có thuộc `services/account/database/migrations/`;
     migration mới đặt trong `services/<service>/database/migrations/` của service phát sinh.
-  - **Bảng version riêng mỗi service**: Account giữ `goose_db_version` (đã có 24 lịch sử);
+  - **Bảng version riêng mỗi service**: Account giữ `goose_db_version` (đã giữ toàn bộ migration lịch sử);
     Commerce/AI dùng `goose_db_version_commerce` / `goose_db_version_ai` → tránh lệch ordering.
   - Bật `goose.WithAllowOutofOrder(true)` (chịu migration merge muộn trong cùng service); advisory
     lock dùng chung (cùng lock id) để serialize.
@@ -147,7 +147,7 @@ smart-wardrobe-be/
 │   │   │   ├── di/                # composition root riêng của Account
 │   │   │   └── modules/{identity,subscription,admin,notification}/
 │   │   ├── api/swagger/           # Swagger per-service (4 module)
-│   │   ├── database/migrations/   # 24 migration lịch sử (Account giữ) + migration mới của Account
+│   │   ├── database/migrations/   # toàn bộ migration lịch sử (Account giữ) + migration mới của Account
 │   │   └── Dockerfile             # image riêng, KHÔNG dùng chung
 │   ├── commerce/                  # MODULE service Commerce Core
 │   │   ├── go.mod
@@ -216,7 +216,7 @@ smart-wardrobe-be/
 6. **Logic nghiệp vụ không di chuyển nội dung**: tách chỉ đổi vị trí thành
    `services/<service>/internal/modules/*` và composition root theo service; ranh giới service do
    compiler enforce (service module không thấy implementation của module thuộc service khác).
-7. **Migration ownership**: 24 migration lịch sử đặt trong **Account**; migration mới đặt trong
+7. **Migration ownership**: toàn bộ migration lịch sử hiện có đặt trong **Account**; migration mới đặt trong
    service phát sinh; mỗi service **tự chạy migration của mình khi khởi động**; **mỗi service một
    bảng version riêng** (Account giữ `goose_db_version`, Commerce/AI có bảng hậu tố) + allow-out-of-order;
    advisory lock dùng chung (cùng lock id) để serialize.
@@ -303,6 +303,9 @@ Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-al
   rule IP+user/token cho login/OTP + rule chung; Nginx không rate-limit (giữ body-limit/timeout/security-header).
 - **Registry**: Artifact Registry cho Cloud Run, GHCR cho VPS (FR-051). **Secrets**: env vars từ GitHub
   Actions secrets, rotate bằng redeploy (FR-052). **Cloudinary** là dependency pre-existing (FR-053).
+- **Quan trắc (FR-057)**: log JSON có cấu trúc ra stdout trên Cloud Run + metrics/alert Cloud Monitoring
+  (health/latency/error-rate cho cả HTTP và worker); không OTEL trong 020. Task T119/T120 thực thi
+  **trước deploy (T074)** và **trước gate đo được (T082/T117)**.
 
 **CI/CD (workflows — FR-020, FR-056)**:
 
@@ -315,7 +318,8 @@ Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-al
   repatriation + vận hành VPS sau đó.
 - `deploy-production.yml` (T097c): chuyển thành `workflow_dispatch` build **từ tag `monolith-legacy`** →
   GHCR → compose profile `rollback`; chỉ rollback khẩn cấp; KHÔNG build từ `main`.
-- **Thứ tự bắt buộc**: T097c xong trước T034 (xoá `cmd/server`) để còn đường deploy monolith.
+- **Thứ tự bắt buộc**: T097 (compose profile `rollback`) → T097c xong **trước T034** (xoá `cmd/server`)
+  để còn đường deploy monolith.
 
 **Adapter layout**:
 - **Inbound** — gRPC **server** ở `services/<service>/internal/modules/<owner>/presentation/grpc/`,
@@ -324,7 +328,9 @@ Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-al
 - Swagger: mỗi service `swag init` trên các module nó chứa; docs index phục vụ qua Nginx.
 
 **Map phase plan ↔ tasks**: Phase A ≈ tasks Phase 1–2; Phase B ≈ Phase 5; Phase C ≈ Phase 6;
-Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7; Phase G ≈ Phase 9.
+Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7; Phase G ≈ Phase 9;
+quan trắc FR-057 ≈ tasks Phase 6 (T119/T120, thực thi trước T074); T121 (gỡ import implementation
+xuyên service) nằm trong Phase 5, thực thi **sau T040–T042 và gắn với T034** (monolith đang tiêu thụ các package này).
 
 ## Phase Plan (tóm tắt — chi tiết ở tasks.md)
 
@@ -336,12 +342,17 @@ Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7; Phase G ≈ Pha
 - **Phase B — Tách 3 service module C (P1, blocked bởi A)**: `go.work` + module layout;
   `contracts/` + buf; adapter gRPC; composition `cmd/<service>`; JWT bất đối xứng; CI build 3 binary
   (compiler-boundary, không manifest-check); tag `monolith-legacy`; verify build độc lập từng image.
+  **Thứ tự trong phase**: T035–T038 (client) → T039 (server) → T040–T042 (Wire composition) → T034a/T034b;
+  **T121 (gỡ import implementation xuyên service ở `commerce/providers` + `ai/providers`)** chỉ sau T040–T042
+  và gắn với **T034** (xoá `cmd/server`) vì monolith `internal/di` đang tiêu thụ các package này;
+  T034 (xoá `cmd/server`) chỉ sau T097→T097c.
 - **Phase C — Ingress + Compute (P1)**: thêm server block Nginx `api-v2` route tới 3 Cloud Run
   (giữ nguyên `api.closy`); DNS record trên Vercel; mở rộng cert Let's Encrypt; **token helper** sinh
   ID token; Cloud Run HTTP+worker + billing cap + IAM (`roles/run.invoker`, không `allUsers`);
   Artifact Registry + image push theo service; **deploy độc lập từng service** (CI matrix);
   per-service migration on-start (advisory lock); SSE qua Nginx (buffering off, heartbeat 15s,
-  deadline 30s).
+  deadline 30s); **quan trắc FR-057 (T119/T120) trước khi deploy (T074)**; cap autoscale/billing đặt
+  trước deploy, verify tải sau deploy.
 - **Phase D — Data + Song song (P1)**: Supabase **1 database dùng chung** + migration ownership
   (Account giữ lịch sử); CloudAMQP/Redis wiring + verify giới hạn gói; runbook song song; drill bằng
   schema tạm; smoke test `api-v2` qua Nginx. Cutover `api.closy` **không** nằm trong phase này.
@@ -366,7 +377,11 @@ Phase D ≈ Phase 6; Phase E ≈ Phase 5/8; Phase F ≈ Phase 7; Phase G ≈ Pha
 ## Post-Design Constitution Re-check
 
 Sau Phase 1, các quyết định thiết kế vẫn nằm trong ranh giới hiến pháp 3.0.0:
-- Ranh giới service do compiler enforce, không import xuyên service → §I/§II PASS.
+- Ranh giới service do compiler enforce, không import xuyên service → §I/§II PASS về mặt thiết kế.
+  **Lưu ý hiện trạng**: code đang có import implementation xuyên service
+  (`services/commerce/providers`, `services/ai/providers` → `services/account/providers`); đã có task
+  **T121** để gỡ, thay bằng gRPC client/in-process contract impl và re-verify kiểm tra biên dịch phủ định
+  (import `contract/*`, `dto/*`, `domain/constants/*` vẫn được phép theo §II).
 - Không truy vấn xuyên module; shared DB tách schema, khác DSN theo môi trường → §VIII PASS.
 - Repatriation path (yêu cầu kỹ thuật) → §VIII PASS; lịch trình funding clock ở `docs/project/funding-and-platform-lifecycle.md`.
 - Không ngoại lệ cần biện luận. **Gate: PASS.**

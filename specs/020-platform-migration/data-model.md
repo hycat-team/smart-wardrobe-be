@@ -275,7 +275,8 @@ Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `h
 | Bảng biến môi trường | `docs/operations/ha-tang/07-bang-bien-moi-truong.md` | mapping cũ → mới, gồm migrate session-DSN |
 | Song song + Cloud Run | `docs/operations/ha-tang/08..10` | tổng quan, dữ liệu VPS→Supabase, DNS Vercel + CI/CD |
 | Repatriation | `docs/operations/ha-tang/11-ve-lai-vps.md` | verify/rollback, migrate ngược, funding clock, tắt funded, DNS về VPS |
-| Vận hành | `docs/operations/ha-tang/12..13` | ngừng VPS/thu hồi secret, monitoring + teardown trial |
+| Vận hành — ngừng VPS & thu hồi secret | `docs/operations/ha-tang/12-ngung-vps-va-thu-hoi-secret.md` | thu hồi credential cũ + ngừng VPS sau khi xác nhận (FR-016) |
+| Quan trắc | `docs/operations/ha-tang/13-monitoring.md` | metrics/alert Cloud Monitoring + runbook vận hành (FR-057, T120) |
 | Ingress Nginx + auth | `docs/operations/nginx-ingress-cloudrun-auth.md` | route map single-source, token helper, rotate SA key, smoke test IAM |
 | Container & deploy độc lập | `docs/operations/container-images-and-independent-deploy.md` | Dockerfile multi-stage per-service, `.dockerignore`/context root, Artifact Registry + tag SHA, deploy độc lập từng service, image rollback `monolith-legacy` (FR-042/FR-043) |
 | Cutover thủ công | `docs/operations/manual-cutover-api-closy-to-cloudrun.md` | runbook cutover `api.closy` → Cloud Run + rollback (FR-041), owner-triggered |

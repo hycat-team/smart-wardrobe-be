@@ -1,0 +1,137 @@
+# deployments/nginx/templates/vps-3service.conf.template — repatriation ingress (T098/T099).
+# api.closy... → 3 service compose (account/commerce/ai). Render bằng envsubst
+# rồi `nginx -t` + reload. Dùng khi hệ thống đã về VPS (3-service compose).
+# Route map single-source, longest-prefix (`location ^~`); chồng lấn /me/* và
+# /admin/* được tách tường minh. Không monolith mặc định (chỉ rollback tạm thời).
+# Self-host: KHÔNG Cloud Run IAM (auth là app JWT); rate-limit nằm ở app (FR-054,
+# Nginx KHÔNG rate-limit); residual risk "không WAF đầy đủ" (T099).
+# Proxy chung (host/forward/timeout) đặt ở server-level và được mọi location kế
+# thừa, trừ khi location ghi đè (SSE stream).
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+# Request ID cho trace log (T099). access_log dùng format này.
+log_format main_tid '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" req_id=$request_id';
+
+server {
+    listen 80;
+    server_name ${API_DOMAIN};
+
+    location /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${API_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${API_DOMAIN}/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # T099: body-limit/timeout/security-header/logging (không rate-limit ở Nginx).
+    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
+    client_body_timeout 30s;
+    client_header_timeout 30s;
+    send_timeout 60s;
+    add_header Strict-Transport-Security "max-age=15552000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    access_log /var/log/nginx/access.log main_tid;
+
+    # Upstream compose (resolve động qua DNS nội bộ compose).
+    resolver 127.0.0.11 valid=30s;
+    set $account_upstream http://account:8080;
+    set $commerce_upstream http://commerce:8080;
+    set $ai_upstream http://ai:8080;
+
+    # Proxy chung cho mọi location (T099: X-Forwarded để app đọc IP thật cho
+    # rate-limit; timeout đọc đủ lớn cho AI).
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_connect_timeout 10s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+
+    location /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # ---- AI service: /admin/ai/* (gRPC nội bộ, không qua Nginx) ----
+    location ^~ /api/v1/admin/ai { proxy_pass $ai_upstream; }
+
+    # ---- Account: auth/me/subscriptions/admin users-audit ----
+    location ^~ /api/v1/auth { proxy_pass $account_upstream; }
+    location = /api/v1/me { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/body-profile { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/change-password { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/avatar { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/users { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/audit-logs { proxy_pass $account_upstream; }
+    location ^~ /api/v1/subscriptions { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/subscriptions { proxy_pass $account_upstream; }
+
+    # ---- Commerce: AI stream trước (tắt buffering, timeout lớn) ----
+    location ^~ /api/v1/ai/chat/sessions {
+        proxy_pass $commerce_upstream;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+    location ^~ /api/v1/ai { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/brand-loyalties { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/benefit-redemptions { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brands { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brand-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brand-benefits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brand-portal { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brand/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/system-catalog/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/brands { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/categories { proxy_pass $commerce_upstream; }
+
+    location / {
+        return 404 '{"message":"Đường dẫn API không tồn tại hoặc phương thức không được hỗ trợ."}';
+    }
+}

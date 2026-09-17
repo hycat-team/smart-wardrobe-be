@@ -8,12 +8,15 @@ The `identity` module remains the cleanest baseline for handler style, use case 
 
 ## 1. Current module structure standard
 
-Each business area lives under `internal/modules/<module_name>` and should keep clear separation between domain, application, infrastructure, and presentation concerns.
+Each business area lives under `services/<service>/internal/modules/<module_name>`
+(one Go module per service on `go.work`: `services/account`, `services/commerce`,
+`services/ai`, plus `shared` and `contracts`) and should keep clear separation
+between domain, application, infrastructure, and presentation concerns.
 
 Typical folders present in the current codebase:
 
 ```text
-internal/modules/<module_name>
+services/<service>/internal/modules/<module_name>
 |
 |-- application
 |   |-- dto                     # Request/response structs
@@ -307,33 +310,38 @@ Ensure all test cases pass before submitting a Pull Request.
 
 ## 13. Goose database migration guide
 
-The system uses **Goose** as the tool to manage database updates.
+The system uses **Goose** as the tool to manage database updates. Each service
+owns its migrations (`services/<service>/database/migrations`) and runs them on
+boot with its own version table (`goose_db_version*`) + allow-out-of-order +
+shared advisory lock (FR-035).
 
 ### Core Principles
 - Absolutely do not directly edit the existing database scripts in the `/database/init` folder.
-- All database schema changes must be done through a new SQL migration file created using Goose.
+- All database schema changes must be done through a new SQL migration file created using Goose **in the owning service**.
+- Never create migrations in the removed root `database/migrations/` (deleted at T034).
 
 ### Create a new migration file
 Run the following command in the terminal to generate a new migration file:
 ```bash
-make migration-create name=migration_file_name
+make migrate-create svc=<account|commerce|ai> name=migration_file_name
 ```
-This operation will create a new `.sql` file in the `/migrations` folder with a timestamp format and the name you just entered.
+This operation will create a new `.sql` file in `services/<service>/database/migrations/`
+with a timestamp format and the name you just entered.
 
 ### Execute migration
 - Run all unexecuted migrations:
   ```bash
-  make migration-up
+  make migrate-up svc=<account|commerce|ai>
   ```
 - Rollback the most recent migration:
   ```bash
-  make migration-down
+  make migrate-down svc=<account|commerce|ai>
   ```
 - Check migration status:
   ```bash
-  make migration-status
+  make migrate-status svc=<account|commerce|ai>
   ```
 - View the current database migration version:
   ```bash
-  make migration-version
+  make migrate-version svc=<account|commerce|ai>
   ```

@@ -1,20 +1,34 @@
 # ARCHITECTURE & TECHNICAL DEVELOPMENT RULES
 
-> **⚠️ BASELINE CŨ (đã lỗi thời cho giai đoạn 020)**: tài liệu này còn mô tả modular monolith
-> một binary (`cmd/server`, `internal/modules` ở root, `internal/shared`), `Qos(prefetch=20)`, và
-> "1 connection chung". Đây KHÔNG phải nguồn chân lý cho feature 020. Nguồn chân lý là
-> `specs/020-platform-migration/` (3 service, multi-module `go.work`, `services/`). Tài liệu này
-> sẽ được cập nhật ở **T111**. Không dùng nội dung bên dưới làm baseline khi implement 020.
+> Updated at **T111** for the 3-service topology (020). The modular-monolith
+> baseline (`cmd/server`, root `internal/`) is retired; source of truth is
+> `.specify/memory/constitution.md` v3.0.0 + `specs/020-platform-migration/`.
 
 ## I. SYSTEM ARCHITECTURE PARADIGM
 
-The backend is implemented as a **pragmatic modular monolith** in Go with **strict clean layer boundaries** (detailed in Constitution §IV), but not every module is shaped identically.
+The backend is implemented as **3 independently deployable Go services** on a
+multi-module workspace (`go.work`) with **strict clean layer boundaries**
+(detailed in Constitution §IV).
 
-- **Single deployable application:** all modules run inside one Gin-based HTTP service started from `cmd/server/main.go`.
-- **Shared infrastructure:** Postgres, Redis, RabbitMQ, Cloudinary, external AI providers, and Elasticsearch are initialized once and reused across modules through DI.
-- **Entity ownership per module:** each module owns its persistent models under `internal/modules/<name>/domain/entities/`. Cross-module navigation properties (struct pointers to entities in other modules) are **strictly prohibited**.
+- **Three deployables:** Account (`identity,subscription,admin,notification`),
+  Commerce Core (`wardrobe,fashion,brand,dashboard`), AI Engine (`aiexecutor`) —
+  each with its own Go module, container, health check, config and scaling.
+  Cross-service calls go through `contracts/` (gRPC) or DTO contracts, never
+  domain entities. DAG: Commerce→Account, Commerce→AI, AI→Account.
+- **Shared infrastructure:** Postgres (+pgvector), Redis, RabbitMQ, Cloudinary,
+  external AI providers (and optional Elasticsearch) are initialized once per
+  service binary and reused across modules through DI (Wire).
+- **Entity ownership per module:** each module owns its persistent models under
+  `services/<service>/internal/modules/<name>/domain/entities/`. Cross-module
+  navigation properties (struct pointers to entities in other modules) are
+  **strictly prohibited**.
 - **No DDD aggregate/event model:** the codebase does not model aggregate roots, value objects, or domain events in a DDD sense. Cross-module integration is handled through contracts plus shared infrastructure.
-- **Module boundaries are real, but uneven:** every business domain lives in `internal/modules/<name>`. The exact provider wiring shape (layered vs flattened) may differ per module, but the folder convention is consistent.
+- **Module boundaries are real, but uneven:** every business domain lives in
+  `services/<service>/internal/modules/<name>`. The exact provider wiring shape
+  (layered vs flattened) may differ per module, but the folder convention is consistent.
+- **Service boundaries are compiler-enforced:** a service module cannot import
+  implementation packages of another service's modules (see
+  `docs/system-design/microservices/01-ranh-gioi-va-contract.md`).
 - **Archived modules:** a module removed from runtime keeps its source tree but is excluded from DI wiring, route registration, and Swagger generation. Git history is the authoritative record for what was removed and why.
 
 ### Layer dependency graph
@@ -36,69 +50,54 @@ For full details and strict rules, see Constitution §IV.
 
 ## II. DIRECTORY LAYOUT CONVENTIONS
 
-The top-level structure is stable. Module-specific details live under `internal/modules/` and `internal/shared/`.
+The top-level structure is stable. Service code lives in `services/<service>/`;
+shared code in `shared/`; contracts in `contracts/`.
 
 ```text
 root/smart-wardrobe-be
 |
-|-- cmd
-|   `-- server
-|       `-- main.go              # Entry point
+|-- go.work                       # services/account, services/commerce, services/ai, shared, contracts (+ token-helper)
+|-- services/<service>/           # one Go module per service (account|commerce|ai)
+|   |-- cmd/<service>/main.go     # Entry point (APP_MODE=http|worker|all)
+|   |-- internal/
+|   |   |-- bootstrap/            # App lifecycle, routes engine, gRPC hosting, workers
+|   |   |-- di/                   # Composition root (Wire injector + wire_gen.go)
+|   |   `-- modules/<module>/     # See §IV for the canonical module layout
+|   |-- api/swagger/              # Generated per-service Swagger docs
+|   |-- database/migrations/      # Goose migrations owned by this service
+|   `-- Dockerfile                # Independent image (binary + own migrations)
 |
-|-- configs/                      # YAML configuration files
+|-- shared/                       # Cross-service library (own Go module)
+|   |-- config/                   # Go configuration loader (env-driven)
+|   |-- application/              # DTOs, events, constants, use-case interfaces
+|   |-- domain/                   # Shared base entities, constants
+|   |-- infrastructure/           # DB, caching, media, AI, messaging, search
+|   |-- presentation/             # Shared HTTP helpers, SSE, middleware (auth, rate-limit, CORS, timeout, role, swagger lock, error handler)
+|   |-- pkg/                      # Logger, utils (incl. jwtutils, errorutils)
+|   `-- tools/                    # hygiene-scan, etc.
 |
-|-- database/                     # DB initialization scripts and migrations
-|   |-- init/                     # Initial database state SQL files
-|   `-- migrations/               # Goose SQL migrations
+|-- contracts/<owner>/v1/         # *.proto, *.pb.go, client/ (+ grpcx helpers)
 |
-|-- deployments/                  # Support service deployment configs
-|   |-- nginx/                    # Nginx config templates
-|   |-- rabbitmq/                 # RabbitMQ config
-|   |-- docker-compose.yml        # Compose config for local dev
-|   `-- docker-compose.prod.yml   # Compose config for VPS production
+|-- configs/                      # YAML configuration files (parameterised, no hardcoded hosts)
+|
+|-- database/init/                # DB initialization scripts (not migrations)
+|
+|-- deployments/                  # docker-compose.yml (local), docker-compose.prod.yml (VPS + rollback), nginx/, token-helper/, monolith-legacy/, rabbitmq/
 |
 |-- docs
-|   |-- project/                 # Vision, scope, glossary, changelog
-|   |-- domain/                  # Business rules per domain
-|   |-- flows/                   # User and system flows
-|   |-- system-design/           # Architecture, database, auth, AI pipeline, etc.
+|   |-- project/                 # Vision, scope, glossary, changelog, funding lifecycle
+|   |-- system-design/           # Architecture, database, auth, AI pipeline, microservices/
 |   |-- api/                     # API specs per domain
 |   |-- development/             # Setup, conventions, testing, branch strategy
 |   |-- decisions/               # Architectural Decision Records (ADRs)
-|   |-- deployment/              # Docker, CI/CD, monitoring, VPS
 |   `-- archive/                 # Historical docs (only when explicitly referenced)
 |
-|-- internal
-|   |-- api
-|   |   `-- routes                # Gin engine setup (NewEngine) + AppRouter composition root
-|   |-- bootstrap
-|   |   `-- app.go                # App lifecycle, worker coordination, shutdown
-|   |-- config/                   # Go configuration loader
-|   |-- di
-|   |   |-- wire.go               # Composition root (Wire injector)
-|   |   `-- wire_gen.go           # Auto-generated by Wire
-|   |-- modules
-|   |   |-- <module_a>            # See §IV for the canonical module layout
-|   |   |-- <module_b>
-|   |   `-- ...                   # Listed by `ls internal/modules/`
-|   |-- pkg/                      # Shared package helpers (logger, utils)
-|   |   |-- logger
-|   |   `-- utils
-|   `-- shared
-|       |-- application           # Cross-cutting: AI, constants, DTOs, event, media
-|       |-- domain                # Entities, constants, money VO, repository interfaces
-|       |-- infrastructure        # DB, caching, media, AI, messaging, search implementations
-|       |-- presentation          # Shared HTTP helpers, SSE, shared middleware (CORS, timeout, rate-limit, role, swagger lock, error handler)
-|       `-- provider.go           # Wire ProviderSet for shared services
-|
-|-- api/swagger/                  # Generated Swagger specs
-|-- Dockerfile
 |-- Makefile
 ```
 
-To discover the current module inventory:
+To discover the current service inventory:
 ```bash
-ls internal/modules/
+ls services/
 ```
 
 ---
@@ -107,17 +106,17 @@ ls internal/modules/
 
 ### Shared base types
 
-Only foundational types remain in `internal/shared/domain/entities/`:
+Only foundational types remain in `shared/domain/entities/`:
 
 - `base.go` — `BaseEntity`, `AuditableEntity`, `SoftDeleteEntity` (embedded by all module entities)
 - `jsonb.go` — `JSONDocument`, `BodyProfile`, `PreferredColors`
 - `vector.go` — `Vector` (pgvector wrapper)
 
-Each business module owns its specific entities under `internal/modules/<name>/domain/entities/`. Cross-module entity references are forbidden — modules that need data from another module must call its contract (see §VI).
+Each business module owns its specific entities under `services/<service>/internal/modules/<name>/domain/entities/`. Cross-module entity references are forbidden — modules that need data from another module must call its contract (see §VI).
 
 ### Shared infrastructure
 
-The `internal/shared` package owns reusable integrations for:
+The `shared/` package owns reusable integrations for:
 
 - `infrastructure/db`: Postgres connection and unit of work
 - `infrastructure/caching`: Redis connection
@@ -135,10 +134,10 @@ Modules must reuse these services instead of re-instantiating them locally.
 
 ### Canonical module layout
 
-Each business domain lives under `internal/modules/<name>` and keeps clear separation between layers:
+Each business domain lives under `services/<service>/internal/modules/<name>` and keeps clear separation between layers:
 
 ```text
-internal/modules/<name>
+services/<service>/internal/modules/<name>
 |
 |-- application
 |   |-- dto                     # Request/response structs
@@ -244,10 +243,10 @@ The Gin engine is assembled in `internal/api/routes/router.go`. Route groups are
 Each business module **self-registers its own endpoint group** via `presentation/router/router.go` (an `Init(api *gin.RouterGroup)` method). `internal/api/routes/provider.go` (`AppRouter`) only composes the six module routers through Wire, and `internal/api/routes/router.go` (`NewEngine`) invokes `Init(api)` on each module router in order. To see the current module routers:
 
 ```bash
-ls internal/modules/*/presentation/router/
+ls services/*/internal/modules/*/presentation/router/
 ```
 
-Shared HTTP middleware (CORS, timeout, rate-limit, role authorize, swagger lock, global error handler) lives in `internal/shared/presentation/middleware/`; module-owned middleware (e.g., identity `AuthMiddleware`) lives in `internal/modules/<name>/presentation/middleware/` and is consumed through `presentation/contract/` interfaces.
+Shared HTTP middleware (CORS, timeout, rate-limit, role authorize, swagger lock, global error handler) lives in `shared/presentation/middleware/`; module-owned middleware (e.g., identity `AuthMiddleware`) lives in `services/<service>/internal/modules/<name>/presentation/middleware/` and is consumed through `presentation/contract/` interfaces.
 
 Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-module Swagger specs are generated under `api/swagger/modules/<name>/swagger.json` and selectable via the Swagger UI dropdown.
 
@@ -259,12 +258,12 @@ Swagger is served from `/swagger` and static docs assets from `/api-docs`. Per-m
 - Keep repositories inside module infrastructure or shared infrastructure packages.
 - Prefer contracts for cross-module interaction instead of importing another module's internal use case implementation directly.
 - **Cross-module data stitching** must use `sliceutils.IndexBy` / `sliceutils.GroupBy` for O(1) lookup instead of nested loops.
-- A module's entity files belong in `internal/modules/<name>/domain/entities/`, not in shared.
+- A module's entity files belong in `services/<service>/internal/modules/<name>/domain/entities/`, not in shared.
 - Reuse shared services for AI, media, messaging, caching, DB, and search instead of re-instantiating them inside modules.
 - Use `shared_pres.Success()`, `shared_pres.Created()`, and `shared_pres.WrapHandler()` for consistent HTTP responses.
 - Use `apperror` types for error propagation; let the global error middleware map them to HTTP responses.
 - Handler signature: `func (h *Handler) Method(c *gin.Context) error`.
-- A module's entity files belong in `internal/modules/<name>/domain/entities/`.
+- A module's entity files belong in `services/<service>/internal/modules/<name>/domain/entities/`.
 - A module that has been removed from the runtime (archived) should remain as a tree entry but be excluded from DI and route registration.
 
 ---
@@ -378,7 +377,7 @@ Policy for protecting B2C user information when fashion brands extract data from
 All cross-module event publishing MUST use the **transactional outbox pattern**. Events are written to the `outbox_records` table within the same database transaction as the business operation. A dedicated `OutboxWorker` asynchronously publishes events to RabbitMQ and marks them as published. This guarantees at-least-once delivery and prevents event loss during broker outages.
 
 - **Table:** `shared.outbox_records` (headers: `correlationId/eventVersion/publishedAt`)
-- **Worker:** `internal/shared/presentation/worker/outbox_worker.go` (poll `2s`, batch `200` parallel 10, `FOR UPDATE SKIP LOCKED` bọc transaction)
+- **Worker:** `shared/presentation/worker/outbox_worker.go` (poll `2s`, batch `200` parallel 10, `FOR UPDATE SKIP LOCKED` bọc transaction)
 - **Routing:** The `topic` field in the outbox record determines the RabbitMQ routing key, enabling a single outbox table and worker to serve all modules.
 
 ### Event publishing preference
@@ -387,7 +386,7 @@ Cross-module write side effects **must prefer event publishing** over direct con
 
 ### Cơ chế RabbitMQ hiện tại (016)
 
-- **Exchange**: `smart_wardrobe_exchange` (topic) + DLX `smart_wardrobe_exchange.dlx`; wire qua `internal/shared/infrastructure/messaging/topology.go` (registry).
+- **Exchange**: `smart_wardrobe_exchange` (topic) + DLX `smart_wardrobe_exchange.dlx`; wire qua `shared/infrastructure/messaging/topology.go` (registry).
 - **Routing**: `module.event.action` với hậu tố `.wardrobe/.brand` cho fashion, wildcard `.#` thống nhất; point-to-point (1 key→1 queue) vs pub/sub (1 key→2 queue) ở mức cơ chế.
 - **Queue**: quorum-ready single-node (1 node prod, `x-queue-type=quorum`, `x-delivery-limit=5`, `x-dead-letter-exchange`); downtime drain chấp nhận do demo chưa release.
 - **Channel**: `publisherChannel` (Confirm) + consumer channel riêng `Qos(prefetch=20, global=false)`, `prefetch/concurrency` per-queue đọc từ registry `topology.go`; consumer đăng ký qua generic helper `event.RegisterTypedConsumer[T]` (application layer; unmarshal + `correlationId` ctx do helper xử lý, impl `RegisterTypedHandler` ở messaging).

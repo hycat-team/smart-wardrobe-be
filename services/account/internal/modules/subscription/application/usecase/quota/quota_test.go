@@ -276,6 +276,42 @@ func TestUpdateAiChatQuotaRejectsBeyondDailyLimit(t *testing.T) {
 	}
 }
 
+// TestGetAndResetDailyQuotaIsIdempotentUnderRetry proves a retried
+// GetAndResetDailyQuota (e.g. after a transport timeout) does not reset twice:
+// the first call resets, the retry observes the same day and performs no
+// additional update (T056).
+func TestGetAndResetDailyQuotaIsIdempotentUnderRetry(t *testing.T) {
+	userID := uuid.New()
+	quota := &entities.UserDailyQuota{
+		UserID:               userID,
+		OutfitRecommendCount: 5,
+		AiUsageCount:         9,
+		LastResetDate:        time.Now().AddDate(0, 0, -1),
+	}
+	uc, quotaRepo, userID := newQuotaTestUseCase(t, quota)
+
+	first, err := uc.GetAndResetDailyQuota(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if first.OutfitRecommendCount != 0 || first.AiUsageCount != 0 {
+		t.Fatalf("expected counters reset, got %+v", first)
+	}
+
+	// Retry (simulated timeout): must return the same zeroed counters with no
+	// additional persistence.
+	second, err := uc.GetAndResetDailyQuota(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error on retry: %v", err)
+	}
+	if second.OutfitRecommendCount != 0 || second.AiUsageCount != 0 {
+		t.Fatalf("expected same zeroed counters on retry, got %+v", second)
+	}
+	if quotaRepo.updates != 1 {
+		t.Fatalf("expected exactly one reset update across retry, got %d", quotaRepo.updates)
+	}
+}
+
 func (f *fakeQuotaSubRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }

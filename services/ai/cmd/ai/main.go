@@ -1,53 +1,68 @@
 // Command ai is the entry point of the AI Engine service.
 //
-// Supported modes (see FR-044): APP_MODE=http|worker|all (default all).
-// The service listens on PORT (Cloud Run injects it), default 8080,
+// Supported modes (FR-044): APP_MODE=http|worker|all (default all).
+// The service listens on PORT (Cloud Run injects it), falling back to
+// SERVER_PORT (local default lives in configs/config.yaml server.port),
 // and always serves GET /api/v1/health for startup/liveness probes.
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	_ "time/tzdata" // FR-050: embed tzdata so distroless static nonroot images resolve Asia/Ho_Chi_Minh.
+
+	"smart-wardrobe-be/services/ai/internal/di"
+	sharedconfig "smart-wardrobe-be/shared/config"
+	sharedlogger "smart-wardrobe-be/shared/pkg/logger"
 )
 
-const serviceName = "ai"
-
+// @title           Smart Wardrobe - AI Service API
+// @version         1.0
+// @description     API docs for the AI Engine service (aiexecutor).
 func main() {
 	healthcheck := flag.Bool("healthcheck", false, "Probe /api/v1/health and exit (used by Dockerfile HEALTHCHECK).")
 	flag.Parse()
 
-	port := os.Getenv("PORT")
+	port := listenPort()
 	if port == "" {
-		port = "8080"
+		log.Fatal("PORT or SERVER_PORT must be set (local default lives in configs/config.yaml server.port)")
 	}
 
 	if *healthcheck {
-		resp, err := http.Get("http://localhost:" + port + "/api/v1/health") //nolint:noctx,bodyclose
-		if err != nil || resp.StatusCode != http.StatusOK {
-			os.Exit(1)
-		}
-		os.Exit(0)
+		probeHealth(port)
+		return
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": serviceName})
-	})
+	cfg := sharedconfig.LoadConfig()
+	cfg.Server.Port = port
+	appLogger := sharedlogger.New(cfg.Server.Env, cfg.Logger.FilePath, cfg.Logger.LogLevel, cfg.Logger.LogToFile)
 
-	addr := ":" + port
-	fmt.Printf("%s service listening on %s (APP_MODE=%s)\n", serviceName, addr, appMode())
-	log.Fatal(http.ListenAndServe(addr, mux))
+	app, cleanup, err := di.InitializeApp(cfg, appLogger)
+	if err != nil {
+		log.Fatalf("failed to initialize ai service: %v", err)
+	}
+	defer cleanup()
+
+	if err := app.Run(); err != nil {
+		log.Fatalf("ai service stopped: %v", err)
+	}
 }
 
-func appMode() string {
-	if m := os.Getenv("APP_MODE"); m != "" {
-		return m
+// listenPort resolves the platform port: PORT wins (Cloud Run), then
+// SERVER_PORT for local/VPS (FR-049/SC-023).
+func listenPort() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return port
 	}
-	return "all"
+	return os.Getenv("SERVER_PORT")
+}
+
+func probeHealth(port string) {
+	resp, err := http.Get("http://localhost:" + port + "/api/v1/health") //nolint:noctx,bodyclose
+	if err != nil || resp.StatusCode != http.StatusOK {
+		os.Exit(1)
+	}
+	os.Exit(0)
 }

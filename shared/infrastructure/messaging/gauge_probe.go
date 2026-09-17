@@ -28,7 +28,7 @@ func (p *OutboxGaugeProbe) ProbeGauges(ctx context.Context, pending int64) {
 		mgmtPort = 15672
 	}
 	queueDepth, dlqDepth, err := FetchQueueDepths(ctx, p.cfg.RabbitMQ.Host, mgmtPort,
-		p.cfg.RabbitMQ.User, p.cfg.RabbitMQ.Password, p.logger)
+		p.cfg.RabbitMQ.User, p.cfg.RabbitMQ.Password, p.cfg.RabbitMQ.ManagementTLSEnabled, p.logger)
 	if err != nil {
 		p.logger.Warn("[OutboxGaugeProbe] Failed to fetch queue depths from management API", zap.Error(err))
 	}

@@ -15,6 +15,7 @@ type Router struct {
 	meHandler    *identity_handler.MeHandler
 	adminHandler *identity_handler.AdminHandler
 	auth         identity_contract.IAuthMiddleware
+	loginLimit   *shared_middleware.LoginRateLimitMiddleware
 }
 
 func NewRouter(
@@ -22,17 +23,20 @@ func NewRouter(
 	meHandler *identity_handler.MeHandler,
 	adminHandler *identity_handler.AdminHandler,
 	auth identity_contract.IAuthMiddleware,
+	loginLimit *shared_middleware.LoginRateLimitMiddleware,
 ) *Router {
 	return &Router{
 		authHandler:  authHandler,
 		meHandler:    meHandler,
 		adminHandler: adminHandler,
 		auth:         auth,
+		loginLimit:   loginLimit,
 	}
 }
 
 func (r *Router) Init(group *gin.RouterGroup) {
 	authApi := group.Group("/auth")
+	authApi.Use(r.loginLimit.Handle())
 	{
 		authApi.POST("/register", shared_pres.WrapHandler(r.authHandler.Register))
 		authApi.POST("/register/confirm-otp", shared_pres.WrapHandler(r.authHandler.ConfirmRegisterOtp))

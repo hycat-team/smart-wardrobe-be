@@ -27,12 +27,22 @@ func RunMigrationsIfEnabled(ctx context.Context, cfg *config.Config, dbConn *gor
 		log.Info("Skipping automatic database migrations (database.migrate_on_start=false)")
 		return nil
 	}
-	return RunMigrations(ctx, dbConn, migrationsFS, log)
+	if migrationsFS == nil {
+		log.Info("Skipping automatic database migrations (no migration tree for this service)")
+		return nil
+	}
+	table := cfg.Database.MigrationTable
+	if table == "" {
+		table = "goose_db_version"
+	}
+	return RunMigrations(ctx, dbConn, migrationsFS, table, cfg.Database.MigrationAllowOutOfOrder, log)
 }
 
 // RunMigrations executes embedded Goose SQL migrations using a Postgres session-level advisory lock
 // to prevent concurrent migration execution in multi-replica deployments.
-func RunMigrations(ctx context.Context, db *gorm.DB, migrationsFS fs.FS, log logger.Interface) error {
+// Each service uses its own version table (FR-035) so ordering never collides
+// on the shared database; allowOutOfOrder tolerates late-merged migrations.
+func RunMigrations(ctx context.Context, db *gorm.DB, migrationsFS fs.FS, table string, allowOutOfOrder bool, log logger.Interface) error {
 	if db == nil {
 		return fmt.Errorf("cannot run migrations on a nil database connection")
 	}
@@ -56,6 +66,8 @@ func RunMigrations(ctx context.Context, db *gorm.DB, migrationsFS fs.FS, log log
 		sqlDB,
 		migrationsFS,
 		goose.WithSessionLocker(sessionLocker),
+		goose.WithTableName(table),
+		goose.WithAllowOutofOrder(allowOutOfOrder),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create goose provider: %w", err)

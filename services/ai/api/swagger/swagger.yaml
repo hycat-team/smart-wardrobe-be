@@ -1,0 +1,283 @@
+definitions:
+  dto.PaginationMetadata:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  dto.PaginationResult-smart-wardrobe-be_services_ai_dto_aiexecutor_AIUsageItemDTO:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIUsageItemDTO'
+        type: array
+      metadata:
+        $ref: '#/definitions/dto.PaginationMetadata'
+    type: object
+  presentation.APIResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyBriefRes:
+    properties:
+      code:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      version:
+        type: integer
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO:
+    properties:
+      currency:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      inputUsdPerMillion:
+        type: number
+      model:
+        type: string
+      outputUsdPerMillion:
+        type: number
+      provider:
+        type: string
+      usdToVnd:
+        type: number
+      version:
+        type: string
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO:
+    properties:
+      aiCostPolicy:
+        $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyBriefRes'
+      aiCostPolicyId:
+        type: string
+      createdAt:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.AIUsageItemDTO:
+    properties:
+      actualCostMicroVnd:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: string
+      model:
+        type: string
+      operation:
+        type: string
+      outputTokens:
+        type: integer
+      promptTokens:
+        type: integer
+      provider:
+        type: string
+      requestId:
+        type: string
+      status:
+        type: string
+      thinkingTokens:
+        type: integer
+      userId:
+        type: string
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq:
+    properties:
+      aiCostPolicyId:
+        type: string
+      effectiveTo:
+        type: string
+      userId:
+        type: string
+    required:
+    - aiCostPolicyId
+    - userId
+    type: object
+  smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq:
+    properties:
+      effectiveTo:
+        type: string
+      inputUsdPerMillion:
+        type: number
+      outputUsdPerMillion:
+        type: number
+      usdToVnd:
+        type: number
+    type: object
+info:
+  contact: {}
+  description: API docs for the AI Engine service (aiexecutor).
+  title: Smart Wardrobe - AI Service API
+  version: "1.0"
+paths:
+  /api/v1/admin/ai/grants:
+    get:
+      description: Quản trị viên xem các lượt grant chính sách AI đã cấp cho người
+        dùng.
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO'
+                  type: array
+              type: object
+      summary: Danh sách hạn mức chính sách AI của người dùng
+      tags:
+      - Admin AI
+    post:
+      consumes:
+      - application/json
+      description: Quản trị viên cấp trực tiếp chính sách hạn mức AI mới cho người
+        dùng.
+      parameters:
+      - description: Thông tin cấp chính sách
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO'
+              type: object
+      summary: Cấp chính sách hạn mức AI cho người dùng
+      tags:
+      - Admin AI
+  /api/v1/admin/ai/pricing:
+    get:
+      description: Quản trị viên xem danh sách bảng giá các model AI của các nhà cung
+        cấp.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO'
+                  type: array
+              type: object
+      summary: Danh sách cấu hình giá mô hình AI
+      tags:
+      - Admin AI
+  /api/v1/admin/ai/pricing/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Quản trị viên cập nhật giá token hoặc tỷ giá quy đổi cho mô hình
+        AI.
+      parameters:
+      - description: Model Config ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thông tin cập nhật giá
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO'
+              type: object
+      summary: Cập nhật cấu hình giá mô hình AI
+      tags:
+      - Admin AI
+  /api/v1/admin/ai/usage:
+    get:
+      description: Quản trị viên xem nhật ký sử dụng và chi phí AI của một người dùng.
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        required: true
+        type: string
+      - description: Từ ngày (YYYY-MM-DD)
+        in: query
+        name: fromDate
+        type: string
+      - description: Đến ngày (YYYY-MM-DD)
+        in: query
+        name: toDate
+        type: string
+      - description: Trang
+        in: query
+        name: page
+        type: integer
+      - description: Số bản ghi/trang
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/presentation.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PaginationResult-smart-wardrobe-be_services_ai_dto_aiexecutor_AIUsageItemDTO'
+              type: object
+      summary: Lịch sử sử dụng AI của người dùng
+      tags:
+      - Admin AI
+swagger: "2.0"

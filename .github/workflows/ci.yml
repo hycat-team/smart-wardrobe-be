@@ -28,7 +28,9 @@ jobs:
               with:
                   go-version: "1.25.x"
                   cache: true
-                  cache-dependency-path: go.sum
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
 
             - name: Run static checks
               run: make fmt-check && make tidy-check && make generate-check
@@ -45,7 +47,9 @@ jobs:
               with:
                   go-version: "1.25.x"
                   cache: true
-                  cache-dependency-path: go.sum
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
 
             - name: Run go vet
               run: make vet
@@ -62,13 +66,38 @@ jobs:
               with:
                   go-version: "1.25.x"
                   cache: true
-                  cache-dependency-path: go.sum
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
 
             - name: Run tests
               run: make test
 
     build:
-        name: Build Binary
+        name: Build Service Binaries
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: [account, commerce, ai]
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
+
+            - name: Build ${{ matrix.service }}
+              run: make build svc=${{ matrix.service }}
+
+    buf:
+        name: Protobuf Lint and Drift
         runs-on: ubuntu-latest
         steps:
             - name: Checkout source
@@ -79,10 +108,117 @@ jobs:
               with:
                   go-version: "1.25.x"
                   cache: true
-                  cache-dependency-path: go.sum
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
 
-            - name: Build backend
-              run: make build
+            - name: Set up Buf
+              uses: bufbuild/buf-setup-action@v1
+              with:
+                  github_token: ${{ github.token }}
+
+            - name: Lint protobuf contracts
+              run: make buf-lint
+
+            - name: Verify generated stubs are committed (proto drift)
+              run: make buf-gen && git diff --exit-code -- contracts/
+
+    swagger-parity:
+        name: Swagger 9-Section Parity
+        runs-on: ubuntu-latest
+        needs: static
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Go 1.25
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.25.x"
+                  cache: true
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
+
+            - name: Generate per-service Swagger
+              run: make swagger-all
+
+            - name: Assert combined docs cover all modules
+              shell: bash
+              run: |
+                  python3 - <<'EOF'
+                  import json, sys
+
+                  # Module -> keyword substrings expected in tags/paths.
+                  # notification is worker/email-only (no HTTP API), so it is
+                  # explicitly exempted and documented here, not asserted.
+                  expected = {
+                      "identity": ["auth", "me", "user"],
+                      "subscription": ["subscription", "billing"],
+                      "admin": ["admin"],
+                      "wardrobe": ["wardrobe"],
+                      "fashion": ["fashion", "category"],
+                      "brand": ["brand"],
+                      "dashboard": ["dashboard"],
+                      "aiexecutor": ["ai", "outfit"],
+                  }
+
+                  files = {
+                      "account": "services/account/api/swagger/swagger.json",
+                      "commerce": "services/commerce/api/swagger/swagger.json",
+                      "ai": "services/ai/api/swagger/swagger.json",
+                  }
+
+                  haystacks = {}
+                  total_paths = 0
+                  for svc, path in files.items():
+                      with open(path) as f:
+                          doc = json.load(f)
+                      paths = doc.get("paths", {})
+                      if not paths:
+                          print(f"FAIL: {svc} swagger has no paths")
+                          sys.exit(1)
+                      total_paths += len(paths)
+                      text = " ".join(paths.keys()).lower()
+                      for _, methods in paths.items():
+                          for _, op in methods.items():
+                              text += " " + " ".join(op.get("tags", [])).lower()
+                      haystacks[svc] = text
+
+                  combined = " ".join(haystacks.values())
+                  missing = [m for m, kws in expected.items() if not any(k in combined for k in kws)]
+                  if missing:
+                      print(f"FAIL: missing doc sections for modules: {missing}")
+                      sys.exit(1)
+                  if total_paths < 50:
+                      print(f"FAIL: suspiciously few paths ({total_paths}); generation may be broken")
+                      sys.exit(1)
+                  print(f"PASS: 8 HTTP modules covered (+notification worker-only exempted), {total_paths} paths total")
+                  EOF
+
+    image-build:
+        name: Build Service Images
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: [account, commerce, ai]
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build ${{ matrix.service }} image (no push)
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: services/${{ matrix.service }}/Dockerfile
+                  push: false
+                  platforms: linux/amd64
+                  cache-from: type=gha,scope=ci-${{ matrix.service }}
+                  cache-to: type=gha,mode=max,scope=ci-${{ matrix.service }}
 
     test-race:
         name: Race Detector Tests
@@ -96,7 +232,9 @@ jobs:
               with:
                   go-version: "1.25.x"
                   cache: true
-                  cache-dependency-path: go.sum
+                  cache-dependency-path: |
+                      **/go.sum
+                      go.work.sum
 
             - name: Run race detector tests
               run: make test-race

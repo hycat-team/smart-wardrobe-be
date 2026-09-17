@@ -22,8 +22,8 @@ type mgmtQueue struct {
 // FetchQueueDepths gọi RabbitMQ Management HTTP API, trả về tổng message
 // trong các queue chính (không phải DLQ) và tổng message trong các DLQ.
 // Lỗi trả về không fatal — caller chỉ log warn và giữ gauge cũ.
-func FetchQueueDepths(ctx context.Context, host string, mgmtPort int, user, password string, l logger.Interface) (queueDepth, dlqDepth int64, err error) {
-	url := fmt.Sprintf("http://%s:%d/api/queues", host, mgmtPort)
+func FetchQueueDepths(ctx context.Context, host string, mgmtPort int, user, password string, useTLS bool, l logger.Interface) (queueDepth, dlqDepth int64, err error) {
+	url := mgmtURL(host, mgmtPort, useTLS)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, 0, err

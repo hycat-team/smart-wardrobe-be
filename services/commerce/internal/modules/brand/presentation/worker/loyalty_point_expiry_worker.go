@@ -6,6 +6,7 @@ import (
 
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/brand/application/interface/usecase"
 	"smart-wardrobe-be/shared/config"
+	shareddb "smart-wardrobe-be/shared/infrastructure/db"
 	"smart-wardrobe-be/shared/observability/workerlog"
 	"smart-wardrobe-be/shared/pkg/logger"
 	shared_worker "smart-wardrobe-be/shared/presentation/worker"
@@ -16,6 +17,7 @@ import (
 type LoyaltyPointExpiryWorker struct {
 	*shared_worker.BaseWorker
 	useCase uc_interfaces.IBrandLoyaltyUseCase
+	locker  *shareddb.JobLocker
 	log     logger.Interface
 	cfg     *config.Config
 	stopCh  chan struct{}
@@ -23,12 +25,14 @@ type LoyaltyPointExpiryWorker struct {
 
 func NewLoyaltyPointExpiryWorker(
 	useCase uc_interfaces.IBrandLoyaltyUseCase,
+	locker *shareddb.JobLocker,
 	log logger.Interface,
 	cfg *config.Config,
 ) *LoyaltyPointExpiryWorker {
 	return &LoyaltyPointExpiryWorker{
 		BaseWorker: shared_worker.NewBaseWorker("loyalty_point_expiry"),
 		useCase:    useCase,
+		locker:     locker,
 		log:        log,
 		cfg:        cfg,
 		stopCh:     make(chan struct{}),
@@ -73,6 +77,19 @@ func (w *LoyaltyPointExpiryWorker) loop() {
 func (w *LoyaltyPointExpiryWorker) run(triggerType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), w.cfg.Loyalty.ExpiryWorkerInterval)
 	defer cancel()
+
+	// FR-045/SC-019: expiry is not idempotent — only the instance holding the
+	// advisory lock executes it. A skipped run is picked up by the next tick.
+	release, acquired, err := w.locker.TryLock(ctx, shareddb.LoyaltyExpiryLockID)
+	if err != nil {
+		w.log.Warn("Failed to acquire loyalty expiry lock; skipping run", zap.Error(err))
+		return
+	}
+	if !acquired {
+		w.log.Info("Loyalty expiry already running on another instance; skipping run")
+		return
+	}
+	defer release()
 
 	run := workerlog.New("loyalty_point_expiry", triggerType)
 	expiredPoints, err := w.useCase.ProcessExpiredLoyaltyPointLots(ctx, run, time.Now().UTC(), w.cfg.Loyalty.ExpiryWorkerBatchSize)

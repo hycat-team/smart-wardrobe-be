@@ -18,11 +18,14 @@ var ignoredStackFunctions = []string{
 	"smart-wardrobe-be/shared/pkg/utils/validation.TranslateValidationError",
 }
 
+// noiseCandidateFunctions matches framework/middleware wrapper frames by
+// function name so the classifier survives package moves across services.
 var noiseCandidateFunctions = []string{
-	"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalErrorHandler",
-	"smart-wardrobe-be/shared/presentation/middleware.CORSMiddleware",
-	"smart-wardrobe-be/internal/api/routes.NewEngine.GlobalTimeoutMiddleware",
-	"smart-wardrobe-be/shared/presentation/middleware.(*RateLimitMiddleware).Handle",
+	"GlobalErrorHandler",
+	"GlobalTimeoutMiddleware",
+	"CORSMiddleware",
+	"(*RateLimitMiddleware).Handle",
+	"(*LoginRateLimitMiddleware).Handle",
 }
 
 type stackFrame struct {

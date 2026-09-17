@@ -13,16 +13,12 @@ func (r *RabbitMQClient) connect(timeout time.Duration) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	url := fmt.Sprintf("amqp://%s:%s@%s:%d/",
-		r.cfg.RabbitMQ.User,
-		r.cfg.RabbitMQ.Password,
-		r.cfg.RabbitMQ.Host,
-		r.cfg.RabbitMQ.Port,
-	)
+	url := amqpURL(r.cfg)
 
 	conn, err := amqp.DialConfig(url, amqp.Config{
-		Locale: "en_US",
-		Dial:   amqp.DefaultDial(timeout),
+		Locale:          "en_US",
+		Dial:            amqp.DefaultDial(timeout),
+		TLSClientConfig: amqpTLSConfig(r.cfg),
 	})
 	if err != nil {
 		return fmt.Errorf("could not connect to RabbitMQ broker: %w", err)
