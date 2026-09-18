@@ -1,4 +1,4 @@
-# 00 — Tổng quan hạ tầng 020
+# 01 — Tổng quan hạ tầng 020
 
 Feature `020-platform-migration`: 3 service độc lập (Account, Commerce, AI) trên
 multi-module Go workspace, chạy **song song** (monolith `api.closy` + Cloud Run
@@ -30,8 +30,8 @@ multi-module Go workspace, chạy **song song** (monolith `api.closy` + Cloud Ru
 
 ## Runbook trong thư mục này
 
-`01-supabase` · `02-redis` · `03-cloudamqp` · `04-cloudrun` ·
-`05-nginx-ingress` · `06-es-off` · `07-bang-bien-moi-truong` ·
-`08-song-song` · `09-chuyen-du-lieu` · `10-dns-vercel-ci-cd` ·
-`11-ve-lai-vps` · `12-ngung-vps-va-thu-hoi-secret` · `13-monitoring` ·
-`14-first-time-deploy-step-by-step` (**bắt đầu ở đây cho lần host đầu tiên**)
+`00-first-time-deploy-step-by-step` (**bắt đầu ở đây cho lần host đầu tiên**) ·
+`02-supabase` · `03-redis` · `04-cloudamqp` · `05-cloudrun` ·
+`06-nginx-ingress` · `07-es-off` · `08-bang-bien-moi-truong` ·
+`09-song-song` · `10-chuyen-du-lieu` · `11-dns-vercel-ci-cd` ·
+`12-ve-lai-vps` · `13-ngung-vps-va-thu-hoi-secret` · `14-monitoring`

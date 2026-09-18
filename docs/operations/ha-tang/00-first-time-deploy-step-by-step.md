@@ -1,4 +1,4 @@
-# 14 — First-time deploy step-by-step (managed + VPS song song)
+# 00 — First-time deploy step-by-step (managed + VPS song song)
 
 > Runbook **cầm tay chỉ việc** cho lần host đầu tiên: Cloud Run (3 service) + VPS
 > Nginx ingress song song với monolith. Thứ tự bắt buộc từ trên xuống.
@@ -7,7 +7,7 @@
 > `AR_PROJECT` trong `deploy-platform.yml`, mặc định `smart-wardrobe`),
 > `<REGION>` = `asia-southeast1`, `<OWNER/REPO>` (GitHub), `<VPS_HOST>`, `<VPS_USER>`.
 >
-> Biến môi trường đầy đủ: xem `07-bang-bien-moi-truong.md`.
+> Biến môi trường đầy đủ: xem `08-bang-bien-moi-truong.md`.
 
 ## 0. Đăng ký nền tảng & điều kiện tiên quyết
 
@@ -251,7 +251,7 @@ Verify: mỗi service 200 `GET /api/v1/health` (gọi qua token helper/`gcloud r
 
 ## 8. Dump dữ liệu VPS → Supabase (song song)
 
-Theo `09-chuyen-du-lieu-vps-supabase.md` (backup + checksum + re-dump tại cutover).
+Theo `10-chuyen-du-lieu-vps-supabase.md` (backup + checksum + re-dump tại cutover).
 
 ## 9. Gate song song (T082)
 
@@ -269,7 +269,7 @@ Theo `09-chuyen-du-lieu-vps-supabase.md` (backup + checksum + re-dump tại cuto
   ```
   `parallel` (api.closy→monolith, api-v2→Cloud Run) · `repatriation` (api.closy→3 service,
   api-v2→301) · `rollback` (api.closy→monolith, api-v2→301).
-- Repatriation: `repatriate-to-vps.md` + `ha-tang/11-ve-lai-vps.md`.
+- Repatriation: `repatriate-to-vps.md` + `ha-tang/12-ve-lai-vps.md`.
 - Cutover `api.closy`: `manual-cutover-api-closy-to-cloudrun.md` (owner-triggered).
 - Rollback khẩn cấp: `deploy-production.yml` (đổi `NGINX_MODE=rollback` **trước** khi chạy,
   vì workflow chỉ start `backend`).
@@ -281,6 +281,6 @@ Theo `09-chuyen-du-lieu-vps-supabase.md` (backup + checksum + re-dump tại cuto
   (5432), runtime query vẫn qua pooler 6543. Vì vậy `DB_LISTENER_HOST` là **bắt buộc**
   ở managed (workflow enforce).
 - **Token-helper SA key** là bí mật file trên VPS; rotation thủ công (tạo key mới,
-  redeploy helper, revoke key cũ) — xem `12-ngung-vps-va-thu-hoi-secret.md`.
+  redeploy helper, revoke key cũ) — xem `13-ngung-vps-va-thu-hoi-secret.md`.
 - **`:latest` chỉ ở CI**; production pin theo `<git-sha>`/digest.
 - Ảnh private: **không** public; GHCR cần token đọc trên VPS.

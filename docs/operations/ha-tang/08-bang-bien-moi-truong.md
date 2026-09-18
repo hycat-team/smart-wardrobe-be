@@ -1,4 +1,4 @@
-# Bảng biến môi trường & hướng dẫn điền (020-platform-migration)
+# 08 — Bảng biến môi trường & hướng dẫn điền (020-platform-migration)
 
 > **Nguồn giá trị mẫu**: `.env.example` (local), `.env.production.example` (VPS).
 > **Managed (Cloud Run)** KHÔNG dùng `.env` — biến được tiêm từ **GitHub Actions
@@ -104,8 +104,8 @@ host/service-name), chỉ cần khi chạy host (`make run`) nhiều service:
 ### 6.2 `.env.production` (VPS) — **PHẢI điền trước khi deploy**
 | Biến trống | Khi nào cần | Cách lấy |
 |---|---|---|
-| `API_V2_DOMAIN` | mode `parallel` | `api-v2.closy.hycat.online` (DNS Vercel, xem `10-dns-vercel-ci-cd.md`) |
-| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | mode `parallel` | `gcloud run services describe <svc> --region asia-southeast1 --format value(status.url)` (xem `04-compute-cloudrun.md`) |
+| `API_V2_DOMAIN` | mode `parallel` | `api-v2.closy.hycat.online` (DNS Vercel, xem `11-dns-vercel-ci-cd.md`) |
+| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | mode `parallel` | `gcloud run services describe <svc> --region asia-southeast1 --format value(status.url)` (xem `05-compute-cloudrun.md`) |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | khi bật ES256 | sinh cặp EC P-256, dán PEM (xem `docs/system-design/microservices/04-auth-asymmetric-jwt.md`) |
 | `INGRESS_TOKEN_AUDIENCE` | chỉ managed | URL `run.app` (secret GitHub) |
 | `EMAIL_REPLY_TO`, `PORT`, `DB_DRILL_SCHEMA`, `DATABASE_MIGRATION_TABLE` | không (default/drill/per-service) | — |

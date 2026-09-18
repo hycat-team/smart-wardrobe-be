@@ -1,4 +1,4 @@
-# 08 — Kiến trúc song song tổng quan (monolith + Cloud Run)
+# 09 — Kiến trúc song song tổng quan (monolith + Cloud Run)
 
 ## Trạng thái song song
 

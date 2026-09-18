@@ -1,4 +1,4 @@
-# 11 — Về lại VPS (migrate ngược, DNS, tắt funded)
+# 12 — Về lại VPS (migrate ngược, DNS, tắt funded)
 
 Chi tiết kỹ thuật cho bước repatriation; runbook tổng ở
 `../repatriate-to-vps.md`.
@@ -24,5 +24,5 @@ Chi tiết kỹ thuật cho bước repatriation; runbook tổng ở
 
 ## Env profile `vps`
 
-`sslmode=disable`, TLS off, `migrate_on_start=true`; xem `07-bang-bien-moi-truong.md`.
+`sslmode=disable`, TLS off, `migrate_on_start=true`; xem `08-bang-bien-moi-truong.md`.
 Kiểm thử local profile `vps` trước (T104): 3 service chạy đủ, không sửa code.

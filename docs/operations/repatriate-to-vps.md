@@ -23,7 +23,7 @@ Xem `ha-tang/00..10` + `manual-cutover-api-closy-to-cloudrun.md`.
 - `api.closy` là host canonical; `api-v2` **redirect 301** về `api.closy` trong
   grace period **14–30 ngày** (cả hai host cùng phục vụ 3-service compose).
 - Sau grace period: **xoá bản ghi DNS** `api-v2`.
-- Xem `ha-tang/11-ve-lai-vps.md` cho migrate ngược chi tiết.
+- Xem `ha-tang/12-ve-lai-vps.md` cho migrate ngược chi tiết.
 
 ## Mục tiêu
 

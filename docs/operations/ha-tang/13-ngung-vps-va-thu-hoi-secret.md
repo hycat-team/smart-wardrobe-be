@@ -1,4 +1,4 @@
-# 12 — Ngừng VPS cũ và thu hồi credential (FR-016)
+# 13 — Ngừng VPS cũ và thu hồi credential (FR-016)
 
 Chạy **sau khi** cutover/repatriation đã xác nhận ổn định (gate T082/T108 pass).
 Mục tiêu: không để credential cũ (JWT key, SA key, DB/AMQP/Redis, Cloudinary,

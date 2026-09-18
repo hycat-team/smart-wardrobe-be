@@ -1,6 +1,6 @@
-# 10 — DNS Vercel + CI/CD platform
+# 11 — DNS Vercel + CI/CD platform
 
-> Step-by-step deploy first-time: `14-first-time-deploy-step-by-step.md`.
+> Step-by-step deploy first-time: `00-first-time-deploy-step-by-step.md`.
 > **Điều kiện tiên quyết**: tag `monolith-legacy` đã **push** lên remote
 > (`git ls-remote --tags origin | grep monolith-legacy`) — nếu thiếu, workflow
 > rollback `deploy-production.yml` sẽ fail.

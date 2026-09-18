@@ -1,4 +1,4 @@
-# 03 — CloudAMQP RabbitMQ (Tough Tiger)
+# 04 — CloudAMQP RabbitMQ (Tough Tiger)
 
 ## Tài nguyên
 

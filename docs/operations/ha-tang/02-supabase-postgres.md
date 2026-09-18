@@ -1,4 +1,4 @@
-# 01 — Supabase Postgres (1 project, 1 database dùng chung)
+# 02 — Supabase Postgres (1 project, 1 database dùng chung)
 
 ## Tài nguyên
 

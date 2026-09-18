@@ -1,4 +1,4 @@
-# 02 — Redis Cloud Essentials 250MB
+# 03 — Redis Cloud Essentials 250MB
 
 ## Tài nguyên
 

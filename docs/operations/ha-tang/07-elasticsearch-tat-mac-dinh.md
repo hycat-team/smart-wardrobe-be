@@ -1,4 +1,4 @@
-# 06 — Elasticsearch tắt mặc định
+# 07 — Elasticsearch tắt mặc định
 
 Search engine **không được funded** nên tắt mặc định (`ELASTICSEARCH_ENABLED=false`)
 trên mọi môi trường (FR-001).

@@ -1,6 +1,6 @@
-# 05 — VPS Nginx ingress tới Cloud Run
+# 06 — VPS Nginx ingress tới Cloud Run
 
-> Step-by-step cầm tay: xem `14-first-time-deploy-step-by-step.md` (§7).
+> Step-by-step cầm tay: xem `00-first-time-deploy-step-by-step.md` (§7).
 > Nginx render theo **`NGINX_MODE`** (`parallel`/`repatriation`/`rollback`,
 > `templates/<mode>/`); token-helper là **service compose** (profile `parallel`).
 > Đổi mode → `up -d --force-recreate nginx`.

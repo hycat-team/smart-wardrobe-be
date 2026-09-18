@@ -1,4 +1,4 @@
-# 09 — Chuyển dữ liệu VPS → Supabase (dump/restore + backfill + checksum)
+# 10 — Chuyển dữ liệu VPS → Supabase (dump/restore + backfill + checksum)
 
 ## Quy trình (US3 AC2)
 
