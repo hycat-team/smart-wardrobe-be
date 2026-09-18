@@ -72,14 +72,14 @@ func NewApp(
 func (a *App) Run() error {
 	ctx := context.Background()
 
-	if a.Validator != nil {
-		if err := a.Validator.Validate(ctx); err != nil {
-			return fmt.Errorf("startup validation failed: %w", err)
-		}
-	}
 	if a.DB != nil && a.MigrationsFS != nil {
 		if err := db.RunMigrationsIfEnabled(ctx, a.Config, a.DB, a.MigrationsFS, a.Log); err != nil {
 			return fmt.Errorf("database migration failed: %w", err)
+		}
+	}
+	if a.Validator != nil {
+		if err := a.Validator.Validate(ctx); err != nil {
+			return fmt.Errorf("startup validation failed: %w", err)
 		}
 	}
 

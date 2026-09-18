@@ -61,6 +61,8 @@ specs/
 .specify/
 .agents/
 deployments/
+!deployments/token-helper/
+!deployments/token-helper/go.mod
 **/*_test.go
 **/testdata/
 *.md
