@@ -71,11 +71,31 @@ cp .env.example .env
 make docker-dev-up          # local compose: infra (+ optional service images)
 make build-all              # build account, commerce, ai into bin/
 make run svc=account        # run one service locally (svc=account|commerce|ai)
-make dev                    # generate (wire+swagger) + build all
+make dev                    # generate (wire+swagger+nginx routes) + build all
 ```
 
 Each service listens on `PORT` (Cloud Run injects it) else `SERVER_PORT`, and
 serves `GET /api/v1/health`. Run mode via `APP_MODE=http|worker|all` (default `all`).
+
+`make run svc=<name>` runs from `services/<name>` (so Swagger resolves) but the
+Makefile exports `CONFIG_FILE` (repo `configs/config.yaml`) and the local
+`DB_/REDIS_/RABBITMQ_HOST` defaults, so config + `.env` load automatically. It
+listens on `SERVER_PORT` (default `8080`). To run all three on the host at once,
+give each a port and tell the callers where to find the others:
+
+```bash
+make run svc=account  SERVER_PORT=8080
+make run svc=ai       SERVER_PORT=8103 INGRESS_ACCOUNT_URL=http://localhost:8080
+make run svc=commerce SERVER_PORT=8102 \
+  INGRESS_ACCOUNT_URL=http://localhost:8080 INGRESS_AI_URL=http://localhost:8103
+```
+
+For the full 3-service topology behind one gateway, use `make docker-dev-up` and
+call `http://localhost:8080` (Nginx).
+
+Route config is bind-mounted, so after `make nginx-routes`/`make generate` while
+the stack is running, apply it with `make nginx-reload-local` (Nginx keeps the
+old in-memory config until reloaded — otherwise new/changed API paths 404).
 
 ### 3. Install Go tools
 
@@ -96,18 +116,27 @@ make migrate-up svc= / migrate-create svc= name=xxx    # per-service Goose
 make image-build svc= / image-push svc= / deploy svc=  # Cloud Run images
 make test / test-race / vet / lint                     # all workspace modules
 make check                                             # CI suite
+make nginx-check                                       # route map covers all swagger paths
+make nginx-routes                                      # regenerate route map from swagger
+make nginx-reload-local                                # apply route changes to local Nginx
+make swagger-combine                                   # merge specs into combined Swagger UI
 ```
 
 ---
 
 ## API Documentation
 
-Each service serves its own docs (behind `swagger_access_code`); combined they
-cover 9 sections (identity, subscription, admin, notification, wardrobe,
-fashion, brand, dashboard, aiexecutor):
+`make swagger-combine` merges the 3 per-service specs into one monolith-style
+bundle (old Swagger UI + Service/Module selectors) that the Account service
+serves behind `swagger_access_code`; combined they cover 9 sections (identity,
+subscription, admin, notification, wardrobe, fashion, brand, dashboard,
+aiexecutor):
 
 ```
-http://localhost:8080/swagger   # per-service, when running locally
+http://localhost:8080/swagger   # Combined, all services (via Nginx gateway)
+http://localhost:8101/swagger   # Account only
+http://localhost:8102/swagger   # Commerce only
+http://localhost:8103/swagger   # AI only
 ```
 
 ---

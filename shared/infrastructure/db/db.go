@@ -6,6 +6,7 @@ import (
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/infrastructure/resilience"
 	pkglogger "smart-wardrobe-be/shared/pkg/logger"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -18,6 +19,18 @@ import (
 // traffic through it must avoid prepared statements and client startup
 // parameters (FR-046); migration/LISTEN/advisory traffic uses direct 5432.
 const supavisorPoolerPort = 6543
+
+// queryExecMode resolves the pgx QueryExecMode for runtime traffic. The
+// Supavisor transaction pooler (6543) cannot serve prepared statements, so it is
+// forced to simple_protocol (FR-046). Direct connections use pgx's default
+// (prepared statements, which also carry parameter OIDs) unless explicitly
+// overridden via DATABASE_QUERY_EXEC_MODE.
+func queryExecMode(cfg *config.Config) string {
+	if cfg.Database.Port == supavisorPoolerPort {
+		return "simple_protocol"
+	}
+	return strings.TrimSpace(cfg.Database.QueryExecMode)
+}
 
 func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB, error) {
 
@@ -46,8 +59,8 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 		// startup parameters, so search_path MUST come from the server side
 		// (ALTER ROLE/DATABASE) there — never from this DSN. Direct
 		// connections keep the DSN search_path for local/VPS convenience.
-		// simple_protocol disables named prepared statements, which the
-		// pooler cannot serve (QueryExecMode, default simple_protocol).
+		// simple_protocol disables prepared statements, which the pooler cannot
+		// serve; it is forced there by queryExecMode (FR-046).
 		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s connect_timeout=%d",
 			cfg.Database.Host,
 			cfg.Database.User,
@@ -61,7 +74,7 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 		if cfg.Database.Port != supavisorPoolerPort {
 			dsn += fmt.Sprintf(" search_path=%s", searchPath)
 		}
-		if mode := cfg.Database.QueryExecMode; mode != "" {
+		if mode := queryExecMode(cfg); mode != "" {
 			dsn += fmt.Sprintf(" default_query_exec_mode=%s", mode)
 		}
 

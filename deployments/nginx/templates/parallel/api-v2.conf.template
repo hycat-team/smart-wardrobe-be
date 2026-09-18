@@ -57,31 +57,47 @@ server {
         return 200 "ok\n";
     }
 
-    # Token helper nội bộ: chỉ Nginx gọi (không expose ra ngoài).
-    location = /_token_helper {
+    # Token helper nội bộ — mỗi service một audience (URL run.app của chính nó).
+    # Chỉ Nginx gọi (internal); helper trả header X-Serverless-Authorization.
+    location = /_token_helper_account {
         internal;
-        proxy_pass ${TOKEN_HELPER_URL};
+        proxy_pass ${TOKEN_HELPER_URL}/token?audience=${ACCOUNT_RUN_URL};
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 10s;
+    }
+    location = /_token_helper_commerce {
+        internal;
+        proxy_pass ${TOKEN_HELPER_URL}/token?audience=${COMMERCE_RUN_URL};
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 10s;
+    }
+    location = /_token_helper_ai {
+        internal;
+        proxy_pass ${TOKEN_HELPER_URL}/token?audience=${AI_RUN_URL};
         proxy_connect_timeout 5s;
         proxy_read_timeout 10s;
     }
 
-    # SSE/AI streaming: tắt buffering, timeout đọc lớn (FR-036).
-    # Prefix SSE cụ thể chốt cùng route map ở T069; giữ stanza mẫu tại đây.
-    location ~ ^/api/v1/ai/.*/stream {
-        auth_request /_token_helper;
+    # SSE/AI streaming (FR-036) is generated into the route map below:
+    # `make nginx-routes` emits a dedicated `location ^~` per /stream or /sse
+    # path with proxy_buffering off + long timeouts. Do NOT add a regex here:
+    # the generated locations use `^~`, so Nginx would skip regex matching.
+
+    # Combined Swagger docs hosted by Account (old UI + service/module
+    # selectors), behind the app access-code lock.
+    location ^~ /swagger {
+        auth_request /_token_helper_account;
         auth_request_set $serverless_auth $upstream_http_x_serverless_authorization;
         proxy_set_header X-Serverless-Authorization $serverless_auth;
-
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $proxy_host;
         proxy_ssl_server_name on;
-        # NOTE(T069): proxy_pass tới AI_RUN_URL theo route map.
-        proxy_pass ${AI_RUN_URL};
+        proxy_pass ${ACCOUNT_RUN_URL};
+    }
+    location ^~ /api-docs {
+        auth_request /_token_helper_account;
+        auth_request_set $serverless_auth $upstream_http_x_serverless_authorization;
+        proxy_set_header X-Serverless-Authorization $serverless_auth;
+        proxy_ssl_server_name on;
+        proxy_pass ${ACCOUNT_RUN_URL};
     }
 
     # Route map tới 3 Cloud Run (T069 populate từng file service).

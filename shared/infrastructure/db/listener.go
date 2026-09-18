@@ -38,36 +38,10 @@ func NewOutboxListener(cfg *config.Config, l logger.Interface) (*OutboxListener,
 		}, nil
 	}
 
-	// Session-scoped direct DSN (FR-046): migration, LISTEN/NOTIFY and
-	// advisory locks MUST NOT go through the transaction pooler. Falls back
-	// to the main database fields when no dedicated listener endpoint is set.
-	// No search_path here: LISTEN needs none, and poolers ignore/deny
-	// client startup parameters (search_path lives server-side).
-	host := cfg.Database.ListenerHost
-	if host == "" {
-		host = cfg.Database.Host
-	}
-	port := cfg.Database.ListenerPort
-	if port == 0 {
-		port = cfg.Database.Port
-	}
-	sslMode := cfg.Database.ListenerSslMode
-	if sslMode == "" {
-		sslMode = cfg.Database.SslMode
-	}
-	timeZone := cfg.Database.TimeZone
-	if timeZone == "" {
-		timeZone = "Asia/Ho_Chi_Minh"
-	}
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-		host,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.DbName,
-		port,
-		sslMode,
-		timeZone,
-	)
+	// Session-scoped direct DSN (FR-046): LISTEN/NOTIFY, migration and advisory
+	// locks MUST NOT go through the transaction pooler. No search_path here:
+	// LISTEN needs none, and poolers ignore/deny client startup parameters.
+	connStr := DirectDSN(cfg)
 
 	ol := &OutboxListener{
 		connStr:    connStr,

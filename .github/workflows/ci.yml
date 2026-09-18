@@ -143,6 +143,12 @@ jobs:
             - name: Generate per-service Swagger
               run: make swagger-all
 
+            - name: Verify Nginx route map covers all API paths
+              run: make nginx-check
+
+            - name: Verify Nginx route map is in sync with swagger (drift)
+              run: make nginx-routes && git diff --exit-code -- deployments/nginx
+
             - name: Assert combined docs cover all modules
               shell: bash
               run: |

@@ -7,3 +7,8 @@ go.sum text eol=lf
 Makefile text eol=lf
 Dockerfile text eol=lf
 *.sh text eol=lf
+# Nginx configs: `make nginx-routes` writes LF, keep every OS in sync (CI drift check)
+deployments/nginx/** text eol=lf
+# Generated Swagger UI/bundle (make swagger-combine writes LF)
+services/*/api/swagger/index.html text eol=lf
+services/*/api/swagger/combined/** text eol=lf

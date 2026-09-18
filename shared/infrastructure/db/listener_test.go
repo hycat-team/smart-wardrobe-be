@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"smart-wardrobe-be/shared/config"
@@ -10,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // stubLogger satisfies logger.Interface without emitting anything.
@@ -63,19 +66,35 @@ func TestNewOutboxListenerUnreachableNonFatal(t *testing.T) {
 }
 
 // TestRunMigrationsIfEnabledSkipped proves FR-011: disabled profiles boot
-// without touching the database (nil db must not even be dereferenced).
+// without touching the database.
 func TestRunMigrationsIfEnabledSkipped(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Database.MigrateOnStart = false
 
-	assert.NoError(t, RunMigrationsIfEnabled(context.Background(), cfg, nil, nil, stubLogger{}))
+	assert.NoError(t, RunMigrationsIfEnabled(context.Background(), cfg, nil, stubLogger{}))
 }
 
-// TestRunMigrationsIfEnabledPassesThrough proves the gate only skips: enabled
-// with an unusable db must surface the migration error, not swallow it.
-func TestRunMigrationsIfEnabledPassesThrough(t *testing.T) {
+// TestRunMigrationsIfEnabledNoTreeSkips proves a service without an embedded
+// migration tree is skipped (not an error).
+func TestRunMigrationsIfEnabledNoTreeSkips(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Database.MigrateOnStart = true
 
-	assert.Error(t, RunMigrationsIfEnabled(context.Background(), cfg, nil, nil, stubLogger{}))
+	assert.NoError(t, RunMigrationsIfEnabled(context.Background(), cfg, nil, stubLogger{}))
+}
+
+// TestRunMigrationsIfEnabledSurfacesDirectOpenError proves the gate only skips:
+// an enabled profile whose DIRECT migration connection cannot be opened must
+// surface the error, not swallow it.
+func TestRunMigrationsIfEnabledSurfacesDirectOpenError(t *testing.T) {
+	orig := openMigrationDB
+	t.Cleanup(func() { openMigrationDB = orig })
+	openMigrationDB = func(*config.Config) (*gorm.DB, error) {
+		return nil, errors.New("dial direct failed")
+	}
+
+	cfg := &config.Config{}
+	cfg.Database.MigrateOnStart = true
+
+	assert.Error(t, RunMigrationsIfEnabled(context.Background(), cfg, fstest.MapFS{}, stubLogger{}))
 }

@@ -36,31 +36,7 @@ type JobLocker struct {
 // returns (nil, nil) when locking is unreachable so boot never fails; callers
 // treat a nil locker as "locking unavailable" and run unguarded.
 func NewPostgresJobLocker(cfg *config.Config, l logger.Interface) (*JobLocker, error) {
-	host := cfg.Database.ListenerHost
-	if host == "" {
-		host = cfg.Database.Host
-	}
-	port := cfg.Database.ListenerPort
-	if port == 0 {
-		port = cfg.Database.Port
-	}
-	sslMode := cfg.Database.ListenerSslMode
-	if sslMode == "" {
-		sslMode = cfg.Database.SslMode
-	}
-	timeZone := cfg.Database.TimeZone
-	if timeZone == "" {
-		timeZone = "Asia/Ho_Chi_Minh"
-	}
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-		host,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.DbName,
-		port,
-		sslMode,
-		timeZone,
-	)
+	dsn := DirectDSN(cfg)
 
 	opened, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormlogger.Default.LogMode(gormlogger.Warn),

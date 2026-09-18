@@ -21,6 +21,7 @@ WORKDIR /src/services/account
 RUN CGO_ENABLED=0 go build -trimpath -o /out/account ./cmd/account
 
 FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /
 COPY --from=builder /out/account /account
 COPY --from=builder /src/services/account/database/migrations /migrations
 COPY --from=builder /src/services/account/api/swagger /api/swagger

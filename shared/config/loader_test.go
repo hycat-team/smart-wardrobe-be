@@ -57,8 +57,14 @@ func TestLoadLocalProfile(t *testing.T) {
 	if cfg.Elasticsearch.Enabled {
 		t.Error("Elasticsearch must default to disabled")
 	}
-	if cfg.Database.QueryExecMode != "simple_protocol" {
-		t.Errorf("QueryExecMode = %q, want simple_protocol", cfg.Database.QueryExecMode)
+	if cfg.Database.QueryExecMode != "" {
+		t.Errorf("QueryExecMode = %q, want empty (resolved pooler-only in the db layer)", cfg.Database.QueryExecMode)
+	}
+	if cfg.Database.SslMode != "disable" || cfg.Database.ListenerSslMode != "disable" {
+		t.Errorf("ssl modes = %q/%q, want disable/disable by default", cfg.Database.SslMode, cfg.Database.ListenerSslMode)
+	}
+	if !cfg.Database.MigrationAllowOutOfOrder {
+		t.Error("MigrationAllowOutOfOrder must default to true (FR-035)")
 	}
 }
 

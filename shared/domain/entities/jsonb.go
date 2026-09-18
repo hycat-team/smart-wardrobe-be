@@ -20,15 +20,27 @@ type bodyProfile struct {
 }
 
 func (b bodyProfile) Value() (driver.Value, error) {
-	return json.Marshal(b)
+	// Return string, not []byte: under pgx simple_protocol (Supavisor pooler,
+	// FR-046) a []byte driver value is encoded as bytea and a jsonb column
+	// rejects it with SQLSTATE 22P02.
+	data, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+	return string(data), nil
 }
 
 func (b *bodyProfile) Scan(value any) error {
-	bytes, ok := value.([]byte)
-	if !ok {
+	var data []byte
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
 	}
-	return json.Unmarshal(bytes, b)
+	return json.Unmarshal(data, b)
 }
 
 func (b *bodyProfile) UnmarshalJSON(data []byte) error {
@@ -114,7 +126,8 @@ func (j JSONDocument) Value() (driver.Value, error) {
 	if len(j) == 0 {
 		return nil, nil
 	}
-	return []byte(j), nil
+	// string, not []byte — see bodyProfile.Value (simple_protocol / jsonb).
+	return string(j), nil
 }
 
 func (j *JSONDocument) Scan(value any) error {
@@ -138,13 +151,23 @@ type preferredColors []string
 type PreferredColors = preferredColors
 
 func (p preferredColors) Value() (driver.Value, error) {
-	return json.Marshal(p)
+	// string, not []byte — see bodyProfile.Value (simple_protocol / jsonb).
+	data, err := json.Marshal(p)
+	if err != nil {
+		return nil, err
+	}
+	return string(data), nil
 }
 
 func (p *preferredColors) Scan(value any) error {
-	bytes, ok := value.([]byte)
-	if !ok {
+	var data []byte
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
 	}
-	return json.Unmarshal(bytes, p)
+	return json.Unmarshal(data, p)
 }

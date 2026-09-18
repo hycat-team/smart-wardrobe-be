@@ -2,11 +2,42 @@ package repositories
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// JSONField is a jsonb column value. Value() returns string (not []byte)
+// because the runtime uses pgx simple_protocol for the Supavisor pooler
+// (FR-046): a []byte driver value is encoded as bytea and rejected by a jsonb
+// column with SQLSTATE 22P02 / 42601.
+type JSONField json.RawMessage
+
+func (j JSONField) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return string(j), nil
+}
+
+func (j *JSONField) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		*j = append((*j)[:0], v...)
+	case string:
+		*j = append((*j)[:0], v...)
+	default:
+		return fmt.Errorf("unsupported JSONField value %T", value)
+	}
+	return nil
+}
 
 // Outbox transactional publishing port. Owned by the shared domain layer so
 // application use cases and module contracts can write outbox records without
@@ -23,16 +54,16 @@ const (
 )
 
 type OutboxRecord struct {
-	ID          uuid.UUID       `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Topic       string          `json:"topic" gorm:"type:varchar(255);not null"`
-	Payload     json.RawMessage `json:"payload" gorm:"type:jsonb;not null"`
-	Headers     json.RawMessage `json:"headers" gorm:"type:jsonb;default:'{}'"`
-	Status      OutboxStatus    `json:"status" gorm:"type:varchar(50);not null;default:'pending'"`
-	CreatedAt   time.Time       `json:"created_at" gorm:"type:timestamptz;not null;default:now()"`
-	PublishedAt *time.Time      `json:"published_at" gorm:"type:timestamptz"`
-	Attempts    int             `json:"attempts" gorm:"type:int;not null;default:0"`
-	LastError   *string         `json:"last_error" gorm:"type:text"`
-	UpdatedAt   time.Time       `json:"updated_at" gorm:"type:timestamptz;not null;default:now()"`
+	ID          uuid.UUID    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	Topic       string       `json:"topic" gorm:"type:varchar(255);not null"`
+	Payload     JSONField    `json:"payload" gorm:"type:jsonb;not null"`
+	Headers     JSONField    `json:"headers" gorm:"type:jsonb;default:'{}'"`
+	Status      OutboxStatus `json:"status" gorm:"type:varchar(50);not null;default:'pending'"`
+	CreatedAt   time.Time    `json:"created_at" gorm:"type:timestamptz;not null;default:now()"`
+	PublishedAt *time.Time   `json:"published_at" gorm:"type:timestamptz"`
+	Attempts    int          `json:"attempts" gorm:"type:int;not null;default:0"`
+	LastError   *string      `json:"last_error" gorm:"type:text"`
+	UpdatedAt   time.Time    `json:"updated_at" gorm:"type:timestamptz;not null;default:now()"`
 }
 
 func (OutboxRecord) TableName() string {

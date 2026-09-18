@@ -33,4 +33,5 @@ multi-module Go workspace, chạy **song song** (monolith `api.closy` + Cloud Ru
 `01-supabase` · `02-redis` · `03-cloudamqp` · `04-cloudrun` ·
 `05-nginx-ingress` · `06-es-off` · `07-bang-bien-moi-truong` ·
 `08-song-song` · `09-chuyen-du-lieu` · `10-dns-vercel-ci-cd` ·
-`11-ve-lai-vps` · `12-ngung-vps-va-thu-hoi-secret`
+`11-ve-lai-vps` · `12-ngung-vps-va-thu-hoi-secret` · `13-monitoring` ·
+`14-first-time-deploy-step-by-step` (**bắt đầu ở đây cho lần host đầu tiên**)

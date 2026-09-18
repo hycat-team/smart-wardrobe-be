@@ -1,5 +1,10 @@
 # 05 — VPS Nginx ingress tới Cloud Run
 
+> Step-by-step cầm tay: xem `14-first-time-deploy-step-by-step.md` (§7).
+> Nginx render theo **`NGINX_MODE`** (`parallel`/`repatriation`/`rollback`,
+> `templates/<mode>/`); token-helper là **service compose** (profile `parallel`).
+> Đổi mode → `up -d --force-recreate nginx`.
+
 `api-v2.closy.hycat.online` phục vụ qua **VPS Nginx hiện hữu** (không Cloudflare/LB
 mới). `api.closy...` **giữ nguyên** proxy tới monolith (`http://backend:8080`)
 trong giai đoạn song song.

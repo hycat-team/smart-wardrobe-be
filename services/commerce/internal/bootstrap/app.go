@@ -66,8 +66,8 @@ func NewApp(
 func (a *App) Run() error {
 	ctx := context.Background()
 
-	if a.DB != nil && a.MigrationsFS != nil {
-		if err := db.RunMigrationsIfEnabled(ctx, a.Config, a.DB, a.MigrationsFS, a.Log); err != nil {
+	if a.MigrationsFS != nil {
+		if err := db.RunMigrationsIfEnabled(ctx, a.Config, a.MigrationsFS, a.Log); err != nil {
 			return fmt.Errorf("database migration failed: %w", err)
 		}
 	}

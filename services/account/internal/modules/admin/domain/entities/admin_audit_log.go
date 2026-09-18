@@ -15,7 +15,13 @@ func (j JSONDocument) Value() (driver.Value, error) {
 	if j == nil {
 		return "{}", nil
 	}
-	return json.Marshal(j)
+	// string, not []byte: under pgx simple_protocol (FR-046) a []byte driver
+	// value is encoded as bytea and a jsonb column rejects it (SQLSTATE 22P02).
+	data, err := json.Marshal(j)
+	if err != nil {
+		return nil, err
+	}
+	return string(data), nil
 }
 
 func (j *JSONDocument) Scan(value any) error {

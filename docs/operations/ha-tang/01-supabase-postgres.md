@@ -13,6 +13,11 @@
 | Runtime app | Pooler (Supavisor **transaction mode**) | **6543** | `default_query_exec_mode=simple_protocol` (tắt prepared statement); `search_path` set **server-side** (`ALTER ROLE/DATABASE`), KHÔNG truyền qua DSN |
 | Migration / `LISTEN` / advisory lock | Direct connection | **5432** | session-scoped; dùng `database.listener_*` / session-DSN |
 
+> **Implementation (Option A)**: service tự mở **connection direct riêng** cho Goose
+> migration (từ `DB_LISTENER_HOST`/`DB_LISTENER_PORT`/`DB_LISTENER_SSLMODE`) — không
+> dùng connection runtime qua pooler. `LISTEN/NOTIFY` (outbox listener) và job
+> advisory lock cũng dùng chung direct DSN này.
+
 ## Migration ownership (FR-035)
 
 - Toàn bộ migration lịch sử do **Account** giữ (`services/account/database/migrations`).

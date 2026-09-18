@@ -68,13 +68,15 @@ func NewEngine(
 		))
 	})
 
+	// Account hosts the combined docs bundle (all 3 services) built by
+	// `make swagger-combine`; the monolith-style UI is served from it.
 	swaggerGroup := engine.Group("")
 	swaggerGroup.Use(shared_middleware.SwaggerLockMiddleware(cfg))
 	{
-		swaggerGroup.Static("/api-docs", "./api/swagger")
-		swaggerGroup.StaticFile("/swagger", "./api/swagger/index.html")
+		swaggerGroup.Static("/api-docs", "./api/swagger/combined")
+		swaggerGroup.StaticFile("/swagger", "./api/swagger/combined/index.html")
 		swaggerGroup.GET("/swagger/*any", func(c *gin.Context) {
-			c.File("./api/swagger/index.html")
+			c.File("./api/swagger/combined/index.html")
 		})
 	}
 

@@ -29,6 +29,16 @@ DB_SSLMODE ?= disable
 DB_TIMEZONE ?= Asia/Ho_Chi_Minh
 MIGRATION_DSN := "host=$(DB_HOST) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) port=$(DB_PORT) sslmode=$(DB_SSLMODE) TimeZone=$(DB_TIMEZONE)"
 
+# Host-run defaults for `make run` (multi-module: the binary runs from
+# services/<svc>, so point it at the repo config + .env and at infra published
+# on localhost). Override SERVER_PORT per service to run several at once, e.g.
+#   make run svc=commerce SERVER_PORT=8102
+SERVER_PORT ?= 8080
+REDIS_HOST ?= localhost
+RABBITMQ_HOST ?= localhost
+DB_LISTENER_HOST ?= localhost
+CONFIG_FILE ?= $(abspath configs/config.yaml)
+
 # Cloud Run deploy defaults (FR-044..FR-048; manual helper — CI uses deploy-platform.yml)
 CR_REGION ?= asia-southeast1
 CR_CONCURRENCY ?= 40
@@ -38,21 +48,30 @@ CR_HTTP_MAX_INSTANCES ?= 2
 NGINX_TEMPLATES_DIR := deployments/nginx/templates
 NGINX_ROUTES_DIR := deployments/nginx/api-v2-routes
 NGINX_RENDER_DIR ?= /etc/nginx
+# Server-block set to render: parallel | repatriation | rollback
+NGINX_MODE ?= parallel
 
 ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
 MKDIR_BIN_CMD := if not exist "$(subst /,\,$(BIN_DIR))" mkdir "$(subst /,\,$(BIN_DIR))"
 CLEAN_BIN_CMD := if exist "$(subst /,\,$(BIN_DIR))" rmdir /S /Q "$(subst /,\,$(BIN_DIR))"
 FMT_CHECK_CMD := powershell -Command "$$files = gofmt -l .; if ($$files) { Write-Error ($$files -join [Environment]::NewLine); exit 1 }"
-TEST_CMD := go test ./... 2>&1 | findstr /V /C:"no test files"
-RACE_TEST_CMD := go test -race ./... 2>&1 | findstr /V /C:"no test files"
+# NOTE: do NOT pipe go test through a filter — the pipeline exit code becomes
+# the filter's (findstr/grep return 1 when every line is filtered, e.g. a module
+# with no test files) which both false-fails and masks real test failures.
+TEST_CMD := go test ./...
+RACE_TEST_CMD := go test -race ./...
+# Relative path to the built binary when the recipe CWD is services/<svc>.
+RUN_BIN = ..\..\$(subst /,\,$(BIN_DIR))\$(SVC)$(GO_BIN_EXT)
 else
 GO_BIN_EXT :=
 MKDIR_BIN_CMD := mkdir -p "$(BIN_DIR)"
 CLEAN_BIN_CMD := rm -rf "$(BIN_DIR)"
 FMT_CHECK_CMD := test -z "$$(gofmt -l .)"
-TEST_CMD := go test ./... 2>&1 | grep -v "no test files"
-RACE_TEST_CMD := go test -race ./... 2>&1 | grep -v "no test files"
+TEST_CMD := go test ./...
+RACE_TEST_CMD := go test -race ./...
+# Relative path to the built binary when the recipe CWD is services/<svc>.
+RUN_BIN = ../../$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
 endif
 
 # FMT command dùng chung 2 OS (gofmt -w . tự động đệ quy tất cả các file .go)
@@ -67,7 +86,7 @@ name := $(or $(name),$(NAME))
 SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
 unexport SVC_REQ
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
 
 help:
 	@echo "========================================================================"
@@ -179,11 +198,11 @@ swagger:
 swagger-all:
 	@echo Generating Swagger for all services...
 	@cd services/account && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/account/main.go --output api/swagger --parseDependency --parseInternal --quiet
-	@cd ../commerce && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/commerce/main.go --output api/swagger --parseDependency --parseInternal --quiet
-	@cd ../ai && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/ai/main.go --output api/swagger --parseDependency --parseInternal --quiet
+	@cd services/commerce && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/commerce/main.go --output api/swagger --parseDependency --parseInternal --quiet
+	@cd services/ai && go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g cmd/ai/main.go --output api/swagger --parseDependency --parseInternal --quiet
 	@echo Swagger generation finished for all services.
 
-generate: wire-all swagger-all
+generate: wire-all swagger-all swagger-combine nginx-routes
 
 buf-gen:
 	@echo Generating protobuf stubs into contracts/...
@@ -232,9 +251,9 @@ tidy-check:
 	@echo Go module files are tidy.
 
 generate-check:
-	@echo Checking generated Wire and Swagger files...
+	@echo Checking generated Wire, Swagger and Nginx route map files...
 	@$(MAKE) generate
-	@git diff --exit-code -- services/account/internal/di services/commerce/internal/di services/ai/internal/di services/account/api/swagger services/commerce/api/swagger services/ai/api/swagger
+	@git diff --exit-code -- services/account/internal/di services/commerce/internal/di services/ai/internal/di services/account/api/swagger services/commerce/api/swagger services/ai/api/swagger deployments/nginx
 	@echo Generated files are up to date.
 
 vet:
@@ -296,11 +315,11 @@ build-all:
 run: build
 	$(SVC_REQ)
 	@echo Starting $(SVC) service...
-	@cd services/$(SVC) && ../../$(BIN_DIR)/$(SVC)$(GO_BIN_EXT)
+	@cd services/$(SVC) && $(RUN_BIN)
 
 dev: generate build-all
 
-check: fmt-check tidy-check generate-check vet test-race build-all
+check: fmt-check tidy-check generate-check nginx-check vet test-race build-all
 
 clean-swagger:
 	@echo Cleaning generated Swagger files...
@@ -381,16 +400,40 @@ image-build-monolith-rollback:
 	@echo Rollback image built. Push to GHCR (T097a) with: docker tag + docker push.
 
 nginx-reload:
-	@echo Rendering Nginx templates and reloading (VPS)...
-	@mkdir -p $(NGINX_RENDER_DIR)/api-v2-routes
-	@envsubst '$${API_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE}' < $(NGINX_TEMPLATES_DIR)/default.conf.template > $(NGINX_RENDER_DIR)/default.conf
-	@envsubst '$${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE} $${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL} $${TOKEN_HELPER_URL}' < $(NGINX_TEMPLATES_DIR)/api-v2.conf.template > $(NGINX_RENDER_DIR)/api-v2.conf
-	@envsubst '$${ACCOUNT_RUN_URL}' < deployments/nginx/api-v2-routes/account.conf > $(NGINX_RENDER_DIR)/api-v2-routes/account.conf
-	@envsubst '$${COMMERCE_RUN_URL}' < deployments/nginx/api-v2-routes/commerce.conf > $(NGINX_RENDER_DIR)/api-v2-routes/commerce.conf
-	@envsubst '$${AI_RUN_URL}' < deployments/nginx/api-v2-routes/ai.conf > $(NGINX_RENDER_DIR)/api-v2-routes/ai.conf
+	@echo Rendering Nginx templates (NGINX_MODE=$(NGINX_MODE)) and reloading (VPS)...
+	@mkdir -p $(NGINX_RENDER_DIR)/conf.d $(NGINX_RENDER_DIR)/api-v2-routes
+	@rm -f $(NGINX_RENDER_DIR)/conf.d/*.conf
+	@for f in $(NGINX_TEMPLATES_DIR)/$(NGINX_MODE)/*.template; do \
+		out=$$(basename $$f .template); \
+		envsubst '$${API_DOMAIN} $${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE} $${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL} $${TOKEN_HELPER_URL}' < $$f > $(NGINX_RENDER_DIR)/conf.d/$$out; \
+		echo "  rendered conf.d/$$out"; \
+	done
+	@for f in $(NGINX_ROUTES_DIR)/*.conf; do \
+		out=$$(basename $$f); \
+		envsubst '$${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL}' < $$f > $(NGINX_RENDER_DIR)/api-v2-routes/$$out; \
+	done
 	@nginx -t
 	@nginx -s reload
-	@echo Nginx reload finished.
+	@echo Nginx reload finished (NGINX_MODE=$(NGINX_MODE)).
+
+nginx-check:
+	@echo Checking Nginx route map covers all API paths...
+	@go run ./shared/tools/nginx-check
+
+nginx-routes: swagger-all
+	@echo Generating Nginx route map from swagger...
+	@go run ./shared/tools/nginx-routes
+	@echo NOTE: if the local dev stack is running, run 'make nginx-reload-local' to apply the new routes.
+
+nginx-reload-local:
+	@echo Reloading local dev Nginx (docker compose)...
+	@docker exec nginx-closy-dev nginx -t
+	@docker exec nginx-closy-dev nginx -s reload
+	@echo Local Nginx reloaded.
+
+swagger-combine: swagger-all
+	@echo Combining Swagger specs into monolith-style bundle...
+	@go run ./shared/tools/swagger-combine
 
 docker-dev-up:
 	@docker compose -f deployments/docker-compose.yml --env-file .env up -d

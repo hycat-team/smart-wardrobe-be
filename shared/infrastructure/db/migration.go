@@ -14,6 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// openMigrationDB is a package variable so tests can stub the direct opener.
+var openMigrationDB = OpenDirectDB
+
 // RunMigrationsIfEnabled runs embedded Goose migrations only when enabled
 // (FR-011/FR-035). Disabled profiles must migrate via controlled channels
 // (`make migrate-up svc=<name>`) before deploy instead.
@@ -22,7 +25,12 @@ import (
 // the 24 historical migrations; other services pass their own directory).
 // Taking the FS as a parameter keeps shared free of service imports —
 // reversing that edge would create a Go module cycle.
-func RunMigrationsIfEnabled(ctx context.Context, cfg *config.Config, dbConn *gorm.DB, migrationsFS fs.FS, log logger.Interface) error {
+//
+// FR-046: Goose uses a Postgres SESSION advisory lock, which a transaction
+// pooler cannot hold. Migrations therefore run on a dedicated DIRECT
+// connection built from ListenerHost/ListenerPort/ListenerSslMode (5432),
+// never the runtime pooler (6543).
+func RunMigrationsIfEnabled(ctx context.Context, cfg *config.Config, migrationsFS fs.FS, log logger.Interface) error {
 	if !cfg.Database.MigrateOnStart {
 		log.Info("Skipping automatic database migrations (database.migrate_on_start=false)")
 		return nil
@@ -31,6 +39,16 @@ func RunMigrationsIfEnabled(ctx context.Context, cfg *config.Config, dbConn *gor
 		log.Info("Skipping automatic database migrations (no migration tree for this service)")
 		return nil
 	}
+	dbConn, err := openMigrationDB(cfg)
+	if err != nil {
+		return fmt.Errorf("open direct migration connection: %w", err)
+	}
+	sqlDB, err := dbConn.DB()
+	if err != nil {
+		return fmt.Errorf("resolve direct migration connection: %w", err)
+	}
+	defer func() { _ = sqlDB.Close() }()
+
 	table := cfg.Database.MigrationTable
 	if table == "" {
 		table = "goose_db_version"

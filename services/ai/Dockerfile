@@ -24,6 +24,7 @@ WORKDIR /src/services/ai
 RUN CGO_ENABLED=0 go build -trimpath -o /out/ai ./cmd/ai
 
 FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /
 COPY --from=builder /out/ai /ai
 COPY --from=builder /src/services/ai/database/migrations /migrations
 COPY --from=builder /src/services/ai/api/swagger /api/swagger

@@ -141,8 +141,10 @@ jobs:
                   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
                   DB_NAME: ${{ secrets.DB_NAME }}
                   REDIS_HOST: ${{ secrets.REDIS_HOST }}
+                  REDIS_PORT: ${{ secrets.REDIS_PORT }}
                   REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
                   RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
+                  RABBITMQ_PORT: ${{ secrets.RABBITMQ_PORT }}
                   RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
                   RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
                   JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -161,6 +163,13 @@ jobs:
                   INGRESS_ACCOUNT_URL: ${{ secrets.INGRESS_ACCOUNT_URL }}
                   INGRESS_COMMERCE_URL: ${{ secrets.INGRESS_COMMERCE_URL }}
                   INGRESS_AI_URL: ${{ secrets.INGRESS_AI_URL }}
+                  INGRESS_TOKEN_AUDIENCE: ${{ secrets.INGRESS_TOKEN_AUDIENCE }}
+                  DB_HOST: ${{ secrets.DB_HOST }}
+                  DB_PORT: ${{ secrets.DB_PORT }}
+                  DB_LISTENER_HOST: ${{ secrets.DB_LISTENER_HOST }}
+                  DB_LISTENER_SSLMODE: ${{ secrets.DB_LISTENER_SSLMODE }}
+                  # FR-035: one Goose version table per service.
+                  DATABASE_MIGRATION_TABLE: ${{ matrix.service == 'account' && 'goose_db_version' || matrix.service == 'commerce' && 'goose_db_version_commerce' || 'goose_db_version_ai' }}
               run: |
                   set -e
                   {
@@ -169,10 +178,18 @@ jobs:
                     echo "DB_USER=${DB_USER}"
                     echo "DB_PASSWORD=${DB_PASSWORD}"
                     echo "DB_NAME=${DB_NAME}"
+                    echo "DB_HOST=${DB_HOST}"
+                    echo "DB_PORT=${DB_PORT:-6543}"
+                    echo "DB_SSLMODE=require"
+                    echo "DB_LISTENER_HOST=${DB_LISTENER_HOST:?DB_LISTENER_HOST secret required (Supabase direct 5432 host)}"
+                    echo "DB_LISTENER_PORT=5432"
+                    echo "DB_LISTENER_SSLMODE=${DB_LISTENER_SSLMODE:-require}"
                     echo "REDIS_HOST=${REDIS_HOST}"
+                    echo "REDIS_PORT=${REDIS_PORT:-6379}"
                     echo "REDIS_PASSWORD=${REDIS_PASSWORD}"
                     echo "REDIS_TLS_ENABLED=true"
                     echo "RABBITMQ_HOST=${RABBITMQ_HOST}"
+                    echo "RABBITMQ_PORT=${RABBITMQ_PORT:-5671}"
                     echo "RABBITMQ_USER=${RABBITMQ_USER}"
                     echo "RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}"
                     echo "RABBITMQ_TLS_ENABLED=true"
@@ -193,6 +210,8 @@ jobs:
                     echo "INGRESS_ACCOUNT_URL=${INGRESS_ACCOUNT_URL}"
                     echo "INGRESS_COMMERCE_URL=${INGRESS_COMMERCE_URL}"
                     echo "INGRESS_AI_URL=${INGRESS_AI_URL}"
+                    echo "INGRESS_TOKEN_AUDIENCE=${INGRESS_TOKEN_AUDIENCE}"
+                    echo "DATABASE_MIGRATION_TABLE=${DATABASE_MIGRATION_TABLE}"
                     echo "DATABASE_MIGRATE_ON_START=true"
                     echo "DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER=true"
                     echo "ELASTICSEARCH_ENABLED=false"

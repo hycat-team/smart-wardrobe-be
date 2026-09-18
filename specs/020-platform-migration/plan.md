@@ -45,8 +45,9 @@ Cách tiếp cận kỹ thuật:
 **Storage**:
 - PostgreSQL (Supabase Pro, extension `pgvector`), 8 schema theo module, **1 project + 1 database
   dùng chung** cho môi trường Cloud (không tách schema staging/prod; drill dùng schema tạm).
-  Runtime qua Supavisor pooler (transaction mode, 6543); **migration do chính service chạy khi khởi
-  động** + `LISTEN` qua direct connection (5432), có **advisory lock dùng chung**. `sslmode=require`.
+Runtime qua Supavisor pooler (transaction mode, 6543) cho query thường; **migration (Goose + session advisory lock)
+do chính service chạy khi khởi động trên direct connection riêng (:5432, dựng từ `ListenerHost/ListenerPort/ListenerSslMode`)**,
+`LISTEN` và advisory lock cũng dùng direct connection, có **advisory lock dùng chung**. `sslmode=require`.
   - **Migration ownership**: toàn bộ migration lịch sử hiện có thuộc `services/account/database/migrations/`;
     migration mới đặt trong `services/<service>/database/migrations/` của service phát sinh.
   - **Bảng version riêng mỗi service**: Account giữ `goose_db_version` (đã giữ toàn bộ migration lịch sử);
@@ -219,7 +220,8 @@ smart-wardrobe-be/
 7. **Migration ownership**: toàn bộ migration lịch sử hiện có đặt trong **Account**; migration mới đặt trong
    service phát sinh; mỗi service **tự chạy migration của mình khi khởi động**; **mỗi service một
    bảng version riêng** (Account giữ `goose_db_version`, Commerce/AI có bảng hậu tố) + allow-out-of-order;
-   advisory lock dùng chung (cùng lock id) để serialize.
+   advisory lock dùng chung (cùng lock id) để serialize. **Migration Gooses dùng direct connection riêng
+   (`ListenerHost/ListenerPort/ListenerSslMode`, :5432)** — không dùng connection runtime qua pooler (FR-046).
 8. **Makefile viết lại cho multi-module**: xem mục "Tooling & Makefile" bên dưới.
 9. **Ingress = VPS Nginx hiện hữu** (không Cloudflare/LB/API Gateway trong đường API): thêm server
    block `api-v2` route tới 3 Cloud Run; `api.closy` giữ nguyên; token helper trên VPS inject

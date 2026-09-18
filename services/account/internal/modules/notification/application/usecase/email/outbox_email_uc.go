@@ -80,7 +80,7 @@ func (uc *OutboxEmailUseCase) Send(ctx context.Context, channel nchannel.Channel
 	record := &shared_repos.OutboxRecord{
 		Topic:   eventconstants.TopicNotificationEmail,
 		Payload: raw,
-		Headers: json.RawMessage(`{}`),
+		Headers: []byte(`{}`),
 		Status:  shared_repos.OutboxStatusPending,
 	}
 	return uc.outboxRepo.Create(ctx, record)

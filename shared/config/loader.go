@@ -89,11 +89,49 @@ func applyEnvOverrides(cfg *Config) {
 	overrideBool("RABBITMQ_MANAGEMENT_TLS_ENABLED", &cfg.RabbitMQ.ManagementTLSEnabled)
 	overrideBool("OUTBOX_LISTENER_ENABLED", &cfg.Outbox.ListenerEnabled)
 
+	// QUERY_EXEC_MODE is resolved by the DB layer, which forces simple_protocol
+	// when connecting through the Supavisor transaction pooler (FR-046) and
+	// otherwise uses pgx's default (prepared statements). An explicit value here
+	// only overrides the non-pooler case.
 	if v := strings.TrimSpace(os.Getenv("DATABASE_QUERY_EXEC_MODE")); v != "" {
 		cfg.Database.QueryExecMode = v
 	}
-	if cfg.Database.QueryExecMode == "" {
-		cfg.Database.QueryExecMode = "simple_protocol"
+	// ssl_mode/listener_ssl_mode come from YAML ${...}; default to disable when
+	// unset so the DSN stays valid (FR-005).
+	if v := strings.TrimSpace(os.Getenv("DB_SSLMODE")); v != "" {
+		cfg.Database.SslMode = v
+	}
+	if cfg.Database.SslMode == "" {
+		cfg.Database.SslMode = "disable"
+	}
+	if v := strings.TrimSpace(os.Getenv("DB_LISTENER_SSLMODE")); v != "" {
+		cfg.Database.ListenerSslMode = v
+	}
+	if cfg.Database.ListenerSslMode == "" {
+		cfg.Database.ListenerSslMode = "disable"
+	}
+	// DB_PORT / DB_LISTENER_PORT let managed point runtime at the pooler (6543)
+	// while migrations/LISTEN/advisory locks keep the direct 5432.
+	if v := strings.TrimSpace(os.Getenv("DB_PORT")); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			cfg.Database.Port = p
+		}
+	}
+	if v := strings.TrimSpace(os.Getenv("DB_LISTENER_PORT")); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			cfg.Database.ListenerPort = p
+		}
+	}
+	// Managed Redis Cloud / CloudAMQP expose non-default ports (FR-005).
+	if v := strings.TrimSpace(os.Getenv("REDIS_PORT")); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			cfg.Redis.Port = p
+		}
+	}
+	if v := strings.TrimSpace(os.Getenv("RABBITMQ_PORT")); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			cfg.RabbitMQ.Port = p
+		}
 	}
 	if v := strings.TrimSpace(os.Getenv("DATABASE_DRILL_SCHEMA")); v != "" {
 		cfg.Database.DrillSchema = v
@@ -134,7 +172,15 @@ func envOrDefault(key, def string) string {
 }
 
 func loadLocalDotEnv(configPath string) error {
-	paths := []string{".env", filepath.Join(filepath.Dir(configPath), ".env"), "../.env"}
+	// Search order: CWD, config dir, repo root (config dir's parent — needed when
+	// the binary runs from services/<svc> with CONFIG_FILE=configs/config.yaml),
+	// then CWD's parent.
+	paths := []string{
+		".env",
+		filepath.Join(filepath.Dir(configPath), ".env"),
+		filepath.Join(filepath.Dir(configPath), "..", ".env"),
+		"../.env",
+	}
 	for _, path := range paths {
 		err := godotenv.Load(path)
 		if err == nil {

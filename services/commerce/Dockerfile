@@ -26,6 +26,7 @@ WORKDIR /src/services/commerce
 RUN CGO_ENABLED=0 go build -trimpath -o /out/commerce ./cmd/commerce
 
 FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /
 COPY --from=builder /out/commerce /commerce
 COPY --from=builder /src/services/commerce/database/migrations /migrations
 COPY --from=builder /src/services/commerce/api/swagger /api/swagger

@@ -1,5 +1,10 @@
 # 10 — DNS Vercel + CI/CD platform
 
+> Step-by-step deploy first-time: `14-first-time-deploy-step-by-step.md`.
+> **Điều kiện tiên quyết**: tag `monolith-legacy` đã **push** lên remote
+> (`git ls-remote --tags origin | grep monolith-legacy`) — nếu thiếu, workflow
+> rollback `deploy-production.yml` sẽ fail.
+
 ## DNS (FR-029)
 
 - `hycat.online` giữ DNS tại **Vercel**; **không** NS-delegate, **không** chuyển
