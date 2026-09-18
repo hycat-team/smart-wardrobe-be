@@ -1,0 +1,91 @@
+package security
+
+import (
+	"context"
+	"time"
+
+	sharedsecurity "smart-wardrobe-be/shared/application/interface/security"
+	shared_caching "smart-wardrobe-be/shared/infrastructure/caching"
+
+	"github.com/google/uuid"
+)
+
+// RedisTokenBlacklistService is the shared session-revocation implementation
+// (FR-023). All services use it against the shared Redis so revocations are
+// visible everywhere.
+type RedisTokenBlacklistService struct {
+	cache shared_caching.ICacheService
+}
+
+const (
+	blacklistPrefix     = "blacklist:token:"
+	userBlacklistPrefix = "blacklist:user:"
+)
+
+// NewRedisTokenBlacklistService builds the shared revocation port.
+func NewRedisTokenBlacklistService(cache shared_caching.ICacheService) sharedsecurity.ITokenBlacklistService {
+	return &RedisTokenBlacklistService{
+		cache: cache,
+	}
+}
+
+func (s *RedisTokenBlacklistService) BlacklistToken(ctx context.Context, token string, expiry time.Duration) error {
+	if expiry <= 0 {
+		return nil
+	}
+	key := blacklistPrefix + token
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
+}
+
+func (s *RedisTokenBlacklistService) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
+	key := blacklistPrefix + token
+	return s.cache.Exists(ctx, key)
+}
+
+func (s *RedisTokenBlacklistService) BlacklistTokenWithPrefix(ctx context.Context, token string, prefix string, expiry time.Duration) error {
+	if expiry <= 0 {
+		return nil
+	}
+	key := prefix + token
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
+}
+
+func (s *RedisTokenBlacklistService) IsTokenBlacklistedWithPrefix(ctx context.Context, token string, prefix string) (bool, error) {
+	key := prefix + token
+	return s.cache.Exists(ctx, key)
+}
+
+func (s *RedisTokenBlacklistService) BlacklistUser(ctx context.Context, userID uuid.UUID, expiry time.Duration) error {
+	if expiry <= 0 {
+		return nil
+	}
+	key := userBlacklistPrefix + userID.String()
+	return s.cache.SetRaw(ctx, key, "revoked", expiry)
+}
+
+func (s *RedisTokenBlacklistService) IsUserBlacklisted(ctx context.Context, userID uuid.UUID) (bool, error) {
+	key := userBlacklistPrefix + userID.String()
+	return s.cache.Exists(ctx, key)
+}
+
+func (s *RedisTokenBlacklistService) UnblacklistUser(ctx context.Context, userID uuid.UUID) error {
+	key := userBlacklistPrefix + userID.String()
+	return s.cache.Del(ctx, key)
+}
+
+func (s *RedisTokenBlacklistService) CheckBlacklist(ctx context.Context, token string, userID uuid.UUID) (bool, bool, error) {
+	tokenKey := blacklistPrefix + token
+	userKey := userBlacklistPrefix + userID.String()
+
+	tokenBlacklisted, err := s.cache.Exists(ctx, tokenKey)
+	if err != nil {
+		return false, false, err
+	}
+
+	userBlacklisted, err := s.cache.Exists(ctx, userKey)
+	if err != nil {
+		return false, false, err
+	}
+
+	return tokenBlacklisted, userBlacklisted, nil
+}

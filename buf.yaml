@@ -1,0 +1,19 @@
+# buf.yaml — 020-platform-migration (mô hình C)
+# Lint + breaking check cho inter-service protobuf contracts.
+version: v1
+lint:
+  use:
+    - STANDARD
+  except:
+    # Proto packages are domain names (closy.<owner>.v1); the directory layout
+    # follows the Go module convention (contracts/<owner>/v1) instead.
+    - PACKAGE_DIRECTORY_MATCH
+    # Internal inter-service contracts: DTO-shaped messages are intentionally
+    # shared across RPCs (e.g. chat + stream share the request); per-RPC
+    # Google-API-style names would only add boilerplate.
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+breaking:
+  use:
+    - FILE

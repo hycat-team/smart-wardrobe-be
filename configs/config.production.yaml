@@ -1,6 +1,8 @@
 # ============================================================
 # Application Core
 # ============================================================
+app:
+    mode: all
 server:
     port: "8080"
     front_end_origin: "${FRONT_END_ORIGIN}"
@@ -11,7 +13,8 @@ server:
     gzip_enabled: true
     sse:
         chunk_deadline_seconds: 90
-        ai_chat_chunk_deadline_seconds: 180
+        ai_chat_chunk_deadline_seconds: 30
+        heartbeat_seconds: 15
     body_limit:
         default_mb: 2
         elevated_mb: 10
@@ -33,29 +36,47 @@ jwt:
     access_expiration_minutes: 60
     refresh_expiration_days: 30
     forgot_password_expiration_minutes: 15
+    algorithm: HS256
+    private_key: "${JWT_PRIVATE_KEY}"
+    public_key: "${JWT_PUBLIC_KEY}"
+ingress:
+    account_base_url: "${INGRESS_ACCOUNT_URL}"
+    commerce_base_url: "${INGRESS_COMMERCE_URL}"
+    ai_base_url: "${INGRESS_AI_URL}"
+    token_helper_url: "${INGRESS_TOKEN_HELPER_URL}"
+    token_audience: "${INGRESS_TOKEN_AUDIENCE}"
+    auth_header: X-Serverless-Authorization
 
 # ============================================================
 # Infrastructure - Data Stores
 # ============================================================
 database:
-    host: postgres
+    host: "${DB_HOST}"
     port: 5432
     user: "${DB_USER}"
     password: "${DB_PASSWORD}"
     db_name: "${DB_NAME}"
-    ssl_mode: disable
+    ssl_mode: "${DB_SSLMODE}"
     time_zone: Asia/Ho_Chi_Minh
     max_idle_conns: 10
     max_open_conns: 30
     conn_max_lifetime: 1h
     search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+    migrate_on_start: true
+    migration_allow_out_of_order: true
+    listener_host: "${DB_LISTENER_HOST}"
+    listener_port: 5432
+    listener_ssl_mode: "${DB_LISTENER_SSLMODE}"
+    drill_schema: "${DB_DRILL_SCHEMA}"
 redis:
-    host: redis
+    host: "${REDIS_HOST}"
     port: 6379
     password: "${REDIS_PASSWORD}"
     db: 0
+    tls_enabled: false
 elasticsearch:
-    addresses: [http://elasticsearch:9200]
+    enabled: false
+    addresses: ["${ELASTICSEARCH_ADDRESSES}"]
     user: "${ELASTICSEARCH_USER}"
     password: "${ELASTICSEARCH_PASSWORD}"
 
@@ -63,15 +84,19 @@ elasticsearch:
 # Infrastructure - Messaging & Events
 # ============================================================
 rabbitmq:
-    host: rabbitmq
+    host: "${RABBITMQ_HOST}"
     port: 5672
     user: "${RABBITMQ_USER}"
     password: "${RABBITMQ_PASSWORD}"
     prefetch: 5
     consumer_concurrency: 1
     delivery_limit: 5
+    management_port: 15672
+    tls_enabled: false
+    management_tls_enabled: false
 outbox:
     retry_max_attempts: 3
+    listener_enabled: true
     retry_interval_minutes: 5
     cleanup_retention_days: 7
     cleanup_interval_minutes: 60

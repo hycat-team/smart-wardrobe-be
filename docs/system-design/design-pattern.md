@@ -666,6 +666,33 @@ func (c *NotificationContract) SendEmail(ctx context.Context, input SendEmailInp
 
 A module MAY import another module's `domain/constants/` directly (e.g., `fashion` module importing `wardrobe/domain/constants/wardrobestatus`). These are pure enum/const values without behavior. However, always reference the constant symbol — never hardcode the value.
 
+### Cross-service transport mapping (A′)
+
+Domain enums/constants tied to entities MUST stay in `domain/constants/` to preserve the inward
+dependency direction. Never relocate them to `contract/`, `shared/`, or any exportable path just to
+make a client compile.
+
+When a contract crosses a **service** boundary (gRPC), the wire types are the protobuf messages in
+`contracts/<owner>/v1/`. The wire ⇄ contract-DTO mapping is owned by the **owner** service and lives
+at:
+
+```text
+services/<service>/contract/<owner>/transport/mapper.go
+```
+
+Rules:
+
+- The `transport` package sits **outside `internal/`** (Go forbids importing another module's
+  `internal/` packages) and MAY reference the owner's `domain/constants/` / `domain/repositories/`
+  types when building DTOs — that is exactly why the mapping lives with the owner.
+- The generated client at `contracts/<owner>/v1/client/` stays a **thin transport adapter**: it
+  marshals requests, calls the stub, maps transport errors, and delegates wire → DTO mapping to the
+  owner's `transport` package. It MUST NOT import the owner's domain enums/constants.
+- The same `transport` package is reused by the in-service gRPC server, so there is a single source
+  of truth for proto ⇄ DTO mapping.
+- Documented example: `services/account/contract/identity/transport/` used by
+  `contracts/identity/v1/client/`.
+
 ---
 
 ## Worker Pattern

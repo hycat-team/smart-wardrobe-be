@@ -1,0 +1,25 @@
+package infrastructure
+
+import (
+	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/caching"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/payment/payos"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
+
+	"github.com/google/wire"
+)
+
+// ProviderSet bundles persistence repository initializers for the subscription module
+var ProviderSet = wire.NewSet(
+	persistence.NewSubscriptionPlanRepository,
+	persistence.NewUserSubscriptionRepository,
+	persistence.NewUserDailyQuotaRepository,
+	persistence.NewUserWalletRepository,
+	persistence.NewDepositTransactionRepository,
+	persistence.NewWalletStatementRepository,
+	persistence.NewPaymentEventRepository,
+	persistence.NewWebhookInboxRepository,
+	persistence.NewUserSubscriptionEventRepository,
+	persistence.NewSubscriptionRenewalAttemptRepository,
+	caching.NewRedisSubscriptionOverviewCache,
+	payos.NewPayOSService,
+)

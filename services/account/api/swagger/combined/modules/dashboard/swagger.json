@@ -1,0 +1,6065 @@
+{
+  "definitions": {
+    "brandmemberrole.BrandMemberRole": {
+      "enum": [
+        "owner",
+        "staff"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Owner",
+        "Staff"
+      ]
+    },
+    "currency.Currency": {
+      "enum": [
+        "vnd",
+        "usd"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "VND",
+        "USD"
+      ]
+    },
+    "dto.AIErrorBreakdownDTO": {
+      "properties": {
+        "errorCode": {
+          "type": "string"
+        },
+        "errorCount": {
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationMetadata": {
+      "properties": {
+        "limit": {
+          "type": "integer"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "totalItems": {
+          "type": "integer"
+        },
+        "totalPages": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_AdminUserSubscriptionItemDTO": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminUserSubscriptionItemDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_account_dto_subscription_WalletStatementDTO": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.WalletStatementDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_ai_dto_aiexecutor_AIUsageItemDTO": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AIUsageItemDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto_ChatMessageRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.ChatMessageRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto_OutfitBriefRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.OutfitBriefRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto_SearchWardrobeItemRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto_WardrobeItemBriefRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeItemBriefRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto_WardrobeItemRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeItemRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.UploadSignatureResult": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "dto.UserBriefRes": {
+      "properties": {
+        "avatarUrl": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "$ref": "#/definitions/gender.Gender"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/userstatus.UserStatus"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "gender.Gender": {
+      "enum": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "type": "integer",
+      "x-enum-varnames": [
+        "Unknown",
+        "Male",
+        "Female",
+        "Other"
+      ]
+    },
+    "internal_modules_subscription_presentation_handler.adminGrantPlanReq": {
+      "properties": {
+        "planId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "type": "object"
+    },
+    "internal_modules_subscription_presentation_handler.resolveRequest": {
+      "properties": {
+        "paymentLinkId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "presentation.APIResponse": {
+      "properties": {
+        "data": {},
+        "message": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_admin.AdminAuditLogDTO": {
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "requestIp": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_admin.AdminAuditLogListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_admin.AdminAuditLogDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.AdminUserDetailRes": {
+      "properties": {
+        "subscription": {},
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.AdminUserListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ChangePasswordReq": {
+      "properties": {
+        "confirmPassword": {
+          "type": "string"
+        },
+        "logoutAllDevices": {
+          "type": "boolean"
+        },
+        "newPassword": {
+          "type": "string"
+        },
+        "oldPassword": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmPassword",
+        "newPassword",
+        "oldPassword"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ConfirmForgotPasswordOtpReq": {
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "otpCode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "otpCode"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ConfirmForgotPasswordOtpRes": {
+      "properties": {
+        "resetToken": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ConfirmRegisterOtpReq": {
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "otpCode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "otpCode"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.CreateAdminUserReq": {
+      "properties": {
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/gender.Gender"
+            }
+          ],
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "roleSlug": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_domain_constants_roleslug.RoleSlug"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "firstName",
+        "password",
+        "username"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.InferredBodyProfileReq": {
+      "properties": {
+        "bodyShape": {
+          "type": "string"
+        },
+        "confidenceScore": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "bodyShape"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.LoginReq": {
+      "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "loginName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "loginName",
+        "password"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.LogoutReq": {
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.RefreshTokenReq": {
+      "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "oldRefreshToken": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oldRefreshToken"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.RegisterReq": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "confirmPassword": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/gender.Gender"
+            }
+          ],
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmPassword",
+        "dateOfBirth",
+        "email",
+        "firstName",
+        "password",
+        "username"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ResendOtpReq": {
+      "properties": {
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.ResetPasswordReq": {
+      "properties": {
+        "confirmPassword": {
+          "type": "string"
+        },
+        "logoutAllDevices": {
+          "type": "boolean"
+        },
+        "newPassword": {
+          "type": "string"
+        },
+        "resetToken": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmPassword",
+        "newPassword"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.SendForgotPasswordOtpReq": {
+      "properties": {
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.TokenRes": {
+      "properties": {
+        "accessToken": {
+          "type": "string"
+        },
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateAvatarReq": {
+      "properties": {
+        "avatarPublicId": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "avatarPublicId",
+        "avatarUrl"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateBodyMeasurementsReq": {
+      "properties": {
+        "chestCm": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "hipCm": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "waistCm": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateBodyProfileReq": {
+      "properties": {
+        "bodyShape": {
+          "type": "string"
+        },
+        "heightCm": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "inferredByAi": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.InferredBodyProfileReq"
+        },
+        "measurements": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UpdateBodyMeasurementsReq"
+        },
+        "verifiedByUser": {
+          "type": "boolean"
+        },
+        "weightKg": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "bodyShape",
+        "heightCm",
+        "weightKg"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateProfileReq": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/gender.Gender"
+            }
+          ],
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "lastName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "firstName"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateUserRoleReq": {
+      "properties": {
+        "roleSlug": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_domain_constants_roleslug.RoleSlug"
+        }
+      },
+      "required": [
+        "roleSlug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UpdateUserStatusReq": {
+      "properties": {
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_identity_domain_constants_userstatus.UserStatus"
+            }
+          ],
+          "enum": [
+            0,
+            1
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserBodyMeasurementsRes": {
+      "properties": {
+        "chestCm": {
+          "type": "number"
+        },
+        "hipCm": {
+          "type": "number"
+        },
+        "waistCm": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserBodyProfileRes": {
+      "properties": {
+        "bodyShape": {
+          "type": "string"
+        },
+        "heightCm": {
+          "type": "number"
+        },
+        "inferredByAi": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserInferredBodyRes"
+        },
+        "lastUpdatedAt": {
+          "type": "string"
+        },
+        "measurements": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserBodyMeasurementsRes"
+        },
+        "verifiedByUser": {
+          "type": "boolean"
+        },
+        "weightKg": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserBriefRes": {
+      "properties": {
+        "avatarUrl": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "$ref": "#/definitions/gender.Gender"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_identity_domain_constants_userstatus.UserStatus"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserInferredBodyRes": {
+      "properties": {
+        "bodyShape": {
+          "type": "string"
+        },
+        "confidenceScore": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserRes": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "bodyProfile": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserBodyProfileRes"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "$ref": "#/definitions/gender.Gender"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "roleSlug": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_domain_constants_roleslug.RoleSlug"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_identity_domain_constants_userstatus.UserStatus"
+        },
+        "subscription": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.UserSubscriptionRes"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserSessionItemDTO": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isRevoked": {
+          "type": "boolean"
+        },
+        "lastActiveAt": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.UserSubscriptionRes": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminDepositTransactionListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.DepositTransactionRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminUserSubscriptionItemDTO": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "isAutoRenewEnabled": {
+          "type": "boolean"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.CreateSubscriptionPlanReq": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "price": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.DepositTransactionRes": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "cancelledAt": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "nextReconciliationAt": {
+          "type": "string"
+        },
+        "orderCode": {
+          "type": "integer"
+        },
+        "paymentLinkId": {
+          "type": "string"
+        },
+        "paymentUrl": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_depositstatus.DepositStatus"
+        },
+        "targetPlanId": {
+          "type": "string"
+        },
+        "transactionType": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.DirectPurchaseReq": {
+      "properties": {
+        "cancelUrl": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "returnUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planSlug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.PayOSWebhookData": {
+      "properties": {
+        "accountNumber": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "orderCode": {
+          "type": "integer"
+        },
+        "paymentLinkId": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "transactionDateTime": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.PayOSWebhookReq": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.PayOSWebhookData"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.PaymentLinkDTO": {
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "nextReconciliationAt": {
+          "type": "string"
+        },
+        "orderCode": {
+          "type": "integer"
+        },
+        "paymentStatus": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_depositstatus.DepositStatus"
+        },
+        "paymentUrl": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.PurchaseWithWalletReq": {
+      "properties": {
+        "planSlug": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planSlug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.SetAutoRenewReq": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.SetPlanActiveReq": {
+      "properties": {
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.SubscriptionPlanBriefRes": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "price": {
+          "type": "number"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.SubscriptionPlanDTO": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "planKind": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind"
+        },
+        "price": {
+          "type": "number"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.UpdateSubscriptionPlanReq": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.UserSubscriptionDTO": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "aiUsageCount": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "isAutoRenewEnabled": {
+          "type": "boolean"
+        },
+        "lastResetDate": {
+          "type": "string"
+        },
+        "outfitRecommendCount": {
+          "type": "integer"
+        },
+        "planID": {
+          "type": "string"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.UserSubscriptionOverviewRes": {
+      "properties": {
+        "aiChatDailyQuota": {
+          "type": "integer"
+        },
+        "aiOutfitDailyQuota": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "isAutoRenewEnabled": {
+          "type": "boolean"
+        },
+        "maxOutfits": {
+          "type": "integer"
+        },
+        "maxWardrobeItems": {
+          "type": "integer"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.WalletDTO": {
+      "properties": {
+        "balance": {
+          "type": "number"
+        },
+        "currency": {
+          "$ref": "#/definitions/currency.Currency"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userID": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.WalletStatementDTO": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "newBalance": {
+          "type": "number"
+        },
+        "previousBalance": {
+          "type": "number"
+        },
+        "transactionType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_walletstatementtype.WalletStatementType"
+        },
+        "userID": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.WalletTopUpReq": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "cancelUrl": {
+          "type": "string"
+        },
+        "returnUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_internal_modules_identity_domain_constants_userstatus.UserStatus": {
+      "enum": [
+        0,
+        1
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-varnames": [
+        "Active",
+        "Inactive"
+      ]
+    },
+    "smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_depositstatus.DepositStatus": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-varnames": [
+        "Pending",
+        "Success",
+        "FailedLegacy",
+        "Creating",
+        "ReconciliationRequired",
+        "Reconciling",
+        "CreationFailed",
+        "Cancelled",
+        "Expired",
+        "InvestigationRequired",
+        "Refunded"
+      ]
+    },
+    "smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_plankind.PlanKind": {
+      "enum": [
+        0,
+        1,
+        2
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-varnames": [
+        "DefaultFree",
+        "Finite",
+        "Lifetime"
+      ]
+    },
+    "smart-wardrobe-be_services_account_internal_modules_subscription_domain_constants_walletstatementtype.WalletStatementType": {
+      "enum": [
+        "topup",
+        "subscription_purchase",
+        "subscription_renewal",
+        "lower_tier_payment_credit",
+        "same_lifetime_payment_credit",
+        "auto_refund"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Topup",
+        "SubscriptionPurchase",
+        "SubscriptionRenewal",
+        "LowerTierPaymentCredit",
+        "SameLifetimePaymentCredit",
+        "AutoRefund"
+      ]
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyBriefRes": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO": {
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "effectiveFrom": {
+          "type": "string"
+        },
+        "effectiveTo": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputUsdPerMillion": {
+          "type": "number"
+        },
+        "model": {
+          "type": "string"
+        },
+        "outputUsdPerMillion": {
+          "type": "number"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "usdToVnd": {
+          "type": "number"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AIPolicyGrantDTO": {
+      "properties": {
+        "aiCostPolicy": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyBriefRes"
+        },
+        "aiCostPolicyId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "effectiveFrom": {
+          "type": "string"
+        },
+        "effectiveTo": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AIUsageItemDTO": {
+      "properties": {
+        "actualCostMicroVnd": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "outputTokens": {
+          "type": "integer"
+        },
+        "promptTokens": {
+          "type": "integer"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "thinkingTokens": {
+          "type": "integer"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq": {
+      "properties": {
+        "aiCostPolicyId": {
+          "type": "string"
+        },
+        "effectiveTo": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "aiCostPolicyId",
+        "userId"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq": {
+      "properties": {
+        "effectiveTo": {
+          "type": "string"
+        },
+        "inputUsdPerMillion": {
+          "type": "number"
+        },
+        "outputUsdPerMillion": {
+          "type": "number"
+        },
+        "usdToVnd": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemReq": {
+      "properties": {
+        "emailOrUsername": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/brandmemberrole.BrandMemberRole"
+        }
+      },
+      "required": [
+        "emailOrUsername",
+        "role"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemResult": {
+      "properties": {
+        "emailOrUsername": {
+          "type": "string"
+        },
+        "member": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandMemberRes"
+        },
+        "message": {
+          "type": "string"
+        },
+        "reasonCode": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMembersReq": {
+      "properties": {
+        "members": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemReq"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "members"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMembersRes": {
+      "properties": {
+        "created": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemResult"
+          },
+          "type": "array"
+        },
+        "failed": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemResult"
+          },
+          "type": "array"
+        },
+        "updated": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AddBrandMemberItemResult"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AdminAddBrandStaffReq": {
+      "properties": {
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AdminBrandListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.AdminUpdateBrandMemberReq": {
+      "properties": {
+        "role": {
+          "$ref": "#/definitions/brandmemberrole.BrandMemberRole"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BenefitBriefRes": {
+      "properties": {
+        "benefitType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "featureCode": {
+          "type": "string"
+        },
+        "featureConfig": {},
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "requiredPoints": {
+          "type": "integer"
+        },
+        "requiredTierName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unlockType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BenefitRedemptionListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BenefitRedemptionRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BenefitRedemptionRes": {
+      "properties": {
+        "benefit": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BenefitBriefRes"
+        },
+        "benefitId": {
+          "type": "string"
+        },
+        "brand": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes"
+        },
+        "brandCustomerId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pointsSpent": {
+          "type": "integer"
+        },
+        "redeemedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "usedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes": {
+      "properties": {
+        "benefitType": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "featureCode": {
+          "type": "string"
+        },
+        "featureConfig": {},
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "requiredPoints": {
+          "type": "integer"
+        },
+        "requiredTierId": {
+          "type": "string"
+        },
+        "requiredTierName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "unlockType": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes": {
+      "properties": {
+        "backgroundUrl": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandstatus.BrandStatus"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationMessageListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationMessageRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationMessageRes": {
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sender": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        },
+        "senderRole": {
+          "type": "string"
+        },
+        "senderUserId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "customerName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastMessageAt": {
+          "type": "string"
+        },
+        "staffLastReadAt": {
+          "type": "string"
+        },
+        "staffUnreadCount": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userDisplayName": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userLastReadAt": {
+          "type": "string"
+        },
+        "userUnreadCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationUserDetailRes": {
+      "properties": {
+        "brand": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes"
+        },
+        "customerName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastMessageAt": {
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandConversationMessageRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userDisplayName": {
+          "type": "string"
+        },
+        "userLastReadAt": {
+          "type": "string"
+        },
+        "userUnreadCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandCustomerBriefRes": {
+      "properties": {
+        "customerName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "joinedAt": {
+          "type": "string"
+        },
+        "joinedSource": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource"
+        },
+        "loyaltyAccount": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CustomerLoyaltyAccountRes"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerstatus.BrandCustomerStatus"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandCustomerListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandCustomerRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandCustomerRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "claimedAt": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdByMemberId": {
+          "type": "string"
+        },
+        "customerName": {
+          "type": "string"
+        },
+        "externalCustomerCode": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "joinedAt": {
+          "type": "string"
+        },
+        "joinedSource": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource"
+        },
+        "loyaltyAccount": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CustomerLoyaltyAccountRes"
+        },
+        "phoneE164": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerstatus.BrandCustomerStatus"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemBriefRes": {
+      "properties": {
+        "brand": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes"
+        },
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemBriefRes"
+        },
+        "id": {
+          "type": "string"
+        },
+        "itemType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemtype.BrandItemType"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemListBriefRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemBriefRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "brandName": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemContractDTO"
+        },
+        "fashionItemId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "itemType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemtype.BrandItemType"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandLoyaltyRes": {
+      "properties": {
+        "brand": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes"
+        },
+        "brandCustomerId": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "currentPoints": {
+          "type": "integer"
+        },
+        "currentTier": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierBriefRes"
+        },
+        "lifetimePoints": {
+          "type": "integer"
+        },
+        "loyaltyAccountId": {
+          "type": "string"
+        },
+        "nearestExpiringPointLot": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointLotRes"
+        },
+        "totalSpend": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandMemberRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/brandmemberrole.BrandMemberRole"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        },
+        "userEmail": {
+          "type": "string"
+        },
+        "userFullName": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandRes": {
+      "properties": {
+        "approvedAt": {
+          "type": "string"
+        },
+        "approvedByUserId": {
+          "type": "string"
+        },
+        "backgroundUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdByUserId": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandstatus.BrandStatus"
+        },
+        "totalCustomer": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ClaimOfflineAccountReq": {
+      "properties": {
+        "claimToken": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "claimToken"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.ClaimTokenRes": {
+      "properties": {
+        "brandCustomerId": {
+          "type": "string"
+        },
+        "consumedAt": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revokedAt": {
+          "type": "string"
+        },
+        "revokedByUserId": {
+          "type": "string"
+        },
+        "revokedReason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandBenefitReq": {
+      "properties": {
+        "benefitType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "featureCode": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "featureConfig": {},
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "requiredPoints": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "requiredTierId": {
+          "type": "string"
+        },
+        "unlockType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "benefitType",
+        "name",
+        "unlockType"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandItemReq": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "imagePublicId": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "itemType": {
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "imagePublicId",
+        "imageUrl",
+        "itemType",
+        "name"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateBrandReq": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "logoPublicId": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 100,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateClaimTokenRes": {
+      "properties": {
+        "claimToken": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateLoyaltyTierReq": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "minTotalSpend": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CreateOfflineBrandCustomerReq": {
+      "properties": {
+        "customerName": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "externalCustomerCode": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "phoneE164": {
+          "maxLength": 50,
+          "type": "string"
+        }
+      },
+      "required": [
+        "phoneE164"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.CustomerLoyaltyAccountRes": {
+      "properties": {
+        "currentPoints": {
+          "type": "integer"
+        },
+        "currentTier": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierBriefRes"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lifetimePoints": {
+          "type": "integer"
+        },
+        "totalSpend": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.DigitalSampleResponseRes": {
+      "properties": {
+        "brandItemId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "feedbackText": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outfitId": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "integer"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "voteType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.GrantLoyaltyPointsReq": {
+      "properties": {
+        "customerName": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "externalCustomerCode": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "phone": {
+          "maxLength": 50,
+          "type": "string"
+        },
+        "pointsDelta": {
+          "type": "integer"
+        },
+        "purchaseAmount": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "reason": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "referenceId": {
+          "type": "string"
+        },
+        "referenceType": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "transactionType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltytransactiontype.LoyaltyTransactionType"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "transactionType"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointLotRes": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "earnTransactionId": {
+          "type": "string"
+        },
+        "earnedPoints": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "remainingPoints": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointTransactionBriefRes": {
+      "properties": {
+        "balanceAfter": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pointsDelta": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "referenceId": {
+          "type": "string"
+        },
+        "referenceType": {
+          "type": "string"
+        },
+        "spendAmount": {
+          "type": "number"
+        },
+        "transactionType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointTransactionDetailRes": {
+      "properties": {
+        "balanceAfter": {
+          "type": "integer"
+        },
+        "brandCustomerId": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdByUserId": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "loyaltyAccountId": {
+          "type": "string"
+        },
+        "pointsDelta": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "referenceId": {
+          "type": "string"
+        },
+        "referenceType": {
+          "type": "string"
+        },
+        "spendAmount": {
+          "type": "number"
+        },
+        "transactionType": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointsTransactionRes": {
+      "properties": {
+        "balanceAfter": {
+          "type": "integer"
+        },
+        "brandCustomerId": {
+          "type": "string"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "currentTier": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierBriefRes"
+        },
+        "customerStatus": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerstatus.BrandCustomerStatus"
+        },
+        "pointsDelta": {
+          "type": "integer"
+        },
+        "totalSpend": {
+          "type": "number"
+        },
+        "transactionId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyProgramRes": {
+      "properties": {
+        "amountPerPoint": {
+          "type": "number"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pointExpiryDays": {
+          "type": "integer"
+        },
+        "roundingMode": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierBriefRes": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierDetailRes": {
+      "properties": {
+        "benefits": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBenefitRes"
+          },
+          "type": "array"
+        },
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "minTotalSpend": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTierRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "minTotalSpend": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyTransactionListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.LoyaltyPointTransactionDetailRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.PortalBrandRes": {
+      "properties": {
+        "approvedAt": {
+          "type": "string"
+        },
+        "approvedByUserId": {
+          "type": "string"
+        },
+        "backgroundUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdByUserId": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "memberId": {
+          "type": "string"
+        },
+        "memberRole": {
+          "$ref": "#/definitions/brandmemberrole.BrandMemberRole"
+        },
+        "memberStatus": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandstatus.BrandStatus"
+        },
+        "totalCustomer": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.PublicBrandBriefListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandBriefRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.RevokeClaimTokenReq": {
+      "properties": {
+        "reason": {
+          "maxLength": 255,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.SendBrandChatMessageReq": {
+      "properties": {
+        "message": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.SubmitSampleFeedbackReq": {
+      "properties": {
+        "feedbackText": {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        "outfitId": {
+          "type": "string"
+        },
+        "rating": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "voteType": {
+          "enum": [
+            "like",
+            "dislike",
+            "would_buy",
+            "not_interested"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.TransferBrandOwnershipReq": {
+      "properties": {
+        "newOwnerUserId": {
+          "type": "string"
+        },
+        "oldOwnerHandling": {
+          "enum": [
+            "staff",
+            "remove"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "newOwnerUserId",
+        "oldOwnerHandling"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBenefitStatusReq": {
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandImagesReq": {
+      "properties": {
+        "backgroundPublicId": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "backgroundUrl": {
+          "type": "string"
+        },
+        "logoPublicId": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandItemReq": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandItemStatusReq": {
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateBrandStatusReq": {
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandstatus.BrandStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpdateLoyaltyTierReq": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "minTotalSpend": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UploadSignatureResult": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UpsertLoyaltyProgramReq": {
+      "properties": {
+        "amountPerPoint": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "pointExpiryDays": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "roundingMode": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode"
+            }
+          ],
+          "enum": [
+            "floor",
+            "round",
+            "ceil"
+          ]
+        }
+      },
+      "required": [
+        "amountPerPoint",
+        "name",
+        "roundingMode"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerjoinedsource.BrandCustomerJoinedSource": {
+      "enum": [
+        "self_join",
+        "offline_purchase",
+        "import"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "SelfJoin",
+        "OfflinePurchase",
+        "Import"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandcustomerstatus.BrandCustomerStatus": {
+      "enum": [
+        "active",
+        "blocked",
+        "left"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Active",
+        "Blocked",
+        "Left"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemstatus.BrandItemStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "archived"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Draft",
+        "Active",
+        "Archived"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemtype.BrandItemType": {
+      "enum": [
+        "product",
+        "sample"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Product",
+        "Sample"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandmemberstatus.BrandMemberStatus": {
+      "enum": [
+        "active",
+        "invited",
+        "disabled"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Active",
+        "Invited",
+        "Disabled"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_brandstatus.BrandStatus": {
+      "enum": [
+        "pending_review",
+        "active",
+        "suspended",
+        "archived"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "PendingReview",
+        "Active",
+        "Suspended",
+        "Archived"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltyroundingmode.LoyaltyRoundingMode": {
+      "enum": [
+        "floor",
+        "round",
+        "ceil"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Floor",
+        "Round",
+        "Ceil"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_loyaltytransactiontype.LoyaltyTransactionType": {
+      "enum": [
+        "earn",
+        "redeem",
+        "adjust",
+        "expire",
+        "refund"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Earn",
+        "Redeem",
+        "Adjust",
+        "Expire",
+        "Refund"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIErrorBreakdownRes": {
+      "properties": {
+        "breakdown": {
+          "items": {
+            "$ref": "#/definitions/dto.AIErrorBreakdownDTO"
+          },
+          "type": "array"
+        },
+        "errorRate": {
+          "type": "number"
+        },
+        "totalErrors": {
+          "type": "integer"
+        },
+        "totalRequests": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes": {
+      "properties": {
+        "aiErrorCount": {
+          "type": "integer"
+        },
+        "aiRequestsCount": {
+          "type": "integer"
+        },
+        "fromDate": {
+          "type": "string"
+        },
+        "marginPercentage": {
+          "type": "number"
+        },
+        "netAiMarginVnd": {
+          "type": "number"
+        },
+        "toDate": {
+          "type": "string"
+        },
+        "totalAiActualCostVnd": {
+          "type": "number"
+        },
+        "totalAiPaidTokens": {
+          "type": "integer"
+        },
+        "totalSubscriptionRevVnd": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIUsageByOperationDTO": {
+      "properties": {
+        "logicalRoute": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "requestCount": {
+          "type": "integer"
+        },
+        "totalCostVnd": {
+          "type": "number"
+        },
+        "totalOutputTokens": {
+          "type": "integer"
+        },
+        "totalPromptTokens": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIUsageByOperationRes": {
+      "properties": {
+        "fromDate": {
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIUsageByOperationDTO"
+          },
+          "type": "array"
+        },
+        "toDate": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AdminKPICardsRes": {
+      "properties": {
+        "activeUsersDau": {
+          "type": "integer"
+        },
+        "netAiMarginVnd": {
+          "type": "number"
+        },
+        "payOSSuccessCount": {
+          "type": "integer"
+        },
+        "pendingReviewBrands": {
+          "type": "integer"
+        },
+        "subscriptionRevenueVnd": {
+          "type": "number"
+        },
+        "totalBrands": {
+          "type": "integer"
+        },
+        "totalUsers": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AdminOverviewRes": {
+      "properties": {
+        "aiMargin": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes"
+        },
+        "kpiCards": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AdminKPICardsRes"
+        },
+        "payosReconcile": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PayOSReconciliationRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "topBenefits": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BenefitRedemptionDTO"
+          },
+          "type": "array"
+        },
+        "totalRedemptions": {
+          "type": "integer"
+        },
+        "trend": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RedemptionTrendDTO"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BenefitRedemptionDTO": {
+      "properties": {
+        "benefitId": {
+          "type": "string"
+        },
+        "benefitName": {
+          "type": "string"
+        },
+        "benefitType": {
+          "type": "string"
+        },
+        "percentage": {
+          "type": "number"
+        },
+        "redemptionCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BrandKPICardsRes": {
+      "properties": {
+        "activeVouchers": {
+          "type": "integer"
+        },
+        "digitalSampleAvgRating": {
+          "type": "number"
+        },
+        "digitalSampleVotesCount": {
+          "type": "integer"
+        },
+        "openCsTickets": {
+          "type": "integer"
+        },
+        "pointsIssued": {
+          "type": "integer"
+        },
+        "pointsRedeemed": {
+          "type": "integer"
+        },
+        "totalMembers": {
+          "type": "integer"
+        },
+        "vouchersRedeemed": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BrandPointsLiabilityRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "pointsExpiring30d": {
+          "type": "integer"
+        },
+        "pointsLiabilityValueVnd": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CatalogStatGroupDTO": {
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "label": {
+          "type": "string"
+        },
+        "percentage": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CatalogStatsRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "byStatus": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CatalogStatGroupDTO"
+          },
+          "type": "array"
+        },
+        "byType": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CatalogStatGroupDTO"
+          },
+          "type": "array"
+        },
+        "totalItems": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CategoryDistributionDTO": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "categoryName": {
+          "type": "string"
+        },
+        "itemCount": {
+          "type": "integer"
+        },
+        "percentage": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.ComparisonDTO": {
+      "properties": {
+        "metricDeltaPercentages": {
+          "additionalProperties": {
+            "format": "float64",
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "previousPeriodFrom": {
+          "type": "string"
+        },
+        "previousPeriodTo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO": {
+      "properties": {
+        "customerCount": {
+          "type": "integer"
+        },
+        "percentage": {
+          "type": "number"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CustomerAcquisitionRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CustomerAcquisitionDTO"
+          },
+          "type": "array"
+        },
+        "totalCustomers": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes": {
+      "properties": {
+        "avgRating": {
+          "type": "number"
+        },
+        "brandItemId": {
+          "type": "string"
+        },
+        "brandItemImageUrl": {
+          "type": "string"
+        },
+        "brandItemName": {
+          "type": "string"
+        },
+        "feedbackSentiment": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "topPairedCategories": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PairedCategoryStat"
+          },
+          "type": "array"
+        },
+        "votesCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownAIEventDTO": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownAIEventListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownAIEventDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO": {
+      "properties": {
+        "brandItemImageUrl": {
+          "type": "string"
+        },
+        "brandItemName": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "feedbackId": {
+          "type": "string"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "number"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.UserBriefRes"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackDTO"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryReq": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "compareWithPrevious": {
+          "type": "boolean"
+        },
+        "granularity": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_granularity.Granularity"
+            }
+          ],
+          "description": "\"day\" | \"week\" | \"month\" | \"year\""
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_metrickey.MetricKey"
+          },
+          "type": "array"
+        },
+        "targetDashboard": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard"
+            }
+          ],
+          "description": "\"admin\" | \"brand\" | \"user\""
+        },
+        "timeframe": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryRes": {
+      "properties": {
+        "comparison": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.ComparisonDTO"
+        },
+        "granularity": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_granularity.Granularity"
+        },
+        "series": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TimeSeriesPointDTO"
+          },
+          "type": "array"
+        },
+        "targetDashboard": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryTimeframeDTO": {
+      "properties": {
+        "fromDate": {
+          "type": "string"
+        },
+        "toDate": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PairedCategoryStat": {
+      "properties": {
+        "categoryName": {
+          "type": "string"
+        },
+        "pairCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PayOSReconciliationRes": {
+      "properties": {
+        "failedCount": {
+          "type": "integer"
+        },
+        "successCount": {
+          "type": "integer"
+        },
+        "totalSuccessValue": {
+          "type": "number"
+        },
+        "totalTransactions": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PointExpiryForecastDTO": {
+      "properties": {
+        "month": {
+          "type": "string"
+        },
+        "pointsExpiring": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PointExpiryForecastRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "forecast": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PointExpiryForecastDTO"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RedemptionTrendDTO": {
+      "properties": {
+        "month": {
+          "type": "string"
+        },
+        "redemptionCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RenewalStatsRes": {
+      "properties": {
+        "avgRetryCount": {
+          "type": "number"
+        },
+        "failedCount": {
+          "type": "integer"
+        },
+        "successCount": {
+          "type": "integer"
+        },
+        "successRate": {
+          "type": "number"
+        },
+        "totalAttempts": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RevenueBreakdownDTO": {
+      "properties": {
+        "month": {
+          "type": "string"
+        },
+        "planCode": {
+          "type": "string"
+        },
+        "revenueVnd": {
+          "type": "number"
+        },
+        "transactionCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RevenueBreakdownRes": {
+      "properties": {
+        "breakdown": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RevenueBreakdownDTO"
+          },
+          "type": "array"
+        },
+        "fromDate": {
+          "type": "string"
+        },
+        "toDate": {
+          "type": "string"
+        },
+        "totalRevenueVnd": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SpendSegmentDTO": {
+      "properties": {
+        "customerCount": {
+          "type": "integer"
+        },
+        "maxVnd": {
+          "type": "number"
+        },
+        "minVnd": {
+          "type": "number"
+        },
+        "percentage": {
+          "type": "number"
+        },
+        "segment": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SpendSegmentationRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SpendSegmentDTO"
+          },
+          "type": "array"
+        },
+        "totalCustomers": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO": {
+      "properties": {
+        "percentage": {
+          "type": "number"
+        },
+        "planCode": {
+          "type": "string"
+        },
+        "userCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionRes": {
+      "properties": {
+        "distribution": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionDTO"
+          },
+          "type": "array"
+        },
+        "totalUsers": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TierDistributionDTO": {
+      "properties": {
+        "memberCount": {
+          "type": "integer"
+        },
+        "percentage": {
+          "type": "number"
+        },
+        "tierId": {
+          "type": "string"
+        },
+        "tierName": {
+          "type": "string"
+        },
+        "tierRank": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TierDistributionRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "tiers": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TierDistributionDTO"
+          },
+          "type": "array"
+        },
+        "totalMembers": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TimeSeriesPointDTO": {
+      "properties": {
+        "metrics": {
+          "additionalProperties": {
+            "format": "float64",
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.UnderutilizedItemDTO": {
+      "properties": {
+        "categoryName": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "lastWornDaysAgo": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "purchasePriceVnd": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes": {
+      "properties": {
+        "expiringVouchersCount": {
+          "type": "integer"
+        },
+        "totalItems": {
+          "type": "integer"
+        },
+        "totalWardrobeValueVnd": {
+          "type": "number"
+        },
+        "underutilizedItems": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.UnderutilizedItemDTO"
+          },
+          "type": "array"
+        },
+        "underutilizedItemsCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes": {
+      "properties": {
+        "categories": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CategoryDistributionDTO"
+          },
+          "type": "array"
+        },
+        "totalItems": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_feedbacksentiment.FeedbackSentiment": {
+      "enum": [
+        "positive",
+        "neutral",
+        "negative"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Positive",
+        "Neutral",
+        "Negative"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_granularity.Granularity": {
+      "enum": [
+        "day",
+        "week",
+        "month",
+        "year"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Day",
+        "Week",
+        "Month",
+        "Year"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_metrickey.MetricKey": {
+      "enum": [
+        "total_users",
+        "active_users_dau",
+        "total_brands",
+        "pending_review_brands",
+        "ai_requests_count",
+        "subscription_revenue_vnd",
+        "net_ai_margin_vnd",
+        "total_members",
+        "points_issued",
+        "points_redeemed",
+        "active_vouchers",
+        "total_wardrobe_items",
+        "total_wardrobe_value_vnd",
+        "vouchers_redeemed",
+        "digital_sample_votes_count",
+        "digital_sample_avg_rating",
+        "open_cs_tickets",
+        "points_expiring_30d",
+        "points_liability_value_vnd",
+        "new_users",
+        "ai_error_count",
+        "ai_error_rate",
+        "new_customers",
+        "customer_claim_rate",
+        "benefit_redemption_count",
+        "brand_item_count",
+        "brand_item_count_by_type"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "TotalUsers",
+        "ActiveUsersDau",
+        "TotalBrands",
+        "PendingReviewBrands",
+        "AIRequestsCount",
+        "SubscriptionRevenueVND",
+        "NetAIMarginVND",
+        "TotalMembers",
+        "PointsIssued",
+        "PointsRedeemed",
+        "ActiveVouchers",
+        "TotalWardrobeItems",
+        "TotalWardrobeValueVND",
+        "VouchersRedeemed",
+        "DigitalSampleVotesCount",
+        "DigitalSampleAvgRating",
+        "OpenCSTickets",
+        "PointsExpiring30d",
+        "PointsLiabilityValueVND",
+        "NewUsers",
+        "AIErrorCount",
+        "AIErrorRate",
+        "NewCustomers",
+        "CustomerClaimRate",
+        "BenefitRedemptionCount",
+        "BrandItemCount",
+        "BrandItemCountByType"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_dashboard_domain_constants_targetdashboard.TargetDashboard": {
+      "enum": [
+        "admin",
+        "brand",
+        "user"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Admin",
+        "Brand",
+        "User"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryAPIRes": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.ChatMessageRes": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "sender": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_domain_constants_messagesender.MessageSender"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.ChatSessionRes": {
+      "properties": {
+        "contextSummary": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isArchived": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CreateCategoryReq": {
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "sortOrder": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CreateChatSessionReq": {
+      "properties": {
+        "title": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemBriefRes": {
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes"
+        },
+        "color": {
+          "type": "string"
+        },
+        "colorHex": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemContractDTO": {
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes"
+        },
+        "category_id": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "color_hex": {
+          "type": "string"
+        },
+        "color_hue": {
+          "type": "number"
+        },
+        "color_lightness": {
+          "type": "number"
+        },
+        "color_saturation": {
+          "type": "number"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "image_url": {
+          "type": "string"
+        },
+        "material": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "seasonality": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendOutfitReq": {
+      "properties": {
+        "colorTone": {
+          "description": "Tông màu phối đồ (Gợi ý: light, dark, pastel, earthy, neon... hoặc nhập tông màu tùy ý)",
+          "example": "light",
+          "type": "string"
+        },
+        "details": {
+          "description": "Ghi chú thêm bằng tay (free text)",
+          "type": "string"
+        },
+        "includeBrandItems": {
+          "description": "Cho phép phối đồ của brand (tỷ lệ tối đa 30%)",
+          "example": true,
+          "type": "boolean"
+        },
+        "occasion": {
+          "description": "Dịp phối đồ (Gợi ý: casual, work, date, party, sport, hoặc nhập dịp tùy ý)",
+          "example": "casual",
+          "type": "string"
+        },
+        "season": {
+          "description": "Mùa phối đồ\n@enums spring,summer,autumn,winter,all",
+          "enum": [
+            "spring",
+            "summer",
+            "autumn",
+            "winter",
+            "all"
+          ],
+          "type": "string"
+        },
+        "styleTarget": {
+          "description": "Phong cách hướng tới (Gợi ý: minimalist, vintage, streetwear, preppy, sporty, elegant, hoặc nhập phong cách tùy ý)",
+          "example": "minimalist",
+          "type": "string"
+        },
+        "weather": {
+          "description": "Thời tiết hiện tại (Gợi ý: hot, cold, warm, cool, rainy, hoặc nhập thời tiết cụ thể)",
+          "example": "warm",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes": {
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes"
+        },
+        "color": {
+          "type": "string"
+        },
+        "colorHex": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemGroup": {
+      "properties": {
+        "alternatives": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemRes"
+          },
+          "type": "array"
+        },
+        "primary": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemRes"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemRes": {
+      "properties": {
+        "brandItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_application_dto.BrandItemBriefRes"
+        },
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedFashionItemBriefRes"
+        },
+        "id": {
+          "type": "string"
+        },
+        "itemContext": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedOutfitRes": {
+      "properties": {
+        "explanation": {
+          "type": "string"
+        },
+        "isFallback": {
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.RecommendedItemGroup"
+          },
+          "type": "array"
+        },
+        "remainingQuota": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.SendChatMessageReq": {
+      "properties": {
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateCategoryReq": {
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "sortOrder": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.UpdateChatSessionReq": {
+      "properties": {
+        "title": {
+          "maxLength": 255,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_fashion_domain_constants_messagesender.MessageSender": {
+      "enum": [
+        "user",
+        "ai"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "User",
+        "AI"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.BatchUploadWardrobeItemsReq": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.BulkDeleteItemsReq": {
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.CloneWardrobeItemReq": {
+      "properties": {
+        "quantity": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.FashionItemRes": {
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes"
+        },
+        "color": {
+          "type": "string"
+        },
+        "colorHex": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "material": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "seasonality": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.InitClosetFromCatalogReq": {
+      "properties": {
+        "catalogItemIds": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "catalogItemIds"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.OutfitBriefRes": {
+      "properties": {
+        "coverImageUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_outfitstatus.OutfitStatus"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.OutfitItemRes": {
+      "properties": {
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemBriefRes"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isAvailable": {
+          "type": "boolean"
+        },
+        "itemContext": {
+          "type": "string"
+        },
+        "layerOrder": {
+          "type": "integer"
+        },
+        "positionX": {
+          "type": "number"
+        },
+        "positionY": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.OutfitRes": {
+      "properties": {
+        "coverImageUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.OutfitItemRes"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_outfitstatus.OutfitStatus"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SaveOutfitItemReq": {
+      "properties": {
+        "fashionItemId": {
+          "type": "string"
+        },
+        "layerOrder": {
+          "type": "integer"
+        },
+        "positionX": {
+          "type": "number"
+        },
+        "positionY": {
+          "type": "number"
+        },
+        "scale": {
+          "minimum": 0.1,
+          "type": "number"
+        }
+      },
+      "required": [
+        "fashionItemId",
+        "layerOrder",
+        "scale"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SaveOutfitReq": {
+      "properties": {
+        "coverImageUrl": {
+          "type": "string"
+        },
+        "coverPublicId": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SaveOutfitItemReq"
+          },
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 255,
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "name"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.SearchWardrobeItemRes": {
+      "properties": {
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemBriefRes"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isSystem": {
+          "type": "boolean"
+        },
+        "price": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.UpdateSystemCatalogItemReq": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "material": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "seasonality": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.UpdateWardrobeItemReq": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeBatchUploadItemReq": {
+      "properties": {
+        "categoryId": {
+          "type": "string"
+        },
+        "imagePublicId": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "imagePublicId",
+        "imageUrl"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeItemBriefRes": {
+      "properties": {
+        "brandItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_application_dto.BrandItemBriefRes"
+        },
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.FashionItemBriefRes"
+        },
+        "fashionItemId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isLocked": {
+          "type": "boolean"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_wardrobestatus.WardrobeItemStatus"
+        },
+        "taskId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeItemRes": {
+      "properties": {
+        "brandItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_shared_application_dto.BrandItemBriefRes"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "fashionItem": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.FashionItemRes"
+        },
+        "fashionItemId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDeleted": {
+          "type": "boolean"
+        },
+        "isLocked": {
+          "type": "boolean"
+        },
+        "itemContext": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_wardrobestatus.WardrobeItemStatus"
+        },
+        "taskId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeStatsRes": {
+      "properties": {
+        "activeItemsCount": {
+          "type": "integer"
+        },
+        "outfitsCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "currentItems": {
+          "type": "integer"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "maxItems": {
+          "type": "integer"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "remainingSlots": {
+          "type": "integer"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_outfitstatus.OutfitStatus": {
+      "enum": [
+        0,
+        1
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-varnames": [
+        "Draft",
+        "Active"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_domain_constants_wardrobestatus.WardrobeItemStatus": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-comments": {
+        "Failed": "AI processing failed",
+        "NeedsReview": "AI requires user review before the item becomes usable",
+        "Processing": "AI processing in background"
+      },
+      "x-enum-descriptions": [
+        "",
+        "",
+        "",
+        "AI processing in background",
+        "AI processing failed",
+        "AI requires user review before the item becomes usable"
+      ],
+      "x-enum-varnames": [
+        "InWardrobe",
+        "Selling",
+        "Sold",
+        "Processing",
+        "Failed",
+        "NeedsReview"
+      ]
+    },
+    "smart-wardrobe-be_shared_application_dto.BrandItemBriefRes": {
+      "properties": {
+        "brandId": {
+          "type": "string"
+        },
+        "brandName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "itemType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "productCode": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_shared_application_dto.UploadSignatureResult": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_shared_domain_constants_roleslug.RoleSlug": {
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Admin",
+        "User"
+      ]
+    },
+    "userstatus.UserStatus": {
+      "enum": [
+        0,
+        1
+      ],
+      "format": "int32",
+      "type": "integer",
+      "x-enum-varnames": [
+        "Active",
+        "Inactive"
+      ]
+    }
+  },
+  "info": {
+    "description": "Combined API docs for the Account, Commerce and AI services.",
+    "title": "SmartWardrobe Backend API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/v1/admin/dashboard/ai-margin": {
+      "get": {
+        "description": "Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận.",
+        "parameters": [
+          {
+            "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "fromDate",
+            "type": "string"
+          },
+          {
+            "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "toDate",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin biên lợi nhuận AI thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIMarginAnalyticsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân tích biên lợi nhuận AI Token",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/ai/error-breakdown": {
+      "get": {
+        "description": "Thống kê số lượng lỗi, tổng số request và tỷ lệ lỗi AI, phân nhóm theo error_code, provider và model",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê lỗi AI thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIErrorBreakdownRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê lỗi AI theo mã lỗi, nhà cung cấp và mô hình",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/ai/usage-by-operation": {
+      "get": {
+        "description": "Thống kê số lượng request, chi phí và token AI theo từng loại tác vụ (operation) và tuyến xử lý (logical_route), hỗ trợ lọc khoảng thời gian",
+        "parameters": [
+          {
+            "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "fromDate",
+            "type": "string"
+          },
+          {
+            "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "toDate",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê sử dụng AI thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIUsageByOperationRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê sử dụng AI theo tác vụ",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/drilldown/ai-events": {
+      "get": {
+        "description": "Lấy danh sách phân trang các sự kiện lỗi AI token với thông tin provider, model, status code.",
+        "parameters": [
+          {
+            "description": "Trạng thái lỗi (ví dụ: FAILED)",
+            "in": "query",
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "default": 1,
+            "description": "Số trang",
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "default": 20,
+            "description": "Số lượng phần tử mỗi trang",
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy chi tiết sự kiện AI thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownAIEventListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Truy vết chi tiết các sự kiện lỗi AI (Drill-down Admin)",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/kpi-cards": {
+      "get": {
+        "description": "Lấy thông tin tổng số lượng người dùng, chỉ số DAU, số nhãn hàng active, số nhãn hàng chờ duyệt, doanh thu subscription và biên lợi nhuận AI net margin.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách thẻ KPI Admin thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AdminKPICardsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy các thẻ chỉ số KPI tổng quan Admin",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/overview": {
+      "get": {
+        "description": "Tổng hợp tất cả dữ liệu từ KPI Cards, AI Margin Analytics và PayOS Reconciliation trong 1 kết quả duy nhất.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin tổng quan hệ thống thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AdminOverviewRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Báo cáo tổng quan Admin Dashboard",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/payos-reconciliation": {
+      "get": {
+        "description": "Báo cáo đối soát số lượng giao dịch thanh toán PayOS, tỷ lệ thành công/thất bại và tổng số tiền thanh toán thực tế.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin đối soát PayOS thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PayOSReconciliationRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê đối soát giao dịch PayOS",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/subscriptions/distribution": {
+      "get": {
+        "description": "Thống kê số lượng người dùng và tỷ lệ phần trăm theo từng gói subscription (FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY, v.v.)",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân bổ subscription thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SubscriptionDistributionRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân bổ người dùng theo gói subscription",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/subscriptions/renewal-stats": {
+      "get": {
+        "description": "Thống kê tổng số lần gia hạn, số thành công, số thất bại, tỷ lệ thành công và số lần thử lại trung bình",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê gia hạn subscription thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RenewalStatsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê gia hạn subscription",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/subscriptions/revenue-breakdown": {
+      "get": {
+        "description": "Thống kê doanh thu subscription theo từng plan_code và theo tháng, hỗ trợ lọc khoảng thời gian",
+        "parameters": [
+          {
+            "description": "Ngày bắt đầu (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "fromDate",
+            "type": "string"
+          },
+          {
+            "description": "Ngày kết thúc (định dạng YYYY-MM-DD)",
+            "in": "query",
+            "name": "toDate",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy doanh thu subscription thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.RevenueBreakdownRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Doanh thu subscription theo gói và thời gian",
+        "tags": [
+          "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/benefits/redemption-analytics": {
+      "get": {
+        "description": "Thống kê top benefit được đổi nhiều nhất và xu hướng đổi benefit theo thời gian",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê đổi benefit thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BenefitRedemptionAnalyticsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê đổi benefit",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/customers/acquisition": {
+      "get": {
+        "description": "Thống kê số lượng khách hàng và tỷ lệ phần trăm theo từng kênh thu hút (joined_source)",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê kênh thu hút khách hàng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CustomerAcquisitionRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê kênh thu hút khách hàng",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/customers/spend-segmentation": {
+      "get": {
+        "description": "Thống kê số lượng khách hàng theo các nhóm chi tiêu (low, medium, high, premium)",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân khúc chi tiêu thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.SpendSegmentationRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân khúc chi tiêu khách hàng",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/drilldown/sample-lab-feedbacks": {
+      "get": {
+        "description": "Lấy danh sách phân trang chi tiết các nhận xét và lượt bình chọn của mẫu thử sản phẩm.",
+        "parameters": [
+          {
+            "description": "ID Sản phẩm mẫu thử",
+            "in": "query",
+            "name": "itemId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "default": 1,
+            "description": "Số trang",
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "default": 20,
+            "description": "Số lượng phần tử mỗi trang",
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy chi tiết đánh giá mẫu thử thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DrillDownSampleFeedbackListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Truy vết chi tiết đánh giá mẫu thử 3D (Drill-down Brand)",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/financials/points-liability": {
+      "get": {
+        "description": "Thống kê số điểm hết hạn trong 30 ngày tới \u0026 giá trị quy đổi VND tương ứng. Giá trị VND sẽ bị ẩn (redacted) đối với tài khoản cấp Staff.",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy báo cáo nghĩa vụ điểm quy đổi thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BrandPointsLiabilityRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân tích nợ điểm hết hạn trong 30 ngày (Column-Level RBAC)",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/kpi-cards": {
+      "get": {
+        "description": "Lấy thống kê số hội viên, điểm phát hành, điểm quy đổi, số voucher active/quy đổi của nhãn hàng.",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thẻ KPI nhãn hàng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.BrandKPICardsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy thẻ KPI tổng quan B2B Brand Portal",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/loyalty/point-expiry-forecast": {
+      "get": {
+        "description": "Dự báo số điểm sắp hết hạn theo từng tháng dựa trên dữ liệu loyalty_point_lots",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy dự báo điểm hết hạn thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.PointExpiryForecastRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Dự báo điểm loyalty sắp hết hạn",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/loyalty/tier-distribution": {
+      "get": {
+        "description": "Thống kê số lượng thành viên theo từng hạng loyalty (Bronze, Silver, Gold, v.v.)",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân bổ hạng loyalty thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.TierDistributionRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân bổ hạng loyalty thành viên",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/operations/catalog-stats": {
+      "get": {
+        "description": "Thống kê tổng số sản phẩm trong catalog, phân bổ theo trạng thái và loại sản phẩm",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thống kê catalog thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.CatalogStatsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê catalog sản phẩm",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/brand/dashboard/operations/digital-sample-lab/{itemId}": {
+      "get": {
+        "description": "Thống kê số lượt bình chọn, rating trung bình, sentiment phản hồi và danh sách danh mục trang phục thường phối kèm nhiều nhất.",
+        "parameters": [
+          {
+            "description": "ID Nhãn hàng",
+            "in": "query",
+            "name": "brandId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID Sản phẩm mẫu thử",
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân tích mẫu thử thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DigitalSampleLabAnalyticsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân tích đánh giá mẫu thử Digital Sample Lab",
+        "tags": [
+          "Dashboard Brand"
+        ]
+      }
+    },
+    "/api/v1/dashboard/analytics/query": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Gửi các chỉ số (metrics), khoảng thời gian (timeframe), độ mịn (granularity) và bộ lọc để nhận dữ liệu Time-Series linh hoạt. Kiểm tra quyền truy cập theo TargetDashboard.",
+        "parameters": [
+          {
+            "description": "Thông số truy vấn động",
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Truy vấn dữ liệu tổng hợp thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.DynamicQueryRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Truy vấn tổng hợp linh hoạt đa chiều (Dynamic Query Engine)",
+        "tags": [
+          "Dashboard Analytics"
+        ]
+      }
+    },
+    "/api/v1/me/dashboard/wardrobe-insights": {
+      "get": {
+        "description": "Lấy tổng giá trị tài chính tủ đồ, giá trị trung bình mỗi món đồ (tổng giá trị / số món), tổng số đồ lãng phí chưa mặc \u003e 30 ngày và danh sách đề xuất.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân tích tủ đồ cá nhân thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.UserWardrobeInsightsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thống kê phân tích tủ đồ cá nhân",
+        "tags": [
+          "Dashboard User"
+        ]
+      }
+    },
+    "/api/v1/me/dashboard/wardrobe/category-distribution": {
+      "get": {
+        "description": "Thống kê số lượng và tỷ lệ phần trăm item trong tủ đồ theo từng danh mục thời trang",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy phân bổ danh mục tủ đồ thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.WardrobeCategoryDistributionRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Phân bổ danh mục tủ đồ",
+        "tags": [
+          "Dashboard User"
+        ]
+      }
+    }
+  },
+  "securityDefinitions": {},
+  "swagger": "2.0",
+  "tags": []
+}

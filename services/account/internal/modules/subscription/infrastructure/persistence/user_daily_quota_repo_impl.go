@@ -1,0 +1,51 @@
+package persistence
+
+import (
+	"context"
+	"errors"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
+	shared_repos "smart-wardrobe-be/shared/infrastructure/repositories"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// UserDailyQuotaRepository implements database actions for daily user resource usage quotas
+type UserDailyQuotaRepository struct {
+	*shared_repos.GenericRepository[entities.UserDailyQuota, uuid.UUID]
+}
+
+// NewUserDailyQuotaRepository creates a new instance of quota repository
+func NewUserDailyQuotaRepository(dbConn *gorm.DB) repositories.IUserDailyQuotaRepository {
+	relations := []string{}
+	return &UserDailyQuotaRepository{
+		GenericRepository: shared_repos.NewGenericRepository[entities.UserDailyQuota, uuid.UUID](dbConn, relations),
+	}
+}
+
+// GetByUserID retrieves daily usage metrics for a specific user
+func (r *UserDailyQuotaRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+	var quota entities.UserDailyQuota
+	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&quota).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &quota, nil
+}
+
+func (r *UserDailyQuotaRepository) GetByUserIDWithLock(ctx context.Context, userID uuid.UUID) (*entities.UserDailyQuota, error) {
+	var quota entities.UserDailyQuota
+	err := r.GetDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&quota).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &quota, nil
+}

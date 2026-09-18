@@ -1,0 +1,262 @@
+package usecase
+
+import (
+	"context"
+	"time"
+
+	"smart-wardrobe-be/services/account/dto/identity"
+	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
+	"smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
+	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/jwttype"
+	"smart-wardrobe-be/shared/config"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
+	"smart-wardrobe-be/shared/pkg/utils/jwtutils"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+)
+
+type SessionUseCase struct {
+	userRepo              repositories.IUserRepository
+	refreshTokenRepo      repositories.IRefreshTokenRepository
+	passwordHasher        security.IPasswordHasher
+	tokenBlacklistService security.ITokenBlacklistService
+	cfg                   *config.Config
+	uow                   shared_repos.IUnitOfWork
+}
+
+func NewSessionUseCase(
+	userRepo repositories.IUserRepository,
+	refreshTokenRepo repositories.IRefreshTokenRepository,
+	passwordHasher security.IPasswordHasher,
+	tokenBlacklistService security.ITokenBlacklistService,
+	cfg *config.Config,
+	uow shared_repos.IUnitOfWork,
+) uc_interfaces.ISessionUseCase {
+	return &SessionUseCase{
+		userRepo:              userRepo,
+		refreshTokenRepo:      refreshTokenRepo,
+		passwordHasher:        passwordHasher,
+		tokenBlacklistService: tokenBlacklistService,
+		cfg:                   cfg,
+		uow:                   uow,
+	}
+}
+
+func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.TokenRes, error) {
+	user, err := uc.userRepo.GetByUsernameOrEmail(ctx, input.LoginName)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, identityerrors.ErrInvalidCredentials()
+	}
+
+	isValid := uc.passwordHasher.VerifyPassword(input.Password, user.PasswordHash)
+	if !isValid {
+		return nil, identityerrors.ErrInvalidCredentials()
+	}
+
+	if err := ensureUserEligibleForLogin(user); err != nil {
+		return nil, err
+	}
+
+	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, user.ID)
+	if err == nil && isBlacklisted {
+		return nil, identityerrors.ErrAccountDisabled()
+	}
+
+	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
+	refreshExpiry := time.Hour * 24 * time.Duration(uc.cfg.Jwt.RefreshExpirationDays)
+
+	accessToken, err := jwtutils.GenerateToken(
+		user.ID, user.Email, string(user.RoleSlug),
+		jwttype.AccessToken,
+		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
+		accessExpiry,
+	)
+	if err != nil {
+		return nil, identityerrors.ErrSessionIssueFailed()
+	}
+
+	refreshToken, err := jwtutils.GenerateToken(
+		user.ID, user.Email, string(user.RoleSlug),
+		jwttype.RefreshToken,
+		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
+		refreshExpiry,
+	)
+	if err != nil {
+		return nil, identityerrors.ErrSessionIssueFailed()
+	}
+
+	now := time.Now()
+	rt := &entities.RefreshToken{
+		UserID:       user.ID,
+		Token:        refreshToken,
+		ExpiresAt:    now.Add(refreshExpiry),
+		IsRevoked:    false,
+		DeviceName:   input.DeviceName,
+		DeviceIP:     input.DeviceIP,
+		UserAgent:    input.UserAgent,
+		LastActiveAt: &now,
+	}
+	rt.ID = uuid.New()
+
+	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
+		return nil, err
+	}
+
+	return &dto.TokenRes{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (uc *SessionUseCase) RefreshToken(ctx context.Context, input dto.RefreshTokenReq) (*dto.TokenRes, error) {
+	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.OldRefreshToken, jwttype.RefreshToken)
+	if err != nil {
+		return nil, identityerrors.ErrInvalidSession()
+	}
+
+	oldExpiresAtUTC := claims.ExpiresAt.Time
+	remainingTime := time.Until(oldExpiresAtUTC)
+	if remainingTime <= 0 {
+		return nil, identityerrors.ErrTokenExpired()
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, identityerrors.ErrInvalidSession()
+	}
+
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureUserEligibleForSession(user); err != nil {
+		return nil, err
+	}
+
+	isBlacklisted, err := uc.tokenBlacklistService.IsUserBlacklisted(ctx, userID)
+	if err == nil && isBlacklisted {
+		return nil, identityerrors.ErrAccountDisabledAuth()
+	}
+
+	existingToken, err := uc.refreshTokenRepo.GetByToken(ctx, input.OldRefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	if existingToken == nil || existingToken.IsRevoked {
+		return nil, identityerrors.ErrInvalidSession()
+	}
+
+	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
+
+	newAccessToken, err := jwtutils.GenerateToken(
+		user.ID, user.Email, string(user.RoleSlug),
+		jwttype.AccessToken,
+		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
+		accessExpiry,
+	)
+	if err != nil {
+		return nil, identityerrors.ErrSessionCreateFailed()
+	}
+
+	newRefreshToken, err := jwtutils.GenerateToken(
+		user.ID, user.Email, string(user.RoleSlug),
+		jwttype.RefreshToken,
+		uc.cfg.Jwt.Secret, uc.cfg.Jwt.Issuer, uc.cfg.Jwt.Audience,
+		remainingTime,
+	)
+	if err != nil {
+		return nil, identityerrors.ErrSessionCreateFailed()
+	}
+
+	now := time.Now()
+	deviceName := existingToken.DeviceName
+	if input.DeviceName != nil {
+		deviceName = input.DeviceName
+	}
+	deviceIP := existingToken.DeviceIP
+	if input.DeviceIP != nil {
+		deviceIP = input.DeviceIP
+	}
+	userAgent := existingToken.UserAgent
+	if input.UserAgent != nil {
+		userAgent = input.UserAgent
+	}
+
+	rt := &entities.RefreshToken{
+		UserID:       user.ID,
+		Token:        newRefreshToken,
+		ExpiresAt:    now.Add(remainingTime),
+		IsRevoked:    false,
+		DeviceName:   deviceName,
+		DeviceIP:     deviceIP,
+		UserAgent:    userAgent,
+		LastActiveAt: &now,
+	}
+	rt.ID = uuid.New()
+
+	refreshTokenFn := func(txCtx context.Context) error {
+		if err := uc.refreshTokenRepo.RevokeToken(txCtx, input.OldRefreshToken); err != nil {
+			return err
+		}
+
+		if err := uc.refreshTokenRepo.Create(txCtx, rt); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := uc.uow.Execute(ctx, refreshTokenFn); err != nil {
+		return nil, err
+	}
+
+	return &dto.TokenRes{
+		AccessToken:  newAccessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
+}
+
+func (uc *SessionUseCase) Logout(ctx context.Context, input dto.LogoutReq) (bool, error) {
+	claims, err := jwtutils.ValidateToken([]byte(uc.cfg.Jwt.Secret), input.RefreshToken, jwttype.RefreshToken)
+	if err != nil {
+		return false, identityerrors.ErrInvalidSessionGeneric()
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return false, identityerrors.ErrInvalidSessionGeneric()
+	}
+
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	if user == nil || user.IsDeleted {
+		return false, identityerrors.ErrUserNotFoundGeneric()
+	}
+
+	if err := uc.refreshTokenRepo.RevokeToken(ctx, input.RefreshToken); err != nil {
+		return false, err
+	}
+
+	tokenHandler := &jwt.Parser{}
+	tokenClaims := &jwtutils.CustomClaims{}
+	_, _, err = tokenHandler.ParseUnverified(input.AccessToken, tokenClaims)
+	if err == nil && tokenClaims.ExpiresAt != nil {
+		expTime := tokenClaims.ExpiresAt.Time
+		remainingTime := time.Until(expTime)
+		if remainingTime > 0 {
+			_ = uc.tokenBlacklistService.BlacklistToken(ctx, input.AccessToken, remainingTime)
+		}
+	}
+
+	return true, nil
+}
+
+var _ uc_interfaces.ISessionUseCase = (*SessionUseCase)(nil)

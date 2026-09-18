@@ -1,0 +1,250 @@
+package persistence
+
+import (
+	"sort"
+	"strings"
+
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
+
+	"github.com/google/uuid"
+)
+
+type hybridCandidateRecord struct {
+	ID uuid.UUID `gorm:"column:id"`
+
+	VectorScore     float64 `gorm:"column:vector_score"`
+	LexicalScore    float64 `gorm:"column:lexical_score"`
+	RetrievalScore  float64 `gorm:"column:retrieval_score"`
+	RetrievalSource string
+}
+
+// mergeHybridCandidateRecordsByRRF hợp nhất hai tập bản ghi ứng viên (từ tìm kiếm vector và từ tìm kiếm từ khóa) và xếp hạng lại bằng thuật toán Reciprocal Rank Fusion (RRF).
+//
+// Hành vi:
+//   - 1. Tính toán điểm RRF = 1 / (rrfK + rank) cho mỗi ứng viên từ tập kết quả tìm kiếm vector và lưu vào bảng ánh xạ.
+//   - 2. Tiếp tục duyệt qua tập kết quả tìm kiếm từ khóa, tính toán điểm RRF tương tự.
+//   - 3. Nếu ứng viên đã tồn tại trong bảng ánh xạ (tức khớp cả vector và lexical), cộng dồn điểm RRF và đánh dấu nguồn là `hybrid`.
+//   - 4. Sắp xếp lại danh sách theo điểm RRF giảm dần. Nếu điểm bằng nhau, sắp xếp theo ID của món đồ tăng dần.
+//   - 5. Cắt danh sách theo [limit] và trả về.
+//
+// Đầu vào mẫu:
+//
+//	vectorRecords: []hybridCandidateRecord{{WardrobeItem: entities.WardrobeItem{ID: uuid1}}}
+//	lexicalRecords: []hybridCandidateRecord{{WardrobeItem: entities.WardrobeItem{ID: uuid1}}}
+//	rrfK: 60
+//	limit: 10
+//
+// Đầu ra mẫu:
+//
+//	[]hybridCandidateRecord (chứa uuid1 với RetrievalSource: "hybrid", RetrievalScore: 1/61 + 1/61)
+func mergeHybridCandidateRecordsByRRF(
+	vectorRecords []hybridCandidateRecord,
+	lexicalRecords []hybridCandidateRecord,
+	rrfK int,
+	limit int,
+) []hybridCandidateRecord {
+	if rrfK <= 0 {
+		rrfK = 30
+	}
+
+	mergedByID := map[uuid.UUID]*hybridCandidateRecord{}
+	for index, record := range vectorRecords {
+		record.RetrievalScore = 1 / float64(rrfK+index+1)
+		record.RetrievalSource = repositories.HybridCandidateSourceVector
+		mergedByID[record.ID] = &record
+	}
+
+	for index, record := range lexicalRecords {
+		rrfScore := 1 / float64(rrfK+index+1)
+		existing := mergedByID[record.ID]
+		if existing == nil {
+			record.RetrievalScore = rrfScore
+			record.RetrievalSource = repositories.HybridCandidateSourceLexical
+			mergedByID[record.ID] = &record
+			continue
+		}
+
+		existing.LexicalScore = record.LexicalScore
+		existing.RetrievalScore += rrfScore
+		existing.RetrievalSource = repositories.HybridCandidateSourceHybrid
+	}
+
+	merged := make([]hybridCandidateRecord, 0, len(mergedByID))
+	for _, record := range mergedByID {
+		merged = append(merged, *record)
+	}
+
+	sort.Slice(merged, func(i, j int) bool {
+		if merged[i].RetrievalScore == merged[j].RetrievalScore {
+			return merged[i].ID.String() < merged[j].ID.String()
+		}
+		return merged[i].RetrievalScore > merged[j].RetrievalScore
+	})
+
+	if limit > 0 && len(merged) > limit {
+		return merged[:limit]
+	}
+	return merged
+}
+
+func (r *FashionItemRepository) buildHybridCandidates(
+	records []hybridCandidateRecord,
+	source string,
+	queryErr error,
+) ([]repositories.HybridCandidate, error) {
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	candidates := make([]repositories.HybridCandidate, 0, len(records))
+	for index, record := range records {
+		recordSource := source
+		if recordSource == "" {
+			recordSource = record.RetrievalSource
+		}
+		itemID := record.ID
+		candidates = append(candidates, repositories.HybridCandidate{
+			ID:              itemID,
+			FashionItemID:   &itemID,
+			VectorScore:     record.VectorScore,
+			LexicalScore:    record.LexicalScore,
+			RetrievalScore:  record.RetrievalScore,
+			RetrievalRank:   index + 1,
+			RetrievalSource: recordSource,
+		})
+	}
+
+	return candidates, nil
+}
+
+// buildRecommendationSeasonalityCondition xây dựng điều kiện SQL (SQL Where condition) để lọc các món đồ có mùa vụ (seasonality) phù hợp với mùa yêu cầu hoặc hỗ trợ tất cả các mùa (all-season).
+func buildRecommendationSeasonalityCondition(seasons []string) (string, []any) {
+	aliases := recommendationSeasonalityAliases(seasons)
+	if len(aliases) == 0 {
+		return "", nil
+	}
+
+	seasonalitySQL := "immutable_unaccent(lower(coalesce(recommendation_fashion_items.seasonality, '')))"
+	conditions := []string{
+		"recommendation_fashion_items.seasonality IS NULL",
+		"btrim(recommendation_fashion_items.seasonality) = ''",
+	}
+	args := make([]any, 0, len(aliases)+len(recommendationAllSeasonAliases))
+	for _, alias := range aliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+	for _, alias := range recommendationAllSeasonAliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+
+	return "(" + strings.Join(conditions, " OR ") + ")", args
+}
+
+var recommendationAllSeasonAliases = []string{
+	"quanh nam", "bon mua", "all-season", "all season", "multi-season", "multi season", "quanhnăm", "bốnmùa",
+}
+
+var recommendationSeasonAliases = map[string][]string{
+	"xuan":   {"xuan", "spring", "xuân"},
+	"ha":     {"ha", "summer", "he", "hè", "hạ"},
+	"thu":    {"thu", "autumn", "fall"},
+	"dong":   {"dong", "winter", "đông"},
+	"he":     {"he", "summer", "ha", "hè", "hạ"},
+	"xuân":   {"xuan", "spring", "xuân"},
+	"hè":     {"he", "summer", "ha", "hè", "hạ"},
+	"đông":   {"dong", "winter", "đông"},
+	"mùa he": {"he", "summer", "ha", "hè", "hạ"},
+}
+
+// recommendationSeasonalityAliases chuyển đổi danh sách các mùa thô thành tập hợp các từ khóa mùa tương đương/đồng nghĩa mở rộng (ví dụ: "he" -> "he", "summer", "mua he").
+func recommendationSeasonalityAliases(seasons []string) []string {
+	seen := map[string]bool{}
+	var aliases []string
+	for _, season := range seasons {
+		season = strings.TrimSpace(strings.ToLower(season))
+		if season == "" {
+			continue
+		}
+		values := recommendationSeasonAliases[season]
+		if len(values) == 0 {
+			values = []string{season}
+		}
+		for _, value := range values {
+			value = strings.TrimSpace(strings.ToLower(value))
+			if value == "" || seen[value] {
+				continue
+			}
+			seen[value] = true
+			aliases = append(aliases, value)
+		}
+	}
+	sort.Strings(aliases)
+	return aliases
+}
+
+// recommendationSearchDocumentSQLWithJoin returns a tsvector expression using LEFT JOIN
+// instead of correlated subqueries to the fashion_items table.
+func recommendationSearchDocumentSQLWithJoin() string {
+	fields := []string{
+		"fashion_items.color", "fashion_items.style", "fashion_items.material",
+		"fashion_items.pattern", "fashion_items.fit", "fashion_items.seasonality",
+		"fashion_items.description",
+	}
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		parts = append(parts, "coalesce("+field+", '')")
+	}
+	return "to_tsvector('simple', immutable_unaccent(lower(" + strings.Join(parts, " || ' ' || ") + ")))"
+}
+
+// buildRecommendationTSQuerySubquery returns a subquery-based tsquery expression that
+// does not require joins to the fashion_items table.
+func buildRecommendationTSQuerySubquery(terms []string) (string, []any) {
+	var parts []string
+	args := make([]any, 0, len(terms))
+	seen := map[string]bool{}
+	for _, term := range terms {
+		term = strings.TrimSpace(strings.ToLower(term))
+		if term == "" || seen[term] {
+			continue
+		}
+		seen[term] = true
+		parts = append(parts, "plainto_tsquery('simple', immutable_unaccent(lower(?)))")
+		args = append(args, term)
+	}
+	if len(parts) == 0 {
+		return "", nil
+	}
+	return "(SELECT " + strings.Join(parts, " || ") + ")", args
+}
+
+// buildRecommendationSeasonalityConditionWithJoin returns a JOIN-based seasonality filter
+// using the joined fashion_items table.
+func buildRecommendationSeasonalityConditionWithJoin(seasons []string) (string, []any) {
+	aliases := recommendationSeasonalityAliases(seasons)
+	if len(aliases) == 0 {
+		return "", nil
+	}
+
+	seasonalitySQL := "immutable_unaccent(lower(coalesce(fashion_items.seasonality, '')))"
+	conditions := []string{
+		"fashion_items.seasonality IS NULL",
+		"btrim(fashion_items.seasonality) = ''",
+	}
+	args := make([]any, 0, len(aliases)+len(recommendationAllSeasonAliases))
+	for _, alias := range aliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+	for _, alias := range recommendationAllSeasonAliases {
+		conditions = append(conditions, seasonalitySQL+" LIKE ?")
+		args = append(args, "%"+alias+"%")
+	}
+
+	return "(" + strings.Join(conditions, " OR ") + ")", args
+}

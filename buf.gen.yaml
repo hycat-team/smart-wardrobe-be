@@ -1,0 +1,18 @@
+# buf.gen.yaml — 020-platform-migration (mô hình C)
+# Sinh stub gRPC cạnh file .proto (paths=source_relative từ repo root nên
+# output ra đúng contracts/<owner>/v1/) và commit generated code (FR-042).
+# Chạy: make buf-gen  (tương đương: buf generate)
+#
+# Plugins dùng bản REMOTE đã pin version để CI không cần cài protoc-gen-go /
+# protoc-gen-go-grpc trên PATH. Version phải khớp header trong stub đã commit
+# (contracts/**/*.pb.go) để bài kiểm tra "proto drift" không báo diff.
+version: v1
+plugins:
+  - plugin: buf.build/protocolbuffers/go:v1.36.12
+    out: .
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc/go:v1.5.1
+    out: .
+    opt:
+      - paths=source_relative

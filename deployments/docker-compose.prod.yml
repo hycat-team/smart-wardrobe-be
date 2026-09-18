@@ -1,5 +1,14 @@
 name: closy-prod
 
+# VPS production topology (020): 3 independently deployable services behind the
+# Nginx gateway, sharing Postgres/Redis/RabbitMQ. Images come from GHCR and are
+# pinned by digest by the deploy workflows (FR-042/FR-051/FR-056).
+#
+# Rollback path (FR-043): the frozen monolith image runs under the `rollback`
+# profile when the owner chooses to fall back:
+#   docker compose --profile rollback up -d backend
+# It MUST NOT receive new code; only the frozen `monolith-legacy` tag builds it.
+
 services:
     postgres:
         image: pgvector/pgvector:pg17
@@ -95,36 +104,33 @@ services:
                 max-size: "10m"
                 max-file: "5"
 
-    elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    account:
+        image: ${ACCOUNT_IMAGE:?ACCOUNT_IMAGE is required}
         restart: always
-        mem_limit: 1280m
-        memswap_limit: 1280m
-        mem_swappiness: 0
+        mem_limit: 512m
         env_file:
             - ../.env.production
         environment:
-            discovery.type: single-node
-            xpack.security.enabled: "false"
-            ES_JAVA_OPTS: -Xms512m -Xmx512m
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: ${APP_MODE:-all}
+            # FR-035: per-service Goose version table (Account keeps the shared default).
+            DATABASE_MIGRATION_TABLE: goose_db_version
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
-        ulimits:
-            nofile:
-                soft: 65535
-                hard: 65535
-        volumes:
-            - elasticsearch_data:/usr/share/elasticsearch/data
-        healthcheck:
-            test:
-                [
-                    "CMD-SHELL",
-                    'curl --fail --silent http://localhost:9200/_cluster/health | grep -Eq ''"status":"(green|yellow)"''',
-                ]
-            interval: 15s
-            timeout: 10s
-            retries: 20
-            start_period: 60s
+        expose:
+            - "8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        # Healthcheck comes from the service image (binary -healthcheck probe).
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
         networks:
+            - app
             - data
         logging:
             driver: json-file
@@ -132,8 +138,80 @@ services:
                 max-size: "10m"
                 max-file: "5"
 
+    commerce:
+        image: ${COMMERCE_IMAGE:?COMMERCE_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.production
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: ${APP_MODE:-all}
+            # FR-035: per-service Goose version table (avoids ordering drift on the shared DB).
+            DATABASE_MIGRATION_TABLE: goose_db_version_commerce
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        # Healthcheck comes from the service image (binary -healthcheck probe).
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    ai:
+        image: ${AI_IMAGE:?AI_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.production
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: ${APP_MODE:-all}
+            # FR-035: per-service Goose version table (avoids ordering drift on the shared DB).
+            DATABASE_MIGRATION_TABLE: goose_db_version_ai
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        # Healthcheck comes from the service image (binary -healthcheck probe).
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+            - data
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    # Frozen monolith rollback (FR-043). Built once from the `monolith-legacy`
+    # tag, pinned by digest; only used when the owner chooses to roll back.
     backend:
-        image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+        image: ${MONOLITH_IMAGE:-ghcr.io/placeholder/monolith-legacy:unused}
+        profiles:
+            - rollback
         restart: always
         mem_limit: 512m
         env_file:
@@ -150,18 +228,7 @@ services:
                 condition: service_healthy
             rabbitmq:
                 condition: service_healthy
-            elasticsearch:
-                condition: service_healthy
-        healthcheck:
-            test:
-                [
-                    "CMD-SHELL",
-                    "wget --quiet --spider http://127.0.0.1:8080${BACKEND_HEALTH_PATH:-/api/v1/health} || exit 1",
-                ]
-            interval: 15s
-            timeout: 5s
-            retries: 10
-            start_period: 30s
+        # Healthcheck comes from the service image (binary -healthcheck probe).
         stop_grace_period: 30s
         security_opt:
             - no-new-privileges:true
@@ -182,18 +249,30 @@ services:
             - ../.env.production
         environment:
             API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+            API_V2_DOMAIN: ${API_V2_DOMAIN:-api-v2.closy.hycat.online}
             NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-20m}
-            NGINX_ENVSUBST_FILTER: ^(API_DOMAIN|NGINX_CLIENT_MAX_BODY_SIZE)$
+            ACCOUNT_RUN_URL: ${ACCOUNT_RUN_URL:-}
+            COMMERCE_RUN_URL: ${COMMERCE_RUN_URL:-}
+            AI_RUN_URL: ${AI_RUN_URL:-}
+            TOKEN_HELPER_URL: ${TOKEN_HELPER_URL:-http://token-helper:8082}
+            NGINX_ENVSUBST_FILTER: ^(API_DOMAIN|API_V2_DOMAIN|NGINX_CLIENT_MAX_BODY_SIZE|ACCOUNT_RUN_URL|COMMERCE_RUN_URL|AI_RUN_URL|TOKEN_HELPER_URL)
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
         ports:
             - "80:80"
             - "443:443"
         volumes:
-            - ./nginx/templates:/etc/nginx/templates:ro
+            # NGINX_MODE selects the active server-block set: parallel | repatriation | rollback.
+            - ./nginx/templates/${NGINX_MODE:-parallel}:/etc/nginx/templates:ro
+            # api-v2 route map (generated by `make nginx-routes`) used by the parallel api-v2 ingress.
+            - ./nginx/api-v2-routes:/etc/nginx/api-v2-routes:ro
             - /etc/letsencrypt:/etc/letsencrypt:ro
             - certbot_www:/var/www/certbot:ro
         depends_on:
-            backend:
+            account:
+                condition: service_healthy
+            commerce:
+                condition: service_healthy
+            ai:
                 condition: service_healthy
         healthcheck:
             test:
@@ -214,6 +293,35 @@ services:
                 max-size: "10m"
                 max-file: "5"
 
+    # Mints/caches Google ID tokens for the Nginx -> Cloud Run hop (FR-033/FR-039).
+    # Only needed in `parallel` deployments (api-v2 -> Cloud Run); enable with
+    # COMPOSE_PROFILES=parallel in .env.production.
+    token-helper:
+        build:
+            context: ./token-helper
+            dockerfile: Dockerfile
+        restart: always
+        mem_limit: 128m
+        env_file:
+            - ../.env.production
+        environment:
+            PORT: "8082"
+            TOKEN_HELPER_SA_KEY_FILE: /run/secrets/token-helper-sa.json
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        volumes:
+            - ${TOKEN_HELPER_SA_KEY_FILE:-./token-helper-sa.json}:/run/secrets/token-helper-sa.json:ro
+        expose:
+            - "8082"
+        profiles:
+            - parallel
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
     certbot:
         image: certbot/certbot:v5.3.1
         profiles:
@@ -226,7 +334,6 @@ volumes:
     postgres_data:
     redis_data:
     rabbitmq_data:
-    elasticsearch_data:
     certbot_www:
 
 networks:

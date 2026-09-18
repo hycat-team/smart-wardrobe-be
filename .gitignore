@@ -23,9 +23,9 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Go workspace file
-go.work
-go.work.sum
+# Go workspace file (020: multi-module workspace is committed)
+# go.work
+# go.work.sum
 
 appsettings.json
 appsettings.Development.json
@@ -606,8 +606,8 @@ obj/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Go workspace file
-go.work
+# Go workspace file (020: multi-module workspace is committed)
+# go.work
 
 ### GoLand ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider

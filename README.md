@@ -1,6 +1,26 @@
-# SmartWardrobe Backend (Closy) — Golang Modular Monolith
+# SmartWardrobe Backend (Closy) — 3-Service Go Workspace
 
-Backend API for a smart wardrobe management platform, featuring AI-powered outfit recommendations, subscription management, and identity services. Built with Go following **Modular Monolith + Clean Architecture** principles.
+Backend API for a smart wardrobe management platform, featuring AI-powered outfit
+recommendations, subscription management, and identity services. Built with Go as
+**3 independently deployable services** on a multi-module workspace (`go.work`),
+following **Clean Architecture** with compiler-enforced service boundaries.
+
+> Monolith (`cmd/server`) is retired from `main` — see the frozen tag
+> `monolith-legacy` for emergency reference. Runtime is always the 3-service
+> topology (local compose, VPS compose, or Cloud Run).
+
+---
+
+## Services
+
+| Service | Module | Business modules | Hosts gRPC | Calls |
+|---------|--------|------------------|------------|-------|
+| Account | `services/account` | identity, subscription, admin, notification | Identity, Subscription, Admin | — |
+| Commerce Core | `services/commerce` | wardrobe, fashion, brand, dashboard | — | Account, AI |
+| AI Engine | `services/ai` | aiexecutor | AIOrchestrator, AIDashboard | Account |
+
+Shared: `shared/` (config, infra, presentation, DTO, pkg) · `contracts/` (proto +
+stubs + gRPC clients). See `docs/system-design/microservices/`.
 
 ---
 
@@ -8,30 +28,31 @@ Backend API for a smart wardrobe management platform, featuring AI-powered outfi
 
 | Component | Technology |
 |---|---|
-| Language | **Go 1.25.7** |
-| HTTP Framework | **Gin** |
+| Language | **Go 1.25.7** (workspace `go.work`, 6 modules) |
+| HTTP Framework | **Gin** (per service) |
+| Inter-service RPC | **gRPC + protobuf** (`buf`) |
 | ORM | **GORM** |
-| DI Container | **Google Wire** |
-| Database | **PostgreSQL 17 + pgvector** |
-| Cache | **Redis 7** |
-| Message Queue | **RabbitMQ** |
-| Search Engine | **Elasticsearch 8** |
-| Migration | **Goose** |
-| API Docs | **Swagger (Swaggo)** |
-| Config | **Viper** |
-| Logging | **Zap** |
-| Payment | **PayOS** |
-| Media | **Cloudinary** |
-| CI/CD | **GitHub Actions** |
-| Deploy | **Docker multi-stage build + Docker Compose + Nginx + Certbot** |
+| DI Container | **Google Wire** (per-service composition) |
+| Database | **PostgreSQL 17 + pgvector** (Supabase Pro managed / docker self-host) |
+| Cache | **Redis 7** (Redis Cloud TLS managed / docker self-host) |
+| Message Queue | **RabbitMQ** (CloudAMQP TLS managed / docker self-host) |
+| Search Engine | **Elasticsearch 8 — OFF by default** (`ELASTICSEARCH_ENABLED=false`, DB fallback) |
+| Migration | **Goose** (per-service, own version table) |
+| API Docs | **Swagger per service** (9 sections combined, behind `swagger_access_code`) |
+| Config | **Viper** (env-driven, no hardcoded hosts) |
+| Logging | **Zap** (JSON on managed, console locally) |
+| Payment / Media | **PayOS** / **Cloudinary** |
+| CI/CD | **GitHub Actions** (workspace matrix, Artifact Registry, GHCR for VPS) |
+| Deploy | **Cloud Run** (managed) / **Docker Compose + Nginx + Certbot** (VPS) |
 
 ---
 
 ## Prerequisites
 
-- **Go** `>= 1.25.7` ([golang.org/dl](https://golang.org/dl/))
-- **Docker & Docker Compose** — to run PostgreSQL, Redis, RabbitMQ, Elasticsearch
-- **GNU Make** — built-in on macOS/Linux; on Windows use Chocolatey (`choco install make`) or Git Bash/WSL
+- **Go** `>= 1.25.7`
+- **Docker & Docker Compose** — Postgres, Redis, RabbitMQ locally
+- **GNU Make** — built-in on macOS/Linux; on Windows use Chocolatey/Git Bash/WSL
+- **Buf CLI** (`make install-tools`) — only when changing `contracts/**/*.proto`
 
 ---
 
@@ -44,137 +65,118 @@ cd smart-wardrobe-be
 cp .env.example .env
 ```
 
-Edit `.env` to match your environment.
-
-### 2A. Run infrastructure only (recommended)
+### 2. Run infrastructure + services
 
 ```bash
-make docker-dev-up
+make docker-dev-up          # local compose: infra (+ optional service images)
+make build-all              # build account, commerce, ai into bin/
+make run svc=account        # run one service locally (svc=account|commerce|ai)
+make dev                    # generate (wire+swagger+nginx routes) + build all
 ```
 
-This starts **PostgreSQL + Redis + RabbitMQ + Elasticsearch** (defined in `deployments/docker-compose.yml`).
+Each service listens on `PORT` (Cloud Run injects it) else `SERVER_PORT`, and
+serves `GET /api/v1/health`. Run mode via `APP_MODE=http|worker|all` (default `all`).
 
-Then run the Go backend:
+`make run svc=<name>` runs from `services/<name>` (so Swagger resolves) but the
+Makefile exports `CONFIG_FILE` (repo `configs/config.yaml`) and the local
+`DB_/REDIS_/RABBITMQ_HOST` defaults, so config + `.env` load automatically. It
+listens on `SERVER_PORT` (default `8080`). To run all three on the host at once,
+give each a port and tell the callers where to find the others:
 
 ```bash
-make dev       # generate wire + swagger, build & run
+make run svc=account  SERVER_PORT=8080
+make run svc=ai       SERVER_PORT=8103 INGRESS_ACCOUNT_URL=http://localhost:8080
+make run svc=commerce SERVER_PORT=8102 \
+  INGRESS_ACCOUNT_URL=http://localhost:8080 INGRESS_AI_URL=http://localhost:8103
 ```
 
-### 2B. Or run the full stack
+For the full 3-service topology behind one gateway, use `make docker-dev-up` and
+call `http://localhost:8080` (Nginx).
 
-```bash
-make docker-dev-up    # includes backend container
-```
+Route config is bind-mounted, so after `make nginx-routes`/`make generate` while
+the stack is running, apply it with `make nginx-reload-local` (Nginx keeps the
+old in-memory config until reloaded — otherwise new/changed API paths 404).
 
 ### 3. Install Go tools
 
 ```bash
-make install-tools     # Wire + Swag CLI (pinned version)
+make install-tools     # Wire + Swag + Buf CLI (pinned versions)
 make install-goose     # Goose CLI (migration)
 ```
 
 ---
 
-## Makefile targets
-
-### Dev workflow
+## Makefile targets (per-service: `svc=account|commerce|ai`)
 
 ```bash
-make wire          # Google Wire DI generation
-make swagger       # Swagger spec generation
-make generate      # wire + swagger
-make fmt           # format Go source
-make run           # build & run
-make dev           # generate + run
-make clean         # remove binary + swagger
-```
-
-### Quality & test
-
-```bash
-make fmt-check     # check formatting
-make tidy-check    # check go.mod tidiness
-make generate-check# verify generated files are up-to-date
-make vet           # go vet
-make test          # go test ./...
-make build         # build binary
-make check         # CI suite: fmt-check → tidy-check → generate-check → vet → test → build
-```
-
-### Docker
-
-```bash
-make docker-build            # build production image
-make docker-dev-up/down/stop # dev stack
-make docker-prod-up/down/stop# production stack
-```
-
-### Migration (Goose)
-
-```bash
-make migration-create name=xxx  # create a new migration file
-make migration-status           # check migration status
-make migration-up               # apply pending migrations
-make migration-down             # rollback last migration
-make migration-version          # show current version
+make wire svc= / swagger svc= / build svc= / run svc=   # one service
+make wire-all / swagger-all / build-all                # all 3 services
+make buf-gen / buf-lint                                # protobuf contracts/
+make migrate-up svc= / migrate-create svc= name=xxx    # per-service Goose
+make image-build svc= / image-push svc= / deploy svc=  # Cloud Run images
+make test / test-race / vet / lint                     # all workspace modules
+make check                                             # CI suite
+make nginx-check                                       # route map covers all swagger paths
+make nginx-routes                                      # regenerate route map from swagger
+make nginx-reload-local                                # apply route changes to local Nginx
+make swagger-combine                                   # merge specs into combined Swagger UI
 ```
 
 ---
 
 ## API Documentation
 
-After starting the server, visit:
+`make swagger-combine` merges the 3 per-service specs into one monolith-style
+bundle (old Swagger UI + Service/Module selectors) that the Account service
+serves behind `swagger_access_code`; combined they cover 9 sections (identity,
+subscription, admin, notification, wardrobe, fashion, brand, dashboard,
+aiexecutor):
 
 ```
-http://localhost:8080/swagger
+http://localhost:8080/swagger   # Combined, all services (via Nginx gateway)
+http://localhost:8101/swagger   # Account only
+http://localhost:8102/swagger   # Commerce only
+http://localhost:8103/swagger   # AI only
 ```
 
 ---
 
 ## Project Structure
 
-```
+```text
 .
-├── cmd/server/main.go          # Entry point
-├── internal/
-│   ├── api/                    # HTTP layer (middleware, routes)
-│   ├── bootstrap/              # App startup + workers
-│   ├── config/                 # Config loader (Viper)
-│   ├── di/                     # Google Wire composition root
-│   ├── modules/                # 7 business modules:
-│   │   ├── aiexecutor/         #   AI execution engine
-│   │   ├── brand/              #   Brand & loyalty
-│   │   ├── dashboard/          #   Analytics
-│   │   ├── fashion/            #   AI outfit recommendation
-│   │   ├── identity/           #   Auth, users, OTP
-│   │   ├── subscription/       #   Subscription & payment
-│   │   └── wardrobe/           #   Wardrobe management
-│   ├── pkg/                    # Shared utilities (logger, utils)
-│   └── shared/                 # Shared domain, infra, presentation
-├── deployments/                # Docker Compose files
-├── database/
-│   ├── init/                   # Init scripts
-│   └── migrations/             # Goose migrations
-├── api/swagger/                # Generated Swagger docs
-├── configs/                    # YAML config files
-├── docs/                       # Project documentation
-└── .github/workflows/          # CI + Deploy pipelines
+├── go.work                        # 5 modules + token-helper (no monolith)
+├── services/account|commerce|ai/  # one Go module each: cmd/<svc>, internal/{bootstrap,di,modules}, api/swagger, database/migrations, Dockerfile
+├── shared/                        # config, infra, presentation, DTO, pkg (+ tools)
+├── contracts/<owner>/v1/          # *.proto, *.pb.go, client/ (+ grpcx helpers)
+├── deployments/                   # docker-compose.yml (local), docker-compose.prod.yml (VPS + rollback), nginx/, token-helper/, monolith-legacy/
+├── database/init/                 # infra init SQL (not migrations)
+├── configs/                       # shared YAML (parameterised, no hardcoded hosts)
+├── docs/                          # development / system-design / operations / project
+└── .github/workflows/             # ci.yml, deploy-platform.yml, deploy-vps-services.yml, deploy-production.yml (rollback)
 ```
 
-Each module in `internal/modules/` follows Clean Architecture:
-- `domain/entities/` — domain models
-- `domain/repositories/` — repository interfaces
-- `application/usecase/` — business logic
-- `infrastructure/persistence/` — GORM implementations
-- `presentation/handler/` — HTTP handlers
-- `presentation/worker/` — background workers
+Each module follows Clean Architecture (`domain/` ← `application/` ←
+`presentation/`, `infrastructure` implements domain). Cross-service calls go
+through `contracts/` (gRPC) or `presentation/contract/` DTOs in-process — never
+domain entities. See `docs/system-design/microservices/` and the Constitution
+(`.specify/memory/constitution.md`).
+
+---
+
+## Operations (managed ⇄ VPS)
+
+- Runbooks: `docs/operations/infrastructure/` (Supabase, Redis, AMQP, Cloud Run, Nginx
+  ingress, ES-off, parallel, data, DNS/CI, repatriation, teardown, secret revocation).
+- Cutover `api.closy` → Cloud Run is **manual, owner-triggered** with rollback:
+  `docs/operations/manual-cutover-api-closy-to-cloudrun.md`.
+- Funding clock + repatriation: `docs/project/funding-and-platform-lifecycle.md`.
 
 ---
 
 ## Further Reading
 
-- [Development Guide](docs/development/local-setup.md) — coding conventions, handler standards, routing, validation
-- [System Architecture](docs/system-design/architecture.md) — module boundaries, design patterns, event-driven design
-- [API docs](docs/api/) — endpoint specifications
-- [Changelog](docs/project/changelog.md)
+- [Development Guide](docs/development/local-setup.md) — conventions, handlers, routing, validation
+- [System Architecture](docs/system-design/architecture.md) — service topology, boundaries, events
+- [Microservices guides](docs/system-design/microservices/) — contracts, gRPC, auth, CI
 - [Agent Workflow](docs/development/agent-workflow.md)

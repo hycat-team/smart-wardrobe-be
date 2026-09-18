@@ -1,0 +1,160 @@
+// contracts/ai/v1/ai.proto — inter-service contract (020, T029).
+// Owner: AI Engine service. Consumers: Commerce Core (chat, recommendation,
+// embeddings), Dashboard (cost readers). The channel-based chat stream maps to
+// a server-streaming RPC; heartbeats are SSE comments, not stream messages.
+syntax = "proto3";
+
+package closy.ai.v1;
+
+option go_package = "smart-wardrobe-be/contracts/ai/v1;aiv1";
+
+import "google/protobuf/timestamp.proto";
+
+// OrchestratorOptions mirrors aiexecutor.OrchestratorOptions. The response
+// schema crosses as a JSON string (any); user_id + operation scope usage
+// reservation and cost attribution on the AI side.
+message OrchestratorOptions {
+  int32 max_output_tokens = 1;
+  double temperature = 2;
+  string response_mime_type = 3;
+  string response_schema_json = 4;
+  string user_id = 5;
+  string operation = 6;
+}
+
+message AnalyzeImageRequest {
+  string image_url = 1;
+  string prompt = 2;
+}
+
+message AnalyzeImageResponse {
+  string result = 1;
+}
+
+message GenerateEmbeddingsRequest {
+  repeated string chunks = 1;
+}
+
+message GenerateEmbeddingsResponse {
+  repeated EmbeddingVector vectors = 1;
+}
+
+message EmbeddingVector {
+  repeated float values = 1;
+}
+
+message GenerateChatTextRequest {
+  string system_prompt = 1;
+  string user_prompt = 2;
+  OrchestratorOptions options = 3;
+}
+
+message GenerateChatTextResponse {
+  string result = 1;
+}
+
+message GenerateRecommendationTextRequest {
+  string system_prompt = 1;
+  string user_prompt = 2;
+  OrchestratorOptions options = 3;
+}
+
+message GenerateRecommendationTextResponse {
+  string result = 1;
+}
+
+message ChatChunk {
+  string delta = 1;
+  bool done = 2;
+}
+
+// AIUsageAdminStats mirrors aiexecutor.AIUsageAdminStatsDTO.
+message AIUsageAdminStats {
+  google.protobuf.Timestamp snapshot_date = 1;
+  int32 ai_requests_count = 2;
+  int32 ai_error_count = 3;
+  int64 ai_paid_tokens = 4;
+  int64 ai_actual_cost_micro_vnd = 5;
+}
+
+message AIEventDrillDown {
+  string request_id = 1;
+  string provider = 2;
+  string model = 3;
+  int32 status_code = 4;
+  string error_message = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message AIUsageByOperation {
+  string operation = 1;
+  string logical_route = 2;
+  int64 request_count = 3;
+  int64 total_cost_micro_vnd = 4;
+  int64 total_prompt_tokens = 5;
+  int64 total_output_tokens = 6;
+}
+
+message AIErrorBreakdown {
+  string error_code = 1;
+  string provider = 2;
+  string model = 3;
+  int64 error_count = 4;
+}
+
+message GetAdminAIUsageStatsRequest {
+  google.protobuf.Timestamp snapshot_date = 1;
+}
+
+message GetAIEventsDrillDownRequest {
+  string status = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message AIEventDrillDownList {
+  repeated AIEventDrillDown items = 1;
+  int64 total = 2;
+}
+
+message GetAIUsageByOperationRequest {
+  google.protobuf.Timestamp from_date = 1;
+  google.protobuf.Timestamp to_date = 2;
+}
+
+message AIUsageByOperationList {
+  repeated AIUsageByOperation items = 1;
+}
+
+message GetTotalAIRequestCountRequest {
+  google.protobuf.Timestamp from_date = 1;
+  google.protobuf.Timestamp to_date = 2;
+}
+
+message TotalAIRequestCount {
+  int64 total = 1;
+}
+
+message GetAIErrorBreakdownRequest {}
+
+message AIErrorBreakdownList {
+  repeated AIErrorBreakdown items = 1;
+}
+
+// AIOrchestratorService serves AI inference across services.
+service AIOrchestratorService {
+  rpc AnalyzeImage(AnalyzeImageRequest) returns (AnalyzeImageResponse);
+  rpc GenerateEmbeddings(GenerateEmbeddingsRequest) returns (GenerateEmbeddingsResponse);
+  rpc GenerateChatText(GenerateChatTextRequest) returns (GenerateChatTextResponse);
+  rpc GenerateRecommendationText(GenerateRecommendationTextRequest) returns (GenerateRecommendationTextResponse);
+  rpc GenerateChatTextStream(GenerateChatTextRequest) returns (stream ChatChunk);
+}
+
+// AIDashboardService serves AI cost aggregates for the dashboard.
+service AIDashboardService {
+  rpc GetAdminAIUsageStats(GetAdminAIUsageStatsRequest) returns (AIUsageAdminStats);
+  rpc GetAIEventsDrillDown(GetAIEventsDrillDownRequest) returns (AIEventDrillDownList);
+  rpc GetAIUsageByOperation(GetAIUsageByOperationRequest) returns (AIUsageByOperationList);
+  rpc GetTotalAIRequestCount(GetTotalAIRequestCountRequest) returns (TotalAIRequestCount);
+  rpc GetAIErrorBreakdown(GetAIErrorBreakdownRequest) returns (AIErrorBreakdownList);
+}

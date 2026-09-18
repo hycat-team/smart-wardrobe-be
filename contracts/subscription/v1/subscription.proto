@@ -1,0 +1,128 @@
+// contracts/subscription/v1/subscription.proto — inter-service contract (020, T027).
+// Owner: Account service. Consumers: Commerce Core, AI Engine (quota +
+// overview), Dashboard (readers). Daily quota counters are never cached and
+// flow through SubscriptionService (see contract impl notes).
+syntax = "proto3";
+
+package closy.subscription.v1;
+
+option go_package = "smart-wardrobe-be/contracts/subscription/v1;subscriptionv1";
+
+import "google/protobuf/timestamp.proto";
+
+// UserSubscriptionOverview mirrors subscription.UserSubscriptionContractDTO.
+message UserSubscriptionOverview {
+  string plan_id = 1;
+  string plan_name = 2;
+  string plan_slug = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  bool has_expires_at = 5;
+  bool is_auto_renew_enabled = 6;
+  int32 max_wardrobe_items = 7;
+  int32 max_outfits = 8;
+  int32 ai_outfit_daily_quota = 9;
+  int32 ai_chat_daily_quota = 10;
+}
+
+// UserSubscription mirrors subscription.UserSubscriptionDTO (quota read model).
+message UserSubscription {
+  string plan_id = 1;
+  string plan_name = 2;
+  string plan_slug = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  bool has_expires_at = 5;
+  bool is_auto_renew_enabled = 6;
+  int32 ai_outfit_daily_quota = 7;
+  int32 ai_chat_daily_quota = 8;
+  int32 outfit_recommend_count = 9;
+  int32 ai_usage_count = 10;
+  google.protobuf.Timestamp last_reset_date = 11;
+}
+
+message GetUserSubscriptionOverviewRequest {
+  string user_id = 1;
+}
+
+message GetUserSubscriptionOverviewsRequest {
+  repeated string user_ids = 1;
+}
+
+message UserSubscriptionOverviewMap {
+  map<string, UserSubscriptionOverview> overviews = 1;
+}
+
+message GetAndResetDailyQuotaRequest {
+  string user_id = 1;
+}
+
+message UpdateQuotaRequest {
+  string user_id = 1;
+  int32 count = 2;
+}
+
+message UpdateQuotaResponse {}
+
+// AdminSubscriptionStats mirrors subscription.AdminSubscriptionStatsDTO
+// (decimals cross the wire as strings to preserve precision).
+message AdminSubscriptionStats {
+  string total_subscription_revenue = 1;
+  int32 payos_transaction_count = 2;
+  int32 payos_success_count = 3;
+}
+
+message SubscriptionDistribution {
+  string plan_code = 1;
+  int64 user_count = 2;
+}
+
+message RevenueBreakdown {
+  string plan_code = 1;
+  google.protobuf.Timestamp month = 2;
+  int64 transaction_count = 3;
+  string revenue = 4;
+}
+
+message RenewalStats {
+  int64 total_attempts = 1;
+  int64 success_count = 2;
+  int64 failed_count = 3;
+  double avg_retry_count = 4;
+}
+
+message GetAdminSubscriptionStatsRequest {
+  google.protobuf.Timestamp snapshot_date = 1;
+}
+
+message GetSubscriptionDistributionRequest {}
+
+message SubscriptionDistributionList {
+  repeated SubscriptionDistribution items = 1;
+}
+
+message GetRevenueBreakdownRequest {
+  google.protobuf.Timestamp from_date = 1;
+  google.protobuf.Timestamp to_date = 2;
+}
+
+message RevenueBreakdownList {
+  repeated RevenueBreakdown items = 1;
+}
+
+message GetRenewalStatsRequest {}
+
+// SubscriptionService serves quota + overview across services.
+service SubscriptionService {
+  rpc GetUserSubscriptionOverview(GetUserSubscriptionOverviewRequest) returns (UserSubscriptionOverview);
+  rpc GetUserSubscriptionOverviews(GetUserSubscriptionOverviewsRequest) returns (UserSubscriptionOverviewMap);
+  rpc GetAndResetDailyQuota(GetAndResetDailyQuotaRequest) returns (UserSubscription);
+  rpc UpdateOutfitQuota(UpdateQuotaRequest) returns (UpdateQuotaResponse);
+  rpc UpdateAiChatQuota(UpdateQuotaRequest) returns (UpdateQuotaResponse);
+}
+
+// SubscriptionDashboardService serves subscription aggregates for the dashboard.
+service SubscriptionDashboardService {
+  rpc GetAdminSubscriptionStats(GetAdminSubscriptionStatsRequest) returns (AdminSubscriptionStats);
+  rpc GetSubscriptionDistribution(GetSubscriptionDistributionRequest) returns (SubscriptionDistributionList);
+  rpc GetRevenueBreakdown(GetRevenueBreakdownRequest) returns (RevenueBreakdownList);
+  rpc GetRenewalStats(GetRenewalStatsRequest) returns (RenewalStats);
+}

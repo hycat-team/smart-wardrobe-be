@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>SmartWardrobe BE - Swagger UI</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>
+      :root { color-scheme: light !important; }
+      .custom-toolbar {
+        background-color: #fafafa;
+        padding: 10px 20px;
+        border-bottom: 1px solid #e8e8e8;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        font-family: sans-serif;
+        flex-wrap: wrap;
+      }
+      .toolbar-group { display: flex; align-items: center; gap: 6px; }
+      .toolbar-label { font-size: 14px; color: #555; }
+      .custom-select {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+      }
+      .custom-btn {
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      .custom-btn:hover { background: #eee; }
+      .custom-btn.primary { background: #49cc90; color: #fff; border-color: #49cc90; }
+      .custom-btn.primary:hover { background: #3b9c6f; }
+      @media print { .custom-toolbar { display: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="custom-toolbar">
+      <div class="toolbar-group">
+        <span class="toolbar-label">API Version:</span>
+        <select id="version-select" class="custom-select"></select>
+      </div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">Service:</span>
+        <select id="service-select" class="custom-select"></select>
+      </div>
+      <div class="toolbar-group">
+        <span class="toolbar-label">Module:</span>
+        <select id="module-select" class="custom-select"></select>
+      </div>
+      <button class="custom-btn primary" onclick="expandAll()">Mở rộng tất cả (Expand All)</button>
+      <button class="custom-btn" onclick="collapseAll()">Thu gọn tất cả (Collapse All)</button>
+    </div>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+    <script>
+      // Force light mode by default.
+      if (window.matchMedia) {
+        const originalMatchMedia = window.matchMedia;
+        window.matchMedia = function (query) {
+          if (query && query.includes("prefers-color-scheme: dark")) {
+            return {
+              matches: false,
+              media: query,
+              onchange: null,
+              addListener: function () {},
+              removeListener: function () {},
+              addEventListener: function () {},
+              removeEventListener: function () {},
+            };
+          }
+          return originalMatchMedia(query);
+        };
+      }
+
+      const CATALOG = {"allUrl":"/api-docs/swagger.json","moduleService":{"admin":"account","aiexecutor":"ai","brand":"commerce","dashboard":"commerce","fashion":"commerce","identity":"account","subscription":"account","wardrobe":"commerce"},"modules":{"admin":"/api-docs/modules/admin/swagger.json","aiexecutor":"/api-docs/modules/aiexecutor/swagger.json","brand":"/api-docs/modules/brand/swagger.json","dashboard":"/api-docs/modules/dashboard/swagger.json","fashion":"/api-docs/modules/fashion/swagger.json","identity":"/api-docs/modules/identity/swagger.json","subscription":"/api-docs/modules/subscription/swagger.json","wardrobe":"/api-docs/modules/wardrobe/swagger.json"},"services":{"account":{"modules":["admin","identity","subscription"],"url":"/api-docs/services/account/swagger.json"},"ai":{"modules":["aiexecutor"],"url":"/api-docs/services/ai/swagger.json"},"commerce":{"modules":["brand","dashboard","fashion","wardrobe"],"url":"/api-docs/services/commerce/swagger.json"}}};
+      const API_VERSIONS = { v1: "v1" };
+      const ALL = "Tất cả";
+
+      let currentUi = null;
+
+      function loadSpec(url) {
+        if (!currentUi) return;
+        currentUi.specActions.download(url);
+      }
+
+      function specUrl(service, module) {
+        if (module && module !== ALL) return CATALOG.modules[module];
+        if (service && service !== ALL) return CATALOG.services[service].url;
+        return CATALOG.allUrl;
+      }
+
+      function populateVersionSelect() {
+        const sel = document.getElementById("version-select");
+        sel.innerHTML = "";
+        Object.keys(API_VERSIONS).forEach((v) => {
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          sel.appendChild(o);
+        });
+      }
+
+      function populateServiceSelect() {
+        const sel = document.getElementById("service-select");
+        sel.innerHTML = "";
+        [ALL].concat(Object.keys(CATALOG.services)).forEach((name) => {
+          const o = document.createElement("option");
+          o.value = name;
+          o.textContent = name;
+          sel.appendChild(o);
+        });
+        sel.value = ALL;
+      }
+
+      function populateModuleSelect() {
+        const service = document.getElementById("service-select").value;
+        const modules = service === ALL ? Object.keys(CATALOG.modules) : CATALOG.services[service].modules;
+        const sel = document.getElementById("module-select");
+        sel.innerHTML = "";
+        [ALL].concat(modules.slice().sort()).forEach((name) => {
+          const o = document.createElement("option");
+          o.value = name;
+          o.textContent = name;
+          sel.appendChild(o);
+        });
+      }
+
+      function onServiceChange() {
+        populateModuleSelect();
+        loadSpec(specUrl(document.getElementById("service-select").value, ALL));
+      }
+
+      function onModuleChange() {
+        loadSpec(
+          specUrl(
+            document.getElementById("service-select").value,
+            document.getElementById("module-select").value,
+          ),
+        );
+      }
+
+      window.onload = function () {
+        document.getElementById("service-select").addEventListener("change", onServiceChange);
+        document.getElementById("module-select").addEventListener("change", onModuleChange);
+
+        currentUi = SwaggerUIBundle({
+          url: CATALOG.allUrl,
+          dom_id: "#swagger-ui",
+          deepLinking: true,
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: "StandaloneLayout",
+          docExpansion: "none",
+        });
+
+        populateVersionSelect();
+        populateServiceSelect();
+        populateModuleSelect();
+      };
+
+      function expandAll() {
+        document
+          .querySelectorAll(".opblock-tag-section:not(.is-open) .opblock-tag")
+          .forEach((btn) => btn.click());
+        setTimeout(() => {
+          document
+            .querySelectorAll('.opblock-summary-control:not([aria-expanded="true"])')
+            .forEach((btn) => btn.click());
+        }, 100);
+      }
+
+      function collapseAll() {
+        document
+          .querySelectorAll('.opblock-summary-control[aria-expanded="true"]')
+          .forEach((btn) => btn.click());
+        setTimeout(() => {
+          document
+            .querySelectorAll(".opblock-tag-section.is-open .opblock-tag")
+            .forEach((btn) => btn.click());
+        }, 100);
+      }
+    </script>
+  </body>
+</html>
