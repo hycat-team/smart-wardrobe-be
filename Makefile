@@ -230,7 +230,7 @@ fmt-check:
 	@echo Go source formatting is valid.
 
 tidy:
-	@echo Tidying Go modules (workspace)...
+	@echo "Tidying Go modules (workspace)..."
 	@cd shared && go mod tidy
 	@cd contracts && go mod tidy
 	@cd services/account && go mod tidy
@@ -257,7 +257,7 @@ generate-check:
 	@echo Generated files are up to date.
 
 vet:
-	@echo Running go vet (all workspace modules)...
+	@echo "Running go vet (all workspace modules)..."
 	@cd shared && go vet ./...
 	@cd contracts && go vet ./...
 	@cd services/account && go vet ./...
@@ -267,7 +267,7 @@ vet:
 	@echo Go vet finished.
 
 test:
-	@echo Running Go tests (all workspace modules)...
+	@echo "Running Go tests (all workspace modules)..."
 	@cd shared && $(TEST_CMD)
 	@cd contracts && $(TEST_CMD)
 	@cd services/account && $(TEST_CMD)
@@ -279,7 +279,7 @@ test:
 test-workspace: test
 
 test-race:
-	@echo Running Go tests with race detector (all workspace modules)...
+	@echo "Running Go tests with race detector (all workspace modules)..."
 	@cd shared && $(RACE_TEST_CMD)
 	@cd contracts && $(RACE_TEST_CMD)
 	@cd services/account && $(RACE_TEST_CMD)
@@ -380,27 +380,27 @@ image-push:
 
 deploy:
 	$(SVC_REQ)
-	@echo Deploying $(SVC) to Cloud Run (manual helper; CI uses deploy-platform.yml)...
+	@echo "Deploying $(SVC) to Cloud Run (manual helper; CI uses deploy-platform.yml)..."
 	@gcloud run deploy smart-wardrobe-$(SVC) --image $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) --region $(CR_REGION) --platform managed --concurrency $(CR_CONCURRENCY) --max-instances $(CR_HTTP_MAX_INSTANCES)
 	@echo Deploy finished.
 
 token-helper-build:
-	@echo Building token-helper binary and image (VPS)...
+	@echo "Building token-helper binary and image (VPS)..."
 	@$(MKDIR_BIN_CMD)
 	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/token-helper$(GO_BIN_EXT)" ./deployments/token-helper
 	@docker build -f deployments/token-helper/Dockerfile -t smart-wardrobe-token-helper:local .
 	@echo token-helper build finished.
 
 image-build-monolith-rollback:
-	@echo Building rollback image FROM tag monolith-legacy (run once before funded window ends)...
+	@echo "Building rollback image FROM tag monolith-legacy (run once before funded window ends)..."
 	@git worktree add /tmp/monolith-legacy monolith-legacy
 	@cp deployments/monolith-legacy/Dockerfile /tmp/monolith-legacy/Dockerfile.legacy
 	@docker build -f /tmp/monolith-legacy/Dockerfile.legacy -t monolith-legacy:$(GIT_SHA) /tmp/monolith-legacy
 	@git worktree remove --force /tmp/monolith-legacy
-	@echo Rollback image built. Push to GHCR (T097a) with: docker tag + docker push.
+	@echo "Rollback image built. Push to GHCR (T097a) with: docker tag + docker push."
 
 nginx-reload:
-	@echo Rendering Nginx templates (NGINX_MODE=$(NGINX_MODE)) and reloading (VPS)...
+	@echo "Rendering Nginx templates (NGINX_MODE=$(NGINX_MODE)) and reloading (VPS)..."
 	@mkdir -p $(NGINX_RENDER_DIR)/conf.d $(NGINX_RENDER_DIR)/api-v2-routes
 	@rm -f $(NGINX_RENDER_DIR)/conf.d/*.conf
 	@for f in $(NGINX_TEMPLATES_DIR)/$(NGINX_MODE)/*.template; do \
@@ -414,7 +414,7 @@ nginx-reload:
 	done
 	@nginx -t
 	@nginx -s reload
-	@echo Nginx reload finished (NGINX_MODE=$(NGINX_MODE)).
+	@echo "Nginx reload finished (NGINX_MODE=$(NGINX_MODE))."
 
 nginx-check:
 	@echo Checking Nginx route map covers all API paths...
@@ -426,7 +426,7 @@ nginx-routes: swagger-all
 	@echo NOTE: if the local dev stack is running, run 'make nginx-reload-local' to apply the new routes.
 
 nginx-reload-local:
-	@echo Reloading local dev Nginx (docker compose)...
+	@echo "Reloading local dev Nginx (docker compose)..."
 	@docker exec nginx-closy-dev nginx -t
 	@docker exec nginx-closy-dev nginx -s reload
 	@echo Local Nginx reloaded.

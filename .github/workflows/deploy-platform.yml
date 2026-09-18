@@ -117,8 +117,6 @@ jobs:
         permissions:
             contents: read
             id-token: write
-        env:
-            IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
         steps:
             - name: Checkout source
               uses: actions/checkout@v4
@@ -222,6 +220,8 @@ jobs:
 
             - name: Deploy HTTP (scale-to-zero, HTTP/2)
               shell: bash
+              env:
+                  IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
               run: |
                   gcloud run deploy "smart-wardrobe-${{ matrix.service }}" \
                     --image "${IMAGE}" \
@@ -238,6 +238,8 @@ jobs:
 
             - name: Deploy worker (singleton, CPU always-on)
               shell: bash
+              env:
+                  IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
               run: |
                   gcloud run deploy "smart-wardrobe-${{ matrix.service }}-worker" \
                     --image "${IMAGE}" \
