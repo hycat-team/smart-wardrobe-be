@@ -1,11 +1,10 @@
-# 08 — Bảng biến môi trường & hướng dẫn điền (020-platform-migration)
+# 08 — Bảng biến môi trường & cách điền (020-platform-migration)
 
-> **Nguồn giá trị mẫu**: `.env.example` (local), `.env.production.example` (VPS).
+> Nguồn giá trị mẫu: `.env.example` (local), `.env.production.example` (VPS).
 > **Managed (Cloud Run)** KHÔNG dùng `.env` — biến được tiêm từ **GitHub Actions
 > secrets** trong `.github/workflows/deploy-platform.yml`.
-> **Default không-secret** nằm ở `configs/config.yaml` / `configs/config.production.yaml`;
-> `.env` chỉ cần ghi đè thứ khác theo môi trường. Vì vậy nhiều biến để trống là
-> **có chủ đích** (xem §4).
+> Default không-secret nằm ở `configs/config.yaml` / `configs/config.production.yaml`;
+> `.env` chỉ ghi đè thứ khác theo môi trường. Nhiều biến để trống là **có chủ đích**.
 
 ## 1. Ba profile
 
@@ -17,7 +16,27 @@
 
 Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
 
-## 2. Nhóm cấu hình lõi
+## 2. Cách điền theo từng profile
+
+### 2.1 Local
+```bash
+cp .env.example .env
+# điền host/port/password local; host service-name (postgres/redis/rabbitmq) do compose tự set
+make docker-dev-up
+```
+
+### 2.2 VPS
+```bash
+cd /opt/closy
+cp .env.production.example .env.production
+# điền các biến bắt buộc — xem §6
+docker compose --env-file .env.production -f deployments/docker-compose.prod.yml config >/dev/null  # verify syntax
+```
+
+### 2.3 Managed
+Không tạo file; set secret theo `00` §5, rồi dispatch `deploy-platform.yml` (`00` §6).
+
+## 3. Nhóm cấu hình lõi
 
 | Biến | Default (configs) | Ghi chú |
 |---|---|---|
@@ -28,7 +47,7 @@ Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
 | `SWAGGER_ACCESS_CODE` | — | Chỉ enforce khi `SERVER_ENV=production`; local có thể để trống |
 | `TZ` | `Asia/Ho_Chi_Minh` | Container timezone |
 
-## 3. Database / Redis / RabbitMQ / Search
+## 4. Database / Redis / RabbitMQ / Search
 
 | Biến | Default (configs) | Ghi chú |
 |---|---|---|
@@ -51,9 +70,12 @@ Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
 | `ELASTICSEARCH_ENABLED` | `false` | FR-001; fallback DB |
 | `ELASTICSEARCH_ADDRESSES`, `ELASTICSEARCH_USER`, `ELASTICSEARCH_PASSWORD` | — | chỉ dùng khi bật ES |
 
-> **Option A**: migration Goose mở **connection direct riêng** từ `DB_LISTENER_HOST`/`DB_LISTENER_PORT`/`DB_LISTENER_SSLMODE` (không qua pooler); `LISTEN/NOTIFY` + job advisory lock dùng cùng direct DSN. Vì vậy `DB_LISTENER_HOST` là **bắt buộc ở managed** (workflow enforce).
+> **Option A**: migration Goose mở **connection direct riêng** từ
+> `DB_LISTENER_HOST`/`DB_LISTENER_PORT`/`DB_LISTENER_SSLMODE` (không qua pooler);
+> `LISTEN/NOTIFY` + job advisory lock dùng cùng direct DSN. Vì vậy `DB_LISTENER_HOST`
+> là **bắt buộc ở managed** (workflow enforce).
 
-## 4. Auth, ingress, email, thanh toán, media, AI
+## 5. Auth, ingress, email, thanh toán, media, AI
 
 | Biến | Default (configs) | Ghi chú |
 |---|---|---|
@@ -70,7 +92,7 @@ Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | — | dependency có sẵn (FR-053) |
 | `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | — | provider/model/endpoint/key; fallback tùy chọn |
 
-## 5. Nginx / compose / Cloud Run (không thuộc app)
+## 6. Nginx / compose / Cloud Run (không thuộc app)
 
 | Biến | Default | Ghi chú |
 |---|---|---|
@@ -85,9 +107,9 @@ Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
 | `TOKEN_HELPER_SA_KEY_FILE` | `./token-helper-sa.json` | SA key `0600` |
 | `NGROK_AUTHTOKEN`, `NGROK_DOMAIN`, `NGROK_TARGET` | — | chỉ local tunnel |
 
-## 6. Biến để trống — có cần điền không?
+## 7. Biến để trống — có cần điền không?
 
-### 6.1 `.env` (local)
+### 7.1 `.env` (local)
 Các biến trống dưới đây **không bắt buộc** cho `make docker-dev-up` (compose tự set
 host/service-name), chỉ cần khi chạy host (`make run`) nhiều service:
 
@@ -101,37 +123,37 @@ host/service-name), chỉ cần khi chạy host (`make run`) nhiều service:
 | `INGRESS_TOKEN_HELPER_URL`, `INGRESS_TOKEN_AUDIENCE` | không (app chưa dùng/không managed) | — |
 | `SWAGGER_ACCESS_CODE`, `EMAIL_REPLY_TO`, `VISION_FALLBACK_*` | tùy chọn | — |
 
-### 6.2 `.env.production` (VPS) — **PHẢI điền trước khi deploy**
+### 7.2 `.env.production` (VPS) — **PHẢI điền trước khi deploy**
+
 | Biến trống | Khi nào cần | Cách lấy |
 |---|---|---|
-| `API_V2_DOMAIN` | mode `parallel` | `api-v2.closy.hycat.online` (DNS Vercel, xem `11-dns-vercel-ci-cd.md`) |
-| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | mode `parallel` | `gcloud run services describe <svc> --region asia-southeast1 --format value(status.url)` (xem `05-compute-cloudrun.md`) |
-| `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | khi bật ES256 | sinh cặp EC P-256, dán PEM (xem `docs/system-design/microservices/04-auth-asymmetric-jwt.md`) |
+| `API_V2_DOMAIN` | mode `parallel` | `api-v2.closy.hycat.online` (`11-dns-vercel-ci-cd.md`) |
+| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | mode `parallel` | `gcloud run services describe <svc> --region asia-southeast1 --format='value(status.url)'` (`05-compute-cloudrun.md`) |
+| `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | khi bật ES256 | sinh cặp EC P-256, dán PEM (`docs/system-design/microservices/04-auth-asymmetric-jwt.md`) |
 | `INGRESS_TOKEN_AUDIENCE` | chỉ managed | URL `run.app` (secret GitHub) |
 | `EMAIL_REPLY_TO`, `PORT`, `DB_DRILL_SCHEMA`, `DATABASE_MIGRATION_TABLE` | không (default/drill/per-service) | — |
 
-## 7. Secrets GitHub Actions cho managed (deploy-platform.yml)
+## 8. GitHub Actions secrets cho managed
 
-`DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `DB_LISTENER_HOST`,
-`DB_LISTENER_SSLMODE`, `REDIS_HOST`, `REDIS_PASSWORD`, `RABBITMQ_HOST`,
-`RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `JWT_SECRET`, `JWT_ALGORITHM`,
-`JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, `SWAGGER_ACCESS_CODE`,
-`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`,
-`EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`,
-`PAYOS_CHECKSUM_KEY`, `INGRESS_ACCOUNT_URL`, `INGRESS_COMMERCE_URL`,
+Xem bảng đầy đủ ở `00` §5. Danh sách tên: `DB_USER`, `DB_PASSWORD`, `DB_NAME`,
+`DB_HOST`, `DB_PORT`, `DB_LISTENER_HOST`, `DB_LISTENER_SSLMODE`, `REDIS_HOST`,
+`REDIS_PASSWORD`, `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`,
+`JWT_SECRET`, `JWT_ALGORITHM`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`,
+`SWAGGER_ACCESS_CODE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+`CLOUDINARY_API_SECRET`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `PAYOS_CLIENT_ID`,
+`PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `INGRESS_ACCOUNT_URL`, `INGRESS_COMMERCE_URL`,
 `INGRESS_AI_URL`, `INGRESS_TOKEN_AUDIENCE`.
 
-Workflow tự đặt: `SERVER_ENV=managed`, `APP_MODE=http|worker`,
-`DB_SSLMODE=require`, `DB_LISTENER_SSLMODE=require` (mặc định),
-`DATABASE_MIGRATE_ON_START=true`, `DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER=true`,
-`ELASTICSEARCH_ENABLED=false`, `REDIS_TLS_ENABLED=true`,
-`RABBITMQ_TLS_ENABLED=true`, `RABBITMQ_MANAGEMENT_TLS_ENABLED=true`,
-`DATABASE_MIGRATION_TABLE` (per-service).
+Workflow tự đặt: `SERVER_ENV=managed`, `APP_MODE=http|worker`, `DB_SSLMODE=require`,
+`DB_LISTENER_SSLMODE=require`, `DATABASE_MIGRATE_ON_START=true`,
+`DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER=true`, `ELASTICSEARCH_ENABLED=false`,
+`REDIS_TLS_ENABLED=true`, `RABBITMQ_TLS_ENABLED=true`,
+`RABBITMQ_MANAGEMENT_TLS_ENABLED=true`, `DATABASE_MIGRATION_TABLE` (per-service).
 
-## 8. Migration qua session DSN (T025 — FR-012/FR-035)
+## 9. Migration qua session DSN (FR-012/FR-035)
 
-Migration, `LISTEN/NOTIFY` và advisory lock là **session-scoped**: MUST chạy trên
-**direct connection 5432**, KHÔNG qua transaction pooler 6543 (FR-046).
+Migration, `LISTEN/NOTIFY` và advisory lock là **session-scoped**: chạy trên **direct
+connection 5432**, KHÔNG qua transaction pooler 6543 (FR-046).
 
 ```bash
 goose -dir services/<svc>/database/migrations \
@@ -141,7 +163,7 @@ goose -dir services/<svc>/database/migrations \
 make migrate-up svc=<account|commerce|ai>
 ```
 
-## 9. Biến đã bỏ / không nên set
+## 10. Biến đã bỏ / không nên set
 
 - `DB_LISTENER_SSLMODE`, `DB_LISTENER_PORT` — cần khi direct khác mặc định (managed);
   local/VPS để trống là được.
@@ -149,5 +171,5 @@ make migrate-up svc=<account|commerce|ai>
 - `INGRESS_AUTH_HEADER` — hằng số trong `configs` (đã có default).
 - `ELASTICSEARCH_ENABLED`, `OUTBOX_LISTENER_ENABLED`, `DATABASE_MIGRATE_ON_START`,
   `DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER`, `REDIS_TLS_ENABLED`, `RABBITMQ_TLS_ENABLED`,
-  `RABBITMQ_MANAGEMENT_TLS_ENABLED`, `JWT_ALGORITHM` — **default trong `configs`**;
-  chỉ set khi cần khác (managed set TLS=true/ES256).
+  `RABBITMQ_MANAGEMENT_TLS_ENABLED`, `JWT_ALGORITHM` — default trong `configs`;
+  chỉ set khi cần khác.

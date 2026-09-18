@@ -166,7 +166,7 @@ domain entities. See `docs/system-design/microservices/` and the Constitution
 
 ## Operations (managed ⇄ VPS)
 
-- Runbooks: `docs/operations/ha-tang/` (Supabase, Redis, AMQP, Cloud Run, Nginx
+- Runbooks: `docs/operations/infrastructure/` (Supabase, Redis, AMQP, Cloud Run, Nginx
   ingress, ES-off, parallel, data, DNS/CI, repatriation, teardown, secret revocation).
 - Cutover `api.closy` → Cloud Run is **manual, owner-triggered** with rollback:
   `docs/operations/manual-cutover-api-closy-to-cloudrun.md`.

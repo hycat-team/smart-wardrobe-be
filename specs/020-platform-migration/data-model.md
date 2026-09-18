@@ -270,15 +270,15 @@ Biên: **VPS Nginx hiện hữu** terminate TLS cho `api.closy` (→ monolith `h
 
 | Hiện vật | Đường dẫn | Nội dung |
 |----------|-----------|----------|
-| Tổng quan hạ tầng | `docs/operations/ha-tang/01-tong-quan.md` | ma trận thay thế, hybrid, cảnh báo constitution |
-| Runbook nền tảng | `docs/operations/ha-tang/01..06` | Supabase, Redis Cloud, CloudAMQP, Cloud Run, **VPS Nginx ingress + token helper**, ES-off |
-| Bảng biến môi trường | `docs/operations/ha-tang/08-bang-bien-moi-truong.md` | mapping cũ → mới, gồm migrate session-DSN |
-| Song song + Cloud Run | `docs/operations/ha-tang/08..10` | tổng quan, dữ liệu VPS→Supabase, DNS Vercel + CI/CD |
-| Repatriation | `docs/operations/ha-tang/12-ve-lai-vps.md` | verify/rollback, migrate ngược, funding clock, tắt funded, DNS về VPS |
-| Vận hành — ngừng VPS & thu hồi secret | `docs/operations/ha-tang/13-ngung-vps-va-thu-hoi-secret.md` | thu hồi credential cũ + ngừng VPS sau khi xác nhận (FR-016) |
-| Quan trắc | `docs/operations/ha-tang/14-monitoring.md` | metrics/alert Cloud Monitoring + runbook vận hành (FR-057, T120) |
+| Tổng quan hạ tầng | `docs/operations/infrastructure/01-overview.md` | ma trận thay thế, hybrid, cảnh báo constitution |
+| Runbook nền tảng | `docs/operations/infrastructure/01..06` | Supabase, Redis Cloud, CloudAMQP, Cloud Run, **VPS Nginx ingress + token helper**, ES-off |
+| Bảng biến môi trường | `docs/operations/infrastructure/08-environment-variables.md` | mapping cũ → mới, gồm migrate session-DSN |
+| Song song + Cloud Run | `docs/operations/infrastructure/08..10` | tổng quan, dữ liệu VPS→Supabase, DNS Vercel + CI/CD |
+| Repatriation | `docs/operations/infrastructure/12-repatriate-vps.md` | verify/rollback, migrate ngược, funding clock, tắt funded, DNS về VPS |
+| Vận hành — ngừng VPS & thu hồi secret | `docs/operations/infrastructure/13-stop-vps-and-revoke-secrets.md` | thu hồi credential cũ + ngừng VPS sau khi xác nhận (FR-016) |
+| Quan trắc | `docs/operations/infrastructure/14-monitoring.md` | metrics/alert Cloud Monitoring + runbook vận hành (FR-057, T120) |
 | Ingress Nginx + auth | `docs/operations/nginx-ingress-cloudrun-auth.md` | route map single-source, token helper, rotate SA key, smoke test IAM |
-| Container & deploy độc lập | `docs/operations/container-images-and-independent-deploy.md` | Dockerfile multi-stage per-service, `.dockerignore`/context root, Artifact Registry + tag SHA, deploy độc lập từng service, image rollback `monolith-legacy` (FR-042/FR-043) |
+| Container & deploy độc lập | `docs/operations/infrastructure/05-compute-cloudrun.md` | Dockerfile multi-stage per-service, Artifact Registry + tag SHA, deploy độc lập từng service, revision rollback (FR-042/FR-043) |
 | Cutover thủ công | `docs/operations/manual-cutover-api-closy-to-cloudrun.md` | runbook cutover `api.closy` → Cloud Run + rollback (FR-041), owner-triggered |
 | Teardown | `docs/operations/gcp-trial-teardown.md` | xóa resource trial + verify bill |
 | Repatriation | `docs/operations/repatriate-to-vps.md` | runbook về VPS 2 chiều đầy đủ (viết song song từ bây giờ) |

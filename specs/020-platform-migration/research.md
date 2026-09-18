@@ -261,7 +261,7 @@ rồi override bằng `os.LookupEnv` trong `loadConfig()`.
 - CI/CD: thêm workflow `deploy-platform.yml` (build **3** service binary → deploy Cloud Run
   HTTP + worker); giữ `deploy-production.yml` (VPS legacy song song, không disable cho tới khi
   repatriation xong); CI build kiểm tra 3 binary (FR-020).
-- Docs: `docs/operations/ha-tang/` + `docs/operations/` (ingress/nginx, teardown, repatriate) +
+- Docs: `docs/operations/infrastructure/` + `docs/operations/` (ingress/nginx, teardown, repatriate) +
   `docs/system-design/microservices/` + ADR `docs/decisions/021-funded-platforms-and-repatriation.md`;
   cập nhật `README.md`, `local-setup.md`.
 

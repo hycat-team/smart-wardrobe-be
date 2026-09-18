@@ -53,10 +53,6 @@ jobs:
             fail-fast: false
             matrix:
                 service: ${{ fromJson(needs.plan.outputs.matrix) }}
-        outputs:
-            account: ${{ steps.outputs.account }}
-            commerce: ${{ steps.outputs.commerce }}
-            ai: ${{ steps.outputs.ai }}
         steps:
             - name: Checkout source
               uses: actions/checkout@v4
@@ -77,7 +73,6 @@ jobs:
               run: echo "name=ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}" >> "${GITHUB_OUTPUT}"
 
             - name: Build and push ${{ matrix.service }} image
-              id: build
               uses: docker/build-push-action@v6
               with:
                   context: .
@@ -90,13 +85,10 @@ jobs:
                   cache-from: type=gha,scope=${{ matrix.service }}
                   cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-            - name: Publish digest output
-              id: outputs
-              shell: bash
-              run: echo "${{ matrix.service }}=${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}" >> "${GITHUB_OUTPUT}"
-
     deploy:
-        needs: build-push
+        needs:
+            - plan
+            - build-push
         runs-on: ubuntu-latest
         environment: vps-production
         strategy:
@@ -107,6 +99,24 @@ jobs:
             - name: Checkout deployment files
               uses: actions/checkout@v4
 
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Resolve image digest
+              id: digest
+              shell: bash
+              run: |
+                  name="ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}"
+                  digest=$(docker buildx imagetools inspect "${name}:${{ github.sha }}" --format '{{.Manifest.Digest}}')
+                  echo "ref=${name}@${digest}" >> "${GITHUB_OUTPUT}"
+
             - name: Prepare SSH
               shell: bash
               run: |
@@ -115,16 +125,6 @@ jobs:
                   chmod 600 ~/.ssh/id_ed25519
                   printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
                   chmod 600 ~/.ssh/known_hosts
-
-            - name: Resolve image digest
-              id: digest
-              shell: bash
-              run: |
-                  case '${{ matrix.service }}' in
-                    account) echo "ref=${{ needs.build-push.outputs.account }}" >> "${GITHUB_OUTPUT}" ;;
-                    commerce) echo "ref=${{ needs.build-push.outputs.commerce }}" >> "${GITHUB_OUTPUT}" ;;
-                    ai) echo "ref=${{ needs.build-push.outputs.ai }}" >> "${GITHUB_OUTPUT}" ;;
-                  esac
 
             - name: Create deployment archive
               shell: bash
