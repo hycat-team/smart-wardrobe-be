@@ -14,7 +14,7 @@ BIN_DIR := bin
 # - Cloud Run images → Artifact Registry (asia-southeast1), tag <svc>:<git-sha> (immutable).
 # - VPS images (rollback + repatriation) → GHCR with existing CI token.
 AR_HOST ?= asia-southeast1-docker.pkg.dev
-AR_PROJECT ?= closy-app
+AR_PROJECT ?= closy-hycat
 AR_REPO ?= closy
 GHCR_OWNER ?= hycat
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)

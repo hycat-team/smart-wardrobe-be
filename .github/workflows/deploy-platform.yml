@@ -32,7 +32,7 @@ concurrency:
 
 env:
     AR_HOST: asia-southeast1-docker.pkg.dev
-    AR_PROJECT: closy-app
+    AR_PROJECT: closy-hycat
     AR_REPO: closy
     CR_REGION: asia-southeast1
 

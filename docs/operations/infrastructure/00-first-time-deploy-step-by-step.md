@@ -8,7 +8,7 @@
 >
 > **Điền placeholder trước khi chạy** (thay trong toàn bộ tài liệu):
 > `<OWNER/REPO>` = `hycat-team/smart-wardrobe-be` · `<PROJECT>` = GCP project id
-> (phải khớp `AR_PROJECT` trong `deploy-platform.yml`, mặc định `closy-app`) ·
+> (phải khớp `AR_PROJECT` trong `deploy-platform.yml`, mặc định `closy-hycat`) ·
 > `<REGION>` = `asia-southeast1` · `<VPS_HOST>` · `<VPS_USER>` · `<VPS_SSH_PORT>`.
 >
 > Biến môi trường app đầy đủ: xem `08-environment-variables.md`.
@@ -45,7 +45,7 @@ Mỗi mục dưới ghi rõ **bấm vào đâu để lấy giá trị** — đi�
 ### 0.2 Google Cloud (Cloud Run + Artifact Registry)
 1. Tạo Google account → https://console.cloud.google.com → **Start free trial** (cần thẻ; nhận credit trial).
 2. **Tạo project**: Console → thanh chọn project → **New project** → ID phải **khớp `AR_PROJECT`**
-   (mặc định `closy-app`; nếu đặt id khác thì sửa `AR_PROJECT` trong `deploy-platform.yml`).
+   (mặc định `closy-hycat`; nếu đặt id khác thì sửa `AR_PROJECT` trong `deploy-platform.yml`).
 3. **Bật billing**: Console → Billing → **Link a billing account**.
 4. Cài `gcloud`, rồi xác thực:
    ```bash
