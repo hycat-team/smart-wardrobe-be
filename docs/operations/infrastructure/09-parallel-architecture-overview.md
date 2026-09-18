@@ -25,6 +25,15 @@
 - Cutover `api.closy` **không** nằm trong phase này — là thao tác thủ công có runbook riêng
   (FR-041), timing do owner quyết định khi gate đo được đạt.
 
+## 5. Biến thể parallel-v2 (api.closy→VPS microservices, api-v2→Cloud Run verify)
+
+- Routing: `api.closy` → 3 service compose trên VPS (template `parallel-v2/vps-3service`);
+  `api-v2` → Cloud Run (template `parallel-v2/api-v2`, cần token-helper).
+- Backend cũ (monolith) **dừng hẳn**; verify `docker ps` trống backend.
+- DB: 2 DB độc lập (VPS local live, Supabase verify); đồng bộ dump VPS→Supabase
+  (`10-data-migration-vps-supabase.md`) trước đợt verify `api-v2`.
+- Gate: như §4 nhưng `api.closy` đo trên VPS (không còn monolith để so sánh giữ nguyên).
+
 ## 4. Gate song song (T082) — kiểm tra từng mục
 
 ```bash

@@ -35,8 +35,17 @@ Mỗi runbook gồm: điều kiện tiên quyết → thứ tự bước (kèm l
 | `repatriate-to-vps.md` | **Theo sự kiện** | Kết thúc cửa sổ funded hoặc muốn đưa hệ thống về VPS. |
 | `gcp-trial-teardown.md` | **Theo sự kiện** (bước cuối của repatriation) | Sau khi repatriation chạy ổn định; **không** chạy khi managed còn phục vụ. |
 
-**Luồng tổng quát**: `00` (+ `01..11`) → [song song] → `manual-cutover...` (nếu chọn Cloud Run)
-→ `repatriate-to-vps.md` → `gcp-trial-teardown.md` →
+## Các mode Nginx (`NGINX_MODE`)
+
+| Mode | `api.closy` | `api-v2` | Monolith | Chi tiết |
+|---|---|---|---|---|
+| `parallel` | monolith | Cloud Run | chạy | `00` §7, `infrastructure/06` |
+| `parallel-v2` | 3 service VPS | Cloud Run (verify) | **dừng** | `00` §10.1, `infrastructure/06` §11 |
+| `repatriation` | 3 service VPS | 301 | dừng | `12`, `repatriate-to-vps.md` |
+| `rollback` | monolith | 301 | chạy | `deploy-production.yml` |
+
+**Luồng tổng quát**: `00` (+ `01..11`) → [song song: `parallel` → `parallel-v2`] →
+`manual-cutover...` (nếu chọn Cloud Run) → `repatriate-to-vps.md` → `gcp-trial-teardown.md` →
 `infrastructure/13-stop-vps-and-revoke-secrets.md`.
 
 ## Quy ước registry & tag (T007a — FR-042, FR-051)

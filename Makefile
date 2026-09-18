@@ -48,7 +48,7 @@ CR_HTTP_MAX_INSTANCES ?= 2
 NGINX_TEMPLATES_DIR := deployments/nginx/templates
 NGINX_ROUTES_DIR := deployments/nginx/api-v2-routes
 NGINX_RENDER_DIR ?= /etc/nginx
-# Server-block set to render: parallel | repatriation | rollback
+# Server-block set to render: parallel | parallel-v2 | repatriation | rollback
 NGINX_MODE ?= parallel
 
 ifeq ($(OS),Windows_NT)

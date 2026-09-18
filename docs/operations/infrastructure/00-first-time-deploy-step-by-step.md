@@ -428,6 +428,14 @@ Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
 
 ## 7. VPS: ingress song song (`api-v2`)
 
+0. Deploy 3 service lên VPS **trước** để có `.env.deploy` chứa `ACCOUNT/COMMERCE/AI_IMAGE`
+   (pin digest) — nginx `depends_on` 3 service nên thiếu 3 biến này là compose báo lỗi ngay:
+   ```bash
+   gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all
+   ```
+   Mọi lệnh `docker compose` dưới đây phải kèm **cả 2 env-file**:
+   `--env-file .env.production --env-file .env.deploy`.
+
 1. Chuẩn bị `/opt/closy` — **copy từ `.env.production.example`** rồi điền các biến VPS:
    ```bash
    cd /opt/closy
@@ -444,24 +452,27 @@ Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
    | `COMPOSE_PROFILES` | `parallel` |
    | `ACCOUNT_RUN_URL` / `COMMERCE_RUN_URL` / `AI_RUN_URL` | URL `run.app` từ §6 |
    | `TOKEN_HELPER_URL` | `http://token-helper:8082` |
-   | `TOKEN_HELPER_SA_KEY_FILE` | `./token-helper-sa.json` |
+   | `TOKEN_HELPER_SA_KEY_FILE` | `/opt/closy/token-helper-sa.json` (tuyệt đối; tương đối sẽ trỏ nhầm `deployments/`) |
    | `DB_HOST`/`DB_PORT`/`DB_LISTENER_HOST`/`DB_*` | nếu VPS dùng Postgres local (`postgres`) hoặc Supabase — tuỳ mode |
 
 2. **Cert Let's Encrypt** cho cả 2 hostname. Do Nginx đang chạy (monolith), cấp cert
    bằng standalone (giải phóng port 80) rồi mở lại:
    ```bash
-   docker stop nginx || true
-   docker compose --env-file .env.production -f deployments/docker-compose.prod.yml \
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml stop nginx
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
      --profile maintenance run --rm certbot certonly --standalone \
      -d api.closy.hycat.online -d api-v2.closy.hycat.online --expand --agree-tos -m <email>
    ```
+   (`docker stop nginx` không trúng container thật `closy-prod-nginx-1`; phải stop qua compose.)
    (renewal sau này qua webroot; `certbot_www` đã mount sẵn.)
 3. Bật ingress (chỉ nginx + token-helper ở parallel):
    ```bash
-   docker compose --env-file .env.production -f deployments/docker-compose.prod.yml \
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
      up -d nginx token-helper
-   docker compose --env-file .env.production -f deployments/docker-compose.prod.yml ps
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
    ```
+   > Không bao giờ `down -v` trên prod (xóa volumes `postgres_data`... = mất dữ liệu).
+   > Backup DB trước mọi lần recreate postgres.
 4. DNS Vercel: tạo bản ghi `api-v2.closy.hycat.online` (A/CNAME) → VPS **sau khi** cert
    + server block sẵn sàng.
 5. Smoke:
@@ -484,17 +495,26 @@ Theo `10-data-migration-vps-supabase.md` (backup + checksum + re-dump tại cuto
 
 ## 10. Vận hành / chuyển mode / rollback
 
-- Đổi `NGINX_MODE` trong `.env.production` rồi recreate nginx:
+- Đổi `NGINX_MODE` trong `.env.production` rồi recreate nginx (luôn kèm cả 2 env-file):
   ```bash
-  docker compose --env-file .env.production -f deployments/docker-compose.prod.yml \
+  docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
     up -d --force-recreate nginx
   ```
-  `parallel` (api.closy→monolith, api-v2→Cloud Run) · `repatriation` (api.closy→3 service,
-  api-v2→301) · `rollback` (api.closy→monolith, api-v2→301).
+  `parallel` (api.closy→monolith, api-v2→Cloud Run) · `parallel-v2` (api.closy→3 service VPS,
+  api-v2→Cloud Run, không monolith) · `repatriation` (api.closy→3 service, api-v2→301) ·
+  `rollback` (api.closy→monolith, api-v2→301).
+
+### 10.1 Vào mode `parallel-v2`
+1. Dừng backend cũ (tái dùng bước `12` §2): `... stop backend || true`; verify `docker ps` trống.
+2. Đặt `NGINX_MODE=parallel-v2`, `COMPOSE_PROFILES=parallel-v2` trong `.env.production`.
+3. `up -d nginx token-helper` (kèm cả 2 env-file) + `ps`.
+4. Smoke: `api.closy` 200 qua 3 service VPS; `api-v2` 200 qua Cloud Run; backend đã dừng.
+5. DB: VPS local là live; đồng bộ dump VPS→Supabase (luồng `10-data-migration-vps-supabase.md`)
+   trước đợt verify `api-v2`; `api-v2` chỉ verify, không nhận production traffic.
 - Repatriation: `../repatriate-to-vps.md` + `12-repatriate-vps.md`.
 - Cutover `api.closy`: `../manual-cutover-api-closy-to-cloudrun.md` (owner-triggered).
-- Rollback khẩn cấp: `deploy-production.yml` (đổi `NGINX_MODE=rollback` **trước** khi chạy,
-  vì workflow chỉ start `backend`).
+- Rollback khẩn cấp: `deploy-production.yml` (đổi `NGINX_MODE=rollback` **trước** khi chạy;
+  workflow tự recreate nginx).
 
 ## 11. Known limitations (đọc trước khi run)
 

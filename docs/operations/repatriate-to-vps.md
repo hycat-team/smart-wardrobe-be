@@ -24,6 +24,8 @@ Mục tiêu: repatriation ≤ 4h gồm migrate ngược (SC-004); drill đầy �
    gh run watch <RUN_ID> -R "<OWNER/REPO>"
    ```
    (matrix → GHCR pin digest → `compose up -d <svc>`); smoke test `api.closy`.
+   Sau đó **dừng backend cũ** nếu còn chạy (tránh 2 writer cùng DB):
+   `docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml stop backend || true`.
 4. **Migrate ngược dữ liệu**: Supabase → Postgres VPS; drain AMQP (đợi queue rỗng);
    Redis snapshot/warmup. Chi tiết `infrastructure/12-repatriate-vps.md`.
 5. **DNS về VPS**; verify host × route + SSE + auth + upload.

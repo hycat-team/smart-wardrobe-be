@@ -19,6 +19,13 @@ gh run watch "$RUN_ID" -R "<OWNER/REPO>"
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
 ```
 
+> Dừng backend cũ (monolith) nếu còn chạy — tránh 2 writer cùng DB (idempotent):
+> ```bash
+> docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml stop backend || true
+> docker ps --filter name=backend --format '{{.Names}} {{.Status}}'   # phải trống
+> ```
+> Verify không còn writer cũ: consumer count RabbitMQ phía monolith về 0, outbox chỉ poll 1 phía.
+
 ## 3. Migrate ngược dữ liệu (Supabase → Postgres VPS)
 
 ```bash

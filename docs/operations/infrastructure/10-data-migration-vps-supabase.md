@@ -55,7 +55,12 @@ psql "<DSN nguồn>" -c "
 Vì VPS vẫn nhận ghi của người dùng thật, lặp lại §2–§5 tại thời điểm merge/cutover và
 xác nhận không mất ghi trong cửa sổ chuyển.
 
-## 7. Lưu ý
+## 7. Dùng cho parallel-v2 (đồng bộ định kỳ)
+
+Cùng luồng §2–§5 nhưng chạy định kỳ trước mỗi đợt verify `api-v2`: dump Postgres local
+VPS → restore vào Supabase → verify checksum. VPS local luôn là live; Supabase chỉ verify.
+
+## 8. Lưu ý
 
 - Lần dump đầu chỉ phục vụ **test nội bộ** `api-v2`; monolith VPS vẫn là nguồn ghi chính.
 - Mọi thao tác production đều backup + verify checksum trước.

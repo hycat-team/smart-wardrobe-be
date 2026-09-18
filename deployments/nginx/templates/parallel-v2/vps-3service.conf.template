@@ -1,0 +1,119 @@
+# deployments/nginx/templates/parallel-v2/vps-3service.conf.template - parallel-v2 ingress.
+# api.closy... -> 3 service compose (account/commerce/ai). Rendered via nginx
+# envsubst then `nginx -t` + reload. Active when NGINX_MODE=parallel-v2
+# (block :80 nằm ở default.conf.template để tránh trùng server_name).
+# Route map lives in the "# BEGIN GENERATED ROUTES" region below and is produced
+# by `make nginx-routes` (single source shared with api-v2 + local ingress).
+# Do not edit the generated region by hand.
+# Self-host: NO Cloud Run IAM (app JWT handles auth); rate-limit lives in the app
+# (FR-054, Nginx does NOT rate-limit); residual risk "no full WAF" (T099).
+# Shared proxy (host/forward/timeout) is set at server level and inherited by
+# every location unless it overrides (SSE stream).
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+# Request ID for trace logs (T099).
+log_format main_tid '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" req_id=$request_id';
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${API_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${API_DOMAIN}/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # T099: body-limit/timeout/security-header/logging (no rate-limit at Nginx).
+    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
+    client_body_timeout 30s;
+    client_header_timeout 30s;
+    send_timeout 60s;
+    # Vietnamese JSON error bodies must be decoded as UTF-8 (JSON has no default).
+    charset utf-8;
+    charset_types application/json;
+    add_header Strict-Transport-Security "max-age=15552000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    access_log /var/log/nginx/access.log main_tid;
+
+    # Compose upstreams (resolved dynamically via internal DNS).
+    resolver 127.0.0.11 valid=30s;
+    set $account_upstream http://account:8080;
+    set $commerce_upstream http://commerce:8080;
+    set $ai_upstream http://ai:8080;
+
+    # Shared proxy defaults (T099): X-Forwarded so the app sees the real client
+    # IP for rate-limiting; long timeouts for AI.
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_connect_timeout 10s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+
+    location /nginx-health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # BEGIN GENERATED ROUTES (make nginx-routes) - do not edit by hand
+    location ^~ /api/v1/admin/audit-logs { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/subscriptions { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/users { proxy_pass $account_upstream; }
+    location ^~ /api/v1/auth { proxy_pass $account_upstream; }
+    location = /api/v1/me { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/avatar { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/body-profile { proxy_pass $account_upstream; }
+    location ^~ /api/v1/me/change-password { proxy_pass $account_upstream; }
+    location ^~ /api/v1/subscriptions { proxy_pass $account_upstream; }
+    location ^~ /api/v1/admin/brands { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/categories { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/ai { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/ai/chat/sessions { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
+    location ^~ /api/v1/brand { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/brand-portal/brands { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
+    location ^~ /api/v1/categories { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/benefit-redemptions { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/brand-loyalties { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/me/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/system-catalog { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/wardrobe-items { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/wardrobe-items/tasks { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
+    location ^~ /api/v1/admin/ai { proxy_pass $ai_upstream; }
+    # END GENERATED ROUTES
+
+    # Monolith-style combined Swagger docs (Account hosts the bundle, behind its
+    # access-code lock). Old UI + service/module selectors.
+    location ^~ /swagger { proxy_pass $account_upstream; }
+    location ^~ /api-docs { proxy_pass $account_upstream; }
+
+    location / {
+        default_type "application/json; charset=utf-8";
+        return 404 '{"message":"Đường dẫn API không tồn tại hoặc phương thức không được hỗ trợ."}';
+    }
+}

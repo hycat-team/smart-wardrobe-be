@@ -165,6 +165,16 @@ jobs:
                     docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
                   "
 
+            - name: Recreate Nginx for rollback mode
+              shell: bash
+              run: |
+                  ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+                    set -e
+                    cd /opt/closy
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml up -d --force-recreate nginx
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps nginx
+                  "
+
             - name: Verify rollback health
               if: vars.PRODUCTION_HEALTH_URL != ''
               shell: bash

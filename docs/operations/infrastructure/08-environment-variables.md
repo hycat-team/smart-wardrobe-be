@@ -99,8 +99,8 @@ Không tạo file; set secret theo `00` §5, rồi dispatch `deploy-platform.yml
 | `COMPOSE_PROJECT_NAME`, `BACKEND_IMAGE`, `BACKEND_HEALTH_PATH` | — | compose VPS |
 | `API_DOMAIN` | — | hostname `api.closy` |
 | `API_V2_DOMAIN` | — | hostname `api-v2` |
-| `NGINX_MODE` | `parallel` | `parallel`/`repatriation`/`rollback` |
-| `COMPOSE_PROFILES` | `parallel` | bật profile `token-helper`; để trống ở repatriation/rollback |
+| `NGINX_MODE` | `parallel` | `parallel`/`parallel-v2`/`repatriation`/`rollback` (`parallel-v2`: api.closy → 3 service VPS, api-v2 → Cloud Run, không monolith) |
+| `COMPOSE_PROFILES` | `parallel` | `parallel` cho mode parallel, `parallel-v2` cho mode parallel-v2 (bật profile `token-helper`); để trống ở repatriation/rollback |
 | `NGINX_CLIENT_MAX_BODY_SIZE` | `20m` | |
 | `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | — | target proxy `api-v2` (parallel) |
 | `TOKEN_HELPER_URL` | `http://token-helper:8082` | Nginx gọi trong compose network |

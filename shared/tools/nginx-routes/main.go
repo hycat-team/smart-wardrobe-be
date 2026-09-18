@@ -8,6 +8,7 @@
 //   - deployments/nginx/api-v2-routes/<service>.conf  (Cloud Run ingress, full file)
 //   - the region between GENERATED markers in
 //     deployments/nginx/templates/repatriation/vps-3service.conf.template (compose upstreams)
+//     deployments/nginx/templates/parallel-v2/vps-3service.conf.template (parallel-v2 api.closy upstreams)
 //     deployments/nginx/local.conf (local compose)
 //
 // Run `make nginx-routes`; `make nginx-check` verifies coverage and CI fails on
@@ -76,6 +77,7 @@ type markerFile struct {
 
 var markerFiles = []markerFile{
 	{path: "deployments/nginx/templates/repatriation/vps-3service.conf.template", mode: "vps"},
+	{path: "deployments/nginx/templates/parallel-v2/vps-3service.conf.template", mode: "vps"},
 	{path: "deployments/nginx/local.conf", mode: "local"},
 }
 

@@ -25,9 +25,14 @@ docker compose --env-file .env.production -f deployments/docker-compose.prod.yml
 ```
 
 Nginx render theo `NGINX_MODE` (`deployments/nginx/templates/<mode>/`): `parallel`
-(api.closy→monolith, api-v2→Cloud Run), `repatriation` (api.closy→3 service, api-v2→301),
+(api.closy→monolith, api-v2→Cloud Run), `parallel-v2` (api.closy→3 service VPS,
+api-v2→Cloud Run, không monolith), `repatriation` (api.closy→3 service, api-v2→301),
 `rollback` (api.closy→monolith, api-v2→301). Đặt trong `.env.production` (kèm
-`COMPOSE_PROFILES=parallel` khi cần token-helper).
+`COMPOSE_PROFILES=parallel` hoặc `parallel-v2` khi cần token-helper).
+
+Mode `parallel-v2` dùng thư mục `deployments/nginx/templates/parallel-v2/`
+(default + vps-3service cho api.closy + api-v2 copy từ parallel); block VPS của nó đã
+đăng ký vùng generated trong `make nginx-routes`/`nginx-check` (chi tiết `06` §11).
 
 ## 2. Token helper (FR-039)
 

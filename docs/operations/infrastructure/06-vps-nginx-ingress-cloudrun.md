@@ -3,7 +3,9 @@
 `api-v2.closy.hycat.online` phục vụ qua **VPS Nginx hiện hữu** (không Cloudflare/LB mới).
 `api.closy...` **giữ nguyên** proxy tới monolith (`http://backend:8080`) ở giai đoạn song song.
 
-Nginx render theo **`NGINX_MODE`**; token-helper là service compose (profile `parallel`).
+Nginx render theo **`NGINX_MODE`** (`parallel`/`parallel-v2`/`repatriation`/`rollback`);
+token-helper là service compose (profile `parallel` hoặc `parallel-v2`). Mục 11 mô tả
+mode `parallel-v2` (api.closy→VPS 3-service, api-v2→Cloud Run, không monolith).
 
 ## 1. Điều kiện tiên quyết
 
@@ -21,7 +23,8 @@ make nginx-check       # verify route map phủ hết API paths
 ```
 
 Các mode (`deployments/nginx/templates/<mode>/`):
-`parallel` (api.closy→monolith, api-v2→Cloud Run) · `repatriation` (api.closy→3 service,
+`parallel` (api.closy→monolith, api-v2→Cloud Run) · `parallel-v2` (api.closy→3 service VPS,
+api-v2→Cloud Run, không monolith — mục 11) · `repatriation` (api.closy→3 service,
 api-v2→301) · `rollback` (api.closy→monolith, api-v2→301).
 
 ## 3. Cấu hình `.env.production`
@@ -110,6 +113,27 @@ curl -N -m 35 https://api-v2.closy.hycat.online/<sse-path>
 - [ ] `api-v2` 200 qua Nginx↔Cloud Run; thiếu ID token bị Cloud Run từ chối (SC-013).
 - [ ] `api.closy` 0 thay đổi routing (SC-015); 0 request `api-v2` qua Cloudflare (SC-016).
 - [ ] SSE stream dài giữ kết nối, 0 lỗi buffering (SC-014).
+
+## 11. Mode parallel-v2 (api.closy→VPS 3-service, api-v2→Cloud Run)
+
+1. Điều kiện: đã vào được `parallel` ổn định; image 3 service đã có (`.env.deploy`).
+2. Dừng backend cũ: `... stop backend || true`; verify `docker ps` trống backend.
+3. Đặt `NGINX_MODE=parallel-v2`, `COMPOSE_PROFILES=parallel-v2`; template render từ
+   `deployments/nginx/templates/parallel-v2/` (default + vps-3service + api-v2).
+4. Bật ingress (kèm cả 2 env-file):
+   ```bash
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
+     up -d nginx token-helper
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
+   ```
+5. Smoke:
+   ```bash
+   curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health          # 200 qua VPS
+   curl -sS -o /dev/null -w '%{http_code}\n' https://api-v2.closy.hycat.online/api/v1/health        # 200 qua Cloud Run
+   docker ps --filter name=backend --format '{{.Names}}'                                            # trống
+   ```
+6. DB: VPS local là live; dump VPS→Supabase (`10-data-migration-vps-supabase.md`) trước đợt
+   verify `api-v2`; `api-v2` chỉ verify.
 
 ## 10. Residual risk (FR-054)
 
