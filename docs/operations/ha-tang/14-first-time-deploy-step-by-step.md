@@ -9,10 +9,52 @@
 >
 > Biến môi trường đầy đủ: xem `07-bang-bien-moi-truong.md`.
 
-## 0. Điều kiện tiên quyết
+## 0. Đăng ký nền tảng & điều kiện tiên quyết
 
-- [ ] GCP project trial, đã bật billing.
+Bạn chỉ cần **VPS + domain Vercel**; các nền tảng dưới đây đăng ký mới. Làm **theo
+thứ tự** — mỗi mục ghi rõ lấy giá trị nào để điền vào secrets/`.env` (xem `07`).
+
+### 0.1 GitHub (đã có repo)
+- Tạo 2 **Environments** (Settings → Environments): `gcp-production`, `vps-production`.
+- Tạo **GHCR read token** cho VPS: Personal access token (classic) scope `read:packages`
+  → secret `GHCR_READ_TOKEN` + `GHCR_USERNAME`.
+
+### 0.2 Google Cloud (Cloud Run + Artifact Registry)
+1. Tạo Google account → https://console.cloud.google.com → **Start free trial** (cần thẻ;
+   nhận credit trial).
+2. **Tạo project**: id phải **khớp `AR_PROJECT`** trong `deploy-platform.yml`
+   (mặc định `smart-wardrobe`; nếu đặt id khác thì sửa workflow).
+3. **Bật billing** cho project (Billing → link account).
+4. Cài `gcloud`, rồi: `gcloud auth login` + `gcloud config set project <PROJECT>`.
+5. (Sau, ở §2) bật API, tạo Artifact Registry/WIF/SA, đặt **billing cap**.
+
+### 0.3 Supabase Pro (Postgres + pgvector)
+1. Đăng ký https://supabase.com → **New project** (plan Pro hoặc dùng trial).
+2. Chọn region **gần `asia-southeast1`** (Singapore) để giảm latency.
+3. Lưu lại: **database password**, **project ref**, host pooler (`...pooler.supabase.com`)
+   và host direct (`db.<ref>.supabase.co`).
+
+### 0.4 Redis Cloud Essentials 250MB
+1. Đăng ký https://redis.io/cloud → **New subscription** → Essentials 250MB.
+2. Lấy **endpoint (host), port riêng, password**; bật **TLS**.
+
+### 0.5 CloudAMQP Tough Tiger
+1. Đăng ký https://www.cloudamqp.com → tạo instance (Tough Tiger; có thể dùng gói nhỏ/free
+   để thử trước).
+2. Lấy **amqps host/port (thường 5671), user, password**; tạo **vhost riêng**.
+
+### 0.6 Cloudflare Pro (funded, KHÔNG nằm trong đường API)
+- **Không bắt buộc** cho việc host API; chỉ đăng ký khi có mục đích khác. DNS vẫn ở
+  **Vercel**, không NS-delegate, không Cloudflare trong đường API (FR-025/029).
+
+### 0.7 VPS + domain (đã có)
+- VPS đang chạy monolith (`api.closy`); Docker + `/opt/closy`.
+- `hycat.online` giữ DNS ở **Vercel**; sẽ thêm **subdomain `api-v2`** ở §7.
+
+### 0.8 Điều kiện tiên quyết (checklist)
+- [ ] GCP project trial đã bật billing (id khớp `AR_PROJECT`).
 - [ ] GitHub repo có quyền Actions + Packages (GHCR).
+- [ ] Supabase / Redis Cloud / CloudAMQP đã tạo, đã có host/port/password.
 - [ ] VPS hiện hữu đang chạy monolith (`api.closy`), có Docker + Nginx/`/opt/closy`.
 - [ ] Domain `hycat.online` quản lý DNS ở **Vercel** (không NS-delegate).
 - [ ] Đã cài: `gcloud`, `gh`, `docker`, `git`.
