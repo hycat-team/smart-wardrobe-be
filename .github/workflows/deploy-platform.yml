@@ -32,8 +32,8 @@ concurrency:
 
 env:
     AR_HOST: asia-southeast1-docker.pkg.dev
-    AR_PROJECT: smart-wardrobe
-    AR_REPO: smart-wardrobe
+    AR_PROJECT: closy-app
+    AR_REPO: closy
     CR_REGION: asia-southeast1
 
 jobs:
@@ -223,7 +223,7 @@ jobs:
               env:
                   IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
               run: |
-                  gcloud run deploy "smart-wardrobe-${{ matrix.service }}" \
+                  gcloud run deploy "closy-${{ matrix.service }}" \
                     --image "${IMAGE}" \
                     --region "${CR_REGION}" \
                     --platform managed \
@@ -241,7 +241,7 @@ jobs:
               env:
                   IMAGE: ${{ env.AR_HOST }}/${{ env.AR_PROJECT }}/${{ env.AR_REPO }}/${{ matrix.service }}:${{ needs.plan.outputs.sha }}
               run: |
-                  gcloud run deploy "smart-wardrobe-${{ matrix.service }}-worker" \
+                  gcloud run deploy "closy-${{ matrix.service }}-worker" \
                     --image "${IMAGE}" \
                     --region "${CR_REGION}" \
                     --platform managed \
@@ -257,5 +257,5 @@ jobs:
             - name: Verify HTTP health (via run.app URL is IAM-blocked; check service exists)
               shell: bash
               run: |
-                  gcloud run services describe "smart-wardrobe-${{ matrix.service }}" \
+                  gcloud run services describe "closy-${{ matrix.service }}" \
                     --region "${CR_REGION}" --format="value(status.url)"

@@ -32,9 +32,9 @@ API_DOMAIN=api.closy.hycat.online
 API_V2_DOMAIN=api-v2.closy.hycat.online
 NGINX_MODE=parallel
 COMPOSE_PROFILES=parallel
-ACCOUNT_RUN_URL=https://smart-wardrobe-account-xxx.run.app
-COMMERCE_RUN_URL=https://smart-wardrobe-commerce-xxx.run.app
-AI_RUN_URL=https://smart-wardrobe-ai-xxx.run.app
+ACCOUNT_RUN_URL=https://closy-account-xxx.run.app
+COMMERCE_RUN_URL=https://closy-commerce-xxx.run.app
+AI_RUN_URL=https://closy-ai-xxx.run.app
 TOKEN_HELPER_URL=http://token-helper:8082
 TOKEN_HELPER_SA_KEY_FILE=./token-helper-sa.json
 ```

@@ -41,7 +41,7 @@
 1. **Cloud Run revision-level** (tức thời, per-service): shift traffic về revision trước
    của service lỗi:
    ```bash
-   gcloud run services update-traffic smart-wardrobe-<svc> \
+   gcloud run services update-traffic closy-<svc> \
      --region asia-southeast1 --to-revisions <PREV_REVISION>=100
    ```
 2. **Ingress-level** (toàn hệ): đổi Nginx `api.closy` về monolith (`http://backend:8080`,

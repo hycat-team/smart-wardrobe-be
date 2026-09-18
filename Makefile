@@ -14,8 +14,8 @@ BIN_DIR := bin
 # - Cloud Run images → Artifact Registry (asia-southeast1), tag <svc>:<git-sha> (immutable).
 # - VPS images (rollback + repatriation) → GHCR with existing CI token.
 AR_HOST ?= asia-southeast1-docker.pkg.dev
-AR_PROJECT ?= smart-wardrobe
-AR_REPO ?= smart-wardrobe
+AR_PROJECT ?= closy-app
+AR_REPO ?= closy
 GHCR_OWNER ?= hycat
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 
@@ -363,7 +363,7 @@ migrate-version:
 docker-build:
 	$(SVC_REQ)
 	@echo Building production Docker image for $(SVC)...
-	@docker build -f services/$(SVC)/Dockerfile -t smart-wardrobe-$(SVC):local .
+	@docker build -f services/$(SVC)/Dockerfile -t closy-$(SVC):local .
 	@echo Docker image build finished.
 
 image-build:
@@ -381,14 +381,14 @@ image-push:
 deploy:
 	$(SVC_REQ)
 	@echo "Deploying $(SVC) to Cloud Run (manual helper; CI uses deploy-platform.yml)..."
-	@gcloud run deploy smart-wardrobe-$(SVC) --image $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) --region $(CR_REGION) --platform managed --concurrency $(CR_CONCURRENCY) --max-instances $(CR_HTTP_MAX_INSTANCES)
+	@gcloud run deploy closy-$(SVC) --image $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) --region $(CR_REGION) --platform managed --concurrency $(CR_CONCURRENCY) --max-instances $(CR_HTTP_MAX_INSTANCES)
 	@echo Deploy finished.
 
 token-helper-build:
 	@echo "Building token-helper binary and image (VPS)..."
 	@$(MKDIR_BIN_CMD)
 	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/token-helper$(GO_BIN_EXT)" ./deployments/token-helper
-	@docker build -f deployments/token-helper/Dockerfile -t smart-wardrobe-token-helper:local .
+	@docker build -f deployments/token-helper/Dockerfile -t closy-token-helper:local .
 	@echo token-helper build finished.
 
 image-build-monolith-rollback:

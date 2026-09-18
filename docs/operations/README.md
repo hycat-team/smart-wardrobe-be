@@ -42,7 +42,7 @@ Mỗi runbook gồm: điều kiện tiên quyết → thứ tự bước (kèm l
 ## Quy ước registry & tag (T007a — FR-042, FR-051)
 
 - Image Cloud Run → **Artifact Registry**
-  `asia-southeast1-docker.pkg.dev/<project>/smart-wardrobe/<svc>:<git-sha>`
+  `asia-southeast1-docker.pkg.dev/<project>/closy/<svc>:<git-sha>`
   (immutable; `:latest` chỉ trong CI). Tạo repo 1 lần bằng gcloud (xem
   `infrastructure/05-compute-cloudrun.md`).
 - Image VPS (rollback `monolith-legacy` + compose 3-service khi repatriation) → **GHCR**

@@ -20,7 +20,7 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
   iam.googleapis.com iamcredentials.googleapis.com cloudresourcemanager.googleapis.com \
   monitoring.googleapis.com billingbudgets.googleapis.com
 
-gcloud artifacts repositories create smart-wardrobe \
+gcloud artifacts repositories create closy \
   --repository-format=docker --location=asia-southeast1 \
   --description="Closy service images"
 gcloud artifacts repositories list --location=asia-southeast1   # verify
@@ -48,7 +48,7 @@ không chặn 2 service còn lại (SC-017).
 
 ```bash
 for svc in account commerce ai; do
-  echo "$svc = $(gcloud run services describe smart-wardrobe-$svc \
+  echo "$svc = $(gcloud run services describe closy-$svc \
     --region asia-southeast1 --format='value(status.url)')"
 done
 ```
@@ -61,11 +61,11 @@ app nhận ingress URL.
 ```bash
 gcloud run services list --region asia-southeast1
 # Kiểm tra mode từng service
-gcloud run services describe smart-wardrobe-account \
+gcloud run services describe closy-account \
   --region asia-southeast1 --format='value(spec.template.spec.containers[0].env)'
 # IAM phải đóng: thiếu ID token -> 403
 curl -s -o /dev/null -w '%{http_code}\n' \
-  "$(gcloud run services describe smart-wardrobe-account --region asia-southeast1 --format='value(status.url)')/api/v1/health"
+  "$(gcloud run services describe closy-account --region asia-southeast1 --format='value(status.url)')/api/v1/health"
 ```
 - [ ] 6 units chạy đúng mode; health `/api/v1/health` pass (SC-018/SC-023).
 - [ ] Không consumer/cron trong `http`; worker singleton + advisory lock (SC-019).
@@ -84,7 +84,7 @@ gcloud billing budgets create --billing-account=<BILLING_ID> \
 ## 8. Rollback revision-level (khi deploy mới lỗi)
 
 ```bash
-gcloud run revisions list --service smart-wardrobe-account --region asia-southeast1
-gcloud run services update-traffic smart-wardrobe-account \
+gcloud run revisions list --service closy-account --region asia-southeast1
+gcloud run services update-traffic closy-account \
   --region asia-southeast1 --to-revisions <REVISION_CU>=100
 ```

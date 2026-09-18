@@ -8,7 +8,7 @@
 >
 > **Điền placeholder trước khi chạy** (thay trong toàn bộ tài liệu):
 > `<OWNER/REPO>` = `hycat-team/smart-wardrobe-be` · `<PROJECT>` = GCP project id
-> (phải khớp `AR_PROJECT` trong `deploy-platform.yml`, mặc định `smart-wardrobe`) ·
+> (phải khớp `AR_PROJECT` trong `deploy-platform.yml`, mặc định `closy-app`) ·
 > `<REGION>` = `asia-southeast1` · `<VPS_HOST>` · `<VPS_USER>` · `<VPS_SSH_PORT>`.
 >
 > Biến môi trường app đầy đủ: xem `08-environment-variables.md`.
@@ -45,7 +45,7 @@ Mỗi mục dưới ghi rõ **bấm vào đâu để lấy giá trị** — đi�
 ### 0.2 Google Cloud (Cloud Run + Artifact Registry)
 1. Tạo Google account → https://console.cloud.google.com → **Start free trial** (cần thẻ; nhận credit trial).
 2. **Tạo project**: Console → thanh chọn project → **New project** → ID phải **khớp `AR_PROJECT`**
-   (mặc định `smart-wardrobe`; nếu đặt id khác thì sửa `AR_PROJECT` trong `deploy-platform.yml`).
+   (mặc định `closy-app`; nếu đặt id khác thì sửa `AR_PROJECT` trong `deploy-platform.yml`).
 3. **Bật billing**: Console → Billing → **Link a billing account**.
 4. Cài `gcloud`, rồi xác thực:
    ```bash
@@ -121,7 +121,7 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
 ### 2.1 Artifact Registry (khớp `AR_REPO`)
 
 ```bash
-gcloud artifacts repositories create smart-wardrobe \
+gcloud artifacts repositories create closy \
   --repository-format=docker --location=asia-southeast1 \
   --description="Closy service images"
 ```
@@ -166,7 +166,7 @@ gcloud iam service-accounts keys create token-helper-sa.json \
 Sau khi deploy (bước 6) grant `run.invoker` cho **đúng 3 service**:
 ```bash
 for svc in account commerce ai; do
-  gcloud run services add-iam-policy-binding smart-wardrobe-$svc \
+  gcloud run services add-iam-policy-binding closy-$svc \
     --region=asia-southeast1 --member="serviceAccount:token-helper@<PROJECT>.iam.gserviceaccount.com" \
     --role="roles/run.invoker"
 done
@@ -336,7 +336,7 @@ gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 | `VPS_KNOWN_HOSTS` | `ssh-keyscan` | `ssh-keyscan -p 22 <VPS_HOST> > known_hosts` rồi `gh secret set VPS_KNOWN_HOSTS < known_hosts` |
 | `GHCR_USERNAME` | GitHub username (§0.1b) | `--body` |
 | `GHCR_READ_TOKEN` | PAT `read:packages` (§0.1b) | `--body "ghp_..."` |
-| `INGRESS_ACCOUNT/COMMERCE/AI_URL` | **§6 sau khi deploy** | `--body "https://smart-wardrobe-<svc>-xxx.run.app"` |
+| `INGRESS_ACCOUNT/COMMERCE/AI_URL` | **§6 sau khi deploy** | `--body "https://closy-<svc>-xxx.run.app"` |
 | `INGRESS_TOKEN_AUDIENCE` | **§6 sau khi deploy** | `--body "<URL Account run.app>"` |
 
 ES256 (tuỳ chọn, FR-022): sinh cặp EC P-256 rồi set từ file:
@@ -392,18 +392,18 @@ gh run watch "$RUN_ID" -R "<OWNER/REPO>"
 Sau khi xong, lấy URL từng service:
 ```bash
 for svc in account commerce ai; do
-  echo "$svc = $(gcloud run services describe smart-wardrobe-$svc --region asia-southeast1 --format='value(status.url)')"
+  echo "$svc = $(gcloud run services describe closy-$svc --region asia-southeast1 --format='value(status.url)')"
 done
 ```
 → set 3 secret ingress (URL `run.app` ở trên):
 ```bash
-gh secret set INGRESS_ACCOUNT_URL  -R "<OWNER/REPO>" --body "https://smart-wardrobe-account-xxx.run.app"
-gh secret set INGRESS_COMMERCE_URL -R "<OWNER/REPO>" --body "https://smart-wardrobe-commerce-xxx.run.app"
-gh secret set INGRESS_AI_URL       -R "<OWNER/REPO>" --body "https://smart-wardrobe-ai-xxx.run.app"
+gh secret set INGRESS_ACCOUNT_URL  -R "<OWNER/REPO>" --body "https://closy-account-xxx.run.app"
+gh secret set INGRESS_COMMERCE_URL -R "<OWNER/REPO>" --body "https://closy-commerce-xxx.run.app"
+gh secret set INGRESS_AI_URL       -R "<OWNER/REPO>" --body "https://closy-ai-xxx.run.app"
 ```
 → grant `run.invoker` cho token-helper SA (§2.3), set `INGRESS_TOKEN_AUDIENCE` = URL Account:
 ```bash
-gh secret set INGRESS_TOKEN_AUDIENCE -R "<OWNER/REPO>" --body "https://smart-wardrobe-account-xxx.run.app"
+gh secret set INGRESS_TOKEN_AUDIENCE -R "<OWNER/REPO>" --body "https://closy-account-xxx.run.app"
 ```
 → **chạy lại** để app nhận ingress URL:
 ```bash
@@ -411,7 +411,7 @@ gh workflow run deploy-platform.yml -R "<OWNER/REPO>" --ref main -f services=all
 ```
 
 Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
-`gcloud run services proxy smart-wardrobe-account --region asia-southeast1`).
+`gcloud run services proxy closy-account --region asia-southeast1`).
 
 ### 6.1 Dispatch các workflow VPS (chạy thủ công)
 

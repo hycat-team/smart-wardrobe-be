@@ -7,7 +7,7 @@ Cloud Logging thu thập tự động. Không OTEL trong 020.
 
 Verify log:
 ```bash
-gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="smart-wardrobe-account"' \
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="closy-account"' \
   --limit=5 --format='value(jsonPayload)'
 ```
 

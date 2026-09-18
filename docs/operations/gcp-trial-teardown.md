@@ -19,17 +19,17 @@
    ```bash
    gcloud run services list --region asia-southeast1
    for svc in account commerce ai; do
-     gcloud run services delete "smart-wardrobe-$svc" --region asia-southeast1 --quiet
-     gcloud run services delete "smart-wardrobe-$svc-worker" --region asia-southeast1 --quiet
+     gcloud run services delete "closy-$svc" --region asia-southeast1 --quiet
+     gcloud run services delete "closy-$svc-worker" --region asia-southeast1 --quiet
    done
    ```
 2. **Artifacts**: xoá image Cloud Run trong Artifact Registry (giữ image `monolith-legacy`
    trên GHCR cho rollback):
    ```bash
    gcloud artifacts docker images list \
-     asia-southeast1-docker.pkg.dev/<PROJECT>/smart-wardrobe --include-tags
+     asia-southeast1-docker.pkg.dev/<PROJECT>/closy --include-tags
    # xoá theo từng digest hoặc xoá repo:
-   gcloud artifacts repositories delete smart-wardrobe --location=asia-southeast1 --quiet
+   gcloud artifacts repositories delete closy --location=asia-southeast1 --quiet
    ```
 3. **Alerts/monitors**: xoá alert policy + dashboard Cloud Monitoring của trial
    (giữ runbook để tái lập nếu cần).

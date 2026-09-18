@@ -274,7 +274,7 @@ Target mới tối thiểu: `wire svc=`, `swagger svc=`, `build svc=`, `build-al
 - **Runtime contract**: env `PORT` (Cloud Run inject; mặc định 8080), `ENV` profile, healthcheck
   **`GET /api/v1/health`** (path hiện có, dùng cho Cloud Run startup/liveness probe + worker mode);
   không bind host cứng.
-- **Registry & tagging**: GCP **Artifact Registry** `asia-southeast1-docker.pkg.dev/<project>/smart-wardrobe/<svc>`
+- **Registry & tagging**: GCP **Artifact Registry** `asia-southeast1-docker.pkg.dev/<project>/closy/<svc>`
   cho image Cloud Run; **GHCR** (`ghcr.io/<owner>/<svc>`) cho image VPS (rollback/repatriation) — dùng
   token sẵn có. tag `:<git-sha>` (immutable) + `:latest` chỉ trong CI; `contracts/` generated code được
   commit nên build một service **không** cần generate hay build service khác. Không public image private.
