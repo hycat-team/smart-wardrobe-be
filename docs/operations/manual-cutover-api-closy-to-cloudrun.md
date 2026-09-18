@@ -2,6 +2,12 @@
 
 **Chỉ thực thi khi owner quyết định** `api-v2` đủ ổn định. Không tự động hoá.
 
+> **Khi nào dùng**: sau khi `api-v2` chạy song song ổn định và owner muốn chuyển
+> `api.closy` sang Cloud Run.
+> **Điều kiện**: gate đo được đạt (§1) — smoke 100%, error-rate ≤ 1%, p95 ≤ 500ms,
+> SSE không rớt, ổn định 7 ngày; dữ liệu đã đồng bộ + checksum; rollback sẵn sàng.
+> **Không dùng khi**: mới deploy lần đầu hoặc gate chưa đạt.
+
 ## 1. Gate đo được (cố định trong spec)
 
 - Smoke test **100% pass**.

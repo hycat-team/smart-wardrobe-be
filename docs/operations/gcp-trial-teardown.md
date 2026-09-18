@@ -3,6 +3,11 @@
 **Không tách rời sau demo.** Teardown chạy như một bước của repatriation khi hệ thống
 đã về VPS ổn định.
 
+> **Khi nào dùng**: bước cuối của `repatriate-to-vps.md`, sau khi hạ tầng mới (VPS) đã
+> chạy ổn định ≥ 7 ngày.
+> **Điều kiện**: repatriation đã xác nhận; `api.closy`/`api-v2` đã trỏ về hạ tầng mới.
+> **Không dùng khi**: Cloud Run (managed) còn phục vụ traffic — teardown khi đó sẽ gây downtime.
+
 ## 1. Điều kiện tiên quyết
 
 - [ ] Repatriation đã xác nhận (managed KHÔNG còn phục vụ).

@@ -1,5 +1,12 @@
 # Nginx ingress + Cloud Run auth (route map, token helper, IAM)
 
+> **Khi nào dùng**: trong giai đoạn song song, khi dựng/đổi ingress `api-v2` hoặc
+> token-helper. Là tài liệu chi tiết cho `infrastructure/00` §6–§7 và `infrastructure/06`.
+> **Điều kiện**: đã deploy Cloud Run (có URL `run.app`) và VPS có `/opt/closy` +
+> `.env.production`.
+> **Không dùng khi**: chưa có URL Cloud Run, hoặc đang ở mode `repatriation`/`rollback`
+> (không chạy token-helper).
+
 ## 1. Route map single-source (FR-028)
 
 Mọi route `api-v2` → 3 Cloud Run nằm trong **một chỗ**: `deployments/nginx/`

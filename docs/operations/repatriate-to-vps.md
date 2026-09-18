@@ -2,6 +2,12 @@
 
 Mục tiêu: repatriation ≤ 4h gồm migrate ngược (SC-004); drill đầy đủ trước T-30 (T108).
 
+> **Khi nào dùng**: khi kết thúc cửa sổ funded (trước ngày renew) hoặc khi muốn chủ động
+> đưa hệ thống về VPS.
+> **Điều kiện**: gate song song đạt (`infrastructure/09-parallel-architecture-overview.md`);
+> VPS có Docker + `/opt/closy`; image 3 service đã push GHCR.
+> **Không dùng khi**: đang ở giai đoạn dựng song song (dùng `infrastructure/00`..`11`).
+
 ## 1. Điều kiện tiên quyết
 
 - [ ] Gate song song đạt (`infrastructure/09-parallel-architecture-overview.md`).
