@@ -2,7 +2,7 @@
 
 > **ĐÃ LỖI THỜI (GĐ2).** Cloud Run chưa từng tồn tại nên runbook này không còn khả thi.
 > Giữ lại tham khảo spec FR-041 (gate đo được). Cắt box ngoài AWS theo
-> `infrastructure/15-aws-compute.md` §10 + `infrastructure/12-repatriate-vps.md`.
+> `../../aws-runbook.md` (Bước 9 chu kỳ / Bước 10 teardown cuối), `../../shared-reference.md` §1.
 
 **Chỉ thực thi khi owner quyết định** `api-v2` đủ ổn định. Không tự động hoá.
 
@@ -20,9 +20,9 @@
 
 ## 2. Điều kiện tiên quyết
 
-- [ ] `api-v2` ổn định đủ 7 ngày (bằng chứng từ dashboard `infrastructure/14-monitoring.md`).
+- [ ] `api-v2` ổn định đủ 7 ngày (bằng chứng từ dashboard `../../shared-reference.md` §4).
 - [ ] Dữ liệu đã đồng bộ (dump VPS → Supabase tại thời điểm cutover + checksum) —
-  `infrastructure/10-data-migration-vps-supabase.md`.
+  `../../aws-runbook.md` Bước 6.
 - [ ] Rollback 2 mức sẵn sàng (§4).
 
 ## 3. Thứ tự bước

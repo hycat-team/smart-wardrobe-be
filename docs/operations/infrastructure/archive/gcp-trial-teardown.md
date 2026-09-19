@@ -2,12 +2,12 @@
 
 > **ĐÃ LỖI THỜI (GĐ2).** Không có GCP trial nào để teardown (Cloud Run chưa từng tồn tại).
 > Giữ lại tham khảo thứ tự dọn dẹp. Tắt box ngoài AWS + managed theo
-> `infrastructure/15-aws-compute.md` §10.
+> `../../aws-runbook.md` (Bước 9 chu kỳ / Bước 10 teardown cuối).
 
 **Không tách rời sau demo.** Teardown chạy như một bước của repatriation khi hệ thống
 đã về VPS ổn định.
 
-> **Khi nào dùng**: bước cuối của `repatriate-to-vps.md`, sau khi hạ tầng mới (VPS) đã
+> **Khi nào dùng**: bước cuối của `../../vps-runbook.md` (repatriate), sau khi hạ tầng mới (VPS) đã
 > chạy ổn định ≥ 7 ngày.
 > **Điều kiện**: repatriation đã xác nhận; `api.closy`/`api-v2` đã trỏ về hạ tầng mới.
 > **Không dùng khi**: Cloud Run (managed) còn phục vụ traffic — teardown khi đó sẽ gây downtime.
