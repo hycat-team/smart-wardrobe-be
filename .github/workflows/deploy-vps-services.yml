@@ -16,6 +16,11 @@ on:
                 required: true
                 default: all
                 type: string
+    # Tag trigger (all services): push `vps-*` to deploy the VPS axis.
+    # inputs.services is empty on tag push, so the plan job defaults to all.
+    push:
+        tags:
+            - vps-*
 
 permissions:
     contents: read
@@ -84,6 +89,16 @@ jobs:
                       ${{ steps.image.outputs.name }}:latest
                   cache-from: type=gha,scope=${{ matrix.service }}
                   cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+            # On tag push (vps-*), alias the pushed digest with the tag name for
+            # traceability (e.g. ghcr.io/<owner>/<svc>:vps-v1.0.0). Server-side
+            # only — no rebuild, no pull.
+            - name: Alias image with release tag
+              if: startsWith(github.ref, 'refs/tags/')
+              shell: bash
+              run: |
+                  IMG='${{ steps.image.outputs.name }}'
+                  docker buildx imagetools create --tag "${IMG}:${{ github.ref_name }}" "${IMG}:${{ github.sha }}"
 
     deploy:
         needs:

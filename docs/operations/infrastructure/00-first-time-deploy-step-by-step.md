@@ -328,13 +328,18 @@ VPS; 1 service fail không chặn 2 còn lại. Smoke test qua `VPS_SMOKE_URL` (
 
 Deploy box ngoài AWS làm ở GĐ2 (`15-aws-compute.md` + `deploy-aws.yml`).
 
-### 6.1 Dispatch các workflow (chạy thủ công)
+### 6.1 Dispatch các workflow (chạy thủ công) hoặc push tag
 
-| Workflow | Lệnh | Input |
-|---|---|---|
-| `deploy-vps-services.yml` (3 service trên VPS) | `gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all` | `services` |
-| `deploy-aws.yml` (GĐ2, box ngoài) | `gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all` | `services` |
-| `deploy-production.yml` (rollback monolith khẩn cấp) | `gh workflow run deploy-production.yml -R "<OWNER/REPO>" --ref main -f confirm=rollback` | `confirm` phải = `rollback` |
+| Workflow | Dispatch tay | Push tag (all services) | Input |
+|---|---|---|---|
+| `deploy-vps-services.yml` (3 service trên VPS) | `gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all` | `git tag -a vps-v1.0.0 -m "..." && git push origin vps-v1.0.0` | `services` (tag push = all) |
+| `deploy-aws.yml` (GĐ2, box ngoài) | `gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all` | `git tag -a aws-v1.0.0 -m "..." && git push origin aws-v1.0.0` | `services` (tag push = all) |
+| `deploy-production.yml` (rollback monolith khẩn cấp) | `gh workflow run deploy-production.yml -R "<OWNER/REPO>" --ref main -f confirm=rollback` | (không có — bắt buộc dispatch + xác nhận) | `confirm` phải = `rollback` |
+
+> Quy ước tag: `vps-*` chỉ chạy trục VPS, `aws-*` chỉ chạy trục box ngoài — 2 trục
+> độc lập, không tag nào deploy cả 2. Tag push vẫn qua approval gate của environment
+> (run chờ Approve như dispatch). Deploy lẻ 1 service chỉ làm được bằng dispatch
+> (`-f services=commerce`). Image GHCR được alias thêm tên tag để truy vết.
 
 - Xem tiến độ: `gh run list -R "<OWNER/REPO>" --limit 5` rồi `gh run watch <id> -R "<OWNER/REPO>"`.
 - Nếu environment có Required reviewers → run dừng ở trạng thái chờ; vào
