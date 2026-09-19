@@ -21,6 +21,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: http
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             # FR-035: per-service Goose version table (Account keeps the shared default).
             # http + worker of the same service share one table (advisory lock).
             DATABASE_MIGRATION_TABLE: goose_db_version
@@ -54,6 +56,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: http
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             DATABASE_MIGRATION_TABLE: goose_db_version_commerce
             INGRESS_ACCOUNT_URL: http://account-http:8080
             INGRESS_COMMERCE_URL: http://commerce-http:8080
@@ -81,6 +85,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: http
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             DATABASE_MIGRATION_TABLE: goose_db_version_ai
             INGRESS_ACCOUNT_URL: http://account-http:8080
             INGRESS_COMMERCE_URL: http://commerce-http:8080
@@ -108,6 +114,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: worker
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             DATABASE_MIGRATION_TABLE: goose_db_version
             INGRESS_ACCOUNT_URL: http://account-http:8080
             INGRESS_COMMERCE_URL: http://commerce-http:8080
@@ -135,6 +143,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: worker
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             DATABASE_MIGRATION_TABLE: goose_db_version_commerce
             INGRESS_ACCOUNT_URL: http://account-http:8080
             INGRESS_COMMERCE_URL: http://commerce-http:8080
@@ -162,6 +172,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: worker
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             DATABASE_MIGRATION_TABLE: goose_db_version_ai
             INGRESS_ACCOUNT_URL: http://account-http:8080
             INGRESS_COMMERCE_URL: http://commerce-http:8080

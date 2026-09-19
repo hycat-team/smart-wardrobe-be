@@ -113,6 +113,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: ${APP_MODE:-all}
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             # FR-035: per-service Goose version table (Account keeps the shared default).
             DATABASE_MIGRATION_TABLE: goose_db_version
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
@@ -147,6 +149,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: ${APP_MODE:-all}
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             # FR-035: per-service Goose version table (avoids ordering drift on the shared DB).
             DATABASE_MIGRATION_TABLE: goose_db_version_commerce
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
@@ -181,6 +185,8 @@ services:
         environment:
             CONFIG_FILE: /app/config/config.production.yaml
             APP_MODE: ${APP_MODE:-all}
+            # FR-049: entrypoint requires PORT or SERVER_PORT; containers always listen 8080.
+            SERVER_PORT: "8080"
             # FR-035: per-service Goose version table (avoids ordering drift on the shared DB).
             DATABASE_MIGRATION_TABLE: goose_db_version_ai
             TZ: ${TZ:-Asia/Ho_Chi_Minh}
