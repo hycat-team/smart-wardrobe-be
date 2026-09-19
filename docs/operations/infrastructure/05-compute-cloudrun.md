@@ -1,5 +1,10 @@
 # 05 — Compute Cloud Run (trial + billing cap)
 
+> **ĐÃ LOẠI KHỎI KIẾN TRÚC (GĐ1).** Cloud Run chưa từng tồn tại (không project, không
+> secret, workflow `deploy-platform.yml` đã xóa). Compute ngoài chuyển sang **AWS**
+> ở GĐ2 — xem runbook `15-aws-compute.md`. Nội dung bên dưới giữ lại tham khảo cho tới
+> khi GĐ2 viết lại file này.
+
 Điều kiện: GCP project đã bật billing, đã tạo Artifact Registry + WIF + deployer SA
 (`00` §2), và đã set đầy đủ secret (`00` §5).
 

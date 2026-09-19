@@ -11,8 +11,8 @@ GO_BUILD_FLAGS := -trimpath -ldflags="-s -w"
 BIN_DIR := bin
 
 # Registry conventions (FR-042/FR-051, T007a):
-# - Cloud Run images → Artifact Registry (asia-southeast1), tag <svc>:<git-sha> (immutable).
-# - VPS images (rollback + repatriation) → GHCR with existing CI token.
+# - VPS + AWS images → GHCR with existing CI token, tag <svc>:<git-sha> (immutable).
+# - AR_* below is kept for manual registry builds (image-build/image-push).
 AR_HOST ?= asia-southeast1-docker.pkg.dev
 AR_PROJECT ?= closy-hycat
 AR_REPO ?= closy
@@ -39,17 +39,11 @@ RABBITMQ_HOST ?= localhost
 DB_LISTENER_HOST ?= localhost
 CONFIG_FILE ?= $(abspath configs/config.yaml)
 
-# Cloud Run deploy defaults (FR-044..FR-048; manual helper — CI uses deploy-platform.yml)
-CR_REGION ?= asia-southeast1
-CR_CONCURRENCY ?= 40
-CR_HTTP_MAX_INSTANCES ?= 2
-
 # Nginx ingress render (FR-028; runs on VPS)
 NGINX_TEMPLATES_DIR := deployments/nginx/templates
-NGINX_ROUTES_DIR := deployments/nginx/api-v2-routes
 NGINX_RENDER_DIR ?= /etc/nginx
-# Server-block set to render: parallel | parallel-v2 | repatriation | rollback
-NGINX_MODE ?= parallel
+# Server-block set to render: services | services-redirect | rollback
+NGINX_MODE ?= services
 
 ifeq ($(OS),Windows_NT)
 GO_BIN_EXT := .exe
@@ -86,7 +80,7 @@ name := $(or $(name),$(NAME))
 SVC_REQ = $(if $(filter $(SVC),account commerce ai),,$(error This target requires svc=<account|commerce|ai> — e.g. make $@ svc=account))
 unexport SVC_REQ
 
-.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push deploy token-helper-build image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
+.PHONY: help dev-help quality-help docker-help migration-help tools-help platform-help install-tools wire wire-all swagger swagger-all swagger-combine generate buf-gen buf-lint hygiene-scan fmt fmt-check tidy tidy-check vet test test-workspace test-race test-integration lint build build-all run dev check generate-check clean-swagger clean migrate-status migrate-up migrate-down migrate-create migrate-version docker-build image-build image-push image-build-monolith-rollback nginx-reload nginx-check nginx-routes nginx-reload-local docker-dev-up docker-dev-stop docker-dev-down docker-prod-up docker-prod-stop docker-prod-down install-goose
 
 help:
 	@echo "========================================================================"
@@ -98,7 +92,7 @@ help:
 	@echo "  make docker-help    : Docker Compose development & production targets"
 	@echo "  make migration-help : Database migration (Goose) commands"
 	@echo "  make tools-help     : Local development tools installation helper"
-	@echo "  make platform-help  : Cloud Run / registry / ingress targets (020)"
+  @echo "  make platform-help  : Registry / ingress targets (020)"
 	@echo "Per-service targets take svc=<account|commerce|ai>, e.g. make build svc=ai"
 	@echo "========================================================================"
 
@@ -156,11 +150,9 @@ tools-help:
 	@echo "  make install-goose    : Install Goose migration CLI binary"
 
 platform-help:
-	@echo "CLOUD RUN / REGISTRY / INGRESS COMMANDS (020):"
+	@echo "REGISTRY / INGRESS COMMANDS (020):"
 	@echo "  make image-build svc= : Build one service image (tag <svc>:<git-sha>)"
-	@echo "  make image-push svc=  : Push one service image to Artifact Registry"
-	@echo "  make deploy svc=      : Deploy one service to Cloud Run (HTTP, manual helper)"
-	@echo "  make token-helper-build : Build token-helper binary + image (VPS)"
+	@echo "  make image-push svc=  : Push one service image to the registry"
 	@echo "  make nginx-reload     : Render Nginx templates and reload (VPS)"
 	@echo "  make image-build-monolith-rollback : Build rollback image FROM tag monolith-legacy (once)"
 
@@ -236,7 +228,6 @@ tidy:
 	@cd services/account && go mod tidy
 	@cd services/commerce && go mod tidy
 	@cd services/ai && go mod tidy
-	@cd deployments/token-helper && go mod tidy
 	@go work sync
 	@echo Go module tidy finished.
 
@@ -247,7 +238,6 @@ tidy-check:
 	@cd services/account && go mod tidy -diff
 	@cd services/commerce && go mod tidy -diff
 	@cd services/ai && go mod tidy -diff
-	@cd deployments/token-helper && go mod tidy -diff
 	@echo Go module files are tidy.
 
 generate-check:
@@ -263,7 +253,6 @@ vet:
 	@cd services/account && go vet ./...
 	@cd services/commerce && go vet ./...
 	@cd services/ai && go vet ./...
-	@cd deployments/token-helper && go vet ./...
 	@echo Go vet finished.
 
 test:
@@ -273,7 +262,6 @@ test:
 	@cd services/account && $(TEST_CMD)
 	@cd services/commerce && $(TEST_CMD)
 	@cd services/ai && $(TEST_CMD)
-	@cd deployments/token-helper && $(TEST_CMD)
 	@echo Go tests finished.
 
 test-workspace: test
@@ -285,7 +273,6 @@ test-race:
 	@cd services/account && $(RACE_TEST_CMD)
 	@cd services/commerce && $(RACE_TEST_CMD)
 	@cd services/ai && $(RACE_TEST_CMD)
-	@cd deployments/token-helper && $(RACE_TEST_CMD)
 	@echo Go race tests finished.
 
 lint: fmt-check vet
@@ -374,22 +361,9 @@ image-build:
 
 image-push:
 	$(SVC_REQ)
-	@echo Pushing $(SVC) image to Artifact Registry...
+	@echo Pushing $(SVC) image to the registry...
 	@docker push $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA)
 	@echo Image pushed.
-
-deploy:
-	$(SVC_REQ)
-	@echo "Deploying $(SVC) to Cloud Run (manual helper; CI uses deploy-platform.yml)..."
-	@gcloud run deploy closy-$(SVC) --image $(AR_HOST)/$(AR_PROJECT)/$(AR_REPO)/$(SVC):$(GIT_SHA) --region $(CR_REGION) --platform managed --concurrency $(CR_CONCURRENCY) --max-instances $(CR_HTTP_MAX_INSTANCES)
-	@echo Deploy finished.
-
-token-helper-build:
-	@echo "Building token-helper binary and image (VPS)..."
-	@$(MKDIR_BIN_CMD)
-	@go build $(GO_BUILD_FLAGS) -o "$(BIN_DIR)/token-helper$(GO_BIN_EXT)" ./deployments/token-helper
-	@docker build -f deployments/token-helper/Dockerfile -t closy-token-helper:local .
-	@echo token-helper build finished.
 
 image-build-monolith-rollback:
 	@echo "Building rollback image FROM tag monolith-legacy (run once before funded window ends)..."
@@ -401,16 +375,12 @@ image-build-monolith-rollback:
 
 nginx-reload:
 	@echo "Rendering Nginx templates (NGINX_MODE=$(NGINX_MODE)) and reloading (VPS)..."
-	@mkdir -p $(NGINX_RENDER_DIR)/conf.d $(NGINX_RENDER_DIR)/api-v2-routes
+	@mkdir -p $(NGINX_RENDER_DIR)/conf.d
 	@rm -f $(NGINX_RENDER_DIR)/conf.d/*.conf
 	@for f in $(NGINX_TEMPLATES_DIR)/$(NGINX_MODE)/*.template; do \
 		out=$$(basename $$f .template); \
-		envsubst '$${API_DOMAIN} $${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE} $${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL} $${TOKEN_HELPER_URL}' < $$f > $(NGINX_RENDER_DIR)/conf.d/$$out; \
+		envsubst '$${API_DOMAIN} $${API_V2_DOMAIN} $${NGINX_CLIENT_MAX_BODY_SIZE}' < $$f > $(NGINX_RENDER_DIR)/conf.d/$$out; \
 		echo "  rendered conf.d/$$out"; \
-	done
-	@for f in $(NGINX_ROUTES_DIR)/*.conf; do \
-		out=$$(basename $$f); \
-		envsubst '$${ACCOUNT_RUN_URL} $${COMMERCE_RUN_URL} $${AI_RUN_URL}' < $$f > $(NGINX_RENDER_DIR)/api-v2-routes/$$out; \
 	done
 	@nginx -t
 	@nginx -s reload

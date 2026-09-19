@@ -12,7 +12,6 @@ COPY services/ai/go.mod services/ai/go.sum ./services/ai/
 # go.work sync cần thấy go.mod của MỌI module (chỉ copy go.mod, không copy source).
 COPY services/account/go.mod services/account/go.sum ./services/account/
 COPY services/commerce/go.mod services/commerce/go.sum ./services/commerce/
-COPY deployments/token-helper/go.mod ./deployments/token-helper/
 RUN go work sync
 COPY shared/ ./shared/
 COPY contracts/ ./contracts/

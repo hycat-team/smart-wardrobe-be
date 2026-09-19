@@ -1,5 +1,5 @@
-# deployments/nginx/templates/api-v2-redirect.conf.template — sau repatriation (T098/FR-055).
-# api-v2.closy... redirect 301 về api.closy... (host canonical) trong grace
+# deployments/nginx/templates/services-redirect/api-v2-redirect.conf.template — grace period.
+# api-v2.closy.hycat.online redirect 301 về api.closy.hycat.online (host canonical) trong grace
 # period 14–30 ngày; cả hai host cùng phục vụ 3-service compose. Sau grace
 # period: xoá bản ghi DNS api-v2. Render bằng envsubst rồi `nginx -t` + reload.
 

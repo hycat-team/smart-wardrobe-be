@@ -1,9 +1,9 @@
-# deployments/nginx/templates/vps-3service.conf.template - repatriation ingress (T098/T099).
-# api.closy... -> 3 service compose (account/commerce/ai). Rendered via nginx
-# envsubst then `nginx -t` + reload. Active when the system is repatriated to
-# the VPS.
+# deployments/nginx/templates/services/vps-3service.conf.template - services ingress.
+# api.closy.hycat.online -> 3 service compose (account/commerce/ai). Rendered via nginx
+# envsubst then `nginx -t` + reload. Active when NGINX_MODE=services
+# (block :80 nằm ở default.conf.template để tránh trùng server_name).
 # Route map lives in the "# BEGIN GENERATED ROUTES" region below and is produced
-# by `make nginx-routes` (single source shared with api-v2 + local ingress).
+# by `make nginx-routes` (single source shared with the local ingress).
 # Do not edit the generated region by hand.
 # Self-host: NO Cloud Run IAM (app JWT handles auth); rate-limit lives in the app
 # (FR-054, Nginx does NOT rate-limit); residual risk "no full WAF" (T099).
@@ -19,25 +19,6 @@ map $http_upgrade $connection_upgrade {
 log_format main_tid '$remote_addr - $remote_user [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
                     '"$http_user_agent" req_id=$request_id';
-
-server {
-    listen 80;
-    server_name ${API_DOMAIN};
-
-    location /nginx-health {
-        access_log off;
-        default_type text/plain;
-        return 200 "ok\n";
-    }
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
 
 server {
     listen 443 ssl;

@@ -1,15 +1,17 @@
-# 00 — First-time deploy step-by-step (managed + VPS song song)
+# 00 — VPS lên 3-service step-by-step (GĐ1)
 
-> Runbook triển khai lần đầu: Cloud Run (3 service) + VPS Nginx ingress chạy song song
-> với monolith. **Thực hiện tuần tự từ trên xuống, không bỏ bước.**
+> Runbook đưa VPS từ monolith sang 3 service compose (`NGINX_MODE=services`).
+> Cloud Run đã loại khỏi kiến trúc (chưa từng tồn tại) — không còn § GCP/Cloud Run/token-helper.
+> Box ngoài AWS (`api-v2`) làm sau ở GĐ2 (runbook `15-aws-compute.md`); managed
+> (Supabase/Redis Cloud/CloudAMQP) đăng ký khi tới GĐ2.
+> **Thực hiện tuần tự từ trên xuống, không bỏ bước.**
 >
 > Mỗi secret đều ghi rõ: **nguồn lấy → giá trị/định dạng → lệnh set → cách verify.**
 > Cuối §5 có block lệnh copy-paste và lệnh kiểm tra toàn bộ secret/variable.
 >
 > **Điền placeholder trước khi chạy** (thay trong toàn bộ tài liệu):
-> `<OWNER/REPO>` = `hycat-team/smart-wardrobe-be` · `<PROJECT>` = GCP project id
-> (phải khớp `AR_PROJECT` trong `deploy-platform.yml`, mặc định `closy-hycat`) ·
-> `<REGION>` = `asia-southeast1` · `<VPS_HOST>` · `<VPS_USER>` · `<VPS_SSH_PORT>`.
+> `<OWNER/REPO>` = `hycat-team/smart-wardrobe-be` ·
+> `<VPS_HOST>` · `<VPS_USER>` · `<VPS_SSH_PORT>`.
 >
 > Biến môi trường app đầy đủ: xem `08-environment-variables.md`.
 
@@ -22,13 +24,13 @@ Mỗi mục dưới ghi rõ **bấm vào đâu để lấy giá trị** — đi�
 
 **a) Tạo 2 Environments** (để bật approval gate + chỗ chứa secret theo môi trường):
 1. Mở `https://github.com/<OWNER/REPO>/settings/environments`.
-2. **New environment** → nhập `gcp-production` → **Configure environment**.
-   - (Tuỳ chọn) tick **Required reviewers** → thêm người duyệt (mỗi lần deploy Cloud Run phải approve).
+2. **New environment** → nhập `aws-production` → **Configure environment**.
+   - (Tuỳ chọn) tick **Required reviewers** → thêm người duyệt (mỗi lần deploy box ngoài phải approve).
 3. Lặp lại tạo `vps-production` (nên bật Required reviewers cho môi trường này).
 4. Verify:
    ```bash
    gh api repos/<OWNER/REPO>/environments --jq '.environments[].name'
-   # gcp-production
+   # aws-production
    # vps-production
    ```
 
@@ -42,19 +44,11 @@ Mỗi mục dưới ghi rõ **bấm vào đâu để lấy giá trị** — đi�
 4. Copy token (`ghp_...`) → secret `GHCR_READ_TOKEN`. `GHCR_USERNAME` = username GitHub
    sở hữu token (ví dụ `hycat-team-bot` hoặc user cá nhân của bạn).
 
-### 0.2 Google Cloud (Cloud Run + Artifact Registry)
-1. Tạo Google account → https://console.cloud.google.com → **Start free trial** (cần thẻ; nhận credit trial).
-2. **Tạo project**: Console → thanh chọn project → **New project** → ID phải **khớp `AR_PROJECT`**
-   (mặc định `closy-hycat`; nếu đặt id khác thì sửa `AR_PROJECT` trong `deploy-platform.yml`).
-3. **Bật billing**: Console → Billing → **Link a billing account**.
-4. Cài `gcloud`, rồi xác thực:
-   ```bash
-   gcloud auth login
-   gcloud config set project <PROJECT>
-   gcloud config list                       # xác nhận account + project đúng
-   gcloud projects describe <PROJECT> --format="value(projectNumber)"   # ghi lại PROJECT_NUMBER
-   ```
-5. Phần API/Artifact Registry/WIF/SA/billing cap làm ở **§2** (không làm ở đây).
+### 0.2 Cloud compute ngoài (GĐ2 — chưa làm)
+
+Cloud Run đã loại (chưa từng tồn tại: không project, không secret, không deploy).
+Compute ngoài dùng **AWS** (box Lightsail/EC2 Singapore) ở GĐ2 — xem runbook
+`15-aws-compute.md` + workflow `deploy-aws.yml`. GĐ1 bỏ qua mục này.
 
 ### 0.3 Supabase Pro (Postgres + pgvector)
 1. Đăng ký https://supabase.com → **New project** (plan Pro hoặc trial).
@@ -90,12 +84,11 @@ Mỗi mục dưới ghi rõ **bấm vào đâu để lấy giá trị** — đi�
 - `hycat.online` giữ DNS ở **Vercel**; sẽ thêm **subdomain `api-v2`** ở §7.
 
 ### 0.8 Điều kiện tiên quyết (checklist)
-- [ ] GCP project trial đã bật billing (id khớp `AR_PROJECT`), đã có `PROJECT_NUMBER`.
 - [ ] GitHub repo có quyền Actions + Packages (GHCR); đã tạo PAT `read:packages`.
-- [ ] Supabase / Redis Cloud / CloudAMQP đã tạo, đã có host/port/password (mục 0.3–0.5).
-- [ ] VPS hiện hữu đang chạy monolith (`api.closy`), có Docker + Nginx/`/opt/closy`.
+- [ ] VPS hiện hữu đang chạy monolith (`api.closy.hycat.online`), có Docker + `/opt/closy`.
 - [ ] Domain `hycat.online` quản lý DNS ở **Vercel** (không NS-delegate).
-- [ ] Đã cài: `gcloud`, `gh`, `docker`, `git`.
+- [ ] Đã cài: `gh`, `docker`, `git`.
+- [ ] (GĐ2) Supabase / Redis Cloud / CloudAMQP đã tạo, đã có host/port/password (mục 0.3–0.5).
 
 ## 1. Git: push tag rollback (BẮT BUỘC)
 
@@ -108,76 +101,10 @@ git push origin monolith-legacy
 git ls-remote --tags origin | grep monolith-legacy   # phải thấy
 ```
 
-## 2. GCP one-time setup
+## 2. Cloud one-time setup (GĐ2 — bỏ qua ở GĐ1)
 
-```bash
-gcloud auth login
-gcloud config set project <PROJECT>
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
-  iam.googleapis.com iamcredentials.googleapis.com cloudresourcemanager.googleapis.com \
-  monitoring.googleapis.com billingbudgets.googleapis.com
-```
-
-### 2.1 Artifact Registry (khớp `AR_REPO`)
-
-```bash
-gcloud artifacts repositories create closy \
-  --repository-format=docker --location=asia-southeast1 \
-  --description="Closy service images"
-```
-Verify: `gcloud artifacts repositories list --location=asia-southeast1`.
-
-### 2.2 Deployer SA + Workload Identity Federation (cho GitHub Actions)
-
-```bash
-gcloud iam service-accounts create github-deployer --display-name="GitHub Actions deployer"
-
-gcloud projects add-iam-policy-binding <PROJECT> \
-  --member="serviceAccount:github-deployer@<PROJECT>.iam.gserviceaccount.com" --role="roles/run.admin"
-gcloud projects add-iam-policy-binding <PROJECT> \
-  --member="serviceAccount:github-deployer@<PROJECT>.iam.gserviceaccount.com" --role="roles/artifactregistry.writer"
-gcloud projects add-iam-policy-binding <PROJECT> \
-  --member="serviceAccount:github-deployer@<PROJECT>.iam.gserviceaccount.com" --role="roles/iam.serviceAccountUser"
-
-gcloud iam workload-identity-pools create github --location=global
-gcloud iam workload-identity-pools providers create-oidc github \
-  --location=global --workload-identity-pool=github \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository=='<OWNER/REPO>'"
-
-PROJECT_NUMBER=$(gcloud projects describe <PROJECT> --format="value(projectNumber)")
-gcloud iam service-accounts add-iam-policy-binding github-deployer@<PROJECT>.iam.gserviceaccount.com \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/<OWNER/REPO>"
-```
-
-**Ghi lại 2 giá trị này để set secret ở §5.3:**
-- `GCP_WORKLOAD_IDENTITY_PROVIDER` = `projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github`
-- `GCP_DEPLOYER_SERVICE_ACCOUNT` = `github-deployer@<PROJECT>.iam.gserviceaccount.com`
-
-### 2.3 Token-helper SA (Nginx → Cloud Run IAM)
-
-```bash
-gcloud iam service-accounts create token-helper --display-name="Nginx token helper"
-gcloud iam service-accounts keys create token-helper-sa.json \
-  --iam-account=token-helper@<PROJECT>.iam.gserviceaccount.com
-```
-Sau khi deploy (bước 6) grant `run.invoker` cho **đúng 3 service**:
-```bash
-for svc in account commerce ai; do
-  gcloud run services add-iam-policy-binding closy-$svc \
-    --region=asia-southeast1 --member="serviceAccount:token-helper@<PROJECT>.iam.gserviceaccount.com" \
-    --role="roles/run.invoker"
-done
-```
-Chép `token-helper-sa.json` lên VPS `/opt/closy/token-helper-sa.json`, `chmod 600`.
-
-### 2.4 Billing cap + alert
-
-Console GCP → Billing → Budgets & alerts: tạo budget cho `<PROJECT>`, cap = ngân sách
-trial, alert 50/90/100%. (Hoặc `gcloud billing budgets create --billing-account=<ID>
---budget-amount=<USD> --threshold-rule=percent=0.9`.)
+Cloud Run/GCP đã loại. Setup compute + managed ngoài ở GĐ2 theo runbook
+`15-aws-compute.md` (mục 0.3–0.5 giữ nguyên cách lấy host/port/password khi tới GĐ2).
 
 ## 3. Supabase (Postgres + pgvector)
 
@@ -239,7 +166,7 @@ Lấy giá trị ở mục 0.4 / 0.5 rồi map:
   (kể cả job có `environment:`). **Đơn giản nhất — khuyến nghị.**
 - **Environment-level** (`Settings → Environments → <env> → Environment secrets`):
   chỉ job khai `environment: <env>` mới đọc được. Nếu muốn tách quyền:
-  - `gcp-production` ← toàn bộ nhóm GCP + app (DB/Redis/RabbitMQ/JWT/...).
+  - `aws-production` ← `AWS_*` + toàn bộ nhóm app (DB/Redis/RabbitMQ/JWT/...) cho box ngoài.
   - `vps-production` ← `VPS_*`, `GHCR_*`.
 
 > Vì workflow hiện tại chỉ cần secret có mặt ở 1 trong 2 scope, đặt repo-level là
@@ -251,13 +178,7 @@ Lấy giá trị ở mục 0.4 / 0.5 rồi map:
 ```bash
 OWNER_REPO="<OWNER/REPO>"
 
-# --- GCP (từ §2.2) ---
-gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER -R "$OWNER_REPO" \
-  --body "projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github"
-gh secret set GCP_DEPLOYER_SERVICE_ACCOUNT -R "$OWNER_REPO" \
-  --body "github-deployer@<PROJECT>.iam.gserviceaccount.com"
-
-# --- Database (Supabase, §3) ---
+# --- Database (Supabase, §3 — GĐ2; GĐ1 VPS dùng local, bỏ qua) ---
 gh secret set DB_USER -R "$OWNER_REPO"     --body "postgres.<project-ref>"
 gh secret set DB_PASSWORD -R "$OWNER_REPO" --body "<db-password>"
 gh secret set DB_NAME -R "$OWNER_REPO"     --body "postgres"
@@ -302,16 +223,14 @@ gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 # SSH key + known_hosts là nội dung nhiều dòng → set từ file (xem 5.3)
 ```
 
-> **INGRESS_ACCOUNT_URL / INGRESS_COMMERCE_URL / INGRESS_AI_URL / INGRESS_TOKEN_AUDIENCE**
-> **điền SAU bước 6** (lấy URL `run.app`).
+> **INGRESS_ACCOUNT_URL / INGRESS_COMMERCE_URL / INGRESS_AI_URL** trên VPS là tên
+> service compose (`http://account:8080`...) — điền trong `.env.production`, không phải secret.
 
 ### 5.3 Từng secret: lấy ở đâu + cách set
 
 | Secret | Lấy ở đâu | Set bằng |
 |---|---|---|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | output §2.2 | `--body "projects/<NUMBER>/.../providers/github"` |
-| `GCP_DEPLOYER_SERVICE_ACCOUNT` | output §2.2 | `--body "github-deployer@<PROJECT>.iam.gserviceaccount.com"` |
-| `DB_USER` | Supabase pooler user (§3) | `--body` |
+| `DB_USER` | Supabase pooler user (§3, GĐ2) / `closy` local (VPS) | `--body` |
 | `DB_PASSWORD` | Supabase tạo project (§0.3) | `--body` |
 | `DB_NAME` | Supabase database name | `--body "postgres"` |
 | `DB_HOST` | Supabase pooler host (§3) | `--body` |
@@ -336,8 +255,6 @@ gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 | `VPS_KNOWN_HOSTS` | `ssh-keyscan` | `ssh-keyscan -p 22 <VPS_HOST> > known_hosts` rồi `gh secret set VPS_KNOWN_HOSTS < known_hosts` |
 | `GHCR_USERNAME` | GitHub username (§0.1b) | `--body` |
 | `GHCR_READ_TOKEN` | PAT `read:packages` (§0.1b) | `--body "ghp_..."` |
-| `INGRESS_ACCOUNT/COMMERCE/AI_URL` | **§6 sau khi deploy** | `--body "https://closy-<svc>-xxx.run.app"` |
-| `INGRESS_TOKEN_AUDIENCE` | **§6 sau khi deploy** | `--body "<URL Account run.app>"` |
 
 ES256 (tuỳ chọn, FR-022): sinh cặp EC P-256 rồi set từ file:
 ```bash
@@ -352,7 +269,7 @@ gh secret set JWT_PUBLIC_KEY  -R "<OWNER/REPO>" < ec_public.pem
 | Variable | Dùng cho | Lấy giá trị | Lệnh |
 |---|---|---|---|
 | `PRODUCTION_HEALTH_URL` | `deploy-production.yml` smoke test | health URL của monolith hiện tại | `gh variable set PRODUCTION_HEALTH_URL -R "<OWNER/REPO>" --body "https://api.closy.hycat.online/api/v1/health"` |
-| `VPS_SMOKE_URL` | `deploy-vps-services.yml` smoke test | base URL `api-v2` (**điền sau §7**) | `gh variable set VPS_SMOKE_URL -R "<OWNER/REPO>" --body "https://api-v2.closy.hycat.online"` |
+| `VPS_SMOKE_URL` | `deploy-vps-services.yml` smoke test | base URL `api.closy` | `gh variable set VPS_SMOKE_URL -R "<OWNER/REPO>" --body "https://api.closy.hycat.online"` |
 
 > Để trống `VPS_SMOKE_URL` cũng chạy được — step smoke test tự skip khi variable rỗng.
 
@@ -362,63 +279,48 @@ gh secret set JWT_PUBLIC_KEY  -R "<OWNER/REPO>" < ec_public.pem
 gh secret list   -R "<OWNER/REPO>"
 gh variable list -R "<OWNER/REPO>"
 # Nếu đặt ở environment:
-gh secret list --env gcp-production -R "<OWNER/REPO>"
+gh secret list --env aws-production -R "<OWNER/REPO>"
 gh secret list --env vps-production -R "<OWNER/REPO>"
 ```
-Checklist tối thiểu để `deploy-platform.yml` không chết vì secret rỗng:
-- [ ] `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT`
+Checklist tối thiểu để `deploy-vps-services.yml` chạy (GĐ1):
+- [ ] `VPS_*` (5) + `GHCR_*` (2)
+- [ ] `VPS_SMOKE_URL` trỏ base `https://api.closy.hycat.online` (không còn api-v2)
+
+Checklist bổ sung khi tới GĐ2 (`deploy-aws.yml`):
+- [ ] `AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS` + var `AWS_SMOKE_URL`
 - [ ] `DB_*` (7 biến), `REDIS_*` (3), `RABBITMQ_*` (4)
 - [ ] `JWT_SECRET`, `JWT_ALGORITHM`
 - [ ] `SWAGGER_ACCESS_CODE`, `CLOUDINARY_*`, `EMAIL_SMTP_*`, `PAYOS_*`
-- [ ] `INGRESS_*` (điền ở §6)
-- [ ] `VPS_*` (5) + `GHCR_*` (2) cho VPS workflows
 
-> Workflow tự set (không tạo secret): `SERVER_ENV=managed`, `APP_MODE=http|worker`,
-> `DB_SSLMODE=require`, `DB_LISTENER_SSLMODE=require`, `DATABASE_MIGRATE_ON_START=true`,
-> `DATABASE_MIGRATION_TABLE` (per-service), `REDIS_TLS_ENABLED=true`,
-> `RABBITMQ_TLS_ENABLED=true`, `ELASTICSEARCH_ENABLED=false`.
+> Workflow box ngoài (GĐ2) tự set (không tạo secret): `SERVER_ENV=vps`,
+> `APP_MODE=http|worker`, `DATABASE_MIGRATE_ON_START=true`,
+> `DATABASE_MIGRATION_TABLE` (per-service), `ELASTICSEARCH_ENABLED=false`.
+> Riêng managed TLS (`DB_SSLMODE`/`DB_LISTENER_SSLMODE=require`,
+> `REDIS_TLS_ENABLED=true`, `RABBITMQ_TLS_ENABLED=true`) lấy từ secret/plaintext
+> đã set ở trên theo dashboard từng nền tảng.
 
-## 6. Deploy Cloud Run
+## 6. Deploy 3 service lên VPS (GĐ1)
 
 ```bash
-gh workflow run deploy-platform.yml -R "<OWNER/REPO>" --ref main -f services=all
-RUN_ID=$(gh run list --workflow deploy-platform.yml -R "<OWNER/REPO>" --limit 1 \
+gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all
+RUN_ID=$(gh run list --workflow deploy-vps-services.yml -R "<OWNER/REPO>" --limit 1 \
   --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID" -R "<OWNER/REPO>"
 ```
-> Nếu environment `gcp-production` có Required reviewers, run sẽ **chờ approve** — vào
+> Nếu environment `vps-production` có Required reviewers, run sẽ **chờ approve** — vào
 > `Actions → run → Review deployments → Approve`.
 
-Sau khi xong, lấy URL từng service:
-```bash
-for svc in account commerce ai; do
-  echo "$svc = $(gcloud run services describe closy-$svc --region asia-southeast1 --format='value(status.url)')"
-done
-```
-→ set 3 secret ingress (URL `run.app` ở trên):
-```bash
-gh secret set INGRESS_ACCOUNT_URL  -R "<OWNER/REPO>" --body "https://closy-account-xxx.run.app"
-gh secret set INGRESS_COMMERCE_URL -R "<OWNER/REPO>" --body "https://closy-commerce-xxx.run.app"
-gh secret set INGRESS_AI_URL       -R "<OWNER/REPO>" --body "https://closy-ai-xxx.run.app"
-```
-→ grant `run.invoker` cho token-helper SA (§2.3), set `INGRESS_TOKEN_AUDIENCE` = URL Account:
-```bash
-gh secret set INGRESS_TOKEN_AUDIENCE -R "<OWNER/REPO>" --body "https://closy-account-xxx.run.app"
-```
-→ **chạy lại** để app nhận ingress URL:
-```bash
-gh workflow run deploy-platform.yml -R "<OWNER/REPO>" --ref main -f services=all
-```
+Workflow build matrix per service → push GHCR (pin digest) → `compose up -d <svc>` trên
+VPS; 1 service fail không chặn 2 còn lại. Smoke test qua `VPS_SMOKE_URL` (§5.4).
 
-Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
-`gcloud run services proxy closy-account --region asia-southeast1`).
+Deploy box ngoài AWS làm ở GĐ2 (`15-aws-compute.md` + `deploy-aws.yml`).
 
-### 6.1 Dispatch các workflow VPS (chạy thủ công)
+### 6.1 Dispatch các workflow (chạy thủ công)
 
 | Workflow | Lệnh | Input |
 |---|---|---|
-| `deploy-platform.yml` (Cloud Run) | `gh workflow run deploy-platform.yml -R "<OWNER/REPO>" --ref main -f services=all` | `services` (`all` hoặc `account,commerce,ai`), `sha` (rỗng = HEAD) |
 | `deploy-vps-services.yml` (3 service trên VPS) | `gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all` | `services` |
+| `deploy-aws.yml` (GĐ2, box ngoài) | `gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all` | `services` |
 | `deploy-production.yml` (rollback monolith khẩn cấp) | `gh workflow run deploy-production.yml -R "<OWNER/REPO>" --ref main -f confirm=rollback` | `confirm` phải = `rollback` |
 
 - Xem tiến độ: `gh run list -R "<OWNER/REPO>" --limit 5` rồi `gh run watch <id> -R "<OWNER/REPO>"`.
@@ -426,7 +328,7 @@ Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
   `Actions → run → Review deployments → Approve`.
 - `deploy-vps-services` cần VPS đã có `/opt/closy/.env.production` (§7) và secret `VPS_*` (§5).
 
-## 7. VPS: ingress song song (`api-v2`)
+## 7. VPS: vào mode `services` (cắt monolith → 3 service)
 
 0. Deploy 3 service lên VPS **trước** để có `.env.deploy` chứa `ACCOUNT/COMMERCE/AI_IMAGE`
    (pin digest) — nginx `depends_on` 3 service nên thiếu 3 biến này là compose báo lỗi ngay:
@@ -440,57 +342,68 @@ Verify: mỗi service 200 `GET /api/v1/health` (qua token helper hoặc
    ```bash
    cd /opt/closy
    cp /duong/dan/repo/.env.production.example .env.production
-   cp token-helper-sa.json /opt/closy/token-helper-sa.json && chmod 600 token-helper-sa.json
    ```
-   Điền các biến **chỉ có trên VPS** (giá trị app còn lại lấy từ secrets ở §5):
+   Điền tối thiểu (xem `06-vps-nginx-ingress-cloudrun.md` §3):
 
    | Biến trong `.env.production` | Giá trị |
    |---|---|
    | `API_DOMAIN` | `api.closy.hycat.online` |
    | `API_V2_DOMAIN` | `api-v2.closy.hycat.online` |
-   | `NGINX_MODE` | `parallel` |
-   | `COMPOSE_PROFILES` | `parallel` |
-   | `ACCOUNT_RUN_URL` / `COMMERCE_RUN_URL` / `AI_RUN_URL` | URL `run.app` từ §6 |
-   | `TOKEN_HELPER_URL` | `http://token-helper:8082` |
-   | `TOKEN_HELPER_SA_KEY_FILE` | `/opt/closy/token-helper-sa.json` (tuyệt đối; tương đối sẽ trỏ nhầm `deployments/`) |
-   | `DB_HOST`/`DB_PORT`/`DB_LISTENER_HOST`/`DB_*` | nếu VPS dùng Postgres local (`postgres`) hoặc Supabase — tuỳ mode |
+   | `NGINX_MODE` | `services` |
+   | `DB_HOST`/`DB_PORT`/`DB_LISTENER_HOST`/`DB_*` | **luôn Postgres local** (`postgres`) — cấm trỏ ra Supabase (luật isolation, xem `01` §4) |
 
-2. **Cert Let's Encrypt** cho cả 2 hostname. Do Nginx đang chạy (monolith), cấp cert
-   bằng standalone (giải phóng port 80) rồi mở lại:
+   Không còn `COMPOSE_PROFILES`, `*_RUN_URL`, `TOKEN_HELPER_*`.
+
+2. **Cert Let's Encrypt** cho `api.closy.hycat.online`. Do Nginx đang chạy (monolith),
+   cấp cert bằng standalone (giải phóng port 80) rồi mở lại:
    ```bash
    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml stop nginx
    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
      --profile maintenance run --rm certbot certonly --standalone \
-     -d api.closy.hycat.online -d api-v2.closy.hycat.online --expand --agree-tos -m <email>
+     -d api.closy.hycat.online --expand --agree-tos -m <email>
    ```
    (`docker stop nginx` không trúng container thật `closy-prod-nginx-1`; phải stop qua compose.)
    (renewal sau này qua webroot; `certbot_www` đã mount sẵn.)
-3. Bật ingress (chỉ nginx + token-helper ở parallel):
+   Cert `api-v2` chỉ cấp khi cần redirect grace (DNS api-v2 đã về VPS).
+3. Guard isolation (chạy trên VPS, chỉ in tên biến khi FAIL — không in giá trị):
+   ```bash
+   for v in DB_HOST DB_LISTENER_HOST REDIS_HOST RABBITMQ_HOST; do
+     val=$(grep "^$v=" .env.production | cut -d= -f2)
+     case "$val" in
+       *supabase.co*|*redislabs.com*|*cloudamqp.com*)
+         echo "FAIL: $v points outside VPS" && exit 1 ;;
+     esac
+   done
+   echo "OK: VPS infra is local-only"
+   ```
+4. Dừng backend cũ rồi bật ingress 3-service:
    ```bash
    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
-     up -d nginx token-helper
+     stop backend || true
+   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
+     up -d --force-recreate nginx
    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps
    ```
    > Không bao giờ `down -v` trên prod (xóa volumes `postgres_data`... = mất dữ liệu).
    > Backup DB trước mọi lần recreate postgres.
-4. DNS Vercel: tạo bản ghi `api-v2.closy.hycat.online` (A/CNAME) → VPS **sau khi** cert
-   + server block sẵn sàng.
+   > Rollback: `NGINX_MODE=rollback` + chạy `deploy-production.yml` (§10).
 5. Smoke:
    ```bash
-   curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health   # monolith giữ nguyên
-   curl -sS -o /dev/null -w '%{http_code}\n' https://api-v2.closy.hycat.online/api/v1/system-catalog/wardrobe-items
-   curl -sSI https://api-v2.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
+   curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health   # 200 qua 3 service VPS
+   curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
+   docker ps --filter name=backend --format '{{.Names}}'                                    # trống
    ```
 
-## 8. Dump dữ liệu VPS → Supabase (song song)
+## 8. Dump dữ liệu VPS → Supabase (GĐ2)
 
 Theo `10-data-migration-vps-supabase.md` (backup + checksum + re-dump tại cutover).
+Chỉ làm sau khi đã đăng ký Supabase ở GĐ2.
 
-## 9. Gate song song (T082)
+## 9. Gate VPS `services`
 
-- [ ] `api-v2` ổn: route 3 service + SSE + auth + upload (SC-014).
-- [ ] `api.closy` **0 thay đổi** routing (SC-015); thiếu ID token → Cloud Run 403 (SC-013).
-- [ ] 0 request `api-v2` qua Cloudflare (SC-016); SSE stream dài không đứt.
+- [ ] `api.closy` 200 qua 3 service VPS (route + SSE + auth + upload).
+- [ ] Backend đã dừng; VPS infra local-only (guard pass).
+- [ ] 0 request qua Cloudflare; SSE stream dài không đứt.
 - [ ] Ghi mốc thời gian + checksum.
 
 ## 10. Vận hành / chuyển mode / rollback
@@ -500,19 +413,19 @@ Theo `10-data-migration-vps-supabase.md` (backup + checksum + re-dump tại cuto
   docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml \
     up -d --force-recreate nginx
   ```
-  `parallel` (api.closy→monolith, api-v2→Cloud Run) · `parallel-v2` (api.closy→3 service VPS,
-  api-v2→Cloud Run, không monolith) · `repatriation` (api.closy→3 service, api-v2→301) ·
-  `rollback` (api.closy→monolith, api-v2→301).
+  `services` (api.closy→3 service VPS, monolith dừng) ·
+  `services-redirect` (api.closy→3 service + api-v2→301, grace sau khi tắt box ngoài) ·
+  `rollback` (api.closy→monolith, api-v2→301, khẩn cấp).
 
-### 10.1 Vào mode `parallel-v2`
-1. Dừng backend cũ (tái dùng bước `12` §2): `... stop backend || true`; verify `docker ps` trống.
-2. Đặt `NGINX_MODE=parallel-v2`, `COMPOSE_PROFILES=parallel-v2` trong `.env.production`.
-3. `up -d nginx token-helper` (kèm cả 2 env-file) + `ps`.
-4. Smoke: `api.closy` 200 qua 3 service VPS; `api-v2` 200 qua Cloud Run; backend đã dừng.
-5. DB: VPS local là live; đồng bộ dump VPS→Supabase (luồng `10-data-migration-vps-supabase.md`)
-   trước đợt verify `api-v2`; `api-v2` chỉ verify, không nhận production traffic.
-- Repatriation: `../repatriate-to-vps.md` + `12-repatriate-vps.md`.
-- Cutover `api.closy`: `../manual-cutover-api-closy-to-cloudrun.md` (owner-triggered).
+### 10.1 Vào mode `services` (chi tiết cắt monolith)
+
+1. Deploy 3 service mới nhất (§6) + smoke nội bộ qua `docker exec` từng container.
+2. Dừng backend cũ: `... stop backend || true`; verify `docker ps` trống backend.
+3. Đặt `NGINX_MODE=services` trong `/opt/closy/.env.production` (xóa `COMPOSE_PROFILES`,
+   `*_RUN_URL`, `TOKEN_HELPER_*` nếu còn từ trước).
+4. Recreate nginx (§7 bước 4) + smoke `api.closy` 200 qua 3 service VPS.
+5. DB: VPS local là live duy nhất ở GĐ1 (Supabase chưa có).
+- Gom về VPS khi cắt box ngoài: `../repatriate-to-vps.md` + `12-repatriate-vps.md`.
 - Rollback khẩn cấp: `deploy-production.yml` (đổi `NGINX_MODE=rollback` **trước** khi chạy;
   workflow tự recreate nginx).
 
@@ -522,7 +435,5 @@ Theo `10-data-migration-vps-supabase.md` (backup + checksum + re-dump tại cuto
   lock mở connection riêng từ `DB_LISTENER_HOST`/`DB_LISTENER_PORT`/`DB_LISTENER_SSLMODE`
   (5432), runtime query vẫn qua pooler 6543. Vì vậy `DB_LISTENER_HOST` là **bắt buộc**
   ở managed (workflow enforce).
-- **Token-helper SA key** là bí mật file trên VPS; rotation thủ công (tạo key mới,
-  redeploy helper, revoke key cũ) — xem `13-stop-vps-and-revoke-secrets.md`.
 - **`:latest` chỉ ở CI**; production pin theo `<git-sha>`/digest.
 - Ảnh private: **không** public; GHCR cần token đọc trên VPS.

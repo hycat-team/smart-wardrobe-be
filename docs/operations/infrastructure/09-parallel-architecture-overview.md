@@ -1,55 +1,55 @@
-# 09 — Kiến trúc song song (monolith + Cloud Run)
+# 09 — Kiến trúc 2 trục độc lập (VPS + box ngoài)
 
-## 1. Trạng thái song song
+VPS và box ngoài (GĐ2: AWS) là **2 trục độc lập** — bật/tắt một bên không đụng bên còn lại.
+DNS là điểm phối hợp duy nhất.
 
-| Host | Đích | Nguồn ghi |
+## 1. Trục 1 — VPS phục vụ gì (`NGINX_MODE` trên VPS, chỉ quyết chuyện VPS)
+
+| Mode | `api.closy.hycat.online` | Monolith | Dùng khi |
+|---|---|---|---|
+| `services` | 3 service compose local | **dừng** | trạng thái ổn định (bất kể box ngoài có tồn tại hay không) |
+| `services-redirect` | 3 service compose local + `api-v2`→301 về api.closy | dừng | grace 14–30 ngày sau khi tắt box ngoài, xong quay về `services` + xóa DNS api-v2 |
+| `rollback` | monolith (`backend`) | chạy | khẩn cấp (`deploy-production.yml`) |
+
+## 2. Trục 2 — Box ngoài bật hay tắt (độc lập 100% với trục 1)
+
+- Bật (GĐ2, runbook `15-aws-compute.md`): provision box → `deploy-aws.yml` → smoke qua IP →
+  trỏ DNS `api-v2.closy.hycat.online` sang IP box. VPS không đổi gì.
+- Tắt: trỏ DNS api-v2 về VPS (grace `services-redirect`) → reunify data
+  (`12-repatriate-vps.md`) → xóa box + hủy managed trước kỳ renew → revoke secrets.
+- VPS không biết box ngoài bật hay tắt; box ngoài không biết VPS đang ở mode nào.
+
+## 3. Hạ tầng mỗi bên (luật isolation, `01` §4)
+
+| App cần | VPS (`services/`) | Box ngoài (GĐ2) |
 |---|---|---|
-| `api.closy...` | Monolith frozen (`monolith-legacy`) trên VPS | **Chính** (người dùng thật) |
-| `api-v2.closy...` | VPS Nginx → 3 Cloud Run | Test nội bộ (dữ liệu dump 1 lần) |
+| Postgres | container `postgres` local | Supabase pooler |
+| Redis | container `redis` local | Redis Cloud |
+| RabbitMQ | container `rabbitmq` local | CloudAMQP |
+| Elasticsearch | container ngoài compose, tắt tay được (app fallback DB) | không chạy (`ENABLED=false`) |
+| Email/Media/AI | Brevo/Cloudinary/keys hiện tại | copy y nguyên, share quota |
+| Nginx upstream | tên service compose | tên service compose (hardcode) |
 
-## 2. Dựng giai đoạn song song (theo thứ tự)
+## 4. Dữ liệu khi chạy song song (divergence có chủ đích)
 
-1. Deploy Cloud Run: `00` §6 (hoặc `05-compute-cloudrun.md`).
-2. Cấu hình VPS ingress mode `parallel`: `06-vps-nginx-ingress-cloudrun.md`.
-3. Thêm DNS `api-v2`: `11-dns-vercel-ci-cd.md`.
-4. Dump dữ liệu VPS → Supabase (một lần, phục vụ test `api-v2`):
-   `10-data-migration-vps-supabase.md`.
-5. Chạy gate ở §4 trước khi quyết định cutover.
+Hai bên **không share datastore lúc runtime**: ghi ở api.closy nằm ở Postgres VPS,
+ghi ở api-v2 nằm ở Supabase. Không có sync live 2 chiều; reunify duy nhất bằng
+dump/restore tay (`10-data-migration-vps-supabase.md`, `12-repatriate-vps.md`) trong
+cửa sổ bảo trì. Song song càng lâu, divergence càng lớn — cân nhắc khi quyết định cắt.
 
-## 3. Nguyên tắc (US3, SC-003/SC-015)
-
-- Hai hệ chạy **độc lập**: `api-v2` lỗi không ảnh hưởng `api.closy`; tắt/bật lại `api-v2` an toàn.
-- Dữ liệu `api-v2` (Supabase) lệch dần so với VPS → **dump lại VPS→Supabase tại thời điểm
-  merge/cutover**, xác nhận không mất ghi trong cửa sổ chuyển.
-- Drill trên môi trường Cloud dùng **schema tạm rồi xoá**, không đụng schema chính (FR-027).
-- Cutover `api.closy` **không** nằm trong phase này — là thao tác thủ công có runbook riêng
-  (FR-041), timing do owner quyết định khi gate đo được đạt.
-
-## 5. Biến thể parallel-v2 (api.closy→VPS microservices, api-v2→Cloud Run verify)
-
-- Routing: `api.closy` → 3 service compose trên VPS (template `parallel-v2/vps-3service`);
-  `api-v2` → Cloud Run (template `parallel-v2/api-v2`, cần token-helper).
-- Backend cũ (monolith) **dừng hẳn**; verify `docker ps` trống backend.
-- DB: 2 DB độc lập (VPS local live, Supabase verify); đồng bộ dump VPS→Supabase
-  (`10-data-migration-vps-supabase.md`) trước đợt verify `api-v2`.
-- Gate: như §4 nhưng `api.closy` đo trên VPS (không còn monolith để so sánh giữ nguyên).
-
-## 4. Gate song song (T082) — kiểm tra từng mục
+## 5. Gate VPS sau khi vào `services`
 
 ```bash
-# a) api.closy giữ nguyên
+# a) api.closy qua 3 service VPS
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
 
-# b) api-v2 route đủ 3 service
-for p in account commerce ai; do
-  curl -sS -o /dev/null -w "$p %{http_code}\n" "https://api-v2.closy.hycat.online/api/v1/<path-$p>"
-done
+# b) backend đã dừng
+docker ps --filter name=backend --format '{{.Names}}'   # trống
 
 # c) Không đi qua Cloudflare
-curl -sSI https://api-v2.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
+curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
 ```
 
-- [ ] `api-v2` chạy ổn qua VPS Nginx (host × route + SSE + auth + upload) (SC-014).
-- [ ] `api.closy` **0 thay đổi routing**; monolith phục vụ bình thường suốt quá trình (SC-015).
-- [ ] Kết nối Cloud Run thiếu ID token bị từ chối 403 (SC-013).
+- [ ] `api.closy` 200 qua 3 service VPS (route + SSE + auth + upload).
+- [ ] Backend dừng; VPS infra local-only (guard pass).
 - [ ] Ghi mốc thời gian + checksum dữ liệu.

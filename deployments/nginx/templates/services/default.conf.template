@@ -1,4 +1,4 @@
-# parallel-v2: block map nằm ở vps-3service.conf.template (định nghĩa 1 lần duy nhất).
+# services: block map nằm ở vps-3service.conf.template (định nghĩa 1 lần duy nhất).
 server {
     listen 80 default_server;
     server_name _;
@@ -48,5 +48,4 @@ server {
     return 444;
 }
 
-# parallel-v2: api.closy phục vụ bởi vps-3service.conf.template (3 service compose),
-# KHÔNG proxy về monolith backend như mode parallel/rollback.
+# services: api.closy.hycat.online phục vụ bởi vps-3service.conf.template (3 service compose).

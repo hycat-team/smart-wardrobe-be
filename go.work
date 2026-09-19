@@ -2,7 +2,6 @@ go 1.26.0
 
 use (
 	./contracts
-	./deployments/token-helper
 	./services/account
 	./services/ai
 	./services/commerce

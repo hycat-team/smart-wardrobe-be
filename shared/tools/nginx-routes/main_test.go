@@ -110,22 +110,6 @@ func TestComputeLocationsEmitsSSELocations(t *testing.T) {
 	}
 }
 
-func TestRenderAPIV2SSEDisablesBuffering(t *testing.T) {
-	out := renderAPIV2("commerce", []location{
-		{prefix: "/api/v1/ai/chat/sessions", owner: "commerce", sse: true},
-	})
-	for _, want := range []string{
-		"location ^~ /api/v1/ai/chat/sessions {",
-		"proxy_buffering off;",
-		"proxy_read_timeout 300s;",
-		"proxy_pass ${COMMERCE_RUN_URL};",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("api-v2 SSE output missing %q", want)
-		}
-	}
-}
-
 func TestRenderRegionSSEDisablesBuffering(t *testing.T) {
 	out := renderRegion([]location{
 		{prefix: "/api/v1/wardrobe-items/tasks", owner: "commerce", sse: true},
@@ -149,24 +133,6 @@ func TestMinimizeDropsCoveredPrefixes(t *testing.T) {
 	}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("got %v, want %v", got, want)
-	}
-}
-
-func TestRenderAPIV2IncludesAuthAndTarget(t *testing.T) {
-	locs := []location{
-		{prefix: "/api/v1/auth", owner: "account"},
-		{prefix: "/api/v1/me", exact: true, owner: "account"},
-	}
-	out := renderAPIV2("account", locs)
-	for _, want := range []string{
-		"location ^~ /api/v1/auth {",
-		"location = /api/v1/me {",
-		"auth_request /_token_helper_account;",
-		"proxy_pass ${ACCOUNT_RUN_URL};",
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("generated output missing %q", want)
-		}
 	}
 }
 

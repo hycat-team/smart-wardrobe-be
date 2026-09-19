@@ -2,9 +2,9 @@
 // service's generated Swagger is reachable through the Nginx route map and is
 // routed to the owning service (FR-028).
 //
-// The route map is maintained in four places (api-v2 Cloud Run routes, the
-// repatriation VPS template, the parallel-v2 VPS template, and the local
-// compose config), so a new API prefix is easy to forget. This command parses
+// The route map is maintained in three places (the services VPS template, the
+// services-redirect VPS template for the api-v2 redirect grace period, and the
+// local compose config), so a new API prefix is easy to forget. This command parses
 // each service's swagger.json and
 // every route-map file, then asserts each path resolves (longest-prefix, like
 // Nginx) to a location whose proxy target belongs to the owning service.
@@ -21,20 +21,16 @@ import (
 	"strings"
 )
 
-// routeFile is one Nginx config to scan. owner is set only for files dedicated
-// to a single service (api-v2-routes/<service>.conf); otherwise ownership is
-// derived from each location's proxy_pass target.
+// routeFile is one Nginx config to scan. Ownership is derived from each
+// location's proxy_pass target.
 type routeFile struct {
 	path  string
 	owner string
 }
 
 var routeFiles = []routeFile{
-	{path: "deployments/nginx/api-v2-routes/account.conf", owner: "account"},
-	{path: "deployments/nginx/api-v2-routes/commerce.conf", owner: "commerce"},
-	{path: "deployments/nginx/api-v2-routes/ai.conf", owner: "ai"},
-	{path: "deployments/nginx/templates/repatriation/vps-3service.conf.template"},
-	{path: "deployments/nginx/templates/parallel-v2/vps-3service.conf.template"},
+	{path: "deployments/nginx/templates/services/vps-3service.conf.template"},
+	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template"},
 	{path: "deployments/nginx/local.conf"},
 }
 
@@ -93,7 +89,7 @@ func main() {
 
 	if failures > 0 {
 		fmt.Printf("\nnginx-check: FAIL — %d/%d swagger paths not routed to the owning service\n", failures, checked)
-		fmt.Println("Add the missing prefix to deployments/nginx/api-v2-routes/, deployments/nginx/templates/repatriation/vps-3service.conf.template, deployments/nginx/templates/parallel-v2/vps-3service.conf.template and deployments/nginx/local.conf")
+		fmt.Println("Add the missing prefix to deployments/nginx/templates/services/vps-3service.conf.template, deployments/nginx/templates/services-redirect/vps-3service.conf.template and deployments/nginx/local.conf (or regenerate with `make nginx-routes`)")
 		os.Exit(1)
 	}
 	fmt.Printf("nginx-check: OK — all %d swagger paths routed to the owning service\n", checked)

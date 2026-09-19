@@ -1,8 +1,8 @@
 # 08 — Bảng biến môi trường & cách điền (020-platform-migration)
 
 > Nguồn giá trị mẫu: `.env.example` (local), `.env.production.example` (VPS).
-> **Managed (Cloud Run)** KHÔNG dùng `.env` — biến được tiêm từ **GitHub Actions
-> secrets** trong `.github/workflows/deploy-platform.yml`.
+> **Box ngoài (GĐ2)** KHÔNG dùng `.env` — biến được tiêm từ **GitHub Actions
+> secrets** trong `.github/workflows/deploy-aws.yml`.
 > Default không-secret nằm ở `configs/config.yaml` / `configs/config.production.yaml`;
 > `.env` chỉ ghi đè thứ khác theo môi trường. Nhiều biến để trống là **có chủ đích**.
 
@@ -11,10 +11,10 @@
 | Profile | File env | `CONFIG_FILE` | `SERVER_ENV` | Ghi chú |
 |---|---|---|---|---|
 | Local dev | `.env` | `configs/config.yaml` | `local` | `make docker-dev-up` / `make run` |
-| VPS (repatriation/self-host/song song) | `.env.production` | `configs/config.production.yaml` | `vps` | 3 service compose + Nginx |
-| Managed (Cloud Run) | (không) | `configs/config.production.yaml` | `managed` | env qua GitHub secrets |
+| VPS (services) | `.env.production` | `configs/config.production.yaml` | `vps` | 3 service compose + Nginx |
+| Box ngoài (GĐ2) | (không) | `configs/config.production.yaml` | `vps` | env qua GitHub secrets (`deploy-aws.yml`) |
 
-Thứ tự ưu tiên: `PORT` (Cloud Run) > `SERVER_PORT` > `server.port` (YAML).
+Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 
 ## 2. Cách điền theo từng profile
 
@@ -33,16 +33,16 @@ cp .env.production.example .env.production
 docker compose --env-file .env.production -f deployments/docker-compose.prod.yml config >/dev/null  # verify syntax
 ```
 
-### 2.3 Managed
-Không tạo file; set secret theo `00` §5, rồi dispatch `deploy-platform.yml` (`00` §6).
+### 2.3 Box ngoài (GĐ2)
+Không tạo file; set secret theo `00` §5, rồi dispatch `deploy-aws.yml` (`15-aws-compute.md`).
 
 ## 3. Nhóm cấu hình lõi
 
 | Biến | Default (configs) | Ghi chú |
 |---|---|---|
-| `APP_MODE` | `all` | `all`/`http`/`worker` (FR-044); Cloud Run set `http`/`worker` |
-| `SERVER_ENV` | `development`/`production` | chọn profile; `managed` bật validation managed |
-| `PORT` / `SERVER_PORT` | `8080` | Cloud Run inject `PORT` |
+| `APP_MODE` | `all` | `all`/`http`/`worker`; box ngoài set `http`/`worker` per container |
+| `SERVER_ENV` | `development`/`production` | chọn profile |
+| `PORT` / `SERVER_PORT` | `8080` | cloud inject `PORT` |
 | `FRONT_END_ORIGIN` | — | CORS; danh sách origin, phẩy phân tách |
 | `SWAGGER_ACCESS_CODE` | — | Chỉ enforce khi `SERVER_ENV=production`; local có thể để trống |
 | `TZ` | `Asia/Ho_Chi_Minh` | Container timezone |
@@ -82,29 +82,25 @@ Không tạo file; set secret theo `00` §5, rồi dispatch `deploy-platform.yml
 | `JWT_SECRET` | — | secret; HS256 |
 | `JWT_ALGORITHM` | `HS256` | Managed nên `ES256` (FR-022) |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | rỗng | PEM; **chỉ identity giữ private key**. Rỗng = HS256 tạm thời |
-| `INGRESS_ACCOUNT_URL` | — | VPS compose: `http://account:8080`; Managed: URL `run.app` (bắt buộc) |
-| `INGRESS_COMMERCE_URL` | — | VPS: `http://commerce:8080`; Managed: `run.app` |
-| `INGRESS_AI_URL` | — | VPS: `http://ai:8080`; Managed: `run.app` |
-| `INGRESS_TOKEN_AUDIENCE` | — | Managed **bắt buộc** (validation); audience ID token |
-| `INGRESS_TOKEN_HELPER_URL`, `INGRESS_AUTH_HEADER` | — | **chưa dùng ở app** (helper do Nginx gọi); có thể để trống |
+| `INGRESS_ACCOUNT_URL` | — | VPS compose: `http://account:8080`; box ngoài: tên service compose |
+| `INGRESS_COMMERCE_URL` | — | VPS: `http://commerce:8080`; box ngoài: tên service compose |
+| `INGRESS_AI_URL` | — | VPS: `http://ai:8080`; box ngoài: tên service compose |
+| `INGRESS_TOKEN_AUDIENCE` | — | cloud audience (để trống trên VPS + box ngoài hiện tại) |
+| `INGRESS_TOKEN_HELPER_URL`, `INGRESS_AUTH_HEADER` | — | **không dùng** (token-helper đã xóa); có thể để trống |
 | `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | — | Brevo SMTP (ADR 022); `REPLY_TO` tùy chọn |
 | `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_ENDPOINT` | — | secret |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | — | dependency có sẵn (FR-053) |
 | `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | — | provider/model/endpoint/key; fallback tùy chọn |
 
-## 6. Nginx / compose / Cloud Run (không thuộc app)
+## 6. Nginx / compose (không thuộc app)
 
 | Biến | Default | Ghi chú |
 |---|---|---|
 | `COMPOSE_PROJECT_NAME`, `BACKEND_IMAGE`, `BACKEND_HEALTH_PATH` | — | compose VPS |
-| `API_DOMAIN` | — | hostname `api.closy` |
-| `API_V2_DOMAIN` | — | hostname `api-v2` |
-| `NGINX_MODE` | `parallel` | `parallel`/`parallel-v2`/`repatriation`/`rollback` (`parallel-v2`: api.closy → 3 service VPS, api-v2 → Cloud Run, không monolith) |
-| `COMPOSE_PROFILES` | `parallel` | `parallel` cho mode parallel, `parallel-v2` cho mode parallel-v2 (bật profile `token-helper`); để trống ở repatriation/rollback |
+| `API_DOMAIN` | — | hostname `api.closy.hycat.online` |
+| `API_V2_DOMAIN` | — | hostname `api-v2.closy.hycat.online` (box ngoài / redirect grace) |
+| `NGINX_MODE` | `services` | `services`/`services-redirect`/`rollback` |
 | `NGINX_CLIENT_MAX_BODY_SIZE` | `20m` | |
-| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | — | target proxy `api-v2` (parallel) |
-| `TOKEN_HELPER_URL` | `http://token-helper:8082` | Nginx gọi trong compose network |
-| `TOKEN_HELPER_SA_KEY_FILE` | `./token-helper-sa.json` | SA key `0600` |
 | `NGROK_AUTHTOKEN`, `NGROK_DOMAIN`, `NGROK_TARGET` | — | chỉ local tunnel |
 
 ## 7. Biến để trống — có cần điền không?
@@ -125,15 +121,17 @@ host/service-name), chỉ cần khi chạy host (`make run`) nhiều service:
 
 ### 7.2 `.env.production` (VPS) — **PHẢI điền trước khi deploy**
 
+> Luật isolation: `DB_HOST`/`DB_LISTENER_HOST`/`REDIS_HOST`/`RABBITMQ_HOST` trên VPS
+> luôn là tên service docker local — cấm hostname managed. Chạy guard ở `00` §7 bước 3.
+
 | Biến trống | Khi nào cần | Cách lấy |
 |---|---|---|
-| `API_V2_DOMAIN` | mode `parallel` | `api-v2.closy.hycat.online` (`11-dns-vercel-ci-cd.md`) |
-| `ACCOUNT_RUN_URL`, `COMMERCE_RUN_URL`, `AI_RUN_URL` | mode `parallel` | `gcloud run services describe <svc> --region asia-southeast1 --format='value(status.url)'` (`05-compute-cloudrun.md`) |
+| `API_V2_DOMAIN` | box ngoài / redirect grace | `api-v2.closy.hycat.online` (`11-dns-vercel-ci-cd.md`) |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | khi bật ES256 | sinh cặp EC P-256, dán PEM (`docs/system-design/microservices/04-auth-asymmetric-jwt.md`) |
-| `INGRESS_TOKEN_AUDIENCE` | chỉ managed | URL `run.app` (secret GitHub) |
+| `INGRESS_TOKEN_AUDIENCE` | box ngoài (để trống) | — |
 | `EMAIL_REPLY_TO`, `PORT`, `DB_DRILL_SCHEMA`, `DATABASE_MIGRATION_TABLE` | không (default/drill/per-service) | — |
 
-## 8. GitHub Actions secrets cho managed
+## 8. GitHub Actions secrets cho box ngoài (GĐ2)
 
 Xem bảng đầy đủ ở `00` §5. Danh sách tên: `DB_USER`, `DB_PASSWORD`, `DB_NAME`,
 `DB_HOST`, `DB_PORT`, `DB_LISTENER_HOST`, `DB_LISTENER_SSLMODE`, `REDIS_HOST`,
@@ -141,14 +139,12 @@ Xem bảng đầy đủ ở `00` §5. Danh sách tên: `DB_USER`, `DB_PASSWORD`,
 `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`,
 `SWAGGER_ACCESS_CODE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
 `CLOUDINARY_API_SECRET`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `PAYOS_CLIENT_ID`,
-`PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `INGRESS_ACCOUNT_URL`, `INGRESS_COMMERCE_URL`,
-`INGRESS_AI_URL`, `INGRESS_TOKEN_AUDIENCE`.
+`PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`.
 
-Workflow tự đặt: `SERVER_ENV=managed`, `APP_MODE=http|worker`, `DB_SSLMODE=require`,
-`DB_LISTENER_SSLMODE=require`, `DATABASE_MIGRATE_ON_START=true`,
+Workflow box ngoài tự đặt: `SERVER_ENV=vps`, `APP_MODE=http|worker`,
+`DATABASE_MIGRATE_ON_START=true`,
 `DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER=true`, `ELASTICSEARCH_ENABLED=false`,
-`REDIS_TLS_ENABLED=true`, `RABBITMQ_TLS_ENABLED=true`,
-`RABBITMQ_MANAGEMENT_TLS_ENABLED=true`, `DATABASE_MIGRATION_TABLE` (per-service).
+`DATABASE_MIGRATION_TABLE` (per-service).
 
 ## 9. Migration qua session DSN (FR-012/FR-035)
 

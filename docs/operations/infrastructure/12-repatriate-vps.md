@@ -25,6 +25,18 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/
 > docker ps --filter name=backend --format '{{.Names}} {{.Status}}'   # phải trống
 > ```
 > Verify không còn writer cũ: consumer count RabbitMQ phía monolith về 0, outbox chỉ poll 1 phía.
+>
+> Guard isolation (chạy trên VPS, chỉ in tên biến khi FAIL — không in giá trị):
+> ```bash
+> for v in DB_HOST DB_LISTENER_HOST REDIS_HOST RABBITMQ_HOST; do
+>   val=$(grep "^$v=" .env.production | cut -d= -f2)
+>   case "$val" in
+>     *supabase.co*|*redislabs.com*|*cloudamqp.com*)
+>       echo "FAIL: $v points outside VPS" && exit 1 ;;
+>   esac
+> done
+> echo "OK: VPS infra is local-only"
+> ```
 
 ## 3. Migrate ngược dữ liệu (Supabase → Postgres VPS)
 
