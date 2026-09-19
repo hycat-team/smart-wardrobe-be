@@ -1,5 +1,9 @@
 # Runbook cutover thủ công `api.closy` → Cloud Run (FR-041)
 
+> **ĐÃ LỖI THỜI (GĐ2).** Cloud Run chưa từng tồn tại nên runbook này không còn khả thi.
+> Giữ lại tham khảo spec FR-041 (gate đo được). Cắt box ngoài AWS theo
+> `infrastructure/15-aws-compute.md` §10 + `infrastructure/12-repatriate-vps.md`.
+
 **Chỉ thực thi khi owner quyết định** `api-v2` đủ ổn định. Không tự động hoá.
 
 > **Khi nào dùng**: sau khi `api-v2` chạy song song ổn định và owner muốn chuyển

@@ -2,9 +2,10 @@
 // service's generated Swagger is reachable through the Nginx route map and is
 // routed to the owning service (FR-028).
 //
-// The route map is maintained in three places (the services VPS template, the
-// services-redirect VPS template for the api-v2 redirect grace period, and the
-// local compose config), so a new API prefix is easy to forget. This command parses
+// The route map is maintained in four places (the services VPS template, the
+// services-redirect VPS template for the api-v2 redirect grace period, the aws
+// box template, and the local compose config), so a new API prefix is easy to
+// forget. This command parses
 // each service's swagger.json and
 // every route-map file, then asserts each path resolves (longest-prefix, like
 // Nginx) to a location whose proxy target belongs to the owning service.
@@ -31,6 +32,7 @@ type routeFile struct {
 var routeFiles = []routeFile{
 	{path: "deployments/nginx/templates/services/vps-3service.conf.template"},
 	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template"},
+	{path: "deployments/nginx/templates/aws/api-v2.conf.template"},
 	{path: "deployments/nginx/local.conf"},
 }
 
@@ -89,7 +91,7 @@ func main() {
 
 	if failures > 0 {
 		fmt.Printf("\nnginx-check: FAIL — %d/%d swagger paths not routed to the owning service\n", failures, checked)
-		fmt.Println("Add the missing prefix to deployments/nginx/templates/services/vps-3service.conf.template, deployments/nginx/templates/services-redirect/vps-3service.conf.template and deployments/nginx/local.conf (or regenerate with `make nginx-routes`)")
+		fmt.Println("Add the missing prefix to deployments/nginx/templates/services/vps-3service.conf.template, deployments/nginx/templates/services-redirect/vps-3service.conf.template, deployments/nginx/templates/aws/api-v2.conf.template and deployments/nginx/local.conf (or regenerate with `make nginx-routes`)")
 		os.Exit(1)
 	}
 	fmt.Printf("nginx-check: OK — all %d swagger paths routed to the owning service\n", checked)

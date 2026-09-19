@@ -1,0 +1,240 @@
+name: closy-aws
+
+# AWS external box topology (GĐ2): 6 app containers (http x3 + worker x3) behind
+# the Nginx gateway, talking ONLY to managed infra (Supabase / Redis Cloud /
+# CloudAMQP). There are NO local data services on this box. Images come from
+# GHCR and are pinned by digest by deploy-aws.yml (same mechanism as VPS).
+#
+# Base env lives in /opt/closy-aws/.env.aws (managed hosts + SaaS keys copied
+# from VPS); image pins live in .env.deploy (written by deploy-aws.yml).
+# Inter-service INGRESS_*_URL are hardcoded below (topology constants).
+# Always pass BOTH env files:
+#   docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ...
+
+services:
+    account-http:
+        image: ${ACCOUNT_IMAGE:?ACCOUNT_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: http
+            # FR-035: per-service Goose version table (Account keeps the shared default).
+            # http + worker of the same service share one table (advisory lock).
+            DATABASE_MIGRATION_TABLE: goose_db_version
+            # Inter-service gRPC targets the *-http containers on THIS box (topology
+            # constants — explicit environment wins over .env.aws; do NOT set INGRESS_*
+            # URLs in .env.aws or copy the VPS values).
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        # Healthcheck comes from the service image (binary -healthcheck probe).
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    commerce-http:
+        image: ${COMMERCE_IMAGE:?COMMERCE_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: http
+            DATABASE_MIGRATION_TABLE: goose_db_version_commerce
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    ai-http:
+        image: ${AI_IMAGE:?AI_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: http
+            DATABASE_MIGRATION_TABLE: goose_db_version_ai
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    account-worker:
+        image: ${ACCOUNT_IMAGE:?ACCOUNT_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: worker
+            DATABASE_MIGRATION_TABLE: goose_db_version
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    commerce-worker:
+        image: ${COMMERCE_IMAGE:?COMMERCE_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: worker
+            DATABASE_MIGRATION_TABLE: goose_db_version_commerce
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    ai-worker:
+        image: ${AI_IMAGE:?AI_IMAGE is required}
+        restart: always
+        mem_limit: 512m
+        env_file:
+            - ../.env.aws
+        environment:
+            CONFIG_FILE: /app/config/config.production.yaml
+            APP_MODE: worker
+            DATABASE_MIGRATION_TABLE: goose_db_version_ai
+            INGRESS_ACCOUNT_URL: http://account-http:8080
+            INGRESS_COMMERCE_URL: http://commerce-http:8080
+            INGRESS_AI_URL: http://ai-http:8080
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        expose:
+            - "8080"
+        stop_grace_period: 30s
+        security_opt:
+            - no-new-privileges:true
+        networks:
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    nginx:
+        image: nginx:alpine
+        restart: always
+        mem_limit: 128m
+        env_file:
+            - ../.env.aws
+        environment:
+            API_V2_DOMAIN: ${API_V2_DOMAIN:-api-v2.closy.hycat.online}
+            NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-20m}
+            NGINX_ENVSUBST_FILTER: ^(API_V2_DOMAIN|NGINX_CLIENT_MAX_BODY_SIZE)
+            TZ: ${TZ:-Asia/Ho_Chi_Minh}
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./nginx/templates/aws:/etc/nginx/templates:ro
+            - /etc/letsencrypt:/etc/letsencrypt:ro
+            - certbot_www:/var/www/certbot:ro
+        depends_on:
+            account-http:
+                condition: service_healthy
+            commerce-http:
+                condition: service_healthy
+            ai-http:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget --quiet --spider http://127.0.0.1/nginx-health || exit 1",
+                ]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - edge
+            - app
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "5"
+
+    certbot:
+        image: certbot/certbot:v5.3.1
+        profiles:
+            - maintenance
+        volumes:
+            - /etc/letsencrypt:/etc/letsencrypt
+            - certbot_www:/var/www/certbot
+
+volumes:
+    certbot_www:
+
+networks:
+    edge:
+    app:

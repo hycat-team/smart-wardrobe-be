@@ -12,7 +12,7 @@ mọi môi trường (FR-001).
 
 ## 2. Deploy
 
-Không cần bước riêng: deploy theo `05-compute-cloudrun.md` (managed) hoặc
+Không cần bước riêng: deploy theo `deploy-aws.yml` (box ngoài) hoặc
 `deploy-vps-services.yml` (VPS).
 
 ## 3. Hành vi khi tắt (US1, SC-001/SC-007)

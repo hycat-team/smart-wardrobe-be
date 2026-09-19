@@ -12,22 +12,20 @@ rồi mới thu hồi (tránh downtime).
 ```bash
 NEW_SECRET=$(openssl rand -base64 48)
 gh secret set JWT_SECRET -R "<OWNER/REPO>" --body "$NEW_SECRET"
-gh workflow run deploy-platform.yml -R "<OWNER/REPO>" --ref main -f services=all
+gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all
+gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services=all
 # (nếu còn VPS) cập nhật .env.production + up -d --force-recreate account commerce ai
 ```
 - [ ] Token phát bằng secret cũ không verify được.
 
-### 1.2 Token-helper SA key
+### 1.2 SSH key box ngoài (AWS)
 ```bash
-gcloud iam service-accounts keys list \
-  --iam-account=token-helper@<PROJECT>.iam.gserviceaccount.com
-gcloud iam service-accounts keys create token-helper-sa-new.json \
-  --iam-account=token-helper@<PROJECT>.iam.gserviceaccount.com
-# thay file trên VPS + chmod 600 + recreate token-helper
-gcloud iam service-accounts keys delete <OLD_KEY_ID> \
-  --iam-account=token-helper@<PROJECT>.iam.gserviceaccount.com
+# Xoá keypair khỏi AWS (Lightsail/EC2 console) + revoke secrets GitHub:
+gh secret remove AWS_SSH_KEY -R "<OWNER/REPO>"
+gh secret remove AWS_KNOWN_HOSTS -R "<OWNER/REPO>"
+# (giữ AWS_HOST/USER/PORT nếu còn box khác; xoá nốt khi tắt hẳn)
 ```
-- [ ] `keys list` không còn key cũ; file key cũ đã xoá khỏi VPS.
+- [ ] Không còn SSH được vào box bằng key cũ; secret đã xoá khỏi GitHub.
 
 ### 1.3 Supabase / CloudAMQP / Redis Cloud
 - Rotate credential trong dashboard từng dịch vụ → cập nhật GitHub secrets (`DB_PASSWORD`,
@@ -57,8 +55,8 @@ gcloud iam service-accounts keys delete <OLD_KEY_ID> \
    ```
    (hoặc stop profile `rollback` nếu đang chạy monolith-legacy).
 4. Giữ DNS TTL thấp trong grace period; sau đó trỏ hẳn về hạ tầng mới.
-5. Sau 14–30 ngày không incident: xoá container/volume cũ; huỷ VPS (nếu repatriation
-   ngược lại thì giữ VPS làm đích).
+5. Sau 14–30 ngày không incident: xoá container/volume cũ; huỷ box ngoài
+   (VPS luôn giữ làm đích — không huỷ VPS).
 
 ## 3. Checklist ký xác nhận
 

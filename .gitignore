@@ -733,6 +733,7 @@ docs/temp
 .env.*
 !.env.example
 !.env.production.example
+!.env.aws.example
 bin/
 backups/
 *.dump

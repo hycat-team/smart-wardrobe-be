@@ -40,7 +40,7 @@ redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" -a "$REDIS_PASSWORD" --tls -c PING
 
 ## 5. Verify
 
-- [ ] Kết nối TLS thành công từ Cloud Run (`rediss://`).
+- [ ] Kết nối TLS thành công từ box ngoài (`rediss://`).
 - [ ] Blacklist/quota/rate-limit đọc-ghi đúng qua TLS.
 - [ ] Không vượt 256 conn khi test tải (SC-021).
 

@@ -25,7 +25,7 @@ GĐ2 bật box ngoài AWS (`api-v2`) độc lập — 2 trục không dính nhau
 | 2 | Supabase Postgres (pooler/direct, schema, migration) | `02-supabase-postgres.md` |
 | 3 | Redis Cloud (TLS, ngân sách conn) | `03-redis-cloud.md` |
 | 4 | CloudAMQP (amqps, quorum, ngân sách conn) | `04-cloudamqp-rabbitmq.md` |
-| 5 | Box ngoài AWS (GĐ2: 6 container, managed) | `15-aws-compute.md` (GĐ1 bỏ qua; `05-compute-cloudrun.md` đã lỗi thời) |
+| 5 | Box ngoài AWS (GĐ2: 6 container, managed) | `15-aws-compute.md` |
 | 6 | VPS Nginx ingress + cert | `06-vps-nginx-ingress-cloudrun.md` |
 | 7 | Tắt Elasticsearch (mặc định) | `07-elasticsearch-disabled.md` |
 | 8 | Bảng biến môi trường 3 profile | `08-environment-variables.md` |
@@ -38,8 +38,8 @@ GĐ2 bật box ngoài AWS (`api-v2`) độc lập — 2 trục không dính nhau
 
 ## 3. Điều kiện tiên quyết
 
-- [ ] GCP project trial đã bật billing, có Artifact Registry + WIF + deployer SA (`00` §2).
-- [ ] Supabase Pro / Redis Cloud / CloudAMQP đã tạo và có host/port/password (`00` §0.3–0.5).
+- [ ] Supabase / Redis Cloud / CloudAMQP đã tạo và có host/port/password (`00` §0.3–0.5) — cần khi tới GĐ2.
+- [ ] (GĐ2) Billing alarm AWS đã bật.
 - [ ] VPS hiện hữu chạy monolith (`api.closy`), có Docker + `/opt/closy` + Nginx.
 - [ ] DNS `hycat.online` quản lý ở **Vercel** (không NS-delegate).
 - [ ] GitHub repo có 2 environment `aws-production`/`vps-production` + đầy đủ secrets (`00` §5).

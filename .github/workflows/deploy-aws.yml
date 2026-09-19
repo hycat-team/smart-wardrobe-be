@@ -1,0 +1,179 @@
+name: Deploy AWS Box
+
+# Deploys the 6-container topology to the AWS external box (GĐ2): matrix per
+# service so one service failing does not block the others, images pushed to
+# GHCR and pinned by digest, then `docker compose up -d` on the box. The box
+# talks ONLY to managed infra (Supabase / Redis Cloud / CloudAMQP) — base env
+# lives in /opt/closy-aws/.env.aws on the box (created once from
+# .env.aws.example, runbook 15-aws-compute.md); image pins live in .env.deploy.
+#
+# Requires the `aws-production` environment (approval gate), the AWS_* secrets,
+# and GHCR read access on the box. Smoke test hits the box IP with SNI override
+# (--resolve) so no DNS cutover is needed to verify a deploy.
+
+on:
+    workflow_dispatch:
+        inputs:
+            services:
+                description: "Services to deploy (comma-separated, or 'all')"
+                required: true
+                default: all
+                type: string
+
+permissions:
+    contents: read
+    packages: write
+
+concurrency:
+    group: closy-aws-box
+    cancel-in-progress: false
+
+env:
+    GHCR_BASENAME: ${{ github.repository_owner }}
+
+jobs:
+    plan:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set.outputs.matrix }}
+        steps:
+            - name: Resolve service matrix
+              id: set
+              shell: bash
+              run: |
+                  input='${{ inputs.services }}'
+                  if [ "${input}" = "all" ] || [ -z "${input}" ]; then
+                    echo 'matrix=["account","commerce","ai"]' >> "${GITHUB_OUTPUT}"
+                  else
+                    services=$(printf '%s' "${input}" | tr -d ' ' | awk -F, '{for(i=1;i<=NF;i++) printf (i>1?",":"") "\""$i"\""}')
+                    echo "matrix=[${services}]" >> "${GITHUB_OUTPUT}"
+                  fi
+
+    build-push:
+        needs: plan
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Resolve lowercase image name
+              id: image
+              shell: bash
+              run: echo "name=ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}" >> "${GITHUB_OUTPUT}"
+
+            - name: Build and push ${{ matrix.service }} image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: services/${{ matrix.service }}/Dockerfile
+                  push: true
+                  platforms: linux/amd64
+                  tags: |
+                      ${{ steps.image.outputs.name }}:${{ github.sha }}
+                      ${{ steps.image.outputs.name }}:latest
+                  cache-from: type=gha,scope=${{ matrix.service }}
+                  cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+    deploy:
+        needs:
+            - plan
+            - build-push
+        runs-on: ubuntu-latest
+        environment: aws-production
+        strategy:
+            fail-fast: false
+            matrix:
+                service: ${{ fromJson(needs.plan.outputs.matrix) }}
+        steps:
+            - name: Checkout deployment files
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Resolve image digest
+              id: digest
+              shell: bash
+              run: |
+                  name="ghcr.io/${GHCR_BASENAME,,}/${{ matrix.service }}"
+                  digest=$(docker buildx imagetools inspect "${name}:${{ github.sha }}" --format '{{.Manifest.Digest}}')
+                  echo "ref=${name}@${digest}" >> "${GITHUB_OUTPUT}"
+
+            - name: Prepare SSH
+              shell: bash
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "${{ secrets.AWS_SSH_KEY }}" > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  printf '%s\n' "${{ secrets.AWS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+                  chmod 600 ~/.ssh/known_hosts
+
+            - name: Create deployment archive
+              shell: bash
+              run: tar -czf /tmp/closy-aws-deploy.tar.gz deployments/docker-compose.aws.yml deployments/nginx
+
+            - name: Upload deployment archive
+              shell: bash
+              run: scp -P "${{ secrets.AWS_SSH_PORT }}" /tmp/closy-aws-deploy.tar.gz "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}:/tmp/closy-aws-deploy.tar.gz"
+
+            - name: Log box in to private GHCR
+              shell: bash
+              run: printf '%s' "${{ secrets.GHCR_READ_TOKEN }}" | ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "docker login ghcr.io -u '${{ secrets.GHCR_USERNAME }}' --password-stdin"
+
+            - name: Deploy pinned service image
+              shell: bash
+              run: |
+                  SERVICE='${{ matrix.service }}'
+                  UPPER=$(printf '%s' "${SERVICE}" | tr '[:lower:]' '[:upper:]')
+                  ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
+                    set -e
+                    mkdir -p /opt/closy-aws
+                    tar -xzf /tmp/closy-aws-deploy.tar.gz -C /opt/closy-aws
+                    rm -f /tmp/closy-aws-deploy.tar.gz
+                    cd /opt/closy-aws
+                    test -f .env.aws || { echo 'missing /opt/closy-aws/.env.aws (runbook 15)'; exit 1; }
+                    touch .env.deploy
+                    grep -v '^${UPPER}_IMAGE=' .env.deploy > .env.deploy.next || true
+                    printf '${UPPER}_IMAGE=%s\n' '${{ steps.digest.outputs.ref }}' >> .env.deploy.next
+                    mv .env.deploy.next .env.deploy
+                    chmod 600 .env.deploy
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml config >/dev/null
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml pull ${SERVICE}-http ${SERVICE}-worker
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker nginx
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps ${SERVICE}-http ${SERVICE}-worker
+                  "
+
+            - name: Smoke test deployed service
+              if: vars.AWS_SMOKE_URL != ''
+              shell: bash
+              run: |
+                  host=$(printf '%s' "${{ vars.AWS_SMOKE_URL }}" | sed -e 's#^https\?://##' -e 's#/.*$##')
+                  for i in $(seq 1 12); do
+                    if curl --fail --silent --show-error --resolve "${host}:443:${{ secrets.AWS_HOST }}" "${{ vars.AWS_SMOKE_URL }}/api/v1/health"; then
+                      exit 0
+                    fi
+                    sleep 5
+                  done
+                  echo "smoke test failed for ${{ matrix.service }}"
+                  exit 1

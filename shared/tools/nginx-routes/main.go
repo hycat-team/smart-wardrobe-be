@@ -9,9 +9,8 @@
 //
 //	deployments/nginx/templates/services/vps-3service.conf.template (VPS api.closy upstreams)
 //	deployments/nginx/templates/services-redirect/vps-3service.conf.template (VPS + api-v2 redirect grace)
+//	deployments/nginx/templates/aws/api-v2.conf.template (AWS box api-v2, same "vps" target set)
 //	deployments/nginx/local.conf (local compose)
-//
-// (aws box template registered in Commit 2 reuses the "vps" target set.)
 //
 // Run `make nginx-routes`; `make nginx-check` verifies coverage and CI fails on
 // drift (`make nginx-routes && git diff --exit-code -- deployments/nginx`).
@@ -75,6 +74,7 @@ type markerFile struct {
 var markerFiles = []markerFile{
 	{path: "deployments/nginx/templates/services/vps-3service.conf.template", mode: "vps"},
 	{path: "deployments/nginx/templates/services-redirect/vps-3service.conf.template", mode: "vps"},
+	{path: "deployments/nginx/templates/aws/api-v2.conf.template", mode: "vps"},
 	{path: "deployments/nginx/local.conf", mode: "local"},
 }
 

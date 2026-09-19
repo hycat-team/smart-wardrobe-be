@@ -10,16 +10,16 @@ Mỗi runbook gồm: điều kiện tiên quyết → thứ tự bước (kèm l
   rồi tới:
   `infrastructure/01-overview.md`, `infrastructure/02-supabase-postgres.md`,
   `infrastructure/03-redis-cloud.md`, `infrastructure/04-cloudamqp-rabbitmq.md`,
-  `infrastructure/05-compute-cloudrun.md` (ghi chú loại Cloud Run — GĐ2 thay bằng `15-aws-compute.md`),
   `infrastructure/06-vps-nginx-ingress-cloudrun.md`,
   `infrastructure/07-elasticsearch-disabled.md`, `infrastructure/08-environment-variables.md`,
   `infrastructure/09-parallel-architecture-overview.md`,
   `infrastructure/10-data-migration-vps-supabase.md`, `infrastructure/11-dns-vercel-ci-cd.md`,
   `infrastructure/12-repatriate-vps.md` (US4), `infrastructure/13-stop-vps-and-revoke-secrets.md`,
-  `infrastructure/14-monitoring.md`.
+  `infrastructure/14-monitoring.md`, `infrastructure/15-aws-compute.md` (GĐ2: box ngoài).
 - `repatriate-to-vps.md` — runbook gom hệ thống về VPS đầy đủ 2 chiều (T102).
 - `manual-cutover-api-closy-to-cloudrun.md`, `gcp-trial-teardown.md` — tài liệu thời Cloud Run,
-  **đã lỗi thời** (Cloud Run chưa từng tồn tại); GĐ2 dọn hoặc viết lại theo AWS.
+  **đã lỗi thời** (Cloud Run chưa từng tồn tại, xem ghi chú đầu mỗi file); cắt box ngoài
+  theo `15-aws-compute.md` §10 + `12-repatriate-vps.md`.
 
 ## Theo tình huống — dùng khi nào
 

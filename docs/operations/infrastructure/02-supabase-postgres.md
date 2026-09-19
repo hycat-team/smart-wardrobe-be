@@ -1,6 +1,6 @@
 # 02 — Supabase Postgres (1 project, 1 database dùng chung)
 
-Áp dụng cho môi trường **managed** (Cloud Run). Điều kiện: đã có project Supabase Pro (`00` §0.3).
+Áp dụng cho box ngoài (GĐ2). Điều kiện: đã có project Supabase Pro (`00` §0.3).
 
 ## 1. Tạo project & extension
 

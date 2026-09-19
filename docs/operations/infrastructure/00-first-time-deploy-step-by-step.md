@@ -221,6 +221,14 @@ gh secret set VPS_HOST -R "$OWNER_REPO"          --body "<VPS_HOST>"
 gh secret set VPS_USER -R "$OWNER_REPO"          --body "<VPS_USER>"
 gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 # SSH key + known_hosts là nội dung nhiều dòng → set từ file (xem 5.3)
+
+# --- AWS box ngoài (GĐ2; runbook 15) ---
+gh secret set AWS_HOST -R "$OWNER_REPO"          --body "<BOX_IP>"
+gh secret set AWS_USER -R "$OWNER_REPO"          --body "ubuntu"
+gh secret set AWS_SSH_PORT -R "$OWNER_REPO"      --body "22"
+# SSH key + known_hosts là nội dung nhiều dòng → set từ file (xem 5.3)
+# Var smoke test (base URL api-v2; workflow tự --resolve về IP box):
+# gh variable set AWS_SMOKE_URL -R "$OWNER_REPO" --body "https://api-v2.closy.hycat.online"
 ```
 
 > **INGRESS_ACCOUNT_URL / INGRESS_COMMERCE_URL / INGRESS_AI_URL** trên VPS là tên
@@ -255,6 +263,11 @@ gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 | `VPS_KNOWN_HOSTS` | `ssh-keyscan` | `ssh-keyscan -p 22 <VPS_HOST> > known_hosts` rồi `gh secret set VPS_KNOWN_HOSTS < known_hosts` |
 | `GHCR_USERNAME` | GitHub username (§0.1b) | `--body` |
 | `GHCR_READ_TOKEN` | PAT `read:packages` (§0.1b) | `--body "ghp_..."` |
+| `AWS_HOST` | IP box ngoài (static IP, runbook `15` §2) | `--body "<ip>"` |
+| `AWS_USER` | SSH user box ngoài (vd `ubuntu`) | `--body` |
+| `AWS_SSH_PORT` | SSH port box ngoài | `--body "22"` |
+| `AWS_SSH_KEY` | private key box ngoài | `gh secret set AWS_SSH_KEY < ~/.ssh/aws_box` |
+| `AWS_KNOWN_HOSTS` | `ssh-keyscan` box ngoài | `ssh-keyscan -p 22 <BOX_IP> > aws_known_hosts` rồi `gh secret set AWS_KNOWN_HOSTS < aws_known_hosts` |
 
 ES256 (tuỳ chọn, FR-022): sinh cặp EC P-256 rồi set từ file:
 ```bash

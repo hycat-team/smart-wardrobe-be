@@ -55,7 +55,7 @@ docker compose --env-file /opt/closy/.env.production -f /opt/closy/deployments/d
 
 ## 4. Drain AMQP
 
-1. Ngừng producer managed (dừng worker Cloud Run hoặc chặn publish).
+1. Ngừng producer box ngoài (dừng worker AWS hoặc chặn publish).
 2. Đợi queue CloudAMQP rỗng:
    ```bash
    curl -sf -u "$RABBITMQ_USER:$RABBITMQ_PASSWORD" \
@@ -79,7 +79,7 @@ docker compose --env-file /opt/closy/.env.production -f /opt/closy/deployments/d
 
 Supabase Pro, CloudAMQP Tiger, Redis Cloud Essentials: tắt/huỷ **trước ngày renew** theo
 funding clock T-30/T-14/T-7/T-1; giữ bằng chứng không bị charge thêm chu kỳ (SC-011).
-Teardown GCP trial: xem `../gcp-trial-teardown.md`.
+Tắt box ngoài + managed: xem `15-aws-compute.md` §10 (giữ snapshot box 7 ngày nếu muốn).
 
 ## 8. Env profile `vps`
 

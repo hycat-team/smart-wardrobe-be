@@ -31,8 +31,8 @@ Mục tiêu: repatriation ≤ 4h gồm migrate ngược (SC-004); drill đầy �
 5. **DNS về VPS**; verify host × route + SSE + auth + upload.
 6. **Tắt funded items trước ngày renew** (Supabase/CloudAMQP/Redis Cloud) theo funding
    clock T-30/T-14/T-7/T-1.
-7. **Teardown trial GCP** (FR-031): xoá Cloud Run → artifacts → alerts; đối chiếu billing
-   trial về 0 (SC-010) — xem `gcp-trial-teardown.md`.
+7. **Tắt box ngoài + managed**: theo `infrastructure/15-aws-compute.md` §10
+   (xóa box, hủy managed trước renew, revoke secrets `AWS_*`); đối chiếu billing về 0.
 
 ## 3. Chiều lên Cloud (tham chiếu)
 

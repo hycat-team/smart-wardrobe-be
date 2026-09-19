@@ -1,5 +1,9 @@
 # GCP trial teardown (một bước trong repatriation — FR-031/US6)
 
+> **ĐÃ LỖI THỜI (GĐ2).** Không có GCP trial nào để teardown (Cloud Run chưa từng tồn tại).
+> Giữ lại tham khảo thứ tự dọn dẹp. Tắt box ngoài AWS + managed theo
+> `infrastructure/15-aws-compute.md` §10.
+
 **Không tách rời sau demo.** Teardown chạy như một bước của repatriation khi hệ thống
 đã về VPS ổn định.
 

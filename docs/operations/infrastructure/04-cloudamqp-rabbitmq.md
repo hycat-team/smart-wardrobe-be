@@ -45,7 +45,7 @@ curl -sf -u "$RABBITMQ_USER:$RABBITMQ_PASSWORD" \
 
 ## 6. Verify
 
-- [ ] Kết nối `amqps` thành công từ Cloud Run.
+- [ ] Kết nối `amqps` thành công từ box ngoài.
 - [ ] Topology (exchange/queue/DLX) khai báo đúng; quorum hoặc fallback có ADR.
 - [ ] Outbox publish + consumer hoạt động; poll fallback khi mất `LISTEN`.
 
