@@ -111,6 +111,9 @@ jobs:
         environment: aws-production
         strategy:
             fail-fast: false
+            # Sequential deploy: the 3 matrix jobs share one .env.deploy on the
+            # box (read-modify-write), so parallel writes can clobber each other.
+            max-parallel: 1
             matrix:
                 service: ${{ fromJson(needs.plan.outputs.matrix) }}
         steps:
@@ -161,6 +164,7 @@ jobs:
               run: |
                   SERVICE='${{ matrix.service }}'
                   UPPER=$(printf '%s' "${SERVICE}" | tr '[:lower:]' '[:upper:]')
+                  LOWER_OWNER=$(printf '%s' "${GHCR_BASENAME}" | tr '[:upper:]' '[:lower:]')
                   ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
                     set -e
                     mkdir -p /opt/closy-aws
@@ -173,6 +177,19 @@ jobs:
                     printf '${UPPER}_IMAGE=%s\n' '${{ steps.digest.outputs.ref }}' >> .env.deploy.next
                     mv .env.deploy.next .env.deploy
                     chmod 600 .env.deploy
+                    # Backfill sibling pins so compose interpolation passes on the
+                    # very first deploy (when .env.deploy lacks the other 2 vars).
+                    # Placeholders are never pulled: pull/up below target only ${SERVICE}.
+                    for S in ACCOUNT COMMERCE AI; do
+                      if ! grep -q \"^\${S}_IMAGE=\" .env.deploy 2>/dev/null; then
+                        case \"\${S}\" in
+                          ACCOUNT) SVC_LOWER=account ;;
+                          COMMERCE) SVC_LOWER=commerce ;;
+                          AI) SVC_LOWER=ai ;;
+                        esac
+                        printf '%s_IMAGE=ghcr.io/${LOWER_OWNER}/%s:latest\n' \"\${S}\" \"\${SVC_LOWER}\" >> .env.deploy
+                      fi
+                    done
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml config >/dev/null
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml pull ${SERVICE}-http ${SERVICE}-worker
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker nginx
