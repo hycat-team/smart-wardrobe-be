@@ -1,12 +1,12 @@
 {
-    "identity": ["Auth", "Me", "Admin Identity", "Admin User"],
+    "identity": ["Auth", "Me", "Admin Identity", "Admin User", "Account Health"],
     "subscription": [
         "Subscription",
         "Billing",
         "Admin Billing",
         "Admin Subscription"
     ],
-    "wardrobe": ["Wardrobe", "Outfits", "Admin Wardrobe"],
+    "wardrobe": ["Wardrobe", "Outfits", "Admin Wardrobe", "Commerce Health"],
     "dashboard": [
         "Dashboard Analytics",
         "Dashboard User",
@@ -24,6 +24,6 @@
         "Admin Brand"
     ],
     "fashion": ["Wardrobe AI", "Category", "Admin Category"],
-    "aiexecutor": ["Admin AI"],
+    "aiexecutor": ["Admin AI", "AI Health"],
     "admin": ["Admin Audit"]
 }

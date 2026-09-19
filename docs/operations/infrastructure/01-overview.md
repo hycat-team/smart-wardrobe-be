@@ -59,6 +59,6 @@ GĐ2 bật box ngoài AWS (`api-v2`) độc lập — 2 trục không dính nhau
 
 ## 5. Verify tổng thể (gate)
 
-- [ ] 3 service HTTP + 3 worker chạy đúng `APP_MODE`, health `/api/v1/health` 200.
+- [ ] 3 service HTTP + 3 worker chạy đúng `APP_MODE`, health `/api/v1/<svc>/health` 200 đúng tên service.
 - [ ] `api.closy` phục vụ 3 service VPS sau GĐ1; `api-v2` (GĐ2) route đủ 3 container + SSE.
 - [ ] 0 request đi qua Cloudflare.

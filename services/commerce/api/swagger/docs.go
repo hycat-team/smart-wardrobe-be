@@ -4616,6 +4616,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/commerce/health": {
+            "get": {
+                "description": "Liveness probe of the Commerce service.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Commerce Health"
+                ],
+                "summary": "Commerce service liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "Liveness payload with status, service, time and mode",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dashboard/analytics/query": {
             "post": {
                 "description": "Gửi các chỉ số (metrics), khoảng thời gian (timeframe), độ mịn (granularity) và bộ lọc để nhận dữ liệu Time-Series linh hoạt. Kiểm tra quyền truy cập theo TargetDashboard.",

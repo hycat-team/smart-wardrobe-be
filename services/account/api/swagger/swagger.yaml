@@ -924,6 +924,19 @@ info:
   title: Smart Wardrobe - Account Service API
   version: "1.0"
 paths:
+  /api/v1/account/health:
+    get:
+      description: Liveness probe of the Account service.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Liveness payload with status, service, time and mode
+          schema:
+            type: object
+      summary: Account service liveness probe
+      tags:
+      - Account Health
   /api/v1/admin/audit-logs:
     get:
       description: Quản trị viên tra cứu lịch sử thao tác của các quản trị viên trong

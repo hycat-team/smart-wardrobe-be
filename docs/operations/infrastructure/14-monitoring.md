@@ -23,7 +23,7 @@ Trace `request_id` (Nginx `main_tid` ↔ app log) để nối request qua 2 lớ
 
 | Signal | Cách đo | Ngưỡng gợi ý |
 |---|---|---|
-| Health | `GET /api/v1/health` qua cron/Uptime Kuma (cả `api.closy` + `api-v2`) | alert khi down 2 lần liên tiếp |
+| Health | `GET /api/v1/<svc>/health` từng service qua cron/Uptime Kuma (cả `api.closy` + `api-v2`) | alert khi down 2 lần liên tiếp |
 | Latency | log `duration_ms` / access log Nginx | p95 > 500ms trong 5m |
 | Error-rate | đếm 5xx trong log / access log | > 1% trong 5m |
 | Worker liveness | `docker compose ps` + outbox backlog trong log | worker down / backlog > 10000 |

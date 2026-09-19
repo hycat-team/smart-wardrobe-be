@@ -69,12 +69,12 @@ gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all
 Workflow: build+push GHCR → scp compose+templates → ghi `.env.deploy` (pin digest) →
 `pull`/`up -d` → gate smoke poll health đúng container vừa deploy qua SSH.
 
-Smoke tay (thay `<BOX_IP>`):
+Smoke tay từng service (thay `<BOX_IP>`, body chứa đúng tên service):
 ```bash
-curl --fail -sS -o /dev/null -w '%{http_code}\n' \
-  --resolve "api-v2.closy.hycat.online:443:<BOX_IP>" \
-  https://api-v2.closy.hycat.online/api/v1/health
-for p in auth me/ai system-catalog; do :; done  # route đủ 3 service: xem 09 §5
+for svc in account commerce ai; do
+  curl --fail -sS --resolve "api-v2.closy.hycat.online:443:<BOX_IP>" \
+    "https://api-v2.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+done
 ```
 
 ## 6. Cắt DNS `api-v2` sang box

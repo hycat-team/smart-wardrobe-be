@@ -37,8 +37,8 @@ curl -sSI https://api-v2.closy.hycat.online | grep -i cf-ray || echo "0 Cloudfla
 | Workflow | Trigger | Nội dung |
 |---|---|---|
 | `ci.yml` | PR/push `main` | fmt/tidy/generate-check, vet, test(-race), build matrix 3 service, buf lint + proto drift, parity swagger, image-build matrix |
-| `deploy-vps-services.yml` | dispatch hoặc push tag `vps-*` + approval | Matrix 3 service → GHCR (pin digest, alias tên tag) → `compose up -d <svc>` trên VPS; gate smoke poll health container qua SSH |
-| `deploy-aws.yml` (GĐ2) | dispatch hoặc push tag `aws-*` + approval | 6 container (http×3 + worker×3) → box AWS; gate smoke poll health container qua SSH |
+| `deploy-vps-services.yml` | dispatch hoặc push tag `vps-*` + approval | 3 chặng: build matrix → GHCR (pin digest, alias tên tag) → `compose up -d <svc>` → recreate nginx 1 lần → `smoke-all` curl `/api/v1/<svc>/health` đủ 3 service |
+| `deploy-aws.yml` (GĐ2) | dispatch hoặc push tag `aws-*` + approval | 3 chặng tương tự (6 container http×3 + worker×3); `smoke-all` qua IP box (`--resolve`, chưa cần DNS) |
 | `deploy-production.yml` | dispatch + xác nhận | **Chỉ rollback khẩn cấp**: build từ tag `monolith-legacy` → GHCR → compose profile `rollback` |
 
 Dispatch (xem `00` §6.1):

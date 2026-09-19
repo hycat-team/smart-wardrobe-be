@@ -71,7 +71,9 @@ Cert `api-v2` chỉ cấp khi cần (mode `services-redirect`, DNS api-v2 đã v
    Nếu Nginx chạy native trên VPS (không container): `make nginx-reload NGINX_MODE=services`.
 5. Smoke:
    ```bash
-   curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
+   for svc in account commerce ai; do
+     curl -sS "https://api.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+   done
    docker ps --filter name=backend --format '{{.Names}}'   # trống
    ```
    Rollback bất cứ lúc nào: `NGINX_MODE=rollback` + chạy `deploy-production.yml`
@@ -86,8 +88,10 @@ hoặc khi cần redirect grace (`services-redirect`) — chi tiết `11-dns-ver
 ## 7. Smoke test
 
 ```bash
-# api.closy qua 3 service VPS
-curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
+# api.closy qua đủ 3 service VPS (mỗi URL trả đúng tên service trong body)
+for svc in account commerce ai; do
+  curl -sS "https://api.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+done
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/system-catalog/wardrobe-items
 
 # Không có Cloudflare trong đường API

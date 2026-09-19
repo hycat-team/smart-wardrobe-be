@@ -442,6 +442,26 @@
           "Admin AI"
         ]
       }
+    },
+    "/api/v1/ai/health": {
+      "get": {
+        "description": "Liveness probe of the AI service.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness payload with status, service, time and mode",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "AI service liveness probe",
+        "tags": [
+          "AI Health"
+        ]
+      }
     }
   },
   "swagger": "2.0"

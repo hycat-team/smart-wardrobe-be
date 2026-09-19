@@ -15,8 +15,10 @@ gh workflow run deploy-vps-services.yml -R "<OWNER/REPO>" --ref main -f services
 RUN_ID=$(gh run list --workflow deploy-vps-services.yml -R "<OWNER/REPO>" --limit 1 \
   --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID" -R "<OWNER/REPO>"
-# smoke
-curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
+# smoke từng service (body chứa đúng tên service)
+for svc in account commerce ai; do
+  curl -sS "https://api.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+done
 ```
 
 > Dừng backend cũ (monolith) nếu còn chạy — tránh 2 writer cùng DB (idempotent):

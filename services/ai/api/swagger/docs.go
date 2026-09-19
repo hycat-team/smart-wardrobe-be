@@ -255,6 +255,26 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/ai/health": {
+            "get": {
+                "description": "Liveness probe of the AI service.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Health"
+                ],
+                "summary": "AI service liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "Liveness payload with status, service, time and mode",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {

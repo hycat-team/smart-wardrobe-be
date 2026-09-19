@@ -15,6 +15,26 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/account/health": {
+            "get": {
+                "description": "Liveness probe of the Account service.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account Health"
+                ],
+                "summary": "Account service liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "Liveness payload with status, service, time and mode",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/audit-logs": {
             "get": {
                 "description": "Quản trị viên tra cứu lịch sử thao tác của các quản trị viên trong hệ thống.",

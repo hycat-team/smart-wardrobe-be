@@ -40,8 +40,10 @@ cửa sổ bảo trì. Song song càng lâu, divergence càng lớn — cân nh�
 ## 5. Gate VPS sau khi vào `services`
 
 ```bash
-# a) api.closy qua 3 service VPS
-curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health
+# a) api.closy qua đủ 3 service VPS (mỗi URL trả đúng tên service trong body)
+for svc in account commerce ai; do
+  curl -sS "https://api.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+done
 
 # b) backend đã dừng
 docker ps --filter name=backend --format '{{.Names}}'   # trống
@@ -50,6 +52,6 @@ docker ps --filter name=backend --format '{{.Names}}'   # trống
 curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
 ```
 
-- [ ] `api.closy` 200 qua 3 service VPS (route + SSE + auth + upload).
+- [ ] `api.closy` 200 qua đủ 3 service VPS (`/api/v1/<svc>/health` đúng tên service; route + SSE + auth + upload).
 - [ ] Backend dừng; VPS infra local-only (guard pass).
 - [ ] Ghi mốc thời gian + checksum dữ liệu.

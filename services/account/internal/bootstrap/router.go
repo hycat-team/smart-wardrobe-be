@@ -18,6 +18,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// healthHandler serves liveness probes for /health and the per-service alias
+// (/account/health) used by deploy smoke tests and uptime monitors.
+//
+// @Summary Account service liveness probe
+// @Description Liveness probe of the Account service.
+// @Tags Account Health
+// @Produce json
+// @Success 200 {object} object "Liveness payload with status, service, time and mode"
+// @Router /api/v1/account/health [get]
+func healthHandler(cfg *sharedconfig.Config, searchClient *sharedsearch.ElasticsearchClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"service":   ServiceName,
+			"time":      time.Now().Format(time.RFC3339),
+			"mode":      cfg.App.Mode,
+			"messaging": shared_msg.GetMetrics(),
+			"elasticsearch": gin.H{
+				"enabled": searchClient.Enabled(),
+				"healthy": searchClient.IsHealthy(),
+			},
+		})
+	}
+}
+
 // NewEngine builds the Account HTTP engine: shared middleware stack, the
 // module routers and the health endpoint (FR-044 health on PORT).
 func NewEngine(
@@ -44,7 +69,8 @@ func NewEngine(
 	)
 	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Skip: func(c *gin.Context) bool {
-			return c.Request.URL.Path == "/api/v1/health" && c.Writer.Status() == http.StatusOK
+			p := c.Request.URL.Path
+			return (p == "/api/v1/health" || p == "/api/v1/account/health") && c.Writer.Status() == http.StatusOK
 		},
 	}))
 	engine.Use(shared_middleware.GlobalErrorHandler(log, cfg.Server.Env))
@@ -82,19 +108,12 @@ func NewEngine(
 
 	api := engine.Group("/api/v1")
 	{
-		api.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"status":    "healthy",
-				"service":   ServiceName,
-				"time":      time.Now().Format(time.RFC3339),
-				"mode":      cfg.App.Mode,
-				"messaging": shared_msg.GetMetrics(),
-				"elasticsearch": gin.H{
-					"enabled": searchClient.Enabled(),
-					"healthy": searchClient.IsHealthy(),
-				},
-			})
-		})
+		health := healthHandler(cfg, searchClient)
+		api.GET("/health", health)
+		// Per-service alias: distinct path per service so the generated Nginx
+		// route map routes each alias to its owner (shared /health cannot be
+		// documented per service without a duplicate-path conflict).
+		api.GET("/account/health", health)
 
 		identityRouter.Init(api)
 		subscriptionRouter.Init(api)

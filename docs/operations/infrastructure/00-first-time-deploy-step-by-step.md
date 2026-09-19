@@ -320,9 +320,11 @@ gh run watch "$RUN_ID" -R "<OWNER/REPO>"
 > Nếu environment `vps-production` có Required reviewers, run sẽ **chờ approve** — vào
 > `Actions → run → Review deployments → Approve`.
 
-Workflow build matrix per service → push GHCR (pin digest) → `compose up -d <svc>` trên
-VPS; 1 service fail không chặn 2 còn lại. Gate smoke poll health đúng container vừa
-deploy qua SSH (miễn nhiễm trạng thái Nginx).
+Workflow chạy 3 chặng: build matrix per service → push GHCR (pin digest) →
+`compose up -d <svc>` trên VPS (1 service fail không chặn 2 còn lại) → recreate
+nginx 1 lần (route map mới có hiệu lực; `depends_on` healthy gate cả 3) →
+`smoke-all` curl `/api/v1/<svc>/health` đủ 3 service qua nginx, grep đúng tên
+service trong body.
 
 Deploy box ngoài AWS làm ở GĐ2 (`15-aws-compute.md` + `deploy-aws.yml`).
 
@@ -403,9 +405,11 @@ Deploy box ngoài AWS làm ở GĐ2 (`15-aws-compute.md` + `deploy-aws.yml`).
    > Không bao giờ `down -v` trên prod (xóa volumes `postgres_data`... = mất dữ liệu).
    > Backup DB trước mọi lần recreate postgres.
    > Rollback: `NGINX_MODE=rollback` + chạy `deploy-production.yml` (§10).
-5. Smoke:
+5. Smoke (từng service qua nginx, body chứa đúng tên service):
    ```bash
-   curl -sS -o /dev/null -w '%{http_code}\n' https://api.closy.hycat.online/api/v1/health   # 200 qua 3 service VPS
+   for svc in account commerce ai; do
+     curl -sS "https://api.closy.hycat.online/api/v1/$svc/health" | grep -o '"service":"[a-z]*"'
+   done
    curl -sSI https://api.closy.hycat.online | grep -i cf-ray || echo "0 Cloudflare OK"
    docker ps --filter name=backend --format '{{.Names}}'                                    # trống
    ```
@@ -417,7 +421,7 @@ Chỉ làm sau khi đã đăng ký Supabase ở GĐ2.
 
 ## 9. Gate VPS `services`
 
-- [ ] `api.closy` 200 qua 3 service VPS (route + SSE + auth + upload).
+- [ ] `api.closy` 200 qua đủ 3 service VPS (`/api/v1/<svc>/health` trả đúng tên service; route + SSE + auth + upload).
 - [ ] Backend đã dừng; VPS infra local-only (guard pass).
 - [ ] 0 request qua Cloudflare; SSE stream dài không đứt.
 - [ ] Ghi mốc thời gian + checksum.

@@ -8237,6 +8237,26 @@
         ]
       }
     },
+    "/api/v1/commerce/health": {
+      "get": {
+        "description": "Liveness probe of the Commerce service.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness payload with status, service, time and mode",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "Commerce service liveness probe",
+        "tags": [
+          "Commerce Health"
+        ]
+      }
+    },
     "/api/v1/dashboard/analytics/query": {
       "post": {
         "consumes": [

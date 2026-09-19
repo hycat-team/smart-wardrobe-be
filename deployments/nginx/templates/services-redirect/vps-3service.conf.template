@@ -95,6 +95,7 @@ server {
     }
 
     # BEGIN GENERATED ROUTES (make nginx-routes) - do not edit by hand
+    location ^~ /api/v1/account { proxy_pass $account_upstream; }
     location ^~ /api/v1/admin/audit-logs { proxy_pass $account_upstream; }
     location ^~ /api/v1/admin/subscriptions { proxy_pass $account_upstream; }
     location ^~ /api/v1/admin/users { proxy_pass $account_upstream; }
@@ -108,11 +109,13 @@ server {
     location ^~ /api/v1/admin/categories { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/admin/dashboard { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/admin/wardrobe-items { proxy_pass $commerce_upstream; }
-    location ^~ /api/v1/ai { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/ai/chat { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/chat/sessions { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
+    location ^~ /api/v1/ai/outfit-recommendations { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/brand { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/brand-portal/brands { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
     location ^~ /api/v1/categories { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/commerce { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/dashboard { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/benefit-redemptions { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/brand-loyalties { proxy_pass $commerce_upstream; }
@@ -124,11 +127,8 @@ server {
     location ^~ /api/v1/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/wardrobe-items/tasks { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
     location ^~ /api/v1/admin/ai { proxy_pass $ai_upstream; }
+    location ^~ /api/v1/ai/health { proxy_pass $ai_upstream; }
     # END GENERATED ROUTES
-
-    # Liveness probe for humans/monitors (NOT a swagger path, so the generator
-    # never emits it): account answers as the canonical representative.
-    location = /api/v1/health { proxy_pass $account_upstream; }
 
     # Monolith-style combined Swagger docs (Account hosts the bundle, behind its
     # access-code lock). Old UI + service/module selectors.

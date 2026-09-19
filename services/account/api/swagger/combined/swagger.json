@@ -5133,6 +5133,26 @@
     "version": "1.0"
   },
   "paths": {
+    "/api/v1/account/health": {
+      "get": {
+        "description": "Liveness probe of the Account service.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness payload with status, service, time and mode",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "Account service liveness probe",
+        "tags": [
+          "Account Health"
+        ]
+      }
+    },
     "/api/v1/admin/ai/grants": {
       "get": {
         "description": "Quản trị viên xem các lượt grant chính sách AI đã cấp cho người dùng.",
@@ -7802,6 +7822,26 @@
         "summary": "Nhắn tin với stylist AI (Stream SSE)",
         "tags": [
           "Wardrobe AI"
+        ]
+      }
+    },
+    "/api/v1/ai/health": {
+      "get": {
+        "description": "Liveness probe of the AI service.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness payload with status, service, time and mode",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "AI service liveness probe",
+        "tags": [
+          "AI Health"
         ]
       }
     },
@@ -11375,6 +11415,26 @@
         "summary": "Lấy tất cả danh mục trang phục",
         "tags": [
           "Category"
+        ]
+      }
+    },
+    "/api/v1/commerce/health": {
+      "get": {
+        "description": "Liveness probe of the Commerce service.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness payload with status, service, time and mode",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "Commerce service liveness probe",
+        "tags": [
+          "Commerce Health"
         ]
       }
     },

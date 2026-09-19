@@ -196,27 +196,56 @@ jobs:
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps ${SERVICE}-http ${SERVICE}-worker
                   "
 
-            # Container-direct smoke: poll the health of the exact -http container
-            # just deployed. Immune to Nginx/DNS state, and every matrix service
-            # is verified — no single-service representative, no public-URL
-            # false signals.
-            - name: Smoke test deployed container
+    # Recreate Nginx once after ALL services deployed so the freshly uploaded
+    # route map takes effect. depends_on healthy gates every http container: if
+    # any is unhealthy the recreate fails and the run goes red here.
+    reload-nginx:
+        needs: deploy
+        runs-on: ubuntu-latest
+        environment: aws-production
+        steps:
+            - name: Prepare SSH
+              shell: bash
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "${{ secrets.AWS_SSH_KEY }}" > ~/.ssh/id_ed25519
+                  chmod 600 ~/.ssh/id_ed25519
+                  printf '%s\n' "${{ secrets.AWS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+                  chmod 600 ~/.ssh/known_hosts
+
+            - name: Recreate Nginx
               shell: bash
               run: |
                   ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
                     cd /opt/closy-aws
-                    CID=\$(docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps -q ${SERVICE}-http)
-                    if [ -z \"\$CID\" ]; then
-                      echo 'no container found for ${SERVICE}-http'
-                      exit 1
-                    fi
-                    for i in \$(seq 1 24); do
-                      if [ \"\$(docker inspect -f '{{.State.Health.Status}}' \"\$CID\")\" = 'healthy' ]; then
-                        exit 0
-                      fi
-                      sleep 5
-                    done
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml logs --tail=30 ${SERVICE}-http
-                    echo 'smoke test failed for ${SERVICE}: container never became healthy'
-                    exit 1
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d --force-recreate nginx
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps nginx
                   "
+
+    # Per-service smoke through Nginx: fixed matrix over ALL 3 services (not
+    # inputs.services) so a single-service deploy still verifies the whole
+    # ingress. Greps the service name in the body to prove correct routing,
+    # not just HTTP 200. --resolve targets the box IP so no DNS cutover is
+    # needed to verify a deploy.
+    smoke-all:
+        needs: reload-nginx
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                service: [account, commerce, ai]
+        steps:
+            - name: Smoke test ${{ matrix.service }} via Nginx
+              shell: bash
+              run: |
+                  host="api-v2.closy.hycat.online"
+                  for i in $(seq 1 12); do
+                    body=$(curl --fail --silent --show-error --resolve "${host}:443:${{ secrets.AWS_HOST }}" "https://${host}/api/v1/${{ matrix.service }}/health" || true)
+                    if printf '%s' "${body}" | grep -q '"service":"${{ matrix.service }}"'; then
+                      exit 0
+                    fi
+                    sleep 5
+                  done
+                  echo "smoke test failed for ${{ matrix.service }}"
+                  printf '%s\n' "${body}"
+                  exit 1
