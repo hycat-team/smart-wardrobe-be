@@ -227,8 +227,6 @@ gh secret set AWS_HOST -R "$OWNER_REPO"          --body "<BOX_IP>"
 gh secret set AWS_USER -R "$OWNER_REPO"          --body "ubuntu"
 gh secret set AWS_SSH_PORT -R "$OWNER_REPO"      --body "22"
 # SSH key + known_hosts là nội dung nhiều dòng → set từ file (xem 5.3)
-# Var smoke test (base URL api-v2; workflow tự --resolve về IP box):
-# gh variable set AWS_SMOKE_URL -R "$OWNER_REPO" --body "https://api-v2.closy.hycat.online"
 ```
 
 > **INGRESS_ACCOUNT_URL / INGRESS_COMMERCE_URL / INGRESS_AI_URL** trên VPS là tên
@@ -282,9 +280,9 @@ gh secret set JWT_PUBLIC_KEY  -R "<OWNER/REPO>" < ec_public.pem
 | Variable | Dùng cho | Lấy giá trị | Lệnh |
 |---|---|---|---|
 | `PRODUCTION_HEALTH_URL` | `deploy-production.yml` smoke test | health URL của monolith hiện tại | `gh variable set PRODUCTION_HEALTH_URL -R "<OWNER/REPO>" --body "https://api.closy.hycat.online/api/v1/health"` |
-| `VPS_SMOKE_URL` | `deploy-vps-services.yml` smoke test | base URL `api.closy` | `gh variable set VPS_SMOKE_URL -R "<OWNER/REPO>" --body "https://api.closy.hycat.online"` |
 
-> Để trống `VPS_SMOKE_URL` cũng chạy được — step smoke test tự skip khi variable rỗng.
+> Smoke của `deploy-vps-services.yml` / `deploy-aws.yml` bắn thẳng vào container vừa
+> deploy (poll health qua SSH) nên không cần variable nào.
 
 ### 5.5 Verify đã đủ secret/variable
 
@@ -297,10 +295,9 @@ gh secret list --env vps-production -R "<OWNER/REPO>"
 ```
 Checklist tối thiểu để `deploy-vps-services.yml` chạy (GĐ1):
 - [ ] `VPS_*` (5) + `GHCR_*` (2)
-- [ ] `VPS_SMOKE_URL` trỏ base `https://api.closy.hycat.online` (không còn api-v2)
 
 Checklist bổ sung khi tới GĐ2 (`deploy-aws.yml`):
-- [ ] `AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS` + var `AWS_SMOKE_URL`
+- [ ] `AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS`
 - [ ] `DB_*` (7 biến), `REDIS_*` (3), `RABBITMQ_*` (4)
 - [ ] `JWT_SECRET`, `JWT_ALGORITHM`
 - [ ] `SWAGGER_ACCESS_CODE`, `CLOUDINARY_*`, `EMAIL_SMTP_*`, `PAYOS_*`
@@ -324,7 +321,8 @@ gh run watch "$RUN_ID" -R "<OWNER/REPO>"
 > `Actions → run → Review deployments → Approve`.
 
 Workflow build matrix per service → push GHCR (pin digest) → `compose up -d <svc>` trên
-VPS; 1 service fail không chặn 2 còn lại. Smoke test qua `VPS_SMOKE_URL` (§5.4).
+VPS; 1 service fail không chặn 2 còn lại. Gate smoke poll health đúng container vừa
+deploy qua SSH (miễn nhiễm trạng thái Nginx).
 
 Deploy box ngoài AWS làm ở GĐ2 (`15-aws-compute.md` + `deploy-aws.yml`).
 

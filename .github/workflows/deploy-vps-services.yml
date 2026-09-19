@@ -192,15 +192,27 @@ jobs:
                     docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps ${SERVICE}
                   "
 
-            - name: Smoke test deployed service
-              if: vars.VPS_SMOKE_URL != ''
+            # Container-direct smoke: poll the health of the exact container just
+            # deployed. Immune to Nginx state (which keeps serving the previous
+            # stack until cutover), and every matrix service is verified — no
+            # single-service representative, no public-URL false signals.
+            - name: Smoke test deployed container
               shell: bash
               run: |
-                  for i in $(seq 1 12); do
-                    if curl --fail --silent --show-error "${{ vars.VPS_SMOKE_URL }}/api/v1/health"; then
-                      exit 0
+                  ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+                    cd /opt/closy
+                    CID=\$(docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml ps -q ${SERVICE})
+                    if [ -z \"\$CID\" ]; then
+                      echo 'no container found for ${SERVICE}'
+                      exit 1
                     fi
-                    sleep 5
-                  done
-                  echo "smoke test failed for ${{ matrix.service }}"
-                  exit 1
+                    for i in \$(seq 1 24); do
+                      if [ \"\$(docker inspect -f '{{.State.Health.Status}}' \"\$CID\")\" = 'healthy' ]; then
+                        exit 0
+                      fi
+                      sleep 5
+                    done
+                    docker compose --env-file .env.production --env-file .env.deploy -f deployments/docker-compose.prod.yml logs --tail=30 ${SERVICE}
+                    echo 'smoke test failed for ${SERVICE}: container never became healthy'
+                    exit 1
+                  "

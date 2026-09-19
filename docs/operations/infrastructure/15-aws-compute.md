@@ -17,7 +17,7 @@ Box chạy 6 container (`APP_MODE=http`×3 + `worker`×3) + Nginx phục vụ
 
 - [ ] Tài khoản AWS + Lightsail khả dụng ở Singapore; đã bật billing alarm $20/40/60.
 - [ ] Supabase / Redis Cloud / CloudAMQP đã tạo, đã có host/port/password (`00` §0.3–0.5).
-- [ ] GitHub secrets `AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS` + var `AWS_SMOKE_URL`
+- [ ] GitHub secrets `AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS`
   (`00` §5); environment `aws-production` (nên bật Required reviewers).
 - [ ] Image 3 service đã có trên GHCR (dispatch `deploy-aws.yml` tự build+push).
 
@@ -67,7 +67,7 @@ Renew sau này qua webroot (`certbot_www` đã mount; thêm cron/systemd timer g
 gh workflow run deploy-aws.yml -R "<OWNER/REPO>" --ref main -f services=all
 ```
 Workflow: build+push GHCR → scp compose+templates → ghi `.env.deploy` (pin digest) →
-`pull`/`up -d` → smoke `AWS_SMOKE_URL` với `--resolve` về IP box (không cần DNS).
+`pull`/`up -d` → gate smoke poll health đúng container vừa deploy qua SSH.
 
 Smoke tay (thay `<BOX_IP>`):
 ```bash
