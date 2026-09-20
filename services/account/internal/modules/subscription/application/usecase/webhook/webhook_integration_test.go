@@ -14,6 +14,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/webhookprocessingstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/shared/config"
@@ -272,5 +273,26 @@ func TestIntegrationProcessWebhookSkipsUnsuccessfulEvents(t *testing.T) {
 	}
 	if tx.Status != depositstatus.Pending {
 		t.Fatalf("expected transaction untouched for failed webhook, got %v", tx.Status)
+	}
+}
+
+func TestIntegrationProcessWebhookAcksUnknownOrderCode(t *testing.T) {
+	dbConn := openWebhookTestDB(t)
+	cleanupWebhookTables(t, dbConn)
+	uc := newWebhookUseCase(dbConn)
+	ctx := context.Background()
+
+	// Mirrors the payOS webhook-URL test sample: orderCode 123 is never ours.
+	const unknownOrderCode = int64(123)
+	if err := uc.ProcessWebhook(ctx, buildWebhookPayload(unknownOrderCode, "3000"), "sig"); err != nil {
+		t.Fatalf("webhook for an unknown orderCode must be acknowledged, got %v", err)
+	}
+
+	var inbox entities.ProviderWebhookInbox
+	if err := dbConn.Where("order_code = ?", unknownOrderCode).First(&inbox).Error; err != nil {
+		t.Fatalf("expected an inbox row for the unknown orderCode: %v", err)
+	}
+	if inbox.ProcessingStatus != string(webhookprocessingstatus.InvestigationRequired) {
+		t.Fatalf("expected inbox status %q, got %q", webhookprocessingstatus.InvestigationRequired, inbox.ProcessingStatus)
 	}
 }

@@ -13,11 +13,11 @@ Placeholder dùng chung toàn bộ tài liệu vận hành (thay trước khi ch
 VPS và box ngoài là **2 trục độc lập** — bật/tắt một bên không đụng bên còn lại.
 DNS là điểm phối hợp duy nhất.
 
-| Hạng mục | VPS (`services/`) | Box ngoài AWS (GĐ2) |
+| Hạng mục | VPS (`services/`) | Box ngoài AWS Lightsail (GĐ2, EC2-backed) |
 |---|---|---|
 | Compute | Docker Compose 3 service (`APP_MODE=all`) | 6 container (`http`×3 + `worker`×3) |
 | Postgres | container `postgres` local (`pgvector/pg17`) | Supabase pooler 6543 / direct 5432 |
-| Redis | container `redis` local (no TLS) | Redis Cloud (TLS) |
+| Redis | container `redis` local (no TLS) | Redis Cloud (TLS chỉ ở gói trả phí; free 30MB không TLS) |
 | RabbitMQ | container `rabbitmq` local | CloudAMQP (amqps 5671) |
 | Elasticsearch | container ngoài compose, tắt tay được (app fallback DB) | không chạy (`ENABLED=false`) |
 | Email/Media/AI | Brevo / Cloudinary / keys hiện tại | copy y nguyên, share quota |
@@ -81,7 +81,7 @@ Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 | `DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER` | `true` (trong configs) |
 | `DB_DRILL_SCHEMA` | rỗng; chỉ dùng khi drill |
 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | secret (box: endpoint/port riêng, KHÔNG phải 6379) |
-| `REDIS_TLS_ENABLED` | VPS `false`; box `true` |
+| `REDIS_TLS_ENABLED` | VPS `false`; box: `false` cho free 30MB, `true` cho gói có TLS |
 | `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD` | secret (box: `5671` amqps) |
 | `RABBITMQ_TLS_ENABLED`, `RABBITMQ_MANAGEMENT_TLS_ENABLED` | VPS `false`; box `true` |
 | `OUTBOX_LISTENER_ENABLED` | `true`; tắt → fallback poll |
@@ -104,7 +104,8 @@ goose -dir services/<svc>/database/migrations \
 | `INGRESS_ACCOUNT/COMMERCE/AI_URL` | VPS: `http://account:8080`...; box: hardcode `*-http` trong compose |
 | `INGRESS_TOKEN_AUDIENCE` | để trống (không còn Cloud Run) |
 | `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | Brevo SMTP; box copy y nguyên từ VPS |
-| `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_ENDPOINT` | secret |
+| `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` | **kênh riêng mỗi trục** (VPS và box KHÔNG share — mỗi kênh có webhook URL riêng) |
+| `PAYOS_ENDPOINT` | `https://api-merchant.payos.vn` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_API_URL` | box copy y nguyên từ VPS |
 | `VISION_*`, `EMBEDDING_*`, `CHAT_TEXT_*`, `RECOMMENDATION_TEXT_*`, `FREE_TEXT_*` | provider/model/endpoint/key; box copy y nguyên từ VPS |
 
@@ -119,22 +120,26 @@ goose -dir services/<svc>/database/migrations \
 | `NGINX_CLIENT_MAX_BODY_SIZE` | `20m` |
 | `NGROK_AUTHTOKEN`, `NGROK_DOMAIN`, `NGROK_TARGET` | chỉ local tunnel |
 
-### 2.5 GitHub secrets (box ngoài + VPS)
+### 2.5 GitHub secrets (chỉ host-access; app config nằm trong file env)
 
-Tên đầy đủ: `AWS_HOST`, `AWS_USER`, `AWS_SSH_PORT`, `AWS_SSH_KEY`, `AWS_KNOWN_HOSTS`,
-`VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`,
-`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`), `DB_USER`, `DB_PASSWORD`,
-`DB_NAME`, `DB_HOST`, `DB_PORT`, `DB_LISTENER_HOST`, `DB_LISTENER_SSLMODE`,
-`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `RABBITMQ_HOST`, `RABBITMQ_PORT`,
-`RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `JWT_ALGORITHM`, `JWT_SECRET`,
-`SWAGGER_ACCESS_CODE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
-`CLOUDINARY_API_SECRET`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `PAYOS_CLIENT_ID`,
-`PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PRODUCTION_HEALTH_URL` (variable, cho rollback).
+Workflow CHỈ đọc secret truy cập host + GHCR:
+`AWS_HOST`, `AWS_USER`, `AWS_SSH_PORT`, `AWS_SSH_KEY`, `AWS_KNOWN_HOSTS` (box AWS);
+`VPS_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS` (VPS);
+`GHCR_USERNAME`, `GHCR_READ_TOKEN` (PAT `read:packages`, dùng chung). Variable
+`PRODUCTION_HEALTH_URL` (smoke rollback).
 
-Workflow box ngoài tự đặt (không tạo secret): `SERVER_ENV=vps`, `APP_MODE=http|worker`,
-`DATABASE_MIGRATE_ON_START=true`, `DATABASE_MIGRATION_TABLE` (per-service),
-`ELASTICSEARCH_ENABLED=false`. TLS managed (`DB_SSLMODE`/`DB_LISTENER_SSLMODE=require`,
-`REDIS_TLS_ENABLED=true`, `RABBITMQ_TLS_ENABLED=true`) lấy từ secret đã set.
+Toàn bộ `DB_*`, `REDIS_*`, `RABBITMQ_*`, `JWT_*`, `CLOUDINARY_*`, `EMAIL_*`,
+`PAYOS_*`, `SWAGGER_ACCESS_CODE`, AI provider keys **KHÔNG phải** GitHub secret —
+chúng nằm trong `.env.production` (VPS) và `.env.aws` (box), đưa lên host bằng
+`scp`/editor, không qua GitHub. (Giai đoạn Cloud Run cũ từng set chúng làm secret;
+nay không workflow nào đọc nữa.)
+
+Không workflow nào tiêm env app cho box. `docker-compose.aws.yml` hardcode mỗi
+container: `CONFIG_FILE`, `APP_MODE=http|worker`, `DATABASE_MIGRATION_TABLE`,
+`INGRESS_*_URL`, `SERVER_PORT=8080`, `TZ`. Còn lại lấy từ `.env.aws`: `SERVER_ENV=vps`,
+`API_V2_DOMAIN`, `DB_*`/`REDIS_*`/`RABBITMQ_*` (kèm cờ TLS theo gói), `JWT_*`,
+`EMAIL_*`, `PAYOS_*`, `CLOUDINARY_*`, AI keys, `ELASTICSEARCH_ENABLED=false`,
+`FRONT_END_ORIGIN`, `SWAGGER_ACCESS_CODE`.
 
 Verify đã đủ:
 ```bash

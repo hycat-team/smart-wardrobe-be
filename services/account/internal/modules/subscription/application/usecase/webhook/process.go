@@ -66,8 +66,12 @@ func (uc *PaymentWebhookUseCase) loadAndValidateDepositTransaction(
 	if err != nil {
 		return nil, decimal.Zero, subscriptionerrors.ErrQueryTransactionFailed()
 	}
+	// An unknown orderCode is acknowledged, not failed. The payload is already
+	// persisted in the inbox, and the reconciliation worker recovers genuine
+	// races by polling the provider for pending transactions. Returning 404
+	// would make the provider retry forever and fail webhook URL confirmation.
 	if tx == nil {
-		return nil, decimal.Zero, subscriptionerrors.ErrTransactionNotFound(payload.Data.OrderCode)
+		return nil, decimal.Zero, nil
 	}
 	if err := sharedmoney.ValidateSupportedCurrency(tx.Currency); err != nil {
 		return nil, decimal.Zero, err
@@ -87,14 +91,15 @@ func (uc *PaymentWebhookUseCase) serializeWebhookDetails(payload *WebhookPayload
 	return string(rawBytes), nil
 }
 
+// processLockedWebhookTransaction applies a verified payment inside a unit of
+// work. It re-reads the transaction under a row lock (the caller's read is only
+// a pre-check), so it takes no transaction argument.
 func (uc *PaymentWebhookUseCase) processLockedWebhookTransaction(
 	ctx context.Context,
 	payload *WebhookPayload,
-	tx *entities.DepositTransaction,
 	webhookAmount decimal.Decimal,
 	detailsStr string,
 ) error {
-	_ = webhookAmount
 	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		lockedTx, err := uc.depositTxRepo.GetByOrderCodeWithLock(txCtx, payload.Data.OrderCode)
 		if err != nil {

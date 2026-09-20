@@ -5,7 +5,7 @@ name: Deploy AWS Box
 # GHCR and pinned by digest, then `docker compose up -d` on the box. The box
 # talks ONLY to managed infra (Supabase / Redis Cloud / CloudAMQP) — base env
 # lives in /opt/closy-aws/.env.aws on the box (created once from
-# .env.aws.example, runbook 15-aws-compute.md); image pins live in .env.deploy.
+# .env.aws.example, docs/operations/aws-runbook.md); image pins live in .env.deploy.
 #
 # Requires the `aws-production` environment (approval gate), the AWS_* secrets,
 # and GHCR read access on the box. Smoke test hits the box IP with SNI override
@@ -171,7 +171,7 @@ jobs:
                     tar -xzf /tmp/closy-aws-deploy.tar.gz -C /opt/closy-aws
                     rm -f /tmp/closy-aws-deploy.tar.gz
                     cd /opt/closy-aws
-                    test -f .env.aws || { echo 'missing /opt/closy-aws/.env.aws (runbook 15)'; exit 1; }
+                    test -f .env.aws || { echo 'missing /opt/closy-aws/.env.aws'; exit 1; }
                     touch .env.deploy
                     grep -v '^${UPPER}_IMAGE=' .env.deploy > .env.deploy.next || true
                     printf '${UPPER}_IMAGE=%s\n' '${{ steps.digest.outputs.ref }}' >> .env.deploy.next

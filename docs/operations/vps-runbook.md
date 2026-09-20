@@ -17,18 +17,22 @@ Placeholder (thay trong mọi lệnh): `hycat-team/smart-wardrobe-be` (điền s
    `github.com/hycat-team/smart-wardrobe-be/settings/environments` (nên bật Required reviewers).
 2. Tạo GHCR read token cho VPS: GitHub Settings → Personal access token
    (classic) → note `closy-vps-ghcr-read`, scope **`read:packages`** → copy token.
-3. Set secrets (copy-paste, sửa giá trị):
-```bash
-OWNER_REPO="hycat-team/smart-wardrobe-be"
-gh secret set GHCR_USERNAME -R "$OWNER_REPO"     --body "<github-username>"
-gh secret set GHCR_READ_TOKEN -R "$OWNER_REPO"   --body "ghp_xxx"
-gh secret set VPS_HOST -R "$OWNER_REPO"          --body "<VPS_HOST>"
-gh secret set VPS_USER -R "$OWNER_REPO"          --body "<VPS_USER>"
-gh secret set VPS_SSH_PORT -R "$OWNER_REPO"      --body "22"
-gh secret set VPS_SSH_KEY -R "$OWNER_REPO" < ~/.ssh/id_ed25519
-ssh-keyscan -p 22 <VPS_HOST> > known_hosts
-gh secret set VPS_KNOWN_HOSTS -R "$OWNER_REPO" < known_hosts
-gh variable set PRODUCTION_HEALTH_URL -R "$OWNER_REPO" --body "https://api.closy.hycat.online/api/v1/health"
+3. Set secrets (copy-paste, sửa giá trị) — chạy bằng **PowerShell**:
+```powershell
+$OWNER_REPO = "hycat-team/smart-wardrobe-be"
+gh secret set GHCR_USERNAME -R $OWNER_REPO --body "<github-username>"
+gh secret set GHCR_READ_TOKEN -R $OWNER_REPO --body "ghp_xxx"
+gh secret set VPS_HOST -R $OWNER_REPO --body "<VPS_HOST>"
+gh secret set VPS_USER -R $OWNER_REPO --body "<VPS_USER>"
+gh secret set VPS_SSH_PORT -R $OWNER_REPO --body "22"
+Get-Content -Raw "$HOME/.ssh/id_ed25519" | gh secret set VPS_SSH_KEY -R $OWNER_REPO
+# Windows built-in ssh-keyscan loi KEX (sntrup761...); dung ban cua Git for Windows.
+$keyscan = "$env:ProgramFiles\Git\usr\bin\ssh-keyscan.exe"
+if (-not (Test-Path $keyscan)) { $keyscan = "$env:LOCALAPPDATA\Programs\Git\usr\bin\ssh-keyscan.exe" }
+if (-not (Test-Path $keyscan)) { $keyscan = "ssh-keyscan" }
+& $keyscan -p 22 "<VPS_HOST>" | Out-File -Encoding ascii docs/temp/vps_known_hosts
+Get-Content -Raw docs/temp/vps_known_hosts | gh secret set VPS_KNOWN_HOSTS -R $OWNER_REPO
+gh variable set PRODUCTION_HEALTH_URL -R $OWNER_REPO --body "https://api.closy.hycat.online/api/v1/health"
 ```
 4. Verify: `gh secret list -R "$OWNER_REPO"` đủ 7 secrets trên; environment
    `vps-production` đã có (tự tạo ở lần dispatch đầu nếu chưa tạo tay).

@@ -127,6 +127,22 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		return err
 	}
 
+	if tx == nil {
+		// Acknowledged but not applied: unknown orderCode (provider's webhook
+		// test sample, an order owned by the other axis, or a not-yet-committed
+		// race). Return success so the provider stops retrying and webhook URL
+		// confirmation passes; reconciliation/inbox recover anything real.
+		uc.log.Warn("Ignored PayOS webhook for unknown orderCode",
+			zap.Int64("order_code", payload.Data.OrderCode),
+			zap.String("gateway_reference", payload.Data.Reference),
+			zap.String("result", "ignored_unknown_order"),
+		)
+		if inbox != nil {
+			_ = uc.inboxRepo.MarkInvestigation(ctx, inbox.ID, time.Now().UTC(), "unknown orderCode")
+		}
+		return nil
+	}
+
 	if tx.Status == depositstatus.Success {
 		return nil
 	}
@@ -136,7 +152,7 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 		return err
 	}
 
-	if err := uc.processLockedWebhookTransaction(ctx, payload, tx, webhookAmount, detailsStr); err != nil {
+	if err := uc.processLockedWebhookTransaction(ctx, payload, webhookAmount, detailsStr); err != nil {
 		if inbox != nil {
 			_ = uc.inboxRepo.MarkRetry(ctx, inbox.ID, time.Now().UTC(), err.Error())
 		}
@@ -176,7 +192,7 @@ func (uc *PaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, in
 		amount = info.Amount
 	}
 	payload := &WebhookPayload{Code: "00", Success: true, Data: WebhookPayloadData{OrderCode: info.OrderCode, Amount: json.Number(amount.String()), Reference: info.Reference, Currency: info.Currency, PaymentLinkId: info.PaymentLinkID, Code: "00"}}
-	tx, verifiedAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)
+	_, verifiedAmount, err := uc.loadAndValidateDepositTransaction(ctx, payload)
 	if err != nil {
 		return err
 	}
@@ -184,5 +200,5 @@ func (uc *PaymentWebhookUseCase) CompleteVerifiedPayment(ctx context.Context, in
 	if err != nil {
 		return err
 	}
-	return uc.processLockedWebhookTransaction(ctx, payload, tx, verifiedAmount, details)
+	return uc.processLockedWebhookTransaction(ctx, payload, verifiedAmount, details)
 }
