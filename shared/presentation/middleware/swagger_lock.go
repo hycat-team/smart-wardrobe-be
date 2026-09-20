@@ -11,8 +11,8 @@ import (
 // SwaggerLockMiddleware restricts access to Swagger UI and API spec docs unless a valid access code is presented
 func SwaggerLockMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Only enforce Swagger access code check in production environment
-		if cfg.Server.Env != "production" {
+		// Only enforce the Swagger access code outside local development.
+		if !config.IsProductionEnv(cfg.Server.Env) {
 			c.Next()
 			return
 		}

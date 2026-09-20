@@ -205,3 +205,21 @@ func IsManagedEnv(env string) bool {
 	}
 	return false
 }
+
+// nonProductionEnvs lists the only Server.Env values that relax production
+// hardening (gin release mode, Swagger access gate, wildcard-CORS guard).
+var nonProductionEnvs = []string{"local", "development", "dev"}
+
+// IsProductionEnv reports whether Server.Env is a hardened deployment. The
+// Server.Env value is a deployment profile (local/vps/...), so anything that is
+// not explicitly a local dev profile counts as production — vps included. This
+// is fail-closed: an unset or unknown env stays hardened.
+func IsProductionEnv(env string) bool {
+	v := strings.ToLower(strings.TrimSpace(env))
+	for _, e := range nonProductionEnvs {
+		if v == e {
+			return false
+		}
+	}
+	return true
+}

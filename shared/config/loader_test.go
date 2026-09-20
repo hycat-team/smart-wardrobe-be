@@ -155,6 +155,27 @@ func TestInvalidAppMode(t *testing.T) {
 	}
 }
 
+func TestIsProductionEnv(t *testing.T) {
+	cases := map[string]bool{
+		"local":       false,
+		"development": false,
+		"dev":         false,
+		"DEV":         false,
+		" vps ":       true,
+		"vps":         true,
+		"production":  true,
+		"Production":  true,
+		"managed":     true,
+		"staging":     true,
+		"":            true,
+	}
+	for env, want := range cases {
+		if got := IsProductionEnv(env); got != want {
+			t.Errorf("IsProductionEnv(%q) = %v, want %v", env, got, want)
+		}
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Never pick up the developer's real .env: tests set everything explicitly.
 	os.Unsetenv("CONFIG_FILE")

@@ -57,7 +57,7 @@ func NewEngine(
 	fashionRouter *fashionrouter.Router,
 	searchClient *sharedsearch.ElasticsearchClient,
 ) *gin.Engine {
-	if cfg.Server.Env == "production" {
+	if sharedconfig.IsProductionEnv(cfg.Server.Env) {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)

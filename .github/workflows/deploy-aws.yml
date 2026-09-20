@@ -192,13 +192,14 @@ jobs:
                     done
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml config >/dev/null
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml pull ${SERVICE}-http ${SERVICE}-worker
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker nginx
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d ${SERVICE}-http ${SERVICE}-worker
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps ${SERVICE}-http ${SERVICE}-worker
                   "
 
     # Recreate Nginx once after ALL services deployed so the freshly uploaded
-    # route map takes effect. depends_on healthy gates every http container: if
-    # any is unhealthy the recreate fails and the run goes red here.
+    # route map takes effect. --no-deps lets the recreate proceed even when a
+    # sibling http container is down (per-service deploys stay independent); the
+    # real health gate is smoke-all below, which verifies routing per service.
     reload-nginx:
         needs: deploy
         runs-on: ubuntu-latest
@@ -218,7 +219,7 @@ jobs:
               run: |
                   ssh -p "${{ secrets.AWS_SSH_PORT }}" "${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }}" "
                     cd /opt/closy-aws
-                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d --force-recreate nginx
+                    docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d --force-recreate --no-deps nginx
                     docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml ps nginx
                   "
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/pkg/logger"
 	"smart-wardrobe-be/shared/pkg/utils/errorutils"
 
@@ -36,7 +37,7 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 
 				// Debug details are gated strictly on the configured env, not
 				// gin.Mode() — staging/unset envs must not leak internals.
-				if appEnv == "development" {
+				if !config.IsProductionEnv(appEnv) {
 					res.StackTrace = errorutils.FilterStackTraceArray(rawStack)
 				}
 
@@ -88,7 +89,7 @@ func GlobalErrorHandler(log logger.Interface, appEnv string) gin.HandlerFunc {
 		res.DebugMessage = ""
 		// Debug details are gated strictly on the configured env, not
 		// gin.Mode() — staging/unset envs must not leak internals.
-		if appEnv == "development" {
+		if !config.IsProductionEnv(appEnv) {
 			if rawErr != nil && rawErr.Error() != appErr.Message {
 				res.DebugMessage = rawErr.Error()
 			}

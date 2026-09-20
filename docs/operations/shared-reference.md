@@ -58,13 +58,18 @@ biến tiêm từ GitHub secrets trong `deploy-aws.yml`.
 
 Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 
+> `SERVER_ENV` là **profile triển khai**, không phải cờ "production". Mọi giá trị
+> ngoài `local`/`development`/`dev` (kể cả `vps`) được coi là production → bật gin
+> release mode, enforce `SWAGGER_ACCESS_CODE`, chặn `FRONT_END_ORIGIN` wildcard
+> (`config.IsProductionEnv`, fail-closed cho env trống/lạ).
+
 ### 2.1 Cấu hình lõi
 
 | Biến | Ghi chú |
 |---|---|
 | `APP_MODE` | `all` (VPS) / `http`+`worker` per container (box ngoài) |
 | `FRONT_END_ORIGIN` | CORS; danh sách origin, phẩy phân tách |
-| `SWAGGER_ACCESS_CODE` | Chỉ enforce khi `SERVER_ENV=production` |
+| `SWAGGER_ACCESS_CODE` | Enforce khi `SERVER_ENV` không phải local/dev (tức `vps`/`production`/managed) — cùng điều kiện bật gin release mode + chặn CORS wildcard |
 | `TZ` | `Asia/Ho_Chi_Minh` |
 | `SERVER_PORT` | `8080` (compose hardcode; entrypoint bắt buộc có `PORT` hoặc `SERVER_PORT`) |
 
