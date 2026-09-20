@@ -3,23 +3,33 @@ package messaging
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"smart-wardrobe-be/shared/config"
 )
 
 // amqpURL builds the broker URL (T065/FR-004): `amqps` when TLS is enabled
-// (managed CloudAMQP), plain `amqp` for self-hosted compatibility.
+// (managed CloudAMQP), plain `amqp` for self-hosted compatibility. An empty
+// vhost selects the default "/" vhost.
 func amqpURL(cfg *config.Config) string {
 	scheme := "amqp"
 	if cfg.RabbitMQ.TLSEnabled {
 		scheme = "amqps"
 	}
-	return fmt.Sprintf("%s://%s:%s@%s:%d/",
+	vhost := strings.TrimSpace(cfg.RabbitMQ.Vhost)
+	if vhost == "" || vhost == "/" {
+		vhost = "/"
+	} else {
+		vhost = "/" + url.PathEscape(strings.TrimPrefix(vhost, "/"))
+	}
+	return fmt.Sprintf("%s://%s:%s@%s:%d%s",
 		scheme,
 		cfg.RabbitMQ.User,
 		cfg.RabbitMQ.Password,
 		cfg.RabbitMQ.Host,
 		cfg.RabbitMQ.Port,
+		vhost,
 	)
 }
 

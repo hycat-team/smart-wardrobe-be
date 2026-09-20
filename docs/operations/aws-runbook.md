@@ -73,7 +73,9 @@ Sự cố: `prepared statement already exists` = query lọt qua pooler sai mode
 1. https://customer.cloudamqp.com → **Create New Instance** → Tough Tiger →
    tab **Vhosts** → Create vhost riêng.
 2. Tab **Details** → copy **AMQP URL** `amqps://<user>:<pass>@<host>/<vhost>` → tách
-   `RABBITMQ_HOST`/`PORT=5671`/`USER`/`PASSWORD`. Workflow tự set TLS flags.
+   `RABBITMQ_HOST`/`PORT=5671`/`USER`/`PASSWORD`/`VHOST` (giữ lại phần path sau
+   host làm `VHOST` — app luôn dial đúng vhost này; bỏ sót là broker trả
+   `403 no access to this vhost` và cả 3 service crash-loop). Workflow tự set TLS flags.
 3. Verify: `openssl s_client -connect "$RABBITMQ_HOST:5671"` → `Verify return code: 0`;
    management API qua HTTPS OK. Topology (quorum/DLX) code tự khai báo.
    Ngân sách: tổng conn ≤ 100.

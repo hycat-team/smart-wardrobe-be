@@ -88,6 +88,7 @@ rabbitmq:
     port: 5672
     user: "${RABBITMQ_USER}"
     password: "${RABBITMQ_PASSWORD}"
+    vhost: "${RABBITMQ_VHOST}"
     prefetch: 5
     consumer_concurrency: 1
     delivery_limit: 5

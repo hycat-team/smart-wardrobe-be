@@ -45,6 +45,34 @@ func TestAmqpTLSOnUsesAmqps(t *testing.T) {
 	}
 }
 
+// TestAmqpURLDefaultVhost verifies an empty vhost selects the default "/"
+// vhost (self-hosted profile, backward compatible).
+func TestAmqpURLDefaultVhost(t *testing.T) {
+	cfg := tlsTestConfig()
+	cfg.RabbitMQ.TLSEnabled = false
+
+	if got := amqpURL(&cfg); got != "amqp://guest:guest@localhost:5672/" {
+		t.Fatalf("unexpected amqp url %q", got)
+	}
+
+	cfg.RabbitMQ.Vhost = "/"
+	if got := amqpURL(&cfg); got != "amqp://guest:guest@localhost:5672/" {
+		t.Fatalf("unexpected amqp url %q", got)
+	}
+}
+
+// TestAmqpURLCustomVhost verifies a dedicated vhost (managed CloudAMQP) is
+// appended as the URL path.
+func TestAmqpURLCustomVhost(t *testing.T) {
+	cfg := tlsTestConfig()
+	cfg.RabbitMQ.TLSEnabled = true
+	cfg.RabbitMQ.Vhost = "closy-box"
+
+	if got := amqpURL(&cfg); got != "amqps://guest:guest@localhost:5672/closy-box" {
+		t.Fatalf("unexpected amqp url %q", got)
+	}
+}
+
 // TestMgmtURLScheme verifies the management/gauge API uses HTTP by default
 // and HTTPS when the management TLS toggle is on (T066/T067).
 func TestMgmtURLScheme(t *testing.T) {

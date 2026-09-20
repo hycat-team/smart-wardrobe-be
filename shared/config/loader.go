@@ -133,6 +133,9 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.RabbitMQ.Port = p
 		}
 	}
+	if v := strings.TrimSpace(os.Getenv("RABBITMQ_VHOST")); v != "" {
+		cfg.RabbitMQ.Vhost = v
+	}
 	if v := strings.TrimSpace(os.Getenv("DATABASE_DRILL_SCHEMA")); v != "" {
 		cfg.Database.DrillSchema = v
 	}

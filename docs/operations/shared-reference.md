@@ -82,7 +82,7 @@ Thứ tự ưu tiên: `PORT` (cloud) > `SERVER_PORT` > `server.port` (YAML).
 | `DB_DRILL_SCHEMA` | rỗng; chỉ dùng khi drill |
 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | secret (box: endpoint/port riêng, KHÔNG phải 6379) |
 | `REDIS_TLS_ENABLED` | VPS `false`; box: `false` cho free 30MB, `true` cho gói có TLS |
-| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD` | secret (box: `5671` amqps) |
+| `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` | secret (box: `5671` amqps; `VHOST` = vhost riêng trên CloudAMQP, VPS/local để trống = `/`) |
 | `RABBITMQ_TLS_ENABLED`, `RABBITMQ_MANAGEMENT_TLS_ENABLED` | VPS `false`; box `true` |
 | `OUTBOX_LISTENER_ENABLED` | `true`; tắt → fallback poll |
 | `ELASTICSEARCH_ENABLED` | `false` mọi nơi; fallback DB (chi tiết §5) |
