@@ -224,6 +224,7 @@ Prefer `Get...` over `Find...` for repository lookups when creating or refactori
 
 - Vietnamese: Swagger text and client-facing messages
 - English: internal comments and logger messages
+- English: every comment inside files whose name starts with `.env` (e.g. `.env.example`, `.env.production.example`, `.env.aws.example`)
 
 ---
 
@@ -258,6 +259,7 @@ Ensure consistency and quality of the project's source code.
   * Client-facing messages: Vietnamese
   * Logger messages: English
   * Code comments: English
+  * Comments in `.env*` files: English
   * Identifiers (function names, variables, structs, interfaces, packages, database tables, columns): English
 
 ---

@@ -28,6 +28,7 @@
     - `docs/system-design/` — overall architecture, design patterns, event-driven design, AI pipeline, module boundaries
 - **MANDATORY** — [code-hygiene.md](docs/development/code-hygiene.md): structural limits (file/function length, struct-per-file, module boundary scan) with thresholds. The `make hygiene-scan` command **MUST ONLY be executed when explicitly permitted or requested by the developer**; NEVER run it autonomously as it generates report files that clutter the source repository.
 - When writing code, you **MUST** read and cross-reference the relevant docs for the task before proceeding.
+- **MANDATORY** — Environment files: every comment inside any file whose name starts with `.env` (e.g. `.env.example`, `.env.production.example`, `.env.aws.example`) **MUST be written in English**.
 - If conflicts arise between documents, priority order: Constitution > system-design > development > other docs.
 
 ## 4. Core Principles
