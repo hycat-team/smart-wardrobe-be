@@ -140,6 +140,22 @@ var Topology = []Binding{
 		Prefetch:    20,
 		Concurrency: 1,
 	},
+	{
+		Queue:       eventconstants.QueueCommunityOutfitCascade,
+		RoutingKeys: []string{RoutingKeyOutfitDeleted},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueCommunityOutfitCascade, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
+	{
+		Queue:       eventconstants.QueueCommunityUserStatus,
+		RoutingKeys: []string{RoutingKeyUserStatusChanged},
+		Exchange:    ExchangeName,
+		Args:        queueArgs(eventconstants.QueueCommunityUserStatus, false),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
 }
 
 // DLQTopology defines dead-letter queues bound to the DLX exchange.
@@ -157,4 +173,6 @@ var DLQTopology = []Binding{
 	{Queue: eventconstants.QueueElasticsearchProcessingExhausted + ".dlq", RoutingKeys: []string{eventconstants.QueueElasticsearchProcessingExhausted + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueWardrobeFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueWardrobeFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueBrandFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueBrandFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueCommunityOutfitCascade + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityOutfitCascade + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueCommunityUserStatus + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityUserStatus + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 }

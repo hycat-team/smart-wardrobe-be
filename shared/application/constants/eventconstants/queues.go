@@ -17,4 +17,6 @@ const (
 	QueueWardrobeFashionBind              = "wardrobe_fashion_bind_queue"
 	QueueBrandFashionBind                 = "brand_fashion_bind_queue"
 	QueueElasticsearchProcessingExhausted = "elasticsearch_processing_exhausted_queue"
+	QueueCommunityOutfitCascade           = "community_outfit_cascade_queue"
+	QueueCommunityUserStatus              = "community_user_status_queue"
 )

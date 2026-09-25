@@ -27,4 +27,7 @@ const (
 	RoutingKeySubscriptionPlanChanged    = eventconstants.TopicSubscriptionPlanChanged
 	RoutingKeyNotificationEmail          = eventconstants.TopicNotificationEmail + ".#"
 	RoutingKeyAuditLog                   = eventconstants.TopicAuditLog
+
+	RoutingKeyOutfitDeleted     = eventconstants.TopicOutfitDeleted
+	RoutingKeyUserStatusChanged = eventconstants.TopicUserStatusChanged
 )

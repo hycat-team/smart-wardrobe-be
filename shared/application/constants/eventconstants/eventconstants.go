@@ -25,6 +25,10 @@ const (
 
 	TopicAuditLog = "admin.audit.log"
 
+	// Community events
+	TopicOutfitDeleted     = "wardrobe.outfit.deleted"
+	TopicUserStatusChanged = "identity.user.status.changed"
+
 	ActionCreated = "created"
 	ActionUpdated = "updated"
 	ActionDeleted = "deleted"
