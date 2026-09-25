@@ -12,6 +12,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/vo"
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/authprovider"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
@@ -153,22 +154,28 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	gen := gender.Gender(registerData.Gender)
 
 	newUser := &entities.User{
-		Username:     registerData.Username,
-		Email:        registerData.Email,
-		PasswordHash: registerData.PasswordHash,
-		FirstName:    &registerData.FirstName,
-		LastName:     &registerData.LastName,
-		DateOfBirth:  &dob,
-		Address:      &registerData.Address,
-		Gender:       &gen,
-		RoleSlug:     roleslug.User,
-		Status:       userstatus.Active,
+		Username:      registerData.Username,
+		Email:         registerData.Email,
+		PasswordHash:  &registerData.PasswordHash,
+		Provider:      authprovider.Local,
+		EmailVerified: true,
+		FirstName:     &registerData.FirstName,
+		LastName:      &registerData.LastName,
+		DateOfBirth:   &dob,
+		Address:       &registerData.Address,
+		Gender:        &gen,
+		RoleSlug:      roleslug.User,
+		Status:        userstatus.Active,
 	}
 	newUser.ID = uuid.New()
 	newUser.IsDeleted = false
 
 	err = uc.userRepo.Create(ctx, newUser)
 	if err != nil {
+		// A concurrent Google login may have created the same email first.
+		if emailExists, checkErr := uc.userRepo.IsEmailExists(ctx, registerData.Email); checkErr == nil && emailExists {
+			return false, identityerrors.ErrEmailExists(registerData.Email)
+		}
 		return false, identityerrors.ErrAccountCreationFailed()
 	}
 

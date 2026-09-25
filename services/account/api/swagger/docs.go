@@ -1178,6 +1178,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/google": {
+            "get": {
+                "description": "Validate redirectUrl và chuyển hướng sang Google",
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Bắt đầu đăng nhập Google (web redirect)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL quay về sau đăng nhập",
+                        "name": "redirectUrl",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Xác thực Google ID token và cấp phiên làm việc (dành cho mobile và tuỳ chọn web)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Đăng nhập bằng Google (ID token)",
+                "parameters": [
+                    {
+                        "description": "Google ID token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.GoogleLoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Đăng nhập thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.TokenRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/google/callback": {
+            "get": {
+                "description": "Đổi code, tạo phiên và chuyển hướng về redirectUrl",
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Callback đăng nhập Google (web redirect)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code",
+                        "name": "code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "OAuth state",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lỗi do Google trả về",
+                        "name": "error",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Đăng nhập hệ thống bằng username hoặc email và password",
@@ -2257,8 +2351,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "confirmPassword",
-                "newPassword",
-                "oldPassword"
+                "newPassword"
             ],
             "properties": {
                 "confirmPassword": {
@@ -2271,6 +2364,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "oldPassword": {
+                    "description": "OldPassword is optional: Google-only accounts (no password yet) set their\nfirst password without providing an old one.",
                     "type": "string"
                 }
             }
@@ -2354,6 +2448,26 @@ const docTemplate = `{
                     "$ref": "#/definitions/smart-wardrobe-be_shared_domain_constants_roleslug.RoleSlug"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_identity.GoogleLoginReq": {
+            "type": "object",
+            "required": [
+                "idToken"
+            ],
+            "properties": {
+                "deviceIp": {
+                    "type": "string"
+                },
+                "deviceName": {
+                    "type": "string"
+                },
+                "idToken": {
+                    "type": "string"
+                },
+                "userAgent": {
                     "type": "string"
                 }
             }

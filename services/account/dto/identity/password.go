@@ -12,7 +12,9 @@ type ConfirmForgotPasswordOtpRes struct {
 }
 
 type ChangePasswordReq struct {
-	OldPassword      string `json:"oldPassword" binding:"required" label:"mật khẩu cũ"`
+	// OldPassword is optional: Google-only accounts (no password yet) set their
+	// first password without providing an old one.
+	OldPassword      string `json:"oldPassword" binding:"omitempty" label:"mật khẩu cũ"`
 	NewPassword      string `json:"newPassword" binding:"required,password_complexity" label:"mật khẩu mới"`
 	ConfirmPassword  string `json:"confirmPassword" binding:"required,eqfield=NewPassword" label:"xác nhận mật khẩu mới"`
 	LogoutAllDevices bool   `json:"logoutAllDevices"`

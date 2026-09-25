@@ -55,8 +55,7 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, identityerrors.ErrInvalidCredentials()
 	}
 
-	isValid := uc.passwordHasher.VerifyPassword(input.Password, user.PasswordHash)
-	if !isValid {
+	if !user.HasPassword() || !uc.passwordHasher.VerifyPassword(input.Password, *user.PasswordHash) {
 		return nil, identityerrors.ErrInvalidCredentials()
 	}
 
@@ -69,6 +68,16 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		return nil, identityerrors.ErrAccountDisabled()
 	}
 
+	return uc.IssueSession(ctx, user, uc_interfaces.SessionDevice{
+		Name:      input.DeviceName,
+		IP:        input.DeviceIP,
+		UserAgent: input.UserAgent,
+	})
+}
+
+// IssueSession creates access/refresh tokens and persists the refresh token row.
+// Shared by password login and Google login so both produce identical sessions.
+func (uc *SessionUseCase) IssueSession(ctx context.Context, user *entities.User, device uc_interfaces.SessionDevice) (*dto.TokenRes, error) {
 	accessExpiry := time.Minute * time.Duration(uc.cfg.Jwt.AccessExpirationMinutes)
 	refreshExpiry := time.Hour * 24 * time.Duration(uc.cfg.Jwt.RefreshExpirationDays)
 
@@ -98,9 +107,9 @@ func (uc *SessionUseCase) Login(ctx context.Context, input dto.LoginReq) (*dto.T
 		Token:        refreshToken,
 		ExpiresAt:    now.Add(refreshExpiry),
 		IsRevoked:    false,
-		DeviceName:   input.DeviceName,
-		DeviceIP:     input.DeviceIP,
-		UserAgent:    input.UserAgent,
+		DeviceName:   device.Name,
+		DeviceIP:     device.IP,
+		UserAgent:    device.UserAgent,
 		LastActiveAt: &now,
 	}
 	rt.ID = uuid.New()

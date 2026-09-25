@@ -62,6 +62,7 @@ docs/api/
 ├── identity/                    ← Identity & Auth module
 │   ├── constants.md             ← Hằng số Role, User Status, Gender
 │   ├── auth-api.md              ← API Đăng ký, Đăng nhập, Quên mật khẩu
+│   ├── google-login-frontend-guide.md ← Hướng dẫn FE đăng nhập Google (web + mobile)
 │   ├── me-api.md                ← API Hồ sơ của tôi (Profile)
 │   └── admin-user-api.md        ← API quản trị Người dùng (Admin)
 ├── subscription/                ← Subscription & Billing module

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/authprovider"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
@@ -14,20 +15,23 @@ import (
 type User struct {
 	AuditableEntity
 	SoftDeleteEntity
-	Username       string                `gorm:"type:varchar(255);not null;index:idx_users_username_lower,unique,expression:lower(username)"`
-	Email          string                `gorm:"type:varchar(255);not null;index:idx_users_email_lower,unique,expression:lower(email)"`
-	PasswordHash   string                `gorm:"type:varchar(255);not null"`
-	FirstName      *string               `gorm:"type:varchar(255)"`
-	LastName       *string               `gorm:"type:varchar(255)"`
-	DateOfBirth    *time.Time            `gorm:"type:date"`
-	Address        *string               `gorm:"type:varchar(255)"`
-	Gender         *gender.Gender        `gorm:"type:int"`
-	RoleSlug       roleslug.RoleSlug     `gorm:"type:varchar(50);not null"`
-	BodyProfile    *BodyProfile          `gorm:"type:jsonb"`
-	Status         userstatus.UserStatus `gorm:"type:smallint;not null;default:0"`
-	StyleProfile   *UserStyleProfile     `gorm:"foreignKey:UserID"`
-	AvatarUrl      *string               `gorm:"type:varchar(500)"`
-	AvatarPublicID *string               `gorm:"type:varchar(255)"`
+	Username       string                    `gorm:"type:varchar(255);not null;index:idx_users_username_lower,unique,expression:lower(username)"`
+	Email          string                    `gorm:"type:varchar(255);not null;index:idx_users_email_lower,unique,expression:lower(email)"`
+	PasswordHash   *string                   `gorm:"type:varchar(255)"`
+	Provider       authprovider.AuthProvider `gorm:"type:varchar(50);not null;default:'local'"`
+	ProviderID     *string                   `gorm:"type:varchar(255)"`
+	EmailVerified  bool                      `gorm:"type:boolean;not null;default:false"`
+	FirstName      *string                   `gorm:"type:varchar(255)"`
+	LastName       *string                   `gorm:"type:varchar(255)"`
+	DateOfBirth    *time.Time                `gorm:"type:date"`
+	Address        *string                   `gorm:"type:varchar(255)"`
+	Gender         *gender.Gender            `gorm:"type:int"`
+	RoleSlug       roleslug.RoleSlug         `gorm:"type:varchar(50);not null"`
+	BodyProfile    *BodyProfile              `gorm:"type:jsonb"`
+	Status         userstatus.UserStatus     `gorm:"type:smallint;not null;default:0"`
+	StyleProfile   *UserStyleProfile         `gorm:"foreignKey:UserID"`
+	AvatarUrl      *string                   `gorm:"type:varchar(500)"`
+	AvatarPublicID *string                   `gorm:"type:varchar(255)"`
 }
 
 func (u *User) GetEffectiveBodyProfile() *BodyProfile {

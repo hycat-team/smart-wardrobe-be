@@ -173,3 +173,36 @@ func ErrCannotModifyAdminRole() *apperror.Error {
 func ErrSelfDeactivation() *apperror.Error {
 	return apperror.NewForbidden("Bạn không thể tự vô hiệu hóa tài khoản của chính mình.")
 }
+
+// Google login errors.
+func ErrGoogleTokenInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Token Google không hợp lệ hoặc đã hết hạn.")
+}
+
+func ErrGoogleEmailUnverified() *apperror.Error {
+	return apperror.NewBadRequest("Email Google chưa được xác thực.")
+}
+
+func ErrEmailRegisteredLoginPassword() *apperror.Error {
+	return apperror.NewBadRequest("Email đã được đăng ký. Vui lòng đăng nhập bằng mật khẩu.")
+}
+
+func ErrAccountLinkedOtherGoogle() *apperror.Error {
+	return apperror.NewConflict("Email đã được liên kết với một tài khoản Google khác.")
+}
+
+func ErrGoogleConfigMissing() *apperror.Error {
+	return apperror.NewInternalError("Cấu hình đăng nhập Google chưa được thiết lập.")
+}
+
+func ErrGoogleExchangeFailed() *apperror.Error {
+	return apperror.NewUnauthorized("Không hoàn tất được đăng nhập Google. Vui lòng thử lại.")
+}
+
+func ErrOAuthStateInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.")
+}
+
+func ErrGoogleRedirectInvalid() *apperror.Error {
+	return apperror.NewBadRequest("Đường dẫn quay về không hợp lệ.")
+}

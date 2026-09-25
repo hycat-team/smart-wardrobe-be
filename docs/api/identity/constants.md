@@ -14,3 +14,9 @@ Các hằng số dùng trong APIs liên quan đến Phân quyền, Xác thực v
     *   `active`: Tài khoản đang hoạt động bình thường.
     *   `inactive`: Tài khoản chưa được kích hoạt qua OTP.
     *   `suspended`: Tài khoản bị khóa do vi phạm điều khoản sử dụng.
+
+## 3. Nhà cung cấp danh tính (AuthProvider)
+*   **Đường dẫn package:** `services/account/internal/modules/identity/domain/constants/authprovider`
+*   **Các giá trị hợp lệ:**
+    *   `local`: Tài khoản đăng ký bằng email + mật khẩu (xác thực qua OTP).
+    *   `google`: Tài khoản tạo/liên kết qua Google (định danh theo Google `sub`).

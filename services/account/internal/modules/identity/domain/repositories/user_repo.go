@@ -27,6 +27,7 @@ type UserListResult struct {
 type IUserRepository interface {
 	repositories.IGenericRepository[entities.User, uuid.UUID]
 	GetByEmail(ctx context.Context, email string) (*entities.User, error)
+	GetByProviderID(ctx context.Context, provider string, providerID string) (*entities.User, error)
 	GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.User, error)
 	GetByUsername(ctx context.Context, username string) (*entities.User, error)
 	IsEmailExists(ctx context.Context, email string) (bool, error)

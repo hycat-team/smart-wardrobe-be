@@ -109,6 +109,29 @@ func validateConfig(cfg *Config) error {
 	if cfg.Server.SSE.HeartbeatSeconds <= 0 {
 		return fmt.Errorf("server sse heartbeat_seconds must be greater than 0")
 	}
+	if err := validateGoogle(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateGoogle enforces Google OAuth config consistency when the feature is
+// configured. Empty config is allowed (feature disabled in that environment);
+// a partial config is rejected.
+func validateGoogle(cfg *Config) error {
+	g := cfg.Google
+	if strings.TrimSpace(g.ClientIDRaw) == "" && strings.TrimSpace(g.RedirectURI) == "" {
+		return nil
+	}
+	if len(g.ClientIDs) == 0 {
+		return fmt.Errorf("google client_ids is required when Google login is configured")
+	}
+	if strings.TrimSpace(g.RedirectURI) == "" {
+		return fmt.Errorf("google redirect_uri is required when Google login is configured")
+	}
+	if g.StateTTLMinutes <= 0 {
+		return fmt.Errorf("google state_ttl_minutes must be greater than 0")
+	}
 	return nil
 }
 

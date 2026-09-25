@@ -55,3 +55,17 @@ type TokenRes struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
+
+// GoogleLoginReq is the body for POST /auth/google (mobile/app and optional web
+// Google Identity Services).
+type GoogleLoginReq struct {
+	IDToken    string  `json:"idToken" binding:"required" label:"Google ID token"`
+	DeviceName *string `json:"deviceName,omitempty"`
+	DeviceIP   *string `json:"deviceIp,omitempty"`
+	UserAgent  *string `json:"userAgent,omitempty"`
+}
+
+// GoogleStartReq binds the query of GET /auth/google (web redirect flow).
+type GoogleStartReq struct {
+	RedirectURL string `form:"redirectUrl" binding:"required" label:"URL quay về"`
+}

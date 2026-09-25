@@ -14,9 +14,9 @@ func normalizeOrigin(o string) string {
 	return o
 }
 
-func CORSMiddleware(allowOrigins string) gin.HandlerFunc {
-	allowedMap := make(map[string]bool)
-	for _, o := range strings.Split(allowOrigins, ",") {
+func CORSMiddleware(allowOrigins []string) gin.HandlerFunc {
+	allowedMap := make(map[string]bool, len(allowOrigins))
+	for _, o := range allowOrigins {
 		if normalized := normalizeOrigin(o); normalized != "" {
 			allowedMap[normalized] = true
 		}

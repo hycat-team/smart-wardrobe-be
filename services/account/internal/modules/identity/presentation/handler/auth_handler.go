@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"smart-wardrobe-be/services/account/dto/identity"
@@ -33,6 +34,7 @@ type AuthHandler struct {
 	registerUC usecase_interfaces.IRegisterUseCase
 	sessionUC  usecase_interfaces.ISessionUseCase
 	recoveryUC usecase_interfaces.IPasswordRecoveryUseCase
+	googleUC   usecase_interfaces.IGoogleAuthUseCase
 	cfg        *config.Config
 }
 
@@ -40,12 +42,14 @@ func NewAuthHandler(
 	registerUC usecase_interfaces.IRegisterUseCase,
 	sessionUC usecase_interfaces.ISessionUseCase,
 	recoveryUC usecase_interfaces.IPasswordRecoveryUseCase,
+	googleUC usecase_interfaces.IGoogleAuthUseCase,
 	cfg *config.Config,
 ) *AuthHandler {
 	return &AuthHandler{
 		registerUC: registerUC,
 		sessionUC:  sessionUC,
 		recoveryUC: recoveryUC,
+		googleUC:   googleUC,
 		cfg:        cfg,
 	}
 }
@@ -177,6 +181,114 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 
 	shared_pres.Success(c, successLogin, output)
 	return nil
+}
+
+// GoogleLogin authenticates a user with a Google ID token.
+// @Summary Đăng nhập bằng Google (ID token)
+// @Description Xác thực Google ID token và cấp phiên làm việc (dành cho mobile và tuỳ chọn web)
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body dto.GoogleLoginReq true "Google ID token"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.TokenRes} "Đăng nhập thành công"
+// @Router /api/v1/auth/google [post]
+func (h *AuthHandler) GoogleLogin(c *gin.Context) error {
+	var input dto.GoogleLoginReq
+	if err := validation.BindJSON(c, &input); err != nil {
+		return err
+	}
+
+	clientIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	if input.DeviceIP == nil && clientIP != "" {
+		input.DeviceIP = &clientIP
+	}
+	if input.UserAgent == nil && userAgent != "" {
+		input.UserAgent = &userAgent
+	}
+
+	output, err := h.googleUC.LoginWithIDToken(c.Request.Context(), input)
+	if err != nil {
+		return err
+	}
+
+	h.setAuthCookies(c, output)
+	shared_pres.Success(c, successLogin, output)
+	return nil
+}
+
+// GoogleStart starts the web Authorization Code redirect flow.
+// @Summary Bắt đầu đăng nhập Google (web redirect)
+// @Description Validate redirectUrl và chuyển hướng sang Google
+// @Tags Auth
+// @Param redirectUrl query string true "URL quay về sau đăng nhập"
+// @Router /api/v1/auth/google [get]
+func (h *AuthHandler) GoogleStart(c *gin.Context) error {
+	var input dto.GoogleStartReq
+	if err := validation.BindQuery(c, &input); err != nil {
+		return err
+	}
+
+	authURL, err := h.googleUC.StartRedirect(c.Request.Context(), input.RedirectURL)
+	if err != nil {
+		return err
+	}
+
+	c.Redirect(http.StatusFound, authURL)
+	return nil
+}
+
+// GoogleCallback handles Google's callback for the web redirect flow.
+// @Summary Callback đăng nhập Google (web redirect)
+// @Description Đổi code, tạo phiên và chuyển hướng về redirectUrl
+// @Tags Auth
+// @Param code query string false "Authorization code"
+// @Param state query string true "OAuth state"
+// @Param error query string false "Lỗi do Google trả về"
+// @Router /api/v1/auth/google/callback [get]
+func (h *AuthHandler) GoogleCallback(c *gin.Context) error {
+	result, err := h.googleUC.HandleCallback(
+		c.Request.Context(),
+		c.Query("code"),
+		c.Query("state"),
+		c.Query("error"),
+	)
+	if err != nil {
+		return err
+	}
+
+	if result.ErrorCode != "" {
+		c.Redirect(http.StatusFound, appendQueryError(result.RedirectURL, result.ErrorCode))
+		return nil
+	}
+
+	h.setAuthCookies(c, result.Tokens)
+	c.Redirect(http.StatusFound, result.RedirectURL)
+	return nil
+}
+
+// setAuthCookies writes the access/refresh HttpOnly cookies for web clients.
+func (h *AuthHandler) setAuthCookies(c *gin.Context, output *dto.TokenRes) {
+	if output == nil {
+		return
+	}
+	refreshExpirySeconds := int((time.Hour * 24 * time.Duration(h.cfg.Jwt.RefreshExpirationDays)).Seconds())
+	accessExpirySeconds := h.cfg.Jwt.AccessExpirationMinutes * 60
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(contextutils.CookieRefreshToken, output.RefreshToken, refreshExpirySeconds, "/", "", true, true)
+	c.SetCookie(contextutils.CookieAccessToken, output.AccessToken, accessExpirySeconds, "/", "", true, true)
+}
+
+func appendQueryError(rawURL string, code string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	query := parsed.Query()
+	query.Set("error", code)
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 // Logout user logout

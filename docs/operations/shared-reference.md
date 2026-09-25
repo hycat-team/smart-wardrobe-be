@@ -106,6 +106,7 @@ goose -dir services/<svc>/database/migrations \
 |---|---|
 | `JWT_SECRET` / `JWT_ALGORITHM` | secret; `HS256` |
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY` | PEM; rỗng = HS256 tạm thời |
+| `GOOGLE_CLIENT_IDS`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_STATE_TTL_MINUTES` | Google OAuth; `CLIENT_IDS` là danh sách phẩy phân tách (web đứng đầu cho luồng redirect), `REDIRECT_URI` là callback backend; box ngoài copy y nguyên từ VPS |
 | `INGRESS_ACCOUNT/COMMERCE/AI_URL` | VPS: `http://account:8080`...; box: hardcode `*-http` trong compose |
 | `INGRESS_TOKEN_AUDIENCE` | để trống (không còn Cloud Run) |
 | `EMAIL_SENDER_EMAIL`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_KEY`, `EMAIL_REPLY_TO` | Brevo SMTP; box copy y nguyên từ VPS |

@@ -32,9 +32,10 @@ func (uc *UserUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, inp
 		return false, identityerrors.ErrPasswordContainsUsername()
 	}
 
-	isValid := uc.passwordHasher.VerifyPassword(input.OldPassword, user.PasswordHash)
-	if !isValid {
-		return false, identityerrors.ErrInvalidOldPassword()
+	if user.HasPassword() {
+		if !uc.passwordHasher.VerifyPassword(input.OldPassword, *user.PasswordHash) {
+			return false, identityerrors.ErrInvalidOldPassword()
+		}
 	}
 
 	newPasswordHash, err := uc.passwordHasher.HashPassword(input.NewPassword)

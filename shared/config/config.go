@@ -17,6 +17,7 @@ type Config struct {
 	Server             Server                     `mapstructure:"server"`
 	Startup            Startup                    `mapstructure:"startup"`
 	Jwt                Jwt                        `mapstructure:"jwt"`
+	Google             Google                     `mapstructure:"google"`
 	Logger             Logger                     `mapstructure:"logger"`
 	Quota              Quota                      `mapstructure:"quota"`
 	Otp                Otp                        `mapstructure:"otp"`
@@ -253,8 +254,13 @@ type Redis struct {
 }
 
 type Server struct {
-	Port                string    `mapstructure:"port"`
-	FrontEndOrigin      string    `mapstructure:"front_end_origin"`
+	Port           string `mapstructure:"port"`
+	FrontEndOrigin string `mapstructure:"front_end_origin"`
+	// FrontEndOrigins is the normalized list derived from FrontEndOrigin after
+	// load (FRONT_END_ORIGIN may hold several comma-separated origins per
+	// environment). It is NOT mapped from env/YAML; consumers MUST use this
+	// slice instead of splitting FrontEndOrigin themselves.
+	FrontEndOrigins     []string  `mapstructure:"-"`
 	TimeoutSeconds      int       `mapstructure:"timeout_seconds"`
 	Env                 string    `mapstructure:"env"`
 	SwaggerAccessCode   string    `mapstructure:"swagger_access_code"`
@@ -301,6 +307,17 @@ type Jwt struct {
 	// PrivateKey/PublicKey are filesystem paths to the PEM keys (ES256).
 	PrivateKey string `mapstructure:"private_key"`
 	PublicKey  string `mapstructure:"public_key"`
+}
+
+// Google holds the Google OAuth/OIDC client configuration for social login.
+// ClientIDs is derived from the comma-separated ClientIDRaw after load; it is
+// NOT mapped directly from env/YAML.
+type Google struct {
+	ClientIDRaw     string   `mapstructure:"client_ids"`
+	ClientSecret    string   `mapstructure:"client_secret"`
+	RedirectURI     string   `mapstructure:"redirect_uri"`
+	StateTTLMinutes int      `mapstructure:"state_ttl_minutes"`
+	ClientIDs       []string `mapstructure:"-"`
 }
 
 // Ingress holds the managed-editions routing addresses (FR-005/FR-008).

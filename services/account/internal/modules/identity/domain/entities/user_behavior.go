@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/authprovider"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
 	"time"
@@ -18,7 +19,21 @@ func (u *User) ChangeAddress(newAddress *string) {
 }
 
 func (u *User) ChangePasswordHash(newPasswordHash string) {
-	u.PasswordHash = newPasswordHash
+	u.PasswordHash = &newPasswordHash
+}
+
+// HasPassword reports whether the account currently has a password hash set.
+// Google-only accounts have no password until the user sets one.
+func (u *User) HasPassword() bool {
+	return u != nil && u.PasswordHash != nil && *u.PasswordHash != ""
+}
+
+// LinkGoogleIdentity attaches a Google identity to the account.
+func (u *User) LinkGoogleIdentity(providerID string) {
+	provider := authprovider.Google
+	u.Provider = provider
+	u.ProviderID = &providerID
+	u.EmailVerified = true
 }
 
 func (u *User) UpdateAvatar(avatarUrl string, avatarPublicID string) {

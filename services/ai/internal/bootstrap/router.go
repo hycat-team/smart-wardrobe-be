@@ -68,7 +68,7 @@ func NewEngine(
 		},
 	}))
 	engine.Use(shared_middleware.GlobalErrorHandler(log, cfg.Server.Env))
-	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigin))
+	engine.Use(shared_middleware.CORSMiddleware(cfg.Server.FrontEndOrigins))
 	engine.Use(bodyLimit)
 	if cfg.Server.GzipEnabled {
 		engine.Use(shared_middleware.GzipMinSizeMiddleware(cfg))

@@ -8,9 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const corsTestOrigins = "https://closy.hycat.online,https://smart-wardrobe-demo.vercel.app/"
+var corsTestOrigins = []string{
+	"https://closy.hycat.online",
+	"https://smart-wardrobe-demo.vercel.app/",
+}
 
-func newCORSTestRouter(allowOrigins string) *gin.Engine {
+func newCORSTestRouter(allowOrigins []string) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(CORSMiddleware(allowOrigins))
@@ -86,7 +89,7 @@ func TestCORSPreflightDenied(t *testing.T) {
 }
 
 func TestCORSToleratesSpacesAndEmptyEntries(t *testing.T) {
-	r := newCORSTestRouter("https://a.example.com, https://b.example.com , ,")
+	r := newCORSTestRouter([]string{"https://a.example.com", " https://b.example.com ", "", " "})
 	w := performCORSRequest(r, http.MethodGet, "https://b.example.com")
 	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "https://b.example.com" {
 		t.Fatalf("expected trimmed origin echoed, got %q", got)

@@ -13,6 +13,8 @@ var ProviderSet = wire.NewSet(
 	persistence.NewUserRepository,
 	persistence.NewRefreshTokenRepository,
 	caching.NewRedisOtpService,
+	caching.NewRedisOAuthStateStore,
 	security.NewBcryptPasswordHasher,
+	security.NewGoogleTokenVerifier,
 	sharedsecurity.NewRedisTokenBlacklistService,
 )

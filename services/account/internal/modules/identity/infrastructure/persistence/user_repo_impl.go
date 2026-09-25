@@ -43,6 +43,19 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entitie
 	return &user, nil
 }
 
+// GetByProviderID finds a user by their external identity provider id (e.g. Google sub).
+func (r *UserRepository) GetByProviderID(ctx context.Context, provider string, providerID string) (*entities.User, error) {
+	var user entities.User
+	err := r.GetDB(ctx).Where("provider = ? AND provider_id = ? AND is_deleted = ?", provider, providerID, false).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*entities.User, error) {
 	if len(userIDs) == 0 {
 		return nil, nil

@@ -7,6 +7,7 @@ import (
 	"smart-wardrobe-be/services/account/dto/identity"
 	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/mapper"
+	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/authprovider"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
@@ -179,15 +180,17 @@ func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.U
 	}
 
 	newUser := &entities.User{
-		Username:     req.Username,
-		Email:        req.Email,
-		PasswordHash: hash,
-		FirstName:    &req.FirstName,
-		LastName:     req.LastName,
-		DateOfBirth:  dob,
-		Gender:       req.Gender,
-		RoleSlug:     role,
-		Status:       userstatus.Active,
+		Username:      req.Username,
+		Email:         req.Email,
+		PasswordHash:  &hash,
+		Provider:      authprovider.Local,
+		EmailVerified: false,
+		FirstName:     &req.FirstName,
+		LastName:      req.LastName,
+		DateOfBirth:   dob,
+		Gender:        req.Gender,
+		RoleSlug:      role,
+		Status:        userstatus.Active,
 	}
 
 	if err := uc.userRepo.Create(ctx, newUser); err != nil {

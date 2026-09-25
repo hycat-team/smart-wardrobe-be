@@ -15,4 +15,5 @@ var ProviderSet = wire.NewSet(
 	usecase.NewRegisterUseCase,
 	usecase.NewSessionUseCase,
 	usecase.NewPasswordRecoveryUseCase,
+	usecase.NewGoogleAuthUseCase,
 )

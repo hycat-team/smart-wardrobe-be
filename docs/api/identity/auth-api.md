@@ -77,8 +77,34 @@ Tài liệu này mô tả API Auth thuộc module Identity hiện tại sau khi 
 
 ---
 
+## Flow 4: Đăng nhập Google
+
+Hướng dẫn tích hợp frontend (web + mobile): [google-login-frontend-guide.md](google-login-frontend-guide.md).
+Hằng số nhà cung cấp danh tính: [constants.md](constants.md) §3.
+
+### 1. Đăng nhập bằng Google ID token (mobile / web tuỳ chọn)
+*   **Endpoint:** `POST /api/v1/auth/google`
+*   **Tác nhân (Actor):** Khách hàng (Customer).
+*   **Đối tượng ảnh hưởng:** Tạo tài khoản mới (nếu chưa có) hoặc liên kết/tạo phiên cho tài khoản hiện hữu.
+*   **Mô tả:** Xác thực Google ID token, resolve tài khoản theo định danh nhà cung cấp (`sub`) và email đã xác thực, sau đó cấp phiên (access/refresh token).
+
+### 2. Bắt đầu đăng nhập Google trên web (redirect)
+*   **Endpoint:** `GET /api/v1/auth/google?redirectUrl=<URL>`
+*   **Tác nhân (Actor):** Khách hàng (Customer) trên trình duyệt.
+*   **Đối tượng ảnh hưởng:** Tạo `state` một lần lưu server-side.
+*   **Mô tả:** Validate `redirectUrl` (scheme + host chính xác theo `server.front_end_origins`) rồi chuyển hướng (302) sang Google.
+
+### 3. Callback Google (redirect)
+*   **Endpoint:** `GET /api/v1/auth/google/callback`
+*   **Tác nhân (Actor):** Google gọi về backend.
+*   **Đối tượng ảnh hưởng:** Tạo phiên đăng nhập (cookie) hoặc chuyển hướng kèm lỗi.
+*   **Mô tả:** Đổi authorization code, xác minh danh tính, tạo phiên và chuyển hướng về `redirectUrl`. Lỗi sau khi đã có đích hợp lệ trả `302 ...?error=<code>`; lỗi validate đích trả JSON 400.
+
+---
+
 ## B2B2C Identity Rules
 
 *   Hệ thống Auth không tự ý tạo tài khoản user từ số điện thoại offline.
 *   Giao dịch mua sắm offline của nhãn hàng (Brand offline purchase) chỉ tạo hoặc truy vấn hồ sơ khách hàng nhãn hàng (`brand_customers`) trong phạm vi Brand module.
 *   Quy trình Claim quyền lợi loyalty offline bắt buộc sử dụng endpoint `POST /api/v1/brands/claim`, không được sử dụng các endpoint auth thông thường.
+*   Chính sách ẩn danh email khi tài khoản bị xoá (giải phóng email cho người dùng mới) sẽ áp dụng khi luồng xoá tài khoản tự phục vụ được thêm; hiện chưa có luồng này.

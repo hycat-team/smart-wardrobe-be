@@ -50,11 +50,39 @@ func loadConfig() (*Config, error) {
 		return nil, fmt.Errorf("decode config file %q: %w", configPath, err)
 	}
 	applyEnvOverrides(&cfg)
+	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
+	cfg.Google.ClientIDs = splitCSVList(cfg.Google.ClientIDRaw)
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+// splitCSVList parses a comma-separated value into a trimmed, non-empty slice.
+func splitCSVList(raw string) []string {
+	parts := strings.Split(raw, ",")
+	items := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			items = append(items, trimmed)
+		}
+	}
+	return items
+}
+
+// splitFrontEndOrigins parses the comma-separated FRONT_END_ORIGIN value into a
+// normalized slice (trimmed, trailing slash removed, empties dropped) so callers
+// never split the raw string themselves.
+func splitFrontEndOrigins(raw string) []string {
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if normalized := strings.TrimRight(strings.TrimSpace(part), "/"); normalized != "" {
+			origins = append(origins, normalized)
+		}
+	}
+	return origins
 }
 
 // applyEnvOverrides layers environment on top of YAML (FR-005).
@@ -150,6 +178,22 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := strings.TrimSpace(os.Getenv("JWT_PUBLIC_KEY")); v != "" {
 		cfg.Jwt.PublicKey = v
+	}
+
+	// Google OAuth/OIDC client config (social login).
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_IDS")); v != "" {
+		cfg.Google.ClientIDRaw = v
+	}
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")); v != "" {
+		cfg.Google.ClientSecret = v
+	}
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")); v != "" {
+		cfg.Google.RedirectURI = v
+	}
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_STATE_TTL_MINUTES")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.Google.StateTTLMinutes = n
+		}
 	}
 }
 
