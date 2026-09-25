@@ -87,7 +87,9 @@ server {
     location ^~ /api/v1/subscriptions { proxy_pass $account_upstream; }
     location ^~ /api/v1/admin/brands { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/admin/categories { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/comments { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/admin/dashboard { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/admin/posts { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/admin/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/chat { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/ai/chat/sessions { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
@@ -103,7 +105,10 @@ server {
     location ^~ /api/v1/me/outfits { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/me/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/outfits { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/posts { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/search { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/system-catalog { proxy_pass $commerce_upstream; }
+    location ^~ /api/v1/users { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/wardrobe-items { proxy_pass $commerce_upstream; }
     location ^~ /api/v1/wardrobe-items/tasks { proxy_pass $commerce_upstream; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }
     location ^~ /api/v1/admin/ai { proxy_pass $ai_upstream; }
