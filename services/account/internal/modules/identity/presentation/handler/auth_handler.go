@@ -165,7 +165,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		output.RefreshToken,
 		refreshExpirySeconds,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -174,7 +174,7 @@ func (h *AuthHandler) Login(c *gin.Context) error {
 		output.AccessToken,
 		accessExpirySeconds,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -278,8 +278,8 @@ func (h *AuthHandler) setAuthCookies(c *gin.Context, output *dto.TokenRes) {
 	accessExpirySeconds := h.cfg.Jwt.AccessExpirationMinutes * 60
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(contextutils.CookieRefreshToken, output.RefreshToken, refreshExpirySeconds, "/", "", true, true)
-	c.SetCookie(contextutils.CookieAccessToken, output.AccessToken, accessExpirySeconds, "/", "", true, true)
+	c.SetCookie(contextutils.CookieRefreshToken, output.RefreshToken, refreshExpirySeconds, "/", h.cfg.Server.CookieDomain, true, true)
+	c.SetCookie(contextutils.CookieAccessToken, output.AccessToken, accessExpirySeconds, "/", h.cfg.Server.CookieDomain, true, true)
 }
 
 func appendQueryError(rawURL string, code string) string {
@@ -337,7 +337,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 		"",
 		-1,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -346,7 +346,7 @@ func (h *AuthHandler) Logout(c *gin.Context) error {
 		"",
 		-1,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -399,7 +399,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		output.RefreshToken,
 		refreshExpirySeconds,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -408,7 +408,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) error {
 		output.AccessToken,
 		accessExpirySeconds,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -493,7 +493,7 @@ func (h *AuthHandler) ConfirmForgotPasswordOtp(c *gin.Context) error {
 		resetToken,
 		expirySeconds,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)
@@ -539,7 +539,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) error {
 		"",
 		-1,
 		"/",
-		"",
+		h.cfg.Server.CookieDomain,
 		true,
 		true,
 	)

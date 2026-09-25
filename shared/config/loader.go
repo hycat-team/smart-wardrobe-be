@@ -109,6 +109,11 @@ func applyEnvOverrides(cfg *Config) {
 		cfg.Server.Env = v
 	}
 
+	// Session cookie Domain attribute. Empty = host-only (local/dev).
+	if v := strings.TrimSpace(os.Getenv("COOKIE_DOMAIN")); v != "" {
+		cfg.Server.CookieDomain = v
+	}
+
 	overrideBool("ELASTICSEARCH_ENABLED", &cfg.Elasticsearch.Enabled)
 	overrideBool("DATABASE_MIGRATE_ON_START", &cfg.Database.MigrateOnStart)
 	overrideBool("DATABASE_MIGRATION_ALLOW_OUT_OF_ORDER", &cfg.Database.MigrationAllowOutOfOrder)

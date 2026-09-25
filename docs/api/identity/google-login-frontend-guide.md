@@ -79,6 +79,10 @@ Browser rời khỏi app sang Google rồi quay về. Không cần nạp script 
 
 > **Lưu ý bảo mật**: Không cố đọc cookie `accessToken`/`refreshToken` từ JS — chúng là HttpOnly.
 > Không nhét token vào URL. Web dựa hoàn toàn vào cookie + `credentials: 'include'`.
+>
+> **Lưu ý cookie domain**: Ở production, backend set cookie phiên với `Domain=closy.hycat.online`
+> (biến `COOKIE_DOMAIN`) vì FE chạy ở `closy.hycat.online` còn API ở `api.closy.hycat.online` —
+> nhờ vậy cookie được gửi cho cả hai subdomain. Ở local để `COOKIE_DOMAIN` rỗng (host-only).
 
 ### Xử lý lỗi trên trang callback
 

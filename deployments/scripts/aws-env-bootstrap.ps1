@@ -85,6 +85,8 @@ $CopyRequired = @{
 $Const = @{
     'SERVER_ENV'                     = 'vps'
     'API_V2_DOMAIN'                  = 'api-v2.closy.hycat.online'
+    # Session cookie shared by the FE (closy.hycat.online) and the box API.
+    'COOKIE_DOMAIN'                  = 'closy.hycat.online'
     'NGINX_CLIENT_MAX_BODY_SIZE'     = '20m'
     'DB_NAME'                        = 'postgres'
     'DB_PORT'                        = '6543'

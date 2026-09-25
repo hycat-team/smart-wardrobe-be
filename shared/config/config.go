@@ -260,7 +260,11 @@ type Server struct {
 	// load (FRONT_END_ORIGIN may hold several comma-separated origins per
 	// environment). It is NOT mapped from env/YAML; consumers MUST use this
 	// slice instead of splitting FrontEndOrigin themselves.
-	FrontEndOrigins     []string  `mapstructure:"-"`
+	FrontEndOrigins []string `mapstructure:"-"`
+	// CookieDomain is the Domain attribute for session cookies. Empty = host-only
+	// (local/dev). In production set it to the shared parent domain so the
+	// frontend and API subdomains receive the same session cookie.
+	CookieDomain        string    `mapstructure:"cookie_domain"`
 	TimeoutSeconds      int       `mapstructure:"timeout_seconds"`
 	Env                 string    `mapstructure:"env"`
 	SwaggerAccessCode   string    `mapstructure:"swagger_access_code"`

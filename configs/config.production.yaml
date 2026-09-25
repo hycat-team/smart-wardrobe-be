@@ -6,6 +6,7 @@ app:
 server:
     port: "8080"
     front_end_origin: "${FRONT_END_ORIGIN}"
+    cookie_domain: "${COOKIE_DOMAIN}"
     timeout_seconds: 300
     read_timeout_seconds: 30
     write_timeout_seconds: 60
