@@ -406,7 +406,7 @@ swagger-combine: swagger-all
 	@go run ./shared/tools/swagger-combine
 
 docker-dev-up:
-	@docker compose -f deployments/docker-compose.yml --env-file .env up -d
+	@docker compose -f deployments/docker-compose.yml --env-file .env up -d --build
 
 docker-dev-stop:
 	@docker compose -f deployments/docker-compose.yml --env-file .env stop
