@@ -729,6 +729,10 @@ backend/global.json
 .gocache/
 docs/temp
 
+# AWS env helper: local sensitive settings + generated secrets/outcomes (never commit)
+deployments/scripts/aws-local.env
+deployments/scripts/outcome/
+
 .env
 .env.*
 !.env.example

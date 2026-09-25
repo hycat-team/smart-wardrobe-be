@@ -1,0 +1,167 @@
+# aws-env-to-copyblock.ps1
+# Turn the generated AWS env into a PowerShell copy-paste command block.
+#
+# Reads deployments/scripts/outcome/.env.aws (gitignored), validates it, and writes
+# deployments/scripts/outcome/aws-secrets-to-set.txt with the small set of GitHub
+# secrets the AWS workflow actually reads (AWS_HOST/USER/SSH_PORT/SSH_KEY/KNOWN_HOSTS)
+# plus the commands to place .env.aws on the box and, optionally, to recreate the app
+# containers so a changed .env.aws takes effect without a deploy.
+#
+# The app config (DB/Redis/RabbitMQ/JWT/...) is NOT a GitHub secret - it lives in
+# /opt/closy-aws/.env.aws on the box, so it is shipped with scp, not gh.
+#
+# Reads local settings from aws-local.env (gitignored).
+# Run from the repo root (PowerShell 5.1+):
+#   powershell -ExecutionPolicy Bypass -File deployments/scripts/aws-env-to-copyblock.ps1
+#
+# Option precedence: CLI param > aws-local.env > built-in default.
+# Options:
+#   -EnvAws <path>    default: deployments/scripts/outcome/.env.aws
+#   -Out <path>       default: deployments/scripts/outcome/aws-secrets-to-set.txt
+#   -BoxIp <ip>       override AWS_BOX_IP from aws-local.env / .env.aws
+#   -Repo <owner/repo>default: hycat-team/smart-wardrobe-be
+#   -KeyPath <pem>    SSH private key used by every ssh/scp command
+#   -WithHeredoc      also emit a fallback to create .env.aws on the box
+[CmdletBinding()]
+param(
+    [string]$EnvAws     = "",
+    [string]$Out        = "",
+    [string]$BoxIp      = "",
+    [string]$Repo       = "",
+    [string]$KeyPath    = "",
+    [switch]$WithHeredoc
+)
+
+$ErrorActionPreference = "Stop"
+
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot  = (Resolve-Path (Join-Path $ScriptDir "..\..")).Path
+
+function Read-EnvMap([string]$path) {
+    $map = @{}
+    foreach ($raw in [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $path).Path)) {
+        $line = $raw.TrimEnd("`r")
+        if ($line -match '^(?<k>[A-Za-z_][A-Za-z0-9_]*)=(?<v>.*)$') {
+            $map[$Matches['k']] = $Matches['v']
+        }
+    }
+    return $map
+}
+
+$local = @{}
+$localPath = Join-Path $ScriptDir "aws-local.env"
+if (Test-Path -LiteralPath $localPath) { $local = Read-EnvMap $localPath }
+
+function Resolve-Setting([string]$cli, [string]$key, [string]$default) {
+    if (-not [string]::IsNullOrWhiteSpace($cli)) { return $cli }
+    if ($local.ContainsKey($key) -and -not [string]::IsNullOrWhiteSpace($local[$key])) { return $local[$key] }
+    return $default
+}
+
+function Resolve-RepoPath([string]$p) {
+    if ([IO.Path]::IsPathRooted($p)) { return $p }
+    return (Join-Path $RepoRoot $p)
+}
+
+$EnvAws   = Resolve-RepoPath (Resolve-Setting $EnvAws   'AWS_ENV_FILE'       'deployments/scripts/outcome/.env.aws')
+$Out      = Resolve-RepoPath (Resolve-Setting $Out      'AWS_COPYBLOCK_OUT'  'deployments/scripts/outcome/aws-secrets-to-set.txt')
+$KnownHosts = Resolve-RepoPath (Resolve-Setting ""      'AWS_KNOWN_HOSTS'    'deployments/scripts/outcome/aws_known_hosts')
+$BoxIp    = Resolve-Setting $BoxIp  'AWS_BOX_IP'         ''
+$Repo     = Resolve-Setting $Repo   'GITHUB_REPO'        'hycat-team/smart-wardrobe-be'
+$KeyPath  = Resolve-Setting $KeyPath 'AWS_SSH_KEY_PATH'  '$HOME\.ssh\LightsailDefaultKey-ap-southeast-1.pem'
+
+$KnownHostsRel = $KnownHosts
+if ($KnownHosts.StartsWith($RepoRoot)) {
+    $KnownHostsRel = $KnownHosts.Substring($RepoRoot.Length).TrimStart('\', '/').Replace('\', '/')
+}
+
+if (-not (Test-Path -LiteralPath $EnvAws)) {
+    Write-Host "FAIL: env file not found: $EnvAws (run aws-env-bootstrap.ps1 first)" -ForegroundColor Red
+    exit 1
+}
+
+$envMap = Read-EnvMap $EnvAws
+
+$pending = @()
+foreach ($raw in [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $EnvAws).Path)) {
+    $line = $raw.TrimEnd("`r")
+    if ($line -match '^[A-Za-z_][A-Za-z0-9_]*=.*# TODO') { $pending += $line }
+}
+if ($pending.Count -gt 0) {
+    Write-Host "FAIL: con dong '# TODO' chua dien trong ${EnvAws}:" -ForegroundColor Red
+    $pending | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    exit 1
+}
+
+$required = @('DB_USER','DB_PASSWORD','DB_HOST','REDIS_HOST','REDIS_PORT','REDIS_PASSWORD',
+              'RABBITMQ_HOST','RABBITMQ_USER','RABBITMQ_PASSWORD','RABBITMQ_VHOST')
+$missing = @()
+foreach ($k in $required) {
+    if (-not $envMap.ContainsKey($k) -or [string]::IsNullOrWhiteSpace($envMap[$k])) { $missing += $k }
+}
+if ($missing.Count -gt 0) {
+    Write-Host ("FAIL: cac bien sau dang trong: " + ($missing -join ', ')) -ForegroundColor Red
+    exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($BoxIp) -and $envMap.ContainsKey('BOX_IP')) { $BoxIp = $envMap['BOX_IP'] }
+if ([string]::IsNullOrWhiteSpace($BoxIp)) {
+    Write-Host "FAIL: BOX_IP trong (dien trong aws-local.env, .env.aws hoac dung -BoxIp)" -ForegroundColor Red
+    exit 1
+}
+
+$lines = New-Object System.Collections.Generic.List[string]
+$lines.Add('# ==============================================================================')
+$lines.Add('# GitHub secrets + box env upload - generated by deployments/scripts/aws-env-to-copyblock.ps1')
+$lines.Add('# CONTAINS SECRETS - gitignored under deployments/scripts/outcome, DELETE after use.')
+$lines.Add("# Created: " + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
+$lines.Add('# ==============================================================================')
+$lines.Add('')
+$lines.Add("`$OWNER_REPO = `"$Repo`"")
+$lines.Add("`$KeyPath    = `"$KeyPath`"   # sua neu ban de file .pem cho khac")
+$lines.Add('')
+$lines.Add('# --- [1/3] 5 GitHub secrets that deploy-aws.yml actually reads ---')
+$lines.Add("gh secret set AWS_HOST -R `$OWNER_REPO --body `"$BoxIp`"")
+$lines.Add('gh secret set AWS_USER -R $OWNER_REPO --body "ubuntu"')
+$lines.Add('gh secret set AWS_SSH_PORT -R $OWNER_REPO --body "22"')
+$lines.Add('Get-Content -Raw "$KeyPath" | gh secret set AWS_SSH_KEY -R $OWNER_REPO')
+$lines.Add('# Windows built-in ssh-keyscan fails ("unsupported KEX method sntrup761...");')
+$lines.Add('# Git for Windows ships a full OpenSSH build that works.')
+$lines.Add('$keyscan = "$env:ProgramFiles\Git\usr\bin\ssh-keyscan.exe"')
+$lines.Add('if (-not (Test-Path $keyscan)) { $keyscan = "$env:LOCALAPPDATA\Programs\Git\usr\bin\ssh-keyscan.exe" }')
+$lines.Add('if (-not (Test-Path $keyscan)) { $keyscan = "ssh-keyscan" }')
+$lines.Add("& `$keyscan -p 22 `"$BoxIp`" | Out-File -Encoding ascii $KnownHostsRel")
+$lines.Add("Get-Content -Raw $KnownHostsRel | gh secret set AWS_KNOWN_HOSTS -R `$OWNER_REPO")
+$lines.Add('')
+$lines.Add('# --- [2/3] Upload .env.aws to the box (app config, NOT a GitHub secret) ---')
+$lines.Add("ssh -i `"`$KeyPath`" -p 22 ubuntu@$BoxIp 'sudo mkdir -p /opt/closy-aws && sudo chown `$USER:`$USER /opt/closy-aws'")
+$lines.Add("scp -i `"`$KeyPath`" -P 22 `"$EnvAws`" `"ubuntu@${BoxIp}:/opt/closy-aws/.env.aws`"")
+$lines.Add("ssh -i `"`$KeyPath`" -p 22 ubuntu@$BoxIp 'chmod 600 /opt/closy-aws/.env.aws'")
+$lines.Add('')
+$lines.Add('# --- [3/3] Apply .env.aws NGAY, khong trigger deploy - CHI chay SAU deploy dau (Buoc 7) ---')
+$lines.Add('# Recreate 6 container app (3 service x http+worker) de nap env moi; nginx giu nguyen.')
+$lines.Add('# Chua deploy lan nao (khong co deployments/ + .env.deploy tren box) thi BO QUA block nay.')
+$lines.Add('ssh -i "$KeyPath" -p 22 ubuntu@' + $BoxIp + ' "cd /opt/closy-aws && docker compose --env-file .env.aws --env-file .env.deploy -f deployments/docker-compose.aws.yml up -d --force-recreate account-http account-worker commerce-http commerce-worker ai-http ai-worker"')
+$lines.Add('')
+$lines.Add('# Verify: gh secret list -R $OWNER_REPO   (expect 5 AWS_*)')
+$lines.Add("# Cleanup: remove $Out and $KnownHostsRel")
+
+if ($WithHeredoc) {
+    $lines.Add('')
+    $lines.Add('# --- [fallback] Create .env.aws directly on the box instead of scp ---')
+    $lines.Add('$envBody = @''')
+    foreach ($raw in [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $EnvAws).Path)) {
+        $lines.Add($raw.TrimEnd("`r"))
+    }
+    $lines.Add("'@")
+    $lines.Add("`$envBody | ssh -i `"`$KeyPath`" -p 22 ubuntu@$BoxIp 'cat > /opt/closy-aws/.env.aws && chmod 600 /opt/closy-aws/.env.aws'")
+}
+
+$outDir = Split-Path -Parent $Out
+if ($outDir -and -not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+
+$text = ($lines -join "`r`n") + "`r`n"
+[IO.File]::WriteAllText($Out, $text, (New-Object System.Text.UTF8Encoding($false)))
+
+Write-Host "OK: wrote $Out" -ForegroundColor Green
+Write-Host "    Open it, copy each block, paste into PowerShell. Delete the file after use."
