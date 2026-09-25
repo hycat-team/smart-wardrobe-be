@@ -5,6 +5,7 @@ import (
 	"time"
 
 	brandrouter "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/router"
+	communityrouter "smart-wardrobe-be/services/commerce/internal/modules/community/presentation/router"
 	dashboardrouter "smart-wardrobe-be/services/commerce/internal/modules/dashboard/presentation/router"
 	fashionrouter "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/router"
 	wardroberouter "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/router"
@@ -55,6 +56,7 @@ func NewEngine(
 	dashboardRouter *dashboardrouter.Router,
 	brandRouter *brandrouter.Router,
 	fashionRouter *fashionrouter.Router,
+	communityRouter *communityrouter.Router,
 	searchClient *sharedsearch.ElasticsearchClient,
 ) *gin.Engine {
 	if sharedconfig.IsProductionEnv(cfg.Server.Env) {
@@ -119,6 +121,7 @@ func NewEngine(
 		dashboardRouter.Init(api)
 		brandRouter.Init(api)
 		fashionRouter.Init(api)
+		communityRouter.Init(api)
 	}
 
 	return engine

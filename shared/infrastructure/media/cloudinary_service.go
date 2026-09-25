@@ -30,6 +30,11 @@ func NewCloudinaryService(cfg *config.Config) media.IMediaService {
 func (s *CloudinaryService) GenerateUploadSignature(ctx context.Context, params dto.UploadSignatureParams) (*dto.UploadSignatureResult, error) {
 	timestamp := time.Now().Unix()
 
+	resourceType := params.ResourceType
+	if resourceType == "" {
+		resourceType = "image"
+	}
+
 	paramsMap := map[string]string{
 		"timestamp": fmt.Sprintf("%d", timestamp),
 		"folder":    params.Folder,
@@ -59,11 +64,12 @@ func (s *CloudinaryService) GenerateUploadSignature(ctx context.Context, params 
 	signature := hex.EncodeToString(hash.Sum(nil))
 
 	return &dto.UploadSignatureResult{
-		Signature: signature,
-		Timestamp: timestamp,
-		ApiKey:    s.cfg.Cloudinary.ApiKey,
-		PublicID:  params.PublicID,
-		Folder:    params.Folder,
+		Signature:    signature,
+		Timestamp:    timestamp,
+		ApiKey:       s.cfg.Cloudinary.ApiKey,
+		PublicID:     params.PublicID,
+		Folder:       params.Folder,
+		ResourceType: resourceType,
 	}, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	brandworker "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/worker"
+	communityworker "smart-wardrobe-be/services/commerce/internal/modules/community/presentation/worker"
 	dashboardworker "smart-wardrobe-be/services/commerce/internal/modules/dashboard/presentation/worker"
 	fashionworker "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/worker"
 	wardrobeworker "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/worker"
@@ -35,6 +36,9 @@ type Workers struct {
 	WardrobeFashionBind              *wardrobeworker.WardrobeFashionBindWorker
 	ElasticsearchProcessingExhausted *wardrobeworker.ElasticsearchProcessingExhaustedWorker
 	BrandFashionBind                 *brandworker.BrandFashionBindWorker
+	CommunityOutfitCascade           *communityworker.OutfitCascadeWorker
+	CommunityUserStatus              *communityworker.UserStatusWorker
+	CommunityFollowStatsReconcile    *communityworker.FollowStatsReconcileWorker
 	Outbox                           *sharedWorker.OutboxWorker
 }
 
@@ -58,6 +62,9 @@ func (w *Workers) All() []Worker {
 		w.WardrobeFashionBind,
 		w.ElasticsearchProcessingExhausted,
 		w.BrandFashionBind,
+		w.CommunityOutfitCascade,
+		w.CommunityUserStatus,
+		w.CommunityFollowStatsReconcile,
 		w.Outbox,
 	}
 }
