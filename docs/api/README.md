@@ -51,6 +51,10 @@ docs/api/
 │   ├── brand-item-api.md        ← API Digital Sample Lab & Brand Items
 │   ├── brand-chat-api.md        ← API Chat Customer ↔ Brand Staff
 │   └── brand-loyalty-api.md     ← API Loyalty, Points, Benefits, Vouchers
+├── community/                   ← Community Social module
+│   ├── constants.md             ← Hằng số PostType, PostStatus, MediaType, Follow, HiddenReason
+│   ├── community-api.md         ← API bài đăng, feed, like, bình luận, follow, profile, search
+│   └── admin-community-api.md   ← API kiểm duyệt nội dung cộng đồng (Admin)
 ├── dashboard/                   ← Dashboard & Analytics module
 │   ├── constants.md             ← Hằng số Dashboard (Granularity, Metric Key)
 │   ├── dashboard-admin-api.md   ← API Dashboard Admin
@@ -86,6 +90,7 @@ docs/api/
 | `admin` | `admin/` | Admin Audit |
 | `aiexecutor` | `aiexecutor/` | Admin AI |
 | `brand` | `brand/` | Admin Brand, Brand, Brand Portal, Brand Chat, Brand Loyalty, Brand Item, Brand Benefit |
+| `community` | `community/` | Community, Community Admin |
 | `dashboard` | `dashboard/` | Dashboard Admin, Dashboard Brand, Dashboard Analytics, Dashboard User |
 | `fashion` | `fashion/` | Wardrobe AI |
 | `identity` | `identity/` | Admin User, Auth, Me |

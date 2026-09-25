@@ -370,6 +370,16 @@ Policy for protecting B2C user information when fashion brands extract data from
 
 ---
 
+### Schema `community` (feature 022)
+
+- **Owner**: Commerce Core (module `community`). Tables (6): `community.posts`, `community.post_media`, `community.post_likes`, `community.post_comments`, `community.follows`, `community.user_follow_stats`.
+- **search_path**: bổ sung `community` (đứng cuối) → `public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community`.
+- **FK**: giữ FK tới `identity.users`; **không** FK tới `wardrobe.outfits` (liên kết outfit enforce ở app layer + cascade qua event `wardrobe.outfit.deleted`).
+- **Migration**: `services/commerce/database/migrations/` (Goose per-service, version table `goose_db_version_commerce`).
+- **Index đặc thù**: trigram `pg_trgm` trên `lower(left(content, 200))` cho search; index partial theo `status='published'`.
+
+---
+
 ## X. EVENT-DRIVEN ARCHITECTURE
 
 ### Outbox pattern
