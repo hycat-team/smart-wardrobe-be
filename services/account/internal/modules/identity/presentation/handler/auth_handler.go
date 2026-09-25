@@ -268,6 +268,8 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) error {
 }
 
 // setAuthCookies writes the access/refresh HttpOnly cookies for web clients.
+// Google login/callback uses SameSite=Lax because the OAuth callback is a
+// cross-site top-level navigation; Strict cookies are dropped in that context.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, output *dto.TokenRes) {
 	if output == nil {
 		return
@@ -275,7 +277,7 @@ func (h *AuthHandler) setAuthCookies(c *gin.Context, output *dto.TokenRes) {
 	refreshExpirySeconds := int((time.Hour * 24 * time.Duration(h.cfg.Jwt.RefreshExpirationDays)).Seconds())
 	accessExpirySeconds := h.cfg.Jwt.AccessExpirationMinutes * 60
 
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(contextutils.CookieRefreshToken, output.RefreshToken, refreshExpirySeconds, "/", "", true, true)
 	c.SetCookie(contextutils.CookieAccessToken, output.AccessToken, accessExpirySeconds, "/", "", true, true)
 }
