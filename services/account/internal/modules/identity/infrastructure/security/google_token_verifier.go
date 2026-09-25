@@ -40,6 +40,8 @@ func (v *GoogleTokenVerifier) VerifyIDToken(ctx context.Context, idToken string)
 		email, _ := payload.Claims["email"].(string)
 		verified, _ := payload.Claims["email_verified"].(bool)
 		name, _ := payload.Claims["name"].(string)
+		givenName, _ := payload.Claims["given_name"].(string)
+		familyName, _ := payload.Claims["family_name"].(string)
 		picture, _ := payload.Claims["picture"].(string)
 
 		subject = strings.TrimSpace(subject)
@@ -52,7 +54,9 @@ func (v *GoogleTokenVerifier) VerifyIDToken(ctx context.Context, idToken string)
 			Subject:       subject,
 			Email:         email,
 			EmailVerified: verified,
-			Name:          name,
+			Name:          strings.TrimSpace(name),
+			GivenName:     strings.TrimSpace(givenName),
+			FamilyName:    strings.TrimSpace(familyName),
 			Picture:       picture,
 		}, nil
 	}

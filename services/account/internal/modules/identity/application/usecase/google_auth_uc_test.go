@@ -105,7 +105,13 @@ func newGoogleUC(repo *mockUserRepo, verifier *fakeVerifier, session *fakeSessio
 }
 
 func identityClaim() *appsecurity.GoogleIdentity {
-	return &appsecurity.GoogleIdentity{Subject: "sub-1", Email: "Duck@Gmail.com", EmailVerified: true}
+	return &appsecurity.GoogleIdentity{
+		Subject:       "sub-1",
+		Email:         "Duck@Gmail.com",
+		EmailVerified: true,
+		GivenName:     "Duck",
+		FamilyName:    "Nguyen",
+	}
 }
 
 func TestGoogleLogin_NewUser(t *testing.T) {
@@ -128,6 +134,57 @@ func TestGoogleLogin_NewUser(t *testing.T) {
 	assert.Equal(t, roleslug.User, session.issued.RoleSlug)
 	assert.True(t, session.issued.EmailVerified)
 	assert.Equal(t, "duck", session.issued.Username)
+	assert.NotNil(t, session.issued.FirstName)
+	assert.Equal(t, "Duck", *session.issued.FirstName)
+	assert.NotNil(t, session.issued.LastName)
+	assert.Equal(t, "Nguyen", *session.issued.LastName)
+}
+
+func TestGoogleLogin_NewUser_NameFallback(t *testing.T) {
+	ctx := context.Background()
+	repo := new(mockUserRepo)
+	repo.On("GetByProviderID", ctx, "google", "sub-1").Return(nil, nil)
+	repo.On("GetByEmail", ctx, "duck@gmail.com").Return(nil, nil)
+	repo.On("IsUsernameExists", ctx, mock.Anything).Return(false, nil)
+	repo.On("Create", ctx, mock.Anything).Return(nil)
+
+	ident := identityClaim()
+	ident.GivenName = ""
+	ident.FamilyName = ""
+	ident.Name = "  Duck Nguyen  "
+
+	session := &fakeSession{}
+	uc := newGoogleUC(repo, &fakeVerifier{ident: ident}, session, &fakeStateStore{}, &fakeBlacklist{})
+
+	_, err := uc.LoginWithIDToken(ctx, dto.GoogleLoginReq{IDToken: "token"})
+	assert.NoError(t, err)
+	assert.NotNil(t, session.issued)
+	assert.NotNil(t, session.issued.FirstName)
+	assert.Equal(t, "Duck Nguyen", *session.issued.FirstName)
+	assert.Nil(t, session.issued.LastName)
+}
+
+func TestGoogleLogin_NewUser_NoName(t *testing.T) {
+	ctx := context.Background()
+	repo := new(mockUserRepo)
+	repo.On("GetByProviderID", ctx, "google", "sub-1").Return(nil, nil)
+	repo.On("GetByEmail", ctx, "duck@gmail.com").Return(nil, nil)
+	repo.On("IsUsernameExists", ctx, mock.Anything).Return(false, nil)
+	repo.On("Create", ctx, mock.Anything).Return(nil)
+
+	ident := identityClaim()
+	ident.GivenName = ""
+	ident.FamilyName = ""
+	ident.Name = ""
+
+	session := &fakeSession{}
+	uc := newGoogleUC(repo, &fakeVerifier{ident: ident}, session, &fakeStateStore{}, &fakeBlacklist{})
+
+	_, err := uc.LoginWithIDToken(ctx, dto.GoogleLoginReq{IDToken: "token"})
+	assert.NoError(t, err)
+	assert.NotNil(t, session.issued)
+	assert.Nil(t, session.issued.FirstName)
+	assert.Nil(t, session.issued.LastName)
 }
 
 func TestGoogleLogin_UnverifiedEmail(t *testing.T) {

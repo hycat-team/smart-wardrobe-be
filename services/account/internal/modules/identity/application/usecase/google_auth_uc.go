@@ -211,12 +211,19 @@ func (uc *GoogleAuthUseCase) createGoogleUser(ctx context.Context, ident *appsec
 	}
 
 	subject := ident.Subject
+	firstName := nilIfBlank(ident.GivenName)
+	lastName := nilIfBlank(ident.FamilyName)
+	if firstName == nil && lastName == nil {
+		firstName = nilIfBlank(ident.Name)
+	}
 	user := &entities.User{
 		Username:      username,
 		Email:         strings.ToLower(strings.TrimSpace(ident.Email)),
 		Provider:      authprovider.Google,
 		ProviderID:    &subject,
 		EmailVerified: true,
+		FirstName:     firstName,
+		LastName:      lastName,
 		RoleSlug:      roleslug.User,
 		Status:        userstatus.Active,
 	}

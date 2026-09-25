@@ -19,6 +19,8 @@ type GoogleIdentity struct {
 	Email         string
 	EmailVerified bool
 	Name          string
+	GivenName     string
+	FamilyName    string
 	Picture       string
 }
 
