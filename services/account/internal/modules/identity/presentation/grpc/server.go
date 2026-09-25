@@ -68,6 +68,14 @@ func (s *IdentityServer) GetUserBriefsByIdentifiers(ctx context.Context, req *id
 	return &identityv1.UserBriefList{Users: identitytransport.ContractDTOsToUserBriefs(out)}, nil
 }
 
+func (s *IdentityServer) SearchUserBriefs(ctx context.Context, req *identityv1.SearchUserBriefsRequest) (*identityv1.UserBriefList, error) {
+	out, err := s.brief.SearchUserBriefs(ctx, req.GetKeyword(), int(req.GetLimit()))
+	if err != nil {
+		return nil, grpcx.ToGRPCError(err)
+	}
+	return &identityv1.UserBriefList{Users: identitytransport.ContractDTOsToUserBriefs(out)}, nil
+}
+
 // IdentityDashboardServer is the inbound adapter for IdentityDashboardService.
 type IdentityDashboardServer struct {
 	identityv1.UnimplementedIdentityDashboardServiceServer

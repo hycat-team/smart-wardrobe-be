@@ -55,3 +55,11 @@ func (c *UserBriefClient) GetByUsernamesOrEmails(ctx context.Context, identifier
 	}
 	return identitytransport.UserBriefsToDTOs(res.GetUsers())
 }
+
+func (c *UserBriefClient) SearchUserBriefs(ctx context.Context, keyword string, limit int) ([]*identitydto.UserBriefContractDTO, error) {
+	res, err := c.svc.SearchUserBriefs(ctx, &identityv1.SearchUserBriefsRequest{Keyword: keyword, Limit: int32(limit)})
+	if err != nil {
+		return nil, grpcx.ToAppError(err)
+	}
+	return identitytransport.UserBriefsToDTOs(res.GetUsers())
+}

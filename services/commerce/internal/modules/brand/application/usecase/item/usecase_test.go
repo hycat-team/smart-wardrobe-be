@@ -380,6 +380,9 @@ func (m *mockUserBriefContract) GetByIDs(ctx context.Context, ids []uuid.UUID) (
 func (m *mockUserBriefContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserBriefContractDTO, error) {
 	return nil, nil
 }
+func (m *mockUserBriefContract) SearchUserBriefs(ctx context.Context, keyword string, limit int) ([]*identity_dto.UserBriefContractDTO, error) {
+	return nil, nil
+}
 
 type fakeUnitOfWork struct{}
 

@@ -36,6 +36,11 @@ message GetUserBriefsByIdentifiersRequest {
   repeated string identifiers = 1;
 }
 
+message SearchUserBriefsRequest {
+  string keyword = 1;
+  int32 limit = 2;
+}
+
 message UserBriefList {
   repeated UserBrief users = 1;
 }
@@ -63,6 +68,7 @@ service IdentityService {
   rpc GetUserBrief(GetUserBriefRequest) returns (UserBrief);
   rpc GetUserBriefs(GetUserBriefsRequest) returns (UserBriefList);
   rpc GetUserBriefsByIdentifiers(GetUserBriefsByIdentifiersRequest) returns (UserBriefList);
+  rpc SearchUserBriefs(SearchUserBriefsRequest) returns (UserBriefList);
 }
 
 // IdentityDashboardService serves identity aggregates for the dashboard.

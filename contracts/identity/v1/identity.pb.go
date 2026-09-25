@@ -262,6 +262,58 @@ func (x *GetUserBriefsByIdentifiersRequest) GetIdentifiers() []string {
 	return nil
 }
 
+type SearchUserBriefsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Keyword       string                 `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchUserBriefsRequest) Reset() {
+	*x = SearchUserBriefsRequest{}
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchUserBriefsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchUserBriefsRequest) ProtoMessage() {}
+
+func (x *SearchUserBriefsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchUserBriefsRequest.ProtoReflect.Descriptor instead.
+func (*SearchUserBriefsRequest) Descriptor() ([]byte, []int) {
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SearchUserBriefsRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+func (x *SearchUserBriefsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
 type UserBriefList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Users         []*UserBrief           `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
@@ -271,7 +323,7 @@ type UserBriefList struct {
 
 func (x *UserBriefList) Reset() {
 	*x = UserBriefList{}
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[4]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -283,7 +335,7 @@ func (x *UserBriefList) String() string {
 func (*UserBriefList) ProtoMessage() {}
 
 func (x *UserBriefList) ProtoReflect() protoreflect.Message {
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[4]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -296,7 +348,7 @@ func (x *UserBriefList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserBriefList.ProtoReflect.Descriptor instead.
 func (*UserBriefList) Descriptor() ([]byte, []int) {
-	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{4}
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UserBriefList) GetUsers() []*UserBrief {
@@ -319,7 +371,7 @@ type UserAdminStats struct {
 
 func (x *UserAdminStats) Reset() {
 	*x = UserAdminStats{}
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[5]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -331,7 +383,7 @@ func (x *UserAdminStats) String() string {
 func (*UserAdminStats) ProtoMessage() {}
 
 func (x *UserAdminStats) ProtoReflect() protoreflect.Message {
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[5]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +396,7 @@ func (x *UserAdminStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserAdminStats.ProtoReflect.Descriptor instead.
 func (*UserAdminStats) Descriptor() ([]byte, []int) {
-	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{5}
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UserAdminStats) GetSnapshotDate() *timestamppb.Timestamp {
@@ -384,7 +436,7 @@ type GetAdminUserStatsRequest struct {
 
 func (x *GetAdminUserStatsRequest) Reset() {
 	*x = GetAdminUserStatsRequest{}
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[6]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +448,7 @@ func (x *GetAdminUserStatsRequest) String() string {
 func (*GetAdminUserStatsRequest) ProtoMessage() {}
 
 func (x *GetAdminUserStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[6]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +461,7 @@ func (x *GetAdminUserStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminUserStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminUserStatsRequest) Descriptor() ([]byte, []int) {
-	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{6}
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetAdminUserStatsRequest) GetSnapshotDate() *timestamppb.Timestamp {
@@ -427,7 +479,7 @@ type GetActiveUserIDsRequest struct {
 
 func (x *GetActiveUserIDsRequest) Reset() {
 	*x = GetActiveUserIDsRequest{}
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[7]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +491,7 @@ func (x *GetActiveUserIDsRequest) String() string {
 func (*GetActiveUserIDsRequest) ProtoMessage() {}
 
 func (x *GetActiveUserIDsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[7]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +504,7 @@ func (x *GetActiveUserIDsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetActiveUserIDsRequest.ProtoReflect.Descriptor instead.
 func (*GetActiveUserIDsRequest) Descriptor() ([]byte, []int) {
-	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{7}
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{8}
 }
 
 type UserIDList struct {
@@ -464,7 +516,7 @@ type UserIDList struct {
 
 func (x *UserIDList) Reset() {
 	*x = UserIDList{}
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[8]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +528,7 @@ func (x *UserIDList) String() string {
 func (*UserIDList) ProtoMessage() {}
 
 func (x *UserIDList) ProtoReflect() protoreflect.Message {
-	mi := &file_contracts_identity_v1_identity_proto_msgTypes[8]
+	mi := &file_contracts_identity_v1_identity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -489,7 +541,7 @@ func (x *UserIDList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserIDList.ProtoReflect.Descriptor instead.
 func (*UserIDList) Descriptor() ([]byte, []int) {
-	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{8}
+	return file_contracts_identity_v1_identity_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UserIDList) GetUserIds() []string {
@@ -520,7 +572,10 @@ const file_contracts_identity_v1_identity_proto_rawDesc = "" +
 	"\x14GetUserBriefsRequest\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\"E\n" +
 	"!GetUserBriefsByIdentifiersRequest\x12 \n" +
-	"\videntifiers\x18\x01 \x03(\tR\videntifiers\"C\n" +
+	"\videntifiers\x18\x01 \x03(\tR\videntifiers\"I\n" +
+	"\x17SearchUserBriefsRequest\x12\x18\n" +
+	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"C\n" +
 	"\rUserBriefList\x122\n" +
 	"\x05users\x18\x01 \x03(\v2\x1c.closy.identity.v1.UserBriefR\x05users\"\xb9\x01\n" +
 	"\x0eUserAdminStats\x12?\n" +
@@ -534,11 +589,12 @@ const file_contracts_identity_v1_identity_proto_rawDesc = "" +
 	"\x17GetActiveUserIDsRequest\"'\n" +
 	"\n" +
 	"UserIDList\x12\x19\n" +
-	"\buser_ids\x18\x01 \x03(\tR\auserIds2\xb9\x02\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds2\x9b\x03\n" +
 	"\x0fIdentityService\x12T\n" +
 	"\fGetUserBrief\x12&.closy.identity.v1.GetUserBriefRequest\x1a\x1c.closy.identity.v1.UserBrief\x12Z\n" +
 	"\rGetUserBriefs\x12'.closy.identity.v1.GetUserBriefsRequest\x1a .closy.identity.v1.UserBriefList\x12t\n" +
-	"\x1aGetUserBriefsByIdentifiers\x124.closy.identity.v1.GetUserBriefsByIdentifiersRequest\x1a .closy.identity.v1.UserBriefList2\xde\x01\n" +
+	"\x1aGetUserBriefsByIdentifiers\x124.closy.identity.v1.GetUserBriefsByIdentifiersRequest\x1a .closy.identity.v1.UserBriefList\x12`\n" +
+	"\x10SearchUserBriefs\x12*.closy.identity.v1.SearchUserBriefsRequest\x1a .closy.identity.v1.UserBriefList2\xde\x01\n" +
 	"\x18IdentityDashboardService\x12c\n" +
 	"\x11GetAdminUserStats\x12+.closy.identity.v1.GetAdminUserStatsRequest\x1a!.closy.identity.v1.UserAdminStats\x12]\n" +
 	"\x10GetActiveUserIDs\x12*.closy.identity.v1.GetActiveUserIDsRequest\x1a\x1d.closy.identity.v1.UserIDListB4Z2smart-wardrobe-be/contracts/identity/v1;identityv1b\x06proto3"
@@ -555,38 +611,41 @@ func file_contracts_identity_v1_identity_proto_rawDescGZIP() []byte {
 	return file_contracts_identity_v1_identity_proto_rawDescData
 }
 
-var file_contracts_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_contracts_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_contracts_identity_v1_identity_proto_goTypes = []any{
 	(*UserBrief)(nil),                         // 0: closy.identity.v1.UserBrief
 	(*GetUserBriefRequest)(nil),               // 1: closy.identity.v1.GetUserBriefRequest
 	(*GetUserBriefsRequest)(nil),              // 2: closy.identity.v1.GetUserBriefsRequest
 	(*GetUserBriefsByIdentifiersRequest)(nil), // 3: closy.identity.v1.GetUserBriefsByIdentifiersRequest
-	(*UserBriefList)(nil),                     // 4: closy.identity.v1.UserBriefList
-	(*UserAdminStats)(nil),                    // 5: closy.identity.v1.UserAdminStats
-	(*GetAdminUserStatsRequest)(nil),          // 6: closy.identity.v1.GetAdminUserStatsRequest
-	(*GetActiveUserIDsRequest)(nil),           // 7: closy.identity.v1.GetActiveUserIDsRequest
-	(*UserIDList)(nil),                        // 8: closy.identity.v1.UserIDList
-	(*timestamppb.Timestamp)(nil),             // 9: google.protobuf.Timestamp
+	(*SearchUserBriefsRequest)(nil),           // 4: closy.identity.v1.SearchUserBriefsRequest
+	(*UserBriefList)(nil),                     // 5: closy.identity.v1.UserBriefList
+	(*UserAdminStats)(nil),                    // 6: closy.identity.v1.UserAdminStats
+	(*GetAdminUserStatsRequest)(nil),          // 7: closy.identity.v1.GetAdminUserStatsRequest
+	(*GetActiveUserIDsRequest)(nil),           // 8: closy.identity.v1.GetActiveUserIDsRequest
+	(*UserIDList)(nil),                        // 9: closy.identity.v1.UserIDList
+	(*timestamppb.Timestamp)(nil),             // 10: google.protobuf.Timestamp
 }
 var file_contracts_identity_v1_identity_proto_depIdxs = []int32{
-	0, // 0: closy.identity.v1.UserBriefList.users:type_name -> closy.identity.v1.UserBrief
-	9, // 1: closy.identity.v1.UserAdminStats.snapshot_date:type_name -> google.protobuf.Timestamp
-	9, // 2: closy.identity.v1.GetAdminUserStatsRequest.snapshot_date:type_name -> google.protobuf.Timestamp
-	1, // 3: closy.identity.v1.IdentityService.GetUserBrief:input_type -> closy.identity.v1.GetUserBriefRequest
-	2, // 4: closy.identity.v1.IdentityService.GetUserBriefs:input_type -> closy.identity.v1.GetUserBriefsRequest
-	3, // 5: closy.identity.v1.IdentityService.GetUserBriefsByIdentifiers:input_type -> closy.identity.v1.GetUserBriefsByIdentifiersRequest
-	6, // 6: closy.identity.v1.IdentityDashboardService.GetAdminUserStats:input_type -> closy.identity.v1.GetAdminUserStatsRequest
-	7, // 7: closy.identity.v1.IdentityDashboardService.GetActiveUserIDs:input_type -> closy.identity.v1.GetActiveUserIDsRequest
-	0, // 8: closy.identity.v1.IdentityService.GetUserBrief:output_type -> closy.identity.v1.UserBrief
-	4, // 9: closy.identity.v1.IdentityService.GetUserBriefs:output_type -> closy.identity.v1.UserBriefList
-	4, // 10: closy.identity.v1.IdentityService.GetUserBriefsByIdentifiers:output_type -> closy.identity.v1.UserBriefList
-	5, // 11: closy.identity.v1.IdentityDashboardService.GetAdminUserStats:output_type -> closy.identity.v1.UserAdminStats
-	8, // 12: closy.identity.v1.IdentityDashboardService.GetActiveUserIDs:output_type -> closy.identity.v1.UserIDList
-	8, // [8:13] is the sub-list for method output_type
-	3, // [3:8] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0,  // 0: closy.identity.v1.UserBriefList.users:type_name -> closy.identity.v1.UserBrief
+	10, // 1: closy.identity.v1.UserAdminStats.snapshot_date:type_name -> google.protobuf.Timestamp
+	10, // 2: closy.identity.v1.GetAdminUserStatsRequest.snapshot_date:type_name -> google.protobuf.Timestamp
+	1,  // 3: closy.identity.v1.IdentityService.GetUserBrief:input_type -> closy.identity.v1.GetUserBriefRequest
+	2,  // 4: closy.identity.v1.IdentityService.GetUserBriefs:input_type -> closy.identity.v1.GetUserBriefsRequest
+	3,  // 5: closy.identity.v1.IdentityService.GetUserBriefsByIdentifiers:input_type -> closy.identity.v1.GetUserBriefsByIdentifiersRequest
+	4,  // 6: closy.identity.v1.IdentityService.SearchUserBriefs:input_type -> closy.identity.v1.SearchUserBriefsRequest
+	7,  // 7: closy.identity.v1.IdentityDashboardService.GetAdminUserStats:input_type -> closy.identity.v1.GetAdminUserStatsRequest
+	8,  // 8: closy.identity.v1.IdentityDashboardService.GetActiveUserIDs:input_type -> closy.identity.v1.GetActiveUserIDsRequest
+	0,  // 9: closy.identity.v1.IdentityService.GetUserBrief:output_type -> closy.identity.v1.UserBrief
+	5,  // 10: closy.identity.v1.IdentityService.GetUserBriefs:output_type -> closy.identity.v1.UserBriefList
+	5,  // 11: closy.identity.v1.IdentityService.GetUserBriefsByIdentifiers:output_type -> closy.identity.v1.UserBriefList
+	5,  // 12: closy.identity.v1.IdentityService.SearchUserBriefs:output_type -> closy.identity.v1.UserBriefList
+	6,  // 13: closy.identity.v1.IdentityDashboardService.GetAdminUserStats:output_type -> closy.identity.v1.UserAdminStats
+	9,  // 14: closy.identity.v1.IdentityDashboardService.GetActiveUserIDs:output_type -> closy.identity.v1.UserIDList
+	9,  // [9:15] is the sub-list for method output_type
+	3,  // [3:9] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_contracts_identity_v1_identity_proto_init() }
@@ -600,7 +659,7 @@ func file_contracts_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_contracts_identity_v1_identity_proto_rawDesc), len(file_contracts_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

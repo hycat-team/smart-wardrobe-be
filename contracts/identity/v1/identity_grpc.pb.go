@@ -27,6 +27,7 @@ const (
 	IdentityService_GetUserBrief_FullMethodName               = "/closy.identity.v1.IdentityService/GetUserBrief"
 	IdentityService_GetUserBriefs_FullMethodName              = "/closy.identity.v1.IdentityService/GetUserBriefs"
 	IdentityService_GetUserBriefsByIdentifiers_FullMethodName = "/closy.identity.v1.IdentityService/GetUserBriefsByIdentifiers"
+	IdentityService_SearchUserBriefs_FullMethodName           = "/closy.identity.v1.IdentityService/SearchUserBriefs"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -38,6 +39,7 @@ type IdentityServiceClient interface {
 	GetUserBrief(ctx context.Context, in *GetUserBriefRequest, opts ...grpc.CallOption) (*UserBrief, error)
 	GetUserBriefs(ctx context.Context, in *GetUserBriefsRequest, opts ...grpc.CallOption) (*UserBriefList, error)
 	GetUserBriefsByIdentifiers(ctx context.Context, in *GetUserBriefsByIdentifiersRequest, opts ...grpc.CallOption) (*UserBriefList, error)
+	SearchUserBriefs(ctx context.Context, in *SearchUserBriefsRequest, opts ...grpc.CallOption) (*UserBriefList, error)
 }
 
 type identityServiceClient struct {
@@ -78,6 +80,16 @@ func (c *identityServiceClient) GetUserBriefsByIdentifiers(ctx context.Context, 
 	return out, nil
 }
 
+func (c *identityServiceClient) SearchUserBriefs(ctx context.Context, in *SearchUserBriefsRequest, opts ...grpc.CallOption) (*UserBriefList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserBriefList)
+	err := c.cc.Invoke(ctx, IdentityService_SearchUserBriefs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -87,6 +99,7 @@ type IdentityServiceServer interface {
 	GetUserBrief(context.Context, *GetUserBriefRequest) (*UserBrief, error)
 	GetUserBriefs(context.Context, *GetUserBriefsRequest) (*UserBriefList, error)
 	GetUserBriefsByIdentifiers(context.Context, *GetUserBriefsByIdentifiersRequest) (*UserBriefList, error)
+	SearchUserBriefs(context.Context, *SearchUserBriefsRequest) (*UserBriefList, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -105,6 +118,9 @@ func (UnimplementedIdentityServiceServer) GetUserBriefs(context.Context, *GetUse
 }
 func (UnimplementedIdentityServiceServer) GetUserBriefsByIdentifiers(context.Context, *GetUserBriefsByIdentifiersRequest) (*UserBriefList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserBriefsByIdentifiers not implemented")
+}
+func (UnimplementedIdentityServiceServer) SearchUserBriefs(context.Context, *SearchUserBriefsRequest) (*UserBriefList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchUserBriefs not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -181,6 +197,24 @@ func _IdentityService_GetUserBriefsByIdentifiers_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_SearchUserBriefs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchUserBriefsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SearchUserBriefs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SearchUserBriefs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SearchUserBriefs(ctx, req.(*SearchUserBriefsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -199,6 +233,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserBriefsByIdentifiers",
 			Handler:    _IdentityService_GetUserBriefsByIdentifiers_Handler,
+		},
+		{
+			MethodName: "SearchUserBriefs",
+			Handler:    _IdentityService_SearchUserBriefs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -81,3 +81,20 @@ func (uc *UserBriefUseCase) GetByUsernamesOrEmails(ctx context.Context, identifi
 	}
 	return result, nil
 }
+
+// SearchUserBriefs returns up to limit users whose username or name matches the
+// keyword (case-insensitive, partial). Used by the community search feature.
+func (uc *UserBriefUseCase) SearchUserBriefs(ctx context.Context, keyword string, limit int) ([]*dto.UserBriefContractDTO, error) {
+	users, err := uc.userRepo.SearchByKeyword(ctx, keyword, limit)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*dto.UserBriefContractDTO, 0, len(users))
+	for _, user := range users {
+		if user == nil || user.IsDeleted {
+			continue
+		}
+		result = append(result, mapper.MapToUserBrief(user))
+	}
+	return result, nil
+}
