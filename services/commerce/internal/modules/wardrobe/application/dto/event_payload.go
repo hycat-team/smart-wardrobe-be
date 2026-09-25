@@ -11,3 +11,10 @@ type WardrobeEventPayload struct {
 	ItemType      int       `json:"item_type,omitempty"`
 	Action        string    `json:"action"`
 }
+
+// OutfitEventPayload is published when an outfit is deleted
+// (topic "wardrobe.outfit.deleted") so consumers (community) can cascade.
+type OutfitEventPayload struct {
+	OutfitID uuid.UUID `json:"outfitId"`
+	UserID   uuid.UUID `json:"userId"`
+}

@@ -3,10 +3,21 @@ package dto
 import (
 	"time"
 
+	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/outfitstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/wardrobestatus"
 
 	"github.com/google/uuid"
 )
+
+// OutfitContractDTO is the pure data container of an outfit for inter-module
+// communication. It exposes only Wardrobe-owned fields.
+type OutfitContractDTO struct {
+	ID            uuid.UUID                 `json:"id"`
+	UserID        uuid.UUID                 `json:"userId"`
+	Name          string                    `json:"name"`
+	CoverImageURL *string                   `json:"coverImageUrl,omitempty"`
+	Status        outfitstatus.OutfitStatus `json:"status"`
+}
 
 // WardrobeItemContractDTO represents the pure data container of a wardrobe item
 // for inter-module communication via IWardrobeContract.

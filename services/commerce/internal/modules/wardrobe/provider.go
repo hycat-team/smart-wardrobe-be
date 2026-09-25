@@ -2,6 +2,7 @@ package wardrobe
 
 import (
 	outfit_uc "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/outfit"
+	outfitcontractuc "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/outfit/contractuc"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/wardrobe"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/wardrobe/catalog"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/usecase/wardrobe/contractuc"
@@ -27,6 +28,8 @@ var ProviderSet = wire.NewSet(
 	catalog.NewWardrobeCatalogUseCase,
 	contractuc.NewWardrobeContractUseCase,
 	contract.NewWardrobeContract,
+	outfitcontractuc.NewOutfitContractUseCase,
+	contract.NewOutfitContract,
 	contract.NewWardrobeDashboardReader,
 	search_sync.NewSearchSyncUseCase,
 	wardrobe.NewWardrobeFashionEventUseCase,
