@@ -345,13 +345,13 @@
           "type": "string"
         },
         "oldPassword": {
+          "description": "OldPassword is optional: Google-only accounts (no password yet) set their\nfirst password without providing an old one.",
           "type": "string"
         }
       },
       "required": [
         "confirmPassword",
-        "newPassword",
-        "oldPassword"
+        "newPassword"
       ],
       "type": "object"
     },
@@ -435,6 +435,26 @@
         "firstName",
         "password",
         "username"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.GoogleLoginReq": {
+      "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "idToken": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "idToken"
       ],
       "type": "object"
     },
@@ -8000,6 +8020,100 @@
           }
         },
         "summary": "Gửi lại OTP khôi phục mật khẩu",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google": {
+      "get": {
+        "description": "Validate redirectUrl và chuyển hướng sang Google",
+        "parameters": [
+          {
+            "description": "URL quay về sau đăng nhập",
+            "in": "query",
+            "name": "redirectUrl",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {},
+        "summary": "Bắt đầu đăng nhập Google (web redirect)",
+        "tags": [
+          "Auth"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Xác thực Google ID token và cấp phiên làm việc (dành cho mobile và tuỳ chọn web)",
+        "parameters": [
+          {
+            "description": "Google ID token",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.GoogleLoginReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Đăng nhập thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_identity.TokenRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Đăng nhập bằng Google (ID token)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google/callback": {
+      "get": {
+        "description": "Đổi code, tạo phiên và chuyển hướng về redirectUrl",
+        "parameters": [
+          {
+            "description": "Authorization code",
+            "in": "query",
+            "name": "code",
+            "type": "string"
+          },
+          {
+            "description": "OAuth state",
+            "in": "query",
+            "name": "state",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Lỗi do Google trả về",
+            "in": "query",
+            "name": "error",
+            "type": "string"
+          }
+        ],
+        "responses": {},
+        "summary": "Callback đăng nhập Google (web redirect)",
         "tags": [
           "Auth"
         ]

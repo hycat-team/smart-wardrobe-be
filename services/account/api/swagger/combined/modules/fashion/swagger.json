@@ -345,13 +345,13 @@
           "type": "string"
         },
         "oldPassword": {
+          "description": "OldPassword is optional: Google-only accounts (no password yet) set their\nfirst password without providing an old one.",
           "type": "string"
         }
       },
       "required": [
         "confirmPassword",
-        "newPassword",
-        "oldPassword"
+        "newPassword"
       ],
       "type": "object"
     },
@@ -435,6 +435,26 @@
         "firstName",
         "password",
         "username"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_identity.GoogleLoginReq": {
+      "properties": {
+        "deviceIp": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "idToken": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "idToken"
       ],
       "type": "object"
     },
