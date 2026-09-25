@@ -45,6 +45,34 @@
       },
       "type": "object"
     },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_community_application_dto_CommunityUserRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_community_application_dto_PostRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
     "dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto_ChatMessageRes": {
       "properties": {
         "items": {
@@ -1672,6 +1700,9 @@
         "publicId": {
           "type": "string"
         },
+        "resourceType": {
+          "type": "string"
+        },
         "signature": {
           "type": "string"
         },
@@ -1823,6 +1854,538 @@
         "Adjust",
         "Expire",
         "Refund"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AddCommentReq": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "parentCommentId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminCommentListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminCommentRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminCommentRes": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDeleted": {
+          "type": "boolean"
+        },
+        "parentCommentId": {
+          "type": "string"
+        },
+        "postId": {
+          "type": "string"
+        },
+        "replyCount": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminPostListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminPostRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminPostRes": {
+      "properties": {
+        "commentCount": {
+          "type": "integer"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "hiddenReason": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isFollowingAuthor": {
+          "type": "boolean"
+        },
+        "isLiked": {
+          "type": "boolean"
+        },
+        "likeCount": {
+          "type": "integer"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaRes"
+          },
+          "type": "array"
+        },
+        "moderatedBy": {
+          "type": "string"
+        },
+        "outfit": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.OutfitBriefRes"
+        },
+        "postType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_posttype.PostType"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "sharePath": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_poststatus.PostStatus"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommentRes": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isDeleted": {
+          "type": "boolean"
+        },
+        "parentCommentId": {
+          "type": "string"
+        },
+        "replyCount": {
+          "type": "integer"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes": {
+      "properties": {
+        "avatarUrl": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "integer"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CreatePostReq": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaReq"
+          },
+          "type": "array"
+        },
+        "outfitId": {
+          "type": "string"
+        },
+        "postType": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_posttype.PostType"
+            }
+          ],
+          "enum": [
+            "outfit",
+            "media"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "postType"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowReq": {
+      "properties": {
+        "isFollowing": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "isFollowing"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowUserListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowUserRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowUserRes": {
+      "properties": {
+        "followedAt": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.LikePostReq": {
+      "properties": {
+        "isLiked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "isLiked"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.OutfitBriefRes": {
+      "properties": {
+        "coverImageUrl": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostLikeUserListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostListRes": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes"
+          },
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/definitions/dto.PaginationMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaReq": {
+      "properties": {
+        "mediaType": {
+          "enum": [
+            "image",
+            "video"
+          ],
+          "type": "string"
+        },
+        "mediaUrl": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mediaType",
+        "mediaUrl"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaRes": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "mediaUrl": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes": {
+      "properties": {
+        "commentCount": {
+          "type": "integer"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isFollowingAuthor": {
+          "type": "boolean"
+        },
+        "isLiked": {
+          "type": "boolean"
+        },
+        "likeCount": {
+          "type": "integer"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaRes"
+          },
+          "type": "array"
+        },
+        "outfit": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.OutfitBriefRes"
+        },
+        "postType": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_posttype.PostType"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "sharePath": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_poststatus.PostStatus"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PublicProfileRes": {
+      "properties": {
+        "isFollowing": {
+          "type": "boolean"
+        },
+        "isMe": {
+          "type": "boolean"
+        },
+        "stats": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PublicProfileStatsRes"
+        },
+        "user": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PublicProfileStatsRes": {
+      "properties": {
+        "followerCount": {
+          "type": "integer"
+        },
+        "followingCount": {
+          "type": "integer"
+        },
+        "postCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.SearchRes": {
+      "properties": {
+        "posts": {
+          "$ref": "#/definitions/dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_community_application_dto_PostRes"
+        },
+        "users": {
+          "$ref": "#/definitions/dto.PaginationResult-smart-wardrobe-be_services_commerce_internal_modules_community_application_dto_CommunityUserRes"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UpdateCommentReq": {
+      "properties": {
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UpdatePostReq": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "media": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaReq"
+          },
+          "type": "array"
+        },
+        "outfitId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UploadSignatureResult": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "folder": {
+          "type": "string"
+        },
+        "publicId": {
+          "type": "string"
+        },
+        "resourceType": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_poststatus.PostStatus": {
+      "enum": [
+        "published",
+        "hidden",
+        "deleted"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Published",
+        "Hidden",
+        "Deleted"
+      ]
+    },
+    "smart-wardrobe-be_services_commerce_internal_modules_community_domain_constants_posttype.PostType": {
+      "enum": [
+        "outfit",
+        "media"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "Outfit",
+        "Media"
       ]
     },
     "smart-wardrobe-be_services_commerce_internal_modules_dashboard_application_dto.AIErrorBreakdownRes": {
@@ -3513,6 +4076,9 @@
         "remainingSlots": {
           "type": "integer"
         },
+        "resourceType": {
+          "type": "string"
+        },
         "signature": {
           "type": "string"
         },
@@ -3605,6 +4171,9 @@
           "type": "string"
         },
         "publicId": {
+          "type": "string"
+        },
+        "resourceType": {
           "type": "string"
         },
         "signature": {
@@ -4228,6 +4797,142 @@
         ]
       }
     },
+    "/api/v1/admin/comments": {
+      "get": {
+        "description": "Lấy danh sách bình luận để kiểm duyệt, lọc theo từ khóa",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách bình luận thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminCommentListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Danh sách bình luận (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/comments/{commentID}": {
+      "delete": {
+        "description": "Xóa mềm bình luận vi phạm; xóa bình luận gốc sẽ xóa luôn các phản hồi con",
+        "parameters": [
+          {
+            "description": "ID bình luận",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa bình luận thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa bình luận (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/comments/{commentID}/hide": {
+      "patch": {
+        "description": "Ẩn bình luận vi phạm; ẩn bình luận gốc sẽ ẩn luôn các phản hồi con",
+        "parameters": [
+          {
+            "description": "ID bình luận",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Ẩn bình luận thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Ẩn bình luận (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/comments/{commentID}/restore": {
+      "patch": {
+        "description": "Khôi phục bình luận do admin ẩn/xóa; không khôi phục được bình luận tác giả tự xóa",
+        "parameters": [
+          {
+            "description": "ID bình luận",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Khôi phục bình luận thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Khôi phục bình luận (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
     "/api/v1/admin/dashboard/ai-margin": {
       "get": {
         "description": "Thống kê doanh thu subscription, chi phí thực tế tiêu thụ AI Token (ai_usage_period_ledgers), lợi nhuận ròng AI (net_ai_margin) và phần trăm biên lợi nhuận.",
@@ -4609,6 +5314,147 @@
         "summary": "Doanh thu subscription theo gói và thời gian",
         "tags": [
           "Dashboard Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/posts": {
+      "get": {
+        "description": "Lấy danh sách bài đăng để kiểm duyệt, lọc theo từ khóa và trạng thái",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách bài đăng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AdminPostListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Danh sách bài đăng (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/posts/{postID}": {
+      "delete": {
+        "description": "Xóa mềm bài đăng vi phạm (có thể khôi phục bởi admin)",
+        "parameters": [
+          {
+            "description": "ID bài đăng",
+            "in": "path",
+            "name": "postID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa bài đăng thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa bài đăng (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/posts/{postID}/hide": {
+      "patch": {
+        "description": "Ẩn bài đăng vi phạm (có thể khôi phục); nội dung bị ẩn không hiển thị với người dùng thường",
+        "parameters": [
+          {
+            "description": "ID bài đăng",
+            "in": "path",
+            "name": "postID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Ẩn bài đăng thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Ẩn bài đăng (quản trị)",
+        "tags": [
+          "Community Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/posts/{postID}/restore": {
+      "patch": {
+        "description": "Khôi phục bài đăng do admin ẩn/xóa; không khôi phục được bài tác giả tự xóa",
+        "parameters": [
+          {
+            "description": "ID bài đăng",
+            "in": "path",
+            "name": "postID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Khôi phục bài đăng thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Khôi phục bài đăng (quản trị)",
+        "tags": [
+          "Community Admin"
         ]
       }
     },
@@ -8930,6 +9776,670 @@
         ]
       }
     },
+    "/api/v1/posts": {
+      "get": {
+        "description": "Lấy bảng tin explore/following, sắp xếp hot/latest, hỗ trợ lọc loại bài và theo username",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "postType",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "username",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy bảng tin thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy bảng tin cộng đồng",
+        "tags": [
+          "Community"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Tạo bài đăng loại outfit (gắn outfit thuộc sở hữu) hoặc media (ảnh/video/không media)",
+        "parameters": [
+          {
+            "description": "Nội dung bài đăng",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CreatePostReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Tạo bài đăng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Tạo bài đăng cộng đồng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/upload-signature": {
+      "get": {
+        "description": "Lấy chữ ký Cloudinary để client tải trực tiếp ảnh hoặc video lên",
+        "parameters": [
+          {
+            "description": "Loại media (image|video)",
+            "enum": [
+              "image",
+              "video"
+            ],
+            "in": "query",
+            "name": "resourceType",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy chữ ký thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UploadSignatureResult"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy chữ ký tải media bài đăng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}": {
+      "delete": {
+        "description": "Xóa mềm bài đăng của chính người dùng hiện tại (không thể khôi phục)",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa bài đăng thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa bài đăng cộng đồng",
+        "tags": [
+          "Community"
+        ]
+      },
+      "get": {
+        "description": "Lấy chi tiết một bài đăng công khai (tác giả vẫn xem được bài đang bị ẩn của mình)",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy chi tiết bài đăng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy chi tiết bài đăng",
+        "tags": [
+          "Community"
+        ]
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Cập nhật tiêu đề, nội dung, outfit hoặc media của bài đăng thuộc sở hữu (không đổi loại bài)",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Nội dung cập nhật",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UpdatePostReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật bài đăng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Cập nhật bài đăng cộng đồng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}/comments": {
+      "get": {
+        "description": "Lấy danh sách bình luận gốc (mới nhất trước) kèm số lượng phản hồi",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách bình luận thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommentRes"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy bình luận gốc của bài đăng",
+        "tags": [
+          "Community"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Thêm bình luận gốc hoặc phản hồi; phản hồi vào cấp 2 sẽ tự động gắn lên bình luận gốc",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Nội dung bình luận",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.AddCommentReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Thêm bình luận thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommentRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Thêm bình luận",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}/comments/{commentID}": {
+      "delete": {
+        "description": "Xóa mềm bình luận của chính người dùng hiện tại; bình luận gốc còn phản hồi sẽ hiển thị dấu đã xóa",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID bình luận",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa bình luận thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Xóa bình luận",
+        "tags": [
+          "Community"
+        ]
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Cập nhật nội dung bình luận của chính người dùng hiện tại",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID bình luận",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Nội dung bình luận mới",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UpdateCommentReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật bình luận thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommentRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Cập nhật bình luận",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}/comments/{commentID}/replies": {
+      "get": {
+        "description": "Lấy danh sách phản hồi (cũ nhất trước) của một bình luận gốc",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "ID bình luận gốc",
+            "in": "path",
+            "name": "commentID",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách phản hồi thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.CommentRes"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy phản hồi của bình luận gốc",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}/like": {
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Bật/tắt like bài đăng (idempotent), bộ đếm like cập nhật tương ứng",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái thích",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.LikePostReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật like thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Thích / Bỏ thích bài đăng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/posts/{postPublicID}/likes": {
+      "get": {
+        "description": "Lấy danh sách người dùng đã thích bài đăng (phân trang)",
+        "parameters": [
+          {
+            "description": "Mã công khai bài đăng",
+            "in": "path",
+            "name": "postPublicID",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách người thích thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostLikeUserListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy danh sách người thích bài đăng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "description": "Tìm theo username/họ tên và nội dung bài đăng (200 ký tự đầu), trả 2 nhóm phân trang độc lập",
+        "parameters": [
+          {
+            "description": "Từ khóa",
+            "in": "query",
+            "name": "q",
+            "type": "string"
+          },
+          {
+            "description": "Loại kết quả",
+            "enum": [
+              "all",
+              "users",
+              "posts"
+            ],
+            "in": "query",
+            "name": "type",
+            "type": "string"
+          },
+          {
+            "description": "Lọc loại bài đăng",
+            "enum": [
+              "outfit",
+              "media"
+            ],
+            "in": "query",
+            "name": "postType",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Tìm kiếm thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.SearchRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Tìm kiếm người dùng và bài đăng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
     "/api/v1/system-catalog/wardrobe-items": {
       "get": {
         "description": "Lấy danh sách trang phục mẫu của hệ thống, hỗ trợ tìm kiếm thông minh bằng Elasticsearch và fallback sang database khi cần",
@@ -8981,6 +10491,200 @@
         "summary": "Lấy danh sách trang phục hệ thống",
         "tags": [
           "Wardrobe"
+        ]
+      }
+    },
+    "/api/v1/users/{username}": {
+      "get": {
+        "description": "Lấy thông tin công khai (tên, giới tính, avatar) kèm số follower/following/bài đăng và trạng thái theo dõi",
+        "parameters": [
+          {
+            "description": "Tên người dùng",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy trang cá nhân thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PublicProfileRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy trang cá nhân công khai",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/users/{username}/follow": {
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Theo dõi hoặc bỏ theo dõi một người dùng (idempotent, không cho tự theo dõi)",
+        "parameters": [
+          {
+            "description": "Tên người dùng",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Trạng thái theo dõi",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật theo dõi thành công",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Theo dõi / Bỏ theo dõi người dùng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/users/{username}/follows": {
+      "get": {
+        "description": "Lấy danh sách following/followers (type tùy chọn, bỏ trống trả cả hai kèm relation)",
+        "parameters": [
+          {
+            "description": "Tên người dùng",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách theo dõi thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.FollowUserListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy danh sách theo dõi của người dùng",
+        "tags": [
+          "Community"
+        ]
+      }
+    },
+    "/api/v1/users/{username}/posts": {
+      "get": {
+        "description": "Lấy danh sách bài đăng đã công khai của người dùng (mới nhất trước, phân trang)",
+        "parameters": [
+          {
+            "description": "Tên người dùng",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "type": "integer"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy bài đăng của người dùng thành công",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostListRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Lấy bài đăng của người dùng",
+        "tags": [
+          "Community"
         ]
       }
     },
