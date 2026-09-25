@@ -69,3 +69,17 @@ func MapToOutfitBrief(outfit *entities.Outfit) *dto.OutfitBriefRes {
 		CreatedAt:     outfit.CreatedAt,
 	}
 }
+
+// MapToOutfitContractDTO maps an outfit to its pure contract DTO.
+func MapToOutfitContractDTO(outfit *entities.Outfit) *dto.OutfitContractDTO {
+	if outfit == nil {
+		return nil
+	}
+	return &dto.OutfitContractDTO{
+		ID:            outfit.ID,
+		UserID:        outfit.UserID,
+		Name:          outfit.Name,
+		CoverImageURL: outfit.CoverImageUrl,
+		Status:        outfit.Status,
+	}
+}

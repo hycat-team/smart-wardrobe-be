@@ -18,13 +18,17 @@ import (
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/wardrobestatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
+	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/application/media"
 	"smart-wardrobe-be/shared/config"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/pkg/logger"
 	"smart-wardrobe-be/shared/pkg/utils/sliceutils"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type OutfitUseCase struct {
@@ -36,6 +40,8 @@ type OutfitUseCase struct {
 	brandContract   brand_contract.IBrandContract
 	fashionContract fashion_contract.IFashionContract
 	mediaService    media.IMediaService
+	eventPublisher  shared_event.IEventPublisher
+	uow             shared_repos.IUnitOfWork
 }
 
 func NewOutfitUseCase(
@@ -47,6 +53,8 @@ func NewOutfitUseCase(
 	brandContract brand_contract.IBrandContract,
 	fashionContract fashion_contract.IFashionContract,
 	mediaService media.IMediaService,
+	eventPublisher shared_event.IEventPublisher,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IOutfitUseCase {
 	return &OutfitUseCase{
 		cfg:             cfg,
@@ -57,6 +65,8 @@ func NewOutfitUseCase(
 		brandContract:   brandContract,
 		fashionContract: fashionContract,
 		mediaService:    mediaService,
+		eventPublisher:  eventPublisher,
+		uow:             uow,
 	}
 }
 
@@ -409,7 +419,33 @@ func (uc *OutfitUseCase) DeleteOutfit(ctx context.Context, userID uuid.UUID, id 
 		return wardrobeerrors.ErrOutfitNotFound()
 	}
 
-	return uc.outfitRepo.DeleteOutfit(ctx, id)
+	// Delete + cascade event are committed atomically: the outbox record is
+	// written in the same transaction, so a publish failure rolls the delete
+	// back (FR-005/FR-047).
+	if uc.uow == nil {
+		if err := uc.outfitRepo.DeleteOutfit(ctx, id); err != nil {
+			return err
+		}
+		return uc.publishOutfitDeleted(ctx, id, userID)
+	}
+	return uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.outfitRepo.DeleteOutfit(txCtx, id); err != nil {
+			return err
+		}
+		return uc.publishOutfitDeleted(txCtx, id, userID)
+	})
+}
+
+func (uc *OutfitUseCase) publishOutfitDeleted(ctx context.Context, outfitID, userID uuid.UUID) error {
+	if uc.eventPublisher == nil {
+		return nil
+	}
+	payload := dto.OutfitEventPayload{OutfitID: outfitID, UserID: userID}
+	if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicOutfitDeleted, payload); err != nil {
+		uc.logger.Error("failed to publish outfit deleted event", zap.String("outfit_id", outfitID.String()), zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (uc *OutfitUseCase) touchLastUsedAt(ctx context.Context, itemIDs []uuid.UUID) error {

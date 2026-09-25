@@ -110,12 +110,12 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iSubscriptionUseCase := subscription.NewSubscriptionUseCase(iUnitOfWork, iUserSubscriptionRepository, iSubscriptionPlanRepository, iUserWalletRepository, iWalletStatementRepository, iUserDailyQuotaRepository, iSubscriptionRenewalAttemptRepository, iUserSubscriptionEventRepository, cfg, l, iSubscriptionPlanUseCase, iUserQuotaUseCase, iNotificationContract, iSubscriptionOverviewCache)
 	iUserSubscriptionContract := contract3.NewUserSubscriptionContract(iSubscriptionUseCase, iSubscriptionOverviewCache)
 	iMediaService := media.NewCloudinaryService(cfg)
-	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iMediaService, cfg)
-	meHandler := handler.NewMeHandler(iUserUseCase)
 	rabbitMQClient, err := messaging.NewRabbitMQClient(cfg, l, outboxRepository)
 	if err != nil {
 		return nil, nil, err
 	}
+	iUserUseCase := usecase.NewUserUseCase(iUserRepository, iPasswordHasher, iRefreshTokenRepository, iTokenBlacklistService, iUserSubscriptionContract, iMediaService, cfg, rabbitMQClient, l)
+	meHandler := handler.NewMeHandler(iUserUseCase)
 	iAuditLogContract := contract4.NewAuditLogContract(rabbitMQClient)
 	adminHandler := handler.NewAdminHandler(iUserUseCase, iAuditLogContract)
 	authMiddleware := middleware.NewAuthMiddleware(cfg, iTokenBlacklistService)

@@ -7,6 +7,7 @@ import (
 	identitycontract "smart-wardrobe-be/services/account/contract/identity"
 	servicebootstrap "smart-wardrobe-be/services/commerce/internal/bootstrap"
 	brandmodule "smart-wardrobe-be/services/commerce/internal/modules/brand"
+	communitymodule "smart-wardrobe-be/services/commerce/internal/modules/community"
 	dashboardmodule "smart-wardrobe-be/services/commerce/internal/modules/dashboard"
 	fashionmodule "smart-wardrobe-be/services/commerce/internal/modules/fashion"
 	wardrobemodule "smart-wardrobe-be/services/commerce/internal/modules/wardrobe"
@@ -43,6 +44,7 @@ func InitializeApp(cfg *sharedconfig.Config, l sharedlogger.Interface) (*service
 	wire.Build(
 		// Commerce modules (wardrobe, fashion, brand, dashboard).
 		brandmodule.ProviderSet,
+		communitymodule.ProviderSet,
 		dashboardmodule.ProviderSet,
 		fashionmodule.ProviderSet,
 		wardrobemodule.ProviderSet,

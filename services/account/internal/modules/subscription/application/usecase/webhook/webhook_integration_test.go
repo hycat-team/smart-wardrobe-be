@@ -66,6 +66,9 @@ func (f *integrationBrief) GetByIDs(ctx context.Context, userIDs []uuid.UUID) ([
 func (f *integrationBrief) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*identity_dto.UserBriefContractDTO, error) {
 	return nil, nil
 }
+func (f *integrationBrief) SearchUserBriefs(ctx context.Context, keyword string, limit int) ([]*identity_dto.UserBriefContractDTO, error) {
+	return nil, nil
+}
 
 // ---- Helpers ----
 

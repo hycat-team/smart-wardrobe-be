@@ -67,7 +67,7 @@ database:
     max_idle_conns: 10
     max_open_conns: 30
     conn_max_lifetime: 1h
-    search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+    search_path: "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
     migrate_on_start: true
     migration_allow_out_of_order: true
     listener_host: "${DB_LISTENER_HOST}"
@@ -185,7 +185,23 @@ brand_feature_access:
 # Business - Domain Features
 # ============================================================
 community:
-    max_personalized_window: 100
+    hot_window_days: 30
+    hot_gravity: 1.5
+    like_weight: 1
+    comment_weight: 2
+    search_content_prefix_chars: 200
+    search_user_candidate_cap: 500
+    max_media_per_post: 10
+    max_image_bytes: 10485760
+    max_video_bytes: 104857600
+    max_video_duration_seconds: 60
+    max_title_length: 150
+    max_content_length: 5000
+    max_comment_length: 1000
+    post_rate_limit_per_hour: 10
+    comment_rate_limit_per_hour: 60
+    follow_rate_limit_per_hour: 200
+    like_rate_limit_per_hour: 600
 wardrobe:
     retry_delay_1_seconds: 60
     retry_delay_2_seconds: 300

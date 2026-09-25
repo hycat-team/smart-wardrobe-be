@@ -139,6 +139,34 @@ func (r *UserRepository) GetByUsernamesOrEmails(ctx context.Context, identifiers
 	return users, err
 }
 
+func (r *UserRepository) SearchByKeyword(ctx context.Context, keyword string, limit int) ([]*entities.User, error) {
+	kw := strings.ToLower(strings.TrimSpace(keyword))
+	if kw == "" {
+		return []*entities.User{}, nil
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+	pattern := "%" + escapeLikePattern(kw) + "%"
+
+	var users []*entities.User
+	err := r.GetQueryWithPreload(ctx).
+		Where("is_deleted = ?", false).
+		Where("(LOWER(username) LIKE ? ESCAPE '\\' OR LOWER(first_name) LIKE ? ESCAPE '\\' OR LOWER(last_name) LIKE ? ESCAPE '\\')",
+			pattern, pattern, pattern).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func escapeLikePattern(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 func (r *UserRepository) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
 	var profile entities.UserStyleProfile
 	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&profile).Error

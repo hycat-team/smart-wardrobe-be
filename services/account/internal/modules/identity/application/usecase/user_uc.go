@@ -5,8 +5,10 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/usecase"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
+	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/application/media"
 	"smart-wardrobe-be/shared/config"
+	"smart-wardrobe-be/shared/pkg/logger"
 )
 
 type UserUseCase struct {
@@ -17,6 +19,8 @@ type UserUseCase struct {
 	subscriptionContract  subscription_contract.IUserSubscriptionContract
 	mediaService          media.IMediaService
 	cfg                   *config.Config
+	eventPublisher        shared_event.IEventPublisher
+	logger                logger.Interface
 }
 
 func NewUserUseCase(
@@ -27,6 +31,8 @@ func NewUserUseCase(
 	subscriptionContract subscription_contract.IUserSubscriptionContract,
 	mediaService media.IMediaService,
 	cfg *config.Config,
+	eventPublisher shared_event.IEventPublisher,
+	log logger.Interface,
 ) uc_interfaces.IUserUseCase {
 	return &UserUseCase{
 		userRepo:              userRepo,
@@ -36,5 +42,7 @@ func NewUserUseCase(
 		subscriptionContract:  subscriptionContract,
 		mediaService:          mediaService,
 		cfg:                   cfg,
+		eventPublisher:        eventPublisher,
+		logger:                log,
 	}
 }

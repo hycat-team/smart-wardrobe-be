@@ -11,11 +11,20 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
+	"smart-wardrobe-be/shared/application/constants/eventconstants"
 	shared_dto "smart-wardrobe-be/shared/application/dto"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
+
+// userStatusChangedEvent is published on topic identity.user.status.changed so
+// other services (community) can hide/restore a user's public content (FR-035).
+type userStatusChangedEvent struct {
+	UserID uuid.UUID `json:"userId"`
+	Active bool      `json:"active"`
+}
 
 func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UUID, targetUserID uuid.UUID, input dto.UpdateUserStatusReq) (*dto.UserRes, error) {
 	if adminUserID == targetUserID {
@@ -44,6 +53,13 @@ func (uc *UserUseCase) UpdateUserStatus(ctx context.Context, adminUserID uuid.UU
 	targetUser.Status = input.Status
 	if err := uc.userRepo.Update(ctx, targetUser); err != nil {
 		return nil, err
+	}
+
+	if uc.eventPublisher != nil {
+		payload := userStatusChangedEvent{UserID: targetUserID, Active: input.Status == userstatus.Active}
+		if err := uc.eventPublisher.Publish(ctx, eventconstants.TopicUserStatusChanged, payload); err != nil {
+			uc.logger.Warn("failed to publish user status changed event", zap.String("user_id", targetUserID.String()), zap.Error(err))
+		}
 	}
 
 	switch input.Status {

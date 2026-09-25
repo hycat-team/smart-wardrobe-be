@@ -2223,6 +2223,9 @@ const docTemplate = `{
                 "publicId": {
                     "type": "string"
                 },
+                "resourceType": {
+                    "type": "string"
+                },
                 "signature": {
                     "type": "string"
                 },

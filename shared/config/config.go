@@ -384,7 +384,23 @@ type ClaimRateLimit struct {
 }
 
 type Community struct {
-	MaxPersonalizedWindow int `mapstructure:"max_personalized_window"`
+	HotWindowDays            int     `mapstructure:"hot_window_days"`
+	HotGravity               float64 `mapstructure:"hot_gravity"`
+	LikeWeight               int     `mapstructure:"like_weight"`
+	CommentWeight            int     `mapstructure:"comment_weight"`
+	SearchContentPrefixChars int     `mapstructure:"search_content_prefix_chars"`
+	SearchUserCandidateCap   int     `mapstructure:"search_user_candidate_cap"`
+	MaxMediaPerPost          int     `mapstructure:"max_media_per_post"`
+	MaxImageBytes            int64   `mapstructure:"max_image_bytes"`
+	MaxVideoBytes            int64   `mapstructure:"max_video_bytes"`
+	MaxVideoDurationSeconds  int     `mapstructure:"max_video_duration_seconds"`
+	MaxTitleLength           int     `mapstructure:"max_title_length"`
+	MaxContentLength         int     `mapstructure:"max_content_length"`
+	MaxCommentLength         int     `mapstructure:"max_comment_length"`
+	PostRateLimitPerHour     int     `mapstructure:"post_rate_limit_per_hour"`
+	CommentRateLimitPerHour  int     `mapstructure:"comment_rate_limit_per_hour"`
+	FollowRateLimitPerHour   int     `mapstructure:"follow_rate_limit_per_hour"`
+	LikeRateLimitPerHour     int     `mapstructure:"like_rate_limit_per_hour"`
 }
 
 type RAG struct {

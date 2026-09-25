@@ -28,3 +28,7 @@ func (c *UserBriefContract) GetByIDs(ctx context.Context, userIDs []uuid.UUID) (
 func (c *UserBriefContract) GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*dto.UserBriefContractDTO, error) {
 	return c.userBriefUC.GetByUsernamesOrEmails(ctx, identifiers)
 }
+
+func (c *UserBriefContract) SearchUserBriefs(ctx context.Context, keyword string, limit int) ([]*dto.UserBriefContractDTO, error) {
+	return c.userBriefUC.SearchUserBriefs(ctx, keyword, limit)
+}

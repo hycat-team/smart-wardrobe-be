@@ -48,7 +48,7 @@ func NewPostgresConnection(cfg *config.Config, l pkglogger.Interface) (*gorm.DB,
 	// `public` đặt ĐẦU để goose_db_version (bảng goose) luôn resolve ở public —
 	// nếu không, goose CLI (`make migration-*` không kèm search_path) sẽ không
 	// thấy bảng version đã được tạo qua embedded runner (search_path khác).
-	const defaultSearchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared"
+	const defaultSearchPath = "public,identity,wardrobe,fashion,brand,subscription,aiexecutor,dashboard,shared,community"
 	searchPath := cfg.Database.SearchPath
 	if searchPath == "" {
 		searchPath = defaultSearchPath

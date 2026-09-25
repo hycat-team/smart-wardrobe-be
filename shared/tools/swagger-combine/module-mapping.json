@@ -24,6 +24,7 @@
         "Admin Brand"
     ],
     "fashion": ["Wardrobe AI", "Category", "Admin Category"],
+    "community": ["Community", "Community Admin"],
     "aiexecutor": ["Admin AI", "AI Health"],
     "admin": ["Admin Audit"]
 }

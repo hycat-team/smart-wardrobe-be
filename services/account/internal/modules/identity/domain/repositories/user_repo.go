@@ -34,6 +34,7 @@ type IUserRepository interface {
 	IsUsernameExists(ctx context.Context, username string) (bool, error)
 	GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error)
 	GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*entities.User, error)
+	SearchByKeyword(ctx context.Context, keyword string, limit int) ([]*entities.User, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
 	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*UserStyleProfileRes, error)
 	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*UserAdminStatsDTO, error)

@@ -200,6 +200,64 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Google.StateTTLMinutes = n
 		}
 	}
+
+	// Community feature tuning.
+	overrideInt("COMMUNITY_HOT_WINDOW_DAYS", &cfg.Community.HotWindowDays)
+	overrideFloat("COMMUNITY_HOT_GRAVITY", &cfg.Community.HotGravity)
+	overrideInt("COMMUNITY_LIKE_WEIGHT", &cfg.Community.LikeWeight)
+	overrideInt("COMMUNITY_COMMENT_WEIGHT", &cfg.Community.CommentWeight)
+	overrideInt("COMMUNITY_SEARCH_CONTENT_PREFIX_CHARS", &cfg.Community.SearchContentPrefixChars)
+	overrideInt("COMMUNITY_SEARCH_USER_CANDIDATE_CAP", &cfg.Community.SearchUserCandidateCap)
+	overrideInt("COMMUNITY_MAX_MEDIA_PER_POST", &cfg.Community.MaxMediaPerPost)
+	overrideInt64("COMMUNITY_MAX_IMAGE_BYTES", &cfg.Community.MaxImageBytes)
+	overrideInt64("COMMUNITY_MAX_VIDEO_BYTES", &cfg.Community.MaxVideoBytes)
+	overrideInt("COMMUNITY_MAX_VIDEO_DURATION_SECONDS", &cfg.Community.MaxVideoDurationSeconds)
+	overrideInt("COMMUNITY_MAX_TITLE_LENGTH", &cfg.Community.MaxTitleLength)
+	overrideInt("COMMUNITY_MAX_CONTENT_LENGTH", &cfg.Community.MaxContentLength)
+	overrideInt("COMMUNITY_MAX_COMMENT_LENGTH", &cfg.Community.MaxCommentLength)
+	overrideInt("COMMUNITY_POST_RATE_LIMIT_PER_HOUR", &cfg.Community.PostRateLimitPerHour)
+	overrideInt("COMMUNITY_COMMENT_RATE_LIMIT_PER_HOUR", &cfg.Community.CommentRateLimitPerHour)
+	overrideInt("COMMUNITY_FOLLOW_RATE_LIMIT_PER_HOUR", &cfg.Community.FollowRateLimitPerHour)
+	overrideInt("COMMUNITY_LIKE_RATE_LIMIT_PER_HOUR", &cfg.Community.LikeRateLimitPerHour)
+}
+
+// overrideInt applies a positive integer env var to *dst when present and valid.
+func overrideInt(envKey string, dst *int) {
+	raw, ok := os.LookupEnv(envKey)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || n <= 0 {
+		log.Fatalf("Invalid positive integer for %s=%q: %v", envKey, raw, err)
+	}
+	*dst = n
+}
+
+// overrideInt64 applies a positive int64 env var to *dst when present and valid.
+func overrideInt64(envKey string, dst *int64) {
+	raw, ok := os.LookupEnv(envKey)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return
+	}
+	n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || n <= 0 {
+		log.Fatalf("Invalid positive integer for %s=%q: %v", envKey, raw, err)
+	}
+	*dst = n
+}
+
+// overrideFloat applies a positive float env var to *dst when present and valid.
+func overrideFloat(envKey string, dst *float64) {
+	raw, ok := os.LookupEnv(envKey)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || f <= 0 {
+		log.Fatalf("Invalid positive number for %s=%q: %v", envKey, raw, err)
+	}
+	*dst = f
 }
 
 // overrideBool applies an env var to *dst only when present. Invalid values

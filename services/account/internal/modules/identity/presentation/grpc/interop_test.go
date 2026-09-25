@@ -34,6 +34,10 @@ func (s *stubBriefContract) GetByUsernamesOrEmails(context.Context, []string) ([
 	return []*identitydto.UserBriefContractDTO{s.brief}, nil
 }
 
+func (s *stubBriefContract) SearchUserBriefs(context.Context, string, int) ([]*identitydto.UserBriefContractDTO, error) {
+	return []*identitydto.UserBriefContractDTO{s.brief}, nil
+}
+
 var _ identitycontract.IUserBriefContract = (*stubBriefContract)(nil)
 
 // TestClientServerInterop proves the remote adapter and the inbound server
