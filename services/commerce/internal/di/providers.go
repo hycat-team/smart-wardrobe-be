@@ -5,13 +5,14 @@ import (
 	"io/fs"
 
 	sharedbootstrap "smart-wardrobe-be/shared/bootstrap"
+
+	commercemigrations "smart-wardrobe-be/services/commerce/database/migrations"
 )
 
-// provideMigrationsFS exposes the Commerce-owned migration tree. Commerce has
-// no migrations yet, so it returns nil and App.Run skips auto-migration;
-// future Commerce migrations add an embed.go and return it here (FR-035).
+// provideMigrationsFS exposes the Commerce-owned migration tree as an fs.FS so
+// the runtime can run migrations on start when enabled (FR-035).
 func provideMigrationsFS() fs.FS {
-	return nil
+	return commercemigrations.EmbedFS
 }
 
 type noopValidator struct{}
