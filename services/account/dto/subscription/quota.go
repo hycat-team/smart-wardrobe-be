@@ -15,6 +15,8 @@ type UserSubscriptionDTO struct {
 	PlanSlug             string     `json:"planSlug"`
 	ExpiresAt            *time.Time `json:"expiresAt"`
 	IsAutoRenewEnabled   bool       `json:"isAutoRenewEnabled"`
+	MaxWardrobeItems     int        `json:"maxWardrobeItems"`
+	MaxOutfits           int        `json:"maxOutfits"`
 	AiOutfitDailyQuota   int        `json:"aiOutfitDailyQuota"`
 	AiChatDailyQuota     int        `json:"aiChatDailyQuota"`
 	OutfitRecommendCount int        `json:"outfitRecommendCount"`

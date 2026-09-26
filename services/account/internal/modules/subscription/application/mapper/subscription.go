@@ -25,6 +25,8 @@ func BuildUserSubscriptionDTO(sub *entities.UserSubscription, plan *entities.Sub
 		PlanSlug:             plan.Slug,
 		ExpiresAt:            expiresAt,
 		IsAutoRenewEnabled:   autoRenew,
+		MaxWardrobeItems:     plan.MaxWardrobeItems,
+		MaxOutfits:           plan.MaxOutfits,
 		AiOutfitDailyQuota:   plan.AiOutfitDailyQuota,
 		AiChatDailyQuota:     plan.AiChatDailyQuota,
 		OutfitRecommendCount: quota.OutfitRecommendCount,

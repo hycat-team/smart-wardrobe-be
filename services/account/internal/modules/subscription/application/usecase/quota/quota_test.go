@@ -157,6 +157,8 @@ func quotaTestPlan() *entities.SubscriptionPlan {
 		Name:               "Premium",
 		IsActive:           true,
 		Price:              decimal.NewFromInt(99000),
+		MaxWardrobeItems:   50,
+		MaxOutfits:         12,
 		AiOutfitDailyQuota: 2,
 		AiChatDailyQuota:   5,
 		DurationDays:       durationDaysPtr2(30),
@@ -204,6 +206,9 @@ func TestGetAndResetDailyQuotaReturnsSameDayCounters(t *testing.T) {
 	}
 	if quotaRepo.updates != 0 {
 		t.Fatalf("expected no reset update on same day, got %d updates", quotaRepo.updates)
+	}
+	if res.MaxWardrobeItems != 50 || res.MaxOutfits != 12 {
+		t.Fatalf("expected plan max limits exposed on daily-quota, got %+v", res)
 	}
 }
 

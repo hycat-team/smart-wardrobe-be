@@ -28,9 +28,16 @@ Người dùng tham khảo các gói dịch vụ Premium hiện có và theo dõ
 *   **Endpoint:** `GET /api/v1/subscriptions/me/daily-quota`
 *   **Tác nhân (Actor):** Khách hàng (Customer).
 *   **Đối tượng ảnh hưởng:** Đọc hạn mức sử dụng AI hàng ngày của current user.
-*   **Mô tả:** Trả về giới hạn số lần gọi AI gợi ý phối đồ tối đa được cấp trong ngày và lượng đã tiêu dùng thực tế của người dùng tính đến thời điểm hiện tại.
+*   **Mô tả:** Trả về giới hạn số lần gọi AI gợi ý phối đồ tối đa được cấp trong ngày, lượng đã tiêu dùng thực tế tính đến thời điểm hiện tại, và hạn mức tối đa của gói hiện hành (`maxWardrobeItems`, `maxOutfits`) để client hiển thị song song với số lượng hiện có.
 *   **Response:**
-    *   `200 OK`: Trả về thông tin quota trong ngày.
+    *   `200 OK`: Trả về thông tin quota trong ngày, bao gồm:
+        *   `maxWardrobeItems`: Số lượng món đồ tối đa của gói hiện hành.
+        *   `maxOutfits`: Số lượng bộ phối đồ tối đa của gói hiện hành.
+        *   `aiOutfitDailyQuota` / `outfitRecommendCount`: Hạn mức và lượng đã dùng AI phối đồ trong ngày.
+        *   `aiChatDailyQuota` / `aiUsageCount`: Hạn mức và lượng đã dùng AI chat trong ngày.
+        *   `lastResetDate`: Mốc thời gian reset hạn mức gần nhất.
+
+> **Ghi chú:** Hai trường `maxWardrobeItems`/`maxOutfits` được bổ sung vào `daily-quota` để frontend đọc hạn mức tối đa từ một nguồn duy nhất. Số lượng **hiện tại** đọc từ `GET /api/v1/me/wardrobe-items/stats`. Thay đổi này đảo ngược quyết định trim ở spec `013-briefres-audit` (T057/T081) với lý do nêu trên.
 
 ### 4. Bật hoặc tắt tính năng tự động gia hạn gói cước
 *   **Endpoint:** `PUT /api/v1/subscriptions/me/auto-renew`

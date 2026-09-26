@@ -3354,6 +3354,12 @@ const docTemplate = `{
                 "lastResetDate": {
                     "type": "string"
                 },
+                "maxOutfits": {
+                    "type": "integer"
+                },
+                "maxWardrobeItems": {
+                    "type": "integer"
+                },
                 "outfitRecommendCount": {
                     "type": "integer"
                 },
