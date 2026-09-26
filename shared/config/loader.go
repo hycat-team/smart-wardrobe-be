@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -323,10 +324,5 @@ var nonProductionEnvs = []string{"local", "development", "dev"}
 // is fail-closed: an unset or unknown env stays hardened.
 func IsProductionEnv(env string) bool {
 	v := strings.ToLower(strings.TrimSpace(env))
-	for _, e := range nonProductionEnvs {
-		if v == e {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(nonProductionEnvs, v)
 }
