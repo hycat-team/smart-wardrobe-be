@@ -96,6 +96,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 ) ([]types.CandidateForPrompt, map[uuid.UUID]*dto.FashionItemContractDTO, error) {
 	intent := uc.parseRecommendationIntent(input)
 	retrievalQuery := uc.buildRecommendationRetrievalQuery(ctx, userID, intent)
+	// Category là sở thích mềm (soft preference), KHÔNG phải bộ lọc cứng: giới hạn
+	// pool vào một category sẽ khiến không thể ghép bộ hoàn chỉnh (áo + quần hoặc đầm).
+	// Giữ seasonality, bỏ category hard filter.
+	retrievalQuery.HardFilters.CategorySlugs = nil
 	queryVector := uc.buildRecommendationQueryVector(ctx, retrievalQuery.SemanticQuery)
 
 	minimumPool := uc.cfg.RAG.RecommendationMinimumCandidatePool
@@ -103,6 +107,10 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 
 	brandCandidatesCount := 0
 	rankingCandidates := make([]types.CandidateForRanking, 0, minimumPool)
+
+	// brandFashionMap giữ metadata fashion của brand items để hợp nhất vào fashionItemMap
+	// chung (bao phủ toàn bộ active items của user + brand).
+	brandFashionMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
 
 	// Fetch Brand items if requested
 	if input.IncludeBrandItems != nil && *input.IncludeBrandItems {
@@ -116,39 +124,11 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 			}
 			brandFashionIDs = sliceutils.UniqueUUIDs(brandFashionIDs)
 
-			brandFashionMap := make(map[uuid.UUID]*dto.FashionItemContractDTO)
 			if len(brandFashionIDs) > 0 {
 				fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, brandFashionIDs)
 				if err == nil {
-					entityMap := sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
-					for id, fi := range entityMap {
-						var category *dto.CategoryBriefRes
-						if fi.Category != nil {
-							category = &dto.CategoryBriefRes{
-								ID:   fi.Category.ID,
-								Name: fi.Category.Name,
-								Slug: fi.Category.Slug,
-							}
-						}
-						brandFashionMap[id] = &dto.FashionItemContractDTO{
-							ID:              fi.ID,
-							Category:        category,
-							ImageUrl:        fi.ImageUrl,
-							ImagePublicID:   fi.ImagePublicID,
-							Color:           fi.Color,
-							ColorHex:        fi.ColorHex,
-							ColorHue:        fi.ColorHue,
-							ColorSaturation: fi.ColorSaturation,
-							ColorLightness:  fi.ColorLightness,
-							Style:           fi.Style,
-							Material:        fi.Material,
-							Pattern:         fi.Pattern,
-							Fit:             fi.Fit,
-							Seasonality:     fi.Seasonality,
-							Description:     fi.Description,
-							CreatedAt:       fi.CreatedAt,
-							UpdatedAt:       fi.UpdatedAt,
-						}
+					for _, fi := range fashionItems {
+						brandFashionMap[fi.ID] = fashionItemEntityToContractDTO(fi)
 					}
 				}
 			}
@@ -300,48 +280,20 @@ func (uc *OutfitRecommendationUseCase) filterCandidates(
 		}
 	}
 
-	fashionIDs := make([]uuid.UUID, 0, len(rankingCandidates))
-	for _, c := range rankingCandidates {
-		if c.Item != nil && c.Item.FashionItemID != nil {
-			fashionIDs = append(fashionIDs, *c.Item.FashionItemID)
-		}
-	}
-	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
+	// Dựng metadata fashion cho TOÀN BỘ active items của user (không chỉ các candidate
+	// mà hybrid search trả về), rồi hợp nhất brand items. Nhờ đó bước fallback và
+	// outfit-structure guarantee luôn suy ra được wearing role và áp được filter.
 	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
-	if len(fashionIDs) > 0 {
-		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs)
+	if len(userFashionItemIDs) > 0 {
+		fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, userFashionItemIDs)
 		if err == nil {
-			entityMap := sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
-			for id, fi := range entityMap {
-				var category *dto.CategoryBriefRes
-				if fi.Category != nil {
-					category = &dto.CategoryBriefRes{
-						ID:   fi.Category.ID,
-						Name: fi.Category.Name,
-						Slug: fi.Category.Slug,
-					}
-				}
-				fashionItemMap[id] = &dto.FashionItemContractDTO{
-					ID:              fi.ID,
-					Category:        category,
-					ImageUrl:        fi.ImageUrl,
-					ImagePublicID:   fi.ImagePublicID,
-					Color:           fi.Color,
-					ColorHex:        fi.ColorHex,
-					ColorHue:        fi.ColorHue,
-					ColorSaturation: fi.ColorSaturation,
-					ColorLightness:  fi.ColorLightness,
-					Style:           fi.Style,
-					Material:        fi.Material,
-					Pattern:         fi.Pattern,
-					Fit:             fi.Fit,
-					Seasonality:     fi.Seasonality,
-					Description:     fi.Description,
-					CreatedAt:       fi.CreatedAt,
-					UpdatedAt:       fi.UpdatedAt,
-				}
+			for _, fi := range fashionItems {
+				fashionItemMap[fi.ID] = fashionItemEntityToContractDTO(fi)
 			}
 		}
+	}
+	for id, fi := range brandFashionMap {
+		fashionItemMap[id] = fi
 	}
 
 	rankingCandidates, _ = ranking.EnsureMinimumCandidatePool(
@@ -434,4 +386,39 @@ func (uc *OutfitRecommendationUseCase) updateQuotaAndConstructResponse(
 	}
 
 	return nil
+}
+
+// fashionItemEntityToContractDTO chuyển entity FashionItem (đã preload Category) sang
+// contract DTO dùng trong pipeline gợi ý phối đồ.
+func fashionItemEntityToContractDTO(fi *entities.FashionItem) *dto.FashionItemContractDTO {
+	if fi == nil {
+		return nil
+	}
+	var category *dto.CategoryBriefRes
+	if fi.Category != nil {
+		category = &dto.CategoryBriefRes{
+			ID:   fi.Category.ID,
+			Name: fi.Category.Name,
+			Slug: fi.Category.Slug,
+		}
+	}
+	return &dto.FashionItemContractDTO{
+		ID:              fi.ID,
+		Category:        category,
+		ImageUrl:        fi.ImageUrl,
+		ImagePublicID:   fi.ImagePublicID,
+		Color:           fi.Color,
+		ColorHex:        fi.ColorHex,
+		ColorHue:        fi.ColorHue,
+		ColorSaturation: fi.ColorSaturation,
+		ColorLightness:  fi.ColorLightness,
+		Style:           fi.Style,
+		Material:        fi.Material,
+		Pattern:         fi.Pattern,
+		Fit:             fi.Fit,
+		Seasonality:     fi.Seasonality,
+		Description:     fi.Description,
+		CreatedAt:       fi.CreatedAt,
+		UpdatedAt:       fi.UpdatedAt,
+	}
 }

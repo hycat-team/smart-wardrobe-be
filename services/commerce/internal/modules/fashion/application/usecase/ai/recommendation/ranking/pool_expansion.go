@@ -63,10 +63,6 @@ func EnsureMinimumCandidatePool(
 	rankingCandidates := make([]types.CandidateForRanking, 0, max(len(candidates), minimumPool))
 	rankingCandidates = append(rankingCandidates, candidates...)
 
-	if len(candidates) >= minimumPool || len(candidates) >= len(activeItems) {
-		return rankingCandidates, types.FallbackCandidateCounts{}
-	}
-
 	taken := map[uuid.UUID]bool{}
 	for _, candidate := range candidates {
 		if candidate.Item != nil {
@@ -75,34 +71,108 @@ func EnsureMinimumCandidatePool(
 	}
 
 	counts := types.FallbackCandidateCounts{}
-	counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceStrictFallback, minimumPool, fashionItemMap)
-	counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceRelaxedFallback, minimumPool, fashionItemMap)
-	counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceGeneralFallback, minimumPool, fashionItemMap)
+	if len(candidates) < minimumPool && len(candidates) < len(activeItems) {
+		counts.Strict = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceStrictFallback, minimumPool, fashionItemMap)
+		counts.Relaxed = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceRelaxedFallback, minimumPool, fashionItemMap)
+		counts.General = appendFallbackCandidates(&rankingCandidates, activeItems, taken, retrievalQuery, types.CandidateSourceGeneralFallback, minimumPool, fashionItemMap)
+	}
 
-	// Category Guarantee: Ensure candidates have (top AND bottom) OR fullbody
-	if !HasValidOutfitStructure(rankingCandidates, fashionItemMap) {
+	// Outfit-structure guarantee: LUÔN bảo đảm pool ghép được bộ hoàn chỉnh
+	// (top + bottom HOẶC fullbody), bất kể pool đã đủ số lượng hay hard filter
+	// (vd seasonality) — filter chỉ nên ảnh hưởng xếp hạng, không được khiến
+	// không thể ghép đủ vai trò. Vẫn tôn trọng negative/excluded terms.
+	ensureOutfitStructure(&rankingCandidates, activeItems, taken, retrievalQuery, fashionItemMap)
+
+	return rankingCandidates, counts
+}
+
+// wearingRoleOf suy ra wearing role (top/bottom/fullbody/...) của một món đồ từ metadata
+// fashion. Trả về chuỗi rỗng nếu không xác định được (thiếu fashion item/category).
+func wearingRoleOf(
+	item *wardrobeDto.WardrobeItemContractDTO,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) string {
+	fi := fashionForItemFromMap(item, fashionItemMap)
+	if fi == nil || fi.Category == nil {
+		return ""
+	}
+	return mapper.CategorySlugToWearingRole(fi.Category.Slug)
+}
+
+// missingOutfitRoles trả về tập role cần bổ sung để pool có thể ghép thành bộ hợp lệ.
+// Trả về nil nếu pool đã hợp lệ (có fullbody, hoặc có cả top và bottom).
+func missingOutfitRoles(
+	candidates []types.CandidateForRanking,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) map[string]bool {
+	hasFullbody, hasTop, hasBottom := false, false, false
+	for _, candidate := range candidates {
+		switch wearingRoleOf(candidate.Item, fashionItemMap) {
+		case "fullbody":
+			hasFullbody = true
+		case "top":
+			hasTop = true
+		case "bottom":
+			hasBottom = true
+		}
+	}
+	if hasFullbody || (hasTop && hasBottom) {
+		return nil
+	}
+	need := map[string]bool{"fullbody": true}
+	if !hasTop {
+		need["top"] = true
+	}
+	if !hasBottom {
+		need["bottom"] = true
+	}
+	return need
+}
+
+// ensureOutfitStructure bổ sung các món còn thiếu role từ tủ đồ của user để bảo đảm
+// pool luôn ghép được bộ hoàn chỉnh. Bỏ qua hard filters (seasonality/category) vì đây
+// là ràng buộc xếp hạng, nhưng vẫn tôn trọng negative/excluded terms.
+func ensureOutfitStructure(
+	candidates *[]types.CandidateForRanking,
+	activeItems []*wardrobeDto.WardrobeItemContractDTO,
+	taken map[uuid.UUID]bool,
+	retrievalQuery types.RecommendationRetrievalQuery,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) {
+	for {
+		need := missingOutfitRoles(*candidates, fashionItemMap)
+		if need == nil {
+			return
+		}
+		added := false
 		for _, item := range activeItems {
 			if item == nil || taken[item.ID] {
 				continue
 			}
-			if !FallbackCandidateEligible(item, retrievalQuery, types.CandidateSourceGeneralFallback, fashionItemMap) {
+			role := wearingRoleOf(item, fashionItemMap)
+			if !need[role] {
 				continue
 			}
-			rankingCandidates = append(rankingCandidates, types.CandidateForRanking{
+			if MatchesFallbackExcludedTerms(item, retrievalQuery.ExcludedTerms, fashionItemMap) {
+				continue
+			}
+			*candidates = append(*candidates, types.CandidateForRanking{
 				Item:            item,
 				Source:          types.CandidateSourceGeneralFallback,
 				RetrievalScore:  0,
-				RetrievalRank:   len(rankingCandidates) + 1,
+				RetrievalRank:   len(*candidates) + 1,
 				RetrievalSource: string(types.CandidateSourceGeneralFallback),
 			})
 			taken[item.ID] = true
-			if HasValidOutfitStructure(rankingCandidates, fashionItemMap) {
-				break
+			added = true
+			if HasValidOutfitStructure(*candidates, fashionItemMap) {
+				return
 			}
 		}
+		if !added {
+			return
+		}
 	}
-
-	return rankingCandidates, counts
 }
 
 // HasValidOutfitStructure checks whether the candidate pool contains (top AND bottom) OR fullbody.

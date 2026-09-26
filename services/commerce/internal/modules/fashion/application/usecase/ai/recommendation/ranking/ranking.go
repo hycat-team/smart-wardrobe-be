@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/domain/constants/outfititemcontext"
 
@@ -81,6 +82,9 @@ func RankCandidates(
 
 	stats := RankedCandidateScoreStats(scored)
 	diversified := DiversifyRankedCandidates(scored, limit, fashionItemMap)
+	// Safeguard: diversification có thể cắt mất một role do giới hạn `limit`. Bổ sung
+	// lại role còn thiếu từ pool đã chấm điểm để không mất cấu trúc bộ hợp lệ.
+	diversified = ensureRankedOutfitStructure(diversified, scored, fashionItemMap)
 	stats.DiversifiedCount = len(diversified)
 	final := make([]types.CandidateForPrompt, 0, len(diversified))
 	for _, candidate := range diversified {
@@ -229,4 +233,92 @@ func RankedCandidateID(candidate types.RankedCandidate) string {
 		return ""
 	}
 	return candidate.Item.ID.String()
+}
+
+// rankedWearingRole suy ra wearing role của một RankedCandidate từ metadata fashion.
+func rankedWearingRole(candidate types.RankedCandidate, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) string {
+	if candidate.Item == nil || candidate.Item.FashionItemID == nil {
+		return ""
+	}
+	fi := fashionItemMap[*candidate.Item.FashionItemID]
+	if fi == nil || fi.Category == nil {
+		return ""
+	}
+	return mapper.CategorySlugToWearingRole(fi.Category.Slug)
+}
+
+// hasValidRankedStructure kiểm tra pool đã xếp hạng có (top AND bottom) OR fullbody.
+func hasValidRankedStructure(candidates []types.RankedCandidate, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) bool {
+	hasFullbody, hasTop, hasBottom := false, false, false
+	for _, candidate := range candidates {
+		switch rankedWearingRole(candidate, fashionItemMap) {
+		case "fullbody":
+			hasFullbody = true
+		case "top":
+			hasTop = true
+		case "bottom":
+			hasBottom = true
+		}
+	}
+	return hasFullbody || (hasTop && hasBottom)
+}
+
+// missingRankedRoles trả về tập role còn thiếu để pool xếp hạng hợp lệ (nil nếu đã hợp lệ).
+func missingRankedRoles(candidates []types.RankedCandidate, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) map[string]bool {
+	if hasValidRankedStructure(candidates, fashionItemMap) {
+		return nil
+	}
+	hasTop, hasBottom := false, false
+	for _, candidate := range candidates {
+		switch rankedWearingRole(candidate, fashionItemMap) {
+		case "top":
+			hasTop = true
+		case "bottom":
+			hasBottom = true
+		}
+	}
+	need := map[string]bool{"fullbody": true}
+	if !hasTop {
+		need["top"] = true
+	}
+	if !hasBottom {
+		need["bottom"] = true
+	}
+	return need
+}
+
+// ensureRankedOutfitStructure bảo đảm danh sách đã diversify vẫn giữ cấu trúc bộ hợp lệ
+// bằng cách thêm lại các ứng viên còn thiếu role từ pool đã chấm điểm.
+func ensureRankedOutfitStructure(
+	selected []types.RankedCandidate,
+	all []types.RankedCandidate,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) []types.RankedCandidate {
+	if hasValidRankedStructure(selected, fashionItemMap) {
+		return selected
+	}
+	inSelected := map[uuid.UUID]bool{}
+	for _, candidate := range selected {
+		if candidate.Item != nil {
+			inSelected[candidate.Item.ID] = true
+		}
+	}
+	for _, candidate := range all {
+		need := missingRankedRoles(selected, fashionItemMap)
+		if need == nil {
+			break
+		}
+		if candidate.Item == nil || inSelected[candidate.Item.ID] {
+			continue
+		}
+		if !need[rankedWearingRole(candidate, fashionItemMap)] {
+			continue
+		}
+		selected = append(selected, candidate)
+		inSelected[candidate.Item.ID] = true
+	}
+	sort.SliceStable(selected, func(i, j int) bool {
+		return RankedCandidateLess(selected[i], selected[j])
+	})
+	return selected
 }

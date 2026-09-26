@@ -45,6 +45,94 @@ func TestEnsureMinimumCandidatePoolTracksSource(t *testing.T) {
 	}
 }
 
+func TestEnsureMinimumCandidatePoolGuaranteesStructureWhenPoolAlreadyFull(t *testing.T) {
+	top1, fTop1 := newTestItemWithFashion()
+	fTop1.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Áo", Slug: "ao"}
+	top2, fTop2 := newTestItemWithFashion()
+	fTop2.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Áo", Slug: "ao"}
+	bottom, fBottom := newTestItemWithFashion()
+	fBottom.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Quần", Slug: "quan"}
+
+	activeItems := []*wardrobeDto.WardrobeItemContractDTO{top1, top2, bottom}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		*top1.FashionItemID:   fTop1,
+		*top2.FashionItemID:   fTop2,
+		*bottom.FashionItemID: fBottom,
+	}
+
+	// Pool đã đầy (2 = minimumPool) nhưng chỉ toàn "ao" và thiếu bottom.
+	candidates := []types.CandidateForRanking{
+		{Item: top1, Source: "lexical"},
+		{Item: top2, Source: "lexical"},
+	}
+
+	pool, _ := EnsureMinimumCandidatePool(candidates, activeItems, types.RecommendationRetrievalQuery{}, 2, fashionItemMap)
+	if !HasValidOutfitStructure(pool, fashionItemMap) {
+		t.Fatalf("expected structure guarantee to add a bottom, got %d candidates", len(pool))
+	}
+	found := false
+	for _, c := range pool {
+		if c.Item != nil && c.Item.ID == bottom.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected bottom item to be added by structure guarantee")
+	}
+}
+
+func TestEnsureOutfitStructureAddsOnlyMissingRoles(t *testing.T) {
+	top1, fTop1 := newTestItemWithFashion()
+	fTop1.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Áo", Slug: "ao"}
+	top2, fTop2 := newTestItemWithFashion()
+	fTop2.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Áo", Slug: "ao"}
+	bottom, fBottom := newTestItemWithFashion()
+	fBottom.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Quần", Slug: "quan"}
+
+	activeItems := []*wardrobeDto.WardrobeItemContractDTO{top1, top2, bottom}
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{
+		*top1.FashionItemID:   fTop1,
+		*top2.FashionItemID:   fTop2,
+		*bottom.FashionItemID: fBottom,
+	}
+
+	candidates := []types.CandidateForRanking{{Item: top1, Source: "lexical"}}
+	pool, _ := EnsureMinimumCandidatePool(candidates, activeItems, types.RecommendationRetrievalQuery{}, 2, fashionItemMap)
+
+	if len(pool) != 3 {
+		t.Fatalf("expected exactly 3 candidates (2 tops + 1 bottom), got %d", len(pool))
+	}
+}
+
+func TestRankCandidatesKeepsOutfitStructureAfterDiversify(t *testing.T) {
+	fashionItemMap := map[uuid.UUID]*dto.FashionItemContractDTO{}
+	candidates := make([]types.CandidateForRanking, 0, 5)
+	for i := 0; i < 4; i++ {
+		item, fi := newTestItemWithFashion()
+		fi.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Áo", Slug: "ao"}
+		fashionItemMap[*item.FashionItemID] = fi
+		candidates = append(candidates, types.CandidateForRanking{
+			Item: item, Source: "lexical", RetrievalScore: 0.9, RetrievalRank: i + 1,
+		})
+	}
+	bottom, fBottom := newTestItemWithFashion()
+	fBottom.Category = &dto.CategoryBriefRes{ID: uuid.New(), Name: "Quần", Slug: "quan"}
+	fashionItemMap[*bottom.FashionItemID] = fBottom
+	candidates = append(candidates, types.CandidateForRanking{
+		Item: bottom, Source: "lexical", RetrievalScore: 0.1, RetrievalRank: 5,
+	})
+
+	ranked, _ := RankCandidates(candidates, dto.ParsedIntent{}, types.RecommendationRetrievalQuery{}, 3, 14, 3, fashionItemMap)
+
+	promptCandidates := make([]types.CandidateForPrompt, 0, len(ranked))
+	for _, c := range ranked {
+		promptCandidates = append(promptCandidates, types.CandidateForPrompt{Item: c.Item})
+	}
+	if !HasValidOutfitStructurePrompts(promptCandidates, fashionItemMap) {
+		t.Fatalf("expected ranked candidates to keep a valid outfit structure, got %d", len(ranked))
+	}
+}
+
 func TestRankCandidatesAddsSourceTags(t *testing.T) {
 	itemID := uuid.New()
 	candidates := []types.CandidateForRanking{
