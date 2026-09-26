@@ -25,12 +25,12 @@ func buildPostMedia(postID uuid.UUID, reqs []dto.PostMediaReq) []*entities.PostM
 	out := make([]*entities.PostMedia, 0, len(reqs))
 	for _, m := range reqs {
 		out = append(out, &entities.PostMedia{
-			BaseEntity: entities.BaseEntity{ID: uuid.New()},
-			PostID:     postID,
-			MediaType:  mediatype.MediaType(m.MediaType),
-			MediaURL:   m.MediaURL,
-			PublicID:   m.PublicID,
-			SortOrder:  m.SortOrder,
+			ID:        uuid.New(),
+			PostID:    postID,
+			MediaType: mediatype.MediaType(m.MediaType),
+			MediaURL:  m.MediaURL,
+			PublicID:  m.PublicID,
+			SortOrder: *m.SortOrder,
 		})
 	}
 	return out
@@ -57,6 +57,22 @@ func (uc *PostUseCase) validatePostInput(pt posttype.PostType, title *string, co
 		if !mediatype.MediaType(m.MediaType).IsValid() {
 			return communityerrors.ErrInvalidMedia()
 		}
+	}
+	return validateMediaOrder(media)
+}
+
+// validateMediaOrder requires every media item to carry a sort order and
+// forbids duplicates. Any int16 value is accepted (no range restriction).
+func validateMediaOrder(media []dto.PostMediaReq) error {
+	seen := make(map[int16]struct{}, len(media))
+	for _, m := range media {
+		if m.SortOrder == nil {
+			return communityerrors.ErrInvalidMediaOrder()
+		}
+		if _, dup := seen[*m.SortOrder]; dup {
+			return communityerrors.ErrInvalidMediaOrder()
+		}
+		seen[*m.SortOrder] = struct{}{}
 	}
 	return nil
 }

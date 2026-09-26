@@ -38,6 +38,10 @@ func ErrInvalidMedia() *apperror.Error {
 	return apperror.NewBadRequest("Media không hợp lệ.")
 }
 
+func ErrInvalidMediaOrder() *apperror.Error {
+	return apperror.NewBadRequest("Thứ tự media không hợp lệ hoặc bị trùng.")
+}
+
 func ErrTitleTooLong(limit int) *apperror.Error {
 	return apperror.NewBadRequest(fmt.Sprintf("Tiêu đề không được vượt quá %d ký tự.", limit))
 }

@@ -14,7 +14,7 @@ type PostMediaReq struct {
 	MediaType string  `json:"mediaType" binding:"required,oneof=image video" label:"loại media"`
 	MediaURL  string  `json:"mediaUrl" binding:"required,url" label:"đường dẫn media"`
 	PublicID  *string `json:"publicId" label:"mã media"`
-	SortOrder int16   `json:"sortOrder" label:"thứ tự hiển thị"`
+	SortOrder *int16  `json:"sortOrder" binding:"required" label:"thứ tự hiển thị"`
 }
 
 type CreatePostReq struct {

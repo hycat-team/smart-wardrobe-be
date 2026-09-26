@@ -30,9 +30,14 @@ func NewPostRepository(db *gorm.DB) repositories.IPostRepository {
 	}
 }
 
+// mediaOrder keeps post media in the sequence supplied by the author.
+func mediaOrder(db *gorm.DB) *gorm.DB {
+	return db.Order("post_media.sort_order ASC, post_media.id ASC")
+}
+
 func (r *PostRepository) GetByPublicID(ctx context.Context, publicID string) (*entities.Post, error) {
 	var post entities.Post
-	if err := r.GetQueryWithPreload(ctx).Where("public_id = ?", publicID).First(&post).Error; err != nil {
+	if err := r.GetDB(ctx).Preload("Media", mediaOrder).Where("public_id = ?", publicID).First(&post).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -66,7 +71,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, filter repositories.PostF
 	db = shared_persist.ApplyPagination(db, shared_dto.PaginationQuery{Page: filter.Page, Limit: filter.Limit})
 
 	var posts []*entities.Post
-	query := db.Preload("Media").Order(postOrderClause(filter)).Find(&posts)
+	query := db.Preload("Media", mediaOrder).Order(postOrderClause(filter)).Find(&posts)
 	if query.Error != nil {
 		return nil, query.Error
 	}
@@ -101,7 +106,7 @@ func (r *PostRepository) ListByAuthorPaginated(ctx context.Context, authorID uui
 	db = shared_persist.ApplyPagination(db, pagination)
 
 	var posts []*entities.Post
-	if err := db.Preload("Media").Order("posts.created_at DESC, posts.id DESC").Find(&posts).Error; err != nil {
+	if err := db.Preload("Media", mediaOrder).Order("posts.created_at DESC, posts.id DESC").Find(&posts).Error; err != nil {
 		return nil, err
 	}
 	return &repositories.PostListResult{Items: posts, TotalCount: total}, nil
@@ -139,7 +144,7 @@ func (r *PostRepository) Search(ctx context.Context, filter repositories.SearchP
 		HotGravity:    filter.HotGravity,
 	})
 	var posts []*entities.Post
-	if err := db.Preload("Media").Order(order).Find(&posts).Error; err != nil {
+	if err := db.Preload("Media", mediaOrder).Order(order).Find(&posts).Error; err != nil {
 		return nil, err
 	}
 	return &repositories.PostListResult{Items: posts, TotalCount: total}, nil
@@ -175,7 +180,7 @@ func (r *PostRepository) AdminList(ctx context.Context, filter repositories.Admi
 	db = shared_persist.ApplyPagination(db, shared_dto.PaginationQuery{Page: filter.Page, Limit: filter.Limit})
 
 	var posts []*entities.Post
-	if err := db.Preload("Media").Order("posts.created_at DESC, posts.id DESC").Find(&posts).Error; err != nil {
+	if err := db.Preload("Media", mediaOrder).Order("posts.created_at DESC, posts.id DESC").Find(&posts).Error; err != nil {
 		return nil, err
 	}
 	return &repositories.PostListResult{Items: posts, TotalCount: total}, nil

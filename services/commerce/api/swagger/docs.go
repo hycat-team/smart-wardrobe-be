@@ -9073,7 +9073,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "mediaType",
-                "mediaUrl"
+                "mediaUrl",
+                "sortOrder"
             ],
             "properties": {
                 "mediaType": {

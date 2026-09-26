@@ -1462,6 +1462,7 @@ definitions:
     required:
     - mediaType
     - mediaUrl
+    - sortOrder
     type: object
   smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaRes:
     properties:

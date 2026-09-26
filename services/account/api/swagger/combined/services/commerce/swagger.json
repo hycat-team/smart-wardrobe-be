@@ -2188,7 +2188,8 @@
       },
       "required": [
         "mediaType",
-        "mediaUrl"
+        "mediaUrl",
+        "sortOrder"
       ],
       "type": "object"
     },
