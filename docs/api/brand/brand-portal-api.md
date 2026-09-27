@@ -2,6 +2,12 @@
 
 Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (Brand Portal), bao gồm đăng ký xét duyệt, quản lý hồ sơ/thành viên, khách hàng offline, và các endpoint công khai của thương hiệu.
 
+## Feature 023 — thay đổi hành vi (trước → sau)
+
+- **Trạng thái sản phẩm**: thêm `failed` (lỗi hệ thống) tách khỏi `draft` (AI không chắc / chờ duyệt). Response item có thêm `processingErrorReason` và `reviewReason` (optional).
+- **Khóa thao tác thủ công với `failed`**: `PATCH /api/v1/brand-portal/brands/{brandId}/items/{itemId}/status` và `PUT .../items/{itemId}` từ chối mọi thay đổi trạng thái rời khỏi `failed` (lỗi `ErrBrandItemStatusLocked`); `PUT` cũng validate status hợp lệ.
+- **Thử lại phân tích** (mới): `POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/retry-analysis` — cho phép khi item `failed` hoặc `draft` có `reviewReason`; nhận body tùy chọn `{ "categoryId": "<uuid>" }` (**bắt buộc** khi `draft` chờ duyệt) và chạy chế độ **danh mục cố định** (chỉ sinh metadata, giữ danh mục); trả `taskId` để subscribe SSE. Nháp thường (không lý do) bị từ chối.
+
 ---
 
 ## Flow 1: Tìm kiếm và xem thông tin Brand (Khách hàng / Customer)
@@ -268,7 +274,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
         - `total` (int): Tổng số lượng item cần phân tích trong task này (đối với Brand Item đơn lẻ thì giá trị luôn là 1).
         - `index` (int): Số thứ tự index của item hiện tại (đối với Brand Item đơn lẻ thì giá trị luôn là 0).
         - `data` (object, optional): Chứa dữ liệu BrandItem chi tiết khi trạng thái là `completed` hoặc `needs_review`.
-        - `error` (string, optional): Thông báo lỗi chi tiết khi trạng thái là `failed`.
+        - `error` (string, optional): **Mã lý do** khi trạng thái là `failed` (ví dụ `multiple_items_detected`, `full_body_outfit_detected`, `analysis_temporary_error`, `auto_retry_exceeded`); frontend tự ánh xạ mã sang text hiển thị (không phải câu thông báo).
     - **Ví dụ Bản tin SSE trả về khi phân tích thành công sản phẩm nhãn hàng (`completed`):**
         ```json
         {
