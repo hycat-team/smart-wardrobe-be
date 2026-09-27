@@ -37,3 +37,7 @@ func (c *WardrobeContract) GetStaleProcessingItems(ctx context.Context, staleBef
 func (c *WardrobeContract) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {
 	return c.wardrobeContractUC.CountItemsByFashionIDs(ctx, fashionItemIDs)
 }
+
+func (c *WardrobeContract) GetWardrobeItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.WardrobeItemContractDTO, error) {
+	return c.wardrobeContractUC.GetWardrobeItemsByFashionItemIDs(ctx, fashionItemIDs)
+}

@@ -20,13 +20,17 @@ type FashionMetadataResult struct {
 	Seasonality  string `json:"seasonality"`
 	Description  string `json:"description"`
 	IsSingleItem bool   `json:"is_single_item"`
-	ReviewReason string `json:"review_reason"`
+	// CategoryConfident is only meaningful when IsSingleItem is true. It is false
+	// by default (safe): a missing signal routes the item to needs_review.
+	CategoryConfident bool   `json:"category_confident"`
+	ReviewReason      string `json:"review_reason"`
 }
 
 func (f *FashionMetadataResult) UnmarshalJSON(data []byte) error {
 	type Alias FashionMetadataResult
 	aux := struct {
-		IsSingleItem any `json:"is_single_item"`
+		IsSingleItem      any `json:"is_single_item"`
+		CategoryConfident any `json:"category_confident"`
 		*Alias
 	}{
 		Alias: (*Alias)(f),
@@ -52,6 +56,24 @@ func (f *FashionMetadataResult) UnmarshalJSON(data []byte) error {
 	default:
 		return fmt.Errorf("unexpected type for is_single_item: %T", v)
 	}
+
+	switch v := aux.CategoryConfident.(type) {
+	case bool:
+		f.CategoryConfident = v
+	case string:
+		switch strings.ToLower(v) {
+		case "true", "1", "yes":
+			f.CategoryConfident = true
+		case "false", "0", "no", "":
+			f.CategoryConfident = false
+		default:
+			return fmt.Errorf("invalid boolean string for category_confident: %s", v)
+		}
+	case nil:
+		f.CategoryConfident = false
+	default:
+		return fmt.Errorf("unexpected type for category_confident: %T", v)
+	}
 	return nil
 }
 
@@ -73,6 +95,9 @@ type FashionItemBriefRes struct {
 	Color    *string           `json:"color,omitempty"`
 	ColorHex *string           `json:"colorHex,omitempty"`
 	Style    *string           `json:"style,omitempty"`
+	// Reasons are owned by the fashion item and only surfaced here (FR-031).
+	ReviewReason          *string `json:"reviewReason,omitempty"`
+	ProcessingErrorReason *string `json:"processingErrorReason,omitempty"`
 }
 
 type FashionProcessingInfoDTO struct {
@@ -95,6 +120,13 @@ type FashionAnalyzeJobDTO struct {
 	TaskID            string     `json:"taskId,omitempty"`
 	Total             int        `json:"total,omitempty"`
 	Index             int        `json:"index,omitempty"`
+	// PreserveCategory keeps the item's existing category on re-analysis instead
+	// of letting the AI overwrite a user-edited category (feature 023, FR-008).
+	PreserveCategory bool `json:"preserveCategory,omitempty"`
+	// FixedCategory runs a metadata-only analysis at the known category and skips
+	// the is_single_item/category_confident gating so a needs_review item never
+	// regenerates needs_review (feature 023, FR-038).
+	FixedCategory bool `json:"fixedCategory,omitempty"`
 }
 
 type CreateFashionItemInput struct {

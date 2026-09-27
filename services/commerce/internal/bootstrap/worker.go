@@ -33,6 +33,7 @@ type Workers struct {
 	BrandFashionEvent                *brandworker.BrandFashionEventWorker
 	WardrobeCleanup                  *wardrobeworker.WardrobeCleanupWorker
 	WardrobeProcessingExhausted      *wardrobeworker.WardrobeProcessingExhaustedWorker
+	BrandProcessingExhausted         *brandworker.BrandProcessingExhaustedWorker
 	WardrobeFashionBind              *wardrobeworker.WardrobeFashionBindWorker
 	ElasticsearchProcessingExhausted *wardrobeworker.ElasticsearchProcessingExhaustedWorker
 	BrandFashionBind                 *brandworker.BrandFashionBindWorker
@@ -59,6 +60,7 @@ func (w *Workers) All() []Worker {
 		w.BrandFashionEvent,
 		w.WardrobeCleanup,
 		w.WardrobeProcessingExhausted,
+		w.BrandProcessingExhausted,
 		w.WardrobeFashionBind,
 		w.ElasticsearchProcessingExhausted,
 		w.BrandFashionBind,

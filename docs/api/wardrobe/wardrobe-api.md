@@ -2,6 +2,13 @@
 
 Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) trong hệ thống Closy Smart Wardrobe.
 
+## Feature 023 — thay đổi hành vi (trước → sau)
+
+- **Xác nhận món cần rà soát** (đã gỡ): endpoint `POST /api/v1/wardrobe-items/{id}/confirm-review` KHÔNG còn tồn tại (gọi trả `404`); thay bằng `retry-analysis` kèm `categoryId`.
+- **Thử lại phân tích**: `POST /api/v1/wardrobe-items/{id}/retry-analysis` — chỉ khi `failed`/`needs_review`; nhận body tùy chọn `{ "categoryId": "<uuid>" }` (bắt buộc khi `needs_review`); chạy chế độ danh mục cố định, giữ danh mục người dùng đã chọn, trả thêm `taskId`.
+- **Lọc danh mục/từ khóa rỗng**: `GET /api/v1/wardrobe-items?categorySlug=...` và catalog — danh mục/từ khóa không khớp món nào nay trả **rỗng** (`total=0`) thay vì toàn bộ; không truyền danh mục thì trả toàn bộ (kể cả món chưa gắn fashion item).
+- **Realtime**: thêm trạng thái `processing`; replay khi reconnect; realtime là best-effort (nghiệp vụ không bị chặn khi Redis gián đoạn).
+
 ---
 
 ## Flow 1: Quản lý tủ đồ cá nhân (Customer)
@@ -88,6 +95,14 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
 - **Tác nhân (Actor):** Khách hàng (User).
 - **Đối tượng ảnh hưởng:** Tạo mới lại tiến trình phân tích AI (AI analysis job).
 - **Mô tả:** Gửi lại yêu cầu AI phân tích hình ảnh đối với các món đồ bị lỗi phân tích hoặc cần xem xét lại.
+- **Request Body (tùy chọn):**
+    ```json
+    {
+      "categoryId": "uuid-cua-danh-muc"
+    }
+    ```
+    - `categoryId` **bắt buộc** khi món ở `needs_review` (`uncertain_category`) và phải thuộc nhóm có thể phối đồ; hệ thống chạy lại AI ở chế độ **danh mục cố định** (chỉ sinh metadata, giữ danh mục) nên không tái sinh `needs_review`. Có thể bỏ trống với món `failed` do lỗi tạm thời/hết retry.
+- **Lỗi:** thiếu/không hợp lệ `categoryId` khi `needs_review` ⇒ `400`; trạng thái không cho phép ⇒ `400`; ảnh không hợp lệ (đa món/toàn thân) ⇒ `400` (hướng tải ảnh khác).
 
 ### 10. Xóa hàng loạt quần áo khỏi tủ đồ
 

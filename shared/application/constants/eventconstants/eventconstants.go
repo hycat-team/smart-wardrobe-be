@@ -18,6 +18,8 @@ const (
 	TopicFashionAnalyzedBrand       = "fashion.event.analyzed.brand"
 	TopicFashionFailedWardrobe      = "fashion.event.failed.wardrobe"
 	TopicFashionFailedBrand         = "fashion.event.failed.brand"
+	TopicFashionProcessingWardrobe  = "fashion.event.processing.wardrobe"
+	TopicFashionProcessingBrand     = "fashion.event.processing.brand"
 	TopicFashionItemCreatedWardrobe = "fashion.item.created.wardrobe"
 	TopicFashionItemCreatedBrand    = "fashion.item.created.brand"
 	TopicFashionProcessingExhausted = "fashion.event.processing-exhausted"

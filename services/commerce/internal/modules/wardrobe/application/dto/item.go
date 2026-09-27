@@ -31,8 +31,11 @@ type FashionItemRes struct {
 	Fit         *string                       `json:"fit,omitempty"`
 	Seasonality *string                       `json:"seasonality,omitempty"`
 	Description *string                       `json:"description,omitempty"`
-	CreatedAt   time.Time                     `json:"createdAt"`
-	UpdatedAt   time.Time                     `json:"updatedAt"`
+	// Reasons are owned by the fashion item and only surfaced here (FR-031).
+	ReviewReason          *string   `json:"reviewReason,omitempty"`
+	ProcessingErrorReason *string   `json:"processingErrorReason,omitempty"`
+	CreatedAt             time.Time `json:"createdAt"`
+	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
 type WardrobeItemRes struct {
@@ -102,6 +105,12 @@ type SearchWardrobeItemsQueryReq struct {
 
 type UpdateWardrobeItemReq struct {
 	Price      *float64   `json:"price,omitempty"`
+	CategoryID *uuid.UUID `json:"categoryId,omitempty"`
+}
+
+// RetryWardrobeAnalysisReq is the optional body for retry-analysis. categoryId
+// is mandatory when the item is in needs_review (FR-001/FR-002).
+type RetryWardrobeAnalysisReq struct {
 	CategoryID *uuid.UUID `json:"categoryId,omitempty"`
 }
 

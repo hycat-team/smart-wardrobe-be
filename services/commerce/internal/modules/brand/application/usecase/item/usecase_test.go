@@ -207,6 +207,10 @@ type mockBrandItemRepo struct {
 	items map[uuid.UUID]*entities.BrandItem
 }
 
+func (m *mockBrandItemRepo) ClaimManualAnalysisRetry(ctx context.Context, itemID uuid.UUID, expectedTaskID *uuid.UUID, newTaskID uuid.UUID, now time.Time) (*entities.BrandItem, bool, error) {
+	return nil, false, nil
+}
+
 func (m *mockBrandItemRepo) GetByID(ctx context.Context, id uuid.UUID) (*entities.BrandItem, error) {
 	if item, exists := m.items[id]; exists {
 		return item, nil
@@ -464,6 +468,12 @@ func (m *mockFashionContract) ReassignCategoryForCatalogItems(ctx context.Contex
 	return nil
 }
 func (m *mockFashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
+	return nil
+}
+func (m *mockFashionContract) IsWearableCategory(ctx context.Context, categoryID uuid.UUID) (bool, error) {
+	return true, nil
+}
+func (m *mockFashionContract) SetProcessingErrorReason(ctx context.Context, fashionItemID uuid.UUID, reason string) error {
 	return nil
 }
 func (m *mockFashionContract) UpdateFashionItemCategory(ctx context.Context, fashionItemID uuid.UUID, categoryID uuid.UUID) error {

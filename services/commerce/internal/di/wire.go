@@ -23,6 +23,7 @@ import (
 	"smart-wardrobe-be/shared/infrastructure/search"
 	sharedsecurity "smart-wardrobe-be/shared/infrastructure/security"
 	sharedlogger "smart-wardrobe-be/shared/pkg/logger"
+	sharedpresentation "smart-wardrobe-be/shared/presentation"
 	shared_middleware "smart-wardrobe-be/shared/presentation/middleware"
 	sharedWorker "smart-wardrobe-be/shared/presentation/worker"
 
@@ -83,6 +84,13 @@ func InitializeApp(cfg *sharedconfig.Config, l sharedlogger.Interface) (*service
 		wire.Bind(new(sharedevent.IRawMessagePublisher), new(*messaging.RabbitMQClient)),
 		sharedsse.NewSSEManager,
 		wire.Bind(new(sharedsse.ISSEManager), new(*sharedsse.SSEManager)),
+
+		// Realtime last-mile transport (feature 023): publisher in the worker,
+		// relay in the HTTP process.
+		messaging.NewRedisRealtimePublisher,
+		wire.Bind(new(sharedsse.IRealtimePublisher), new(*messaging.RedisRealtimePublisher)),
+		sharedpresentation.NewSSERelay,
+		wire.Bind(new(sharedsse.IRealtimeRelay), new(*sharedpresentation.SSERelay)),
 		infra_db.NewGormUnitOfWork,
 		infra_db.NewPostgresJobLocker,
 

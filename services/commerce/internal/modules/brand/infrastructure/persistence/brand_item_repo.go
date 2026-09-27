@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/repositories"
@@ -150,4 +151,33 @@ func (r *BrandItemRepository) CountByBrandID(ctx context.Context, brandID uuid.U
 		Where("brand_id = ?", brandID).
 		Count(&count).Error
 	return count, err
+}
+
+// ClaimManualAnalysisRetry performs an atomic compare-and-swap claim for a brand
+// item retry (FR-011). The WHERE clause pins the expected task id so two
+// concurrent retries cannot both win and create duplicate analysis sessions.
+func (r *BrandItemRepository) ClaimManualAnalysisRetry(ctx context.Context, itemID uuid.UUID, expectedTaskID *uuid.UUID, newTaskID uuid.UUID, now time.Time) (*entities.BrandItem, bool, error) {
+	var claimed *entities.BrandItem
+	err := r.GetDB(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&entities.BrandItem{}).
+			Where("id = ? AND status IN ? AND task_id IS NOT DISTINCT FROM ?", itemID, []string{"failed", "draft"}, expectedTaskID).
+			Updates(map[string]any{
+				"status":     "draft",
+				"task_id":    newTaskID,
+				"updated_at": now,
+			})
+		if result.Error != nil || result.RowsAffected == 0 {
+			return result.Error
+		}
+		var item entities.BrandItem
+		if err := tx.Where("id = ?", itemID).First(&item).Error; err != nil {
+			return err
+		}
+		claimed = &item
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	return claimed, claimed != nil, nil
 }

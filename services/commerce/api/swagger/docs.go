@@ -3175,6 +3175,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/retry-analysis": {
+            "post": {
+                "description": "Đưa sản phẩm đang lỗi hoặc đang chờ duyệt trở lại hàng đợi phân tích và trả về taskId để theo dõi realtime. Với sản phẩm đang chờ duyệt, body BẮT BUỘC kèm categoryId hợp lệ (có thể phối đồ).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand Portal"
+                ],
+                "summary": "Thử phân tích lại sản phẩm nhãn hàng",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID nhãn hàng",
+                        "name": "brandId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID sản phẩm",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Danh mục đã chọn (bắt buộc khi sản phẩm đang chờ duyệt)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.RetryBrandItemAnalysisReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Yêu cầu phân tích lại thành công",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.BrandItemRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/brand-portal/brands/{brandId}/items/{itemId}/status": {
             "patch": {
                 "consumes": [
@@ -6861,7 +6920,10 @@ const docTemplate = `{
         },
         "/api/v1/wardrobe-items/{id}/retry-analysis": {
             "post": {
-                "description": "Cho phép người dùng gửi lại yêu cầu phân tích AI cho trang phục đang lỗi hoặc cần rà soát",
+                "description": "Cho phép người dùng gửi lại yêu cầu phân tích AI cho trang phục đang lỗi hoặc cần rà soát. Với trang phục cần rà soát, body BẮT BUỘC kèm categoryId hợp lệ (có thể phối đồ).",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -6876,6 +6938,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Danh mục đã chọn (bắt buộc khi trang phục cần rà soát)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.RetryWardrobeAnalysisReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -8428,6 +8498,14 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.RetryBrandItemAnalysisReq": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.RevokeClaimTokenReq": {
             "type": "object",
             "properties": {
@@ -8681,12 +8759,14 @@ const docTemplate = `{
             "enum": [
                 "draft",
                 "active",
-                "archived"
+                "archived",
+                "failed"
             ],
             "x-enum-varnames": [
                 "Draft",
                 "Active",
-                "Archived"
+                "Archived",
+                "Failed"
             ]
         },
         "smart-wardrobe-be_services_commerce_internal_modules_brand_domain_constants_branditem_branditemtype.BrandItemType": {
@@ -10315,6 +10395,13 @@ const docTemplate = `{
                 "imageUrl": {
                     "type": "string"
                 },
+                "processingErrorReason": {
+                    "type": "string"
+                },
+                "reviewReason": {
+                    "description": "Reasons are owned by the fashion item and only surfaced here (FR-031).",
+                    "type": "string"
+                },
                 "style": {
                     "type": "string"
                 }
@@ -10326,25 +10413,25 @@ const docTemplate = `{
                 "category": {
                     "$ref": "#/definitions/smart-wardrobe-be_services_commerce_internal_modules_fashion_application_dto.CategoryBriefRes"
                 },
-                "category_id": {
+                "categoryId": {
                     "type": "string"
                 },
                 "color": {
                     "type": "string"
                 },
-                "color_hex": {
+                "colorHex": {
                     "type": "string"
                 },
-                "color_hue": {
+                "colorHue": {
                     "type": "number"
                 },
-                "color_lightness": {
+                "colorLightness": {
                     "type": "number"
                 },
-                "color_saturation": {
+                "colorSaturation": {
                     "type": "number"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "description": {
@@ -10356,7 +10443,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "image_url": {
+                "imageUrl": {
                     "type": "string"
                 },
                 "material": {
@@ -10365,13 +10452,20 @@ const docTemplate = `{
                 "pattern": {
                     "type": "string"
                 },
+                "processingErrorReason": {
+                    "description": "Reasons surfaced to brand portal so staff can tell a system error from a\nneeds-review case (feature 023, US4).",
+                    "type": "string"
+                },
+                "reviewReason": {
+                    "type": "string"
+                },
                 "seasonality": {
                     "type": "string"
                 },
                 "style": {
                     "type": "string"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -10629,6 +10723,13 @@ const docTemplate = `{
                 "pattern": {
                     "type": "string"
                 },
+                "processingErrorReason": {
+                    "type": "string"
+                },
+                "reviewReason": {
+                    "description": "Reasons are owned by the fashion item and only surfaced here (FR-031).",
+                    "type": "string"
+                },
                 "seasonality": {
                     "type": "string"
                 },
@@ -10738,6 +10839,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.RetryWardrobeAnalysisReq": {
+            "type": "object",
+            "properties": {
+                "categoryId": {
                     "type": "string"
                 }
             }

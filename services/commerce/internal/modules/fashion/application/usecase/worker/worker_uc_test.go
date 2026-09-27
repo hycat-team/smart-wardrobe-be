@@ -29,8 +29,16 @@ type mockFashionItemRepoForWorker struct {
 	completeSuccessFn      func(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error)
 	getByIDFn              func(ctx context.Context, itemID uuid.UUID) (*entities.FashionItem, error)
 	getByIDsFn             func(ctx context.Context, ids []uuid.UUID) ([]*entities.FashionItem, error)
+	getStaleProcessingFn   func(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error)
 	incrementRetryCountFn  func(ctx context.Context, itemID uuid.UUID) error
 	markProcessingFailedFn func(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error)
+}
+
+func (m *mockFashionItemRepoForWorker) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error) {
+	if m.getStaleProcessingFn != nil {
+		return m.getStaleProcessingFn(ctx, staleBefore, limit)
+	}
+	return nil, nil
 }
 
 func (m *mockFashionItemRepoForWorker) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
@@ -85,7 +93,15 @@ type mockWardrobeContractForWorker struct {
 	updateItemStatusFn         func(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error
 	getItemsByIDsFn            func(ctx context.Context, itemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error)
 	getStaleProcessingItemsFn  func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
+	getByFashionItemIDsFn      func(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error)
 	getFailedItemsForCleanupFn func(ctx context.Context, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error)
+}
+
+func (m *mockWardrobeContractForWorker) GetWardrobeItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+	if m.getByFashionItemIDsFn != nil {
+		return m.getByFashionItemIDsFn(ctx, fashionItemIDs)
+	}
+	return nil, nil
 }
 
 func (m *mockWardrobeContractForWorker) UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status wardrobestatus.WardrobeItemStatus) error {
@@ -204,7 +220,7 @@ func TestRecoverStaleProcessingItemsRepublishes(t *testing.T) {
 	uc := &FashionWorkerUseCase{
 		cfg: &config.Config{Wardrobe: config.WardrobeProcessing{MaxRetryCount: 3}},
 		wardrobeContract: &mockWardrobeContractForWorker{
-			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+			getByFashionItemIDsFn: func(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
 				return []*wardrobeDto.WardrobeItemContractDTO{{
 					ID:            itemID,
 					UserID:        userID,
@@ -213,8 +229,8 @@ func TestRecoverStaleProcessingItemsRepublishes(t *testing.T) {
 			},
 		},
 		fashionItemRepo: &mockFashionItemRepoForWorker{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.FashionItem, error) {
-				return newFashionItemForTest(id, 2, 1), nil
+			getStaleProcessingFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error) {
+				return []*entities.FashionItem{newFashionItemForTest(fashionItemID, 2, 1)}, nil
 			},
 			incrementRetryCountFn: func(ctx context.Context, id uuid.UUID) error {
 				return nil
@@ -263,7 +279,7 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 	uc := &FashionWorkerUseCase{
 		cfg: &config.Config{Wardrobe: config.WardrobeProcessing{MaxRetryCount: 3}},
 		wardrobeContract: &mockWardrobeContractForWorker{
-			getStaleProcessingItemsFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
+			getByFashionItemIDsFn: func(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*wardrobeDto.WardrobeItemContractDTO, error) {
 				return []*wardrobeDto.WardrobeItemContractDTO{{
 					ID:            itemID,
 					UserID:        userID,
@@ -272,8 +288,8 @@ func TestRecoverStaleProcessingItemsMarksFailed(t *testing.T) {
 			},
 		},
 		fashionItemRepo: &mockFashionItemRepoForWorker{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*entities.FashionItem, error) {
-				return newFashionItemForTest(id, 2, 3), nil
+			getStaleProcessingFn: func(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error) {
+				return []*entities.FashionItem{newFashionItemForTest(fashionItemID, 2, 3)}, nil
 			},
 			markProcessingFailedFn: func(ctx context.Context, id uuid.UUID, version int, reason string, reviewReason *string) (bool, error) {
 				markedFailed = true

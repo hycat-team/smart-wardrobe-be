@@ -17,7 +17,7 @@ type IWardrobeItemUseCase interface {
 	UpdateWardrobeItem(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, input dto.UpdateWardrobeItemReq) (*dto.WardrobeItemRes, error)
 	CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemBriefRes, error)
 	GetSystemCatalogWardrobeItems(ctx context.Context, query dto.SearchWardrobeItemsQueryReq) (*shared_dto.PaginationResult[*dto.SearchWardrobeItemRes], error)
-	RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.WardrobeItemRes, error)
+	RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, categoryID *uuid.UUID) (*dto.WardrobeItemRes, error)
 	DeleteWardrobeItemsBulk(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 	DeleteLockedWardrobeItems(ctx context.Context, userID uuid.UUID) error
 	BatchUploadWardrobeItems(ctx context.Context, userID uuid.UUID, currentRole roleslug.RoleSlug, input dto.BatchUploadWardrobeItemsReq) ([]*dto.WardrobeItemBriefRes, error)
@@ -39,6 +39,7 @@ type IWardrobeFashionEventUseCase interface {
 	HandleFashionEvent(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
 	HandleFashionAnalyzed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
+	HandleFashionProcessing(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error
 	HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedEventPayload) error
 	HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error
 	HandleWardrobeDeleted(ctx context.Context, payload dto.WardrobeEventPayload) error

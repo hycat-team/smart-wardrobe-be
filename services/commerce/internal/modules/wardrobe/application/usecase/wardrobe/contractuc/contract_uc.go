@@ -61,5 +61,15 @@ func (uc *WardrobeContractUseCase) GetStaleProcessingItems(ctx context.Context, 
 }
 
 func (uc *WardrobeContractUseCase) CountItemsByFashionIDs(ctx context.Context, fashionItemIDs []uuid.UUID) (int64, error) {
-	return uc.wardrobeRepo.CountItems(ctx, fashionItemIDs, 1) // UserItem = 1
+	return uc.wardrobeRepo.CountItems(ctx, fashionItemIDs, true, 1) // UserItem = 1; always filter (empty ⇒ 0)
+}
+
+// GetWardrobeItemsByFashionItemIDs returns wardrobe items referencing the given
+// fashion items (across users), for stale-processing recovery (FR-035).
+func (uc *WardrobeContractUseCase) GetWardrobeItemsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*dto.WardrobeItemContractDTO, error) {
+	items, err := uc.wardrobeRepo.GetByFashionItemIDs(ctx, fashionItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MapToWardrobeItemContractDTOList(items), nil
 }

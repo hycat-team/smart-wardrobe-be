@@ -14,6 +14,7 @@ const (
 	QueueBrandFashionAnalyzed             = "brand_fashion_analyzed_queue"
 	QueueWardrobeCleanup                  = "wardrobe_cleanup_queue"
 	QueueWardrobeProcessingExhausted      = "wardrobe_processing_exhausted_queue"
+	QueueBrandProcessingExhausted         = "brand_processing_exhausted_queue"
 	QueueWardrobeFashionBind              = "wardrobe_fashion_bind_queue"
 	QueueBrandFashionBind                 = "brand_fashion_bind_queue"
 	QueueElasticsearchProcessingExhausted = "elasticsearch_processing_exhausted_queue"

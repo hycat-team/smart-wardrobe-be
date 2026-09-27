@@ -5,6 +5,7 @@ import (
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/entities"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
 
@@ -19,45 +20,12 @@ func NewFashionItemUseCase(fashionItemRepo repositories.IFashionItemRepository) 
 	return &FashionItemUseCase{fashionItemRepo: fashionItemRepo}
 }
 
-func mapToFashionItemRes(fi *entities.FashionItem) *dto.FashionItemContractDTO {
-	if fi == nil {
-		return nil
-	}
-	var category *dto.CategoryBriefRes
-	if fi.Category != nil {
-		category = &dto.CategoryBriefRes{
-			ID:   fi.Category.ID,
-			Name: fi.Category.Name,
-			Slug: fi.Category.Slug,
-		}
-	}
-	return &dto.FashionItemContractDTO{
-		ID:              fi.ID,
-		Category:        category,
-		ImageUrl:        fi.ImageUrl,
-		ImagePublicID:   fi.ImagePublicID,
-		Color:           fi.Color,
-		ColorHex:        fi.ColorHex,
-		ColorHue:        fi.ColorHue,
-		ColorSaturation: fi.ColorSaturation,
-		ColorLightness:  fi.ColorLightness,
-		Style:           fi.Style,
-		Material:        fi.Material,
-		Pattern:         fi.Pattern,
-		Fit:             fi.Fit,
-		Seasonality:     fi.Seasonality,
-		Description:     fi.Description,
-		CreatedAt:       fi.CreatedAt,
-		UpdatedAt:       fi.UpdatedAt,
-	}
-}
-
 func (uc *FashionItemUseCase) GetFashionItem(ctx context.Context, id uuid.UUID) (*dto.FashionItemContractDTO, error) {
 	item, err := uc.fashionItemRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return mapToFashionItemRes(item), nil
+	return mapper.MapToFashionItemContractDTO(item), nil
 }
 
 func (uc *FashionItemUseCase) ListFashionItems(ctx context.Context, ids []uuid.UUID) ([]*dto.FashionItemContractDTO, error) {
@@ -67,7 +35,7 @@ func (uc *FashionItemUseCase) ListFashionItems(ctx context.Context, ids []uuid.U
 	}
 	res := make([]*dto.FashionItemContractDTO, len(items))
 	for i, item := range items {
-		res[i] = mapToFashionItemRes(item)
+		res[i] = mapper.MapToFashionItemContractDTO(item)
 	}
 	return res, nil
 }
@@ -139,4 +107,8 @@ func (uc *FashionItemUseCase) ReassignCategoryForCatalogItems(ctx context.Contex
 
 func (uc *FashionItemUseCase) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return uc.fashionItemRepo.ResetProcessingState(ctx, fashionItemID)
+}
+
+func (uc *FashionItemUseCase) SetProcessingErrorReason(ctx context.Context, fashionItemID uuid.UUID, reason string) error {
+	return uc.fashionItemRepo.SetProcessingErrorReason(ctx, fashionItemID, reason)
 }

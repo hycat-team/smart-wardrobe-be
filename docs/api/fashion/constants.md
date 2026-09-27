@@ -2,6 +2,15 @@
 
 Các hằng số dùng trong Fashion/AI Styling APIs:
 
+## 0. Lý do phân tích (feature 023)
+
+Fashion item (contract DTO) mang 2 trường lý do phục vụ hiển thị Brand Portal:
+
+- `reviewReason` — lý do AI không đủ tự tin (món cần duyệt thủ công).
+- `processingErrorReason` — lý do lỗi hệ thống khi phân tích.
+
+Cả hai được xóa (`nil`) khi phân tích lại thành công.
+
 ## 1. Bối cảnh nguồn gốc của Outfit Item (OutfitItemContext)
 
 - **Đường dẫn package:** `internal/shared/domain/constants/wardrobe/outfititemcontext`

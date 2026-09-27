@@ -2,6 +2,12 @@
 
 Event-driven architecture giúp xử lý bất đồng bộ các tác vụ AI tốn thời gian, đảm bảo API Gateway luôn phản hồi nhanh và ranh giới module được tôn trọng qua sự kiện thay vì gọi trực tiếp.
 
+## Feature 023 — bổ sung
+
+- **Topic mới**: `fashion.event.processing.wardrobe` / `fashion.event.processing.brand` — bind thêm vào 2 queue `*_fashion_analyzed_queue` hiện có (không tạo queue/DLQ mới) để phát tiến trình `processing`.
+- **SSE last-mile**: sự kiện realtime đi qua **Redis Pub/Sub** (`sse:task:{taskId}`) từ tiến trình worker → relay ở tiến trình http, buffer phát lại trong `ISSEManager`.
+- **Best-effort + observability**: lỗi phát/relay chỉ log `warn` (không chặn nghiệp vụ); metric `realtime_publish_*` / `realtime_relay_*` / `realtime_subscribers` phơi qua health endpoint.
+
 ## 1. Cơ chế RabbitMQ đang dùng (016)
 
 Hệ thống dùng **1 topic exchange chính `smart_wardrobe_exchange` + 1 DLX `smart_wardrobe_exchange.dlx`** (durable, type `topic`). Mọi sự kiện đều đi qua **transactional outbox** (`shared.outbox_records`) trong cùng `IUnitOfWork.Execute(txCtx)` rồi `OutboxWorker` publish qua `PublishDirect` (publisher confirms) với `correlationId/eventVersion/publishedAt` trong headers.

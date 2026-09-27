@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/constants/analysisreason"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/entities"
 	wardrobeDto "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
 
@@ -95,10 +96,38 @@ func (uc *FashionWorkerUseCase) CleanupFailedItems(ctx context.Context, run *wor
 	return nil
 }
 
-// RecoverStaleProcessingItems republishes stale processing items or marks them failed when retries are exhausted.
+// staleOwner identifies the item that owns a fashion item's analysis.
+type staleOwner struct {
+	itemID   uuid.UUID
+	itemType string
+	userID   uuid.UUID
+}
+
+// resolveOwners maps a fashion item to the wardrobe and/or brand items that
+// reference it, so recovery can notify the right owner (FR-035).
+func (uc *FashionWorkerUseCase) resolveOwners(ctx context.Context, fashionItemID uuid.UUID) []staleOwner {
+	var owners []staleOwner
+	if items, err := uc.wardrobeContract.GetWardrobeItemsByFashionItemIDs(ctx, []uuid.UUID{fashionItemID}); err == nil {
+		for _, it := range items {
+			owners = append(owners, staleOwner{itemID: it.ID, itemType: "wardrobe", userID: it.UserID})
+		}
+	}
+	if uc.brandContract != nil {
+		if items, err := uc.brandContract.GetBrandItemsByFashionItemIDs(ctx, []uuid.UUID{fashionItemID}); err == nil {
+			for _, it := range items {
+				owners = append(owners, staleOwner{itemID: it.ID, itemType: "brand"})
+			}
+		}
+	}
+	return owners
+}
+
+// RecoverStaleProcessingItems scans stale processing fashion items (fashion owns
+// the processing state) and either republishes the analysis or marks them failed
+// once retries are exhausted, for both wardrobe and brand owners (FR-035).
 func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context, run *workerlog.Run) error {
 	staleBefore := time.Now().UTC().Add(-time.Duration(uc.cfg.Wardrobe.StaleMinutes) * time.Minute)
-	items, err := uc.wardrobeContract.GetStaleProcessingItems(ctx, staleBefore, 100)
+	items, err := uc.fashionItemRepo.GetStaleProcessingItems(ctx, staleBefore, 100)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stale processing items: %w", err)
 	}
@@ -106,47 +135,37 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 	republishedCount := 0
 	markedFailedCount := 0
 
-	fashionIDs := make([]uuid.UUID, 0, len(items))
-	for _, item := range items {
-		if item.FashionItemID != nil {
-			fashionIDs = append(fashionIDs, *item.FashionItemID)
+	for _, fi := range items {
+		if fi == nil {
+			continue
 		}
-	}
-	fashionIDs = sliceutils.UniqueUUIDs(fashionIDs)
-	fashionItemMap := map[uuid.UUID]*entities.FashionItem{}
-	if len(fashionIDs) > 0 {
-		if fashionItems, err := uc.fashionItemRepo.GetByIDs(ctx, fashionIDs); err == nil {
-			fashionItemMap = sliceutils.IndexBy(fashionItems, func(fi *entities.FashionItem) uuid.UUID { return fi.ID })
-		}
-	}
-	for _, item := range items {
-		if item.FashionItemID == nil {
+		owners := uc.resolveOwners(ctx, fi.ID)
+		if len(owners) == 0 {
 			run.AddSkipped(1)
 			continue
 		}
-		fi, ok := fashionItemMap[*item.FashionItemID]
-		if !ok || fi == nil {
-			run.AddSkipped(1)
-			continue
-		}
+
 		if fi.ProcessingRetryCount >= uc.cfg.Wardrobe.MaxRetryCount {
-			payload := dto.FashionProcessingExhaustedEventPayload{
-				WardrobeItemID: item.ID,
-				FashionItemID:  fi.ID,
-				Reason:         autoRetryExceededMessage,
-				UserID:         item.UserID,
-			}
-			err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
-				if _, err := uc.fashionItemRepo.MarkProcessingFailed(txCtx, fi.ID, fi.ProcessingVersion, autoRetryExceededMessage, nil); err != nil {
-					return err
+			for _, o := range owners {
+				payload := dto.FashionProcessingExhaustedEventPayload{
+					ItemID:        o.itemID,
+					ItemType:      o.itemType,
+					FashionItemID: fi.ID,
+					Reason:        analysisreason.ErrorAutoRetryExceeded,
+					UserID:        o.userID,
 				}
-				return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionProcessingExhausted, payload)
-			})
-			if err == nil {
-				markedFailedCount++
+				err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
+					if _, err := uc.fashionItemRepo.MarkProcessingFailed(txCtx, fi.ID, fi.ProcessingVersion, analysisreason.ErrorAutoRetryExceeded, nil); err != nil {
+						return err
+					}
+					return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionProcessingExhausted, payload)
+				})
+				if err == nil {
+					markedFailedCount++
+				}
 			}
 			run.ChildInfo(uc.logger, "Stale processing item marked failed after retries exhausted",
-				zap.String("itemId", item.ID.String()),
+				zap.String("fashionItemId", fi.ID.String()),
 				zap.Int("processingVersion", fi.ProcessingVersion),
 			)
 			continue
@@ -154,20 +173,22 @@ func (uc *FashionWorkerUseCase) RecoverStaleProcessingItems(ctx context.Context,
 
 		if err := uc.fashionItemRepo.IncrementProcessingRetryCount(ctx, fi.ID); err != nil {
 			run.ChildError(uc.logger, "Failed to increment retry count for stale processing item",
-				zap.String("itemId", item.ID.String()),
+				zap.String("fashionItemId", fi.ID.String()),
 				zap.Error(err),
 			)
 			continue
 		}
-		if err := uc.publishProcessingRetry(ctx, item.ID, &fi.ID, item.UserID); err != nil {
-			run.ChildError(uc.logger, "Failed to republish stale processing item",
-				zap.String("itemId", item.ID.String()),
-				zap.Error(err),
-			)
-			continue
+		for _, o := range owners {
+			if err := uc.publishProcessingRetry(ctx, o.itemID, &fi.ID, o.userID, o.itemType); err != nil {
+				run.ChildError(uc.logger, "Failed to republish stale processing item",
+					zap.String("itemId", o.itemID.String()),
+					zap.Error(err),
+				)
+				continue
+			}
+			republishedCount++
+			run.AddSuccess(1)
 		}
-		republishedCount++
-		run.AddSuccess(1)
 	}
 
 	run.AddSummaryFields(

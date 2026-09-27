@@ -45,16 +45,16 @@ func (w *ElasticsearchProcessingExhaustedWorker) handle(ctx context.Context, pay
 	run := workerlog.New("elasticsearch_processing_exhausted", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
-		zap.String("wardrobeItemId", payload.WardrobeItemID.String()),
+		zap.String("wardrobeItemId", payload.ItemID.String()),
 	)
 	if err := w.useCase.HandleFashionProcessingExhausted(ctx, payload, run); err != nil {
 		run.LogFailure(w.logger, err,
-			zap.String("wardrobeItemId", payload.WardrobeItemID.String()),
+			zap.String("wardrobeItemId", payload.ItemID.String()),
 			zap.Bool("willRequeue", w.useCase.IsOfflineError(err)),
 		)
 		return err
 	}
-	run.LogSuccessIfData(w.logger, zap.String("wardrobeItemId", payload.WardrobeItemID.String()))
+	run.LogSuccessIfData(w.logger, zap.String("wardrobeItemId", payload.ItemID.String()))
 	return nil
 }
 

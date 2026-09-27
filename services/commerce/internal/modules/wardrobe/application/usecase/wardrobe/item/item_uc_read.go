@@ -137,6 +137,7 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 	if query.CategorySlug != "" {
 		categorySlug = &query.CategorySlug
 	}
+	filterByFashionItems := categorySlug != nil
 
 	var filterFashionIDs []uuid.UUID
 	if categorySlug != nil {
@@ -165,12 +166,21 @@ func (uc *WardrobeItemUseCase) GetWardrobeItems(ctx context.Context, userID uuid
 		return nil, err
 	}
 
-	totalItems, err := uc.wardrobeRepo.CountByUserIDAndFilters(ctx, userID, filterFashionIDs, statuses)
+	// A requested filter that matched no fashion item must return zero items,
+	// not the whole wardrobe (FR-019/FR-021).
+	if filterByFashionItems && len(filterFashionIDs) == 0 {
+		return &shared_dto.PaginationResult[*dto.WardrobeItemBriefRes]{
+			Items:    []*dto.WardrobeItemBriefRes{},
+			Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, 0),
+		}, nil
+	}
+
+	totalItems, err := uc.wardrobeRepo.CountByUserIDAndFilters(ctx, userID, filterFashionIDs, statuses, filterByFashionItems)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetByUserIDAndFiltersPaginated(ctx, userID, filterFashionIDs, statuses, paginationQuery)
+	items, err := uc.wardrobeRepo.GetByUserIDAndFiltersPaginated(ctx, userID, filterFashionIDs, statuses, filterByFashionItems, paginationQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -303,37 +313,45 @@ func (uc *WardrobeItemUseCase) GetSystemCatalogWardrobeItems(ctx context.Context
 			categorySlug = &query.CategorySlug
 		}
 
+		filterByFashionItems := searchQ != nil || categorySlug != nil
+
 		fashionIDs, searchErr := uc.fashionContract.SearchFashionItemIDs(ctx, searchQ, categorySlug)
 		if searchErr != nil {
 			return nil, searchErr
 		}
 
-		totalItems, err = uc.wardrobeRepo.CountItems(ctx, fashionIDs, itemtype.SystemCatalogItem)
-		if err != nil {
-			return nil, err
-		}
+		if filterByFashionItems && len(fashionIDs) == 0 {
+			// A requested filter matched no fashion item: zero results, no DB hit.
+			results = []*dto.SearchWardrobeItemRes{}
+			totalItems = 0
+		} else {
+			totalItems, err = uc.wardrobeRepo.CountItems(ctx, fashionIDs, filterByFashionItems, itemtype.SystemCatalogItem)
+			if err != nil {
+				return nil, err
+			}
 
-		dbItems, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, itemtype.SystemCatalogItem, paginationQuery)
-		if err != nil {
-			return nil, err
-		}
+			dbItems, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, filterByFashionItems, itemtype.SystemCatalogItem, paginationQuery)
+			if err != nil {
+				return nil, err
+			}
 
-		fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
-		if len(fashionIDs) > 0 {
-			briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
-			if err == nil {
-				for _, b := range briefs {
-					fashionBriefMap[b.ID] = b
+			fashionBriefMap := map[uuid.UUID]*fashion_dto.FashionItemBriefRes{}
+			if len(fashionIDs) > 0 {
+				briefs, err := uc.fashionContract.ListFashionItemsBrief(ctx, fashionIDs)
+				if err == nil {
+					for _, b := range briefs {
+						fashionBriefMap[b.ID] = b
+					}
 				}
 			}
-		}
-		results = make([]*dto.SearchWardrobeItemRes, len(dbItems))
-		for idx, item := range dbItems {
-			var fiBrief *fashion_dto.FashionItemBriefRes
-			if item.FashionItemID != nil {
-				fiBrief = fashionBriefMap[*item.FashionItemID]
+			results = make([]*dto.SearchWardrobeItemRes, len(dbItems))
+			for idx, item := range dbItems {
+				var fiBrief *fashion_dto.FashionItemBriefRes
+				if item.FashionItemID != nil {
+					fiBrief = fashionBriefMap[*item.FashionItemID]
+				}
+				results[idx] = mapper.MapToSearchWardrobeItemRes(item, fiBrief)
 			}
-			results[idx] = mapper.MapToSearchWardrobeItemRes(item, fiBrief)
 		}
 	}
 

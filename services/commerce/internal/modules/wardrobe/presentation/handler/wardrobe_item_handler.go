@@ -308,10 +308,12 @@ func (h *WardrobeItemHandler) UpdateWardrobeItem(c *gin.Context) error {
 
 // RetryWardrobeAnalysis requeues AI analysis for a failed or review-required wardrobe item
 // @Summary Thử phân tích lại trang phục
-// @Description Cho phép người dùng gửi lại yêu cầu phân tích AI cho trang phục đang lỗi hoặc cần rà soát
+// @Description Cho phép người dùng gửi lại yêu cầu phân tích AI cho trang phục đang lỗi hoặc cần rà soát. Với trang phục cần rà soát, body BẮT BUỘC kèm categoryId hợp lệ (có thể phối đồ).
 // @Tags Wardrobe
+// @Accept json
 // @Produce json
 // @Param id path string true "ID trang phục"
+// @Param body body dto.RetryWardrobeAnalysisReq false "Danh mục đã chọn (bắt buộc khi trang phục cần rà soát)"
 // @Success 200 {object} shared_pres.APIResponse{data=dto.WardrobeItemRes} "Chi tiết trang phục sau khi đưa lại vào hàng đợi xử lý"
 // @Router /api/v1/wardrobe-items/{id}/retry-analysis [post]
 func (h *WardrobeItemHandler) RetryWardrobeAnalysis(c *gin.Context) error {
@@ -325,7 +327,14 @@ func (h *WardrobeItemHandler) RetryWardrobeAnalysis(c *gin.Context) error {
 		return err
 	}
 
-	response, err := h.itemUseCase.RetryWardrobeAnalysis(c.Request.Context(), userID, itemID)
+	var input dto.RetryWardrobeAnalysisReq
+	if c.Request.ContentLength > 0 {
+		if err := validation.BindJSON(c, &input); err != nil {
+			return err
+		}
+	}
+
+	response, err := h.itemUseCase.RetryWardrobeAnalysis(c.Request.Context(), userID, itemID, input.CategoryID)
 	if err != nil {
 		return err
 	}

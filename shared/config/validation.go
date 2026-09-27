@@ -109,6 +109,12 @@ func validateConfig(cfg *Config) error {
 	if cfg.Server.SSE.HeartbeatSeconds <= 0 {
 		return fmt.Errorf("server sse heartbeat_seconds must be greater than 0")
 	}
+	if cfg.Server.SSE.ReplayBufferSize <= 0 {
+		return fmt.Errorf("server sse replay_buffer_size must be greater than 0")
+	}
+	if cfg.Server.SSE.ReplayBufferTTLSeconds <= 0 {
+		return fmt.Errorf("server sse replay_buffer_ttl_seconds must be greater than 0")
+	}
 	if err := validateGoogle(cfg); err != nil {
 		return err
 	}

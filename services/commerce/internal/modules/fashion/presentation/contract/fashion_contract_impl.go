@@ -5,17 +5,20 @@ import (
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 
 	"github.com/google/uuid"
 )
 
 type FashionContract struct {
 	fashionItemUC uc_interfaces.IFashionItemUseCase
+	categoryUC    uc_interfaces.ICategoryUseCase
 }
 
-func NewFashionContract(fashionItemUC uc_interfaces.IFashionItemUseCase) IFashionContract {
+func NewFashionContract(fashionItemUC uc_interfaces.IFashionItemUseCase, categoryUC uc_interfaces.ICategoryUseCase) IFashionContract {
 	return &FashionContract{
 		fashionItemUC: fashionItemUC,
+		categoryUC:    categoryUC,
 	}
 }
 
@@ -35,12 +38,14 @@ func (c *FashionContract) ListFashionItemsBrief(ctx context.Context, ids []uuid.
 	res := make([]*dto.FashionItemBriefRes, len(items))
 	for i, item := range items {
 		res[i] = &dto.FashionItemBriefRes{
-			ID:       item.ID,
-			ImageUrl: item.ImageUrl,
-			Color:    item.Color,
-			ColorHex: item.ColorHex,
-			Category: item.Category,
-			Style:    item.Style,
+			ID:                    item.ID,
+			ImageUrl:              item.ImageUrl,
+			Color:                 item.Color,
+			ColorHex:              item.ColorHex,
+			Category:              item.Category,
+			Style:                 item.Style,
+			ReviewReason:          item.ReviewReason,
+			ProcessingErrorReason: item.ProcessingErrorReason,
 		}
 	}
 	return res, nil
@@ -68,4 +73,19 @@ func (c *FashionContract) SearchFashionItemIDs(ctx context.Context, query *strin
 
 func (c *FashionContract) ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error {
 	return c.fashionItemUC.ResetProcessingState(ctx, fashionItemID)
+}
+
+func (c *FashionContract) SetProcessingErrorReason(ctx context.Context, fashionItemID uuid.UUID, reason string) error {
+	return c.fashionItemUC.SetProcessingErrorReason(ctx, fashionItemID, reason)
+}
+
+func (c *FashionContract) IsWearableCategory(ctx context.Context, categoryID uuid.UUID) (bool, error) {
+	category, err := c.categoryUC.GetCategory(ctx, categoryID)
+	if err != nil {
+		return false, err
+	}
+	if category == nil {
+		return false, nil
+	}
+	return mapper.CategorySlugToWearingRole(category.Slug) != "other", nil
 }

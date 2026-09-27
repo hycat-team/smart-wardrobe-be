@@ -44,8 +44,9 @@ type FashionItemCreatedEventPayload struct {
 // published when AI analysis retries are exhausted (consumed by wardrobe/brand
 // processing-exhausted workers).
 type FashionProcessingExhaustedEventPayload struct {
-	WardrobeItemID uuid.UUID `json:"wardrobeItemId"`
-	FashionItemID  uuid.UUID `json:"fashionItemId"`
-	Reason         string    `json:"reason"`
-	UserID         uuid.UUID `json:"userId,omitempty"`
+	ItemID        uuid.UUID `json:"itemId"`
+	ItemType      string    `json:"itemType"` // "wardrobe" | "brand"
+	FashionItemID uuid.UUID `json:"fashionItemId"`
+	Reason        string    `json:"reason"`
+	UserID        uuid.UUID `json:"userId,omitempty"`
 }

@@ -36,6 +36,12 @@ type UpdateBrandItemStatusReq struct {
 	Status branditemstatus.BrandItemStatus `json:"status" binding:"required" label:"trạng thái sản phẩm"`
 }
 
+// RetryBrandItemAnalysisReq is the optional body for retry-analysis. categoryId
+// is mandatory when the item is a draft awaiting review (feature 023, FR-041).
+type RetryBrandItemAnalysisReq struct {
+	CategoryID *uuid.UUID `json:"categoryId,omitempty"`
+}
+
 type BrandItemRes struct {
 	ID            uuid.UUID                           `json:"id"`
 	BrandID       uuid.UUID                           `json:"brandId"`
