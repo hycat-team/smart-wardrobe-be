@@ -50,7 +50,7 @@ func (r *FashionItemRepository) GetFailedItemsForCleanup(ctx context.Context, li
 func (r *FashionItemRepository) GetStaleProcessingItems(ctx context.Context, staleBefore time.Time, limit int) ([]*entities.FashionItem, error) {
 	var items []*entities.FashionItem
 	err := r.GetDB(ctx).
-		Where("processing_started_at < ? AND last_processing_attempt_at IS NULL", staleBefore).
+		Where("processing_started_at IS NOT NULL AND processing_started_at < ?", staleBefore).
 		Limit(limit).
 		Find(&items).Error
 	if err != nil {
@@ -172,28 +172,63 @@ func (r *FashionItemRepository) IncrementProcessingRetryCount(ctx context.Contex
 		}).Error
 }
 
+// MarkProcessingStarted stamps the analysis start so stale-processing recovery
+// can detect items stuck in-flight (FR-035). It only affects the current
+// processing version, so stale jobs cannot re-mark a newer attempt.
+func (r *FashionItemRepository) MarkProcessingStarted(ctx context.Context, itemID uuid.UUID, processingVersion int, now time.Time) error {
+	return r.GetDB(ctx).
+		Model(&entities.FashionItem{}).
+		Where("id = ? AND processing_version = ?", itemID, processingVersion).
+		Updates(map[string]any{
+			"processing_started_at": now,
+			"updated_at":            now,
+		}).Error
+}
+
 func (r *FashionItemRepository) MarkProcessingFailed(ctx context.Context, itemID uuid.UUID, processingVersion int, reason string, reviewReason *string) (bool, error) {
 	result := r.GetDB(ctx).Model(&entities.FashionItem{}).
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).
 		Updates(map[string]any{
-			"processing_error_reason": reason,
-			"review_reason":           reviewReason,
-			"updated_at":              time.Now().UTC(),
+			"processing_error_reason":    reason,
+			"review_reason":              reviewReason,
+			"processing_started_at":      nil,
+			"last_processing_attempt_at": nil,
+			"updated_at":                 time.Now().UTC(),
 		})
 	return result.RowsAffected > 0, result.Error
+}
+
+func (r *FashionItemRepository) SetProcessingErrorReason(ctx context.Context, itemID uuid.UUID, reason string) error {
+	return r.GetDB(ctx).Model(&entities.FashionItem{}).
+		Where("id = ?", itemID).
+		Updates(map[string]any{
+			"processing_error_reason":    reason,
+			"review_reason":              nil,
+			"processing_started_at":      nil,
+			"last_processing_attempt_at": nil,
+			"updated_at":                 time.Now().UTC(),
+		}).Error
 }
 
 func (r *FashionItemRepository) MarkProcessingNeedsReview(ctx context.Context, itemID uuid.UUID, processingVersion int, reviewReason string) (bool, error) {
 	result := r.GetDB(ctx).Model(&entities.FashionItem{}).
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).
 		Updates(map[string]any{
-			"review_reason": reviewReason,
-			"updated_at":    time.Now().UTC(),
+			"review_reason":              reviewReason,
+			"processing_started_at":      nil,
+			"last_processing_attempt_at": nil,
+			"updated_at":                 time.Now().UTC(),
 		})
 	return result.RowsAffected > 0, result.Error
 }
 
 func (r *FashionItemRepository) CompleteProcessingSuccess(ctx context.Context, itemID uuid.UUID, processingVersion int, updates map[string]any) (bool, error) {
+	if updates == nil {
+		updates = make(map[string]any)
+	}
+	// Terminal marker: an item is no longer "in processing" once completed.
+	updates["processing_started_at"] = nil
+	updates["last_processing_attempt_at"] = nil
 	result := r.GetDB(ctx).Model(&entities.FashionItem{}).
 		Where("id = ? AND processing_version = ?", itemID, processingVersion).
 		Updates(updates)

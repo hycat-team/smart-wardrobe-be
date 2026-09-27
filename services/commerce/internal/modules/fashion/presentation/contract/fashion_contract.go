@@ -18,4 +18,10 @@ type IFashionContract interface {
 	GetStaleProcessingInfo(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.FashionProcessingInfoDTO, error)
 	SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error)
 	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
+	// SetProcessingErrorReason records a processing-error code (and clears the
+	// review reason) for an item, e.g. when a retry fails to publish.
+	SetProcessingErrorReason(ctx context.Context, fashionItemID uuid.UUID, reason string) error
+	// IsWearableCategory reports whether a category can participate in outfit
+	// pairing (i.e. maps to a real wearing role, not "other"). Feature 023 US1.
+	IsWearableCategory(ctx context.Context, categoryID uuid.UUID) (bool, error)
 }

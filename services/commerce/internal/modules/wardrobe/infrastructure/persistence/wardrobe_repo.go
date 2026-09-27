@@ -56,9 +56,9 @@ func (r *WardrobeItemRepository) CountByUserID(ctx context.Context, userID uuid.
 	return count, nil
 }
 
-func (r *WardrobeItemRepository) CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus) (int64, error) {
+func (r *WardrobeItemRepository) CountByUserIDAndFilters(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, filterByFashionItems bool) (int64, error) {
 	var count int64
-	query := r.buildUserWardrobeFilterQuery(ctx, userID, fashionItemIDs, statuses, false)
+	query := r.buildUserWardrobeFilterQuery(ctx, userID, fashionItemIDs, statuses, filterByFashionItems, false)
 	if err := query.Count(&count).Error; err != nil {
 		return 0, err
 	}
@@ -96,9 +96,9 @@ func (r *WardrobeItemRepository) GetActiveByUserID(ctx context.Context, userID u
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetByUserIDAndFiltersPaginated(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, filterByFashionItems bool, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	query := r.buildUserWardrobeFilterQuery(ctx, userID, fashionItemIDs, statuses, true)
+	query := r.buildUserWardrobeFilterQuery(ctx, userID, fashionItemIDs, statuses, filterByFashionItems, true)
 	db := shared_persist.ApplyPagination(query, pagination)
 	err := db.Order("wardrobe_items.created_at DESC").Find(&items).Error
 	if err != nil {
@@ -141,6 +141,22 @@ func (r *WardrobeItemRepository) GetByUserIDAndFashionItemIDs(ctx context.Contex
 	var items []*entities.WardrobeItem
 	err := r.GetQueryWithPreload(ctx).
 		Where("user_id = ? AND fashion_item_id IN ? AND is_deleted = ?", userID, fashionItemIDs, false).
+		Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// GetByFashionItemIDs returns all (non-deleted) wardrobe items referencing the
+// given fashion items, across users. Used by stale-processing recovery (FR-035).
+func (r *WardrobeItemRepository) GetByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]*entities.WardrobeItem, error) {
+	if len(fashionItemIDs) == 0 {
+		return nil, nil
+	}
+	var items []*entities.WardrobeItem
+	err := r.GetDB(ctx).
+		Where("fashion_item_id IN ? AND is_deleted = ?", fashionItemIDs, false).
 		Find(&items).Error
 	if err != nil {
 		return nil, err
@@ -191,19 +207,19 @@ func (r *WardrobeItemRepository) Update(ctx context.Context, item *entities.Ward
 	return r.GetDB(ctx).Save(item).Error
 }
 
-func (r *WardrobeItemRepository) CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) (int64, error) {
+func (r *WardrobeItemRepository) CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) (int64, error) {
 	var count int64
 	db := r.GetDB(ctx).Model(&entities.WardrobeItem{})
-	db = buildWardrobeItemSearchQuery(db, fashionItemIDs, itemType)
+	db = buildWardrobeItemSearchQuery(db, fashionItemIDs, filterByFashionItems, itemType)
 	if err := db.Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func (r *WardrobeItemRepository) GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	db := buildWardrobeItemSearchQuery(r.GetDB(ctx), fashionItemIDs, itemType)
+	db := buildWardrobeItemSearchQuery(r.GetDB(ctx), fashionItemIDs, filterByFashionItems, itemType)
 	err := db.Find(&items).Error
 	if err != nil {
 		return nil, err
@@ -211,9 +227,9 @@ func (r *WardrobeItemRepository) GetItems(ctx context.Context, fashionItemIDs []
 	return items, nil
 }
 
-func (r *WardrobeItemRepository) GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
+func (r *WardrobeItemRepository) GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
 	var items []*entities.WardrobeItem
-	db := buildWardrobeItemSearchQuery(r.GetDB(ctx), fashionItemIDs, itemType)
+	db := buildWardrobeItemSearchQuery(r.GetDB(ctx), fashionItemIDs, filterByFashionItems, itemType)
 	db = shared_persist.ApplyPagination(db, pagination)
 	err := db.Order("wardrobe_items.created_at DESC").Find(&items).Error
 	if err != nil {
@@ -357,7 +373,7 @@ func (r *WardrobeItemRepository) TouchLastUsedAt(ctx context.Context, ids []uuid
 		Update("last_used_at", usedAt).Error
 }
 
-func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, withPreload bool) *gorm.DB {
+func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Context, userID uuid.UUID, fashionItemIDs []uuid.UUID, statuses []wardrobestatus.WardrobeItemStatus, filterByFashionItems bool, withPreload bool) *gorm.DB {
 	var query *gorm.DB
 	if withPreload {
 		query = r.GetQueryWithPreload(ctx)
@@ -366,7 +382,7 @@ func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Contex
 	}
 
 	query = query.Where("wardrobe_items.user_id = ? AND wardrobe_items.is_deleted = ?", userID, false)
-	if len(fashionItemIDs) > 0 {
+	if filterByFashionItems {
 		query = query.Where("wardrobe_items.fashion_item_id IN ?", fashionItemIDs)
 	}
 	if len(statuses) > 0 {
@@ -378,9 +394,11 @@ func (r *WardrobeItemRepository) buildUserWardrobeFilterQuery(ctx context.Contex
 
 // buildWardrobeItemSearchQuery builds a base query for searching wardrobe items
 // filtered by the given fashion_item_ids and item type (no cross-module joins).
-func buildWardrobeItemSearchQuery(db *gorm.DB, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) *gorm.DB {
+// When filterByFashionItems is true the fashion filter is always applied — even
+// for an empty list — so "no match" yields zero rows instead of "no filter".
+func buildWardrobeItemSearchQuery(db *gorm.DB, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) *gorm.DB {
 	db = db.Where("wardrobe_items.item_type = ? AND wardrobe_items.is_deleted = ?", itemType, false)
-	if len(fashionItemIDs) > 0 {
+	if filterByFashionItems {
 		db = db.Where("wardrobe_items.fashion_item_id IN ?", fashionItemIDs)
 	}
 	return db

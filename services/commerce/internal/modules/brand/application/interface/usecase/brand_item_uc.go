@@ -22,6 +22,7 @@ type IBrandItemUseCase interface {
 	GetBrandItemForUser(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.BrandItemRes, error)
 	UpdateBrandItem(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, input dto.UpdateBrandItemReq) (*dto.BrandItemRes, error)
 	UpdateBrandItemStatus(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, status branditemstatus.BrandItemStatus) (*dto.BrandItemRes, error)
+	RetryBrandItemAnalysis(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID, categoryID *uuid.UUID) (*dto.BrandItemRes, error)
 	GetBrandItemFeedbacks(ctx context.Context, staffUserID uuid.UUID, brandID uuid.UUID, itemID uuid.UUID) ([]*dto.DigitalSampleResponseRes, error)
 	ListBrandProductsForCustomer(ctx context.Context, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error)
 	ListBrandSamplesForCustomer(ctx context.Context, userID uuid.UUID, brandID uuid.UUID, query dto.GetBrandItemsQueryReq) (*dto.BrandItemListBriefRes, error)
@@ -36,5 +37,7 @@ type IBrandFashionEventUseCase interface {
 	HandleFashionEvent(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionAnalyzed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
 	HandleFashionFailed(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
+	HandleFashionProcessing(ctx context.Context, payload fashion_dto.FashionAnalyzedEventPayload) error
+	HandleFashionProcessingExhausted(ctx context.Context, payload fashion_dto.FashionProcessingExhaustedEventPayload) error
 	HandleFashionItemCreated(ctx context.Context, payload fashion_dto.FashionItemCreatedEventPayload) error
 }

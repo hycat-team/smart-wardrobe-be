@@ -120,7 +120,7 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 		return false, nil
 	}
 
-	items, err := uc.wardrobeRepo.GetItems(ctx, nil, itemtype.SystemCatalogItem)
+	items, err := uc.wardrobeRepo.GetItems(ctx, nil, false, itemtype.SystemCatalogItem)
 	if err != nil {
 		run.ChildError(uc.logger, "Failed to fetch system catalog items for initial sync", zap.Error(err))
 		return false, err
@@ -169,7 +169,7 @@ func (uc *SearchSyncUseCase) TryInitialSync(ctx context.Context, run *workerlog.
 
 func (uc *SearchSyncUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashion_dto.FashionProcessingExhaustedEventPayload, run *workerlog.Run) error {
 	run.AddTotal(1)
-	item, err := uc.wardrobeRepo.GetByID(ctx, payload.WardrobeItemID)
+	item, err := uc.wardrobeRepo.GetByID(ctx, payload.ItemID)
 	if err != nil {
 		return err
 	}

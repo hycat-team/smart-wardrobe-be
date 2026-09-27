@@ -28,4 +28,5 @@ var ProviderSet = wire.NewSet(
 	worker.NewLoyaltyPointExpiryWorker,
 	worker.NewBrandFashionEventWorker,
 	worker.NewBrandFashionBindWorker,
+	worker.NewBrandProcessingExhaustedWorker,
 )

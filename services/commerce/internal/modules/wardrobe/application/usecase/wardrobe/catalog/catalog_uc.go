@@ -75,17 +75,28 @@ func (uc *WardrobeCatalogUseCase) GetSystemCatalogItems(ctx context.Context, que
 		categorySlug = query.CategorySlug
 	}
 
+	filterByFashionItems := queryStr != nil || categorySlug != nil
+
 	fashionIDs, err := uc.fashionContract.SearchFashionItemIDs(ctx, queryStr, categorySlug)
 	if err != nil {
 		return nil, err
 	}
 
-	totalItems, err := uc.wardrobeRepo.CountItems(ctx, fashionIDs, itemtype.SystemCatalogItem)
+	// A requested filter that matched no fashion item returns zero catalog items
+	// instead of the whole catalog (FR-019/FR-023).
+	if filterByFashionItems && len(fashionIDs) == 0 {
+		return &shared_dto.PaginationResult[*dto.WardrobeItemRes]{
+			Items:    []*dto.WardrobeItemRes{},
+			Metadata: shared_dto.BuildPaginationMetadata(paginationQuery, 0),
+		}, nil
+	}
+
+	totalItems, err := uc.wardrobeRepo.CountItems(ctx, fashionIDs, filterByFashionItems, itemtype.SystemCatalogItem)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, itemtype.SystemCatalogItem, paginationQuery)
+	items, err := uc.wardrobeRepo.GetItemsPaginated(ctx, fashionIDs, filterByFashionItems, itemtype.SystemCatalogItem, paginationQuery)
 	if err != nil {
 		return nil, err
 	}

@@ -34,9 +34,10 @@ type mockBrandSSEManagerForEvent struct {
 	publishedBytes  []byte
 }
 
-func (m *mockBrandSSEManagerForEvent) Publish(taskID string, payload []byte) {
+func (m *mockBrandSSEManagerForEvent) Publish(_ context.Context, taskID string, payload []byte) error {
 	m.publishedTaskID = taskID
 	m.publishedBytes = payload
+	return nil
 }
 
 func (m *mockBrandSSEManagerForEvent) Subscribe(taskID string) chan []byte {

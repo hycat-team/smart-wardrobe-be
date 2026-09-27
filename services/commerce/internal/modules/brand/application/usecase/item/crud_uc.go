@@ -168,6 +168,13 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
+	if item.Status == branditemstatus.Failed {
+		return nil, branderrors.ErrBrandItemStatusLocked()
+	}
+	if input.Status != "" && input.Status != string(branditemstatus.Draft) &&
+		input.Status != string(branditemstatus.Active) && input.Status != string(branditemstatus.Archived) {
+		return nil, branderrors.ErrBrandItemInvalidStatus()
+	}
 	if input.ProductCode != nil && (item.ProductCode == nil || *input.ProductCode != *item.ProductCode) {
 		existing, err := uc.brandItemRepo.GetByProductCode(ctx, brandID, *input.ProductCode)
 		if err != nil {
@@ -181,7 +188,9 @@ func (uc *BrandItemUseCase) UpdateBrandItem(ctx context.Context, staffUserID uui
 	item.Name = input.Name
 	item.Description = input.Description
 	item.Price = input.Price
-	item.Status = branditemstatus.BrandItemStatus(input.Status)
+	if input.Status != "" {
+		item.Status = branditemstatus.BrandItemStatus(input.Status)
+	}
 	item.UpdatedAt = time.Now().UTC()
 
 	if err := uc.brandItemRepo.Update(ctx, item); err != nil {
@@ -199,8 +208,11 @@ func (uc *BrandItemUseCase) UpdateBrandItemStatus(ctx context.Context, staffUser
 	if item == nil || item.BrandID != brandID {
 		return nil, branderrors.ErrBrandNotFound()
 	}
+	if item.Status == branditemstatus.Failed {
+		return nil, branderrors.ErrBrandItemStatusLocked()
+	}
 	if status != branditemstatus.Draft && status != branditemstatus.Active && status != branditemstatus.Archived {
-		return nil, branderrors.ErrBenefitInvalidStatus()
+		return nil, branderrors.ErrBrandItemInvalidStatus()
 	}
 	item.Status = status
 	item.UpdatedAt = time.Now().UTC()

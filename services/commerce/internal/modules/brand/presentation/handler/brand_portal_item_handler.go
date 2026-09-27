@@ -223,6 +223,45 @@ func (h *BrandPortalHandler) UpdateBrandItemStatus(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
+
 	shared_pres.Success(c, msgBrandItemUpdateSuccess, res)
+	return nil
+}
+
+// RetryBrandItemAnalysis re-queues a failed (or review-pending) brand item.
+// @Summary Thử phân tích lại sản phẩm nhãn hàng
+// @Description Đưa sản phẩm đang lỗi hoặc đang chờ duyệt trở lại hàng đợi phân tích và trả về taskId để theo dõi realtime. Với sản phẩm đang chờ duyệt, body BẮT BUỘC kèm categoryId hợp lệ (có thể phối đồ).
+// @Tags Brand Portal
+// @Accept json
+// @Produce json
+// @Param brandId path string true "ID nhãn hàng"
+// @Param itemId path string true "ID sản phẩm"
+// @Param body body dto.RetryBrandItemAnalysisReq false "Danh mục đã chọn (bắt buộc khi sản phẩm đang chờ duyệt)"
+// @Success 200 {object} shared_pres.APIResponse{data=dto.BrandItemRes} "Yêu cầu phân tích lại thành công"
+// @Router /api/v1/brand-portal/brands/{brandId}/items/{itemId}/retry-analysis [post]
+func (h *BrandPortalHandler) RetryBrandItemAnalysis(c *gin.Context) error {
+	userID, err := contextutils.GetUserId(c)
+	if err != nil {
+		return err
+	}
+	brandID, err := validation.GetUUIDParam(c, "brandId")
+	if err != nil {
+		return err
+	}
+	itemID, err := validation.GetUUIDParam(c, "itemId")
+	if err != nil {
+		return err
+	}
+	var input dto.RetryBrandItemAnalysisReq
+	if c.Request.ContentLength > 0 {
+		if err := validation.BindJSON(c, &input); err != nil {
+			return err
+		}
+	}
+	res, err := h.itemUC.RetryBrandItemAnalysis(c.Request.Context(), userID, brandID, itemID, input.CategoryID)
+	if err != nil {
+		return err
+	}
+	shared_pres.Success(c, "Yêu cầu phân tích lại sản phẩm đã được gửi thành công", res)
 	return nil
 }

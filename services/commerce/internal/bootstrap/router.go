@@ -10,6 +10,7 @@ import (
 	fashionrouter "smart-wardrobe-be/services/commerce/internal/modules/fashion/presentation/router"
 	wardroberouter "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/router"
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	sharedsse "smart-wardrobe-be/shared/application/sse"
 	sharedconfig "smart-wardrobe-be/shared/config"
 	sharedsearch "smart-wardrobe-be/shared/infrastructure/search"
 	"smart-wardrobe-be/shared/pkg/logger"
@@ -39,6 +40,7 @@ func healthHandler(cfg *sharedconfig.Config, searchClient *sharedsearch.Elastics
 				"enabled": searchClient.Enabled(),
 				"healthy": searchClient.IsHealthy(),
 			},
+			"realtime": sharedsse.GetRealtimeMetrics(),
 		})
 	}
 }

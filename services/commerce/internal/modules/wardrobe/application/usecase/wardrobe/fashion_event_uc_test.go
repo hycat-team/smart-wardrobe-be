@@ -48,9 +48,10 @@ type mockSSEManagerForEvent struct {
 	publishedBytes  []byte
 }
 
-func (m *mockSSEManagerForEvent) Publish(taskID string, payload []byte) {
+func (m *mockSSEManagerForEvent) Publish(_ context.Context, taskID string, payload []byte) error {
 	m.publishedTaskID = taskID
 	m.publishedBytes = payload
+	return nil
 }
 
 func (m *mockSSEManagerForEvent) Subscribe(taskID string) chan []byte {
@@ -312,7 +313,7 @@ func TestHandleFashionProcessingExhausted_MarksFailed(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionProcessingExhaustedEventPayload{WardrobeItemID: itemID, FashionItemID: fashionItemID, Reason: "exhausted"}
+	payload := fashionDto.FashionProcessingExhaustedEventPayload{ItemID: itemID, ItemType: "wardrobe", FashionItemID: fashionItemID, Reason: "exhausted"}
 	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -335,7 +336,7 @@ func TestHandleFashionProcessingExhausted_Idempotent(t *testing.T) {
 		},
 	}
 	uc := NewWardrobeFashionEventUseCase(repo, &mockSSEManagerForEvent{}, &mockEventPublisherForEvent{}, &mockUOWForEvent{}, &mockLoggerForEvent{})
-	payload := fashionDto.FashionProcessingExhaustedEventPayload{WardrobeItemID: itemID, FashionItemID: uuid.New(), Reason: "exhausted"}
+	payload := fashionDto.FashionProcessingExhaustedEventPayload{ItemID: itemID, ItemType: "wardrobe", FashionItemID: uuid.New(), Reason: "exhausted"}
 	if err := uc.HandleFashionProcessingExhausted(context.Background(), payload); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -20,26 +20,26 @@ import (
 )
 
 type WardrobeFashionEventUseCase struct {
-	wardrobeItemRepo repositories.IWardrobeItemRepository
-	sseManager       sse.ISSEManager
-	eventPublisher   event.IEventPublisher
-	uow              shared_repos.IUnitOfWork
-	logger           logger.Interface
+	wardrobeItemRepo  repositories.IWardrobeItemRepository
+	realtimePublisher sse.IRealtimePublisher
+	eventPublisher    event.IEventPublisher
+	uow               shared_repos.IUnitOfWork
+	logger            logger.Interface
 }
 
 func NewWardrobeFashionEventUseCase(
 	wardrobeItemRepo repositories.IWardrobeItemRepository,
-	sseManager sse.ISSEManager,
+	realtimePublisher sse.IRealtimePublisher,
 	eventPublisher event.IEventPublisher,
 	uow shared_repos.IUnitOfWork,
 	logger logger.Interface,
 ) uc_interfaces.IWardrobeFashionEventUseCase {
 	return &WardrobeFashionEventUseCase{
-		wardrobeItemRepo: wardrobeItemRepo,
-		sseManager:       sseManager,
-		eventPublisher:   eventPublisher,
-		uow:              uow,
-		logger:           logger,
+		wardrobeItemRepo:  wardrobeItemRepo,
+		realtimePublisher: realtimePublisher,
+		eventPublisher:    eventPublisher,
+		uow:               uow,
+		logger:            logger,
 	}
 }
 
@@ -47,10 +47,14 @@ func NewWardrobeFashionEventUseCase(
 // presentation worker — chuyển vào usecase để worker thin
 // và dispatch được test độc lập.
 func (uc *WardrobeFashionEventUseCase) HandleFashionEvent(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
-	if payload.Status == analyzetaskstatus.Failed {
+	switch payload.Status {
+	case analyzetaskstatus.Failed:
 		return uc.HandleFashionFailed(ctx, payload)
+	case analyzetaskstatus.Processing:
+		return uc.HandleFashionProcessing(ctx, payload)
+	default:
+		return uc.HandleFashionAnalyzed(ctx, payload)
 	}
-	return uc.HandleFashionAnalyzed(ctx, payload)
 }
 
 func (uc *WardrobeFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
@@ -121,7 +125,7 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionAnalyzed(ctx context.Context
 		if err != nil {
 			uc.logger.Error("Failed to marshal SSE payload", zap.Error(err))
 		} else {
-			uc.sseManager.Publish(payload.TaskID, bytes)
+			_ = uc.realtimePublisher.Publish(ctx, payload.TaskID, bytes)
 		}
 	}
 
@@ -177,11 +181,63 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionFailed(ctx context.Context, 
 		if err != nil {
 			uc.logger.Error("Failed to marshal SSE payload", zap.Error(err))
 		} else {
-			uc.sseManager.Publish(payload.TaskID, bytes)
+			_ = uc.realtimePublisher.Publish(ctx, payload.TaskID, bytes)
 		}
 	}
 
 	return nil
+}
+
+// HandleFashionProcessing emits a realtime "processing" event for an item
+// without changing persisted state (FR-004/FR-013). The event is idempotent:
+// repeated deliveries only re-emit the SSE event.
+func (uc *WardrobeFashionEventUseCase) HandleFashionProcessing(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload) error {
+	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.ItemID)
+	if err != nil {
+		uc.logger.Error("Failed to fetch wardrobe item for processing event",
+			zap.String("itemId", payload.ItemID.String()),
+			zap.Error(err),
+		)
+		return err
+	}
+	if item == nil {
+		uc.logger.Warn("Wardrobe item not found for processing event",
+			zap.String("itemId", payload.ItemID.String()),
+		)
+		return nil
+	}
+
+	brief := &dto.WardrobeItemBriefRes{
+		ID:          item.ID,
+		FashionItem: payload.FashionBrief,
+		Price:       item.Price,
+		Status:      item.Status,
+		LastUsedAt:  item.LastUsedAt,
+		TaskID:      item.TaskID,
+	}
+	uc.emitSSE(ctx, payload, brief)
+	return nil
+}
+
+// emitSSE marshals and best-effort publishes an SSE progress event for a task.
+func (uc *WardrobeFashionEventUseCase) emitSSE(ctx context.Context, payload fashionDto.FashionAnalyzedEventPayload, brief *dto.WardrobeItemBriefRes) {
+	if payload.TaskID == "" {
+		return
+	}
+	ssePayload := fashionDto.SSEEventPayload{
+		ItemID: payload.ItemID,
+		Status: payload.Status,
+		Total:  payload.Total,
+		Index:  payload.Index,
+		Data:   brief,
+		Error:  payload.Error,
+	}
+	bytes, err := json.Marshal(ssePayload)
+	if err != nil {
+		uc.logger.Error("Failed to marshal SSE payload", zap.Error(err))
+		return
+	}
+	_ = uc.realtimePublisher.Publish(ctx, payload.TaskID, bytes)
 }
 
 func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Context, payload fashionDto.FashionItemCreatedEventPayload) error {
@@ -217,17 +273,17 @@ func (uc *WardrobeFashionEventUseCase) HandleFashionItemCreated(ctx context.Cont
 }
 
 func (uc *WardrobeFashionEventUseCase) HandleFashionProcessingExhausted(ctx context.Context, payload fashionDto.FashionProcessingExhaustedEventPayload) error {
-	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.WardrobeItemID)
+	item, err := uc.wardrobeItemRepo.GetByID(ctx, payload.ItemID)
 	if err != nil {
 		uc.logger.Error("Failed to fetch wardrobe item for processing exhausted event",
-			zap.String("itemId", payload.WardrobeItemID.String()),
+			zap.String("itemId", payload.ItemID.String()),
 			zap.Error(err),
 		)
 		return err
 	}
 	if item == nil {
 		uc.logger.Warn("Wardrobe item not found for processing exhausted event",
-			zap.String("itemId", payload.WardrobeItemID.String()),
+			zap.String("itemId", payload.ItemID.String()),
 		)
 		return nil
 	}

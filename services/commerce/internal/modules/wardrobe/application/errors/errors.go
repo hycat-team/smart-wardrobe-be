@@ -65,8 +65,20 @@ func ErrRetryWardrobeAnalysisForbidden() *apperror.Error {
 	return apperror.NewBadRequest("Chỉ có thể thử phân tích lại trang phục đang lỗi hoặc cần rà soát.")
 }
 
+// ErrRetryCategoryRequired returns an error when a needs-review item is retried
+// without a valid category (mandatory to re-analyze at a fixed category).
+func ErrRetryCategoryRequired() *apperror.Error {
+	return apperror.NewBadRequest("Vui lòng chọn danh mục hợp lệ (có thể phối đồ) trước khi thử lại trang phục cần rà soát.")
+}
+
 func ErrRetryWardrobeAnalysisInProgress() *apperror.Error {
 	return apperror.NewBadRequest("Trang phục này đang được xử lý hoặc không còn có thể thử phân tích lại.")
+}
+
+// ErrRetryInvalidImage rejects retry for items whose image is unusable (multiple
+// items / full body); the user must upload a different image (FR-033).
+func ErrRetryInvalidImage() *apperror.Error {
+	return apperror.NewBadRequest("Không thể thử lại vì ảnh không hợp lệ (nhiều món hoặc ảnh toàn thân). Vui lòng tải ảnh khác.")
 }
 
 func ErrInvalidCloneQuantity() *apperror.Error {

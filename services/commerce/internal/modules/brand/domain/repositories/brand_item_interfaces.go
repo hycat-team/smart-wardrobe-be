@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemstatus"
 	"smart-wardrobe-be/services/commerce/internal/modules/brand/domain/constants/branditem/branditemtype"
@@ -35,6 +36,11 @@ type IBrandItemRepository interface {
 	CountByStatus(ctx context.Context, brandID uuid.UUID) ([]BrandItemStatusCount, error)
 	CountByType(ctx context.Context, brandID uuid.UUID) ([]BrandItemTypeCount, error)
 	CountByBrandID(ctx context.Context, brandID uuid.UUID) (int64, error)
+	// ClaimManualAnalysisRetry atomically claims a manual retry for a brand item,
+	// transitioning it to draft and assigning a new task id. expectedTaskID is a
+	// compare-and-swap guard so concurrent retries cannot create duplicate
+	// sessions. Returns the reloaded item and whether the claim succeeded.
+	ClaimManualAnalysisRetry(ctx context.Context, itemID uuid.UUID, expectedTaskID *uuid.UUID, newTaskID uuid.UUID, now time.Time) (*entities.BrandItem, bool, error)
 }
 
 type BrandItemStatusCount struct {

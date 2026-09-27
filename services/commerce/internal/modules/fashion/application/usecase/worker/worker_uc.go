@@ -2,6 +2,7 @@ package worker
 
 import (
 	"smart-wardrobe-be/services/account/contract/subscription"
+	brand_contract "smart-wardrobe-be/services/commerce/internal/modules/brand/presentation/contract"
 	uc_interfaces "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/interface/usecase"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/repositories"
 	wardrobe_contract "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/presentation/contract"
@@ -14,16 +15,12 @@ import (
 	"smart-wardrobe-be/shared/pkg/logger"
 )
 
-const (
-	processingFailureReasonMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
-	autoRetryExceededMessage       = "Đã vượt quá số lần thử xử lý tự động."
-)
-
 // FashionWorkerUseCase orchestrates asynchronous wardrobe item processing and recovery workflows.
 type FashionWorkerUseCase struct {
 	cfg              *config.Config
 	logger           logger.Interface
 	wardrobeContract wardrobe_contract.IWardrobeContract
+	brandContract    brand_contract.IBrandContract
 	categoryCache    *VisionCategoryCache
 	mediaService     media.IMediaService
 	aiService        aiexecutor_contract.IAIOrchestrator
@@ -38,6 +35,7 @@ func NewFashionWorkerUseCase(
 	cfg *config.Config,
 	logger logger.Interface,
 	wardrobeContract wardrobe_contract.IWardrobeContract,
+	brandContract brand_contract.IBrandContract,
 	categoryCache *VisionCategoryCache,
 	mediaService media.IMediaService,
 	aiService aiexecutor_contract.IAIOrchestrator,
@@ -50,6 +48,7 @@ func NewFashionWorkerUseCase(
 		cfg:              cfg,
 		logger:           logger,
 		wardrobeContract: wardrobeContract,
+		brandContract:    brandContract,
 		categoryCache:    categoryCache,
 		mediaService:     mediaService,
 		aiService:        aiService,

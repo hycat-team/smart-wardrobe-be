@@ -13,19 +13,21 @@ func MapToFashionItemRes(fi *fashion_dto.FashionItemContractDTO) *dto.FashionIte
 		return nil
 	}
 	return &dto.FashionItemRes{
-		ID:          fi.ID,
-		Category:    fi.Category,
-		ImageUrl:    fi.ImageUrl,
-		Color:       fi.Color,
-		ColorHex:    fi.ColorHex,
-		Style:       fi.Style,
-		Material:    fi.Material,
-		Pattern:     fi.Pattern,
-		Fit:         fi.Fit,
-		Seasonality: fi.Seasonality,
-		Description: fi.Description,
-		CreatedAt:   fi.CreatedAt,
-		UpdatedAt:   fi.UpdatedAt,
+		ID:                    fi.ID,
+		Category:              fi.Category,
+		ImageUrl:              fi.ImageUrl,
+		Color:                 fi.Color,
+		ColorHex:              fi.ColorHex,
+		Style:                 fi.Style,
+		Material:              fi.Material,
+		Pattern:               fi.Pattern,
+		Fit:                   fi.Fit,
+		Seasonality:           fi.Seasonality,
+		Description:           fi.Description,
+		ReviewReason:          fi.ReviewReason,
+		ProcessingErrorReason: fi.ProcessingErrorReason,
+		CreatedAt:             fi.CreatedAt,
+		UpdatedAt:             fi.UpdatedAt,
 	}
 }
 

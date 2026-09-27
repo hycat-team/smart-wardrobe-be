@@ -35,11 +35,11 @@ type fallbackRepoMock struct {
 	items []*entities.WardrobeItem
 }
 
-func (m *fallbackRepoMock) CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType) (int64, error) {
+func (m *fallbackRepoMock) CountItems(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType) (int64, error) {
 	return int64(len(m.items)), nil
 }
 
-func (m *fallbackRepoMock) GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
+func (m *fallbackRepoMock) GetItemsPaginated(ctx context.Context, fashionItemIDs []uuid.UUID, filterByFashionItems bool, itemType itemtype.ItemType, pagination shared_dto.PaginationQuery) ([]*entities.WardrobeItem, error) {
 	return m.items, nil
 }
 
@@ -49,7 +49,9 @@ type fallbackFashionMock struct {
 }
 
 func (fallbackFashionMock) SearchFashionItemIDs(ctx context.Context, query *string, categorySlug *string) ([]uuid.UUID, error) {
-	return nil, nil
+	// Non-empty match so the search filter is active and the DB fallback runs
+	// (an empty result now correctly short-circuits to zero rows).
+	return []uuid.UUID{uuid.New()}, nil
 }
 
 func (fallbackFashionMock) ListFashionItemsBrief(ctx context.Context, ids []uuid.UUID) ([]*fashion_dto.FashionItemBriefRes, error) {

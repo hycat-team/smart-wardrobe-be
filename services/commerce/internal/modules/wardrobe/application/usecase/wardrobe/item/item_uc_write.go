@@ -5,6 +5,7 @@ import (
 	"time"
 
 	fashion_dto "smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/constants/analysisreason"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/domain/constants/fashionitemtype"
 	"smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/dto"
 	wardrobeerrors "smart-wardrobe-be/services/commerce/internal/modules/wardrobe/application/errors"
@@ -23,7 +24,6 @@ import (
 )
 
 const manualRetryCooldown = 15 * time.Second
-const processingFailureMessage = "Hệ thống chưa thể phân tích trang phục lúc này. Vui lòng thử lại sau."
 
 func (uc *WardrobeItemUseCase) CloneWardrobeItem(ctx context.Context, userID uuid.UUID, id uuid.UUID, quantity int) ([]*dto.WardrobeItemBriefRes, error) {
 	if quantity < 1 || quantity > 5 {
@@ -202,7 +202,7 @@ func (uc *WardrobeItemUseCase) UpdateWardrobeItem(ctx context.Context, userID uu
 	return mapper.MapToWardrobeItemRes(item, fi), nil
 }
 
-func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID) (*dto.WardrobeItemRes, error) {
+func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID uuid.UUID, itemID uuid.UUID, categoryID *uuid.UUID) (*dto.WardrobeItemRes, error) {
 	item, err := uc.wardrobeRepo.GetByID(ctx, itemID)
 	if err != nil {
 		return nil, err
@@ -220,6 +220,33 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	if item.FashionItemID != nil {
 		existingFI, _ = uc.fashionContract.GetFashionItem(ctx, *item.FashionItemID)
 	}
+	// Retry is futile for an unusable image (FR-033).
+	if existingFI != nil && existingFI.ProcessingErrorReason != nil && analysisreason.IsInvalidImageReason(*existingFI.ProcessingErrorReason) {
+		return nil, wardrobeerrors.ErrRetryInvalidImage()
+	}
+
+	// Resolve the fixed category used to re-analyze a needs_review item (FR-037).
+	// A category from the request (validated as wearable) wins over the existing one.
+	resolvedCategoryID := (*uuid.UUID)(nil)
+	if existingFI != nil && existingFI.Category != nil {
+		resolvedCategoryID = &existingFI.Category.ID
+	}
+	categoryFromRequest := false
+	if categoryID != nil {
+		wearable, err := uc.fashionContract.IsWearableCategory(ctx, *categoryID)
+		if err != nil {
+			return nil, err
+		}
+		if !wearable {
+			return nil, wardrobeerrors.ErrRetryCategoryRequired()
+		}
+		resolvedCategoryID = categoryID
+		categoryFromRequest = true
+	}
+	fixedCategory := item.Status == wardrobestatus.NeedsReview
+	if fixedCategory && resolvedCategoryID == nil {
+		return nil, wardrobeerrors.ErrRetryCategoryRequired()
+	}
 
 	now := time.Now().UTC()
 	item, claimed, err := uc.wardrobeRepo.ClaimManualAnalysisRetry(ctx, userID, itemID, now)
@@ -230,6 +257,15 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 		return nil, wardrobeerrors.ErrRetryWardrobeAnalysisInProgress()
 	}
 
+	taskID := uuid.New()
+	preserveCategory := fixedCategory || (existingFI != nil && existingFI.Category != nil)
+
+	if categoryFromRequest && item.FashionItemID != nil && categoryID != nil {
+		if err := uc.fashionContract.UpdateFashionItemCategory(ctx, *item.FashionItemID, *categoryID); err != nil {
+			return nil, err
+		}
+	}
+
 	if item.FashionItemID != nil {
 		if err := uc.fashionContract.ResetProcessingState(ctx, *item.FashionItemID); err != nil {
 			uc.logger.Error("[RetryWardrobeAnalysis] Failed to reset fashion processing state", zap.Error(err))
@@ -237,14 +273,10 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 	}
 
 	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
-		categoryID := (*uuid.UUID)(nil)
 		imageURL := ""
 		imagePublicID := ""
 		processingVersion := 0
 		if existingFI != nil {
-			if existingFI.Category != nil {
-				categoryID = &existingFI.Category.ID
-			}
 			imageURL = existingFI.ImageUrl
 			imagePublicID = existingFI.ImagePublicID
 		}
@@ -253,17 +285,27 @@ func (uc *WardrobeItemUseCase) RetryWardrobeAnalysis(ctx context.Context, userID
 			ItemID:            item.ID,
 			ItemType:          fashionitemtype.Wardrobe,
 			UserID:            item.UserID,
-			CategoryID:        categoryID,
+			CategoryID:        resolvedCategoryID,
 			ImageUrl:          imageURL,
 			ImagePublicID:     imagePublicID,
 			ProcessingVersion: processingVersion,
 			RetryCount:        0,
+			TaskID:            taskID.String(),
+			PreserveCategory:  preserveCategory,
+			FixedCategory:     fixedCategory,
+		}
+		item.TaskID = &taskID
+		if err := uc.wardrobeRepo.Update(txCtx, item); err != nil {
+			return err
 		}
 		return uc.eventPublisher.Publish(txCtx, eventconstants.TopicFashionInit, job)
 	})
 	if err != nil {
 		uc.logger.Error("[RetryWardrobeAnalysis] Event publishing failed", zap.Error(err))
-		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, 0, processingFailureMessage, nil)
+		if item.FashionItemID != nil {
+			_ = uc.fashionContract.SetProcessingErrorReason(ctx, *item.FashionItemID, analysisreason.ErrorAnalysisTemporary)
+		}
+		_, _ = uc.wardrobeRepo.MarkProcessingFailed(ctx, item.ID, 0, analysisreason.ErrorAnalysisTemporary, nil)
 		return nil, err
 	}
 

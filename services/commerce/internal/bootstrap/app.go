@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	sharedsse "smart-wardrobe-be/shared/application/sse"
 	sharedbootstrap "smart-wardrobe-be/shared/bootstrap"
 	sharedconfig "smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/infrastructure/db"
@@ -32,13 +33,14 @@ const shutdownGrace = 30 * time.Second
 
 // App is the composed Commerce Core service runtime.
 type App struct {
-	Config       *sharedconfig.Config
-	Log          logger.Interface
-	Engine       *gin.Engine
-	Workers      *Workers
-	DB           *gorm.DB
-	Validator    sharedbootstrap.StartupValidator
-	MigrationsFS fs.FS
+	Config        *sharedconfig.Config
+	Log           logger.Interface
+	Engine        *gin.Engine
+	Workers       *Workers
+	DB            *gorm.DB
+	Validator     sharedbootstrap.StartupValidator
+	MigrationsFS  fs.FS
+	RealtimeRelay sharedsse.IRealtimeRelay
 }
 
 // NewApp assembles the runtime from the Wire composition root.
@@ -50,15 +52,17 @@ func NewApp(
 	dbConn *gorm.DB,
 	validator sharedbootstrap.StartupValidator,
 	migrationsFS fs.FS,
+	realtimeRelay sharedsse.IRealtimeRelay,
 ) *App {
 	return &App{
-		Config:       cfg,
-		Log:          log,
-		Engine:       engine,
-		Workers:      workers,
-		DB:           dbConn,
-		Validator:    validator,
-		MigrationsFS: migrationsFS,
+		Config:        cfg,
+		Log:           log,
+		Engine:        engine,
+		Workers:       workers,
+		DB:            dbConn,
+		Validator:     validator,
+		MigrationsFS:  migrationsFS,
+		RealtimeRelay: realtimeRelay,
 	}
 }
 
@@ -79,6 +83,7 @@ func (a *App) Run() error {
 
 	mode := Mode(a.Config)
 	started := a.startWorkers(ctx, mode)
+	relayStarted := a.startRealtimeRelay(ctx, mode)
 
 	server := &http.Server{
 		Addr:         ":" + a.Config.Server.Port,
@@ -105,6 +110,7 @@ func (a *App) Run() error {
 
 	select {
 	case err := <-errCh:
+		a.stopRealtimeRelay(relayStarted)
 		a.stopWorkers(started)
 		return fmt.Errorf("http server failed: %w", err)
 	case sig := <-stop:
@@ -117,6 +123,7 @@ func (a *App) Run() error {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		a.Log.Warn("http shutdown did not complete cleanly", zap.Error(err))
 	}
+	a.stopRealtimeRelay(relayStarted)
 	a.stopWorkers(started)
 	return nil
 }
@@ -159,5 +166,23 @@ func (a *App) startWorkers(ctx context.Context, mode string) []Worker {
 func (a *App) stopWorkers(started []Worker) {
 	for i := len(started) - 1; i >= 0; i-- {
 		started[i].Stop()
+	}
+}
+
+// startRealtimeRelay starts the Redis→SSE relay in the HTTP process (mode http
+// or all). It is deliberately NOT part of bootstrap.Workers, which only runs in
+// worker|all (FR-044).
+func (a *App) startRealtimeRelay(ctx context.Context, mode string) bool {
+	if a.RealtimeRelay == nil || (mode != "http" && mode != "all") {
+		return false
+	}
+	a.RealtimeRelay.Start(ctx)
+	a.Log.Info("realtime relay started", zap.String("app_mode", mode))
+	return true
+}
+
+func (a *App) stopRealtimeRelay(started bool) {
+	if started && a.RealtimeRelay != nil {
+		a.RealtimeRelay.Stop()
 	}
 }

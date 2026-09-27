@@ -45,14 +45,14 @@ func (w *WardrobeProcessingExhaustedWorker) handle(ctx context.Context, payload 
 	run := workerlog.New("wardrobe_processing_exhausted", workerlog.TriggerQueue)
 	run.LogReceived(w.logger,
 		zap.String("correlationId", event.CorrelationIdFromContext(ctx)),
-		zap.String("wardrobeItemId", payload.WardrobeItemID.String()),
+		zap.String("wardrobeItemId", payload.ItemID.String()),
 		zap.String("fashionItemId", payload.FashionItemID.String()),
 	)
 	if err := w.useCase.HandleFashionProcessingExhausted(ctx, payload); err != nil {
-		run.LogFailure(w.logger, err, zap.String("wardrobeItemId", payload.WardrobeItemID.String()))
+		run.LogFailure(w.logger, err, zap.String("wardrobeItemId", payload.ItemID.String()))
 		return err
 	}
-	run.LogSuccessIfData(w.logger, zap.String("wardrobeItemId", payload.WardrobeItemID.String()))
+	run.LogSuccessIfData(w.logger, zap.String("wardrobeItemId", payload.ItemID.String()))
 	return nil
 }
 

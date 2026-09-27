@@ -20,4 +20,5 @@ type IFashionItemUseCase interface {
 	GetCategoryIDsByFashionItemIDs(ctx context.Context, fashionItemIDs []uuid.UUID) ([]dto.DashboardFashionItemCategoryDTO, error)
 	ReassignCategoryForCatalogItems(ctx context.Context, fashionItemIDs []uuid.UUID, fromCategoryID uuid.UUID, toCategoryID uuid.UUID) error
 	ResetProcessingState(ctx context.Context, fashionItemID uuid.UUID) error
+	SetProcessingErrorReason(ctx context.Context, fashionItemID uuid.UUID, reason string) error
 }
