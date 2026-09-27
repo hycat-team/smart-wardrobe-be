@@ -152,3 +152,105 @@ Tài liệu này ghi lại các quyết định kỹ thuật (Decision / Rationa
 **Rationale**: Tôn trọng ràng buộc FR-044/SC-018 (`APP_MODE=http` không chạy consumers/outbox/cron); relay không phải consumer nghiệp vụ, chỉ là adapter hạ tầng nhẹ.
 
 **Alternatives considered**: Thêm relay vào `Workers.All()`: sẽ không chạy ở http → hỏng mục tiêu. Thêm nhánh đặc biệt trong `startWorkers`: che khuất quy tắc mode → loại.
+
+---
+
+## R11. Phân biệt "không lọc" vs "lọc nhưng rỗng" (G8)
+
+**Bối cảnh**: Commit `7b1c046a` ("eliminate cross-module DB access via contracts") thay việc lọc theo danh mục từ JOIN `categories.slug` bằng cách resolve danh mục → `[]fashionItemIDs` qua `IFashionContract.SearchFashionItemIDs` rồi lọc `fashion_item_id IN (...)`. Tầng repository dùng `if len(fashionItemIDs) > 0` nên khi danh mục/từ khóa không khớp fashion item nào (slice rỗng) thì bỏ qua bộ lọc ⇒ trả về **toàn bộ** món (hồi quy). Ba đường bị ảnh hưởng: `GetWardrobeItems`, `GetSystemCatalogWardrobeItems` (fallback DB search) và `catalog_uc.go`.
+
+**Decision**:
+- Thêm tham số boolean tường minh `filterByFashionItems bool` vào `buildUserWardrobeFilterQuery` / `buildWardrobeItemSearchQuery` và các method public tương ứng (`CountByUserIDAndFilters`, `GetByUserIDAndFiltersPaginated`, `CountItems`, `GetItemsPaginated`, `GetItems`).
+- Khi `filterByFashionItems == true`: luôn áp `fashion_item_id IN ?` (kể cả slice rỗng ⇒ 0 kết quả).
+- Khi `filterByFashionItems == false`: bỏ hoàn toàn bộ lọc ⇒ trả tất cả món của người dùng, kể cả `fashion_item_id` NULL.
+- Usecase xác định cờ: `GetWardrobeItems` ⇒ `categorySlug != nil`; catalog/search ⇒ `queryStr != nil || categorySlug != nil`.
+- Short-circuit: khi cờ bật nhưng danh sách rỗng, usecase trả kết quả rỗng ngay, KHÔNG truy vấn DB (tránh SQL `IN ()` vô nghĩa).
+
+**Rationale**: Đặt "ý định lọc" tường minh ở lớp gọi thay vì suy diễn từ độ dài mảng; giữ nguyên ranh giới module; sửa đúng gốc tại 1 điểm (repository) cho cả 3 đường.
+
+**Alternatives considered**:
+- Dùng con trỏ `*[]uuid.UUID` (nil = không lọc, rỗng = lọc rỗng): cũng đúng nhưng dễ nhầm nil/rỗng ở call site; boolean tường minh dễ đọc hơn → chọn boolean.
+- Chỉ short-circuit ở usecase, không đổi chữ ký repo: vá được 3 call site hiện tại nhưng để lại anti-pattern ở tầng repository, dễ tái phát → loại.
+- Để SQL `IN ()` xử lý: tùy biến thể DB/GORM, kém rõ ràng và vẫn truy vấn DB vô ích → loại.
+
+**Liên quan**: `GetByUserID(ctx, userID, nil)` (dùng cho locked-map, outfit…) luôn truyền danh sách rỗng với ý nghĩa "không lọc"; giữ nguyên hành vi "không lọc" (không truyền cờ, hoặc cờ false).
+
+---
+
+## R12. Realtime best-effort + observability (G9)
+
+**Bối cảnh**: Realtime dùng Redis Pub/Sub làm last-mile (R1). Redis có thể tạm thời không khả dụng. Nếu lỗi publish/relay làm fail nghiệp vụ thì upload/confirm/retry hỏng oan, dù DB mới là nguồn sự thật. Đồng thời, best-effort nếu không có tín hiệu quan sát sẽ khiến mất sự kiện âm thầm, khó vận hành.
+
+**Decision**:
+- **Best-effort publish/relay**: `IRealtimePublisher.Publish` và relay xử lý lỗi Redis bằng cách **log `warn` kèm `taskId` rồi trả về** (không propagate error lên usecase/worker). Write side-effect nghiệp vụ vẫn đi qua outbox/RabbitMQ (không đổi).
+- **Observability**: thêm counters/gauges in-memory trong package `shared/application/sse` (`realtime_metrics.go`) theo đúng pattern `shared/infrastructure/messaging/metrics.go` (`atomic.Int64`):
+  - `realtime_publish_total`, `realtime_publish_failed`
+  - `realtime_relay_total`, `realtime_relay_failed`
+  - gauge `realtime_subscribers` (tổng subscriber đang mở, cập nhật khi Subscribe/Unsubscribe — tăng/giảm atomic).
+  - Hàm `GetRealtimeMetrics() map[string]int64` phơi qua payload health `GET /api/v1/commerce/health` (thêm khóa `"realtime"`), cạnh `"elasticsearch"` hiện có.
+- **Client fallback**: client tự refetch/polling khi không nhận được sự kiện (đã ghi trong spec FR-025). Không thêm cơ chế retry/buffer phía server cho last-mile.
+
+**Rationale**: SSE là kênh tiện ích, không phải nguồn sự thật ⇒ cô lập lỗi để không ảnh hưởng nghiệp vụ. Metrics in-memory tận dụng hạ tầng health sẵn có, không thêm Prometheus/OTel (tránh dependency & chi phí). Đủ để đo tỉ lệ thất bại phục vụ SC-013/SC-014.
+
+**Alternatives considered**:
+- Retry + buffer sự kiện chờ Redis hồi phục: tăng phức tạp, độ trễ, và Redis down thường kéo theo cache hỏng — không đáng → loại.
+- Coi Redis là bắt buộc, lỗi publish trả lỗi: có thể làm fail upload/retry → loại.
+- Prometheus/OpenTelemetry: thêm dependency/hạ tầng, vượt nhu cầu hiện tại → loại (hoãn).
+- Distributed tracing xuyên tiến trình: không cần để đạt SC-013/SC-014 → loại.
+
+---
+
+## R13. Phân loại ảnh không hợp lệ + mã hóa lý do + brand exhausted (G10)
+
+**Bối cảnh**: `needs_review` hiện được kích hoạt bởi `is_single_item=false` (`analyze_uc.go:52`), gộp chung "ảnh đa món/toàn thân" (không sửa được) với "một món nhưng chưa chắc category". Hệ quả: ảnh xấu vẫn confirm được → lọt vào tủ đồ/phối đồ; retry cùng ảnh vô nghĩa (deterministic) và tốn AI cost. Lý do đang là câu thông báo tiếng Việt. Brand không nhận `processing-exhausted` (topology chỉ bind wardrobe + ES) nên có thể kẹt `draft` với `reviewReason=null`.
+
+**Decision**:
+- **Tách tín hiệu AI**: thêm `category_confident` (bool) bên cạnh `is_single_item`. `is_single_item` = ảnh có đúng một món; `category_confident` chỉ có nghĩa khi `is_single_item=true`.
+- **Định tuyến**: `!is_single_item` ⇒ `failed` + lý do `multiple_items_detected`/`full_body_outfit_detected`; `is_single_item && !category_confident` ⇒ `needs_review` + `uncertain_category`; còn lại ⇒ `completed`.
+- **Mã hóa lý do**: catalog mã cố định (review: `uncertain_category`; error: `multiple_items_detected`, `full_body_outfit_detected`, `analysis_temporary_error`, `auto_retry_exceeded`); SSE `error` cũng là mã; hằng số dùng chung trong `fashion/domain/constants/analysisreason`.
+- **Gate**: confirm chỉ cho `uncertain_category`; retry chặn với ảnh không hợp lệ, chỉ cho lỗi tạm thời/hết retry hoặc `needs_review`.
+- **Vị trí hiển thị**: reason thuộc fashion item, chỉ nested trong `fashionItem`; bỏ field root ở `BrandItemRes`/`BrandItemBriefRes`; mở rộng `FashionItemBriefRes` + `FashionItemRes`.
+- **camelCase**: `FashionItemContractDTO` (+ `CategoryContractDTO`) serialize camelCase.
+- **Brand exhausted (Option 1)**: quét stale theo `fashion_items` (fashion sở hữu processing state), map owner qua contract (wardrobe + brand), payload `processing-exhausted` thêm `ItemType`/`ItemID`, thêm queue + worker brand ⇒ brand item `failed` + lý do.
+
+**Rationale**: Ảnh không hợp lệ là lỗi dữ liệu, không phải lỗi hệ thống → `failed` + mã lý do, chặn confirm/retry; giữ `needs_review` cho trường hợp thực sự fixable. Mã lý do ổn định cho FE i18n. Fashion sở hữu trạng thái xử lý nên quét tập trung, tránh lặp logic wardrobe/brand.
+
+**Alternatives considered**:
+- Đổi hết `needs_review` → `failed`: mất use-case "một món nhưng chưa chắc category" và trộn ngữ nghĩa lỗi hệ thống vs lỗi dữ liệu → loại.
+- Thêm status mới `invalid`/`rejected`: semantic sạch nhưng cần migration cho brand + FE xử lý thêm → loại (dùng `failed` + reason).
+- Chỉ brand-only recovery (không refactor scan): lặp logic và khó phân biệt "draft chờ duyệt" vs "draft đang xử lý" → loại.
+- Giữ lý do là message tiếng Việt: FE khó i18n và so khớp chuỗi → loại.
+
+**Ngoài phạm vi** (không làm đợt này): ẩn mặc định ảnh không hợp lệ khỏi closet; flow "thay ảnh" (replace image).
+
+**Clarifications bổ sung (2026-09-27)**:
+- `category_confident` thiếu/null + `is_single_item=true` ⇒ mặc định **false** ⇒ `needs_review` (không tự động completed).
+- Mâu thuẫn `is_single_item=false` + `review_reason=uncertain_category` ⇒ ưu tiên tính hợp lệ ảnh ⇒ `failed` + `multiple_items_detected`.
+- Thử lại thất bại ở bước publish job ⇒ ghi `processingErrorReason=analysis_temporary_error` (qua fashion item) cùng lúc set `failed` (FR-036).
+
+---
+
+## R14. Bỏ confirm-review, gộp vào retry kèm danh mục (G11)
+
+**Bối cảnh**: Với G10 (không lưu metadata ở `needs_review`), `confirm-review` chỉ set danh mục + trạng thái mà fashion item **rỗng** metadata/embedding ⇒ món vào sử dụng nghèo dữ liệu cho gợi ý phối đồ. Đồng thời `job.CategoryID` hiện **không** được đưa vào prompt phân tích ⇒ nếu chỉ truyền danh mục vào job, AI vẫn có thể trả `category_confident=false` ⇒ **vòng lặp `needs_review`**.
+
+**Decision**:
+- **Bỏ hẳn `confirm-review`** (route/handler/UC/interface/repo claim confirm/errors/tests) — breaking, ghi rõ trong tài liệu frontend.
+- `retry-analysis` nhận `categoryId` (wardrobe + brand):
+  - `NeedsReview` (`uncertain_category`) ⇒ **bắt buộc** danh mục hợp lệ (từ request hoặc danh mục có sẵn); validate `IsWearableCategory`; persist qua `UpdateFashionItemCategory`.
+  - `Failed` (transient) ⇒ danh mục tùy chọn.
+  - Vẫn chặn retry với ảnh không hợp lệ.
+- **Chế độ "danh mục cố định"**: thêm cờ `FixedCategory` vào `FashionAnalyzeJobDTO`; worker dùng **prompt metadata-only** theo danh mục đã biết, **bỏ gate** `is_single_item`/`category_confident`, `PreserveCategory=true` ⇒ chỉ sinh metadata + embedding, giữ danh mục ⇒ hết vòng lặp.
+- **Prompt fail-fast**: initial analyze trả JSON tối giản khi ảnh không hợp lệ / `category_confident=false`; giữ **1 call không `ResponseSchema`** (schema strict buộc đủ field ⇒ vô hiệu fail-fast).
+- Brand nhận `categoryId` qua chính retry request (chưa có API set category khác).
+
+**Rationale**: Một đường duy nhất (retry) vừa đảm bảo metadata đầy đủ, vừa tránh endpoint rỗng nghĩa; chế độ danh mục cố định loại bỏ vòng lặp; fail-fast giảm output tokens.
+
+**Alternatives considered**:
+- Giữ confirm nhưng cho chạy AI (async): trùng lặp retry → gộp cho gọn → loại.
+- Confirm sync + enrichment async: cửa sổ "usable nhưng thiếu metadata" → loại.
+- Chỉ truyền `CategoryID` mà không đổi prompt: vòng lặp `needs_review` → loại.
+- Bật `ResponseSchema` cho analyze: vô hiệu fail-fast → loại.
+- Thêm `CategoryID` vào `UpdateBrandItemReq` thay vì retry request: thừa endpoint, brand chọn luôn ở retry → loại.
+
+**Ngoài phạm vi**: không giữ alias deprecated cho confirm.

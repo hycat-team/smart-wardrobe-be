@@ -90,12 +90,12 @@ Thêm `TaskID *string` (`json:"taskId,omitempty"`) — mã phiên để client s
 Processing ──(AI ok)──► InWardrobe
 Processing ──(AI fail / exhausted)──► Failed
 Processing ──(AI uncertain)──► NeedsReview
-NeedsReview ──(confirm-review, có category hợp lệ)──► InWardrobe
+NeedsReview ──(retry-analysis kèm category hợp lệ, chế độ danh mục cố định)──► Processing ──► InWardrobe
 Failed | NeedsReview ──(retry-analysis, trạng thái cho phép)──► Processing
 ```
 
 Quy tắc:
-- `confirm-review` chỉ hợp lệ từ `NeedsReview`, cần danh mục hợp lệ.
+- `needs_review` xử lý bằng `retry-analysis` kèm danh mục hợp lệ (chế độ danh mục cố định, giữ danh mục); KHÔNG còn `confirm-review` (xem §10).
 - `retry-analysis` chỉ từ `Failed`/`NeedsReview`; chặn khi đang `Processing` hoặc trạng thái khác; dùng chuyển trạng thái nguyên tử để tránh tạo phiên trùng.
 - Item `InWardrobe` mới tham gia gợi ý phối đồ.
 
@@ -148,7 +148,7 @@ Quy tắc:
   "total": 3,
   "index": 0,
   "data": { "...": "khi completed/needs_review" },
-  "error": "khi failed"
+  "error": "mã lý do (chỉ khi failed)"
 }
 ```
 
@@ -161,8 +161,164 @@ Quy tắc:
 
 ## 6. Ràng buộc & validation tổng hợp
 
-- `confirm-review`: item thuộc user, status `NeedsReview`, category tồn tại và `IsWearableCategory == true`.
-- `retry-analysis`: item thuộc user/brand hợp lệ, status ∈ {Failed, NeedsReview} (wardrobe) hoặc {Failed, Draft-review} (brand); claim nguyên tử chuyển trạng thái (không thêm ràng buộc count/thời gian).
+- `retry-analysis`: item thuộc user/brand hợp lệ, status ∈ {Failed, NeedsReview} (wardrobe) hoặc {Failed, Draft-review} (brand); claim nguyên tử chuyển trạng thái (không thêm ràng buộc count/thời gian). Với `NeedsReview`/`Draft-review` yêu cầu danh mục hợp lệ (`IsWearableCategory == true`, từ request hoặc có sẵn) và chạy chế độ danh mục cố định (xem §10).
 - `UpdateBrandItemStatus`: status đích ∈ {draft, active, archived}; nếu status hiện tại là `failed` → từ chối.
 - `UpdateBrandItem`: validate status và chặn khi đang `failed`.
 - Idempotency: consumer bỏ update DB nếu status đã ở trạng thái đích; vẫn phát SSE nếu kênh mở.
+
+---
+
+## 7. Thay đổi chữ ký repository (G8 — KHÔNG đổi schema/dữ liệu)
+
+> US5 không thêm cột, không migration. Chỉ thay đổi hợp đồng nội bộ module `wardrobe` để mang "ý định lọc" tường minh.
+
+### 7.1 Interface `WardrobeItemRepository` (domain/repositories/interfaces.go)
+
+| Method | Trước | Sau |
+|--------|-------|-----|
+| `CountByUserIDAndFilters` | `(ctx, userID, fashionItemIDs []uuid.UUID, statuses)` | `+ filterByFashionItems bool` |
+| `GetByUserIDAndFiltersPaginated` | `(ctx, userID, fashionItemIDs, statuses, pagination)` | `+ filterByFashionItems bool` |
+| `CountItems` | `(ctx, fashionItemIDs, itemType)` | `+ filterByFashionItems bool` |
+| `GetItems` / `GetItemsPaginated` | `(ctx, fashionItemIDs, itemType[, pagination])` | `+ filterByFashionItems bool` |
+
+### 7.2 Ngữ nghĩa
+
+| `filterByFashionItems` | `fashionItemIDs` | Hành vi |
+|------------------------|------------------|---------|
+| `false` | (bất kỳ) | Không lọc ⇒ trả tất cả món (kể cả `fashion_item_id` NULL) |
+| `true` | rỗng | Áp bộ lọc rỗng ⇒ 0 kết quả (usecase short-circuit, không query) |
+| `true` | có phần tử | `fashion_item_id IN (...)` |
+
+### 7.3 Call site
+
+- `GetWardrobeItems`: `filterByFashionItems = (categorySlug != nil)`.
+- `GetSystemCatalogWardrobeItems` (fallback DB search) và `catalog_uc.go`: `filterByFashionItems = (queryStr != nil || categorySlug != nil)`.
+- Các caller cũ truyền `nil` với ý nghĩa "không lọc" (`GetByUserID` cho locked-map/outfit) giữ hành vi trả tất cả.
+
+---
+
+## 8. Tín hiệu quan sát realtime (G9 — KHÔNG đổi schema/dữ liệu)
+
+> Best-effort (FR-025) + observability (FR-026). Không thêm bảng/cột; chỉ counter/gauges in-memory theo pattern `shared/infrastructure/messaging/metrics.go`.
+
+### 8.1 Metrics (package `shared/application/sse`, file `realtime_metrics.go`)
+
+| Tên metric | Kiểu | Ý nghĩa | Tăng/giảm tại |
+|------------|------|---------|----------------|
+| `realtime_publish_total` | counter | Số lần publish sự kiện realtime | `RedisRealtimePublisher.Publish` (mọi lần) |
+| `realtime_publish_failed` | counter | Số lần publish lỗi (Redis down/timeout) | nhánh lỗi publish (kèm log warn + taskId) |
+| `realtime_relay_total` | counter | Số sự kiện relay nhận từ Pub/Sub và forward | `RealtimeRelay` khi forward thành công |
+| `realtime_relay_failed` | counter | Số lần relay lỗi/hủy forward | nhánh lỗi relay |
+| `realtime_subscribers` | gauge | Tổng số subscriber đang mở (theo phiên) | `SSEManager.Subscribe`/`Unsubscribe` (atomic +1/−1) |
+
+- Hàm `GetRealtimeMetrics() map[string]int64` phơi qua health payload `GET /api/v1/commerce/health` (khóa `"realtime"`).
+
+### 8.2 Quy tắc hành vi
+
+- Lỗi publish/relay: log `warn` kèm `taskId`; **không** trả lỗi lên usecase/worker; trạng thái DB vẫn được ghi.
+- Gauge `realtime_subscribers` phản ánh số kênh đang mở, không cần chính xác tuyệt đối theo thời điểm.
+- Không thêm config/dependency mới cho metrics.
+
+---
+
+## 9. Phân loại ảnh không hợp lệ + mã hóa lý do (G10 — KHÔNG đổi schema)
+
+> US6/FR-027..FR-036. Không thêm cột/bảng; reason đã ở `fashion_items` (`processing_error_reason`, `review_reason`). Không thêm status mới.
+
+### 9.1 Catalog mã reason (hằng số `fashion/domain/constants/analysisreason`)
+
+| Nhóm | Mã | Ý nghĩa | Trạng thái |
+|------|----|---------|-----------|
+| Review | `uncertain_category` | Ảnh một món nhưng AI chưa chắc category | `needs_review` |
+| Error | `multiple_items_detected` | Ảnh chứa nhiều món | `failed` |
+| Error | `full_body_outfit_detected` | Ảnh toàn thân/outfit | `failed` |
+| Error | `analysis_temporary_error` | Lỗi tạm thời khi phân tích | `failed` |
+| Error | `auto_retry_exceeded` | Hết retry tự động | `failed` |
+
+### 9.2 Định tuyến AI → trạng thái
+
+| Tín hiệu AI | Trạng thái | Reason |
+|-------------|-----------|--------|
+| `is_single_item = false` | `failed` | `multiple_items_detected` / `full_body_outfit_detected` |
+| `is_single_item = true` && `category_confident = false` | `needs_review` | `uncertain_category` |
+| `is_single_item = true` && `category_confident = true` | `completed` | (xóa reason) |
+
+- `FashionMetadataResult` thêm `CategoryConfident bool`. Mặc định an toàn:
+  - thiếu/không xác định `is_single_item` ⇒ ảnh không hợp lệ ⇒ `failed`.
+  - `is_single_item=true` nhưng thiếu/null `category_confident` ⇒ mặc định **false** ⇒ `needs_review` (`uncertain_category`).
+  - mâu thuẫn `is_single_item=false` + `review_reason=uncertain_category` ⇒ ưu tiên ảnh không hợp lệ ⇒ `failed` + `multiple_items_detected`.
+
+### 9.3 State machine cập nhật (WardrobeItem / BrandItem)
+
+```text
+Processing ──(AI ok)──► InWardrobe / active
+Processing ──(AI: ảnh không hợp lệ)──► Failed (+ multiple_items_detected|full_body_outfit_detected)   [không retry]
+Processing ──(AI: một món, chưa chắc category)──► NeedsReview / draft (+ uncertain_category)         [retry kèm category]
+Processing ──(AI fail / exhausted)──► Failed (+ analysis_temporary_error|auto_retry_exceeded)        [retry được]
+```
+
+### 9.4 Hiển thị reason (chỉ nested trong `fashionItem`)
+
+- Bỏ `ReviewReason`/`ProcessingErrorReason` ở root `BrandItemRes`/`BrandItemBriefRes`.
+- `FashionItemContractDTO` (camelCase) và `FashionItemBriefRes` (`reviewReason`, `processingErrorReason`); `FashionItemRes` (wardrobe projection) thêm 2 field.
+- Không thêm field reason ở root `WardrobeItemRes`/`WardrobeItemBriefRes`.
+
+### 9.5 Payload `processing-exhausted` (đổi)
+
+| Trước | Sau |
+|-------|-----|
+| `{ wardrobeItemId, fashionItemId, reason, userId? }` | `{ itemId, itemType ("wardrobe"\|"brand"), fashionItemId, reason, userId? }` |
+
+- Consumer mới cho brand (`QueueBrandProcessingExhausted`) → set brand item `failed`.
+
+### 9.6 Quy tắc gate
+
+- **retry-analysis** (wardrobe/brand): chặn khi `failed` với reason ∈ {`multiple_items_detected`, `full_body_outfit_detected`}; cho phép với `analysis_temporary_error`, `auto_retry_exceeded`, hoặc `needs_review`/`draft-review` (khi đó **bắt buộc** kèm danh mục hợp lệ — xem §10).
+- SSE `error` (event `failed`) = mã reason.
+- Thử lại thất bại ở bước publish job ⇒ MUST ghi `processingErrorReason=analysis_temporary_error` (qua fashion item) cùng lúc set `failed` (FR-036).
+
+---
+
+## 10. Bỏ confirm-review — gộp vào retry kèm danh mục (G11 — KHÔNG đổi schema)
+
+> US1 (viết lại)/FR-001..003/037..041. Không thêm cột/bảng; không thêm status.
+
+### 10.1 API
+
+- **Gỡ** `POST /wardrobe-items/{id}/confirm-review`.
+- `POST /wardrobe-items/{id}/retry-analysis` nhận body tùy chọn `{ "categoryId": "uuid" }`.
+- `POST /brand-portal/brands/{brandId}/items/{itemId}/retry-analysis` nhận body tùy chọn `{ "categoryId": "uuid" }`.
+
+### 10.2 Quy tắc retry theo trạng thái
+
+| Trạng thái | categoryId | Hành vi |
+|-----------|-----------|---------|
+| `NeedsReview` (`uncertain_category`) | **bắt buộc** (request, fallback danh mục có sẵn) | validate wearable → persist danh mục → chạy lại AI **danh mục cố định** |
+| `Failed` (transient) | tùy chọn | nếu có danh mục ⇒ danh mục cố định; nếu không ⇒ phân tích thường |
+| `Failed` (ảnh không hợp lệ) | — | **từ chối** (hướng tải ảnh khác) |
+
+### 10.3 Chế độ phân tích "danh mục cố định"
+
+- `FashionAnalyzeJobDTO` thêm `FixedCategory bool`.
+- Worker (`ProcessBackgroundBatchUploadJob`): khi `FixedCategory` ⇒ dùng prompt **metadata-only** theo danh mục đã biết; **bỏ** gate `is_single_item`/`category_confident`; `PreserveCategory=true` ⇒ không ghi đè danh mục; chỉ ghi metadata + embedding.
+- Kết quả: `NeedsReview → Processing → InWardrobe` (wardrobe) / `active` (brand); lỗi tạm thời ⇒ `Failed`; **không** quay lại `needs_review`.
+
+### 10.4 Prompt fail-fast (initial analyze)
+
+- Thứ tự quyết định và shape tối giản:
+  - (a) Không có món thời trang ⇒ `{ "error": "No fashion item detected" }`.
+  - (b) Ảnh không hợp lệ (đa món/toàn thân) ⇒ `{ "is_single_item": false, "review_reason": "multiple_items_detected" | "full_body_outfit_detected" }`.
+  - (c) Một món nhưng chưa chắc danh mục ⇒ `{ "is_single_item": true, "category_confident": false, "review_reason": "uncertain_category" }`.
+  - (d) Còn lại ⇒ JSON đầy đủ (`category_slug` + metadata + `category_confident: true`).
+- Giữ **1 call, KHÔNG `ResponseSchema`** để fail-fast có tác dụng.
+- Backend vẫn áp default an toàn khi model trả thiếu field (xem §9.2).
+
+### 10.5 State machine cập nhật (WardrobeItem / BrandItem)
+
+```text
+Processing ──(AI ok)──► InWardrobe / active
+Processing ──(AI: ảnh không hợp lệ)──► Failed (+ multiple_items_detected|full_body_outfit_detected)   [không retry]
+Processing ──(AI: một món, chưa chắc category)──► NeedsReview / draft (+ uncertain_category)
+NeedsReview / draft ──(retry + categoryId hợp lệ)──► Processing ──(AI danh mục cố định ok)──► InWardrobe / active
+NeedsReview / draft ──(retry + categoryId, AI lỗi tạm thời)──► Failed (+ analysis_temporary_error)   [retryable]
+```

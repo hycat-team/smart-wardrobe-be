@@ -57,8 +57,8 @@ Tái dùng payload `FashionAnalyzedEventPayload` với `status="processing"` (kh
 |-------|----------|---------|
 | `fashion.event.analyzed.wardrobe/.brand` | completed/needs_review | Không đổi |
 | `fashion.event.failed.wardrobe/.brand` | failed | Brand giờ set `failed` thay vì `draft` |
-| `wardrobe.event.created` | confirm-review publish | Tái dùng để index ES |
-| `fashion.event.analyze` | brand/wardrobe retry job | Job có `preserveCategory` |
+| `wardrobe.event.created` | Phân tích hoàn tất (fashion.event.analyzed.wardrobe) | Tái dùng để index ES; trước đây do confirm-review phát, nay do phân tích lại hoàn tất |
+| `fashion.event.analyze` | brand/wardrobe retry job | Job có `preserveCategory`/`fixedCategory` |
 
 ---
 
@@ -67,6 +67,7 @@ Tái dùng payload `FashionAnalyzedEventPayload` với `status="processing"` (kh
 | Field | Kiểu | Ghi chú |
 |-------|------|---------|
 | `preserveCategory` | bool | **[MỚI]** Khi true, worker không ghi đè `category_id` từ AI |
+| `fixedCategory` | bool | **[MỚI]** Khi true, worker chạy prompt metadata-only theo danh mục đã biết, bỏ gate `is_single_item`/`category_confident` và giữ danh mục (chế độ danh mục cố định, G11) |
 
 ---
 
@@ -79,11 +80,11 @@ Tái dùng payload `FashionAnalyzedEventPayload` với `status="processing"` (kh
   "total": 3,
   "index": 0,
   "data": { "...": "WardrobeItemBriefRes | BrandItemBriefRes" },
-  "error": "thông báo lỗi khi failed"
+  "error": "mã lý do khi failed (ví dụ analysis_temporary_error, multiple_items_detected)"
 }
 ```
 
-Bổ sung giá trị `processing` (additive). `data` vẫn đầy đủ cho `completed`/`needs_review`; `error` cho `failed`.
+Bổ sung giá trị `processing` (additive). `data` vẫn đầy đủ cho `completed`/`needs_review`; `error` cho `failed` và là **mã lý do** (frontend tự ánh xạ sang text).
 
 ---
 
@@ -95,3 +96,29 @@ Bổ sung giá trị `processing` (additive). `data` vẫn đầy đủ cho `com
 - [ ] Consumer handlers: `HandleFashionProcessing` (wardrobe + brand) + dispatch.
 - [ ] Producer: publish trong `analyze_uc.go`.
 - [ ] Không chỉnh `rabbitmq_connection.go` (registry-driven).
+
+---
+
+## 6. G10 — Cập nhật event (bổ sung)
+
+### 6.1 `FashionAnalyzedEventPayload.Error` = mã
+
+- Sự kiện `failed` (`fashion.event.failed.wardrobe|brand`): trường `error` chuyển từ message tiếng Việt sang **mã** (`analysis_temporary_error`, `multiple_items_detected`, `full_body_outfit_detected`). SSE `error` giữ nguyên = mã này.
+
+### 6.2 `fashion.event.processing-exhausted` — payload đổi
+
+| Trước | Sau |
+|-------|-----|
+| `{ wardrobeItemId, fashionItemId, reason, userId? }` | `{ itemId, itemType ("wardrobe"\|"brand"), fashionItemId, reason, userId? }` |
+
+- `reason` = mã `auto_retry_exceeded`.
+- Thêm binding `QueueBrandProcessingExhausted` cho `TopicFashionProcessingExhausted` (+ DLQ entry).
+- Consumer brand mới: `HandleFashionProcessingExhausted` → set brand item `failed`.
+- Nguồn phát hiện: quét stale theo `fashion_items` (fashion sở hữu processing state); map owner qua contract wardrobe/brand.
+
+### 6.3 Checklist topology (G10)
+
+- [ ] `topology.go`: thêm `QueueBrandProcessingExhausted` (bind `RoutingKeyFashionProcessingExhausted`) + entry `DLQTopology`.
+- [ ] Cập nhật consumer wardrobe + ES theo payload mới (`ItemID`/`ItemType`).
+- [ ] Brand worker `processing_exhausted_worker.go` + handler.
+- [ ] Không chỉnh `rabbitmq_connection.go`.

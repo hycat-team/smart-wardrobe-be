@@ -76,5 +76,7 @@ IRealtimePublisher.Publish(taskId,bytes)
 ## 6. Tương thích & vận hành
 
 - Không đổi hợp đồng phía client (SSE payload giữ nguyên).
-- Redis là dependency đã có; nếu Redis Pub/Sub lỗi, realtime có thể suy giảm (event mất) nhưng luồng nghiệp vụ (DB) không bị ảnh hưởng — client có thể refetch.
-- Log lỗi publish/subscribe nhưng không chặn luồng nghiệp vụ.
+- Redis là dependency đã có; nếu Redis Pub/Sub lỗi, realtime có thể suy giảm (event mất) nhưng luồng nghiệp vụ (DB) không bị ảnh hưởng — client có thể refetch (FR-025).
+- `Publish`/relay là **best-effort**: nhánh lỗi Redis log `warn` kèm `taskId` rồi trả về; **không** propagate error lên usecase/worker.
+- **Observability (FR-026)**: counters/gauges in-memory trong `shared/application/sse` — `realtime_publish_total`, `realtime_publish_failed`, `realtime_relay_total`, `realtime_relay_failed`, gauge `realtime_subscribers` — phơi qua `GetRealtimeMetrics()` trong payload `GET /api/v1/commerce/health` (khóa `"realtime"`). Theo pattern `shared/infrastructure/messaging/metrics.go`; không thêm Prometheus/OTel.
+- Health payload chỉ phục vụ vận hành (ops), không phải hợp đồng client — không cần versioning.
