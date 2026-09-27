@@ -285,6 +285,12 @@ type SSE struct {
 	// HeartbeatSeconds is the SSE comment heartbeat keeping Nginx → Cloud Run
 	// streams alive (FR-036). MUST be identical in every environment (shared configs/).
 	HeartbeatSeconds int `mapstructure:"heartbeat_seconds"`
+	// ReplayBufferSize caps how many recent events are kept per analysis session
+	// for SSE replay on reconnect (FR-006, feature 023).
+	ReplayBufferSize int `mapstructure:"replay_buffer_size"`
+	// ReplayBufferTTLSeconds bounds how long a per-session replay buffer is kept
+	// after its last event so late reconnects still replay (FR-006, feature 023).
+	ReplayBufferTTLSeconds int `mapstructure:"replay_buffer_ttl_seconds"`
 }
 
 // BodyLimit configures the tiered request body size limit:

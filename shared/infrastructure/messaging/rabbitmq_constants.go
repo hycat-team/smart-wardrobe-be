@@ -20,6 +20,8 @@ const (
 	RoutingKeyFashionAnalyzedBrand       = eventconstants.TopicFashionAnalyzedBrand
 	RoutingKeyFashionFailedWardrobe      = eventconstants.TopicFashionFailedWardrobe
 	RoutingKeyFashionFailedBrand         = eventconstants.TopicFashionFailedBrand
+	RoutingKeyFashionProcessingWardrobe  = eventconstants.TopicFashionProcessingWardrobe
+	RoutingKeyFashionProcessingBrand     = eventconstants.TopicFashionProcessingBrand
 	RoutingKeyFashionItemCreatedWardrobe = eventconstants.TopicFashionItemCreatedWardrobe
 	RoutingKeyFashionItemCreatedBrand    = eventconstants.TopicFashionItemCreatedBrand
 	RoutingKeyFashionProcessingExhausted = eventconstants.TopicFashionProcessingExhausted

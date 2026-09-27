@@ -202,6 +202,10 @@ func applyEnvOverrides(cfg *Config) {
 		}
 	}
 
+	// SSE replay buffer (feature 023, FR-006).
+	overrideInt("SSE_REPLAY_BUFFER_SIZE", &cfg.Server.SSE.ReplayBufferSize)
+	overrideInt("SSE_REPLAY_BUFFER_TTL_SECONDS", &cfg.Server.SSE.ReplayBufferTTLSeconds)
+
 	// Community feature tuning.
 	overrideInt("COMMUNITY_HOT_WINDOW_DAYS", &cfg.Community.HotWindowDays)
 	overrideFloat("COMMUNITY_HOT_GRAVITY", &cfg.Community.HotGravity)

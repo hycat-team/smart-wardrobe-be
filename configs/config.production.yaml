@@ -16,6 +16,8 @@ server:
         chunk_deadline_seconds: 90
         ai_chat_chunk_deadline_seconds: 30
         heartbeat_seconds: 15
+        replay_buffer_size: 100
+        replay_buffer_ttl_seconds: 300
     body_limit:
         default_mb: 2
         elevated_mb: 10
