@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"strings"
 
@@ -178,13 +179,17 @@ func (s *AIService) logTextGeneration(operation, systemPrompt, userPrompt string
 	)
 }
 
-// newRPMLimiter creates a per-minute limiter with a single-request burst.
+// newRPMLimiter creates a per-minute limiter sized to absorb one second of traffic.
 func newRPMLimiter(rpm int, fallback int) *rate.Limiter {
 	if rpm <= 0 {
 		rpm = fallback
 	}
+	burst := int(math.Ceil(float64(rpm) / 60.0))
+	if burst < 1 {
+		burst = 1
+	}
 
-	return rate.NewLimiter(rate.Limit(float64(rpm)/60.0), 1)
+	return rate.NewLimiter(rate.Limit(float64(rpm)/60.0), burst)
 }
 
 func outErrChanSend(outErr chan<- error, err error) {

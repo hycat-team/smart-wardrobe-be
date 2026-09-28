@@ -276,10 +276,10 @@ ai:
     recommendation_text_timeout_seconds: 45
     vision_timeout_seconds: 20
     embedding_timeout_seconds: 20
-    chat_text_rpm_limit: 15
-    recommendation_text_rpm_limit: 5
-    vision_rpm_limit: 28
-    embedding_rpm_limit: 50
+    chat_text_rpm_limit: 750
+    recommendation_text_rpm_limit: 750
+    vision_rpm_limit: 750
+    embedding_rpm_limit: 750
     chat_max_input_characters: 2000
     chat_history_message_max_characters: 500
     chat_max_output_tokens: 500
@@ -295,7 +295,7 @@ ai:
     recommendation_prompt_max_characters: 18000
     recommendation_max_output_tokens: 600
     free_text_timeout_seconds: 30
-    free_text_rpm_limit: 15
+    free_text_rpm_limit: 500
     usage_reconcile_cron: "0 */10 * * * *"
     usage_reconcile_batch_size: 100
     token_estimation:
