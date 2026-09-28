@@ -2,8 +2,10 @@ package communityerrors
 
 import (
 	"fmt"
+	"strings"
 
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/pkg/utils/numberutils"
 )
 
 func ErrPostNotFound() *apperror.Error {
@@ -36,6 +38,27 @@ func ErrMediaLimitExceeded(limit int) *apperror.Error {
 
 func ErrInvalidMedia() *apperror.Error {
 	return apperror.NewBadRequest("Media không hợp lệ.")
+}
+
+func ErrMediaExtensionNotAllowed(mediaType, ext string, allowed []string) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf(
+		"Định dạng file %s không được phép cho loại media %s. Chỉ chấp nhận: %s.",
+		ext, mediaType, strings.Join(allowed, ", ")))
+}
+
+func ErrMediaTooLarge(mediaType string, limitBytes int64) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf(
+		"Dung lượng media %s không được vượt quá %s.",
+		mediaType, numberutils.FormatBytes(limitBytes)))
+}
+
+func ErrVideoDurationTooLong(limitSeconds int) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf(
+		"Thời lượng video không được vượt quá %d giây.", limitSeconds))
+}
+
+func ErrInvalidResourceType() *apperror.Error {
+	return apperror.NewBadRequest("Loại media không hợp lệ.")
 }
 
 func ErrInvalidMediaOrder() *apperror.Error {

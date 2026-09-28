@@ -178,7 +178,16 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
 - **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
 - **Mô tả:** Lấy mã chữ ký Cloudinary upload signature. Folder tải lên là `smart_wardrobe/brands/{userId}` (dev) hoặc `closy/brands/{userId}` (production). FE dùng chung signature này cho cả logo và ảnh nền.
 - **Response:**
-    - `200 OK`: Trả về kết quả chữ ký `UploadSignatureResult`.
+    - `200 OK`: Trả về kết quả chữ ký `UploadSignatureResult`
+      (`signature`, `timestamp`, `apiKey`, `folder`, `resourceType`).
+- **Lưu ý:** `publicId` **không có** trong response (endpoint này không ký `public_id`).
+  Client **không được** gửi `public_id` lên Cloudinary. Chính vì chữ ký không ràng buộc
+  `public_id` mà **một signature dùng được cho cả logo và ảnh nền** — mỗi ảnh Cloudinary tự sinh
+  `public_id` khác nhau, không ghi đè lẫn nhau.
+- **Form upload:** = các field đã ký + `file` + `api_key` + `signature`. Endpoint này ký
+  2 field (`timestamp`, `folder`) nên gửi **đúng 5 field**: `file`, `api_key`, `timestamp`,
+  `signature`, `folder`. Thêm field nào ngoài danh sách này (kể cả `public_id`, `eager`, `tags`)
+  hoặc bỏ field nào đều làm lệch chữ ký → upload bị từ chối.
 
 ### 3. Cập nhật logo và/hoặc ảnh nền của thương hiệu
 

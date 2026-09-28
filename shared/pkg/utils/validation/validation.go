@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/pkg/utils/numberutils"
 	"strconv"
 	"strings"
 	"unicode"
@@ -217,7 +218,7 @@ func TranslateValidationError(err error) *apperror.Error {
 	var maxBytesErr *http.MaxBytesError
 	if errors.As(err, &maxBytesErr) {
 		return apperror.NewRequestEntityTooLarge(
-			fmt.Sprintf("Dữ liệu gửi lên vượt quá giới hạn %dMB.", maxBytesErr.Limit>>20),
+			fmt.Sprintf("Dữ liệu gửi lên vượt quá giới hạn %s.", numberutils.FormatBytes(maxBytesErr.Limit)),
 		)
 	}
 

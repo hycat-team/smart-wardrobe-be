@@ -17,7 +17,10 @@ AR_HOST ?= asia-southeast1-docker.pkg.dev
 AR_PROJECT ?= closy-hycat
 AR_REPO ?= closy
 GHCR_OWNER ?= hycat
-GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+# Redirect to both: `2>/dev/null` for POSIX shells, `2>NUL` for Windows cmd.exe.
+# Without the second form, every make run on Windows prints
+# "The system cannot find the path specified." and GIT_SHA silently falls back to `dev`.
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null 2>NUL || echo dev)
 
 # Migration (Goose) connection variables (shared by all services)
 DB_HOST ?= localhost
@@ -92,7 +95,7 @@ help:
 	@echo "  make docker-help    : Docker Compose development & production targets"
 	@echo "  make migration-help : Database migration (Goose) commands"
 	@echo "  make tools-help     : Local development tools installation helper"
-  @echo "  make platform-help  : Registry / ingress targets (020)"
+	@echo "  make platform-help  : Registry / ingress targets (020)"
 	@echo "Per-service targets take svc=<account|commerce|ai>, e.g. make build svc=ai"
 	@echo "========================================================================"
 

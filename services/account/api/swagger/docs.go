@@ -2214,6 +2214,10 @@ const docTemplate = `{
         "dto.UploadSignatureResult": {
             "type": "object",
             "properties": {
+                "allowedFormats": {
+                    "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+                    "type": "string"
+                },
                 "apiKey": {
                     "type": "string"
                 },

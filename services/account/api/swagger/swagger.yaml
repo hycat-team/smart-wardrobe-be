@@ -38,6 +38,11 @@ definitions:
     type: object
   dto.UploadSignatureResult:
     properties:
+      allowedFormats:
+        description: |-
+          AllowedFormats must be sent back verbatim in the upload form; Cloudinary
+          recomputes the signature from the received fields, so omitting it fails.
+        type: string
       apiKey:
         type: string
       folder:

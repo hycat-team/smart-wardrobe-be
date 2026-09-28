@@ -19,6 +19,31 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
 - **Tác nhân (Actor):** Khách hàng (User).
 - **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
 - **Mô tả:** Lấy Cloudinary signature phục vụ client tải ảnh quần áo trực tiếp lên Cloudinary.
+- **Response:** `200 OK` — `WardrobeUploadSignatureRes`:
+
+    | Field | JSON | Kiểu | Ý nghĩa |
+    |-------|------|------|---------|
+    | Signature | `signature` | string | Chữ ký Cloudinary |
+    | Timestamp | `timestamp` | int64 | Thời điểm ký |
+    | ApiKey | `apiKey` | string | API key Cloudinary |
+    | Folder | `folder` | string | Thư mục lưu ảnh |
+    | ResourceType | `resourceType` | string | `image` |
+    | RemainingSlots | `remainingSlots` | int | Số chỗ còn trong tủ theo gói đăng ký |
+    | MaxItems | `maxItems` | int | Tổng số chỗ tối đa theo gói |
+    | CurrentItems | `currentItems` | int | Số trang phục đang có |
+
+> **`publicId` không có trong response** (`omitempty`) — endpoint này không ký `public_id`.
+> Client **không được** gửi `public_id` lên Cloudinary; Cloudinary tự sinh `public_id` cho mỗi
+> ảnh và client đọc giá trị đó từ response upload.
+>
+> **Một signature dùng được cho N ảnh:** chữ ký chỉ gồm `folder` + `timestamp`, không ràng buộc
+> `public_id` nên mỗi ảnh tải lên sẽ tự sinh `public_id` khác nhau, không ghi đè lẫn nhau.
+> Chữ ký có hiệu lực 1 giờ. Xem luồng 2 bước ở mục [6. Tải lên hàng loạt](#6-tải-lên-hàng-loạt-hình-ảnh-quần-áo).
+>
+> **Form upload = các field đã ký + `file` + `api_key` + `signature`.** Endpoint này ký
+> 2 field (`timestamp`, `folder`) nên form gửi **đúng 5 field**: `file`, `api_key`,
+> `timestamp`, `signature`, `folder`. Thêm field nào ngoài danh sách này (kể cả `public_id`,
+> `eager`, `tags`) hoặc bỏ field nào đều làm lệch chữ ký → upload bị từ chối.
 
 ### 2. Lấy danh sách quần áo trong tủ đồ của tôi
 
@@ -53,16 +78,46 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
 - **Endpoint:** `POST /api/v1/wardrobe-items/batch-upload`
 - **Tác nhân (Actor):** Khách hàng (User).
 - **Đối tượng ảnh hưởng:** Tạo nhiều bản ghi quần áo ở trạng thái xử lý và khởi chạy job phân tích AI (AI analysis).
-- **Mô tả:** Tạo nhanh nhiều vật phẩm quần áo dựa trên danh sách các ảnh đã được tải lên Cloudinary trước đó. Trả về mã trạng thái HTTP `202 Accepted` kèm theo một `taskId` đại diện cho phiên upload này để client có thể theo dõi tiến trình qua luồng SSE.
+- **Mô tả:** Tạo nhanh nhiều vật phẩm quần áo dựa trên danh sách các ảnh đã được tải lên Cloudinary trước đó. Trả về mã trạng thái HTTP `202 Accepted`; mỗi vật phẩm mang `taskId` để client theo dõi tiến trình phân tích AI qua luồng SSE.
+- **Luồng 2 bước:**
+    1. Gọi `GET /api/v1/wardrobe-items/upload-signature` **một lần**.
+    2. Tải **N ảnh** lên Cloudinary dùng chung signature đó (mỗi ảnh tự sinh `public_id` riêng).
+    3. Gọi endpoint này, truyền `imageUrl` (= `secure_url` từ response upload) và `imagePublicId`
+       (= `public_id` từ response upload) cho **từng** ảnh.
+- **Request Body:**
+    ```json
+    {
+        "items": [
+            {
+                "categoryId": "3f2b6c1e-9a44-4c2e-8c11-0b2a4d5e6f70",
+                "imageUrl": "https://res.cloudinary.com/.../a.jpg",
+                "imagePublicId": "smart_wardrobe/items/abc123"
+            }
+        ]
+    }
+    ```
+    - `items` (required) — danh sách ảnh, tối thiểu 1 phần tử. **Không có giới hạn cứng**; với
+      user thì bị chặn khi vượt `maxItems` của gói đăng ký, admin thì không giới hạn.
+    - Mỗi phần tử:
+        - `imageUrl` (required) — URL ảnh đã tải lên (dùng `secure_url`).
+        - `imagePublicId` (required) — `public_id` Cloudinary trả về. Bắt buộc vì cột
+          `fashion_items.image_public_id` là `NOT NULL` và backend không thể suy ra giá trị này.
+        - `categoryId` (optional) — danh mục của trang phục.
 - **Response:**
-    - `202 Accepted`:
+    - `202 Accepted` — mảng `WardrobeItemBriefRes`, mỗi phần tử gồm
+      `{ id, status, isLocked, taskId?, fashionItem?, fashionItemId?, brandItem?, price?, lastUsedAt? }`.
+      `taskId` nằm ở **từng phần tử** (dùng để theo dõi SSE), không phải ở gốc `data`.
         ```json
         {
-            "success": true,
-            "message": "Upload hàng loạt thành công, đang tiến hành phân tích nền",
-            "data": {
-                "taskId": "a2bc3d4e-5f6g-7h8i-9j0k-1l2m3n4o5p6q"
-            }
+            "message": "Tải lên và bắt đầu phân tích hàng loạt thành công",
+            "data": [
+                {
+                    "id": "8c1f2a3b-4d5e-6f70-8192-a3b4c5d6e7f8",
+                    "status": "processing",
+                    "isLocked": false,
+                    "taskId": "a2bc3d4e-5f6g-7h8i-9j0k-1l2m3n4o5p6q"
+                }
+            ]
         }
         ```
 

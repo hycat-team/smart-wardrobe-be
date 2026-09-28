@@ -36,9 +36,11 @@ Tài liệu đặc tả các API cộng đồng (bài đăng, bảng tin, like, 
 - **Endpoint:** `GET /api/v1/posts/upload-signature`
 - **Tác nhân (Actor):** Người dùng đã đăng nhập.
 - **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
-- **Mô tả:** Lấy Cloudinary signature để client tải ảnh/video trực tiếp lên Cloudinary.
+- **Mô tả:** Lấy Cloudinary signature để client tải ảnh/video trực tiếp lên Cloudinary. Chữ ký
+  bao gồm `allowed_formats` nên Cloudinary **từ chối** file ngoài danh sách định dạng cho phép.
 - **Query Parameters:**
     - `resourceType` (string, optional) — `image` (mặc định) | `video`. Tham chiếu [constants.md#3-loai-media-mediatype](constants.md#3-loại-media-mediatype).
+      Giá trị khác `image`/`video` → **400** (không fallback).
 - **Response:** `200 OK` — `UploadSignatureResult`:
 
 | Field | JSON | Kiểu | Ý nghĩa |
@@ -46,9 +48,21 @@ Tài liệu đặc tả các API cộng đồng (bài đăng, bảng tin, like, 
 | Signature | `signature` | string | Chữ ký Cloudinary |
 | Timestamp | `timestamp` | int64 | Thời điểm ký |
 | ApiKey | `apiKey` | string | API key Cloudinary |
-| PublicID | `publicId` | string | Mã media (có thể rỗng) |
+| PublicID | `publicId` | string | **Vắng** — endpoint này không ký `public_id`, xem ghi chú bên dưới |
 | Folder | `folder` | string | Thư mục lưu media |
 | ResourceType | `resourceType` | string | `image` hoặc `video` |
+| AllowedFormats | `allowedFormats` | string | Danh sách định dạng cách nhau bằng dấu phẩy (ví dụ `jpg,jpeg,png,webp,avif,gif`) |
+
+> **Bắt buộc khi upload:** form multipart = **các field đã ký + `file` + `api_key` + `signature`**.
+> Endpoint này ký 3 field (`timestamp`, `folder`, `allowed_formats`) nên gửi **đúng 6 field**:
+> `file`, `api_key`, `timestamp`, `signature`, `folder`, `allowedFormats`.
+> Cloudinary tự tính lại chữ ký từ các field client thực sự gửi, nên thêm (kể cả `public_id`,
+> `overwrite`), bớt hoặc đổi giá trị đều khiến upload bị từ chối. `allowedFormats` phải gửi
+> **nguyên văn**.
+>
+> `publicId` **vắng** ở endpoint này: Cloudinary tự sinh `public_id` sau khi upload, client đọc
+> giá trị đó rồi gửi ngược lên backend trong `media[].publicId`. Riêng endpoint
+> `GET /api/v1/me/avatar-signature` là nơi **duy nhất** trả `publicId` và bắt buộc phải gửi lại.
 
 ### 4. Tạo bài đăng
 
@@ -64,7 +78,13 @@ Tài liệu đặc tả các API cộng đồng (bài đăng, bảng tin, like, 
         "content": "Phối đồ đi làm mùa thu",
         "outfitId": "3f2b6c1e-9a44-4c2e-8c11-0b2a4d5e6f70",
         "media": [
-            { "mediaType": "image", "mediaUrl": "https://res.cloudinary.com/.../a.jpg", "publicId": "posts/a", "sortOrder": 0 }
+            {
+                "mediaType": "image",
+                "mediaUrl": "https://res.cloudinary.com/.../a.jpg",
+                "publicId": "posts/a",
+                "sortOrder": 0,
+                "bytes": 248120
+            }
         ]
     }
     ```
@@ -73,6 +93,16 @@ Tài liệu đặc tả các API cộng đồng (bài đăng, bảng tin, like, 
     - `content` (optional) — tối đa `max_content_length` (5000).
     - `outfitId` (optional) — bắt buộc khi `postType='outfit'`; phải thuộc sở hữu người đăng.
     - `media` (optional) — tối đa `max_media_per_post` (10); mỗi media có `mediaType` [constants.md#3](constants.md#3-loại-media-mediatype).
+    - Mỗi phần tử `media`:
+        - `mediaType` (required) — `image` | `video` [constants.md#3](constants.md#3-loại-media-mediatype).
+        - `mediaUrl` (required) — URL hợp lệ. Phần mở rộng ở cuối path (nếu có) phải thuộc
+          danh sách cho phép của `mediaType` → sai thì **400**. URL không có phần mở rộng vẫn được chấp nhận.
+        - `publicId` (optional) — mã media phía Cloudinary.
+        - `sortOrder` (required) — không trùng trong cùng bài.
+        - `bytes` (optional, > 0) — kích thước file do client khai báo. Vượt `max_image_bytes`
+          (ảnh) hoặc `max_video_bytes` (video) → **400**. Bỏ trống = không kiểm tra.
+        - `durationSeconds` (optional, > 0) — thời lượng video, chỉ áp dụng `mediaType='video'`.
+          Vượt `max_video_duration_seconds` → **400**. Bỏ trống = không kiểm tra.
 - **Response:** `201 Created` — `PostRes`.
 
 ### 5. Cập nhật bài đăng

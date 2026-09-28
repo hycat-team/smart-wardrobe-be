@@ -53,28 +53,7 @@ func (uc *PostUseCase) validatePostInput(pt posttype.PostType, title *string, co
 	if strings.TrimSpace(content) == "" && len(media) == 0 {
 		return communityerrors.ErrEmptyPostBody()
 	}
-	for _, m := range media {
-		if !mediatype.MediaType(m.MediaType).IsValid() {
-			return communityerrors.ErrInvalidMedia()
-		}
-	}
-	return validateMediaOrder(media)
-}
-
-// validateMediaOrder requires every media item to carry a sort order and
-// forbids duplicates. Any int16 value is accepted (no range restriction).
-func validateMediaOrder(media []dto.PostMediaReq) error {
-	seen := make(map[int16]struct{}, len(media))
-	for _, m := range media {
-		if m.SortOrder == nil {
-			return communityerrors.ErrInvalidMediaOrder()
-		}
-		if _, dup := seen[*m.SortOrder]; dup {
-			return communityerrors.ErrInvalidMediaOrder()
-		}
-		seen[*m.SortOrder] = struct{}{}
-	}
-	return nil
+	return uc.validateMediaItems(media)
 }
 
 func (uc *PostUseCase) validateOutfitOwnership(ctx context.Context, userID uuid.UUID, outfitID *uuid.UUID) (*wardrobe_dto.OutfitContractDTO, error) {

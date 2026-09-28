@@ -77,6 +77,7 @@ Custom validators registered at startup via `validator` tags:
 | `jwtutils` | JWT token validation and parsing |
 | `stringutils` | String manipulation helpers |
 | `sliceutils` | Slice operation helpers |
+| `numberutils` | Numeric and byte-size formatting helpers |
 | `timeutils` | Time formatting and calculation helpers |
 | `streamutils` | Streaming / chunking helpers |
 | `colorutils` | Color conversion utilities |

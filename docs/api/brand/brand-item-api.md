@@ -74,7 +74,15 @@ Người dùng duyệt xem các mẫu thiết kế mới của nhãn hàng, có 
 - **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
 - **Mô tả:** Lấy mã chữ ký Cloudinary upload signature để phía client có thể tải ảnh thiết kế trực tiếp lên Cloudinary. Sau khi tải lên thành công, client sử dụng hai trường `imageUrl` và `imagePublicId` để gọi tiếp API tạo sản phẩm.
 - **Response:**
-    - `200 OK`: Trả về kết quả chữ ký `UploadSignatureResult`.
+    - `200 OK`: Trả về kết quả chữ ký `UploadSignatureResult`
+      (`signature`, `timestamp`, `apiKey`, `folder`, `resourceType`).
+- **Lưu ý:** `publicId` **không có** trong response (endpoint này không ký `public_id`).
+  Client **không được** gửi `public_id` lên Cloudinary; Cloudinary tự sinh `public_id` và client
+  đọc từ response upload để điền vào `imagePublicId`.
+- **Form upload:** = các field đã ký + `file` + `api_key` + `signature`. Endpoint này ký
+  2 field (`timestamp`, `folder`) nên gửi **đúng 5 field**: `file`, `api_key`, `timestamp`,
+  `signature`, `folder`. Thêm field nào ngoài danh sách này (kể cả `public_id`, `eager`, `tags`)
+  hoặc bỏ field nào đều làm lệch chữ ký → upload bị từ chối.
 
 ### 2. Tạo mới một sản phẩm hoặc mẫu thiết kế ảo trong hệ thống
 

@@ -11,10 +11,12 @@ import (
 )
 
 type PostMediaReq struct {
-	MediaType string  `json:"mediaType" binding:"required,oneof=image video" label:"loại media"`
-	MediaURL  string  `json:"mediaUrl" binding:"required,url" label:"đường dẫn media"`
-	PublicID  *string `json:"publicId" label:"mã media"`
-	SortOrder *int16  `json:"sortOrder" binding:"required" label:"thứ tự hiển thị"`
+	MediaType       string   `json:"mediaType" binding:"required,oneof=image video" label:"loại media"`
+	MediaURL        string   `json:"mediaUrl" binding:"required,url" label:"đường dẫn media"`
+	PublicID        *string  `json:"publicId" label:"mã media"`
+	SortOrder       *int16   `json:"sortOrder" binding:"required" label:"thứ tự hiển thị"`
+	Bytes           *int64   `json:"bytes" binding:"omitempty,gt=0" label:"kích thước media (byte)"`
+	DurationSeconds *float64 `json:"durationSeconds" binding:"omitempty,gt=0" label:"thời lượng video (giây)"`
 }
 
 type CreatePostReq struct {

@@ -12,6 +12,15 @@ Tài liệu này đặc tả các API liên quan đến bộ phối đồ (outfi
 - **Tác nhân (Actor):** Khách hàng (User).
 - **Đối tượng ảnh hưởng:** Không thay đổi dữ liệu nghiệp vụ.
 - **Mô tả:** Lấy Cloudinary signature phục vụ client tải ảnh chụp/render cover của outfit lên Cloudinary.
+- **Response:** `200 OK` — `UploadSignatureResult`
+  (`signature`, `timestamp`, `apiKey`, `folder`, `resourceType`).
+- **Lưu ý:** `publicId` **không có** trong response (endpoint này không ký `public_id`).
+  Client **không được** gửi `public_id` lên Cloudinary; Cloudinary tự sinh `public_id` và client
+  đọc từ response upload.
+- **Form upload:** = các field đã ký + `file` + `api_key` + `signature`. Endpoint này ký
+  2 field (`timestamp`, `folder`) nên gửi **đúng 5 field**: `file`, `api_key`, `timestamp`,
+  `signature`, `folder`. Thêm field nào ngoài danh sách này (kể cả `public_id`, `eager`, `tags`)
+  hoặc bỏ field nào đều làm lệch chữ ký → upload bị từ chối.
 
 ### 2. Lưu bộ phối đồ (outfit) tự thiết kế mới
 

@@ -45,6 +45,13 @@ func (s *CloudinaryService) GenerateUploadSignature(ctx context.Context, params 
 		paramsMap["overwrite"] = "true"
 	}
 
+	// Signing allowed_formats is what makes the format restriction enforceable:
+	// Cloudinary recomputes the signature from the fields the client actually
+	// sent, so dropping this field from the upload request fails verification.
+	if params.AllowedFormats != "" {
+		paramsMap["allowed_formats"] = params.AllowedFormats
+	}
+
 	var keys []string
 	for k := range paramsMap {
 		keys = append(keys, k)
@@ -64,12 +71,13 @@ func (s *CloudinaryService) GenerateUploadSignature(ctx context.Context, params 
 	signature := hex.EncodeToString(hash.Sum(nil))
 
 	return &dto.UploadSignatureResult{
-		Signature:    signature,
-		Timestamp:    timestamp,
-		ApiKey:       s.cfg.Cloudinary.ApiKey,
-		PublicID:     params.PublicID,
-		Folder:       params.Folder,
-		ResourceType: resourceType,
+		Signature:      signature,
+		Timestamp:      timestamp,
+		ApiKey:         s.cfg.Cloudinary.ApiKey,
+		PublicID:       params.PublicID,
+		Folder:         params.Folder,
+		ResourceType:   resourceType,
+		AllowedFormats: params.AllowedFormats,
 	}, nil
 }
 

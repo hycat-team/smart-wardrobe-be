@@ -8672,6 +8672,10 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UploadSignatureResult": {
             "type": "object",
             "properties": {
+                "allowedFormats": {
+                    "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+                    "type": "string"
+                },
                 "apiKey": {
                     "type": "string"
                 },
@@ -9157,6 +9161,12 @@ const docTemplate = `{
                 "sortOrder"
             ],
             "properties": {
+                "bytes": {
+                    "type": "integer"
+                },
+                "durationSeconds": {
+                    "type": "number"
+                },
                 "mediaType": {
                     "type": "string",
                     "enum": [
@@ -9327,6 +9337,10 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UploadSignatureResult": {
             "type": "object",
             "properties": {
+                "allowedFormats": {
+                    "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+                    "type": "string"
+                },
                 "apiKey": {
                     "type": "string"
                 },
@@ -11071,6 +11085,10 @@ const docTemplate = `{
         "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes": {
             "type": "object",
             "properties": {
+                "allowedFormats": {
+                    "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+                    "type": "string"
+                },
                 "apiKey": {
                     "type": "string"
                 },
@@ -11177,6 +11195,10 @@ const docTemplate = `{
         "smart-wardrobe-be_shared_application_dto.UploadSignatureResult": {
             "type": "object",
             "properties": {
+                "allowedFormats": {
+                    "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+                    "type": "string"
+                },
                 "apiKey": {
                     "type": "string"
                 },

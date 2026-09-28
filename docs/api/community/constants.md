@@ -26,8 +26,14 @@ Các hằng số dùng trong API module Community (bài đăng, like, bình lu�
 
 *   **Đường dẫn package:** `.../domain/constants/mediatype`
 *   **Các giá trị hợp lệ:**
-    *   `image`: Ảnh (jpg/png/webp).
-    *   `video`: Video (mp4/webm, tối đa 60 giây).
+    *   `image`: Ảnh — chỉ nhận phần mở rộng `jpg`, `jpeg`, `png`, `webp`, `avif`, `gif`.
+    *   `video`: Video — chỉ nhận phần mở rộng `mp4`, `webm`, `mov`, `m4v`, `mkv`, `avi`
+        (tối đa 60 giây).
+
+> Phần mở rộng được lấy từ cuối đường dẫn URL (bỏ qua query string và fragment) và so sánh
+> không phân biệt hoa thường. Media URL **không có** phần mở rộng vẫn được chấp nhận, để
+> các URL delivery dạng extension-less (ví dụ `f_auto`) tiếp tục hoạt động. Danh sách này
+> đồng thời được ký vào Cloudinary qua `allowed_formats` khi lấy upload signature.
 
 ## 4. Loại bảng tin (FeedType)
 
@@ -78,9 +84,9 @@ Các ngưỡng dưới đây điều khiển validate và rate limit; giá trị
 | Khóa config | Mặc định | Ý nghĩa |
 |---|---|---|
 | `max_media_per_post` | 10 | Số media tối đa mỗi bài. |
-| `max_image_bytes` | 10485760 (10 MB) | Kích thước ảnh tối đa. |
-| `max_video_bytes` | 104857600 (100 MB) | Kích thước video tối đa. |
-| `max_video_duration_seconds` | 60 | Thời lượng video tối đa (giây). |
+| `max_image_bytes` | 10485760 (10 MB) | Kích thước ảnh tối đa. So với `bytes` do client khai báo. |
+| `max_video_bytes` | 104857600 (100 MB) | Kích thước video tối đa. So với `bytes` do client khai báo. |
+| `max_video_duration_seconds` | 60 | Thời lượng video tối đa (giây). So với `durationSeconds` do client khai báo. |
 | `max_title_length` | 150 | Độ dài tiêu đề tối đa (ký tự). |
 | `max_content_length` | 5000 | Độ dài nội dung bài tối đa (ký tự). |
 | `max_comment_length` | 1000 | Độ dài bình luận tối đa (ký tự). |
@@ -90,3 +96,27 @@ Các ngưỡng dưới đây điều khiển validate và rate limit; giá trị
 | `like_rate_limit_per_hour` | 600 | Số thao tác like tối đa/giờ/user. |
 | `search_content_prefix_chars` | 200 | Số ký tự đầu của nội dung dùng để so khớp tìm kiếm bài. |
 | `search_user_candidate_cap` | 500 | Số ứng viên người dùng tối đa lấy từ Account khi tìm kiếm. |
+
+### Cách `max_image_bytes`, `max_video_bytes`, `max_video_duration_seconds` được enforce
+
+Ba ngưỡng này **được backend kiểm tra** khi tạo/sửa bài đăng, dựa trên hai field **optional**
+mà client gửi lên trong mỗi phần tử `media`:
+
+| Field | Ý nghĩa | Bỏ trống thì |
+|---|---|---|
+| `bytes` | Kích thước file (byte) | Không kiểm tra kích thước |
+| `durationSeconds` | Thời lượng video (giây), chỉ áp dụng cho `mediaType=video` | Không kiểm tra thời lượng |
+
+Giá trị config `<= 0` nghĩa là tắt kiểm tra tương ứng.
+
+Thông điệp lỗi vượt kích thước hiển thị ngưỡng theo đơn vị tự nhiên (KB/MB), ví dụ
+`Dung lượng media image không được vượt quá 10 MB.`, nên khi đổi `max_image_bytes` sang giá trị
+không tròn MB (VD 1.5 MB) thì thông điệp vẫn chính xác.
+
+> **Giới hạn đã biết:** đây là dữ liệu **client tự khai báo** — client có thể bỏ trống để
+> không bị kiểm tra. Cloudinary **không** cung cấp tham số giới hạn kích thước/thời lượng
+> có thể ký vào upload signature (chỉ `allowed_formats` là enforce được ở tầng Cloudinary).
+> Vì vậy FE vẫn nên validate phía client trước khi upload.
+
+Phần mở rộng file thì **không** phụ thuộc dữ liệu tự khai báo: nó lấy từ `mediaUrl` và được
+Cloudinary enforce độc lập qua `allowed_formats` đã ký.

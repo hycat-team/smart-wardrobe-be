@@ -19,6 +19,9 @@ func sortOrderPtr(v int16) *int16 { return &v }
 func testConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.Community.MaxMediaPerPost = 10
+	cfg.Community.MaxImageBytes = 10485760
+	cfg.Community.MaxVideoBytes = 104857600
+	cfg.Community.MaxVideoDurationSeconds = 60
 	cfg.Community.MaxTitleLength = 150
 	cfg.Community.MaxContentLength = 5000
 	cfg.Community.MaxCommentLength = 1000

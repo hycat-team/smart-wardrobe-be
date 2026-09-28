@@ -1699,6 +1699,10 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_brand_application_dto.UploadSignatureResult": {
       "properties": {
+        "allowedFormats": {
+          "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+          "type": "string"
+        },
         "apiKey": {
           "type": "string"
         },
@@ -2179,6 +2183,12 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.PostMediaReq": {
       "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "durationSeconds": {
+          "type": "number"
+        },
         "mediaType": {
           "enum": [
             "image",
@@ -2354,6 +2364,10 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_community_application_dto.UploadSignatureResult": {
       "properties": {
+        "allowedFormats": {
+          "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+          "type": "string"
+        },
         "apiKey": {
           "type": "string"
         },
@@ -4098,6 +4112,10 @@
     },
     "smart-wardrobe-be_services_commerce_internal_modules_wardrobe_application_dto.WardrobeUploadSignatureRes": {
       "properties": {
+        "allowedFormats": {
+          "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+          "type": "string"
+        },
         "apiKey": {
           "type": "string"
         },
@@ -4204,6 +4222,10 @@
     },
     "smart-wardrobe-be_shared_application_dto.UploadSignatureResult": {
       "properties": {
+        "allowedFormats": {
+          "description": "AllowedFormats must be sent back verbatim in the upload form; Cloudinary\nrecomputes the signature from the received fields, so omitting it fails.",
+          "type": "string"
+        },
         "apiKey": {
           "type": "string"
         },

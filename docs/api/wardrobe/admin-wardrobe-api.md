@@ -14,6 +14,10 @@ Tài liệu này đặc tả các API quản trị liên quan đến tủ đồ 
     - `POST /api/v1/admin/wardrobe-items/batch-upload`
 - **Tác nhân (Actor):** Quản trị viên (Admin).
 - **Mô tả:** Thực hiện quản lý thêm, sửa, xóa catalog quần áo mẫu của hệ thống.
+- **Lưu ý về upload:** `upload-signature` trả `remainingSlots`/`maxItems`/`currentItems` bằng `-1`
+  (admin không bị giới hạn quota). `publicId` **không có** trong response; client không được gửi
+  `public_id` lên Cloudinary. Xem luồng 2 bước tại
+  [wardrobe-api.md mục 6](wardrobe-api.md#6-tải-lên-hàng-loạt-hình-ảnh-quần-áo).
 
 ---
 
