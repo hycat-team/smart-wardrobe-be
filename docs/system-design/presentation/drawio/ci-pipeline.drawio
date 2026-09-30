@@ -1,0 +1,43 @@
+<mxfile host="Electron">
+  <diagram name="CI Pipeline" id="0">
+    <mxGraphModel dx="1585" dy="963" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1620" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#F3F1F8;strokeColor=#B7A9C9;strokeWidth=2;" value="push / PR&#xa;→ main" vertex="1">
+          <mxGeometry height="100" width="200" x="29" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;arcSize=6;html=1;whiteSpace=wrap;verticalAlign=top;align=left;fontSize=17;fontColor=#000000;fillColor=none;strokeColor=default;strokeWidth=2;dashed=1;spacingLeft=14;spacingTop=10;" value="8 jobs run in parallel" vertex="1">
+          <mxGeometry height="570" width="1000" x="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="fmt-check&#xa;tidy-check&#xa;generate-check" vertex="1">
+          <mxGeometry height="200" width="215" x="330" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="make vet" vertex="1">
+          <mxGeometry height="200" width="215" x="571" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="make test" vertex="1">
+          <mxGeometry height="200" width="215" x="812" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="make test-race" vertex="1">
+          <mxGeometry height="200" width="215" x="1053" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="make build&#xa;× 3 services" vertex="1">
+          <mxGeometry height="200" width="215" x="330" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;fontFamily=Helvetica;" value="buf-lint&#xa;buf-gen + git diff" vertex="1">
+          <mxGeometry height="200" width="215" x="571" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;fontFamily=Helvetica;" value="swagger-all&#xa;nginx-check" vertex="1">
+          <mxGeometry height="200" width="215" x="812" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#000000;fillColor=#FFFFFF;strokeColor=default;strokeWidth=2;" value="docker build&#xa;× 3 services" vertex="1">
+          <mxGeometry height="200" width="215" x="1053" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="2" style="rounded=0;html=1;fontSize=17;fontColor=#000000;labelBackgroundColor=#FFFFFF;strokeColor=default;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

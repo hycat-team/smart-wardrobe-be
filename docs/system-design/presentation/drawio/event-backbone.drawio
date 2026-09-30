@@ -1,0 +1,48 @@
+<mxfile host="Electron">
+  <diagram name="Event Backbone" id="0">
+    <mxGraphModel dx="1261" dy="736" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1040" pageHeight="400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="Business modules" vertex="1">
+          <mxGeometry height="86" width="221" x="279" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="outbox_records" vertex="1">
+          <mxGeometry height="86" width="221" x="279" y="152" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="OutboxWorker" vertex="1">
+          <mxGeometry height="86" width="221" x="279" y="284" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="Topic exchange" vertex="1">
+          <mxGeometry height="86" width="216" x="620" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="16 queues" vertex="1">
+          <mxGeometry height="86" width="216" x="620" y="152" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;strokeWidth=2;fontColor=default;" value="Consumer modules" vertex="1">
+          <mxGeometry height="86" width="216" x="620" y="284" as="geometry" />
+        </mxCell>
+        <mxCell id="8" edge="1" parent="1" source="2" style="rounded=0;html=1;fontSize=17;fontColor=default;labelBackgroundColor=#FFFFFF;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="3" value="one transaction">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9" edge="1" parent="1" source="3" style="rounded=0;html=1;fontSize=17;fontColor=default;labelBackgroundColor=#FFFFFF;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="4" value="poll 2s">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="10" edge="1" parent="1" source="4" style="rounded=0;html=1;fontSize=17;fontColor=default;labelBackgroundColor=#FFFFFF;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="5" value="publish">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="327" />
+              <mxPoint x="540" y="63" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="5" style="rounded=0;html=1;fontSize=17;fontColor=default;labelBackgroundColor=#FFFFFF;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="6" value="route by topic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="6" style="rounded=0;html=1;fontSize=17;fontColor=default;labelBackgroundColor=#FFFFFF;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="7" value="consume">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

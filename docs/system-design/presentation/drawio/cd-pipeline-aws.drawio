@@ -1,0 +1,49 @@
+<mxfile host="Electron">
+  <diagram name="CD AWS" id="0">
+    <mxGraphModel dx="1717" dy="1043" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#F3F1F8;strokeColor=#B7A9C9;strokeWidth=2;" value="tag aws-*" vertex="1">
+          <mxGeometry height="70" width="280" x="50" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#FFFFFF;strokeColor=#C3CEDA;strokeWidth=2;" value="plan&#xa;service matrix" vertex="1">
+          <mxGeometry height="190" width="290" x="45" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#FFF7E8;strokeColor=#D9B96B;strokeWidth=2;" value="build-push&#xa;→ GHCR" vertex="1">
+          <mxGeometry height="190" width="290" x="361" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="fiMwUAKBVwFvNh_wYbF_-16" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" target="13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#FDF0EF;strokeColor=#D08C86;strokeWidth=2;" value="deploy&#xa;manual gate" vertex="1">
+          <mxGeometry height="190" width="290" x="677" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#FFFFFF;strokeColor=#C3CEDA;strokeWidth=2;" value="reload-nginx&#xa;route map" vertex="1">
+          <mxGeometry height="190" width="290" x="993" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#EDF6EF;strokeColor=#8FBF9C;strokeWidth=2;" value="smoke-all&#xa;3 services" vertex="1">
+          <mxGeometry height="190" width="290" x="1309" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="8" edge="1" parent="1" source="2" style="rounded=0;html=1;fontSize=17;fontColor=#5B6B7D;labelBackgroundColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9" edge="1" parent="1" source="3" style="rounded=0;html=1;fontSize=17;fontColor=#5B6B7D;labelBackgroundColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="10" edge="1" parent="1" source="4" style="rounded=0;html=1;fontSize=17;fontColor=#5B6B7D;labelBackgroundColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="5" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="5" style="rounded=0;html=1;fontSize=17;fontColor=#5B6B7D;labelBackgroundColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="6" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="6" style="rounded=0;html=1;fontSize=17;fontColor=#5B6B7D;labelBackgroundColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;endArrow=blockThin;endFill=1;endSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="7" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=20;fontColor=#1F2933;fillColor=#EDF6EF;strokeColor=#8FBF9C;strokeWidth=2;" value="AWS Lightsail box&#xa;http + worker × 3 services · nginx · certbot" vertex="1">
+          <mxGeometry height="110" width="740" x="452" y="432" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
