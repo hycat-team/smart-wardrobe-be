@@ -32,4 +32,9 @@ var ProviderSet = wire.NewSet(
 	worker.NewSubscriptionRenewalWorker,
 	worker.NewPaymentReconciliationWorker,
 	worker.NewWebhookInboxWorker,
+	// 025 T055: consumes `identity.user.created` and grants the campaign plan.
+	// Registered here so the worker's dependency on the campaign use case is a
+	// DI-time check rather than a nil pointer on the first account created after a
+	// campaign opens.
+	worker.NewCampaignGrantWorker,
 )

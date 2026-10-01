@@ -1,4 +1,4 @@
----
+﻿---
 
 description: "Task list for feature 025 — Cơ chế chiến dịch tặng gói cho tài khoản đăng ký mới"
 ---
@@ -137,19 +137,19 @@ này để cấp thật. Nhờ tách vậy, ba yêu cầu khó nhất của đ�
 
 ### Kiểm thử (viết trước, phải ĐỎ trước khi cài)
 
-- [ ] T036 [P] [US3] Kiểm thử trần cứng: 20 lần gọi với 1 suất còn lại trên 5 luồng song song chỉ cấp đúng 1 lần — `services/account/internal/modules/subscription/application/usecase/campaign/campaign_quota_test.go`. **Bắt buộc kèm ca hồi quy dự phòng** (R2b): cấp đủ `quota` lượt chính, rồi cấp tiếp `reserve` lượt nữa — phải nhận đủ `quota + reserve` lượt với `grant_bucket` lần lượt là `main` rồi `reserve`, **không** lỗi vi phạm `ux_campaign_claims_watermark`. Đây là ca bắt đúng lỗi "phần dự phòng không bao giờ dùng được": nếu cài sai cột đếm, bước này đỏ ngay (SC-001, SC-001b, SC-001c)
-- [ ] T037 [P] [US3] Kiểm thử giao lại cùng một thông điệp 100 lần chỉ tạo 1 lượt cấp — cùng tệp với T036 (SC-002)
-- [ ] T038 [P] [US3] Kiểm thử mốc ưu tiên: lượt thứ N đánh dấu `fills_main_quota`, đúng 1 bản ghi mang cờ đó, và tài khoản tạo sau mốc không được cấp — cùng tệp với T036. Khẳng định thêm: đếm `grant_bucket = 'main'` trả về `quota` chứ không phải `tổng - 1`, và `COUNT(*) WHERE NOT fills_main_quota` **không** được dùng ở bất kỳ đâu trong mã nguồn này (R2b, SC-001, SC-001d)
-- [ ] T039 [P] [US3] Kiểm thử lựa chọn chiến dịch: hai chiến dịch cùng hiệu lực thì chọn chiến dịch bắt đầu muộn nhất, bất kể thứ tự thông điệp tới — `campaign_admission_test.go` (SC-001)
-- [ ] T040 [P] [US3] Kiểm thử tài khoản do quản trị viên tạo bị bỏ qua với lý do riêng — cùng tệp với T039 (FR-091)
+- [x] T036 [P] [US3] Kiểm thử trần cứng: 20 lần gọi với 1 suất còn lại trên 5 luồng song song chỉ cấp đúng 1 lần — `services/account/internal/modules/subscription/application/usecase/campaign/campaign_quota_test.go`. **Bắt buộc kèm ca hồi quy dự phòng** (R2b): cấp đủ `quota` lượt chính, rồi cấp tiếp `reserve` lượt nữa — phải nhận đủ `quota + reserve` lượt với `grant_bucket` lần lượt là `main` rồi `reserve`, **không** lỗi vi phạm `ux_campaign_claims_watermark`. Đây là ca bắt đúng lỗi "phần dự phòng không bao giờ dùng được": nếu cài sai cột đếm, bước này đỏ ngay (SC-001, SC-001b, SC-001c)
+- [x] T037 [P] [US3] Kiểm thử giao lại cùng một thông điệp 100 lần chỉ tạo 1 lượt cấp — cùng tệp với T036 (SC-002)
+- [x] T038 [P] [US3] Kiểm thử mốc ưu tiên: lượt thứ N đánh dấu `fills_main_quota`, đúng 1 bản ghi mang cờ đó, và tài khoản tạo sau mốc không được cấp — cùng tệp với T036. Khẳng định thêm: đếm `grant_bucket = 'main'` trả về `quota` chứ không phải `tổng - 1`, và `COUNT(*) WHERE NOT fills_main_quota` **không** được dùng ở bất kỳ đâu trong mã nguồn này (R2b, SC-001, SC-001d)
+- [x] T039 [P] [US3] Kiểm thử lựa chọn chiến dịch: hai chiến dịch cùng hiệu lực thì chọn chiến dịch bắt đầu muộn nhất, bất kể thứ tự thông điệp tới — `campaign_admission_test.go` (SC-001)
+- [x] T040 [P] [US3] Kiểm thử tài khoản do quản trị viên tạo bị bỏ qua với lý do riêng — cùng tệp với T039 (FR-091)
 
 ### Cài đặt
 
-- [ ] T041 [US3] Khai báo giao diện `ICampaignUseCase` trong `services/account/internal/modules/subscription/application/interface/usecase/campaign_uc.go`
-- [ ] T042 [US3] Cài `admission_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: 9 điều kiện theo đúng thứ tự ở `data-model.md` mục 6, và quy tắc chọn chiến dịch ở mục 6.1
-- [ ] T043 [US3] Cài `quota_uc.go` cùng thư mục: giữ khoá tư vấn, đếm **riêng** theo `grant_bucket`, chốt mốc ưu tiên, rồi quyết định lấy từ phần chính hay phần dự phòng, theo nguyên văn mã giả ở `data-model.md` mục 6.2. Nhánh dự phòng bắt buộc có hai điều kiện: `reserveCount < reserve` **và** `watermarkAt` có giá trị; thiếu mốc thì bỏ qua với lý do `quota_anomaly` chứ không đoán (R2b)
-- [ ] T044 [US3] Cài `campaign_uc.go` cùng thư mục: điều phối một lần xử lý thông điệp, ghi lại lý do bỏ qua theo FR-061, trả về `PermanentError` cho thông điệp hỏng và `RetryableError` cho lỗi tạm thời
-- [ ] T045 [US3] Bảo đảm `quota_uc.go` **không** gọi `uow.Execute` lồng nhau: chỉ một lần `uow.Execute` ở `campaign_uc.go`, các bước bên trong dùng chung `txCtx` (R3 — `uow.go:69` dùng handle gốc)
+- [x] T041 [US3] Khai báo giao diện `ICampaignUseCase` trong `services/account/internal/modules/subscription/application/interface/usecase/campaign_uc.go`
+- [x] T042 [US3] Cài `admission_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: 9 điều kiện theo đúng thứ tự ở `data-model.md` mục 6, và quy tắc chọn chiến dịch ở mục 6.1
+- [x] T043 [US3] Cài `quota_uc.go` cùng thư mục: giữ khoá tư vấn, đếm **riêng** theo `grant_bucket`, chốt mốc ưu tiên, rồi quyết định lấy từ phần chính hay phần dự phòng, theo nguyên văn mã giả ở `data-model.md` mục 6.2. Nhánh dự phòng bắt buộc có hai điều kiện: `reserveCount < reserve` **và** `watermarkAt` có giá trị; thiếu mốc thì bỏ qua với lý do `quota_anomaly` chứ không đoán (R2b)
+- [x] T044 [US3] Cài `campaign_uc.go` cùng thư mục: điều phối một lần xử lý thông điệp, ghi lại lý do bỏ qua theo FR-061, trả về `PermanentError` cho thông điệp hỏng và `RetryableError` cho lỗi tạm thời
+- [x] T045 [US3] Bảo đảm `quota_uc.go` **không** gọi `uow.Execute` lồng nhau: chỉ một lần `uow.Execute` ở `campaign_uc.go`, các bước bên trong dùng chung `txCtx` (R3 — `uow.go:69` dùng handle gốc)
 
 **Điểm kiểm tra**: `make test-race` xanh. Bộ quyết định cấp chạy đúng, gói chưa được cấp.
 
@@ -165,23 +165,23 @@ AI cũng chuyển sang chính sách Premium.
 
 ### Kiểm thử
 
-- [ ] T046 [P] [US1] Kiểm thử cấp gói: sau khi bộ quyết định trả về "được cấp", tài khoản ở `premium-monthly`, `expires_at = registered_at + 30 ngày`, `is_auto_renew_enabled = false` — `campaign_grant_test.go` (SC-006)
-- [ ] T047 [P] [US1] Kiểm thử đọc lại bản ghi gói trước khi phát sự kiện: `effectiveTo` phải khớp thời hạn, **không** rỗng (R13 — rỗng là quyền AI vô thời hạn, SC-008)
-- [ ] T048 [P] [US1] Kiểm thử quyền AI cập nhật theo: lịch sử đổi gói có đúng 1 dòng cho lần cấp, và dòng đó mang `toPlanId` cùng `aiCostPolicyId` của gói Premium (FR-037, SC-006, SC-008)
-- [ ] T049 [P] [US1] Kiểm thử giao dịch nguyên tử: cố tình làm `PublishPlanChange` thất bại, khẳng định **không** còn lượt cấp nào (FR-039, SC-003)
-- [ ] T050 [P] [US1] Kiểm thử chống cộng thêm thời hạn: tài khoản đang ở `premium-monthly` còn hạn thì bộ quyết định trả về "không cấp" và thời hạn giữ nguyên (FR-018, SC-009)
+- [x] T046 [P] [US1] Kiểm thử cấp gói: sau khi bộ quyết định trả về "được cấp", tài khoản ở `premium-monthly`, `expires_at = registered_at + 30 ngày`, `is_auto_renew_enabled = false` — `campaign_grant_test.go` (SC-006)
+- [x] T047 [P] [US1] Kiểm thử đọc lại bản ghi gói trước khi phát sự kiện: `effectiveTo` phải khớp thời hạn, **không** rỗng (R13 — rỗng là quyền AI vô thời hạn, SC-008)
+- [x] T048 [P] [US1] Kiểm thử quyền AI cập nhật theo: lịch sử đổi gói có đúng 1 dòng cho lần cấp, và dòng đó mang `toPlanId` cùng `aiCostPolicyId` của gói Premium (FR-037, SC-006, SC-008)
+- [x] T049 [P] [US1] Kiểm thử giao dịch nguyên tử: cố tình làm `PublishPlanChange` thất bại, khẳng định **không** còn lượt cấp nào (FR-039, SC-003)
+- [x] T050 [P] [US1] Kiểm thử chống cộng thêm thời hạn: tài khoản đang ở `premium-monthly` còn hạn thì bộ quyết định trả về "không cấp" và thời hạn giữ nguyên (FR-018, SC-009)
 
 ### Cài đặt
 
-- [ ] T051 [US1] Cài `grant_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: gọi `ApplySubscriptionPlanWithEvent`, **đọc lại** bản ghi gói, rồi `PublishPlanChange` (FR-036, FR-037, R13)
-- [ ] T052 [US1] Trong `grant_uc.go`, ghi nhật ký kiểm toán với nguồn gốc là mã chiến dịch và **không** có quản trị viên thực hiện (FR-038)
-- [ ] T053 [US1] Trong `grant_uc.go`, gửi email qua `INotificationContract.SendByUserID` **bên trong cùng transaction**; lỗi gửi thì ghi nhật và tiếp tục, không làm mất gói đã cấp (FR-049)
-- [ ] T054 [US1] Cài worker mỏng `campaign_grant_worker.go` trong `services/account/internal/modules/subscription/presentation/worker/`: nhúng `*worker.BaseWorker`, `RegisterTypedConsumer` với `ConsumerOpts{}`, `workerlog`, chỉ ủy quyền cho use case
-- [ ] T055 [US1] Đăng ký `CampaignGrantWorker` trong `providers` của `services/account/internal/modules/subscription/provider.go` và `internal/di/wire.go`
-- [ ] T056 [US1] Thêm trường `CampaignGrant` vào `Workers` và vào `All()` trong `services/account/internal/bootstrap/worker.go`
-- [ ] T057 [US1] Chạy `make wire` để sinh lại `wire_gen.go`.
+- [x] T051 [US1] Cài `grant_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: gọi `ApplySubscriptionPlanWithEvent`, **đọc lại** bản ghi gói, rồi `PublishPlanChange` (FR-036, FR-037, R13)
+- [x] T052 [US1] Trong `grant_uc.go`, ghi nhật ký kiểm toán với nguồn gốc là mã chiến dịch và **không** có quản trị viên thực hiện (FR-038)
+- [x] T053 [US1] Trong `grant_uc.go`, gửi email qua `INotificationContract.SendByUserID` **bên trong cùng transaction**; lỗi gửi thì ghi nhật và tiếp tục, không làm mất gói đã cấp (FR-049)
+- [x] T054 [US1] Cài worker mỏng `campaign_grant_worker.go` trong `services/account/internal/modules/subscription/presentation/worker/`: nhúng `*worker.BaseWorker`, `RegisterTypedConsumer` với `ConsumerOpts{}`, `workerlog`, chỉ ủy quyền cho use case
+- [x] T055 [US1] Đăng ký `CampaignGrantWorker` trong `providers` của `services/account/internal/modules/subscription/provider.go` và `internal/di/wire.go`
+- [x] T056 [US1] Thêm trường `CampaignGrant` vào `Workers` và vào `All()` trong `services/account/internal/bootstrap/worker.go`
+- [x] T057 [US1] Chạy `make wire` để sinh lại `wire_gen.go`.
   **⚠️ Tệp dùng chung**: không chạy song song với T067, T083, T099 — dễ mất thay đổi của nhau khi sinh lại cùng một tệp
-- [ ] T058 [US1] Vô hiệu hoạt cache tổng quan gói **sau commit** bằng đúng hàm `invalidateOverviewCache` đang có (FR-040), không dùng `_ =` trên ctx của người gọi
+- [x] T058 [US1] Vô hiệu hoạt cache tổng quan gói **sau commit** bằng đúng hàm `invalidateOverviewCache` đang có (FR-040), không dùng `_ =` trên ctx của người gọi
 
 **Điểm kiểm tra**: MVP hoàn tất. Một tài khoản đăng ký mới nhận gói trong vòng 5 phút.
 
@@ -205,19 +205,19 @@ người còn lại làm mọi việc khác rồi gom lại một lần.
 
 ### Kiểm thử
 
-- [ ] T059 [P] [US4] Kiểm thử chống đếm thiếu: 3 lần tăng bộ đếm đồng thời từ 29/30 phải ra **30**, không phải 29 — `services/account/internal/modules/subscription/application/usecase/quota/quota_uc_test.go` (SC-010)
-- [ ] T060 [P] [US4] Kiểm thử chặn vượt: lần thứ 31 bị từ chối bằng lỗi nghiệp vụ — cùng tệp với T059 (SC-010)
-- [ ] T061 [P] [US4] Kiểm thử đường đọc không bị khoá: gọi `GetAndResetDailyQuota` khi đang có thao tác ghi chạy, phải trả về mà không treo (FR-055) — cùng tệp với T059 (SC-010)
-- [ ] T062 [P] [US4] Kiểm thử về 0 khi sang ngày mới, không cần thao tác thủ công (FR-054) — cùng tệp với T059
-- [ ] T062b [P] [US4] Kiểm thử canh FR-058: hợp đồng gRPC trong contracts/subscription/v1/ **không đổi một dòng** sau khi sửa bộ đếm — sửa lỗi race là sửa bên trong use case, hợp đồng ra bên ngoài phải giữ nguyên. Thêm vào tệp kiểm thử canh ranh giới đã tạo ở T090
+- [x] T059 [P] [US4] Kiểm thử chống đếm thiếu: 3 lần tăng bộ đếm đồng thời từ 29/30 phải ra **30**, không phải 29 — `services/account/internal/modules/subscription/application/usecase/quota/quota_uc_test.go` (SC-010)
+- [x] T060 [P] [US4] Kiểm thử chặn vượt: lần thứ 31 bị từ chối bằng lỗi nghiệp vụ — cùng tệp với T059 (SC-010)
+- [x] T061 [P] [US4] Kiểm thử đường đọc không bị khoá: gọi `GetAndResetDailyQuota` khi đang có thao tác ghi chạy, phải trả về mà không treo (FR-055) — cùng tệp với T059 (SC-010)
+- [x] T062 [P] [US4] Kiểm thử về 0 khi sang ngày mới, không cần thao tác thủ công (FR-054) — cùng tệp với T059
+- [x] T062b [P] [US4] Kiểm thử canh FR-058: hợp đồng gRPC trong contracts/subscription/v1/ **không đổi một dòng** sau khi sửa bộ đếm — sửa lỗi race là sửa bên trong use case, hợp đồng ra bên ngoài phải giữ nguyên. Thêm vào tệp kiểm thử canh ranh giới đã tạo ở T090
 
 ### Cài đặt
 
-- [ ] T063 [US4] Thêm trường `uow shared_repos.IUnitOfWork` vào `UserQuotaUseCase` trong `services/account/internal/modules/subscription/application/usecase/quota/quota_uc.go`
-- [ ] T064 [US4] Bọc **đúng đoạn** đọc–tăng–ghi của `UpdateOutfitQuota` trong `uow.Execute`, dùng `GetByUserIDWithLock` thay `GetByUserID`; hai lệnh `GetOrCreateUserSubscription` và `LoadPlanForSubscription` phải ở **ngoài** transaction (R9)
-- [ ] T065 [US4] Sửa `UpdateAiChatQuota` giống hệt T064
-- [ ] T066 [US4] Sửa `checkAndResetDailyQuota`: giữ đường đọc không khoá khi chưa sang ngày; chỉ mở transaction khi thực sự cần về 0 (R9, FR-055)
-- [ ] T067 [US4] Chạy `make wire` để sinh lại `wire_gen.go`.
+- [x] T063 [US4] Thêm trường `uow shared_repos.IUnitOfWork` vào `UserQuotaUseCase` trong `services/account/internal/modules/subscription/application/usecase/quota/quota_uc.go`
+- [x] T064 [US4] Bọc **đúng đoạn** đọc–tăng–ghi của `UpdateOutfitQuota` trong `uow.Execute`, dùng `GetByUserIDWithLock` thay `GetByUserID`; hai lệnh `GetOrCreateUserSubscription` và `LoadPlanForSubscription` phải ở **ngoài** transaction (R9)
+- [x] T065 [US4] Sửa `UpdateAiChatQuota` giống hệt T064
+- [x] T066 [US4] Sửa `checkAndResetDailyQuota`: giữ đường đọc không khoá khi chưa sang ngày; chỉ mở transaction khi thực sự cần về 0 (R9, FR-055)
+- [x] T067 [US4] Chạy `make wire` để sinh lại `wire_gen.go`.
   **⚠️ Tệp dùng chung**: không chạy song song với T057, T083, T099 — dễ mất thay đổi của nhau khi sinh lại cùng một tệp
 
 **Điểm kiểm tra**: `make test-race` xanh. Bộ đếm không còn đếm thiếu.
@@ -233,15 +233,15 @@ mà có đúng một bản ghi với nội dung đúng.
 
 ### Kiểm thử
 
-- [ ] T068 [P] [US2] Kiểm thử nội dung thông điệp: có tên gói và ngày hết hạn, nói rõ không tự động gia hạn, **không** có số suất của chiến dịch — `services/account/internal/modules/notification/application/usecase/email/outbox_email_uc_test.go` (SC-005)
-- [ ] T069 [P] [US2] Kiểm thử không gửi cho tài khoản không được cấp gói (FR-048) — cùng tệp với T068 (SC-005)
+- [x] T068 [P] [US2] Kiểm thử nội dung thông điệp: có tên gói và ngày hết hạn, nói rõ không tự động gia hạn, **không** có số suất của chiến dịch — `services/account/internal/modules/notification/application/usecase/email/outbox_email_uc_test.go` (SC-005)
+- [x] T069 [P] [US2] Kiểm thử không gửi cho tài khoản không được cấp gói (FR-048) — cùng tệp với T068 (SC-005)
 
 ### Cài đặt
 
-- [ ] T070 [US2] Thêm hằng số `CampaignGrant Template = "campaign_grant"` trong `services/account/internal/modules/notification/domain/constants/template/template.go`, kèm nhận xét về lý do **không** dùng lại `admin_grant` (R12)
-- [ ] T071 [US2] Tạo `services/account/internal/modules/notification/application/templates/CampaignGrant.html` bằng tiếng Việt: nêu tên gói, ngày hết hạn, nói rõ không tự động gia hạn, **không** gợi ý đã thanh toán, **không** nhắc số suất
-- [ ] T072 [US2] Nhúng tệp trong `templates.go` ở `services/account/internal/modules/notification/application/templates/templates.go`
-- [ ] T073 [US2] Thêm mục đệm vào `tmplCache` và nhánh tiêu đề vào `resolveSubject` trong `services/account/internal/modules/notification/application/usecase/email/outbox_email_uc.go`; tiêu đề bắt đầu bằng `[Closy] `
+- [x] T070 [US2] Thêm hằng số `CampaignGrant Template = "campaign_grant"` trong `services/account/internal/modules/notification/domain/constants/template/template.go`, kèm nhận xét về lý do **không** dùng lại `admin_grant` (R12)
+- [x] T071 [US2] Tạo `services/account/internal/modules/notification/application/templates/CampaignGrant.html` bằng tiếng Việt: nêu tên gói, ngày hết hạn, nói rõ không tự động gia hạn, **không** gợi ý đã thanh toán, **không** nhắc số suất
+- [x] T072 [US2] Nhúng tệp trong `templates.go` ở `services/account/internal/modules/notification/application/templates/templates.go`
+- [x] T073 [US2] Thêm mục đệm vào `tmplCache` và nhánh tiêu đề vào `resolveSubject` trong `services/account/internal/modules/notification/application/usecase/email/outbox_email_uc.go`; tiêu đề bắt đầu bằng `[Closy] `
 
 **Điểm kiểm tra**: `make test-race` xanh. Hộp thư nhận được đúng một email mỗi lần cấp gói.
 

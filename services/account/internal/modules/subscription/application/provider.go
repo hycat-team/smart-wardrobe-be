@@ -4,6 +4,7 @@ import (
 	"smart-wardrobe-be/services/account/contract/subscription"
 	admin_billing "smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/admin_billing"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/admin_stats"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/campaign"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/quota"
@@ -52,4 +53,10 @@ var ProviderSet = wire.NewSet(
 	reconciliation.NewPaymentReconciliationUseCase,
 	webhook_inbox.NewWebhookInboxUseCase,
 	validator.NewSubscriptionCatalogValidator,
+
+	// 025 T055: the campaign grant use case and the quota rules it depends on.
+	// The constructor is wired here rather than where the worker is registered so
+	// that a missing dependency is a DI error at startup, not a nil use case
+	// discovered by the first account that registers after a campaign opens.
+	campaign.NewCampaignUseCase,
 )

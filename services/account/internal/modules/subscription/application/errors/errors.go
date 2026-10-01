@@ -2,8 +2,11 @@ package subscriptionerrors
 
 import (
 	"fmt"
+
 	"smart-wardrobe-be/shared/application/constants/apperror"
 	sharedmoney "smart-wardrobe-be/shared/domain/money"
+
+	"github.com/google/uuid"
 )
 
 // Lỗi động (cần định dạng tham số)
@@ -374,5 +377,74 @@ func ErrCampaignListClaimsFailed(campaignCode string) *apperror.Error {
 func ErrCampaignAccountsQueryFailed(campaignCode string) *apperror.Error {
 	e := apperror.NewInternalError("Không thể tra cứu danh sách tài khoản trong thời gian chiến dịch.")
 	e.Cause = fmt.Errorf("campaign %s: query accounts in window", campaignCode)
+	return e
+}
+
+// ErrCampaignMessageMalformed báo rằng thông điệp tạo tài khoản không đủ
+// trường để ra quyết định (FR-062).
+//
+// Đây là lỗi **VĨNH VIỄN**, không phải lỗi tạm thời: thử lại sẽ cho ra cùng
+// một kết quả sai, vì vậy thông điệp phải bị loại vĩnh viễn chứ không requeue.
+// Thiếu `userId` hoặc `registeredAt` là lỗi của người phát, và lặp lại nó chỉ
+// làm nghẽn hàng đỗi.
+func ErrCampaignMessageMalformed(field string) *apperror.Error {
+	e := apperror.NewBadRequest("Thông điệp tạo tài khoản không hợp lệ.")
+	e.Cause = fmt.Errorf("campaign: user-created payload missing %s", field)
+	return e
+}
+
+// ErrCampaignReadSubscriptionFailed báo rằng không đọc được gói hiện tại của
+// tài khoản khi đánh giá điều kiện đủ điều kiện.
+//
+// Tạm thời: là lỗi cơ sở dữ liệu, và thử lại là hành vi đúng. Quan trọng: KHÔNG
+// được coi là "tài khoản không đủ điều kiện" — một lỗi đọc biến thành lý do bỏ
+// qua sẽ âm thầm lấy đi một suất của chiến dịch mà không hề cấp gói.
+func ErrCampaignReadSubscriptionFailed(userID uuid.UUID) *apperror.Error {
+	e := apperror.NewInternalError("Không thể đọc thông tin gói của tài khoản. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign: read subscription for user %s", userID)
+	return e
+}
+
+// ErrCampaignLoadPlanFailed báo rằng không tải được gói cước mà chiến dịch
+// khai báo (FR-010).
+func ErrCampaignLoadPlanFailed(planSlug string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể tải thông tin gói của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign: load plan %s", planSlug)
+	return e
+}
+
+// ErrCampaignApplyPlanFailed báo rằng không áp dụng được gói lên tài khoản.
+//
+// Chạm toàn bộ giao dịch: lượt cấp đã ghi mà gói chưa cấp thì lần quét bù sau sẽ
+// cấp lại (FR-039), còn gói đã cấp mà lượt cấp chưa ghi thì thông điệp sau sẽ
+// cấp lần nữa.
+func ErrCampaignApplyPlanFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể cấp gói cho tài khoản trong chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: apply plan", campaignCode)
+	return e
+}
+
+// ErrCampaignPublishPlanChangeFailed báo rằng không phát được sự kiện đổi gói
+// sau khi đã áp dụng gói (FR-036, FR-039).
+//
+// CHẠM TOÀN BỘ GIAO DỊCH, và đây là lý do: dịch vụ AI chỉ biết tài khoản có
+// quyền AI mới qua sự kiện này. Gói đã cấp mà sự kiện không phát nghĩa là khách
+// trả tiền theo Premium nhưng vẫn ăn hạn mức miễn phí — và không nơi nào báo
+// lỗi. Chặn giao dịch là cách duy nhất biến hở đó thành lỗi nhìn thấy được.
+func ErrCampaignPublishPlanChangeFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể phát thông báo thay đổi gói của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: publish plan change", campaignCode)
+	return e
+}
+
+// ErrCampaignRecordAuditFailed báo rằng không ghi được nhật ký kiểm toán cho lần
+// cấp gói của chiến dịch (FR-038).
+//
+// Chạm toàn bộ giao dịch: dòng nhật ký là thứ làm cho lần cấp gói trả lời được
+// câu hỏi "ai cấp, theo nguồn nào" về sau (FR-094). Tiếp tục sau khi nó thất bại
+// là tạo ra một lần cấp gói mà không ai quy được trách nhiệm.
+func ErrCampaignRecordAuditFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể ghi nhận ký kiểm toán cho lần cấp gói của chiến dịch.")
+	e.Cause = fmt.Errorf("campaign %s: record audit", campaignCode)
 	return e
 }

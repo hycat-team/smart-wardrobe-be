@@ -42,6 +42,10 @@ func NewOutboxEmailUseCase(
 		ntemplate.WalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
 		ntemplate.WalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
 		ntemplate.AdminGrant:            template.Must(template.New("admin_grant").Parse(templates.AdminGrantTemplate)),
+		// 025 T073: a campaign grant is a DIFFERENT promise from an administrator's
+		// grant — the customer did nothing to earn it and must not be told they paid
+		// — so it gets its own rendered template (R12).
+		ntemplate.CampaignGrant: template.Must(template.New("campaign_grant").Parse(templates.CampaignGrantTemplate)),
 	}
 	return &OutboxEmailUseCase{
 		outboxRepo:        outboxRepo,
@@ -121,6 +125,12 @@ func resolveSubject(tmplEnum ntemplate.Template) string {
 		// part of the same administrator batch, and must not imply payment,
 		// because an administrative grant is not a purchase.
 		subject = "Gói của bạn đã được cấp thành công"
+	case ntemplate.CampaignGrant:
+		// 025 FR-044/FR-045: says the plan was granted and nothing else. In
+		// particular it does not say "promotion", "offer" or "gift" — a subject
+		// line promising a benefit the customer did nothing to qualify for is
+		// what turns a grant into an expectation.
+		subject = "Bạn đã được tặng gói hội viên"
 	default:
 		subject = "Thông báo"
 	}

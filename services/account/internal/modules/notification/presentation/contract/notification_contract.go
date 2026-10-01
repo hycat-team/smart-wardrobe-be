@@ -29,6 +29,9 @@ const (
 	TemplateWalletPurchaseSuccess = template.WalletPurchaseSuccess
 	// TemplateAdminGrant is the administrator-grant notification (024 FR-083).
 	TemplateAdminGrant = template.AdminGrant
+	// TemplateCampaignGrant is the campaign-grant notification (025 T070). Its own
+	// template because the promise it makes is not the administrator's (R12).
+	TemplateCampaignGrant = template.CampaignGrant
 )
 
 type INotificationContract interface {

@@ -28,3 +28,6 @@ var WalletPurchaseSuccessTemplate string
 
 //go:embed AdminGrant.html
 var AdminGrantTemplate string
+
+//go:embed CampaignGrant.html
+var CampaignGrantTemplate string

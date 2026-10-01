@@ -30,6 +30,7 @@ import (
 	worker2 "smart-wardrobe-be/services/account/internal/modules/notification/presentation/worker"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/admin_billing"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/admin_stats"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/campaign"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/plan"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/purchase"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/quota"
@@ -166,6 +167,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	paymentReconciliationWorker := worker.NewPaymentReconciliationWorker(iPaymentReconciliationUseCase, l, cfg)
 	iWebhookInboxUseCase := webhook_inbox.NewWebhookInboxUseCase(iWebhookInboxRepository, iPaymentGatewayService, iPaymentWebhookUseCase, l, cfg)
 	webhookInboxWorker := worker.NewWebhookInboxWorker(iWebhookInboxUseCase, l)
+	iCampaignClaimRepository := persistence2.NewCampaignClaimRepository(gormDB)
+	iCampaignUseCase := campaign.NewCampaignUseCase(cfg, iCampaignClaimRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository, planChangePublisher, iAuditLogContract, iNotificationContract, iSubscriptionOverviewCache, iUnitOfWork, l)
+	campaignGrantWorker := worker.NewCampaignGrantWorker(rabbitMQClient, iCampaignUseCase, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	iEmailUseCase := email.NewEmailUseCase(smtpSender)
 	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
@@ -182,6 +186,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		Renewal:               subscriptionRenewalWorker,
 		PaymentReconciliation: paymentReconciliationWorker,
 		WebhookInbox:          webhookInboxWorker,
+		CampaignGrant:         campaignGrantWorker,
 		Email:                 emailWorker,
 		AuditLogConsumer:      auditLogConsumerWorker,
 		AuditCleanup:          auditCleanupWorker,

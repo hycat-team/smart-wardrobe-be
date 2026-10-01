@@ -22,10 +22,17 @@ type Workers struct {
 	Renewal               *subscriptionworker.SubscriptionRenewalWorker
 	PaymentReconciliation *subscriptionworker.PaymentReconciliationWorker
 	WebhookInbox          *subscriptionworker.WebhookInboxWorker
-	Email                 *notificationworker.EmailWorker
-	AuditLogConsumer      *adminworker.AuditLogConsumerWorker
-	AuditCleanup          *adminworker.AuditCleanupWorker
-	Outbox                *sharedWorker.OutboxWorker
+	// CampaignGrant consumes account-creation messages and grants the campaign
+	// plan (025 T056). Placed after the webhook workers because it is a
+	// queue consumer like they are, and before the notification worker because a
+	// grant enqueues the email it will later deliver — starting them in this order
+	// means the email worker is already consuming by the time the first grant
+	// arrives.
+	CampaignGrant    *subscriptionworker.CampaignGrantWorker
+	Email            *notificationworker.EmailWorker
+	AuditLogConsumer *adminworker.AuditLogConsumerWorker
+	AuditCleanup     *adminworker.AuditCleanupWorker
+	Outbox           *sharedWorker.OutboxWorker
 }
 
 // All returns the workers in a stable start/stop order.
@@ -37,6 +44,7 @@ func (w *Workers) All() []Worker {
 		w.Renewal,
 		w.PaymentReconciliation,
 		w.WebhookInbox,
+		w.CampaignGrant,
 		w.Email,
 		w.AuditLogConsumer,
 		w.AuditCleanup,
