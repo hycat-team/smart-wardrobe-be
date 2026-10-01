@@ -394,7 +394,7 @@ phiên 2026-10-01.
 
 ### Trao quyền lợi
 
-- **FR-034**: Tài khoản đủ điều kiện phải ở gói cước được tặng, với thời hạn tính từ thời điểm tài khoản được tạo.
+- **FR-034**: Tài khoản đủ điều kiện phải ở gói cước được tặng, với thời hạn **đủ dài** — ít nhất là toàn bộ thời hạn của gói tính từ thời điểm cấp. *(Hiệu chỉnh 2026-10-01, sau khi kiểm thử end-to-end: bản gốc ghi "tính từ thời điểm tài khoản được tạo", và điều đó không thực thi được.)* Lý do: dịch vụ AI giữ một ràng buộc đơn điệu trên `effective_from` để chặn sự kiện giao lại làm tua quyền của tài khoản. Nếu đóng dấu sự kiện cấp gói bằng thời điểm tạo tài khoản, nó sẽ **cũ hơn** sự kiện cấp gói miễn phí phát ra micro-giây sau đó trong cùng giao dịch đăng ký, bị AI từ chối với lý do `stale_event`, và bị đẩy vào hàng đỗi chết — tài khoản có gói Premium nhưng vẫn giới hạn AI mức miễn phí, không phục hồi được. Sự kiện vì thế mang **thời điểm xử lý**; thời hạn tính từ thời điểm cấp cộng `duration_days` của gói (FR-019). Với tài khoản nhận cấp ngay, hai cách tính trùng nhau đến từng giây; với tài khoản phải cứu bằng quét bù, cách này cho thêm (không bắt), đúng hướng cho một chương trình khuyến mãi.
 - **FR-035**: Cờ tự động gia hạn của tài khoản được cấp gói phải ở trạng thái **tắt**. Hệ thống không được tự bật tự động gia hạn cho bất kỳ tài khoản nào chưa chủ động yêu cầu.
 - **FR-036**: Cấp gói phải ghi lại lịch sử thay đổi gói theo đúng cùng một quy ước mà mọi đường thay đổi gói khác đang dùng, để dữ liệu hạn mức của dịch vụ AI cập nhật theo. Chi tiết ràng buộc ở FR-092 tới FR-095.
 - **FR-037**: Dữ liệu quyền tính phí AI của tài khoản được cấp gói phải được cập nhật sang chính sách của gói mới, với **thời hạn kết thúc khớp** với thời hạn gói cước.

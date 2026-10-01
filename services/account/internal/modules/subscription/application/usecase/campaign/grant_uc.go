@@ -98,11 +98,29 @@ func (uc *CampaignUseCase) applyGrant(
 	outcome quotaOutcome,
 	now time.Time,
 ) error {
-	// The grant instant is the account's REGISTRATION, not the processing clock,
-	// so a message that arrives four days late still grants the term the account
-	// was promised (FR-078). The plan row's own duration supplies the length
-	// (FR-019); nothing here hard-codes 30.
-	event, err := subscription.ApplySubscriptionPlanWithEvent(txCtx, uc.subRepo, payload.UserID, plan, payload.RegisteredAt)
+	// The event is stamped with the PROCESSING clock, not the registration time.
+	//
+	// This used to pass `payload.RegisteredAt`, so the event claimed the change
+	// happened when the account was created. The account service provisions the
+	// free plan in the same signup transaction, microseconds later, and that
+	// event carries a real "now" — so the campaign event was stamped EARLIER than
+	// the event already on file. The AI service enforces a monotonic guard on
+	// `effective_from` and rejected every campaign grant as `stale_event`, then
+	// dead-lettered the message:
+	//
+	//   "Sự kiện đã cũ hơn hoặc bằng thời điểm của bản ghi mức quyền đang hiệu lực."
+	//
+	// The account ended up on premium-monthly with the free plan's AI entitlements
+	// and no way to recover, because the message never came back. That guard is
+	// correct and predates this feature: it is what stops a redelivered event
+	// from rewinding an account's rights. Do not "fix" this by stamping the
+	// event earlier.
+	//
+	// The TERM is now grant-time plus the plan's own duration (FR-019), so a
+	// customer whose message was lost still gets the full month — marginally more
+	// than registration-anchored, which is the right direction for a promotion.
+	// Nothing here hard-codes 30.
+	event, err := subscription.ApplySubscriptionPlanWithEvent(txCtx, uc.subRepo, payload.UserID, plan, now)
 	if err != nil {
 		return subscriptionerrors.ErrCampaignApplyPlanFailed(campaign.Code)
 	}

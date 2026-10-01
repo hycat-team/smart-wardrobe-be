@@ -66,21 +66,64 @@ func TestCampaignGrantAppliesPlanWithAutoRenewOff(t *testing.T) {
 // the queue latency, and every account would receive a different term depending on
 // when its message happened to be consumed. Nobody would notice: the customer gets
 // Premium, just less of it.
-func TestCampaignGrantTermIsAnchoredOnRegistrationNotProcessing(t *testing.T) {
-	startsAt := baseInstant().Add(-8 * time.Hour)
+// TestCampaignGrantEventIsStampedOnProcessingNotRegistration guards the one bug
+// in this feature that only an end-to-end run against a real AI service exposed.
+//
+// The grant used to be stamped with the account's REGISTRATION time. The signup
+// transaction provisions the free plan microseconds later and stamps THAT event
+// with a real "now", so the campaign event arrived carrying an `occurredAt` older
+// than the record already on file. The AI service enforces a monotonic guard on
+// `effective_from` and rejected the grant as `stale_event`, then dead-lettered the
+// message. The account sat on premium-monthly with the free plan's AI
+// entitlements and no way back: the message was gone and the claim was written.
+//
+// The guard is correct and predates this feature, so the event is stamped with the
+// processing clock. The term is grant time plus the plan's own duration, which is
+// marginally MORE than registration-anchored for a late message — the right
+// direction for a promotion.
+func TestCampaignGrantEventIsStampedOnProcessingNotRegistration(t *testing.T) {
+	registeredAt := baseInstant().Add(-8 * time.Hour)
+	startsAt := registeredAt.Add(-time.Hour)
 	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
 	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
 
-	// Registered eight hours ago; the harness's clock is "now".
-	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant().Add(-8 * time.Hour)}
+	// Registered eight hours ago; the harness clock is "now". A message this late
+	// must still grant (FR-078), which is the half that was always right.
+	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: registeredAt}
 	if !h.granted(t, payload) {
 		t.Fatalf("expected a late message to still grant")
 	}
 
-	sub, _ := h.subs.GetByUserID(context.Background(), payload.UserID)
-	wantExpiry := payload.RegisteredAt.AddDate(0, 0, 30)
+	sub, err := h.subs.GetByUserID(context.Background(), payload.UserID)
+	if err != nil {
+		t.Fatalf("read subscription: %v", err)
+	}
+
+	// The published event is what the AI service orders by. It must be at or
+	// after the free plan's provisioning event, or the AI rejects it.
+	published := h.publisher.payloads()
+	if len(published) != 1 {
+		t.Fatalf("expected exactly 1 published plan-change event, got %d", len(published))
+	}
+	body := asMap(t, published[0].Payload)
+	rawOccurredAt, _ := body["occurredAt"].(string)
+	gotOccurredAt, err := time.Parse(time.RFC3339Nano, rawOccurredAt)
+	if err != nil {
+		t.Fatalf("occurredAt %q is not RFC3339: %v", rawOccurredAt, err)
+	}
+	if gotOccurredAt.Before(baseInstant().UTC()) {
+		t.Fatalf("event occurredAt = %s is older than the processing clock %s; the AI service will reject it as stale_event",
+			gotOccurredAt.UTC(), baseInstant().UTC())
+	}
+	if gotOccurredAt.Equal(registeredAt.UTC()) {
+		t.Fatalf("event occurredAt = %s equals the registration time; this is the stale_event defect", gotOccurredAt.UTC())
+	}
+
+	// The term still spans a full month from the grant, so a late message does
+	// not hand the customer a shortened promotion.
+	wantExpiry := baseInstant().AddDate(0, 0, 30)
 	if sub.ExpiresAt == nil || !sub.ExpiresAt.Equal(wantExpiry) {
-		t.Fatalf("expected the term anchored on registration (%s), got %v", wantExpiry, sub.ExpiresAt)
+		t.Fatalf("expected a full 30-day term from the grant instant (%s), got %v", wantExpiry, sub.ExpiresAt)
 	}
 }
 
