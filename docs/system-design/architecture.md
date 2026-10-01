@@ -321,7 +321,7 @@ The system uses a PostgreSQL relational database (with pgvector) as the Single S
 
 ### Foreign Keys xuyên module
 
-- **GIỮ (xuyên schema tới `users`, 39 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bổ 39 FK: `brand` 14 · `subscription` 8 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `dashboard` 1 · `shared` 1 · `fashion` 1.
+- **GIỮ (xuyên schema tới `users`, 39 FK)**: mọi module giữ FK trỏ `identity.users` (cascade/restrict/set-null giữ nguyên — verify sau migration: chèn `user_id` không tồn tại bị chặn, xoá `users` cascade đúng). Phân bố 39 FK: `brand` 14 · `subscription` 8 · `community` 6 · `aiexecutor` 4 · `wardrobe` 2 · `identity` 2 · `dashboard` 1 · `shared` 1 · `fashion` 1.
 - **CẮT (phi-users, enforce qua contract, 9 FK)**: `ai_policy_grants.plan_id/source_event_id/source_deposit_transaction_id` (aiexecutor→subscription), `subscription_plans.ai_cost_policy_id` (subscription→aiexecutor), `wardrobe_items.fashion_item_id` (wardrobe→fashion), `outfit_items.fashion_item_id` (wardrobe→fashion), `brand_items.fashion_item_id` (brand→fashion), `digital_sample_responses.outfit_id` (brand→wardrobe), `dashboard_brand_daily_snapshots.brand_id` (dashboard→brand). Integrity được đảm bảo qua contract reader/writer ở app layer (không có luồng hard-delete `fashion_items`/`brands` cần cascade bị mất).
 
 ### Chỉ mục vector (pgvector HNSW) — giữ nguyên sau tách schema
@@ -405,3 +405,96 @@ Cross-module write side effects **must prefer event publishing** over direct con
 - **Luồng**: `outbox → exchange → queue → consumer → Ack/Nack (Permanent→DLQ, Retryable→requeue)` với `correlationId` trace.
 
 Chi tiết queue không liệt kê exhaustive; xem `topology.go` và `docs/system-design/event-driven-design.md` (đúng 6 cơ chế: exchange+DLS, routing, outbox, DLQ/retry, channel/prefetch, flow).
+---
+
+## XI. AI ENTITLEMENT PIPELINE (024)
+
+### Single legitimate owner
+
+`aiexecutor.ai_policy_grants` has **exactly one writer: the `aiexecutor` service**, reached only by consuming `subscription.plan.changed`.
+
+Before feature 024 the Account service also wrote that table directly, through a function called `projectAIPolicyGrant`. Because it was not a function call across a contract, the compiler could not see it, and it was invisible to the module access matrix above. It also wrote `'{}'::jsonb` into `policy_snapshot`, a column the reader requires to carry an envelope plus four operation entitlements — so every row it produced was born broken, and the failure surfaced as a database error in the middle of a customer's payment. That writer is removed.
+
+### The path
+
+```
+subscription (Account)                     aiexecutor (AI)
+─────────────────────                     ─────────────────
+user_subscriptions updated
+  └─ PlanChangePublisher
+       ├─ user_subscription_events   (history; the only source of the event)
+       └─ outbox_records             (same transaction, FR-015)
+                    │
+                    ▼  RabbitMQ: subscription.plan.changed  (eventVersion 2)
+                                  │
+                                  ▼
+                        PlanChangedWorker
+                          1. ParsePlanChangedPayload  ─ reject + count by reason (FR-087)
+                          2. RejectStaleEvent         ─ occurredAt ordering
+                          3. ComputeGrantWindow       ─ pure; renewal start, active/future
+                          4. ONE transaction: close prior grants, delete pending,
+                             create the new grant with its frozen snapshot
+                          5. metrics.RecordRejection on every refusal
+```
+
+### Two gates, and why the split exists
+
+| | Gate 1 — customer visible | Gate 2 — engine enforced |
+|---|---|---|
+| Where | `subscription_plans.ai_*_daily_quota` | `ai_cost_policy_operations.max_paid_attempts_per_day` |
+| Read by | the product UI | the AI request path |
+| Source of truth | what the customer was promised | what is actually enforced |
+
+They are independent on purpose (FR-005d, FR-005e). A silent engine downgrade is invisible to the customer: they see "20 chats left" and are silently given a smaller model. Gate 2 exists so that divergence is a *configured, visible* fact, and `database/scripts/07-verify_policy_grants.sql` section 6 is what proves the two still agree.
+
+#### Which gate actually stops a request, per operation (FR-005b)
+
+FR-005b requires this mapping to be settled before the feature is considered configured. It is settled, and it is **not symmetric between the two plans**.
+
+| Plan | Policy | Mode | Operation | Gate 1 (customer sees) | Gate 2 (engine enforces) | What actually stops the request |
+|---|---|---|---|---|---|---|
+| `free` | `free-default` | `observe_only` | `chat` | 3 | 3 | **Gate 2 — 3 paid attempts/day** |
+| `free` | `free-default` | `observe_only` | `outfit` | 5 | **4** | **Gate 2 — 4 paid attempts/day** (one below gate 1, FR-005d) |
+| `free` | `free-default` | `observe_only` | `summary` | — | 5 | Gate 2 — 5 paid attempts/day |
+| `free` | `free-default` | `observe_only` | `rewriter` | — | 5 | Gate 2 — 5 paid attempts/day |
+| `premium-monthly` | `premium-default` | `strict` | `chat` | 10 | `NULL` | **Hard cost cap — 30.000đ / 30 days** |
+| `premium-monthly` | `premium-default` | `strict` | `outfit` | 30 | `NULL` | **Hard cost cap** |
+| `premium-monthly` | `premium-default` | `strict` | `summary` | — | `NULL` | Hard cost cap |
+| `premium-monthly` | `premium-default` | `strict` | `rewriter` | — | `NULL` | Hard cost cap |
+
+Three things this table is here to prevent someone re-deriving wrongly:
+
+1. **The free plan is blocked by COUNT, never by money.** `free-default` has
+   `hard_cost_micro_vnd = NULL`, so `max_paid_attempts_per_day` is the only bound
+   standing between it and unbounded spend. A `NULL` there is therefore a
+   **misconfiguration, not "no limit"** — the engine refuses the paid route and
+   degrades to tier 2 rather than treating it as unlimited.
+2. **The Premium plan is blocked by MONEY, never by count.**
+   `max_paid_attempts_per_day` is `NULL` for `premium-default` **on purpose**: in
+   `strict` mode the column is never read. Setting it to `10` to mirror gate 1
+   would silently convert Premium into a count-limited plan (FR-005e).
+3. **Exactly one operation differs between the two gates** — `outfit` on the free
+   plan, where gate 2 is 4 and gate 1 is 5. That single difference is the
+   approved exception list; **any other difference is unexplained drift**.
+
+Cost recorded against a `free-default` grant is internal observation data, used to
+report what a free account consumes. It is never shown to the user as a charge,
+and gate 1 remains the only source of the numbers the user sees (FR-005c).
+
+Re-derive this table at any time with `database/scripts/07-verify_policy_grants.sql`
+section 6b, which prints it with a verdict per row instead of asking anyone to
+trust this document.
+
+### Snapshot is frozen, enforcement is live
+
+A grant carries `policy_snapshot`: the four operation entitlements **as they were when the plan changed**. Changing a policy therefore does not retroactively rewrite history, and an audit can still show what a customer was entitled to at a given moment.
+
+Hard caps, enforcement mode and per-operation limits are read LIVE from `ai_cost_policy_operations` on every request. Those are operational controls — turning one down must take effect immediately, not at the next renewal.
+
+### Reading a grant
+
+`ResolvePolicy` is a pure read of the Account-owned cache backed by AI. It never looks up the subscription and never writes. An account with **no** grant is the normal free case: the fallback resolver applies the free policy and the ledger records `grant_id IS NULL`, which is how degradation stays visible in reporting instead of disappearing.
+
+An administrative repair does not bypass this pipeline. `POST /api/v1/admin/subscription-grants/restore` re-publishes plan-change events; it never writes a grant row, and it skips free-plan accounts because those have no entitlement by design.
+
+Technical notes on the DDL and ledger: `docs/development/technical-notes.md`.
