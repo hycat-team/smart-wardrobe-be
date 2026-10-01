@@ -283,7 +283,7 @@ Tài liệu thiết kế API liên quan đến cổng đối tác nhãn hàng (B
         - `total` (int): Tổng số lượng item cần phân tích trong task này (đối với Brand Item đơn lẻ thì giá trị luôn là 1).
         - `index` (int): Số thứ tự index của item hiện tại (đối với Brand Item đơn lẻ thì giá trị luôn là 0).
         - `data` (object, optional): Chứa dữ liệu BrandItem chi tiết khi trạng thái là `completed` hoặc `needs_review`.
-        - `error` (string, optional): **Mã lý do** khi trạng thái là `failed` (ví dụ `multiple_items_detected`, `full_body_outfit_detected`, `analysis_temporary_error`, `auto_retry_exceeded`); frontend tự ánh xạ mã sang text hiển thị (không phải câu thông báo).
+        - `error` (string, optional): **Mã lý do** khi trạng thái là `failed` (ví dụ `multiple_items_detected`, `full_body_outfit_detected`, `no_fashion_item_detected`, `analysis_temporary_error`, `auto_retry_exceeded`); frontend tự ánh xạ mã sang text hiển thị (không phải câu thông báo). Ba mã ảnh không hợp lệ (`multiple_items_detected`, `full_body_outfit_detected`, `no_fashion_item_detected`) khiến `POST /brand-portal/brands/{brandId}/items/{itemId}/retry-analysis` trả `400`.
     - **Ví dụ Bản tin SSE trả về khi phân tích thành công sản phẩm nhãn hàng (`completed`):**
         ```json
         {

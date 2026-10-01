@@ -61,37 +61,33 @@ func (uc *FashionWorkerUseCase) ProcessBackgroundBatchUploadJob(ctx context.Cont
 		return nil
 	}
 
-	// Fixed-category retries (needs_review with a chosen category) skip the
-	// is_single_item/category_confident gating so the item never regenerates
-	// needs_review (FR-038); they only fill metadata at the known category.
-	if !job.FixedCategory {
-		if !aiMeta.IsSingleItem {
-			reason := aiMeta.ReviewReason
-			if !analysisreason.IsInvalidImageReason(reason) {
-				// Safety: an invalid image with a contradictory/missing reason is
-				// still unusable (FR-027); default to multiple_items_detected.
-				reason = analysisreason.ErrorMultipleItems
-			}
-			run.AddSuccess(1)
-			run.AddSummaryFields(zap.Bool("invalidImage", true))
-			run.ChildInfo(uc.logger, "Wardrobe batch upload rejected: invalid image",
-				zap.String("itemId", job.ItemID.String()),
-				zap.String("reason", reason),
-			)
-			uc.markImageInvalid(ctx, job, reason)
-			return nil
-		}
+	// Tầng 1 — ảnh có dùng được để tạo đúng một món hay không. Cổng này áp cho
+	// MỌI lần phân tích, kể cả fixed-category retry: nếu không, một ảnh toàn thân
+	// đã lọt qua lần phân tích đầu sẽ được AI bịa metadata cho danh mục đã chốt.
+	if reason := invalidImageReason(aiMeta); reason != "" {
+		run.AddSuccess(1)
+		run.AddSummaryFields(zap.Bool("invalidImage", true))
+		run.ChildInfo(uc.logger, "Wardrobe batch upload rejected: invalid image",
+			zap.String("itemId", job.ItemID.String()),
+			zap.Bool("fixedCategory", job.FixedCategory),
+			zap.String("reason", reason),
+		)
+		uc.markImageInvalid(ctx, job, reason)
+		return nil
+	}
 
-		if !aiMeta.CategoryConfident {
-			run.AddSuccess(1)
-			run.AddSummaryFields(zap.Bool("reviewRequired", true))
-			run.ChildInfo(uc.logger, "Wardrobe batch upload requires review",
-				zap.String("itemId", job.ItemID.String()),
-				zap.String("reviewReason", analysisreason.ReviewUncertainCategory),
-			)
-			uc.markNeedsReview(ctx, job, analysisreason.ReviewUncertainCategory)
-			return nil
-		}
+	// Tầng 2 — AI có chắc danh mục không. Chỉ có ý nghĩa khi phân tích từ đầu:
+	// fixed-category retry đã có danh mục do user chọn nên bỏ qua cổng này,
+	// tránh tái tạo needs_review (FR-038).
+	if !job.FixedCategory && !aiMeta.CategoryConfident {
+		run.AddSuccess(1)
+		run.AddSummaryFields(zap.Bool("reviewRequired", true))
+		run.ChildInfo(uc.logger, "Wardrobe batch upload requires review",
+			zap.String("itemId", job.ItemID.String()),
+			zap.String("reviewReason", analysisreason.ReviewUncertainCategory),
+		)
+		uc.markNeedsReview(ctx, job, analysisreason.ReviewUncertainCategory)
+		return nil
 	}
 
 	updateMap, err := uc.buildCompletedItemUpdate(ctx, aiMeta, snapshot, job.ItemID, job.PreserveCategory, job.FixedCategory, job.CategoryID)
@@ -256,24 +252,73 @@ func (uc *FashionWorkerUseCase) analyzeImageWithPrompt(
 		return nil, err
 	}
 
-	var result struct {
-		dto.FashionMetadataResult
+	return parseAnalyzedJSON(responseText)
+}
+
+// parseAnalyzedJSON phân tích phản hồi JSON của VLM thành metadata phân tích.
+//
+// Phải tách HAI lần unmarshal. dto.FashionMetadataResult tự implement
+// json.Unmarshaler, nên nếu embed nó vào một anonymous struct thì method đó được
+// promote lên struct ngoài và json.Unmarshal sẽ gọi thẳng vào nó — field `error`
+// khai báo cạnh bên sẽ KHÔNG BAO GIỜ được gán. Điều đó từng làm nhánh xử lý
+// "no fashion item" là dead code, khiến ảnh không phải trang phục bị báo nhầm
+// thành multiple_items_detected.
+//
+// Safety net: các prompt cũ (đang còn trong vision category cache) và một số model
+// vẫn trả key "error" thay vì review_reason. Chuẩn hoá key đó thành reason code
+// để không bị phân loại nhầm là lỗi tạm thời — lỗi tạm thời cho phép retry vô hạn
+// trên một ảnh vĩnh viễn không dùng được, đúng thứ FR-033 cần chặn.
+func parseAnalyzedJSON(responseText string) (*dto.FashionMetadataResult, error) {
+	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
+
+	var legacy struct {
 		Error string `json:"error"`
 	}
-	cleanedJSON := stringutils.CleanJSONMarkdown(responseText)
-	if err := json.Unmarshal([]byte(cleanedJSON), &result); err != nil {
+	if err := json.Unmarshal([]byte(cleanedJSON), &legacy); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
 	}
-	if result.Error != "" {
-		return nil, fmt.Errorf("AI Error: %s", result.Error)
+
+	var meta dto.FashionMetadataResult
+	if err := json.Unmarshal([]byte(cleanedJSON), &meta); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from AI: %w", err)
 	}
 
-	return &result.FashionMetadataResult, nil
+	if legacy.Error != "" {
+		meta.IsSingleItem = false
+		meta.ReviewReason = analysisreason.ErrorNoFashionItem
+	}
+
+	return &meta, nil
+}
+
+// invalidImageReason trả về reason code khi ảnh không dùng được để tạo đúng một
+// món trong tủ, hoặc chuỗi r��ng khi ảnh hợp lệ.
+//
+// Thứ tự quyết định:
+//  1. review_reason = no_fashion_item_detected → ảnh không có trang phục nào.
+//     Được ưu tiên cao nhất vì đây không phải lỗi ảnh quần áo mà là sai đối tượng.
+//  2. is_single_item = true → ảnh hợp lệ, đi tiếp sang cổng độ tin cậy danh mục.
+//  3. Còn lại (nhiều món / toàn thân) → chuẩn hoá review_reason; reason rỗng hoặc
+//     không nhận biết rơi về multiple_items_detected (safety net FR-027).
+func invalidImageReason(aiMeta *dto.FashionMetadataResult) string {
+	if aiMeta == nil {
+		return analysisreason.ErrorMultipleItems
+	}
+	if aiMeta.ReviewReason == analysisreason.ErrorNoFashionItem {
+		return analysisreason.ErrorNoFashionItem
+	}
+	if aiMeta.IsSingleItem {
+		return ""
+	}
+	if analysisreason.IsInvalidImageReason(aiMeta.ReviewReason) {
+		return aiMeta.ReviewReason
+	}
+	return analysisreason.ErrorMultipleItems
 }
 
 // markImageInvalid finalizes an item whose image is not a single usable item
-// (multiple items / full body). It records the reason code and emits a `failed`
-// event so the owning item becomes terminal (FR-027/FR-033).
+// (multiple items / full body / no garment). It records the reason code and emits
+// a `failed` event so the owning item becomes terminal (FR-027/FR-033).
 func (uc *FashionWorkerUseCase) markImageInvalid(ctx context.Context, job dto.FashionAnalyzeJobDTO, reason string) {
 	var fashionBrief *dto.FashionItemBriefRes
 	if job.FashionItemID != nil {

@@ -16,6 +16,12 @@ const (
 	ErrorMultipleItems = "multiple_items_detected"
 	// ErrorFullBodyOutfit: the image is a full-body/outfit shot.
 	ErrorFullBodyOutfit = "full_body_outfit_detected"
+	// ErrorNoFashionItem: the image holds no garment at all — it shows some
+	// non-apparel subject (a laptop mouse, a phone, food, furniture) or is too
+	// blank/blurred to identify. This is deliberately distinct from
+	// ErrorMultipleItems: the user did not photograph too much clothing, they
+	// photographed the wrong subject entirely.
+	ErrorNoFashionItem = "no_fashion_item_detected"
 	// ErrorAnalysisTemporary: a transient analysis/system error.
 	ErrorAnalysisTemporary = "analysis_temporary_error"
 	// ErrorAutoRetryExceeded: automatic retries were exhausted.
@@ -27,6 +33,7 @@ const (
 var InvalidImageReasons = map[string]bool{
 	ErrorMultipleItems:  true,
 	ErrorFullBodyOutfit: true,
+	ErrorNoFashionItem:  true,
 }
 
 // IsInvalidImageReason reports whether a reason code denotes an unusable image.

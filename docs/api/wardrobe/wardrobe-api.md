@@ -222,9 +222,12 @@ Tài liệu này đặc tả các API liên quan đến tủ đồ (wardrobe) tr
             "status": "failed",
             "total": 3,
             "index": 1,
-            "error": "AI Error: Không tìm thấy trang phục trong hình ảnh hoặc ảnh quá mờ."
+            "error": "no_fashion_item_detected"
         }
         ```
+        `error` là **mã lý do**, không phải câu thông báo. Danh sách mã: `uncertain_category` (chỉ xuất hiện ở `needs_review`, nằm trong `data.fashionItem.reviewReason`), `multiple_items_detected`, `full_body_outfit_detected`, `no_fashion_item_detected`, `analysis_temporary_error`, `auto_retry_exceeded`. Frontend tự ánh xạ mã sang text hiển thị.
+
+        Ba mã `multiple_items_detected`, `full_body_outfit_detected`, `no_fashion_item_detected` đánh dấu **ảnh không dùng được**: `POST /wardrobe-items/{id}/retry-analysis` sẽ trả `400` vì retry cùng ảnh là vô nghĩa.
     - **Ví dụ Bản tin SSE trả về khi AI không tự tin phân loại danh mục (`needs_review`):**
         ```json
         {

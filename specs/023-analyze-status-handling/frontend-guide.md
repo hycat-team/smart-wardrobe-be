@@ -14,12 +14,76 @@
 - Một món đồ khi tải lên đi qua các trạng thái phân tích: `processing → completed | failed | needs_review`.
 - Có thêm trạng thái realtime `processing` (mới) để FE hiển thị "đang xử lý".
 - Món `needs_review` PHẢI được người dùng xử lý bằng cách chọn **category hợp lệ** rồi gọi lại `retry-analysis` kèm `categoryId` mới trở thành "sử dụng được". `needs_review` chỉ dành cho ảnh **đúng một món** nhưng AI chưa chắc category.
-- Ảnh **không hợp lệ** (đa món/toàn thân) ⇒ trạng thái `failed` kèm mã lý do; **không** retry — FE hướng dẫn tải ảnh khác.
+- Ảnh **không hợp lệ** (đa món/toàn thân/không phải trang phục) ⇒ trạng thái `failed` kèm mã lý do; **không** retry — FE hướng dẫn tải ảnh khác.
 - Lý do (reason) là **mã** và chỉ nằm trong `data.fashionItem` (`reviewReason`/`processingErrorReason`); frontend tự đặt text hiển thị.
 - Sản phẩm nhãn hàng có thêm trạng thái `failed`; đây là trạng thái cuối với thao tác thủ công (chỉ retry/hệ thống mới đưa ra khỏi `failed`).
 - Thao tác retry chỉ khả dụng khi món/sản phẩm đang ở trạng thái lỗi hoặc cần rà soát; giữ nguyên category người dùng đã sửa. Với `needs_review`, retry **bắt buộc** kèm `categoryId`.
 - API `confirm-review` đã **bị gỡ** (breaking): gọi sẽ nhận `404`; FE chuyển sang `retry-analysis` kèm danh mục.
 - Kết nối realtime nếu đứt sẽ được phát lại các sự kiện gần nhất khi kết nối lại.
+
+---
+
+## 0.1 Delta 2026-10-01 — mã lý do `no_fashion_item_detected` + kiểm tra ảnh cho nhánh chọn danh mục
+
+> **FE đã apply bản 2026-09-27 (mục 7 changelog). Chỉ áp dụng phần này — các phần còn lại của tài liệu KHÔNG đổi.**
+> Nguồn chuẩn cho FE. Các file spec khác của feature 023 là bản ghi thiết kế tại thời điểm đóng feature nên **không** phản ánh delta này.
+
+### Behavior changes cần nắm
+
+| # | Thay đổi | Ảnh hưởng |
+|---|---|---|
+| **BC-1** | Ảnh không có trang phục nào (chuột laptop, điện thoại, sách, đồ ăn, ảnh trắng/mờ) giờ trả mã mới `no_fashion_item_detected`. Trước đây nhóm này bị báo nhầm thành `multiple_items_detected`. | Toàn bộ user |
+| **BC-2** | Payload cũ dùng key `"error"` từ AI (còn sót trong prompt cache sau khi deploy) giờ được chuẩn hoá thành `no_fashion_item_detected` thay vì `analysis_temporary_error`. **Hệ quả: nhóm này mất nút "Thử lại".** Trước đây retry được nhưng vô hạn và luôn fail. | Thay đổi thuận — sửa bug retry vô hạn, nhưng FE phải bỏ nút Thử lại cho nhóm này |
+| **BC-3** | **Nhánh "chọn danh mục → phân tích lại" KHÔNG còn luôn thành công.** Có thể trả `failed` với `multiple_items_detected` / `full_body_outfit_detected` / `no_fashion_item_detected`. | Luồng `needs_review` |
+| **BC-4** | Thứ tự kiểm tra trong prompt đảo: "đa món / toàn thân" kiểm **trước** "không phải trang phục". Ảnh có vật lạ bên cạnh **một món trang phục** vẫn được phân loại như một món. | Ảnh bối cảnh lộn xộn |
+| **BC-5** | Message 400 của `retry-analysis` đổi: *"không phải trang phục, nhiều món hoặc ảnh toàn thân"*. | FE hiển thị |
+
+### Danh sách thay đổi trong tài liệu này
+
+| Vị trí | Loại | Nội dung |
+|---|---|---|
+| Mục 0 (TL;DR, dòng "Ảnh **không hợp lệ**") | **SỬA** | Thêm "**không phải trang phục**" vào ngoặc |
+| Mục 1.2 — bảng trạng thái, dòng `failed` | **SỬA** | Mô tả thêm "**không phải trang phục**" |
+| Mục 2.3 — `#### failed`, dòng mô tả | **SỬA** | Thêm "**hoặc không phải trang phục**" |
+| Mục 2.3 — `#### failed`, nhóm mã "ảnh không hợp lệ" | **SỬA** | Thêm `no_fashion_item_detected` vào nhóm hiện có (cùng hành vi: tải ảnh khác, KHÔNG hiện nút Thử lại) |
+| Mục 2.5 — bảng mã lý do | **THÊM 1 dòng** | xem bảng dưới |
+| Mục 2.5 — quy tắc gate retry | **THÊM** | Thêm `no_fashion_item_detected` vào danh sách retry bị chặn |
+| Mục 5 — mã lỗi 400 | **SỬA** | Thêm mã vào danh sách retry bị từ chối |
+| Mục 6 — checklist | **THÊM 1 mục** | Ca mới |
+| Mục 7 — changelog | **THÊM 1 dòng** | Bản ghi thay đổi |
+
+Tại các dòng sửa tại chỗ đã gắn comment `<!-- delta-2026-10-01: bổ sung -->` để FE diff dễ.
+
+### Bảng mã lý do (thay thế mục 2.5)
+
+| Mã | Loại | Status | Retry được? | Text FE nên hiển thị |
+|---|---|---|---|---|
+| `uncertain_category` | review | `needs_review` | Có (bắt buộc kèm `categoryId`) | "AI chưa chắc category - chọn category rồi gọi phân tích lại" |
+| `multiple_items_detected` | error | `failed` | Không | "Ảnh có nhiều món - tải ảnh khác" |
+| `full_body_outfit_detected` | error | `failed` | Không | "Ảnh toàn thân - tải ảnh cận một món" |
+| **`no_fashion_item_detected`** | **error** | **`failed`** | **Không** | **"Ảnh không phải trang phục - hãy tải ảnh đúng món đồ"** |
+| `analysis_temporary_error` | error | `failed` | Có | "Lỗi tạm thời - thử lại" |
+| `auto_retry_exceeded` | error | `failed` | Có | "Đã thử nhiều lần - thử lại" |
+
+### Mở rộng: nhánh chọn danh mục có thể thất bại (BC-3)
+
+Luồng `needs_review` → chọn `categoryId` → `retry-analysis` **trước đây luôn thành công**, vì backend bỏ qua toàn bộ kiểm tra ảnh ở nhánh này. Nay backend kiểm tra lại:
+
+```
+chọn category → retry → AI kiểm tra ảnh
+  ├─ ảnh hợp lệ (đúng 1 món)  → completed, ghi metadata như cũ
+  └─ ảnh không dùng được       → failed + 1 trong 3 mã ảnh không hợp lệ
+                                 → KHÔNG có nút "Thử lại"
+                                 → FE hiển thị "tải ảnh khác"
+```
+
+**FE cần làm gì thêm cho luồng này:** sau khi bấm "Phân tích lại", **phải chờ kết quả qua SSE** thay vì điều hướng thẳng sang màn danh sách như đang làm. Nếu kết quả là `failed`, hiển thị hướng dẫn tải ảnh khác thay vì coi như xong.
+
+**Vì sao không cho sửa tay:** `PATCH /wardrobe-items/:id` chỉ nhận `price` và `categoryId`. Các trường AI sinh ra (`color`, `style`, `material`, `pattern`, `fit`, `seasonality`, `description`) **không sửa được qua API** — lối thoát duy nhất là xoá món và tải lại ảnh. Vì vậy backend chọn báo lỗi sớm còn hơn đẩy một món sai vào tủ (món sai sẽ đi vào embedding và làm nhiễu gợi ý phối đồ về sau).
+
+### Hạn chế còn lại
+
+Nhánh `needs_review` chỉ vào được khi AI ở lần phân tích đầu đã nói "đúng một món". Với ảnh toàn thân bị AI nhầm là một món, người dùng có thể chọn nhầm danh mục và nhận metadata từ ảnh đó. Đây là hạn chế đã biết, chưa xử lý — việc này cần quyết định sản phẩm về luồng `needs_review` nên tách ticket riêng.
 
 ---
 
@@ -52,7 +116,7 @@ completed failed        needs_review
 | `processing` | Món bắt đầu được xử lý | Hiển thị trạng thái "đang xử lý"; chờ sự kiện kết thúc |
 | `completed` | Phân tích xong, dùng được | Render món bằng `data` (không cần gọi lại API) |
 | `needs_review` | Ảnh **đúng 1 món** nhưng AI chưa chắc category (`uncertain_category`) | Điều hướng màn hình rà soát; chọn category rồi gọi `retry-analysis` kèm `categoryId` |
-| `failed` | Ảnh **không hợp lệ** (đa món/toàn thân) hoặc lỗi tạm thời/hết retry | Hiển thị `error` (mã lý do); với ảnh không hợp lệ ⇒ yêu cầu tải ảnh khác; với lỗi tạm thời ⇒ gợi ý "Thử lại" |
+| `failed` | Ảnh **không hợp lệ** (đa món/toàn thân/không phải trang phục) hoặc lỗi tạm thời/hết retry <!-- delta-2026-10-01: bổ sung --> | Hiển thị `error` (mã lý do); với ảnh không hợp lệ ⇒ yêu cầu tải ảnh khác; với lỗi tạm thời ⇒ gợi ý "Thử lại" |
 
 ### 1.3 Trạng thái nghiệp vụ trả trong `data.status`
 
@@ -113,12 +177,13 @@ completed failed        needs_review
   4. Không gửi `categoryId` cho món `needsReview` ⇒ backend từ chối (400).
 
 #### `failed`
-- Xuất hiện: **ảnh không hợp lệ** (đa món/toàn thân) HOẶC lỗi tạm thời / hết retry tự động.
+- Xuất hiện: **Ảnh không hợp lệ** (đa món/toàn thân **hoặc không phải trang phục** <!-- delta-2026-10-01: bổ sung -->) HOẶC lỗi tạm thời / hết retry tự động.
 - Payload: `error` là **mã lý do**; đọc thêm `data.fashionItem.processingErrorReason` (nếu có).
 - FE theo mã lý do:
-  - `multiple_items_detected`, `full_body_outfit_detected` ⇒ **ảnh không hợp lệ**: hiển thị "vui lòng tải ảnh khác"; **KHÔNG** hiện nút "Thử lại" (retry sẽ bị từ chối).
+  - `multiple_items_detected`, `full_body_outfit_detected`, `no_fashion_item_detected` <!-- delta-2026-10-01: bổ sung --> ⇒ **ảnh không hợp lệ**: hiển thị "vui lòng tải ảnh khác"; **KHÔNG** hiện nút "Thử lại" (retry sẽ bị từ chối).
   - `analysis_temporary_error`, `auto_retry_exceeded` ⇒ hiện nút "Thử lại"; gọi `retry-analysis` (mục 3).
 - Lưu ý: đang `processing` hoặc đã dùng được ⇒ không cho retry (backend từ chối nếu gọi sai).
+- **Lưu ý BC-3 (2026-10-01):** món `needsReview` sau khi chọn danh mục và gọi `retry-analysis` **có thể** vẫn ra `failed` với 3 mã ảnh không hợp lệ trên. FE phải chờ kết quả qua SSE thay vì coi như xong ngay. Xem mục 0.1.
 
 ### 2.4 Hành vi kỳ vọng theo status nghiệp vụ (nhãn UI & hành động cho phép)
 
@@ -143,11 +208,12 @@ Lý do là **mã** (FE tự đặt text hiển thị), **chỉ nằm trong `data
 | `uncertain_category` | review | `needs_review` | ✅ (bắt buộc kèm `categoryId`) | "AI chưa chắc category — chọn category rồi gửi phân tích lại" |
 | `multiple_items_detected` | error | `failed` | ❌ | "Ảnh có nhiều món — tải ảnh khác" |
 | `full_body_outfit_detected` | error | `failed` | ❌ | "Ảnh toàn thân — tải ảnh cận một món" |
+| `no_fashion_item_detected` <!-- delta-2026-10-01: bổ sung --> | error | `failed` | ❌ | "Ảnh không phải trang phục — hãy tải ảnh đúng món đồ" |
 | `analysis_temporary_error` | error | `failed` | ✅ | "Lỗi tạm thời — thử lại" |
 | `auto_retry_exceeded` | error | `failed` | ✅ | "Đã thử nhiều lần — thử lại" |
 
-- **Retry-analysis** với món `needs_review` (`uncertain_category`) **bắt buộc** kèm `categoryId` hợp lệ; backend chạy lại AI ở chế độ danh mục cố định (không sinh lại `needs_review`).
-- **Retry-analysis** bị **từ chối** với `multiple_items_detected`/`full_body_outfit_detected` (retry cùng ảnh vô nghĩa) → hướng tải ảnh khác.
+- **Retry-analysis** với món `needs_review` (`uncertain_category`) **bắt buộc** kèm `categoryId` hợp lệ; backend chạy lại AI ở chế độ danh mục cố định (không sinh lại `needs_review`). **Lưu ý BC-3: lần chạy đó vẫn có thể `failed` nếu ảnh thực sự không dùng được.**
+- **Retry-analysis** bị **từ chối** với `multiple_items_detected`/`full_body_outfit_detected`/`no_fashion_item_detected` <!-- delta-2026-10-01: bổ sung --> (retry cùng ảnh vô nghĩa) → hướng tải ảnh khác.
 - Mã lạ (ngoài bảng): hiển thị thông báo mặc định, không so khớp chuỗi.
 
 ---
@@ -273,7 +339,7 @@ Request: `POST /api/v1/brand-portal/brands/{brandId}/items/{itemId}/retry-analys
 FE cần phân biệt tối thiểu (message tiếng Việt từ backend, HTTP code theo bảng):
 - Retry món `needsReview` thiếu `categoryId` hoặc category không hợp lệ → 400 (từ chối, yêu cầu chọn category).
 - Retry khi trạng thái không cho phép (đang xử lý / đã dùng được) → 400 (từ chối).
-- Retry khi ảnh không hợp lệ (`multiple_items_detected`/`full_body_outfit_detected`) → 400 (từ chối; hướng tải ảnh khác).
+- Retry khi ảnh không hợp lệ (`multiple_items_detected`/`full_body_outfit_detected`/`no_fashion_item_detected` <!-- delta-2026-10-01: bổ sung -->) → 400 (từ chối; hướng tải ảnh khác).
 - Brand đổi trạng thái khỏi `failed` → 403 (từ chối).
 - Brand retry `draft` chờ duyệt thiếu `categoryId` → 400 (từ chối).
 - Gọi API cũ `confirm-review` → 404 (đã gỡ).
@@ -285,7 +351,9 @@ FE cần phân biệt tối thiểu (message tiếng Việt từ backend, HTTP c
 - [ ] Xử lý 4 trạng thái realtime: `processing`, `completed`, `failed`, `needs_review`.
 - [ ] Màn hình rà soát: chọn category (bắt buộc) + gửi `retry-analysis` kèm `categoryId` (chỉ cho `uncertain_category`).
 - [ ] Nút "Thử lại": bật cho `analysis_temporary_error`/`auto_retry_exceeded`; với `uncertain_category` phải kèm `categoryId`; nhận `taskId` để subscribe.
-- [ ] Ảnh không hợp lệ (`multiple_items_detected`/`full_body_outfit_detected`): ẩn nút "Thử lại", hiển thị hướng dẫn tải ảnh khác.
+- [ ] Ảnh không hợp lệ (`multiple_items_detected`/`full_body_outfit_detected`/`no_fashion_item_detected` <!-- delta-2026-10-01: bổ sung -->): ẩn nút "Thử lại", hiển thị hướng dẫn tải ảnh khác.
+- [ ] `no_fashion_item_detected`: map sang text riêng ("Ảnh không phải trang phục — hãy tải ảnh đúng món đồ"), không dùng chung text của nhiều món. <!-- delta-2026-10-01: bổ sung -->
+- [ ] Sau khi chọn danh mục + `retry-analysis`, **chờ kết quả SSE**; nếu ra `failed` thì hướng dẫn tải ảnh khác thay vì coi như xong. <!-- delta-2026-10-01: bổ sung (BC-3) -->
 - [ ] Bỏ mọi call tới `confirm-review` (đã gỡ, trả 404).
 - [ ] Đọc reason tại `data.fashionItem.reviewReason` / `data.fashionItem.processingErrorReason` (camelCase; không ở root).
 - [ ] Điều hướng/nhãn trạng thái sản phẩm nhãn hàng (phân biệt `failed` vs `draft`).
@@ -304,3 +372,4 @@ FE cần phân biệt tối thiểu (message tiếng Việt từ backend, HTTP c
 | 2026-09-27 | Làm rõ mục 2: ma trận case → status và hành vi kỳ vọng theo từng status |
 | 2026-09-27 | G10: `needs_review` chỉ còn `uncertain_category`; ảnh không hợp lệ ⇒ `failed` + mã lý do (không confirm/retry); bảng mã lý do + quy tắc gate; reason chỉ nested trong `fashionItem` (camelCase); SSE `error` là mã; brand exhausted ⇒ `failed` |
 | 2026-09-27 | G11: bỏ `confirm-review` (breaking, 404); `needs_review` xử lý bằng `retry-analysis` kèm `categoryId` (bắt buộc, danh mục cố định); cập nhật state machine, mã lý do, ví dụ, mã lỗi |
+| 2026-10-01 | Delta (mục 0.1): thêm mã lý do `no_fashion_item_detected` cho ảnh không phải trang phục; sửa bug `error` field không bao giờ được đọc khiến nhóm này bị báo nhầm là nhiều món; kiểm tra ảnh cho cả nhánh fixed-category nên `needs_review` → chọn danh mục → retry **có thể** `failed` (BC-3); đảo thứ tự rule trong prompt (BC-4) |

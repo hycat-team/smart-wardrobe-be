@@ -76,9 +76,12 @@ func ErrRetryWardrobeAnalysisInProgress() *apperror.Error {
 }
 
 // ErrRetryInvalidImage rejects retry for items whose image is unusable (multiple
-// items / full body); the user must upload a different image (FR-033).
+// items / full body / no garment at all); the user must upload a different
+// image (FR-033). The generated metadata of such an item is not user-editable:
+// PATCH /wardrobe-items/:id only accepts price and categoryId, so deleting and
+// re-uploading is the only escape.
 func ErrRetryInvalidImage() *apperror.Error {
-	return apperror.NewBadRequest("Không thể thử lại vì ảnh không hợp lệ (nhiều món hoặc ảnh toàn thân). Vui lòng tải ảnh khác.")
+	return apperror.NewBadRequest("Không thể thử lại vì ảnh không hợp lệ (không phải trang phục, nhiều món hoặc ảnh toàn thân). Vui lòng tải ảnh khác.")
 }
 
 func ErrInvalidCloneQuantity() *apperror.Error {

@@ -16,7 +16,7 @@ func getVisionSystemPrompt(categories []dto.AICategoryRef) string {
 
 	return fmt.Sprintf(`Analyze the fashion item image and output a strict JSON payload mapping directly to the following database fields.
 All values for the JSON keys (color, style, material, pattern, fit, seasonality, and description) MUST be written entirely in natural, accurate Vietnamese fashion prose.
-The "is_single_item" key MUST be a boolean value (true or false, WITHOUT quotes). Set it to true if the image contains exactly one clear fashion item for analysis; false if it is a full-body shot, an outfit shot, or contains multiple items in the same image.
+The "is_single_item" key reports how many GARMENTS the photo is being judged on: true for exactly one garment, false for two or more garments or a full-body/outfit shot. It is NOT a "is this a garment" test. A photo with no garment at all is handled by Rule 2 below and must use review_reason "no_fashion_item_detected", never a bare false with a multi-item reason.
 The "category_confident" key MUST be a boolean value (true or false, WITHOUT quotes). It is only meaningful when is_single_item is true: set it to true only if you are confident about the chosen category_slug; otherwise set it to false (including whenever is_single_item is false).
 Do not limit your analysis to the examples provided in the schema; use your broader fashion knowledge to identify the exact attributes.
 
@@ -29,31 +29,27 @@ Important category distinction rules:
 - If the garment is clearly only the lower half, prioritize "chan-vay".
 - If the garment is clearly a single one-piece dress from upper body down to lower body, prioritize "dam".
 
-If the image does not contain any fashion, apparel, clothing, footwear, or accessory item, you MUST return a JSON containing ONLY:
-{
-  "error": "No fashion item detected"
-}
+DECISION ORDER — walk these rules in order and stop at the FIRST one that matches. Return ONLY the JSON shown for that rule, and do not emit any metadata keys.
 
-If the image is a full-body/outfit shot or contains multiple items in the same image, you MUST fail fast and return a JSON containing ONLY:
-{
-  "is_single_item": false,
-  "review_reason": "multiple_items_detected or full_body_outfit_detected"
-}
+Only GARMENTS count towards the item count. Other objects in the frame (a laptop mouse, a phone, a book, furniture, food) are IGNORED when counting garments, so a photo of one garment next to some unrelated object is still a single item.
 
-If you cannot confidently choose a category slug, you MUST fail fast and return a JSON containing ONLY:
-{
-  "is_single_item": true,
-  "category_confident": false,
-  "review_reason": "uncertain_category"
-}
+Rule 1 — The image shows two or more garments, OR it is a full-body / outfit shot.
+{ "is_single_item": false, "review_reason": "multiple_items_detected" }
+{ "is_single_item": false, "review_reason": "full_body_outfit_detected" }
 
-Only when the image is a single item and you are confident about the category, return the FULL metadata JSON below. Do NOT emit any metadata keys in the fail-fast cases above.
+Rule 2 — The image contains NO garment at all (a laptop mouse, a phone, a book, furniture, food, or a blank/heavily blurred photo).
+{ "is_single_item": false, "review_reason": "no_fashion_item_detected" }
+
+Rule 3 — Exactly one garment, but you cannot confidently choose its category_slug.
+{ "is_single_item": true, "category_confident": false, "review_reason": "uncertain_category" }
+
+Rule 4 — Exactly one garment and you are confident about its category_slug. Return the FULL metadata JSON below.
 
 JSON Schema format:
 {
   "is_single_item": true,
   "category_confident": true,
-  "review_reason": "If is_single_item is false, return exactly one of: 'multiple_items_detected', 'full_body_outfit_detected'. If is_single_item is true and category_confident is false, return 'uncertain_category'. Otherwise return an empty string",
+  "review_reason": "Empty string when the outfit is complete. Otherwise exactly one of: 'multiple_items_detected', 'full_body_outfit_detected', 'no_fashion_item_detected', 'uncertain_category'",
   "category_slug": "The selected category slug from the list (e.g. 'ao', 'quan', etc.)",
   "color": "Color name in natural Vietnamese fashion context, including shades (e.g. 'Đen mun', 'Trắng sữa', 'Xanh olive', etc.)",
   "color_hex": "The 6-character hexadecimal color code representing the dominant background or base color of the item (e.g. '#000000', '#FFFFFF', '#556B2F', etc.). If the item is multicolored or patterned, choose the dominant background/base color.",
@@ -70,17 +66,24 @@ Output ONLY the raw JSON object. Do NOT wrap the response in markdown code block
 // getVisionMetadataPrompt builds a metadata-only prompt for a fixed-category
 // re-analysis (feature 023, FR-038/FR-040): the category is already known, so
 // the AI must not classify again and must only extract attributes. It still
-// fails fast when the image contains no fashion item.
+// verifies the image is usable, because re-analysing a multi-garment or
+// non-apparel photo would fabricate metadata for the confirmed category.
 func getVisionMetadataPrompt(categoryName string) string {
 	return fmt.Sprintf(`Analyze the fashion item image and output a strict JSON payload with metadata ONLY for the known category "%s".
 The category is already decided: do NOT classify and do NOT output any category field.
 All values for the JSON keys (color, style, material, pattern, fit, seasonality, and description) MUST be written entirely in natural, accurate Vietnamese fashion prose.
 Do not limit your analysis to the examples provided; use your broader fashion knowledge to identify the exact attributes.
 
-If the image does not contain any fashion, apparel, clothing, footwear, or accessory item, you MUST return a JSON containing ONLY:
-{
-  "error": "No fashion item detected"
-}
+Verify the image is usable BEFORE writing any metadata. Only GARMENTS count towards the item count; other objects in the frame (a laptop mouse, a phone, a book, furniture, food) are IGNORED when counting garments.
+
+If the image shows two or more garments, or is a full-body/outfit shot, return a JSON containing ONLY:
+{ "is_single_item": false, "review_reason": "multiple_items_detected" }
+{ "is_single_item": false, "review_reason": "full_body_outfit_detected" }
+
+If the image contains NO garment at all (a laptop mouse, a phone, a book, furniture, food, or a blank/heavily blurred photo), return a JSON containing ONLY:
+{ "is_single_item": false, "review_reason": "no_fashion_item_detected" }
+
+Otherwise the image holds exactly one garment: return the FULL metadata JSON below and emit no is_single_item or review_reason key.
 
 JSON Schema format:
 {

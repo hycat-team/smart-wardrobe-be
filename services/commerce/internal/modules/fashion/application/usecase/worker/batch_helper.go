@@ -13,7 +13,6 @@ func isTransientError(err error) bool {
 		strings.Contains(errStr, "invalid image") ||
 		strings.Contains(errStr, "unsupported media type") ||
 		strings.Contains(errStr, "corrupted") ||
-		strings.Contains(errStr, "no fashion item") ||
 		strings.Contains(errStr, "not found") {
 		return false
 	}

@@ -24,9 +24,10 @@ func ErrBrandRetryInProgress() *apperror.Error {
 }
 
 // ErrBrandRetryInvalidImage rejects retry for items whose image is unusable
-// (multiple items / full body); staff must create a new item with another image.
+// (multiple items / full body / no garment at all); staff must create a new
+// item with another image.
 func ErrBrandRetryInvalidImage() *apperror.Error {
-	return apperror.NewBadRequest("Không thể thử lại vì ảnh không hợp lệ (nhiều món hoặc ảnh toàn thân). Vui lòng tạo sản phẩm mới với ảnh khác.")
+	return apperror.NewBadRequest("Không thể thử lại vì ảnh không hợp lệ (không phải trang phục, nhiều món hoặc ảnh toàn thân). Vui lòng tạo sản phẩm mới với ảnh khác.")
 }
 
 // ErrBrandRetryCategoryRequired rejects retry of a draft awaiting review when no
