@@ -92,29 +92,87 @@ func TestRegisterTypedHandler_WrapsAndResolvesDefaults(t *testing.T) {
 
 // Handler error phải được log kèm queue + correlationId, rồi trả nguyên
 // lên trên để startConsumerLoop quyết định ack/nack.
+//
+// 024 T152: this used to assert only that some log contained "Handler error", which
+// was the message the framework emitted for EVERY failure - including the ones being
+// dead-lettered immediately. So the log actively contradicted what happened to the
+// message. All three outcomes are now asserted separately, because the log's whole
+// value is that it is the record of the transport decision.
 func TestRegisterTypedHandler_LogsHandlerError(t *testing.T) {
-	client := newTestClient(t)
-
-	err := client.RegisterTypedHandler(eventconstants.QueueWardrobeCleanup, func(ctx context.Context, msg event.Message) error {
-		return errors.New("boom")
-	}, event.ConsumerOpts{Concurrency: 1})
-	if err != nil {
-		t.Fatalf("RegisterTypedHandler returned error: %v", err)
+	cases := []struct {
+		name        string
+		handlerErr  error
+		wantMessage string
+	}{
+		{
+			name:        "unclassified error is dead-lettered",
+			handlerErr:  errors.New("boom"),
+			wantMessage: "Unclassified handler error",
+		},
+		{
+			name:        "permanent error is dead-lettered",
+			handlerErr:  event.PermanentError{Err: errors.New("bad json")},
+			wantMessage: "Poison message",
+		},
+		{
+			name:        "retryable error is requeued",
+			handlerErr:  event.RetryableError{Err: errors.New("database is offline")},
+			wantMessage: "will be requeued",
+		},
 	}
 
-	werr := client.consumers[0].handler(event.Message{Body: []byte(`{}`), Headers: map[string]any{"x-correlation-id": "c1"}})
-	if werr == nil {
-		t.Fatal("wrapped handler must propagate handler error")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := newTestClient(t)
+			handlerErr := tc.handlerErr
+
+			err := client.RegisterTypedHandler(eventconstants.QueueWardrobeCleanup, func(ctx context.Context, msg event.Message) error {
+				return handlerErr
+			}, event.ConsumerOpts{Concurrency: 1})
+			if err != nil {
+				t.Fatalf("RegisterTypedHandler returned error: %v", err)
+			}
+
+			werr := client.consumers[0].handler(event.Message{
+				Body:    []byte(`{}`),
+				Headers: map[string]any{"x-correlation-id": "c1"},
+			})
+			// The framework must not swallow or rewrite the error: startConsumerLoop
+			// reads the classification off exactly this value.
+			if werr == nil {
+				t.Fatal("wrapped handler must propagate handler error")
+			}
+
+			logs := typedHandlerLogs(client.logger.(*nopLogger).errs)
+			if len(logs) != 1 {
+				t.Fatalf("mỗi lỗi phải sinh đúng một log phân loại, có %d: %v", len(logs), logs)
+			}
+			if !strings.Contains(logs[0], tc.wantMessage) {
+				t.Errorf("cần log chứa %q, nhận: %q", tc.wantMessage, logs[0])
+			}
+			// The line must not claim two different outcomes at once, which is the
+			// exact contradiction this task removed.
+			if strings.Contains(logs[0], "will be requeued") && !strings.Contains(tc.wantMessage, "requeued") {
+				t.Error("log nói sẽ requeue trong khi phân loại là dead-letter")
+			}
+		})
 	}
-	found := false
-	for _, m := range client.logger.(*nopLogger).errs {
-		if strings.Contains(m, "Handler error") {
-			found = true
+}
+
+// typedHandlerLogs keeps only the classification lines, dropping the registration
+// noise the test client produces without a live broker.
+//
+// It matches on the message text alone because nopLogger discards zap fields, so the
+// correlation id cannot be asserted from here; that it is attached is covered by the
+// production code path that reads it back off the message.
+func typedHandlerLogs(all []string) []string {
+	var out []string
+	for _, m := range all {
+		if strings.Contains(m, "[TypedHandler]") {
+			out = append(out, m)
 		}
 	}
-	if !found {
-		t.Errorf("expected a handler-error log among %d logs", len(client.logger.(*nopLogger).errs))
-	}
+	return out
 }
 
 func TestErrorTaxonomyClassification(t *testing.T) {

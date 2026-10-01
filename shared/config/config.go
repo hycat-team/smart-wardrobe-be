@@ -11,35 +11,36 @@ package config
 import "time"
 
 type Config struct {
-	App                App                        `mapstructure:"app"`
-	Database           Database                   `mapstructure:"database"`
-	Redis              Redis                      `mapstructure:"redis"`
-	Server             Server                     `mapstructure:"server"`
-	Startup            Startup                    `mapstructure:"startup"`
-	Jwt                Jwt                        `mapstructure:"jwt"`
-	Google             Google                     `mapstructure:"google"`
-	Logger             Logger                     `mapstructure:"logger"`
-	Quota              Quota                      `mapstructure:"quota"`
-	Otp                Otp                        `mapstructure:"otp"`
-	Email              Email                      `mapstructure:"email"`
-	RateLimit          RateLimit                  `mapstructure:"rate_limit"`
-	ClaimRateLimit     ClaimRateLimit             `mapstructure:"claim_rate_limit"`
-	PayOS              PayOS                      `mapstructure:"payos"`
-	Cloudinary         Cloudinary                 `mapstructure:"cloudinary"`
-	AI                 AIServiceConfig            `mapstructure:"ai"`
-	RabbitMQ           RabbitMQ                   `mapstructure:"rabbitmq"`
-	Elasticsearch      Elasticsearch              `mapstructure:"elasticsearch"`
-	Community          Community                  `mapstructure:"community"`
-	Loyalty            Loyalty                    `mapstructure:"loyalty"`
-	BrandMembership    BrandMembershipCacheTTL    `mapstructure:"brand_membership"`
-	RAG                RAG                        `mapstructure:"rag"`
-	Subscription       Subscription               `mapstructure:"subscription"`
-	Wardrobe           WardrobeProcessing         `mapstructure:"wardrobe"`
-	Outbox             OutboxConfig               `mapstructure:"outbox"`
-	Admin              AdminConfig                `mapstructure:"admin"`
-	BrandFeatureAccess BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
-	Cache              CacheConfig                `mapstructure:"cache"`
-	Ingress            Ingress                    `mapstructure:"ingress"`
+	App                 App                        `mapstructure:"app"`
+	Database            Database                   `mapstructure:"database"`
+	Redis               Redis                      `mapstructure:"redis"`
+	Server              Server                     `mapstructure:"server"`
+	Startup             Startup                    `mapstructure:"startup"`
+	Jwt                 Jwt                        `mapstructure:"jwt"`
+	Google              Google                     `mapstructure:"google"`
+	Logger              Logger                     `mapstructure:"logger"`
+	Quota               Quota                      `mapstructure:"quota"`
+	Otp                 Otp                        `mapstructure:"otp"`
+	Email               Email                      `mapstructure:"email"`
+	RateLimit           RateLimit                  `mapstructure:"rate_limit"`
+	ClaimRateLimit      ClaimRateLimit             `mapstructure:"claim_rate_limit"`
+	AdminGrantRateLimit AdminGrantRateLimit        `mapstructure:"admin_grant_rate_limit"`
+	PayOS               PayOS                      `mapstructure:"payos"`
+	Cloudinary          Cloudinary                 `mapstructure:"cloudinary"`
+	AI                  AIServiceConfig            `mapstructure:"ai"`
+	RabbitMQ            RabbitMQ                   `mapstructure:"rabbitmq"`
+	Elasticsearch       Elasticsearch              `mapstructure:"elasticsearch"`
+	Community           Community                  `mapstructure:"community"`
+	Loyalty             Loyalty                    `mapstructure:"loyalty"`
+	BrandMembership     BrandMembershipCacheTTL    `mapstructure:"brand_membership"`
+	RAG                 RAG                        `mapstructure:"rag"`
+	Subscription        Subscription               `mapstructure:"subscription"`
+	Wardrobe            WardrobeProcessing         `mapstructure:"wardrobe"`
+	Outbox              OutboxConfig               `mapstructure:"outbox"`
+	Admin               AdminConfig                `mapstructure:"admin"`
+	BrandFeatureAccess  BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
+	Cache               CacheConfig                `mapstructure:"cache"`
+	Ingress             Ingress                    `mapstructure:"ingress"`
 }
 
 // App selects the runtime topology of a service binary (FR-044).
@@ -50,10 +51,23 @@ type App struct {
 	Mode string `mapstructure:"mode"`
 }
 
+// MaxOverviewTTLSeconds is the hard ceiling on the subscription overview cache
+// TTL, from FR-074 (024 T146).
+//
+// The TTL is how long a freshly granted plan can stay invisible to the customer,
+// because entitlement decisions read this cache. It is a ceiling rather than a
+// default so that raising it cannot be a configuration mistake: `Validate` rejects
+// anything above it at startup.
+//
+// The zero value means "use the built-in default", which is why this constant is
+// not simply the default.
+const MaxOverviewTTLSeconds = 60
+
 // CacheConfig holds TTL configuration for application caches.
 type CacheConfig struct {
 	// OverviewTTLSeconds is the TTL of the subscription overview cache served
 	// to AI hot paths via IUserSubscriptionContract (default 60 seconds).
+	// May not exceed MaxOverviewTTLSeconds.
 	OverviewTTLSeconds int `mapstructure:"overview_ttl_seconds"`
 }
 
@@ -124,43 +138,49 @@ type APIProviderConfig struct {
 }
 
 type AIServiceConfig struct {
-	VisionPrimary                          APIProviderConfig     `mapstructure:"vision_primary"`
-	VisionFallback                         APIProviderConfig     `mapstructure:"vision_fallback"`
-	EmbeddingPrimary                       APIProviderConfig     `mapstructure:"embedding_primary"`
-	EmbeddingFallback                      APIProviderConfig     `mapstructure:"embedding_fallback"`
-	ChatTextPrimary                        APIProviderConfig     `mapstructure:"chat_text_primary"`
-	ChatTextFallback                       APIProviderConfig     `mapstructure:"chat_text_fallback"`
-	RecommendationTextPrimary              APIProviderConfig     `mapstructure:"recommendation_text_primary"`
-	RecommendationTextFallback             APIProviderConfig     `mapstructure:"recommendation_text_fallback"`
-	ChatTextTimeoutSeconds                 int                   `mapstructure:"chat_text_timeout_seconds"`
-	RecommendationTextTimeoutSeconds       int                   `mapstructure:"recommendation_text_timeout_seconds"`
-	VisionTimeoutSeconds                   int                   `mapstructure:"vision_timeout_seconds"`
-	EmbeddingTimeoutSeconds                int                   `mapstructure:"embedding_timeout_seconds"`
-	ChatTextRPMLimit                       int                   `mapstructure:"chat_text_rpm_limit"`
-	RecommendationTextRPMLimit             int                   `mapstructure:"recommendation_text_rpm_limit"`
-	VisionRPMLimit                         int                   `mapstructure:"vision_rpm_limit"`
-	EmbeddingRPMLimit                      int                   `mapstructure:"embedding_rpm_limit"`
-	ChatMaxInputCharacters                 int                   `mapstructure:"chat_max_input_characters"`
-	ChatHistoryMessageMaxCharacters        int                   `mapstructure:"chat_history_message_max_characters"`
-	ChatMaxOutputTokens                    int                   `mapstructure:"chat_max_output_tokens"`
-	SummarySourceMaxCharacters             int                   `mapstructure:"summary_source_max_characters"`
-	SummaryPreviousMaxCharacters           int                   `mapstructure:"summary_previous_max_characters"`
-	SummaryMaxOutputTokens                 int                   `mapstructure:"summary_max_output_tokens"`
-	RewriterPromptMaxCharacters            int                   `mapstructure:"rewriter_prompt_max_characters"`
-	RewriterMaxOutputTokens                int                   `mapstructure:"rewriter_max_output_tokens"`
-	RecommendationDetailsMaxCharacters     int                   `mapstructure:"recommendation_details_max_characters"`
-	RecommendationPromptCandidateLimit     int                   `mapstructure:"recommendation_prompt_candidate_limit"`
-	RecommendationDescriptionMaxCharacters int                   `mapstructure:"recommendation_description_max_characters"`
-	RecommendationTagsLimit                int                   `mapstructure:"recommendation_tags_limit"`
-	RecommendationPromptMaxCharacters      int                   `mapstructure:"recommendation_prompt_max_characters"`
-	RecommendationMaxOutputTokens          int                   `mapstructure:"recommendation_max_output_tokens"`
-	FreeTextPrimary                        APIProviderConfig     `mapstructure:"free_text_primary"`
-	FreeTextFallback                       APIProviderConfig     `mapstructure:"free_text_fallback"`
-	FreeTextTimeoutSeconds                 int                   `mapstructure:"free_text_timeout_seconds"`
-	FreeTextRPMLimit                       int                   `mapstructure:"free_text_rpm_limit"`
-	UsageReconcileCron                     string                `mapstructure:"usage_reconcile_cron"`
-	UsageReconcileBatchSize                int                   `mapstructure:"usage_reconcile_batch_size"`
-	TokenEstimation                        TokenEstimationConfig `mapstructure:"token_estimation"`
+	VisionPrimary                          APIProviderConfig `mapstructure:"vision_primary"`
+	VisionFallback                         APIProviderConfig `mapstructure:"vision_fallback"`
+	EmbeddingPrimary                       APIProviderConfig `mapstructure:"embedding_primary"`
+	EmbeddingFallback                      APIProviderConfig `mapstructure:"embedding_fallback"`
+	ChatTextPrimary                        APIProviderConfig `mapstructure:"chat_text_primary"`
+	ChatTextFallback                       APIProviderConfig `mapstructure:"chat_text_fallback"`
+	RecommendationTextPrimary              APIProviderConfig `mapstructure:"recommendation_text_primary"`
+	RecommendationTextFallback             APIProviderConfig `mapstructure:"recommendation_text_fallback"`
+	ChatTextTimeoutSeconds                 int               `mapstructure:"chat_text_timeout_seconds"`
+	RecommendationTextTimeoutSeconds       int               `mapstructure:"recommendation_text_timeout_seconds"`
+	VisionTimeoutSeconds                   int               `mapstructure:"vision_timeout_seconds"`
+	EmbeddingTimeoutSeconds                int               `mapstructure:"embedding_timeout_seconds"`
+	ChatTextRPMLimit                       int               `mapstructure:"chat_text_rpm_limit"`
+	RecommendationTextRPMLimit             int               `mapstructure:"recommendation_text_rpm_limit"`
+	VisionRPMLimit                         int               `mapstructure:"vision_rpm_limit"`
+	EmbeddingRPMLimit                      int               `mapstructure:"embedding_rpm_limit"`
+	ChatMaxInputCharacters                 int               `mapstructure:"chat_max_input_characters"`
+	ChatHistoryMessageMaxCharacters        int               `mapstructure:"chat_history_message_max_characters"`
+	ChatMaxOutputTokens                    int               `mapstructure:"chat_max_output_tokens"`
+	SummarySourceMaxCharacters             int               `mapstructure:"summary_source_max_characters"`
+	SummaryPreviousMaxCharacters           int               `mapstructure:"summary_previous_max_characters"`
+	SummaryMaxOutputTokens                 int               `mapstructure:"summary_max_output_tokens"`
+	RewriterPromptMaxCharacters            int               `mapstructure:"rewriter_prompt_max_characters"`
+	RewriterMaxOutputTokens                int               `mapstructure:"rewriter_max_output_tokens"`
+	RecommendationDetailsMaxCharacters     int               `mapstructure:"recommendation_details_max_characters"`
+	RecommendationPromptCandidateLimit     int               `mapstructure:"recommendation_prompt_candidate_limit"`
+	RecommendationDescriptionMaxCharacters int               `mapstructure:"recommendation_description_max_characters"`
+	RecommendationTagsLimit                int               `mapstructure:"recommendation_tags_limit"`
+	RecommendationPromptMaxCharacters      int               `mapstructure:"recommendation_prompt_max_characters"`
+	RecommendationMaxOutputTokens          int               `mapstructure:"recommendation_max_output_tokens"`
+	FreeTextPrimary                        APIProviderConfig `mapstructure:"free_text_primary"`
+	FreeTextFallback                       APIProviderConfig `mapstructure:"free_text_fallback"`
+	FreeTextTimeoutSeconds                 int               `mapstructure:"free_text_timeout_seconds"`
+	FreeTextRPMLimit                       int               `mapstructure:"free_text_rpm_limit"`
+	UsageReconcileCron                     string            `mapstructure:"usage_reconcile_cron"`
+	UsageReconcileBatchSize                int               `mapstructure:"usage_reconcile_batch_size"`
+	// DefaultCostPolicyCode is the aiexecutor.ai_cost_policies.code used as
+	// fallback tier 1 when an account has no policy grant row (FR-006). The
+	// table has no tier_rank/is_default column, so the default policy can only
+	// be selected by code from configuration (research.md R8). Hardcoding a
+	// code here would violate constitution §VIII.
+	DefaultCostPolicyCode string                `mapstructure:"default_cost_policy_code"`
+	TokenEstimation       TokenEstimationConfig `mapstructure:"token_estimation"`
 }
 
 type RabbitMQ struct {
@@ -387,6 +407,17 @@ type ClaimRateLimit struct {
 	UserLimit     int `mapstructure:"user_limit"`
 	TokenLimit    int `mapstructure:"token_limit"`
 	WindowSeconds int `mapstructure:"window_seconds"`
+}
+
+// AdminGrantRateLimit caps the admin batch-grant endpoint. Two independent
+// tiers, both counted per administrator rather than per IP (FR-078):
+// AllPerMinute covers every request, MultiPerMinute covers only requests whose
+// item count is greater than one. MultiPerMinute must stay below
+// AllPerMinute, otherwise the stricter tier is dead configuration.
+type AdminGrantRateLimit struct {
+	AllPerMinute   int `mapstructure:"all_per_minute"`
+	MultiPerMinute int `mapstructure:"multi_per_minute"`
+	WindowSeconds  int `mapstructure:"window_seconds"`
 }
 
 type Community struct {

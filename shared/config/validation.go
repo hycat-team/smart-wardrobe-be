@@ -83,6 +83,33 @@ func validateConfig(cfg *Config) error {
 		// A zero token_limit means zero burst — every request would be rejected.
 		return fmt.Errorf("global rate limit configuration is invalid")
 	}
+	if cfg.AdminGrantRateLimit.AllPerMinute <= 0 || cfg.AdminGrantRateLimit.MultiPerMinute <= 0 || cfg.AdminGrantRateLimit.WindowSeconds <= 0 {
+		// A zero quota here locks administrators out of batch grant entirely.
+		return fmt.Errorf("admin grant rate limit configuration is invalid")
+	}
+	if cfg.AdminGrantRateLimit.MultiPerMinute > cfg.AdminGrantRateLimit.AllPerMinute {
+		// The stricter tier would never fire - multi requests would be counted
+		// only by the looser tier, so the batch cap would be dead config.
+		return fmt.Errorf("admin grant multi_per_minute must not exceed all_per_minute")
+	}
+	// 024 T146 (FR-074): the overview cache TTL is capped at 60 seconds, not just
+	// set to it.
+	//
+	// FR-074 requires the grant to be visible to a customer on their next request,
+	// and this TTL is how long it can take to arrive. Nothing else bounds it, so a
+	// deployment could raise it and silently break a customer-facing guarantee -
+	// the customer would be charged Premium and refused by the AI service until the
+	// cache expired.
+	//
+	// Zero is allowed and means "use the built-in default", so the setting stays
+	// optional; anything ABOVE the ceiling is rejected at startup rather than
+	// accepted and discovered later.
+	if cfg.Cache.OverviewTTLSeconds < 0 {
+		return fmt.Errorf("cache overview_ttl_seconds must not be negative")
+	}
+	if cfg.Cache.OverviewTTLSeconds > MaxOverviewTTLSeconds {
+		return fmt.Errorf("cache overview_ttl_seconds must not exceed %d seconds (FR-074): a longer cache would keep a freshly granted plan invisible to the customer", MaxOverviewTTLSeconds)
+	}
 	if strings.TrimSpace(cfg.PayOS.ReconciliationCron) == "" || cfg.PayOS.ReconciliationBatchSize <= 0 || cfg.PayOS.ReconciliationLeaseSeconds <= 0 || cfg.PayOS.ReconciliationMaxAttempts <= 0 || cfg.PayOS.ReconciliationMaxAgeHours <= 0 {
 		return fmt.Errorf("payos reconciliation configuration is invalid")
 	}

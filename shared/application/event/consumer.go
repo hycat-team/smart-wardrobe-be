@@ -16,12 +16,21 @@ type Message struct {
 
 // CorrelationId trả về correlationId từ message headers (nếu có),
 // dùng để log/trace cùng phía publisher (outbox ghi x-correlation-id).
+// CorrelationId returns the correlation identifier carried by the message.
+//
+// BOTH header names are read. The outbox publisher writes "correlationId",
+// while an explicitly supplied header arrives as "x-correlation-id" — the
+// standard AMQP property name. Reading only the second one meant the
+// correlation id was empty for every message this system produced itself, so no
+// rejection could be traced back to its publisher (024 FR-086).
 func (m Message) CorrelationId() string {
 	if m.Headers == nil {
 		return ""
 	}
-	if v, ok := m.Headers["x-correlation-id"].(string); ok {
-		return v
+	for _, key := range []string{"x-correlation-id", "correlationId"} {
+		if v, ok := m.Headers[key].(string); ok && v != "" {
+			return v
+		}
 	}
 	return ""
 }

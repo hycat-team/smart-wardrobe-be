@@ -28,15 +28,28 @@ func (r *RabbitMQClient) RegisterTypedHandler(queue string, handler func(ctx con
 		ctx := event.ContextWithCorrelationId(r.baseCtx, msg)
 		if err := handler(ctx, msg); err != nil {
 			var pe event.PermanentError
+			var re event.RetryableError
 			logFields := []zap.Field{
 				zap.String("queue", queue),
 				zap.String("correlationId", msg.CorrelationId()),
 				zap.Error(err),
 			}
-			if errors.As(err, &pe) {
+			// 024 T152: this used to have two branches - "poison message" for
+			// PermanentError and "will retry" for everything else. But
+			// `startConsumerLoop` has three: it requeues ONLY a RetryableError and
+			// dead-letters the default. So a handler that returned an unclassified
+			// error was logged as retrying while being discarded on the spot, and
+			// the log - the only record of what happened to a message - was wrong.
+			//
+			// The three branches now mirror the three outcomes exactly.
+			switch {
+			case errors.As(err, &re):
+				r.logger.Error("[TypedHandler] Transient handler error, message will be requeued", logFields...)
+			case errors.As(err, &pe):
 				r.logger.Error("[TypedHandler] Poison message, dead-lettering", logFields...)
-			} else {
-				r.logger.Error("[TypedHandler] Handler error, will retry", logFields...)
+			default:
+				r.logger.Error("[TypedHandler] Unclassified handler error, dead-lettering; "+
+					"wrap it in event.RetryableError if redelivery could help", logFields...)
 			}
 			return err
 		}

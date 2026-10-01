@@ -4,8 +4,10 @@
 //
 // It computes the minimal set of longest-prefix locations that route every
 // documented path to its owning service, marking `/stream` and `/sse` paths so
-// they get proxy_buffering off + long timeouts (FR-036), then emits the
-// region between GENERATED markers in
+// they get proxy_buffering off + long timeouts (FR-036), and marking the
+// long-running endpoints listed in longTimeoutPrefixes so they get their own
+// wider proxy_send_timeout/proxy_read_timeout instead of inheriting the
+// server-level default, then emits the region between GENERATED markers in
 //
 //	deployments/nginx/templates/services/vps-3service.conf.template (VPS api.closy upstreams)
 //	deployments/nginx/templates/services-redirect/vps-3service.conf.template (VPS + api-v2 redirect grace)
@@ -32,7 +34,24 @@ const (
 	// minPrefixSegments anchors generated prefixes at the API base (/api/v1);
 	// see computeLocations.
 	minPrefixSegments = 3
+	// longTimeoutSeconds is the proxy budget given to a long-running endpoint.
+	// It reuses the value already used by the generated SSE locations so there
+	// is exactly one long-timeout number in the ingress.
+	longTimeoutSeconds = 300
 )
+
+// longTimeoutPrefixes lists the API prefixes whose request budget outlives the
+// server-level proxy_*_timeout (60s) inherited from the `server` block.
+//
+// The admin batch premium grant is the case that forced this list (FR-076): the
+// use case enforces a 60s processing budget opened before any I/O, and the app
+// write deadline is 120s (`server.write_timeout_seconds`). A proxy that gives up
+// at 60s therefore cuts a request the app is still legitimately working on and
+// the operator sees an infrastructure error for a grant that succeeded. The
+// proxy must outlast the app write deadline, not merely the app budget.
+var longTimeoutPrefixes = []string{
+	"/api/v1/admin/subscription-grants",
+}
 
 var swaggerFiles = map[string]string{
 	"account":  "services/account/api/swagger/swagger.json",
@@ -64,6 +83,11 @@ type location struct {
 	// sse marks a streaming endpoint (path ends in /stream or /sse) that needs
 	// proxy_buffering off + long timeouts (FR-036).
 	sse bool
+	// long marks an endpoint whose request budget outlives the server-level
+	// proxy timeouts, so the location must carry its own longer
+	// proxy_send_timeout/proxy_read_timeout. Buffering stays on: the response is
+	// a single buffered document, not a stream.
+	long bool
 }
 
 type markerFile struct {
@@ -145,6 +169,7 @@ func computeLocations(services map[string][]string) ([]location, error) {
 		locs = append(locs, *l)
 	}
 	locs = minimize(locs)
+	applyLongTimeout(locs)
 	locs = mergeSSE(locs, computeSSELocations(services))
 	sort.Slice(locs, func(i, j int) bool {
 		if locs[i].owner != locs[j].owner {
@@ -202,6 +227,23 @@ func mergeSSE(locs, sse []location) []location {
 
 func isSSEPath(p string) bool {
 	return strings.HasSuffix(p, "/stream") || strings.HasSuffix(p, "/sse")
+}
+
+// applyLongTimeout flags every location at or under a longTimeoutPrefix so it
+// gets a proxy budget wider than the server-level 60s default.
+//
+// It runs after minimize, because that is when the surviving prefixes are
+// known: the shortest prefix that still covers a slow endpoint is the one that
+// needs the override.
+func applyLongTimeout(locs []location) {
+	for i := range locs {
+		for _, p := range longTimeoutPrefixes {
+			if locs[i].prefix == p || strings.HasPrefix(locs[i].prefix, p+"/") {
+				locs[i].long = true
+				break
+			}
+		}
+	}
 }
 
 // staticPrefix returns the path up to the first `{param}` with no trailing slash.
@@ -299,6 +341,11 @@ func renderRegion(locs []location, mode string) string {
 		if l.sse {
 			fmt.Fprintf(&b, "    location %s %s { proxy_pass %s; proxy_buffering off; proxy_cache off; proxy_send_timeout 300s; proxy_read_timeout 300s; }\n",
 				mod, l.prefix, targetTemplates[mode][l.owner])
+			continue
+		}
+		if l.long {
+			fmt.Fprintf(&b, "    location %s %s { proxy_pass %s; proxy_send_timeout %ds; proxy_read_timeout %ds; }\n",
+				mod, l.prefix, targetTemplates[mode][l.owner], longTimeoutSeconds, longTimeoutSeconds)
 			continue
 		}
 		fmt.Fprintf(&b, "    location %s %s { proxy_pass %s; }\n", mod, l.prefix, targetTemplates[mode][l.owner])

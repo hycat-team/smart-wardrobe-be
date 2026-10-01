@@ -64,7 +64,13 @@ var Topology = []Binding{
 		Queue:       eventconstants.QueueSubscriptionPlanChanged,
 		RoutingKeys: []string{RoutingKeySubscriptionPlanChanged},
 		Exchange:    ExchangeName,
-		Args:        queueArgs(eventconstants.QueueSubscriptionPlanChanged, false),
+		// 024 T053 / FR-017: quorum with x-delivery-limit 5. On a classic queue
+		// a RetryableError is redelivered forever, and a message that would
+		// succeed on the second attempt still never gets one; on a quorum queue
+		// it is retried five times and then dead-lettered. Both halves are
+		// required — quorum alone still dead-letters a transient failure on the
+		// first attempt, and RetryableError alone spins forever.
+		Args:        queueArgs(eventconstants.QueueSubscriptionPlanChanged, true),
 		Prefetch:    20,
 		Concurrency: 1,
 	},
