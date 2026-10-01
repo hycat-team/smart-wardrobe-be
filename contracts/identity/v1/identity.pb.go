@@ -31,15 +31,24 @@ const (
 // enums as int32: Gender Unknown=0/Male=1/Female=2/Other=3,
 // UserStatus Active=0/Inactive=1).
 type UserBrief struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	FirstName     string                 `protobuf:"bytes,4,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
-	LastName      string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
-	Gender        int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
-	Status        int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
-	AvatarUrl     string                 `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username  string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Email     string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	FirstName string                 `protobuf:"bytes,4,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName  string                 `protobuf:"bytes,5,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	Gender    int32                  `protobuf:"varint,6,opt,name=gender,proto3" json:"gender,omitempty"`
+	Status    int32                  `protobuf:"varint,7,opt,name=status,proto3" json:"status,omitempty"`
+	AvatarUrl string                 `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	// 024 FR-056: the administrator grant flow must refuse an administrator
+	// target, and that decision is made by the subscription module — which is not
+	// the owner of identity.users. Without the role on the wire it could not tell
+	// an administrator from a customer.
+	RoleSlug string `protobuf:"bytes,9,opt,name=role_slug,json=roleSlug,proto3" json:"role_slug,omitempty"`
+	// 024 FR-049: a soft-deleted account has to be reported as such rather than
+	// as "not found", otherwise the administrator is told to check the spelling of
+	// an address that is correct.
+	IsDeleted     bool `protobuf:"varint,10,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -128,6 +137,20 @@ func (x *UserBrief) GetAvatarUrl() string {
 		return x.AvatarUrl
 	}
 	return ""
+}
+
+func (x *UserBrief) GetRoleSlug() string {
+	if x != nil {
+		return x.RoleSlug
+	}
+	return ""
+}
+
+func (x *UserBrief) GetIsDeleted() bool {
+	if x != nil {
+		return x.IsDeleted
+	}
+	return false
 }
 
 type GetUserBriefRequest struct {
@@ -555,7 +578,7 @@ var File_contracts_identity_v1_identity_proto protoreflect.FileDescriptor
 
 const file_contracts_identity_v1_identity_proto_rawDesc = "" +
 	"\n" +
-	"$contracts/identity/v1/identity.proto\x12\x11closy.identity.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x01\n" +
+	"$contracts/identity/v1/identity.proto\x12\x11closy.identity.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x02\n" +
 	"\tUserBrief\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
@@ -566,7 +589,11 @@ const file_contracts_identity_v1_identity_proto_rawDesc = "" +
 	"\x06gender\x18\x06 \x01(\x05R\x06gender\x12\x16\n" +
 	"\x06status\x18\a \x01(\x05R\x06status\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\b \x01(\tR\tavatarUrl\".\n" +
+	"avatar_url\x18\b \x01(\tR\tavatarUrl\x12\x1b\n" +
+	"\trole_slug\x18\t \x01(\tR\broleSlug\x12\x1d\n" +
+	"\n" +
+	"is_deleted\x18\n" +
+	" \x01(\bR\tisDeleted\".\n" +
 	"\x13GetUserBriefRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"1\n" +
 	"\x14GetUserBriefsRequest\x12\x19\n" +

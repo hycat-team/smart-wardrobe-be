@@ -22,6 +22,15 @@ message UserBrief {
   int32 gender = 6;
   int32 status = 7;
   string avatar_url = 8;
+  // 024 FR-056: the administrator grant flow must refuse an administrator
+  // target, and that decision is made by the subscription module — which is not
+  // the owner of identity.users. Without the role on the wire it could not tell
+  // an administrator from a customer.
+  string role_slug = 9;
+  // 024 FR-049: a soft-deleted account has to be reported as such rather than
+  // as "not found", otherwise the administrator is told to check the spelling of
+  // an address that is correct.
+  bool is_deleted = 10;
 }
 
 message GetUserBriefRequest {
