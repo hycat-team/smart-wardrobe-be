@@ -42,6 +42,18 @@ type IUserRepository interface {
 	// commerce, which must keep excluding deleted accounts.
 	GetByUsernamesOrEmailsIncludingDeleted(ctx context.Context, identifiers []string) ([]*entities.User, error)
 	SearchByKeyword(ctx context.Context, keyword string, limit int) ([]*entities.User, error)
+	// ListCreatedInWindow returns at most `filter.Limit` non-deleted accounts whose
+	// `created_at` falls in [filter.From, filter.To), oldest first (025 T021).
+	//
+	// It exists for the campaign catch-up sweep (FR-079), which has to find
+	// eligible accounts whose grant was never written. The sweep runs inside this
+	// service, which is why this stays on the repository rather than becoming a
+	// contract method — see contracts/identity-contract.md §2.
+	//
+	// READ-ONLY, deliberately. The campaign mechanism has no business reason to
+	// change an account; every account state change goes through the existing
+	// flows.
+	ListCreatedInWindow(ctx context.Context, filter CampaignAccountFilter) (*CampaignAccountPage, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
 	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*UserStyleProfileRes, error)
 	GetAdminUserStats(ctx context.Context, snapshotDate time.Time) (*UserAdminStatsDTO, error)

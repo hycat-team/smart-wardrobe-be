@@ -19,6 +19,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
 	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/shared/application/constants/otpconstants"
+	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
@@ -38,6 +39,10 @@ type RegisterUseCase struct {
 	// as the other two, and it is the busiest one.
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
 	uow                  shared_repos.IUnitOfWork
+	// 025 T026: emits `identity.user.created` inside the registration
+	// transaction. Not nil-guarded: an absent publisher would silently skip the
+	// event and no account would ever be a campaign candidate.
+	eventPublisher shared_event.IEventPublisher
 }
 
 func NewRegisterUseCase(
@@ -48,6 +53,7 @@ func NewRegisterUseCase(
 	cfg *config.Config,
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
 	uow shared_repos.IUnitOfWork,
+	eventPublisher shared_event.IEventPublisher,
 ) uc_interfaces.IRegisterUseCase {
 	return &RegisterUseCase{
 		userRepo:             userRepo,
@@ -57,6 +63,7 @@ func NewRegisterUseCase(
 		cfg:                  cfg,
 		provisioningContract: provisioningContract,
 		uow:                  uow,
+		eventPublisher:       eventPublisher,
 	}
 }
 
@@ -184,7 +191,23 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 		if err := uc.userRepo.Create(txCtx, newUser); err != nil {
 			return err
 		}
-		return uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID)
+		if err := uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID); err != nil {
+			return err
+		}
+		// 025 T030: the event is written INSIDE this transaction, after
+		// provisioning. The outbox publisher resolves the transaction from the
+		// context, so the record commits with the account.
+		//
+		// Two consequences, both intentional (FR-042, FR-088):
+		//   - no event exists for an account that rolled back;
+		//   - a failure to write the event fails the REGISTRATION. Losing the
+		//     message is worse than losing the registration, because an account
+		//     nobody was ever told about is invisible: no campaign grant, no
+		//     welcome email, no signal at all.
+		//
+		// It must come after EnsureDefaultSubscription so a receiver that reads the
+		// account's plan does not race an unwritten entitlement.
+		return publishUserCreated(txCtx, uc.eventPublisher, newUser, false)
 	})
 	if err != nil {
 		// A concurrent Google login may have created the same email first.

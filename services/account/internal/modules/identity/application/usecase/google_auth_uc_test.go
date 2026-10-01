@@ -102,7 +102,7 @@ func (f *fakeUoW) Execute(ctx context.Context, fn func(ctx context.Context) erro
 }
 
 func newGoogleUC(repo *mockUserRepo, verifier *fakeVerifier, session *fakeSession, state *fakeStateStore, blacklist *fakeBlacklist) uc_interfaces.IGoogleAuthUseCase {
-	return usecase.NewGoogleAuthUseCase(repo, session, verifier, state, blacklist, &config.Config{}, &fakeUoW{}, &noopProvisioning{})
+	return usecase.NewGoogleAuthUseCase(repo, session, verifier, state, blacklist, &config.Config{}, &fakeUoW{}, &noopProvisioning{}, &recordingPublisher{})
 }
 
 // noopProvisioning stands in for the subscription module in tests that are not
@@ -332,7 +332,7 @@ func googleRedirectCfg() *config.Config {
 }
 
 func newGoogleUCWithConfig(cfg *config.Config, repo *mockUserRepo, session *fakeSession, state *fakeStateStore) uc_interfaces.IGoogleAuthUseCase {
-	return usecase.NewGoogleAuthUseCase(repo, session, &fakeVerifier{}, state, &fakeBlacklist{}, cfg, &fakeUoW{}, &noopProvisioning{})
+	return usecase.NewGoogleAuthUseCase(repo, session, &fakeVerifier{}, state, &fakeBlacklist{}, cfg, &fakeUoW{}, &noopProvisioning{}, &recordingPublisher{})
 }
 
 func TestGoogleStartRedirect_InvalidURL(t *testing.T) {

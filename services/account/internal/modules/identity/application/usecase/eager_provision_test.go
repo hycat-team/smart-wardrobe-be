@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	subscription_contract "smart-wardrobe-be/services/account/contract/subscription"
 	"smart-wardrobe-be/services/account/dto/identity"
@@ -18,6 +19,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
 	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
+	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 
@@ -46,6 +48,12 @@ import (
 // The double-provisioning question (eager door and lazy door both running for
 // one account) is answered where the persistence details live, in
 // subscription/eager_default_provision_test.go.
+//
+// 025 T029b adds a third property, asserted in this file because every one of the
+// three creation doors is already constructed here: the `identity.user.created`
+// event. FR-042 says a failed event write must fail the account creation, so the
+// publisher is NOT optional in any of these use cases — and a test that can make
+// the publisher fail is the only way to prove it.
 
 // eagerIdentityUow stages the writes its closure makes and only makes them
 // visible when the closure succeeds. That is what lets these tests prove the
@@ -82,7 +90,11 @@ func newEagerIdentityUow() *eagerIdentityUow {
 }
 
 func (u *eagerIdentityUow) Execute(ctx context.Context, fn func(ctx context.Context) error) error {
-	if err := fn(context.WithValue(ctx, eagerTxKey{}, true)); err != nil {
+	// Two markers, deliberately. `eagerTxKey` is what the provisioning tests read;
+	// `txProbeKey` is the same signal the event spy reads, so a test can assert the
+	// publish happened inside the transaction without a second mechanism.
+	txCtx := context.WithValue(context.WithValue(ctx, eagerTxKey{}, true), txProbeKey{}, true)
+	if err := fn(txCtx); err != nil {
 		u.rollbacks++
 		u.stagedAccounts = map[uuid.UUID]*entities.User{}
 		u.stagedEntitlements = map[uuid.UUID]*entities.User{}
@@ -162,6 +174,14 @@ func (r *eagerIdentityRepo) Create(ctx context.Context, user *entities.User) err
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
+	// GORM populates CreatedAt from the column default (`now()`) during Create, so
+	// the fake stamps it too. Without this the `identity.user.created` payload would
+	// carry a zero instant, and the FR-031 comparison against the frozen watermark
+	// would be untestable here — which is precisely the value the event exists to
+	// carry.
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = testClock()
+	}
 	r.uow.order = append(r.uow.order, "create-account")
 	if inEagerTx(ctx) {
 		r.uow.stagedAccounts[user.ID] = user
@@ -169,6 +189,13 @@ func (r *eagerIdentityRepo) Create(ctx context.Context, user *entities.User) err
 	}
 	r.uow.accounts[user.ID] = user
 	return nil
+}
+
+// testClock is the single instant every account in these tests is stamped with,
+// so assertions can compare exact values. A real clock is not usable here: the
+// whole point of the composite-key pagination test is rows that SHARE an instant.
+func testClock() time.Time {
+	return time.Date(2026, time.October, 2, 0, 0, 0, 0, time.UTC)
 }
 
 // eagerProvisioningSpy records what the identity module asks of the subscription
@@ -274,13 +301,19 @@ func assertNoSubscriptionReadDependency(t *testing.T, uc any) {
 // --- builders ---------------------------------------------------------------
 
 func newEagerUserUseCase(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow) uc_interfaces.IUserUseCase {
+	return newEagerUserUseCaseWithPublisher(repo, spy, uow, newRecordingPublisher())
+}
+
+// newEagerUserUseCaseWithPublisher is the administrator door with a
+// caller-supplied event publisher.
+func newEagerUserUseCaseWithPublisher(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow, publisher shared_event.IEventPublisher) uc_interfaces.IUserUseCase {
 	// The spy is passed as the read contract too. It was `nil` here before, which
 	// is why the "no subscription READ" assertions could never fail: there was no
 	// object in the use case that a read could reach.
 	return usecase.NewUserUseCase(
 		repo, eagerPasswordHasher{}, nil, nil, spy,
 		spy, uow,
-		nil, &config.Config{}, nil, nil,
+		nil, &config.Config{}, publisher, nil,
 	)
 }
 
@@ -294,6 +327,12 @@ func (eagerPasswordHasher) VerifyPassword(plain, hashed string) bool {
 }
 
 func newEagerRegisterUseCase(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow) (uc_interfaces.IRegisterUseCase, *eagerOtpService) {
+	return newEagerRegisterUseCaseWithPublisher(repo, spy, uow, newRecordingPublisher())
+}
+
+// newEagerRegisterUseCaseWithPublisher is the same door with a caller-supplied
+// event publisher, so 025 T029b can make the publish fail.
+func newEagerRegisterUseCaseWithPublisher(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow, publisher shared_event.IEventPublisher) (uc_interfaces.IRegisterUseCase, *eagerOtpService) {
 	otpSvc := &eagerOtpService{}
 	return usecase.NewRegisterUseCase(
 		repo,
@@ -303,6 +342,7 @@ func newEagerRegisterUseCase(repo *eagerIdentityRepo, spy *eagerProvisioningSpy,
 		&config.Config{},
 		spy,
 		uow,
+		publisher,
 	), otpSvc
 }
 
@@ -336,6 +376,12 @@ func (eagerNotifContract) Send(ctx context.Context, channel notificationContract
 }
 
 func newEagerGoogleUC(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow, ident *appsecurity.GoogleIdentity) uc_interfaces.IGoogleAuthUseCase {
+	return newEagerGoogleUCWithPublisher(repo, spy, uow, ident, newRecordingPublisher())
+}
+
+// newEagerGoogleUCWithPublisher is the Google door with a caller-supplied event
+// publisher.
+func newEagerGoogleUCWithPublisher(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *eagerIdentityUow, ident *appsecurity.GoogleIdentity, publisher shared_event.IEventPublisher) uc_interfaces.IGoogleAuthUseCase {
 	return usecase.NewGoogleAuthUseCase(
 		repo,
 		&fakeSession{},
@@ -345,6 +391,7 @@ func newEagerGoogleUC(repo *eagerIdentityRepo, spy *eagerProvisioningSpy, uow *e
 		&config.Config{},
 		uow,
 		spy,
+		publisher,
 	)
 }
 

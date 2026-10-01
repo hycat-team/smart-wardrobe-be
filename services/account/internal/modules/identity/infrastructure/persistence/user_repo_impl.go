@@ -203,6 +203,66 @@ func escapeLikePattern(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
+// normalizeCampaignAccountLimit applies the project's shared list defaults to a
+// caller-supplied batch size.
+//
+// It delegates to `shared_dto.PaginationQuery.Normalize` rather than carrying
+// local constants, so the default (20) and the ceiling (100) are the same numbers
+// every other list in the project uses and cannot drift apart from them.
+func normalizeCampaignAccountLimit(limit int) int {
+	return shared_dto.PaginationQuery{Limit: limit}.Normalize().Limit
+}
+
+// ListCreatedInWindow returns one batch of non-deleted accounts created inside
+// [filter.From, filter.To), oldest first (025 T022).
+func (r *UserRepository) ListCreatedInWindow(ctx context.Context, filter repositories.CampaignAccountFilter) (*repositories.CampaignAccountPage, error) {
+	// Soft-deleted accounts are excluded here rather than filtered by the caller:
+	// a deleted account must never receive new entitlements, and the sweep walks
+	// this list unattended.
+	window := r.GetDB(ctx).Model(&entities.User{}).
+		Where("is_deleted = ?", false).
+		Where("created_at >= ? AND created_at < ?", filter.From, filter.To)
+
+	// Count the WHOLE window BEFORE the cursor is applied, and before Find.
+	//
+	// It answers "how many accounts are in this window at all", which is what tells
+	// the sweep how many batches are left. Counting the cursor-narrowed set would
+	// just return the batch size and make the number useless for that purpose —
+	// and `TotalCount` is documented as the window total, not the batch size.
+	var windowTotal int64
+	if err := window.Count(&windowTotal).Error; err != nil {
+		return nil, err
+	}
+
+	batch := window
+	// The cursor is the COMPOSITE key (created_at, id), not the timestamp alone.
+	// `created_at` has millisecond resolution, so accounts registered in the same
+	// test run routinely share an instant; paging by the timestamp alone would
+	// either skip the remainder of that instant or return it forever. Ordering by
+	// BOTH columns and filtering on the same two-column predicate is what makes
+	// the batch boundaries stable.
+	if !filter.CursorTime.IsZero() {
+		batch = batch.Where(
+			"(created_at > ?) OR (created_at = ? AND id > ?)",
+			filter.CursorTime, filter.CursorTime, filter.CursorID,
+		)
+	}
+
+	var users []*entities.User
+	err := batch.
+		Order("created_at ASC, id ASC").
+		Limit(normalizeCampaignAccountLimit(filter.Limit)).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &repositories.CampaignAccountPage{
+		Items:      users,
+		TotalCount: windowTotal,
+	}, nil
+}
+
 func (r *UserRepository) GetStyleProfile(ctx context.Context, userID uuid.UUID) (*dto.UserStyleProfileRes, error) {
 	var profile entities.UserStyleProfile
 	err := r.GetDB(ctx).Where("user_id = ?", userID).First(&profile).Error

@@ -22,4 +22,9 @@ var ProviderSet = wire.NewSet(
 	usecase.NewSessionUseCase,
 	usecase.NewPasswordRecoveryUseCase,
 	usecase.NewGoogleAuthUseCase,
+	// 025 T024: the creation-window reader the campaign catch-up sweep consumes
+	// through the narrow `CampaignAccountLister` contract. It is NOT part of
+	// IUserBriefUseCase: that interface is the shape of the gRPC contract, and
+	// widening it would change the wire format (FR-058).
+	usecase.NewCampaignAccountReader,
 )

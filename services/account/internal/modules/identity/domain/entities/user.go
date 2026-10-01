@@ -32,6 +32,23 @@ type User struct {
 	StyleProfile   *UserStyleProfile         `gorm:"foreignKey:UserID"`
 	AvatarUrl      *string                   `gorm:"type:varchar(500)"`
 	AvatarPublicID *string                   `gorm:"type:varchar(255)"`
+	// 025 T017 (FR-050): true only when the account was created through the
+	// administrator endpoint.
+	//
+	// It has to be a stored column and not something derived: the two self-serve
+	// doors and the administrator door build structurally identical rows, so
+	// nothing else in the record says which one created it. The campaign
+	// catch-up sweep reads the database and never sees the creation event, so
+	// without this field it could not tell an administrator's test account from
+	// a customer's - and would spend real customers' promotional quota on it.
+	//
+	// NOT derivable from EmailVerified either: an administrator may create an
+	// already-verified account, and every self-serve account is verified. One
+	// field is not evidence about the other.
+	//
+	// Set at exactly one write site (admin_uc.go, FR-091); the two self-serve
+	// doors leave it at the false default.
+	CreatedByAdmin bool `gorm:"type:boolean;not null;default:false"`
 }
 
 func (u *User) GetEffectiveBodyProfile() *BodyProfile {

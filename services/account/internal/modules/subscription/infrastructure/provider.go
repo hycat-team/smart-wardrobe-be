@@ -20,6 +20,10 @@ var ProviderSet = wire.NewSet(
 	persistence.NewWebhookInboxRepository,
 	persistence.NewUserSubscriptionEventRepository,
 	persistence.NewSubscriptionRenewalAttemptRepository,
+	// 025 T034: the campaign claim ledger. Not consumed by anything yet — it is
+	// wired here so the constructor stays reachable once the campaign use cases
+	// land, and so its signature is checked at DI time rather than at first use.
+	persistence.NewCampaignClaimRepository,
 	caching.NewRedisSubscriptionOverviewCache,
 	payos.NewPayOSService,
 )

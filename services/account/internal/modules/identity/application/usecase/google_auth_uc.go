@@ -17,6 +17,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/repositories"
+	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	shared_repos "smart-wardrobe-be/shared/domain/repositories"
@@ -49,6 +50,9 @@ type GoogleAuthUseCase struct {
 	// purpose - a nil contract here would silently skip provisioning and put the
 	// account back on the lazy path, which is the defect this task removes.
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
+	// 025 T027: emits `identity.user.created` inside the transaction that creates
+	// the account. Not nil-guarded, for the same reason as above.
+	eventPublisher shared_event.IEventPublisher
 }
 
 func NewGoogleAuthUseCase(
@@ -60,6 +64,7 @@ func NewGoogleAuthUseCase(
 	cfg *config.Config,
 	uow shared_repos.IUnitOfWork,
 	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
+	eventPublisher shared_event.IEventPublisher,
 ) uc_interfaces.IGoogleAuthUseCase {
 	return &GoogleAuthUseCase{
 		userRepo:              userRepo,
@@ -70,6 +75,7 @@ func NewGoogleAuthUseCase(
 		cfg:                   cfg,
 		uow:                   uow,
 		provisioningContract:  provisioningContract,
+		eventPublisher:        eventPublisher,
 	}
 }
 
@@ -241,7 +247,16 @@ func (uc *GoogleAuthUseCase) createGoogleUser(ctx context.Context, ident *appsec
 		if err := uc.userRepo.Create(txCtx, user); err != nil {
 			return err
 		}
-		return uc.ensureDefaultSubscription(txCtx, user.ID)
+		if err := uc.ensureDefaultSubscription(txCtx, user.ID); err != nil {
+			return err
+		}
+		// 025 T031: inside createFn, therefore inside `uow.Execute` — the event
+		// commits with the account or not at all (FR-042).
+		//
+		// The auto-link door returns above, in resolveUser, and never reaches
+		// here: linking a Google identity to an existing account does not create
+		// one, so it must not emit an event (contract §7, scenario 4).
+		return publishUserCreated(txCtx, uc.eventPublisher, user, false)
 	}
 	if err := uc.uow.Execute(ctx, createFn); err != nil {
 		// Concurrent first login: another request may have created the account.

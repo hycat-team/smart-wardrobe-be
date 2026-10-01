@@ -41,6 +41,12 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefContractDTO {
 		// soft-deleted account as such instead of as "not found".
 		RoleSlug:  user.RoleSlug,
 		IsDeleted: user.IsDeleted,
+		// 025 T019: the campaign module compares CreatedAt against the frozen
+		// priority watermark (FR-031), and refuses an administrator account as a
+		// grant target (FR-091) — from the catch-up sweep, which reads the database
+		// and never sees the creation event.
+		CreatedByAdmin: user.CreatedByAdmin,
+		CreatedAt:      user.CreatedAt,
 	}
 }
 

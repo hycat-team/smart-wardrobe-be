@@ -77,10 +77,10 @@ thông điện tạo tài khoản nằm ở đây vì US1, US3 và US7 đều ph
 
 ### Lược đồ dữ liệu
 
-- [ ] T015 Tạo tệp migration bằng `make migrate-create svc=account name=add_created_by_admin`, rồi viết SQL theo `data-model.md` mục 2.2 trong `services/account/database/migrations/<timestamp>_add_created_by_admin.sql`; nhận xét `-- +goose` bằng **tiếng Anh**, dẫn chiếu `025 T### (FR-050)`, có cả phần `Down`
-- [ ] T016 Tạo tệp migration bằng `make migrate-create svc=account name=add_campaign_claims`, rồi viết SQL theo `data-model.md` mục 3.2 trong `services/account/database/migrations/<timestamp>_add_campaign_claims.sql`; phải đủ **4** chỉ mục và ràng buộc kiểm tra: `ux_campaign_claims_user`, `ux_campaign_claims_watermark` (một phần, `WHERE fills_main_quota`), `ix_campaign_claims_campaign_bucket`, `ix_campaign_claims_campaign_granted`, cộng `CHECK (grant_bucket IN ('main','reserve'))`. Bắt buộc có cột `grant_bucket` (R2b)
-- [ ] T017 [P] Thêm trường `CreatedByAdmin bool` vào `entities.User` trong `services/account/internal/modules/identity/domain/entities/user.go`
-- [ ] T018 [P] Thêm trường `CampaignClaim` — gồm `GrantBucket` và `FillsMainQuota` — cùng hàm `TableName()` trả về `campaign_claims` trong `services/account/internal/modules/subscription/domain/entities/campaign_claim.go`; đặt tệp `table_name.go` của module ở tệp riêng theo quy ước H2
+- [x] T015 Tạo tệp migration bằng `make migrate-create svc=account name=add_created_by_admin`, rồi viết SQL theo `data-model.md` mục 2.2 trong `services/account/database/migrations/<timestamp>_add_created_by_admin.sql`; nhận xét `-- +goose` bằng **tiếng Anh**, dẫn chiếu `025 T### (FR-050)`, có cả phần `Down`
+- [x] T016 Tạo tệp migration bằng `make migrate-create svc=account name=add_campaign_claims`, rồi viết SQL theo `data-model.md` mục 3.2 trong `services/account/database/migrations/<timestamp>_add_campaign_claims.sql`; phải đủ **4** chỉ mục và ràng buộc kiểm tra: `ux_campaign_claims_user`, `ux_campaign_claims_watermark` (một phần, `WHERE fills_main_quota`), `ix_campaign_claims_campaign_bucket`, `ix_campaign_claims_campaign_granted`, cộng `CHECK (grant_bucket IN ('main','reserve'))`. Bắt buộc có cột `grant_bucket` (R2b)
+- [x] T017 [P] Thêm trường `CreatedByAdmin bool` vào `entities.User` trong `services/account/internal/modules/identity/domain/entities/user.go`
+- [x] T018 [P] Thêm trường `CampaignClaim` — gồm `GrantBucket` và `FillsMainQuota` — cùng hàm `TableName()` trả về `campaign_claims` trong `services/account/internal/modules/subscription/domain/entities/campaign_claim.go`; đặt tệp `table_name.go` của module ở tệp riêng theo quy ước H2
 
 ### Hợp đồng liệt kê tài khoản
 
@@ -89,34 +89,34 @@ thông điện tạo tài khoản nằm ở đây vì US1, US3 và US7 đều ph
 > trái FR-058. Thay vào đó khai báo interface hẹp riêng `CampaignAccountLister`, theo đúng tiền lệ
 > `AdminGrantLookup` của 024. Chi tiết ở `contracts/identity-contract.md` mục 2.
 
-- [ ] T019 [P] Thêm `CreatedAt time.Time` và `CreatedByAdmin bool` vào `UserBriefContractDTO` trong `services/account/dto/identity/contract_dto.go`, kèm nhận xét tiếng Anh giải thích vì sao **không** suy ra từ `email_verified`
-- [ ] T020 [P] Thêm `CampaignAccountFilter` và `CampaignAccountPage` vào `services/account/internal/modules/identity/domain/repositories/readmodels.go`. `CampaignAccountPage.Items` kiểu `[]*dto.UserBriefContractDTO` — **không** phải `[]*entities.User` (hiến phán §II: "using DTOs, never domain entities")
-- [ ] T021 Thêm `ListCreatedInWindow` vào `IUserRepository` trong `services/account/internal/modules/identity/domain/repositories/user_repo.go`
-- [ ] T022 Cài `ListCreatedInWindow` trong `services/account/internal/modules/identity/infrastructure/persistence/user_repo_impl.go` với phân trang khoá tổ hợp `(created_at, id)`, lọc `is_deleted = false`, và `Count` trước `Find`
-- [ ] T023 Khai báo interface hẹp `CampaignAccountLister` cùng hàm `NewCampaignAccountLister(c *UserBriefContract) CampaignAccountLister` trong `services/account/contract/identity/user_brief_contract_impl.go`, rồi cài phương thức `ListCreatedInWindow` trên `*UserBriefContract`. **Không** thêm gì vào `IUserBriefContract`. Nhận xét tiếng Anh nêu lý do tách, tham chiếu `AdminGrantLookup` (hiến phán §II)
-- [ ] T024 Thêm use case đọc cửa sổ tạo tài khoản trong module `identity`, cài ở tệp hợp đồng để `*UserBriefContract` thoả `CampaignAccountLister`. Trả về `Items` là `[]` rỗng khi không có kết quả, **không** phải `nil`
+- [x] T019 [P] Thêm `CreatedAt time.Time` và `CreatedByAdmin bool` vào `UserBriefContractDTO` trong `services/account/dto/identity/contract_dto.go`, kèm nhận xét tiếng Anh giải thích vì sao **không** suy ra từ `email_verified`
+- [x] T020 [P] Thêm `CampaignAccountFilter` và `CampaignAccountPage` vào `services/account/internal/modules/identity/domain/repositories/readmodels.go`. `CampaignAccountPage.Items` kiểu `[]*dto.UserBriefContractDTO` — **không** phải `[]*entities.User` (hiến phán §II: "using DTOs, never domain entities")
+- [x] T021 Thêm `ListCreatedInWindow` vào `IUserRepository` trong `services/account/internal/modules/identity/domain/repositories/user_repo.go`
+- [x] T022 Cài `ListCreatedInWindow` trong `services/account/internal/modules/identity/infrastructure/persistence/user_repo_impl.go` với phân trang khoá tổ hợp `(created_at, id)`, lọc `is_deleted = false`, và `Count` trước `Find`
+- [x] T023 Khai báo interface hẹp `CampaignAccountLister` cùng hàm `NewCampaignAccountLister(c *UserBriefContract) CampaignAccountLister` trong `services/account/contract/identity/user_brief_contract_impl.go`, rồi cài phương thức `ListCreatedInWindow` trên `*UserBriefContract`. **Không** thêm gì vào `IUserBriefContract`. Nhận xét tiếng Anh nêu lý do tách, tham chiếu `AdminGrantLookup` (hiến phán §II)
+- [x] T024 Thêm use case đọc cửa sổ tạo tài khoản trong module `identity`, cài ở tệp hợp đồng để `*UserBriefContract` thoả `CampaignAccountLister`. Trả về `Items` là `[]` rỗng khi không có kết quả, **không** phải `nil`
   - Kèm kiểm thử cho **7 kịch bản** ở `contracts/identity-contract.md` mục 6. Ba kịch bản bắt buộc: (a) **phân trang không bỏ sót khi nhiều tài khoản trùng `created_at`** — bẫy của khoá tổ hợp `(created_at, id)`, tạo 3 tài khoản cùng thời điểm rồi duyệt 3 lô `limit=1` phải ra đủ 3 bản ghi không trùng không thiếu; (b) `created_by_admin` trong cơ sở dữ liệu khớp cờ trong thông điệp cho cả ba đường tạo tài khoản; (c) **biên dịch toàn bộ `services/commerce` phải xanh** — bằng chứng cho quyết định không mở rộng hợp đồng gRPC
 
 ### Thông điệp tạo tài khoản
 
-- [ ] T025 [P] Thêm `UserCreatedEventPayload` với đúng 4 trường (`UserID`, `Provider`, `RegisteredAt`, `CreatedByAdmin`) trong `services/account/dto/identity/event_payload.go`; **không** có trường nhận diện cá nhân (FR-087)
-- [ ] T026 Thêm bộ phát sự kiện `IEventPublisher` vào trường và tham số ctor của `RegisterUseCase` trong `services/account/internal/modules/identity/application/usecase/register_uc.go`
-- [ ] T027 Thêm bộ phát sự kiện vào ctor `GoogleAuthUseCase` trong `services/account/internal/modules/identity/application/usecase/google_auth_uc.go`
-- [ ] T028 Thêm bộ phát sự kiện vào ctor `UserUseCase` trong `services/account/internal/modules/identity/application/usecase/user_uc.go`
-- [ ] T029 Cập nhật 3 tệp kiểm thử gọi các ctor trên: `register_uc_test.go`, `google_auth_uc_test.go`, `eager_provision_test.go` trong cùng thư mục
-- [ ] T029b [P] Kiểm thử ba điều kiện mà trình biên dịch không bắt được, thêm vào tệp kiểm thử đã có ở T029:
+- [x] T025 [P] Thêm `UserCreatedEventPayload` với đúng 4 trường (`UserID`, `Provider`, `RegisteredAt`, `CreatedByAdmin`) trong `services/account/dto/identity/event_payload.go`; **không** có trường nhận diện cá nhân (FR-087)
+- [x] T026 Thêm bộ phát sự kiện `IEventPublisher` vào trường và tham số ctor của `RegisterUseCase` trong `services/account/internal/modules/identity/application/usecase/register_uc.go`
+- [x] T027 Thêm bộ phát sự kiện vào ctor `GoogleAuthUseCase` trong `services/account/internal/modules/identity/application/usecase/google_auth_uc.go`
+- [x] T028 Thêm bộ phát sự kiện vào ctor `UserUseCase` trong `services/account/internal/modules/identity/application/usecase/user_uc.go`
+- [x] T029 Cập nhật 3 tệp kiểm thử gọi các ctor trên: `register_uc_test.go`, `google_auth_uc_test.go`, `eager_provision_test.go` trong cùng thư mục
+- [x] T029b [P] Kiểm thử ba điều kiện mà trình biên dịch không bắt được, thêm vào tệp kiểm thử đã có ở T029:
   - **FR-064**: thông điệp `identity.user.created` mang `correlationId` khớp với dòng hàng đỗi và với log worker nhận được, ở cả ba đường tạo tài khoản
   - **FR-085**: `modules/identity/` **không** có câu lệnh nào tham chiếu cấu hình `campaigns` — quét văn bản
   - **FR-042**: cố tình làm bộ phát hàng đỗi lỗi rồi gọi đăng ký — phải trả về lỗi và **không** còn dòng tài khoản nào trong cơ sở dữ liệu. Nếu tài khoản vẫn được tạo thì thông điệp đã thất lạc vĩnh viễn mà không ai biết
-- [ ] T030 Phát `identity.user.created` **bên trong** transaction sẵn có ở `register_uc.go` (sau `EnsureDefaultSubscription`), đặt cờ `CreatedByAdmin: false`
-- [ ] T031 Phát thông điệp trong `createGoogleUser` ở `google_auth_uc.go`, đặt cờ `CreatedByAdmin: false`; phải nằm trong `createFn` đang chạy trong `uow.Execute`
-- [ ] T032 Đặt `CreatedByAdmin: true` trên thực thể người dùng và phát thông điệp trong `admin_uc.go`; đây là **vị trí ghi `true` duy nhất** trong toàn mã nguồn (FR-091, R4)
+- [x] T030 Phát `identity.user.created` **bên trong** transaction sẵn có ở `register_uc.go` (sau `EnsureDefaultSubscription`), đặt cờ `CreatedByAdmin: false`
+- [x] T031 Phát thông điệp trong `createGoogleUser` ở `google_auth_uc.go`, đặt cờ `CreatedByAdmin: false`; phải nằm trong `createFn` đang chạy trong `uow.Execute`
+- [x] T032 Đặt `CreatedByAdmin: true` trên thực thể người dùng và phát thông điệp trong `admin_uc.go`; đây là **vị trí ghi `true` duy nhất** trong toàn mã nguồn (FR-091, R4)
 
 ### Kho lượt cấp
 
-- [ ] T033 [P] Thêm `ICampaignClaimRepository` với 5 phương thức `LockClaimWindow`, `CountByBucket`, `GetWatermark`, `Create`, `ListByCampaign` trong `services/account/internal/modules/subscription/domain/repositories/campaign_claim_repo.go`. `CountByBucket(campaignCode string, bucket GrantBucket) (int64, error)` trả về **một** số cho **một** phần — dùng nó để lấy cả `grantedMainCount` lẫn `grantedCompensationCount`; KHÔNG cung cấp phương thức nào đếm "phần chính" bằng cách loại trừ điều kiện trên `fills_main_quota` (R2b)
-- [ ] T034 Cài `CampaignClaimRepository` trong `services/account/internal/modules/subscription/infrastructure/persistence/campaign_claim_repo_impl.go`; `Create` dùng `ON CONFLICT (user_id) DO NOTHING` và trả về `RowsAffected > 0`; `LockClaimWindow` dùng `pg_advisory_xact_lock` qua `r.GetDB(ctx)` (R3); `CountByBucket` dùng chỉ mục `ix_campaign_claims_campaign_bucket`; `GetWatermark` trả về cả `found bool` lẫn `registeredAt` vì `registered_at` không rỗng nhưng **vắng mặt** thì có thật (R3)
-- [ ] T035 [P] Thêm lỗi chiến dịch bằng tiếng Việt trong `services/account/internal/modules/subscription/application/errors/errors.go`
+- [x] T033 [P] Thêm `ICampaignClaimRepository` với 5 phương thức `LockClaimWindow`, `CountByBucket`, `GetWatermark`, `Create`, `ListByCampaign` trong `services/account/internal/modules/subscription/domain/repositories/campaign_claim_repo.go`. `CountByBucket(campaignCode string, bucket GrantBucket) (int64, error)` trả về **một** số cho **một** phần — dùng nó để lấy cả `grantedMainCount` lẫn `grantedCompensationCount`; KHÔNG cung cấp phương thức nào đếm "phần chính" bằng cách loại trừ điều kiện trên `fills_main_quota` (R2b)
+- [x] T034 Cài `CampaignClaimRepository` trong `services/account/internal/modules/subscription/infrastructure/persistence/campaign_claim_repo_impl.go`; `Create` dùng `ON CONFLICT (user_id) DO NOTHING` và trả về `RowsAffected > 0`; `LockClaimWindow` dùng `pg_advisory_xact_lock` qua `r.GetDB(ctx)` (R3); `CountByBucket` dùng chỉ mục `ix_campaign_claims_campaign_bucket`; `GetWatermark` trả về cả `found bool` lẫn `registeredAt` vì `registered_at` không rỗng nhưng **vắng mặt** thì có thật (R3)
+- [x] T035 [P] Thêm lỗi chiến dịch bằng tiếng Việt trong `services/account/internal/modules/subscription/application/errors/errors.go`
 
 **Điểm kiểm tra**: `make migrate-up svc=account` chạy được, `make wire && make lint && make test-race`
 xanh. Một tài khoản tạo mới **đã** phát ra thông điệp — nhưng chưa có ai tiêu thụ, tức là thông

@@ -306,3 +306,73 @@ func ErrAdminGrantConcurrentModification() *apperror.Error {
 func ErrProvisioningRequiresCallerTransaction() *apperror.Error {
 	return apperror.NewInternalError("Không thể cấp phát gói hội viên mặc định vì thiếu giao dịch của yêu cầu tạo tài khoản.")
 }
+
+// 025 T035: lỗi của cơ chế chiến dịch.
+//
+// Chúng đi kèm `apperror` factory theo hiến phán §V: use case KHÔNG tự dựng lỗi
+// nghiệp vụ. Mỗi lỗi dưới đây là một *mã lý do* mà nhật ký và giao diện tra cứu
+// (FR-061) đọc lại được, nên thông điệp ở đây phải nói rõ ĐIỀU KIỆN đã hỏng chứ
+// không chỉ nêu triệu chứng.
+
+// ErrCampaignLockClaimWindowFailed báo rằng không lấy được khoá tư vấn của một
+// chiến dịch.
+//
+// Đây là lỗi TẠM THỜI, không phải lỗi vĩnh viễn: thông điệp phải được thử lại
+// (FR-062). Nếu nó bị coi là vĩnh viễn thì một chiến dịch sẽ mất lượt cấp chỉ vì
+// khoá bận — và lượt cấp mất thì không tự quay lại.
+func ErrCampaignLockClaimWindowFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể lấy khoá hạn mức của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: lock claim window", campaignCode)
+	return e
+}
+
+// ErrCampaignCountClaimFailed báo rằng không đếm được lượt đã cấp.
+//
+// Tạm thời: đây là lỗi cơ sở dữ liệu, và thử lại là hành vi đúng. Quan trọng hơn,
+// lỗi này phải nổi lên chứ không được thay bằng con số 0 — một phép đếm trả về 0
+// khi thực ra thất bại sẽ cấp vượt hạn mức ngay lập tức.
+func ErrCampaignCountClaimFailed(campaignCode string, bucket string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể kiểm tra số lượt đã cấp của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: count bucket %s", campaignCode, bucket)
+	return e
+}
+
+// ErrCampaignReadWatermarkFailed báo rằng không đọc được mốc ưu tiên.
+//
+// Tạm thời, và KHÔNG được thay bằng "chưa chốt mốc". Phần dự phòng chỉ dành cho
+// tài khoản tạo TRƯỚC mốc ưu tiên (FR-031), nên coi một lỗi đọc là "chưa có mốc"
+// sẽ cấp gói cho những tài khoản không đủ điều kiện — đúng loại hỏng âm thầm mà
+// FR-090 cấm.
+func ErrCampaignReadWatermarkFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể kiểm tra mốc ưu tiên của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: read watermark", campaignCode)
+	return e
+}
+
+// ErrCampaignWriteClaimFailed báo rằng không ghi được lượt cấp.
+//
+// Tạm thời: lượt cấp chưa tồn tại thì tài khoản chưa nhận gói, và thử lại là hành
+// vi đúng. Quan trọng: lỗi này phải làm hỏng cả giao dịch chứ không chỉ bỏ qua
+// lượt cấp — nếu gói đã cấp mà lượt cấp chưa ghi thì một lần quét bù sau đó sẽ
+// cấp lại lần nữa.
+func ErrCampaignWriteClaimFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể ghi nhận lượt cấp của chiến dịch. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign %s: write claim", campaignCode)
+	return e
+}
+
+// ErrCampaignListClaimsFailed báo rằng không đọc được danh sách lượt cấp cho
+// giao diện tra cứu của người vận hành (FR-065).
+func ErrCampaignListClaimsFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể tra cứu danh sách tài khoản đã cấp gói.")
+	e.Cause = fmt.Errorf("campaign %s: list claims", campaignCode)
+	return e
+}
+
+// ErrCampaignAccountsQueryFailed báo rằng không đọc được danh sách tài khoản
+// trong cửa sổ chiến dịch qua hợp đồng danh tính (FR-079).
+func ErrCampaignAccountsQueryFailed(campaignCode string) *apperror.Error {
+	e := apperror.NewInternalError("Không thể tra cứu danh sách tài khoản trong thời gian chiến dịch.")
+	e.Cause = fmt.Errorf("campaign %s: query accounts in window", campaignCode)
+	return e
+}

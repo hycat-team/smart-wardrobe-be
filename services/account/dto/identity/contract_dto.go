@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
@@ -26,4 +28,19 @@ type UserBriefContractDTO struct {
 	// disappearing, so the administrator is not told to re-check a correct
 	// address.
 	IsDeleted bool `json:"isDeleted"`
+	// 025 T019: the campaign module owns the rule "an account created by an
+	// administrator is not a campaign target", but it does not own
+	// identity.users. Carrying the flag on the contract is what lets it enforce
+	// that rule from the catch-up sweep, which reads the database and never sees
+	// the creation event.
+	//
+	// It is deliberately NOT derived from IsDeleted or from email verification:
+	// the table records nothing about who created the row, and an administrator
+	// may create an account that is already verified. One fact is not evidence
+	// about the other (research.md R4).
+	CreatedByAdmin bool `json:"createdByAdmin"`
+	// 025 T019: the campaign priority rule compares this against the frozen
+	// watermark (FR-031). Carried so the campaign module never reads
+	// identity.users.
+	CreatedAt time.Time `json:"createdAt"`
 }

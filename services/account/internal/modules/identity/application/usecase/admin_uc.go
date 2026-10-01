@@ -207,6 +207,21 @@ func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.U
 		Gender:        req.Gender,
 		RoleSlug:      role,
 		Status:        userstatus.Active,
+		// 025 T032 / FR-091: the ONE write of `true` in the whole source tree.
+		//
+		// It has to be set here, before the insert, because the catch-up sweep
+		// (FR-079) reads this column and has no creation event to read — an
+		// administrator's test account would otherwise be indistinguishable from
+		// a customer's and would consume real customers' promotional quota.
+		//
+		// The two self-serve doors leave it at the false default; a boundary test
+		// proves exactly one site sets it, because the compiler cannot.
+		//
+		// It is NOT `EmailVerified`, which is false here and true for every
+		// self-serve account: those are different facts, and an administrator may
+		// create an already-verified account, so deriving one from the other
+		// fails silently (research.md R4).
+		CreatedByAdmin: true,
 	}
 
 	// 024 T196 / FR-013: the account and its default entitlement are ONE
@@ -225,7 +240,12 @@ func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.U
 		if err := uc.userRepo.Create(txCtx, newUser); err != nil {
 			return err
 		}
-		return uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID)
+		if err := uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID); err != nil {
+			return err
+		}
+		// 025 T032: inside the transaction, after provisioning, so the event
+		// commits with the account and with its entitlement (FR-042, FR-088).
+		return publishUserCreated(txCtx, uc.eventPublisher, newUser, true)
 	})
 	if err != nil {
 		// 024 T197: the unit of work above is also where the default entitlement
