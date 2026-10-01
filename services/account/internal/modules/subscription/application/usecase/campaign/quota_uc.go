@@ -211,18 +211,27 @@ func (q *quotaDecider) chooseBucket(
 // (FR-019): `premium-monthly` happens to be 30 days, and hard-coding that is how
 // a quarterly campaign ends up granting a month.
 //
-// The term is anchored on the account's REGISTRATION, not on the processing
-// instant. That is what makes a late message (FR-078) grant the term the account
-// was actually promised: with the processing clock as the anchor, a message that
-// took four days to arrive would silently hand out four fewer days, and every
-// account would receive a different term depending on queue latency.
+// The term is anchored on the GRANT INSTANT, matching
+// `subscription.ResolveExpiryFor` in the shared apply workflow.
+//
+// This used to anchor on the account's registration, and that was wrong twice
+// over. It gave the claim row a different expiry from the subscription row the
+// same grant wrote, so the admin query and the audit trail would report a date
+// the customer did not actually have — and once the grant event moved to the
+// processing clock (see `grant_uc.go`, and why the AI service rejects an
+// earlier stamp) the two rows stopped agreeing at all. Two records describing
+// one grant must not disagree about when it ends.
+//
+// Anchoring on the grant also keeps the promise: a message that took four days
+// to arrive hands out a full term rather than four fewer days, and every
+// account gets the same length regardless of queue latency.
 func grantedExpiryFor(in claimInput) time.Time {
 	if in.Plan.DurationDays == nil {
 		// A plan with no duration has no expiry. The claim column is NOT NULL and
 		// the granted plan is finite (FR-010), so this is unreachable for a plan
-		// that passed admission; anchoring on the registration keeps the value
+		// that passed admission; anchoring on the grant instant keeps the value
 		// defined if it ever is not.
-		return in.RegisteredAt
+		return in.Now
 	}
-	return in.RegisteredAt.AddDate(0, 0, *in.Plan.DurationDays)
+	return in.Now.AddDate(0, 0, *in.Plan.DurationDays)
 }

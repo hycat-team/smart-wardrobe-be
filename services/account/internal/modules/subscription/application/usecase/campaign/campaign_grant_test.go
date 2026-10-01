@@ -48,14 +48,63 @@ func TestCampaignGrantAppliesPlanWithAutoRenewOff(t *testing.T) {
 	if sub.IsAutoRenewEnabled {
 		t.Fatalf("expected auto-renew OFF on a promotional grant (FR-035); nobody consented to be charged")
 	}
-	// FR-019: the term is the PLAN's duration, anchored on the account's
-	// registration — 30 days for premium-monthly, not a literal written here.
-	wantExpiry := payload.RegisteredAt.AddDate(0, 0, 30)
+	// FR-019: the term is the PLAN's duration — 30 days for premium-monthly, not
+	// a literal written here — anchored on the GRANT instant. This account
+	// registered at the harness clock, so the anchor is not observable from here;
+	// TestCampaignGrantWritesAClaimExpiryMatchingTheSubscription pins it down
+	// with a genuinely late account.
+	wantExpiry := baseInstant().AddDate(0, 0, 30)
 	if sub.ExpiresAt == nil {
 		t.Fatalf("expected a finite expiry, got nil")
 	}
 	if !sub.ExpiresAt.Equal(wantExpiry) {
-		t.Fatalf("expected expires_at = registered_at + 30d = %s, got %s", wantExpiry, sub.ExpiresAt)
+		t.Fatalf("expected expires_at = grant instant + 30d = %s, got %s", wantExpiry, sub.ExpiresAt)
+	}
+}
+
+// TestCampaignGrantWritesAClaimExpiryMatchingTheSubscription guards a split-brain
+// that two records describing one grant can fall into.
+//
+// `campaign_claims.expires_at` was anchored on the account's registration while
+// `user_subscriptions.expires_at` was anchored on the grant instant. The two rows
+// therefore disagreed, and the claim row is what the admin query and the audit
+// trail read — so an operator would have been shown a date the customer did not
+// actually have. With a late message the gap is as wide as the delay.
+//
+// The account here registered eight hours ago, which is the case where the two
+// anchors differ enough to tell apart.
+func TestCampaignGrantWritesAClaimExpiryMatchingTheSubscription(t *testing.T) {
+	registeredAt := baseInstant().Add(-8 * time.Hour)
+	startsAt := registeredAt.Add(-time.Hour)
+	campaign := testCampaignConfig("launch-2026-10", "premium-monthly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+
+	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: registeredAt}
+	if !h.granted(t, payload) {
+		t.Fatalf("expected a late message to still grant")
+	}
+
+	claim := h.claims.claimFor(payload.UserID)
+	if claim == nil {
+		t.Fatalf("expected a claim row for the granted account")
+	}
+	sub, err := h.subs.GetByUserID(context.Background(), payload.UserID)
+	if err != nil || sub == nil {
+		t.Fatalf("read granted subscription: %v", err)
+	}
+
+	if !claim.ExpiresAt.Equal(*sub.ExpiresAt) {
+		t.Fatalf("claim expires_at = %s but the subscription expires_at = %s; one grant must not end on two different dates",
+			claim.ExpiresAt, *sub.ExpiresAt)
+	}
+	if claim.ExpiresAt.Equal(registeredAt.AddDate(0, 0, 30)) {
+		t.Fatalf("claim expires_at = %s is still anchored on the registration time %s", claim.ExpiresAt, registeredAt)
+	}
+
+	// Lateness must cost the customer nothing: still a full term from the grant.
+	wantExpiry := baseInstant().AddDate(0, 0, 30)
+	if !claim.ExpiresAt.Equal(wantExpiry) {
+		t.Fatalf("expected a full 30-day term from the grant instant (%s), got %s", wantExpiry, claim.ExpiresAt)
 	}
 }
 
