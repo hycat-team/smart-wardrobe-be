@@ -170,6 +170,19 @@ var Topology = []Binding{
 		Prefetch:    20,
 		Concurrency: 1,
 	},
+	{
+		Queue:       eventconstants.QueueCampaignGrantUserCreated,
+		RoutingKeys: []string{RoutingKeyUserCreated},
+		Exchange:    ExchangeName,
+		// 025 T004 / FR-093: quorum with x-delivery-limit 5, same reasoning as
+		// QueueSubscriptionPlanChanged above. A grant that failed for a transient
+		// reason is redelivered up to five times and then dead-lettered; on a
+		// classic queue it would be redelivered forever, and a message that would
+		// succeed on the second attempt never gets that second attempt.
+		Args:        queueArgs(eventconstants.QueueCampaignGrantUserCreated, true),
+		Prefetch:    20,
+		Concurrency: 1,
+	},
 }
 
 // DLQTopology defines dead-letter queues bound to the DLX exchange.
@@ -190,4 +203,5 @@ var DLQTopology = []Binding{
 	{Queue: eventconstants.QueueBrandFashionBind + ".dlq", RoutingKeys: []string{eventconstants.QueueBrandFashionBind + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCommunityOutfitCascade + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityOutfitCascade + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 	{Queue: eventconstants.QueueCommunityUserStatus + ".dlq", RoutingKeys: []string{eventconstants.QueueCommunityUserStatus + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
+	{Queue: eventconstants.QueueCampaignGrantUserCreated + ".dlq", RoutingKeys: []string{eventconstants.QueueCampaignGrantUserCreated + ".dlq"}, Exchange: ExchangeDLXName, Args: amqp.Table{"x-queue-type": "quorum"}, Prefetch: 20, Concurrency: 1},
 }

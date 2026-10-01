@@ -42,21 +42,21 @@ thuộc và hạn ra mắt**, không theo số thứ tự ưu tiên.
 Không có nhiệm vụ nào ở phase này chứa logic nghiệp vụ. Mọi thứ ở đây là hạ tầng mà các câu chuyện
 sau dùng chung.
 
-- [ ] T001 Thêm hằng số chủ đề `TopicUserCreated = "identity.user.created"` trong `shared/application/constants/eventconstants/eventconstants.go`
-- [ ] T002 [P] Thêm hằng số `QueueCampaignGrantUserCreated = "campaign_grant_user_created_queue"` trong `shared/application/constants/eventconstants/queues.go`
-- [ ] T003 Thêm `RoutingKeyUserCreated` tham chiếu **symbol** `eventconstants.TopicUserCreated` trong `shared/infrastructure/messaging/rabbitmq_constants.go` (không viết chuỗi thô — FR-093/R7)
-- [ ] T004 Thêm `Binding` cho hàng đỗi mới và `Binding` tương ứng cho `.dlq` trong `Topology` và `DLQTopology` ở `shared/infrastructure/messaging/topology.go`; quorum + `x-delivery-limit: 5`, `Prefetch 20`, `Concurrency 1`
-- [ ] T005 [P] Thêm kiểu `CampaignConfig` và trường `Campaigns []CampaignConfig \`mapstructure:"campaigns"\`` trong `shared/config/config.go`; mọi trường có nhận xét tiếng Anh nêu rõ điều kiện kiểm tra
-- [ ] T005b [P] Thêm kiểu `CampaignSweepConfig` và trường `CampaignSweep CampaignSweepConfig \`mapstructure:"campaign_sweep"\`` trong cùng tệp, theo `data-model.md` mục 4.1.1: `IntervalSeconds int` (bắt buộc) và `RunOnStart bool`. Nhận xét tiếng Anh giải thích vì sao khối này **nằm ngoài** danh sách `campaigns` — một worker quét cho toàn bộ chiến dịch, đặt chu kỳ vào từng phần tử sẽ tạo N worker (FR-083)
-- [ ] T006 [P] Thêm `validateCampaigns` và gọi nó từ `validateConfig` trong `shared/config/validation.go`; kiểm tra đủ 7 trường hợp ở `data-model.md` mục 4.1. Thêm `validateCampaignSweep` cho `IntervalSeconds >= 60` và mặc định `RunOnStart = true` nếu bỏ trống (mục 4.1.1). Thiếu phần này thì worker quét bù chạy với chu kỳ 0 ở T098
-- [ ] T007 Thêm phân tích `startsAt`/`endsAt` theo RFC3339 có múi giờ vào bước sau khi nạp cấu hình trong `shared/config/loader.go`; dùng `timeutils.GetNow(cfg.Database.TimeZone)` ở mọi nơi cần thời gian hiện tại — tuyệt đối không `time.Now()` (R6, hiến phán §VIII)
-- [ ] T008 Thêm ghi đè biến môi trường cho các giá trị đơn lẻ trong `applyEnvOverrides` ở `shared/config/loader.go`; danh sách `campaigns` **không** có biến môi trường (R10)
-- [ ] T009 [P] Thêm khối `campaigns:` **và** khối `campaign_sweep:` vào `configs/config.yaml`, theo mẫu ở `data-model.md` mục 4 và 4.1.1
-- [ ] T010 [P] Thêm hai khối đó giống hệt vào `configs/config.production.yaml` — thiếu ở đây thì khối kia thành cấu hình chết. `interval_seconds` ở production phải khớp môi trường dev
-- [ ] T011 [P] Ghi chú biến đơn lẻ trong `.env.example` bằng **tiếng Anh**, nói rõ danh sách chiến dịch và khoảng thời gian quét bù nằm trong tệp YAML chứ không có biến môi trường
-- [ ] T012 [P] Ghi chú biến đơn lẻ trong `.env.production.example` bằng **tiếng Anh**, nội dung giống T011
-- [ ] T013 [P] Viết kiểm thử canh FR-092 trong `shared/infrastructure/messaging/topology_test.go`: `Topology` phải có **đúng một** liên kết chứa `TopicUserCreated`, và liên kết đó phải là hàng đỗi của chiến dịch
-- [ ] T014 [P] Viết kiểm thử `validateCampaigns` trong `shared/config/campaign_validation_test.go` cho 7 trường hợp sai ở `data-model.md` mục 4.1, **cộng** 3 trường hợp cho `validateCampaignSweep`: `interval_seconds` bằng 0, bằng 59, và bỏ trống phải ra 60 (SC-013, SC-014)
+- [x] T001 Thêm hằng số chủ đề `TopicUserCreated = "identity.user.created"` trong `shared/application/constants/eventconstants/eventconstants.go`
+- [x] T002 [P] Thêm hằng số `QueueCampaignGrantUserCreated = "campaign_grant_user_created_queue"` trong `shared/application/constants/eventconstants/queues.go`
+- [x] T003 Thêm `RoutingKeyUserCreated` tham chiếu **symbol** `eventconstants.TopicUserCreated` trong `shared/infrastructure/messaging/rabbitmq_constants.go` (không viết chuỗi thô — FR-093/R7)
+- [x] T004 Thêm `Binding` cho hàng đỗi mới và `Binding` tương ứng cho `.dlq` trong `Topology` và `DLQTopology` ở `shared/infrastructure/messaging/topology.go`; quorum + `x-delivery-limit: 5`, `Prefetch 20`, `Concurrency 1`
+- [x] T005 [P] Thêm kiểu `CampaignConfig` và trường `Campaigns []CampaignConfig \`mapstructure:"campaigns"\`` trong `shared/config/config.go`; mọi trường có nhận xét tiếng Anh nêu rõ điều kiện kiểm tra
+- [x] T005b [P] Thêm kiểu `CampaignSweepConfig` và trường `CampaignSweep CampaignSweepConfig \`mapstructure:"campaign_sweep"\`` trong cùng tệp, theo `data-model.md` mục 4.1.1: `IntervalSeconds int` (bắt buộc) và `RunOnStart bool`. Nhận xét tiếng Anh giải thích vì sao khối này **nằm ngoài** danh sách `campaigns` — một worker quét cho toàn bộ chiến dịch, đặt chu kỳ vào từng phần tử sẽ tạo N worker (FR-083)
+- [x] T006 [P] Thêm `validateCampaigns` và gọi nó từ `validateConfig` trong `shared/config/validation.go`; kiểm tra đủ 7 trường hợp ở `data-model.md` mục 4.1. Thêm `validateCampaignSweep` cho `IntervalSeconds >= 60` và mặc định `RunOnStart = true` nếu bỏ trống (mục 4.1.1). Thiếu phần này thì worker quét bù chạy với chu kỳ 0 ở T098
+- [x] T007 Thêm phân tích `startsAt`/`endsAt` theo RFC3339 có múi giờ vào bước sau khi nạp cấu hình trong `shared/config/loader.go`; dùng `timeutils.GetNow(cfg.Database.TimeZone)` ở mọi nơi cần thời gian hiện tại — tuyệt đối không `time.Now()` (R6, hiến phán §VIII)
+- [x] T008 Thêm ghi đè biến môi trường cho các giá trị đơn lẻ trong `applyEnvOverrides` ở `shared/config/loader.go`; danh sách `campaigns` **không** có biến môi trường (R10)
+- [x] T009 [P] Thêm khối `campaigns:` **và** khối `campaign_sweep:` vào `configs/config.yaml`, theo mẫu ở `data-model.md` mục 4 và 4.1.1
+- [x] T010 [P] Thêm hai khối đó giống hệt vào `configs/config.production.yaml` — thiếu ở đây thì khối kia thành cấu hình chết. `interval_seconds` ở production phải khớp môi trường dev
+- [x] T011 [P] Ghi chú biến đơn lẻ trong `.env.example` bằng **tiếng Anh**, nói rõ danh sách chiến dịch và khoảng thời gian quét bù nằm trong tệp YAML chứ không có biến môi trường
+- [x] T012 [P] Ghi chú biến đơn lẻ trong `.env.production.example` bằng **tiếng Anh**, nội dung giống T011
+- [x] T013 [P] Viết kiểm thử canh FR-092 trong `shared/infrastructure/messaging/topology_test.go`: `Topology` phải có **đúng một** liên kết chứa `TopicUserCreated`, và liên kết đó phải là hàng đỗi của chiến dịch
+- [x] T014 [P] Viết kiểm thử `validateCampaigns` trong `shared/config/campaign_validation_test.go` cho 7 trường hợp sai ở `data-model.md` mục 4.1, **cộng** 3 trường hợp cho `validateCampaignSweep`: `interval_seconds` bằng 0, bằng 59, và bỏ trống phải ra 60 (SC-013, SC-014)
 
 > **Ghi chú thứ tự**: T013 và T014 là **ngoại lệ** của nguyên tắc "kiểm thử viết trước, phải ĐỎ trước
 > khi cài" ở mục "Trong mỗi câu chuyện" phía dưới. Chúng là kiểm thử **canh ranh giới trên mã đã có**

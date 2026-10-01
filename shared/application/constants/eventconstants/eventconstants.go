@@ -31,6 +31,12 @@ const (
 	TopicOutfitDeleted     = "wardrobe.outfit.deleted"
 	TopicUserStatusChanged = "identity.user.status.changed"
 
+	// Identity events
+	// TopicUserCreated is emitted by the account service for EVERY newly created
+	// account (025, FR-005). It carries no personally identifiable data (FR-087):
+	// a receiver that needs the email reads the account table instead.
+	TopicUserCreated = "identity.user.created"
+
 	ActionCreated = "created"
 	ActionUpdated = "updated"
 	ActionDeleted = "deleted"

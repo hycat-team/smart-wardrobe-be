@@ -32,4 +32,8 @@ const (
 
 	RoutingKeyOutfitDeleted     = eventconstants.TopicOutfitDeleted
 	RoutingKeyUserStatusChanged = eventconstants.TopicUserStatusChanged
+	// 025 T003 / FR-093 (R7): references the topic SYMBOL, never a raw literal.
+	// The topic also drives the outbox routing key, so two literals would be two
+	// definitions of the same event that can silently drift apart.
+	RoutingKeyUserCreated = eventconstants.TopicUserCreated
 )

@@ -36,6 +36,8 @@ type Config struct {
 	RAG                 RAG                        `mapstructure:"rag"`
 	Subscription        Subscription               `mapstructure:"subscription"`
 	Wardrobe            WardrobeProcessing         `mapstructure:"wardrobe"`
+	Campaigns           []CampaignConfig           `mapstructure:"campaigns"`
+	CampaignSweep       CampaignSweepConfig        `mapstructure:"campaign_sweep"`
 	Outbox              OutboxConfig               `mapstructure:"outbox"`
 	Admin               AdminConfig                `mapstructure:"admin"`
 	BrandFeatureAccess  BrandFeatureAccessCacheTTL `mapstructure:"brand_feature_access"`
@@ -113,6 +115,76 @@ type WardrobeProcessing struct {
 	MaxRetryCount           int    `mapstructure:"max_retry_count"`
 	RecoveryScanCron        string `mapstructure:"recovery_scan_cron"`
 	CategoryCacheTTLSeconds int    `mapstructure:"category_cache_ttl_seconds"`
+}
+
+// DefaultCampaignSweepIntervalSeconds is both the DEFAULT and the FLOOR of
+// campaign_sweep.interval_seconds (025, FR-083).
+//
+// Two roles, one constant, on purpose. The key is absent from a hand-written
+// config all the time, so the loader needs a default; and anything below the
+// default that somebody wrote down is a misconfiguration that must be refused at
+// startup rather than repaired — below 60 seconds a sweep with a large backlog
+// starves the grant queue it is supposed to catch up.
+const DefaultCampaignSweepIntervalSeconds = 60
+
+// CampaignConfig is ONE entry of the signup campaign grant list (025, FR-010).
+//
+// A campaign is data, not code: opening a new one is a new list entry and never a
+// source change (FR-011, FR-090). The mechanism is named after the feature rather
+// than after any single campaign, so the second campaign does not turn the first
+// name into a lie.
+//
+// Every field below is checked at startup by validateCampaigns; the rule is
+// repeated on each field so the reason travels with the value.
+type CampaignConfig struct {
+	// Code identifies the campaign. It is written to the campaign_code column
+	// and into the audit trail, so it must be non-empty, unique in the list and
+	// match ^[a-z0-9][a-z0-9-]{2,63}$ — a restricted alphabet keeps a code that
+	// ends up in a queue or file name from breaking path traversal.
+	Code string `mapstructure:"code"`
+	// PlanSlug is the plan granted to an eligible account. Must be non-empty
+	// here; that the plan EXISTS and is ACTIVE is checked against the database
+	// at admission time, because loading configuration must not reach into the
+	// database. Granting an inactive plan would grant something with no
+	// commercial value (FR-010).
+	PlanSlug string `mapstructure:"plan_slug"`
+	// Quota is the main budget: the number of accounts that fill the main part
+	// and freeze the priority watermark. Must be >= 1 (FR-021) — zero would be a
+	// campaign that grants nothing, i.e. meaningless rather than invalid.
+	Quota int `mapstructure:"quota"`
+	// Reserve is the compensation budget, a CEILING and not a target (FR-032).
+	// Must be >= 0 (FR-021); zero means the hard ceiling is exactly Quota.
+	Reserve int `mapstructure:"reserve"`
+	// StartsAt is the instant the campaign opens, RFC3339 WITH an explicit zone.
+	// A zone-less value is rejected: a UTC server would then apply a
+	// Vietnam-time boundary 7 hours off (FR-008, R6, constitution §VIII).
+	StartsAt string `mapstructure:"starts_at"`
+	// EndsAt is the instant the campaign closes, or empty/null for an open-ended
+	// campaign (FR-009). When set it must be strictly after StartsAt (FR-013).
+	EndsAt string `mapstructure:"ends_at"`
+
+	// StartsAtTime is StartsAt parsed once at load time (025 T007); EndsAtTime is
+	// EndsAt parsed the same way, or nil for an open-ended campaign. Neither is
+	// mapped from YAML or from the environment: a derived field that had to be
+	// kept in sync by hand is a field that will eventually be wrong.
+	StartsAtTime time.Time  `mapstructure:"-"`
+	EndsAtTime   *time.Time `mapstructure:"-"`
+}
+
+// CampaignSweepConfig sets the cadence of the catch-up sweep for EVERY campaign
+// at once (025, FR-083).
+//
+// WHY IT SITS OUTSIDE THE campaigns LIST. One sweep worker runs once for all
+// campaigns currently in effect, so putting the interval in each list entry would
+// start N workers for N campaigns and force the question "who sweeps first".
+// A single action cadence directly under `campaigns` has no such ambiguity.
+type CampaignSweepConfig struct {
+	// IntervalSeconds is the sweep period. Must be >= 60
+	// (DefaultCampaignSweepIntervalSeconds); an absent key falls back to it.
+	IntervalSeconds int `mapstructure:"interval_seconds"`
+	// RunOnStart sweeps once at startup, which closes the gap left by the last
+	// sweep before the service stopped (FR-079, SC-016). Defaults to true.
+	RunOnStart bool `mapstructure:"run_on_start"`
 }
 
 type Startup struct {

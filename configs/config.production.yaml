@@ -227,6 +227,28 @@ admin:
     audit_retention_months: 12
 
 # ============================================================
+# Business - Campaigns (025 signup campaign grant)
+# ============================================================
+# Campaigns are DATA, not code: a new campaign is a new list entry (FR-011).
+# plan_slug must reference an EXISTING and ACTIVE plan (FR-010).
+# quota/reserve of a RUNNING campaign are immutable - end it and open a new code
+# instead, because every past claim records which part it came from.
+# No environment variable exists for this block: edit this file (R10).
+campaigns:
+    - code: launch-2026-10
+      plan_slug: premium-monthly
+      quota: 50
+      reserve: 5
+      starts_at: "2026-10-02T00:00:00+07:00"
+      # Optional (FR-009). When set, must be after starts_at (FR-013).
+      ends_at: null
+# Catch-up sweep cadence for ALL campaigns at once (FR-083). It is a separate
+# block, not a per-campaign field: one sweep worker serves every campaign.
+campaign_sweep:
+    interval_seconds: 900     # 15 minutes; floor 60
+    run_on_start: true        # sweep once at startup to close the gap left by the last run
+
+# ============================================================
 # AI & Recommendation
 # ============================================================
 ai:

@@ -10,6 +10,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
+
+	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -45,6 +48,12 @@ func loadConfig() (*Config, error) {
 	if err := v.ReadConfig(bytes.NewBufferString(expanded)); err != nil {
 		return nil, fmt.Errorf("read config file %q: %w", configPath, err)
 	}
+	// 025 T005b/T006 (FR-083): a viper default applies ONLY when the key is
+	// absent. That distinction is the whole point — an absent interval_seconds
+	// means "use 60", while an explicit `interval_seconds: 0` is a value somebody
+	// wrote and must still fail validation.
+	v.SetDefault("campaign_sweep.interval_seconds", DefaultCampaignSweepIntervalSeconds)
+	v.SetDefault("campaign_sweep.run_on_start", true)
 
 	var cfg Config
 	if err := v.UnmarshalExact(&cfg); err != nil {
@@ -53,11 +62,62 @@ func loadConfig() (*Config, error) {
 	applyEnvOverrides(&cfg)
 	cfg.Server.FrontEndOrigins = splitFrontEndOrigins(cfg.Server.FrontEndOrigin)
 	cfg.Google.ClientIDs = splitCSVList(cfg.Google.ClientIDRaw)
+	if err := parseCampaignWindows(&cfg); err != nil {
+		return nil, err
+	}
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+// parseCampaignWindows turns the campaign boundaries into time values once, at
+// load time, and normalises them to the service timezone (025 T007).
+//
+// The zone is taken from timeutils.GetNow(cfg.Database.TimeZone) rather than
+// time.Now(), because the campaign window has to be read in the same zone the
+// database and the rest of the service use (R6, constitution §VIII). A campaign
+// boundary expressed in another zone would land on the wrong day.
+func parseCampaignWindows(cfg *Config) error {
+	location := timeutils.GetNow(cfg.Database.TimeZone).Location()
+	for i := range cfg.Campaigns {
+		campaign := &cfg.Campaigns[i]
+		startsAt, err := parseCampaignInstant(campaign.StartsAt)
+		if err != nil {
+			return fmt.Errorf("campaigns[%d]: starts_at is invalid: %w", i, err)
+		}
+		campaign.StartsAtTime = startsAt.In(location)
+		if strings.TrimSpace(campaign.EndsAt) == "" {
+			// Open-ended campaign (FR-009): nil means "no upper bound", which is
+			// not the same instant as the zero time.
+			campaign.EndsAtTime = nil
+			continue
+		}
+		endsAt, err := parseCampaignInstant(campaign.EndsAt)
+		if err != nil {
+			return fmt.Errorf("campaigns[%d]: ends_at is invalid: %w", i, err)
+		}
+		normalized := endsAt.In(location)
+		campaign.EndsAtTime = &normalized
+	}
+	return nil
+}
+
+// parseCampaignInstant parses one campaign boundary. RFC3339 is required, WITH
+// its zone: FR-008 demands that every environment read the same instant, and a
+// zone-less value would be interpreted as UTC on a UTC server — 7 hours off for
+// a Vietnam-time boundary (R6).
+func parseCampaignInstant(raw string) (time.Time, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Time{}, fmt.Errorf("value is empty")
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%q is not RFC3339 with an explicit time zone (want 2026-10-02T00:00:00+07:00)", raw)
+	}
+	return parsed, nil
 }
 
 // splitCSVList parses a comma-separated value into a trimmed, non-empty slice.
@@ -224,6 +284,22 @@ func applyEnvOverrides(cfg *Config) {
 	overrideInt("COMMUNITY_COMMENT_RATE_LIMIT_PER_HOUR", &cfg.Community.CommentRateLimitPerHour)
 	overrideInt("COMMUNITY_FOLLOW_RATE_LIMIT_PER_HOUR", &cfg.Community.FollowRateLimitPerHour)
 	overrideInt("COMMUNITY_LIKE_RATE_LIMIT_PER_HOUR", &cfg.Community.LikeRateLimitPerHour)
+
+	// 025 T008 (R10): the signup campaign grant deliberately has NO environment
+	// override in this function.
+	//
+	// Two reasons, both about a second configuration path for one meaning:
+	//  1. `campaigns` is a LIST, and a list cannot be carried by a single env
+	//     value. Env overrides apply to single values only.
+	//  2. `campaign_sweep` lives in the same YAML file as the campaigns it
+	//     sweeps, so a CAMPAIGN_SWEEP_INTERVAL_SECONDS variable would let two
+	//     files disagree about one interval (data-model.md §4.1.1).
+	//
+	// Changing quota, reserve or the sweep interval therefore means editing
+	// configs/config.yaml or configs/config.production.yaml, exactly like every
+	// other campaign value. The absence is written down in .env.example and
+	// .env.production.example so an operator does not go hunting for a variable
+	// that never existed.
 }
 
 // overrideInt applies a positive integer env var to *dst when present and valid.
