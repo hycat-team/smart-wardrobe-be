@@ -341,9 +341,9 @@ làm **song song với Phase 6 và 7** được.
 - [x] T098 Cài `campaign_sweep_worker.go` trong `services/account/internal/modules/subscription/presentation/worker/` theo mẫu `subscription_renewal_worker.go`: `cron.New(cron.WithSeconds())`, chạy một lần lúc khởi động, khoảng thời gian lấy từ cấu hình chứ không viết cứng (FR-083)
 - [x] T099 Đăng ký `CampaignSweepWorker` trong `services/account/internal/modules/subscription/provider.go`, `internal/di/wire.go` và trường `CampaignSweep` trong `services/account/internal/bootstrap/worker.go`; chạy `make wire`.
   **⚠️ Tệp dùng chung**: không chạy song song với T057, T067, T083 — dễ mất thay đổi của nhau khi sinh lại cùng một tệp
-- [ ] T100 [P] [US3] Kiểm thử tính bất biến của mốc ưu tiên khi hai lần quét chạy song song: mốc **không** đổi giữa các lần (FR-030, SC-001)
-- [ ] T101 [P] [US1] Kiểm thử bù trễ: thông điệp tới muộn hơn 5 phút vẫn cấp gói, và sự kiện trễ được ghi nhận như sự kiện quan sát được (FR-078, FR-082, SC-015)
-- [ ] T102 [P] [US1] Kiểm thử quét bù đóng sót: tài khoản không có thông điệp nhưng đủ điều kiện vẫn được cấp (FR-079, FR-089, SC-016)
+- [x] T100 [P] [US3] Kiểm thử tính bất biến của mốc ưu tiên khi hai lần quét chạy song song: mốc **không** đổi giữa các lần (FR-030, SC-001)
+- [x] T101 [P] [US1] Kiểm thử bù trễ: thông điệp tới muộn hơn 5 phút vẫn cấp gói, và sự kiện trễ được ghi nhận như sự kiện quan sát được (FR-078, FR-082, SC-015)
+- [x] T102 [P] [US1] Kiểm thử quét bù đóng sót: tài khoản không có thông điệp nhưng đủ điều kiện vẫn được cấp (FR-079, FR-089, SC-016)
 - [ ] T103 [P] Kiểm thử canh FR-092: tập loại sự kiện đổi gói trong `shared/domain/constants/subscriptioneventtype/` vẫn đúng 7 phần tử, không thêm không bớt (FR-092)
 - [ ] T104 [P] Kiểm thử canh FR-098: module tạo tài khoản không có câu lệnh nào tra cứu gói cước — tìm kiếm văn bản trong `services/account/internal/modules/identity/` (FR-098)
 - [ ] T105 [P] Kiểm thử canh FR-095: lần cấp gói ghi **đúng một** dòng lịch sử thay đổi gói (SC-008)

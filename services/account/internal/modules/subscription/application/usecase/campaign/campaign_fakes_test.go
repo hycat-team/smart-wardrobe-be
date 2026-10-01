@@ -47,6 +47,17 @@ type fakeClaimRepo struct {
 	// watermarkMissing simulates the FR-030 anomaly: the main budget is full but
 	// no row carries the flag.
 	watermarkMissing bool
+	// countHold delays a bucket count AFTER its value has been read.
+	//
+	// It is zero everywhere except the concurrent sweep test, and it exists to
+	// make one specific mistake deterministically visible: reading the budget
+	// OUTSIDE the advisory lock. A count is a snapshot, and a caller that is not
+	// serialised will act on the snapshot it took rather than on the number the
+	// last writer left behind. Sleeping after the read guarantees that two such
+	// callers hold the same stale number at the same moment, instead of the test
+	// depending on the scheduler to interleave them. With the lock taken, the
+	// second caller is still waiting and re-reads a fresh number.
+	countHold time.Duration
 }
 
 func newFakeClaimRepo() *fakeClaimRepo {
@@ -102,6 +113,14 @@ func (f *fakeClaimRepo) CountByBucket(ctx context.Context, campaignCode string, 
 			count++
 		}
 	}
+	// The value is already a snapshot. The wait happens after the read on
+	// purpose — see `countHold`.
+	hold := f.countHold
+	f.mu.Unlock()
+	if hold > 0 {
+		time.Sleep(hold)
+	}
+	f.mu.Lock()
 	return count, nil
 }
 
