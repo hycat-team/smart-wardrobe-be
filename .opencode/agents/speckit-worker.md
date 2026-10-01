@@ -1,5 +1,5 @@
 ---
-description: Chạy một skill Spec Kit theo lệnh của điều phối viên (speckit-analyze, speckit-implement, speckit-converge) trên feature 025 signup-campaign-grant
+description: Chạy một skill Spec Kit theo lệnh của điều phối viên (speckit-analyze, speckit-implement, speckit-converge) trên feature do điều phối viên chỉ định
 mode: subagent
 temperature: 0.1
 permission:
@@ -27,9 +27,13 @@ lần được gọi và chạy nó trọn vẹn, tuân thủ từng bước tro
 
 ## Bối cảnh
 
-Feature đang triển khai: `specs/025-signup-campaign-grant/`.
-Chuỗi tài liệu đã hoàn tất: `spec.md`, `research.md`, `plan.md`,
-`data-model.md`, `contracts/`, `quickstart.md`, `tasks.md`, `checklists/`.
+Feature đang triển khai: do điều phối viên truyền trong lời gọi. Nếu lời gọi
+không nêu feature, HỎI LẠI — đừng đoán theo feature gần nhất trong `specs/`.
+
+Chuỗi tài liệu cần có: `spec.md`, `research.md`, `plan.md`, `data-model.md`,
+`contracts/`, `quickstart.md`, `tasks.md`, `checklists/`. Kiểm tra sự tồn tại
+trước khi dựa vào chúng; nếu thiếu, báo lại điều phối viên thay vì tự suy diễn
+nội dung.
 
 ## Quy tắc bắt buộc
 
