@@ -102,10 +102,15 @@ jobs:
 
     # Ops tool image (queue topology reconcile). Built once per run and pinned by
     # digest so the deploy-time check runs exactly the binary that was tested.
+    #
+    # `outputs.ref` MUST point at steps.digest, not steps.image: the image step
+    # resolves the NAME only, and a name without a digest is mutable, so the
+    # deploy-time `docker pull` would silently drift from what this job tested.
+    # Kept in step with deploy-aws.yml build-tool.
     build-tool:
         runs-on: ubuntu-latest
         outputs:
-            ref: ${{ steps.image.outputs.name }}
+            ref: ${{ steps.digest.outputs.ref }}
         steps:
             - name: Checkout source
               uses: actions/checkout@v4
@@ -144,7 +149,7 @@ jobs:
               run: |
                   name='${{ steps.image.outputs.name }}'
                   digest=$(docker buildx imagetools inspect "${name}:${{ github.sha }}" --format '{{.Manifest.Digest}}')
-                  echo "ref=${name}@${digest}" >> "${GITHUB_OUTPUT}""
+                  echo "ref=${name}@${digest}" >> "${GITHUB_OUTPUT}"
 
     deploy:
         needs:
