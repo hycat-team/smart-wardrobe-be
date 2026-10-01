@@ -2,6 +2,7 @@ package campaign
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	admindto "smart-wardrobe-be/services/account/dto/admin"
@@ -224,17 +225,32 @@ func (uc *CampaignUseCase) enqueueGrantEmail(txCtx context.Context, userID uuid.
 	if uc.notifContract == nil {
 		return
 	}
+	loc := planTimeZone(uc)
 	expiresText := "Không thời hạn"
 	if sub.ExpiresAt != nil {
-		expiresText = sub.ExpiresAt.In(planTimeZone(uc)).Format("02/01/2006")
+		expiresText = sub.ExpiresAt.In(loc).Format("02/01/2006")
 	}
+	// The copy must not name a number of days. `premium-monthly` happens to be 30
+	// today, and a copy that says 30 starts lying the moment a quarterly campaign
+	// exists — the same reason `grantedExpiryFor` never hard-codes the duration
+	// either (FR-019).
+	durationText := "không thời hạn"
+	if plan.DurationDays != nil {
+		durationText = fmt.Sprintf("%d ngày", *plan.DurationDays)
+	}
+	// StartedAt is the instant the apply workflow wrote, i.e. the grant itself, so
+	// this is the date the customer was actually upgraded.
+	grantedOn := sub.StartedAt.In(loc).Format("02/01/2006")
+
 	if err := uc.notifContract.SendByUserID(
 		txCtx,
 		notificationcontract.ChannelEmail,
 		notificationcontract.TemplateCampaignGrant,
 		map[string]any{
-			"PlanName":  plan.Name,
-			"ExpiresAt": expiresText,
+			"PlanName":     plan.Name,
+			"DurationText": durationText,
+			"GrantedOn":    grantedOn,
+			"ExpiresAt":    expiresText,
 		},
 		userID,
 	); err != nil {

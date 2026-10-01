@@ -449,6 +449,17 @@ func TestCampaignGrantSendsOneEmailWithNoCampaignQuota(t *testing.T) {
 	if emails[0].Params["ExpiresAt"] == nil || emails[0].Params["ExpiresAt"] == "" {
 		t.Fatalf("expected the expiry in the email (FR-044), got %#v", emails[0].Params["ExpiresAt"])
 	}
+	// FR-044/FR-045: the copy names the plan, the term and the date it started.
+	// It must NOT name a number of days in the template itself — `premium-monthly`
+	// is 30 days today and the copy would start lying the first time a quarterly
+	// campaign exists. The duration is read from the plan row, and the test below
+	// points a 90-day plan at the same code and expects 90 in the mail.
+	if got := emails[0].Params["DurationText"]; got != "30 ngày" {
+		t.Fatalf("expected DurationText to come from the plan's duration_days (%q), got %#v", "30 ngày", got)
+	}
+	if got := emails[0].Params["GrantedOn"]; got == nil || got == "" {
+		t.Fatalf("expected the grant date in the email, got %#v", got)
+	}
 	// FR-046: the remaining-giveaway count is irrelevant to this customer and is
 	// how a campaign turns into a queue at the door.
 	for key := range emails[0].Params {
@@ -457,6 +468,39 @@ func TestCampaignGrantSendsOneEmailWithNoCampaignQuota(t *testing.T) {
 			strings.Contains(strings.ToLower(key), "campaign") {
 			t.Fatalf("the email must not carry campaign accounting (FR-046), found parameter %q", key)
 		}
+	}
+}
+
+// TestCampaignEmailNamesThePlanTermRatherThanThirtyDays proves the copy is not
+// hardcoded to the plan that happens to be configured today.
+//
+// The sentence the customer reads contains a number of days, and the template
+// deliberately does not supply it. A `premium-monthly` copy that says "30 ngày"
+// starts lying the moment a quarterly campaign exists, and the day someone
+// configures a 7-day trial the mail would promise a month it is not granting.
+//
+// So the same code, pointed at the 90-day plan the harness already seeds, must
+// produce 90 in the mail. A template with 30 written into it passes the test
+// above and fails this one.
+func TestCampaignEmailNamesThePlanTermRatherThanThirtyDays(t *testing.T) {
+	startsAt := baseInstant().Add(-time.Hour)
+	campaign := testCampaignConfig("launch-2026-10", "premium-quarterly", 50, 5, &startsAt, nil)
+	h := newTestUseCase(t, []sharedconfig.CampaignConfig{campaign}, newFakeClaimRepo())
+
+	payload := identitydto.UserCreatedEventPayload{UserID: uuid.New(), RegisteredAt: baseInstant()}
+	if !h.granted(t, payload) {
+		t.Fatalf("expected the account to be granted")
+	}
+
+	emails := h.notif.emails()
+	if len(emails) != 1 {
+		t.Fatalf("expected exactly 1 email, got %d", len(emails))
+	}
+	if got := emails[0].Params["DurationText"]; got != "90 ngày" {
+		t.Fatalf("DurationText = %#v; it must follow the plan's duration_days (90), not a literal 30", got)
+	}
+	if got := emails[0].Params["PlanName"]; got == nil || got == "" {
+		t.Fatalf("expected the plan name in the email, got %#v", got)
 	}
 }
 
