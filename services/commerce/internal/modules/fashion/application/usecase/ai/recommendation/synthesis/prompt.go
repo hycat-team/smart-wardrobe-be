@@ -72,7 +72,10 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
 	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
 	builder.WriteString("- If no suitable top candidate exists for a top-and-bottom outfit, fall back to a fullbody outfit instead of omitting the top.\n")
-	builder.WriteString("Layering roles rule: headwear (\"headwear\") and accessory (\"accessory\") are OPTIONAL but HIGHLY EXPECTED. Whenever the candidate pool contains a suitable hat or accessory candidate, you MUST include that role in the outfit. Omitting them makes the outfit incomplete.\n")
+	builder.WriteString("Layering roles rule: headwear (\"headwear\") and accessory (\"accessory\") are independent roles that stack on top of the core outfit.\n")
+	builder.WriteString("- These two roles are NOT mutually exclusive. Never choose one role over the other: if the pool has both a hat candidate and an accessory candidate, you MUST include BOTH roles in the same outfit.\n")
+	builder.WriteString("- When a pool has a hat candidate, output a headwear entry. When it has an accessory candidate, output an accessory entry. Each of the two must be decided independently.\n")
+	builder.WriteString("- Omitting an available hat or accessory makes the outfit incomplete. Only skip a role when the pool truly has no candidate for it.\n")
 	builder.WriteString("Outerwear rule: outerwear (\"outerwear\") is an optional layer. Include it when the weather is cold/cool/rainy, when the season is autumn/winter, or when the context explicitly asks for a layered outfit. NEVER include heavy outerwear when the weather is hot or sunny.\n")
 
 	contextPayload := map[string]string{}

@@ -14,8 +14,10 @@ import (
 )
 
 // CategorySlugToWearingRole maps database category slugs to wearing position roles.
+// Slug được chuẩn hoá về chữ thường và cắt khoảng trắng thừa, khớp với cách
+// itemCategorySlug ở luồng HSL fallback xử lý, tránh việc slug bẩn âm thầm rơi về "other".
 func CategorySlugToWearingRole(slug string) string {
-	switch strings.ToLower(slug) {
+	switch strings.ToLower(strings.TrimSpace(slug)) {
 	case "ao":
 		return "top"
 	case "quan", "chan-vay":
@@ -94,20 +96,64 @@ func FashionForItemFromMap(item *wardrobeDto.WardrobeItemContractDTO, fashionIte
 	return nil
 }
 
+// coreSeparatesRoles là các vai trò lõi chỉ cần bù lại khi outfit không dùng đầm,
+// vì đầm (fullbody) đã thay thế chúng trong cấu trúc một-piece.
+var coreSeparatesRoles = []string{"top", "bottom"}
+
+// optionalLayerRoles là các vai trò lớp phụ luôn được bù lại vì chúng độc lập với
+// cấu trúc lõi và trung lập với thời tiết. outerwear cố ý không nằm trong nhóm này:
+// nó phụ thuộc thời tiết, mùa và ý định layering nên để lớp scoring và prompt quyết định.
+var optionalLayerRoles = []string{"headwear", "accessory"}
+
 // MapLLMResponseToGroups ánh xạ các gợi ý về ID và vai trò trang phục trong phản hồi của AI/LLM về lại các món đồ ứng viên thực tế trong tủ đồ của người dùng.
+//
+// Hành vi:
+//  1. Ánh xạ từng mục LLM trả về thành group thực tế, gán lại vai trò theo danh mục trong DB.
+//  2. Loại bỏ top và bottom nếu outfit có đầm (fullbody).
+//  3. Khử trùng lặp vai trò, giữ lại group đầu tiên cho mỗi vai trò.
+//  4. Bù lại top và bottom còn thiếu khi outfit không dùng đầm.
+//  5. Bù lại headwear và accessory còn thiếu.
+//
+// Bước 4 và 5 bảo đảm các vai trò này luôn xuất hiện khi tủ đồ có ứng viên phù hợp,
+// kể cả khi LLM bỏ sót, nên response không bao giờ thiếu nhóm mũ/phụ kiện một cách ngẫu nhiên.
 func MapLLMResponseToGroups(
 	candidates []types.CandidateForPrompt,
 	llmRes types.LlmOutfitResponse,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) []*dto.RecommendedItemGroup {
-	candidateMap := map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO{}
-	promptCandidateMap := map[uuid.UUID]types.CandidateForPrompt{}
+	candidateMap, promptCandidateMap := indexPromptCandidates(candidates)
+
+	groups, hasFullbody := mapLLMItemsToGroups(llmRes, candidates, candidateMap, promptCandidateMap, fashionItemMap)
+	groups = dropTopBottomWhenFullbody(groups, hasFullbody)
+	groups = dedupeGroupsByRole(groups)
+
+	if !hasFullbody {
+		groups = appendMissingRoleGroups(groups, candidates, candidateMap, promptCandidateMap, fashionItemMap, coreSeparatesRoles)
+	}
+	return appendMissingRoleGroups(groups, candidates, candidateMap, promptCandidateMap, fashionItemMap, optionalLayerRoles)
+}
+
+// indexPromptCandidates lập chỉ mục ứng viên theo ID để tra cứu nhanh khi ánh xạ phản hồi LLM.
+func indexPromptCandidates(candidates []types.CandidateForPrompt) (map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO, map[uuid.UUID]types.CandidateForPrompt) {
+	candidateMap := make(map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO, len(candidates))
+	promptCandidateMap := make(map[uuid.UUID]types.CandidateForPrompt, len(candidates))
 	for _, candidate := range candidates {
 		candidateMap[candidate.Item.ID] = candidate.Item
 		promptCandidateMap[candidate.Item.ID] = candidate
 	}
+	return candidateMap, promptCandidateMap
+}
 
-	valid := make([]*dto.RecommendedItemGroup, 0)
+// mapLLMItemsToGroups ánh xạ từng mục LLM sang group thực tế. Vai trò luôn được gán lại theo
+// danh mục trong DB nên giá trị role do LLM khai báo không quyết định kết quả cuối cùng.
+func mapLLMItemsToGroups(
+	llmRes types.LlmOutfitResponse,
+	candidates []types.CandidateForPrompt,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO,
+	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) ([]*dto.RecommendedItemGroup, bool) {
+	valid := make([]*dto.RecommendedItemGroup, 0, len(llmRes.Items))
 	var hasFullbody bool
 
 	for _, group := range llmRes.Items {
@@ -122,82 +168,82 @@ func MapLLMResponseToGroups(
 		if fashionItemRes != nil && fashionItemRes.Category != nil {
 			actualRole = CategorySlugToWearingRole(fashionItemRes.Category.Slug)
 		}
-
 		if actualRole == "fullbody" {
 			hasFullbody = true
 		}
 
 		cand, _ := promptCandidateMap[primary.ID]
-		primaryDTO := MapToRecommendedItemRes(primary, fashionItemRes, cand)
-
 		valid = append(valid, &dto.RecommendedItemGroup{
 			Role:         actualRole,
-			Primary:      primaryDTO,
+			Primary:      MapToRecommendedItemRes(primary, fashionItemRes, cand),
 			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, actualRole, primary.ID, group.AlternativeIDs, fashionItemMap),
 		})
 	}
 
-	if hasFullbody {
-		filtered := make([]*dto.RecommendedItemGroup, 0, len(valid))
-		for _, item := range valid {
-			if item.Role != "top" && item.Role != "bottom" {
-				filtered = append(filtered, item)
-			}
-		}
-		valid = filtered
-	}
+	return valid, hasFullbody
+}
 
-	// Deduplicate by role: only keep the first group for each role
-	seenRoles := make(map[string]bool)
-	deduped := make([]*dto.RecommendedItemGroup, 0, len(valid))
-	for _, g := range valid {
-		if seenRoles[g.Role] {
+// dropTopBottomWhenFullbody loại bỏ top và bottom khi outfit đã có đầm.
+func dropTopBottomWhenFullbody(groups []*dto.RecommendedItemGroup, hasFullbody bool) []*dto.RecommendedItemGroup {
+	if !hasFullbody {
+		return groups
+	}
+	filtered := make([]*dto.RecommendedItemGroup, 0, len(groups))
+	for _, group := range groups {
+		if group.Role != "top" && group.Role != "bottom" {
+			filtered = append(filtered, group)
+		}
+	}
+	return filtered
+}
+
+// dedupeGroupsByRole giữ lại group đầu tiên cho mỗi vai trò.
+func dedupeGroupsByRole(groups []*dto.RecommendedItemGroup) []*dto.RecommendedItemGroup {
+	seenRoles := make(map[string]bool, len(groups))
+	deduped := make([]*dto.RecommendedItemGroup, 0, len(groups))
+	for _, group := range groups {
+		if seenRoles[group.Role] {
 			continue
 		}
-		seenRoles[g.Role] = true
-		deduped = append(deduped, g)
+		seenRoles[group.Role] = true
+		deduped = append(deduped, group)
 	}
-
-	if !hasFullbody {
-		hasTop := false
-		hasBottom := false
-		for _, g := range deduped {
-			switch g.Role {
-			case "top":
-				hasTop = true
-			case "bottom":
-				hasBottom = true
-			}
-		}
-
-		if !hasTop {
-			if topCand := findCandidateByRole(candidates, "top", fashionItemMap); topCand != nil {
-				fashionItemRes := FashionForItemFromMap(topCand.Item, fashionItemMap)
-				topDTO := MapToRecommendedItemRes(topCand.Item, fashionItemRes, *topCand)
-				deduped = append(deduped, &dto.RecommendedItemGroup{
-					Role:         "top",
-					Primary:      topDTO,
-					Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, "top", topCand.Item.ID, nil, fashionItemMap),
-				})
-				hasTop = true
-			}
-		}
-
-		if !hasBottom {
-			if bottomCand := findCandidateByRole(candidates, "bottom", fashionItemMap); bottomCand != nil {
-				fashionItemRes := FashionForItemFromMap(bottomCand.Item, fashionItemMap)
-				bottomDTO := MapToRecommendedItemRes(bottomCand.Item, fashionItemRes, *bottomCand)
-				deduped = append(deduped, &dto.RecommendedItemGroup{
-					Role:         "bottom",
-					Primary:      bottomDTO,
-					Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, "bottom", bottomCand.Item.ID, nil, fashionItemMap),
-				})
-				hasBottom = true
-			}
-		}
-	}
-
 	return deduped
+}
+
+// appendMissingRoleGroups bù lại group cho mừng vai trò trong roles còn thiếu, lấy ứng viên
+// phù hợp đầu tiên tìm được trong pool. Vai trò không có ứng viên sẽ bị bỏ qua.
+func appendMissingRoleGroups(
+	groups []*dto.RecommendedItemGroup,
+	candidates []types.CandidateForPrompt,
+	candidateMap map[uuid.UUID]*wardrobeDto.WardrobeItemContractDTO,
+	promptCandidateMap map[uuid.UUID]types.CandidateForPrompt,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+	roles []string,
+) []*dto.RecommendedItemGroup {
+	present := make(map[string]bool, len(groups))
+	for _, group := range groups {
+		present[group.Role] = true
+	}
+
+	for _, role := range roles {
+		if present[role] {
+			continue
+		}
+		candidate := findCandidateByRole(candidates, role, fashionItemMap)
+		if candidate == nil {
+			continue
+		}
+		fashionItemRes := FashionForItemFromMap(candidate.Item, fashionItemMap)
+		groups = append(groups, &dto.RecommendedItemGroup{
+			Role:         role,
+			Primary:      MapToRecommendedItemRes(candidate.Item, fashionItemRes, *candidate),
+			Alternatives: resolveAlternativeCandidates(candidateMap, candidates, promptCandidateMap, role, candidate.Item.ID, nil, fashionItemMap),
+		})
+		present[role] = true
+	}
+
+	return groups
 }
 
 func findCandidateByRole(candidates []types.CandidateForPrompt, role string, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) *types.CandidateForPrompt {

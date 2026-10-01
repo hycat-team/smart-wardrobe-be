@@ -109,6 +109,25 @@ The two structures above define only the outfit *core*. On top of the core, thre
 
 Because candidate diversification caps items per category and caps the total pool size, Stage 2 MUST backfill these optional roles from the scored pool after diversification, otherwise low-scoring hats and accessories never reach the prompt. The LLM response schema MUST constrain `role` to the fixed enum of all wearing roles so providers cannot return invented values.
 
+##### Two-Layer Guarantee
+
+Optional layering roles are enforced at two independent layers, and **both are required** — neither layer is sufficient on its own:
+
+1. **Candidate layer (Stage 2):** the post-diversification guard backfills `headwear`, `accessory` and `outerwear` into the prompt pool, guaranteeing suitable *candidates exist*.
+2. **Response layer (Stage 3):** `MapLLMResponseToGroups` backfills any still-missing `headwear` and `accessory` group from the pool after parsing the LLM response, guaranteeing the *roles appear in the output*.
+
+Layer 1 alone still let the LLM omit a role on any given call, producing outfits that randomly contained a hat but no accessory, or vice versa. Layer 2 removes that non-determinism. `outerwear` is intentionally excluded from the layer-2 backfill because it is weather-, season- and intent-dependent, so it stays under the control of scoring, prompt rules and the HSL fallback.
+
+#### Prompt Budget Constraint
+
+`headwear` and `accessory` candidates are backfilled from the lowest-scored tail of the pool, and `BuildRecommendationPromptWithLimits` truncates from the **tail** of the candidate list. The configuration therefore requires headroom:
+
+```
+recommendation_minimum_candidate_pool + len(optional roles) < recommendation_prompt_candidate_limit
+```
+
+With the current values (`20 + 3 = 23` vs a limit of `24`) there is only one slot of headroom. Raising `recommendation_minimum_candidate_pool` to `22` or above without also raising `recommendation_prompt_candidate_limit` will silently reintroduce missing hats and accessories.
+
 #### Early Guard & Error Reporting
 If a user's active wardrobe or query filters result in a candidate pool lacking the minimum body items (i.e. no `dam` AND no `ao` available, even after automatic candidate pool recovery), the system halts early in Stage 1/2 and returns `ErrInsufficientOutfitComponents` (HTTP 400 Bad Request) without deducting daily AI quota or invoking LLM generation.
 
