@@ -32,6 +32,17 @@ func (f *fakeQuotaRepo) Create(ctx context.Context, e *entities.UserDailyQuota) 
 	f.quota = e
 	return nil
 }
+
+// CreateIfAbsent mirrors the real repository (024 T148): an existing quota is left
+// alone rather than overwritten, which is what makes a concurrent first-read safe.
+func (f *fakeQuotaRepo) CreateIfAbsent(ctx context.Context, e *entities.UserDailyQuota) (bool, error) {
+	if f.quota != nil {
+		return false, nil
+	}
+	f.creates++
+	f.quota = e
+	return true, nil
+}
 func (f *fakeQuotaRepo) Update(ctx context.Context, e *entities.UserDailyQuota) error {
 	f.updates++
 	return nil
@@ -81,9 +92,6 @@ func (f *fakeQuotaSubRepo) GetActiveExpiredSubscriptionByUserIDWithLock(ctx cont
 func (f *fakeQuotaSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeQuotaSubRepo) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {
-	return nil
-}
 func (f *fakeQuotaSubRepo) GetDistributionByPlanCode(ctx context.Context) ([]repositories.SubscriptionDistributionDTO, error) {
 	return nil, nil
 }
@@ -128,6 +136,12 @@ func (f *fakeQuotaPlanRepo) GetBySlug(ctx context.Context, slug string) (*entiti
 }
 func (f *fakeQuotaPlanRepo) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return f.plan, nil
+}
+
+// GetBySlugsAnyStatus satisfies the interface added by 024 T150. The quota path
+// resolves a single plan, never a set, so nothing in these tests reaches it.
+func (f *fakeQuotaPlanRepo) GetBySlugsAnyStatus(ctx context.Context, slugs []string) (map[string]*entities.SubscriptionPlan, error) {
+	return map[string]*entities.SubscriptionPlan{}, nil
 }
 func (f *fakeQuotaPlanRepo) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
 	return nil, nil
@@ -181,8 +195,21 @@ func newQuotaTestUseCase(t *testing.T, quota *entities.UserDailyQuota) (*UserQuo
 	quotaRepo := &fakeQuotaRepo{quota: quota}
 	subRepo := &fakeQuotaSubRepo{sub: sub}
 	planRepo := &fakeQuotaPlanRepo{plan: plan}
-	uc := NewUserQuotaUseCase(quotaRepo, subRepo, planRepo)
+	uc := NewUserQuotaUseCase(quotaRepo, subRepo, planRepo, nil, passThroughUow{})
 	return uc.(*UserQuotaUseCase), quotaRepo, userID
+}
+
+// passThroughUow lets the closure run against the caller's context unchanged.
+//
+// 024 T126: the state support provisions the default subscription inside a
+// transaction now, so a test that reaches that path needs a unit of work that is
+// not nil. These tests always pre-create the subscription, so the transaction is
+// never opened in practice - the fake exists so the dependency is real rather
+// than nil, which would panic only on the path under test.
+type passThroughUow struct{}
+
+func (passThroughUow) Execute(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
 // ---- Tests ----

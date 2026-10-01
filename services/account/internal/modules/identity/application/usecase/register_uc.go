@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	subscription_contract "smart-wardrobe-be/services/account/contract/subscription"
 	"smart-wardrobe-be/services/account/dto/identity"
 	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
 	"smart-wardrobe-be/services/account/internal/modules/identity/application/interface/identity"
@@ -21,6 +22,7 @@ import (
 	"smart-wardrobe-be/shared/config"
 	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/pkg/utils/stringutils"
 
 	"github.com/google/uuid"
@@ -32,6 +34,10 @@ type RegisterUseCase struct {
 	notifContract  notificationContract.INotificationContract
 	passwordHasher security.IPasswordHasher
 	cfg            *config.Config
+	// 024 T196: see CreateUserByAdmin. The email sign-up door had the same gap
+	// as the other two, and it is the busiest one.
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
+	uow                  shared_repos.IUnitOfWork
 }
 
 func NewRegisterUseCase(
@@ -40,13 +46,17 @@ func NewRegisterUseCase(
 	notifContract notificationContract.INotificationContract,
 	passwordHasher security.IPasswordHasher,
 	cfg *config.Config,
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IRegisterUseCase {
 	return &RegisterUseCase{
-		userRepo:       userRepo,
-		otpService:     otpService,
-		notifContract:  notifContract,
-		passwordHasher: passwordHasher,
-		cfg:            cfg,
+		userRepo:             userRepo,
+		otpService:           otpService,
+		notifContract:        notifContract,
+		passwordHasher:       passwordHasher,
+		cfg:                  cfg,
+		provisioningContract: provisioningContract,
+		uow:                  uow,
 	}
 }
 
@@ -170,7 +180,12 @@ func (uc *RegisterUseCase) ConfirmRegisterOtp(ctx context.Context, input dto.Con
 	newUser.ID = uuid.New()
 	newUser.IsDeleted = false
 
-	err = uc.userRepo.Create(ctx, newUser)
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.userRepo.Create(txCtx, newUser); err != nil {
+			return err
+		}
+		return uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID)
+	})
 	if err != nil {
 		// A concurrent Google login may have created the same email first.
 		if emailExists, checkErr := uc.userRepo.IsEmailExists(ctx, registerData.Email); checkErr == nil && emailExists {

@@ -267,17 +267,6 @@
         "Other"
       ]
     },
-    "internal_modules_subscription_presentation_handler.adminGrantPlanReq": {
-      "properties": {
-        "planId": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "planId"
-      ],
-      "type": "object"
-    },
     "internal_modules_subscription_presentation_handler.resolveRequest": {
       "properties": {
         "paymentLinkId": {
@@ -986,6 +975,83 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem": {
+      "properties": {
+        "planSlug": {
+          "type": "string"
+        },
+        "userIdentifier": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchReq": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchRes": {
+      "properties": {
+        "failed": {
+          "type": "integer"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult"
+          },
+          "type": "array"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "succeeded": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult": {
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resolvedUserId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userIdentifier": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_account_dto_subscription.AdminUserSubscriptionItemDTO": {
       "properties": {
         "createdAt": {
@@ -1219,6 +1285,60 @@
       "required": [
         "planSlug"
       ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsReq": {
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsRes": {
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "restored": {
+          "type": "integer"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestoreResult"
+          },
+          "type": "array"
+        },
+        "scanned": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestoreResult": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_services_account_dto_subscription.SetAutoRenewReq": {
@@ -1579,6 +1699,70 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "enforcementMode": {
+          "type": "string"
+        },
+        "hardCostMicroVnd": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO"
+          },
+          "type": "array"
+        },
+        "periodDays": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO": {
+      "properties": {
+        "freeRoute": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isEnabled": {
+          "type": "boolean"
+        },
+        "maxPaidAttemptsPerDay": {
+          "type": "integer"
+        },
+        "normalRoute": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "paidFallbackEnabled": {
+          "type": "boolean"
+        },
+        "reducedRoute": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO": {
       "properties": {
         "currency": {
@@ -1681,22 +1865,50 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq": {
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning": {
       "properties": {
-        "aiCostPolicyId": {
+        "frozenGrantCount": {
+          "type": "integer"
+        },
+        "message": {
           "type": "string"
         },
-        "effectiveTo": {
-          "type": "string"
+        "openGrantCount": {
+          "type": "integer"
         },
-        "userId": {
-          "type": "string"
+        "replayRequired": {
+          "type": "boolean"
         }
       },
-      "required": [
-        "aiCostPolicyId",
-        "userId"
-      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq": {
+      "properties": {
+        "clearMaxPaidAttempts": {
+          "type": "boolean"
+        },
+        "maxPaidAttemptsPerDay": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp": {
+      "properties": {
+        "maxPaidAttemptsPerDay": {
+          "type": "integer"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "policyCode": {
+          "type": "string"
+        },
+        "warning": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq": {

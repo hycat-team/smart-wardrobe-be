@@ -36,6 +36,11 @@ func MapToUserBrief(user *entities.User) *dto.UserBriefContractDTO {
 		Gender:    genderVal,
 		Status:    user.Status,
 		AvatarUrl: user.AvatarUrl,
+		// 024 FR-056/FR-049: the subscription module needs the role to refuse
+		// an administrator target, and the deletion flag to report a
+		// soft-deleted account as such instead of as "not found".
+		RoleSlug:  user.RoleSlug,
+		IsDeleted: user.IsDeleted,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	subscriptioncaching "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/caching"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/shared/config"
@@ -63,6 +64,9 @@ type PaymentWebhookUseCase struct {
 	userBriefContract     identity_contract.IUserBriefContract
 	log                   logger.Interface
 	overviewCache         subscriptioncaching.ISubscriptionOverviewCache
+	// 024 T051: a settled payment is a plan change, so it publishes through the
+	// same single helper as every other path.
+	planChangePublisher *subscription.PlanChangePublisher
 }
 
 func NewPaymentWebhookUseCase(
@@ -81,6 +85,7 @@ func NewPaymentWebhookUseCase(
 	userBriefContract identity_contract.IUserBriefContract,
 	log logger.Interface,
 	overviewCache subscriptioncaching.ISubscriptionOverviewCache,
+	planChangePublisher *subscription.PlanChangePublisher,
 ) uc_interfaces.IPaymentWebhookUseCase {
 	return &PaymentWebhookUseCase{
 		cfg:                   cfg,
@@ -98,6 +103,7 @@ func NewPaymentWebhookUseCase(
 		userBriefContract:     userBriefContract,
 		log:                   log,
 		overviewCache:         overviewCache,
+		planChangePublisher:   planChangePublisher,
 	}
 }
 
@@ -170,9 +176,12 @@ func (uc *PaymentWebhookUseCase) ProcessWebhook(ctx context.Context, rawBody []b
 	}
 	// The payment may have upgraded/downgraded the subscription — drop the
 	// cached overview after success (spec 019 FR-008).
-	if uc.overviewCache != nil {
-		_ = uc.overviewCache.Invalidate(ctx, tx.UserID)
-	}
+	//
+	// 024 T154: was `_ = uc.overviewCache.Invalidate(ctx, tx.UserID)` — the same
+	// post-commit defect T151 fixed on the grant path, copied. The webhook has
+	// already committed by this point, so a cancelled context made the delete fail
+	// silently and the overview kept serving the pre-payment plan until its TTL.
+	subscription.InvalidateOverviewCache(ctx, uc.log, uc.overviewCache, tx.UserID)
 
 	uc.log.Info("Processed payment webhook successfully",
 		zap.Int64("order_code", payload.Data.OrderCode),

@@ -139,6 +139,42 @@ func (r *UserRepository) GetByUsernamesOrEmails(ctx context.Context, identifiers
 	return users, err
 }
 
+// GetByUsernamesOrEmailsIncludingDeleted is the ONLY lookup that returns
+// soft-deleted accounts, and it exists for one caller: the administrator grant
+// flow, which has to tell "this account was deleted" apart from "no account
+// matches" (FR-049, and the `user_soft_deleted` reason in
+// contracts/admin-grant-api.md).
+//
+// 024 T136. It is deliberately NOT a flag on GetByUsernamesOrEmails. That method
+// is shared with commerce (brand members, community follows), which must keep
+// excluding deleted accounts - an option would put that decision on every caller
+// and one forgotten `false` would silently let a deleted account be added to a
+// brand.
+//
+// The `is_deleted` column is read from the row itself, so the caller sees the
+// flag rather than having to infer the state from the row's absence.
+func (r *UserRepository) GetByUsernamesOrEmailsIncludingDeleted(ctx context.Context, identifiers []string) ([]*entities.User, error) {
+	if len(identifiers) == 0 {
+		return []*entities.User{}, nil
+	}
+	lowers := make([]string, 0, len(identifiers))
+	for _, iden := range identifiers {
+		trimmed := strings.TrimSpace(iden)
+		if trimmed != "" {
+			lowers = append(lowers, strings.ToLower(trimmed))
+		}
+	}
+	if len(lowers) == 0 {
+		return []*entities.User{}, nil
+	}
+
+	var users []*entities.User
+	err := r.GetQueryWithPreload(ctx).
+		Where("(LOWER(username) IN ? OR LOWER(email) IN ?)", lowers, lowers).
+		Find(&users).Error
+	return users, err
+}
+
 func (r *UserRepository) SearchByKeyword(ctx context.Context, keyword string, limit int) ([]*entities.User, error) {
 	kw := strings.ToLower(strings.TrimSpace(keyword))
 	if kw == "" {

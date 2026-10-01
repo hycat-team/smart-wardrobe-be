@@ -219,10 +219,16 @@ func (uc *SubscriptionUseCase) processSingleScheduledRenewal(
 	err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		return uc.executeScheduledRenewal(txCtx, sub.UserID, freePlanID, now, &result)
 	})
-	if err == nil && (result.Status == renewalStatusRenewed || result.Status == renewalStatusDowngraded) && uc.overviewCache != nil {
-		// The overview changed (extension or downgrade) — drop the cached entry
+	if err == nil && (result.Status == renewalStatusRenewed || result.Status == renewalStatusDowngraded) {
+		// The overview changed (extension or downgrade) - drop the cached entry
 		// after the transaction commits (spec 019 FR-008).
-		_ = uc.overviewCache.Invalidate(ctx, sub.UserID)
+		//
+		// 024 T154: the nil-cache guard moved into the helper. This was a fourth
+		// copy of the post-commit defect T151 fixed on the grant path - `_ = ...` on
+		// the caller's context, so a cron run whose context had lapsed left the
+		// overview serving the pre-renewal expiry until its TTL. A background job is
+		// exactly the case where the caller's context is least likely to be alive.
+		uc.invalidateOverviewCache(ctx, sub.UserID)
 	}
 	return result, err
 }

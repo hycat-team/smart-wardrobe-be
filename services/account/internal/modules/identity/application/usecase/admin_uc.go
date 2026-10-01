@@ -209,8 +209,36 @@ func (uc *UserUseCase) CreateUserByAdmin(ctx context.Context, adminUserID uuid.U
 		Status:        userstatus.Active,
 	}
 
-	if err := uc.userRepo.Create(ctx, newUser); err != nil {
-		return nil, err
+	// 024 T196 / FR-013: the account and its default entitlement are ONE
+	// transaction. SC-006 asks for a paid-plan grant to exist within 60 seconds
+	// of `POST /admin/users` with no subscription read in between, and this is
+	// the path that missed it most: an administrator-created account got the free
+	// plan late and silently, so its AI cost could not be reconciled against any
+	// record.
+	//
+	// One `uow.Execute` wraps both writes because `user_subscriptions.user_id` is
+	// a foreign key onto `identity.users(id)`: a second transaction would run on a
+	// connection that cannot see the uncommitted user row, so the entitlement
+	// would fail the FK check - or, worse, attach itself to a stale row and leave
+	// a live grant with no account behind it.
+	err = uc.uow.Execute(ctx, func(txCtx context.Context) error {
+		if err := uc.userRepo.Create(txCtx, newUser); err != nil {
+			return err
+		}
+		return uc.provisioningContract.EnsureDefaultSubscription(txCtx, newUser.ID)
+	})
+	if err != nil {
+		// 024 T197: the unit of work above is also where the default entitlement
+		// is provisioned, so its failure is an account-creation failure and has to
+		// leave this module as one. Returning it raw made `POST /admin/users`
+		// answer 404 with a message about the plan catalogue, which reads as
+		// "this account does not exist" for an operation that was creating one.
+		//
+		// 024 T209: the factory no longer interpolates the cause into the client
+		// facing message either. What it names is the KIND of failure, which is
+		// what tells the administrator which part of the setup is broken; the raw
+		// error stays on `Cause` for the log.
+		return nil, identityerrors.ErrAccountCreationFailedWithCause(err)
 	}
 
 	return mapper.MapToUserRes(newUser, nil), nil

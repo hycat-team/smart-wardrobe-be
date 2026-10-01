@@ -1,7 +1,10 @@
 package identityerrors
 
 import (
+	"errors"
 	"fmt"
+
+	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
 	"smart-wardrobe-be/shared/application/constants/apperror"
 )
 
@@ -68,6 +71,87 @@ func ErrSessionCreateFailed() *apperror.Error {
 
 func ErrAccountCreationFailed() *apperror.Error {
 	return apperror.NewInternalError("Lỗi khi khởi tạo tài khoản mới")
+}
+
+// The client-facing sentences for a failed account creation. Each one is FIXED:
+// it names the KIND of failure in Vietnamese and never carries text produced by
+// a dependency, because `apperror` states plainly that raw error text must not
+// leak into `Message` (apperror/error.go:15-17, FR-005 Phase 9). The sibling
+// factories that take a cause make the same choice
+// (subscription/.../application/errors/errors.go, ErrAdminGrantResolveUsersFailed
+// and ErrAdminGrantRecordAuditFailed).
+const (
+	accountCreationFailedMessage         = "Lỗi khi khởi tạo tài khoản mới kèm gói hội viên mặc định."
+	accountCreationNoDefaultPlanMessage  = "Lỗi khi khởi tạo tài khoản mới: không đọc được cấu hình gói hội viên mặc định."
+	accountCreationNoSubscriptionMessage = "Lỗi khi khởi tạo tài khoản mới: không tạo được gói hội viên cho tài khoản."
+	accountCreationNoCallerTxMessage     = "Lỗi khi khởi tạo tài khoản mới: cấp gói hội viên mặc định không chạy trong cùng giao dịch."
+)
+
+// ErrAccountCreationFailedWithCause is the shape of ErrAccountCreationFailed used
+// when the failure came from a dependency rather than from the request.
+//
+// 024 T197: the account and its default entitlement are ONE transaction
+// (FR-013), so provisioning is the only place a broken default-plan
+// configuration is ever reported - and returning that error unwrapped made
+// `POST /admin/users` answer HTTP 404 carrying another module's wording, for an
+// operation that neither creates nor looks up a resource.
+//
+// `apperror.Wrap` cannot fix that: it returns an existing `*apperror.Error`
+// unchanged, so a NotFound raised by the subscription module would still reach
+// the client with its 404 and its foreign message.
+//
+// 024 T209: it used to interpolate the cause into the message, which was a
+// different defect of the same line and the more dangerous one. The wording a
+// dependency produced is internal - English, sometimes a driver string, sometimes
+// a stack of it - and this factory handed it to the client verbatim. It also made
+// the response body vary per failure, so nothing could be matched on it.
+//
+// What the operator is owed is preserved, and it is preserved in three places
+// that suit it better than `Message` did:
+//
+//   - `Message` names the KIND of cause, chosen from the dependency's own
+//     factories, so "the default plan configuration is missing" still reaches the
+//     administrator in Vietnamese while the raw text stays inside.
+//   - `DebugMessage` carries the technical detail. The global error middleware
+//     clears it and re-derives it from the raw error in non-production only
+//     (error_handler.go:88-96), so it can never widen what a client sees.
+//   - `Cause` keeps the original error object, which is the only thing the
+//     middleware logs (error_handler.go:71-75) and the only thing
+//     `errors.Is`/`errors.As` can match further down.
+//
+// The classification is a switch over the subscription factories because those
+// are the only answers `EnsureDefaultSubscription` produces deliberately; anything
+// else (a driver error, a repository fault) falls through to the generic
+// sentence rather than inventing a diagnosis.
+func ErrAccountCreationFailedWithCause(cause error) *apperror.Error {
+	e := apperror.NewInternalError(accountCreationFailureMessage(cause))
+	e.Cause = cause
+	if cause != nil {
+		e.DebugMessage = fmt.Sprintf("account creation failed while provisioning the default entitlement: %s", cause)
+	}
+	return e
+}
+
+// accountCreationFailureMessage maps the provisioning failure to the fixed
+// Vietnamese sentence that describes its kind.
+//
+// `errors.Is` is the mechanism, and it is exact rather than textual: every one of
+// these factories is a parameterless function returning a fixed
+// `*apperror.Error`, and `apperror.Error.Is` compares status and message, so
+// `errors.Is(cause, ErrDefaultPlanConfigNotFound())` is true only for that
+// factory's own answer. A wrapped cause is still matched, because `errors.Is`
+// walks the `Unwrap` chain.
+func accountCreationFailureMessage(cause error) string {
+	switch {
+	case errors.Is(cause, subscriptionerrors.ErrDefaultPlanConfigNotFound()):
+		return accountCreationNoDefaultPlanMessage
+	case errors.Is(cause, subscriptionerrors.ErrUserSubscriptionNotFound()):
+		return accountCreationNoSubscriptionMessage
+	case errors.Is(cause, subscriptionerrors.ErrProvisioningRequiresCallerTransaction()):
+		return accountCreationNoCallerTxMessage
+	default:
+		return accountCreationFailedMessage
+	}
 }
 
 func ErrInvalidCredentials() *apperror.Error {

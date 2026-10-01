@@ -267,17 +267,6 @@
         "Other"
       ]
     },
-    "internal_modules_subscription_presentation_handler.adminGrantPlanReq": {
-      "properties": {
-        "planId": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "planId"
-      ],
-      "type": "object"
-    },
     "internal_modules_subscription_presentation_handler.resolveRequest": {
       "properties": {
         "paymentLinkId": {
@@ -986,6 +975,83 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem": {
+      "properties": {
+        "planSlug": {
+          "type": "string"
+        },
+        "userIdentifier": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchReq": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchRes": {
+      "properties": {
+        "failed": {
+          "type": "integer"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult"
+          },
+          "type": "array"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "succeeded": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult": {
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "planName": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resolvedUserId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userIdentifier": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_account_dto_subscription.AdminUserSubscriptionItemDTO": {
       "properties": {
         "createdAt": {
@@ -1219,6 +1285,60 @@
       "required": [
         "planSlug"
       ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsReq": {
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsRes": {
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "restored": {
+          "type": "integer"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestoreResult"
+          },
+          "type": "array"
+        },
+        "scanned": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_account_dto_subscription.RestoreResult": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "planSlug": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_services_account_dto_subscription.SetAutoRenewReq": {
@@ -1579,6 +1699,70 @@
       },
       "type": "object"
     },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyDTO": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "enforcementMode": {
+          "type": "string"
+        },
+        "hardCostMicroVnd": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO"
+          },
+          "type": "array"
+        },
+        "periodDays": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.AICostPolicyOperationDTO": {
+      "properties": {
+        "freeRoute": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isEnabled": {
+          "type": "boolean"
+        },
+        "maxPaidAttemptsPerDay": {
+          "type": "integer"
+        },
+        "normalRoute": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "paidFallbackEnabled": {
+          "type": "boolean"
+        },
+        "reducedRoute": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "smart-wardrobe-be_services_ai_dto_aiexecutor.AIModelConfigDTO": {
       "properties": {
         "currency": {
@@ -1681,22 +1865,50 @@
       },
       "type": "object"
     },
-    "smart-wardrobe-be_services_ai_dto_aiexecutor.CreateAIGrantReq": {
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning": {
       "properties": {
-        "aiCostPolicyId": {
+        "frozenGrantCount": {
+          "type": "integer"
+        },
+        "message": {
           "type": "string"
         },
-        "effectiveTo": {
-          "type": "string"
+        "openGrantCount": {
+          "type": "integer"
         },
-        "userId": {
-          "type": "string"
+        "replayRequired": {
+          "type": "boolean"
         }
       },
-      "required": [
-        "aiCostPolicyId",
-        "userId"
-      ],
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationReq": {
+      "properties": {
+        "clearMaxPaidAttempts": {
+          "type": "boolean"
+        },
+        "maxPaidAttemptsPerDay": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdateCostPolicyOperationResp": {
+      "properties": {
+        "maxPaidAttemptsPerDay": {
+          "type": "integer"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "policyCode": {
+          "type": "string"
+        },
+        "warning": {
+          "$ref": "#/definitions/smart-wardrobe-be_services_ai_dto_aiexecutor.CostPolicyReplayWarning"
+        }
+      },
       "type": "object"
     },
     "smart-wardrobe-be_services_ai_dto_aiexecutor.UpdatePricingReq": {
@@ -5797,6 +6009,116 @@
     "version": "1.0"
   },
   "paths": {
+    "/api/v1/admin/subscription-grants": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Cấp gói cho một danh sách tài khoản. Cấp cho một tài khoản là một danh sách một phần tử, dùng chung giao diện này. Mỗi phần tử độc lập: một phần tử lỗi không ảnh hưởng các phần tử còn lại.",
+        "parameters": [
+          {
+            "description": "Khoá chống gửi lại, do quản trị viên sinh ra",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Danh sách tài khoản cần cấp gói",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "schema": {
+              "$ref": "#/definitions/presentation.APIResponse"
+            }
+          }
+        },
+        "summary": "Cấp gói hội viên cho danh sách tài khoản",
+        "tags": [
+          "Admin Subscription"
+        ]
+      }
+    },
+    "/api/v1/admin/subscription-grants/restore": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Quét mọi tài khoản có bản ghi đăng ký và phát lại tín hiệu để dịch vụ AI dựng lại mức quyền. Mặc định dryRun=true. Chạy lại nhiều lần không gây tác dụng phụ.",
+        "parameters": [
+          {
+            "description": "Tuỳ chọn chạy thử hoặc thực thi",
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsReq"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/presentation.APIResponse"
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsRes"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            }
+          }
+        },
+        "summary": "Khôi phục mức quyền tính phí AI cho tài khoản thiếu bản ghi",
+        "tags": [
+          "Admin Subscription"
+        ]
+      }
+    },
     "/api/v1/admin/subscriptions": {
       "get": {
         "description": "Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status).",
@@ -6333,47 +6655,6 @@
           }
         },
         "summary": "Hủy gói hội viên của người dùng",
-        "tags": [
-          "Admin Subscription"
-        ]
-      }
-    },
-    "/api/v1/admin/subscriptions/{userId}/grant": {
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "description": "Gán một gói hội viên cụ thể cho người dùng.",
-        "parameters": [
-          {
-            "description": "User ID",
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "description": "Thông tin gói cấp",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_modules_subscription_presentation_handler.adminGrantPlanReq"
-            }
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/presentation.APIResponse"
-            }
-          }
-        },
-        "summary": "Cấp gói hội viên thủ công cho người dùng",
         "tags": [
           "Admin Subscription"
         ]

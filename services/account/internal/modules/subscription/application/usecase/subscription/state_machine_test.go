@@ -23,7 +23,19 @@ func TestEvaluateLifetimeTransitions(t *testing.T) {
 	}
 }
 
-func TestExpiredOverlayResolvesAndRestoresFallback(t *testing.T) {
+// TestExpiredOverlayResolvesToTheLifetimeFallback covers the half of this test that
+// runs in production: an expired finite plan resolves to the lifetime fallback.
+//
+// 024 T178: the second half used to call RestoreLifetimeFallbackIfExpired, which
+// MUTATED the subscription in place to match. No production code ever called it, so
+// that assertion was coverage of behaviour that did not run, and it read as though
+// fallback restoration were an active mechanism. The function is removed; what remains
+// is the resolution, which is what actually decides the account's plan.
+//
+// Resolution does not write. That is deliberate and worth the assertion below: a read
+// path that rewrote the row would bump `version` on a row an administrator may be
+// holding, and hide a write inside a read.
+func TestExpiredOverlayResolvesToTheLifetimeFallback(t *testing.T) {
 	now := time.Date(2026, 6, 20, 23, 30, 0, 0, time.FixedZone("Asia/Ho_Chi_Minh", 7*3600))
 	expired := now.Add(-time.Hour)
 	fallbackID := uuid.New()
@@ -31,6 +43,9 @@ func TestExpiredOverlayResolvesAndRestoresFallback(t *testing.T) {
 	fallbackRank := 1
 	fallbackKind := plankind.Lifetime
 	sub := &entities.UserSubscription{UserID: uuid.New(), SubscriptionPlanID: uuid.New(), CurrentPlanCode: "premium", CurrentTierRank: 3, CurrentPlanKind: plankind.Finite, StartedAt: now.AddDate(0, -1, 0), ExpiresAt: &expired, FallbackPlanID: &fallbackID, FallbackPlanCode: &fallbackCode, FallbackTierRank: &fallbackRank, FallbackPlanKind: &fallbackKind}
+	versionBefore := sub.Version
+	startedBefore := sub.StartedAt
+
 	effective, err := ResolveEffectiveSubscription(sub, nil, now)
 	if err != nil {
 		t.Fatal(err)
@@ -38,11 +53,14 @@ func TestExpiredOverlayResolvesAndRestoresFallback(t *testing.T) {
 	if effective.PlanCode != fallbackCode || effective.PlanKind != plankind.Lifetime {
 		t.Fatalf("unexpected effective subscription: %#v", effective)
 	}
-	if !RestoreLifetimeFallbackIfExpired(sub, now) {
-		t.Fatal("expected fallback restore")
+
+	// Resolution is a projection: it must leave the stored row exactly as it found it.
+	if sub.Version != versionBefore || sub.StartedAt != startedBefore {
+		t.Errorf("a read must not modify the row: version %d -> %d, startedAt %v -> %v",
+			versionBefore, sub.Version, startedBefore, sub.StartedAt)
 	}
-	if sub.CurrentPlanCode != fallbackCode || sub.ExpiresAt != nil || sub.FallbackPlanID != nil || sub.StartedAt != expired {
-		t.Fatalf("unexpected restored projection: %#v", sub)
+	if sub.CurrentPlanCode != "premium" {
+		t.Errorf("the stored row must still be premium, got = %s", sub.CurrentPlanCode)
 	}
 }
 

@@ -80,3 +80,32 @@ func (r *AdminAuditLogRepository) DeleteOlderThan(ctx context.Context, cutoff ti
 	res := r.GetDB(ctx).Where("created_at < ?", cutoff).Delete(&entities.AdminAuditLog{})
 	return res.RowsAffected, res.Error
 }
+
+// ExistsRecentChange looks for a previously recorded identical gate-2 change.
+//
+// The four payload fields are compared with jsonb containment so the check
+// works on the stored document without adding columns. NewValue is handled
+// separately from the containment test because a JSON null must match a
+// previously cleared field rather than matching everything.
+func (r *AdminAuditLogRepository) ExistsRecentChange(ctx context.Context, query repositories.RecentChangeQuery) (bool, error) {
+	var count int64
+
+	db := r.GetDB(ctx).
+		Model(&entities.AdminAuditLog{}).
+		Where("actor_user_id = ?", query.ActorUserID).
+		Where("action = ?", query.Action).
+		Where("target_type = ?", query.TargetType).
+		Where("created_at >= ?", query.Since).
+		Where("payload @> ?::jsonb", `{"policyCode":"`+query.PolicyCode+`","operation":"`+query.Operation+`","fieldName":"`+query.FieldName+`"}`)
+
+	if query.NewValue == nil {
+		db = db.Where("(payload->>'newValue') IS NULL")
+	} else {
+		db = db.Where("payload->>'newValue' = ?", *query.NewValue)
+	}
+
+	if err := db.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

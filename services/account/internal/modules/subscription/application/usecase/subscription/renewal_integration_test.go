@@ -13,6 +13,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/infrastructure/persistence"
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
+	shrepos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/infrastructure/db"
 
 	"github.com/google/uuid"
@@ -60,7 +61,11 @@ func TestIntegrationScheduledRenewalRenewsPaidPlan(t *testing.T) {
 		eventRepo:          eventRepo,
 		renewalAttemptRepo: attemptRepo,
 		notifContract:      &integrationRenewalNotif{},
-		log:                zap.NewNop(),
+		// See the note on the other renewal test: the publisher is a real
+		// dependency of this path since 024 T048, and leaving it nil panicked only
+		// when the integration suite ran against a real database.
+		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}),
+		log:                 zap.NewNop(),
 	}
 
 	result := RenewalExecutionResult{}
@@ -130,7 +135,13 @@ func TestIntegrationScheduledRenewalDowngradesWithoutFunds(t *testing.T) {
 		eventRepo:          eventRepo,
 		renewalAttemptRepo: attemptRepo,
 		notifContract:      &integrationRenewalNotif{},
-		log:                zap.NewNop(),
+		// The renewal path publishes its plan change through the shared publisher
+		// (024 T048), so it has to be wired here. It was missing, and the test still
+		// passed in CI because `TEST_DATABASE_URL` is normally unset - the nil
+		// dependency only ever surfaced as a panic for whoever ran the integration
+		// suite locally against a real database.
+		planChangePublisher: NewPlanChangePublisher(eventRepo, &recordingPublisher{}),
+		log:                 zap.NewNop(),
 	}
 
 	result := RenewalExecutionResult{}
@@ -170,6 +181,11 @@ func openSubscriptionTestDB(t *testing.T) *gorm.DB {
 		&entities.SubscriptionRenewalAttempt{},
 		&entities.ProviderPaymentEvent{},
 		&entities.ProviderWebhookInbox{},
+		// The outbox table belongs to shared messaging, but it is written inside the
+		// account service's transaction, so the transaction-context probes need it to
+		// exist or their "live context" control fails on a missing relation instead
+		// of proving the query actually ran.
+		&shrepos.OutboxRecord{},
 	); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}

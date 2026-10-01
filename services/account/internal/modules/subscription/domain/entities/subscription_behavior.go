@@ -2,7 +2,8 @@ package entities
 
 import (
 	"fmt"
-	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
+	plankind "smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
+	"smart-wardrobe-be/shared/domain/constants/subscriptioneventtype"
 	"time"
 )
 
@@ -47,7 +48,7 @@ func (u *UserSubscription) Activate(plan *SubscriptionPlan, snapshot JSONDocumen
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "ACTIVATED",
+		EventType:    string(subscriptioneventtype.ACTIVATED),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -92,7 +93,7 @@ func (u *UserSubscription) Extend(plan *SubscriptionPlan, snapshot JSONDocument,
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "EXTENDED",
+		EventType:    string(subscriptioneventtype.EXTENDED),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -149,7 +150,7 @@ func (u *UserSubscription) Upgrade(plan *SubscriptionPlan, snapshot JSONDocument
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "UPGRADED",
+		EventType:    string(subscriptioneventtype.UPGRADED),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -175,8 +176,13 @@ func (u *UserSubscription) OverlayLifetime(plan *SubscriptionPlan, snapshot JSON
 	fromPlan := u.CurrentPlanCode
 	fromTier := u.CurrentTierRank
 
-	u.FallbackPlanID = &u.SubscriptionPlanID
-	u.FallbackPlanCode = &u.CurrentPlanCode
+	// Copy the lifetime values into local variables before taking their address.
+	// Pointing the fallback fields at the struct fields themselves makes the
+	// overlay below overwrite the lifetime plan with the overlaid finite plan.
+	planID := u.SubscriptionPlanID
+	u.FallbackPlanID = &planID
+	planCode := u.CurrentPlanCode
+	u.FallbackPlanCode = &planCode
 	rank := u.CurrentTierRank
 	u.FallbackTierRank = &rank
 	kind := u.CurrentPlanKind
@@ -208,7 +214,7 @@ func (u *UserSubscription) OverlayLifetime(plan *SubscriptionPlan, snapshot JSON
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "OVERLAID",
+		EventType:    string(subscriptioneventtype.OVERLAID),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -255,7 +261,7 @@ func (u *UserSubscription) RestoreFallback(eventKey string, at time.Time) (*User
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "LIFETIME_FALLBACK_RESTORED",
+		EventType:    string(subscriptioneventtype.LIFETIME_FALLBACK_RESTORED),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -297,7 +303,7 @@ func (u *UserSubscription) DowngradeToFree(freePlan *SubscriptionPlan, eventKey 
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "SUBSCRIPTION_DOWNGRADED_TO_FREE",
+		EventType:    string(subscriptioneventtype.SUBSCRIPTION_DOWNGRADED_TO_FREE),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -329,7 +335,7 @@ func (u *UserSubscription) SetAutoRenew(enable bool, eventKey string, at time.Ti
 	event := &UserSubscriptionEvent{
 		EventKey:     key,
 		UserID:       u.UserID,
-		EventType:    "AUTO_RENEW_UPDATED",
+		EventType:    string(subscriptioneventtype.AUTO_RENEW_UPDATED),
 		FromPlanCode: &fromPlan,
 		FromTierRank: &fromTier,
 		ToPlanCode:   &u.CurrentPlanCode,
@@ -346,6 +352,58 @@ func (u *UserSubscription) expiryFor(plan *SubscriptionPlan, base time.Time) tim
 		return base
 	}
 	return u.addProductDays(base, *plan.DurationDays, base.Location())
+}
+
+// ResolveExpiryFor decides the new expiry when a plan change EXTENDS an existing
+// period rather than starting one (FR-051..FR-053).
+//
+// 024 T153: the comment here used to claim this was "THE expiry rule for every path
+// that changes a plan", and that FR-072 requires admin grant, auto-renewal and
+// purchase to share one rule. Neither is true, and an overstated comment is worse
+// than none: it told the next reader that the other paths had been migrated, so
+// nobody looked.
+//
+// What actually exists today:
+//
+//   - THIS function has one production caller: the shared apply workflow
+//     (`internal_subscription_apply_workflow.go:56`), which admin grant, purchase
+//     settlement and default provisioning all go through.
+//   - `Activate` and `Grant` in this same file do NOT call it. Each computes
+//     `expiryFor(plan, at)` itself, because both start a period from `at` and
+//     neither stacks.
+//   - `state_machine.go` carries its own `AddProductDays` copy of the same
+//     arithmetic.
+//   - `renewal_payment.go` reads `DurationDays` without going through any of it.
+//
+// So it is the shared rule for the path that can extend, and one of several rules
+// for the rest. Consolidating the others is real work with real behavioural risk -
+// `Activate` deliberately errors when a finite plan has no duration, where
+// `ResolveExpiryFor` returns a nil expiry - so it is left as a known gap rather
+// than done quietly. What matters for now is that the comment states which is
+// which.
+//
+// The rule itself:
+//   - A plan with no duration has no expiry at all.
+//   - The SAME plan, still unexpired: the period stacks onto the existing expiry.
+//     That is FR-051 and FR-052 - a second grant adds to what the customer already
+//     has rather than throwing it away.
+//   - Anything else starts fresh from `now`: a different plan, or a period that
+//     has already run out. FR-053 requires exactly this for both, and the "has
+//     already run out" half is why the unexpired test is on the expiry rather than
+//     on plan identity alone.
+//
+// `isNewSub` is deliberately absent: a row that has never been provisioned has a
+// nil expiry, which fails the unexpired test on its own.
+func (u *UserSubscription) ResolveExpiryFor(plan *SubscriptionPlan, now time.Time) *time.Time {
+	if plan.DurationDays == nil {
+		return nil
+	}
+	if u.ExpiresAt != nil && u.ExpiresAt.After(now) && u.SubscriptionPlanID == plan.ID {
+		stacked := u.expiryFor(plan, *u.ExpiresAt)
+		return &stacked
+	}
+	fresh := u.expiryFor(plan, now)
+	return &fresh
 }
 
 func (u *UserSubscription) addProductDays(base time.Time, days int, location *time.Location) time.Time {

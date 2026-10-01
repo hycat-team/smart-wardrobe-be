@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
@@ -86,6 +88,24 @@ func (r *SubscriptionPlanRepository) GetBySlugAnyStatus(ctx context.Context, slu
 		return nil, err
 	}
 	return &plan, nil
+}
+
+func (r *SubscriptionPlanRepository) GetBySlugsAnyStatus(ctx context.Context, slugs []string) (map[string]*entities.SubscriptionPlan, error) {
+	found := make(map[string]*entities.SubscriptionPlan, len(slugs))
+	if len(slugs) == 0 {
+		return found, nil
+	}
+
+	var plans []entities.SubscriptionPlan
+	// `slug` carries a unique index, so `IN (...)` stays index-backed however many
+	// slugs arrive - which is the whole point of doing this in one round trip.
+	if err := r.GetDB(ctx).Where("slug IN ?", slugs).Find(&plans).Error; err != nil {
+		return nil, err
+	}
+	for idx := range plans {
+		found[strings.ToLower(plans[idx].Slug)] = &plans[idx]
+	}
+	return found, nil
 }
 
 func (r *SubscriptionPlanRepository) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {

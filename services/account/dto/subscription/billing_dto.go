@@ -176,3 +176,177 @@ type PurchaseWithWalletReq struct {
 type SetAutoRenewReq struct {
 	Enabled *bool `json:"enabled" binding:"required" label:"trạng thái tự động gia hạn"`
 }
+
+// ---------------------------------------------------------------------------
+// Administrator plan grant (024 FR-060..FR-065, contracts/admin-grant-api.md)
+//
+// ONE ENDPOINT ONLY. Granting to a single account is a one-item list, using the
+// same request, the same response and the same rules. Two endpoints would be two
+// implementations of one set of rules, and they would drift apart.
+// ---------------------------------------------------------------------------
+
+// AdminGrantBatchItem is one requested grant.
+//
+// DELIBERATELY NO `binding` TAGS ON THESE FIELDS (FR-064). Gin's `binding`
+// validator runs across the WHOLE request, so a single empty item would reject
+// the entire list. FR-064 requires a bad item to be reported on its own without
+// affecting the other 499, which means per-item validation has to live in the
+// application layer - the only layer where a per-item result exists. Only the
+// collection itself carries a `binding` constraint, because a missing or
+// oversized collection cannot be processed item by item.
+type AdminGrantBatchItem struct {
+	UserIdentifier string `json:"userIdentifier" label:"định danh tài khoản"`
+	PlanSlug       string `json:"planSlug" label:"mã gói"`
+}
+
+// AdminGrantBatchReq is the request body.
+//
+// 024 T167: `Items` carries NO `binding` constraint, deliberately. It used to carry
+// `required,min=1,max=500`, which did two things wrong:
+//
+//   - It ran before the handler, so the handler's own checks for an empty and an
+//     oversized list were unreachable dead code, and the administrator got the
+//     generic validator text instead of the two messages the API contract specifies.
+//   - `max` on a slice falls through to the message for a STRING, so 501 items came
+//     back as "danh sách tài khoản không được vượt quá 500 **ký tự**". That is the
+//     wrong unit outright: the limit is on the number of items, not on text length,
+//     and an administrator reading it would look for a string-length problem.
+//
+// The limits themselves are unchanged and still enforced — by the handler, which
+// rejects the WHOLE request (FR-062/FR-063), and again by the use case, so they hold
+// even if the handler is bypassed. Do not re-add a tag here without checking both.
+type AdminGrantBatchReq struct {
+	Items []AdminGrantBatchItem `json:"items" label:"danh sách tài khoản"`
+}
+
+// Per-item status. Each item carries exactly one of these three values.
+
+const (
+	AdminGrantStatusSuccess = "success"
+	AdminGrantStatusSkipped = "skipped"
+	AdminGrantStatusError   = "error"
+)
+
+// Reason codes. These are part of the API contract: the web console groups and
+// filters on them, so they are stable strings and must not be reworded.
+const (
+	AdminGrantReasonIdentifierBlank     = "identifier_blank"
+	AdminGrantReasonUserNotFound        = "user_not_found"
+	AdminGrantReasonIdentifierAmbiguous = "identifier_ambiguous"
+	// AdminGrantReasonIdentifierTooLong is reported when the identifier exceeds
+	// 255 characters (FR-062). It is deliberately NOT "user_not_found": the
+	// identifier may well be correct, it is simply too long to look up, and
+	// telling the administrator to check the spelling would send them looking
+	// for a typo that is not there.
+	AdminGrantReasonIdentifierTooLong = "identifier_too_long"
+	AdminGrantReasonPlanNotFound      = "plan_not_found"
+	// AdminGrantReasonPlanSlugTooLong is reported when the plan slug exceeds the
+	// width of subscription.subscription_plans.slug. FR-062 bounds IDENTIFIERS
+	// only, so this is an added guard rather than part of that requirement - the
+	// same index-degradation rationale applies, on a narrower column.
+	AdminGrantReasonPlanSlugTooLong    = "plan_slug_too_long"
+	AdminGrantReasonPlanInactive       = "plan_inactive"
+	AdminGrantReasonTargetIsAdmin      = "target_is_admin"
+	AdminGrantReasonUserSoftDeleted    = "user_soft_deleted"
+	AdminGrantReasonDuplicateInRequest = "duplicate_in_request"
+	AdminGrantReasonDuplicateRequest   = "duplicate_request"
+	AdminGrantReasonConcurrentModif    = "concurrent_modification"
+	// 024 T129: an item's own transaction failed for a reason that is not a
+	// version conflict - a dead dependency, a refused audit write, a broken
+	// invariant. It used to be reported as `concurrent_modification`, which named
+	// a cause the operator cannot act on and told them to retry.
+	AdminGrantReasonGrantFailed = "grant_failed"
+	// 024 T143: the list ran out of its FR-076 time budget. Distinct from
+	// grant_failed, which means one item failed on its own merits: here the
+	// request itself was too slow, and the fix is to resubmit, not to fix a line.
+	AdminGrantReasonBatchTimeout = "batch_timeout"
+)
+
+// AdminGrantBatchResult is one item's outcome.
+//
+// Index and UserIdentifier always echo exactly what the caller sent, in the order
+// they sent it (FR-065). ResolvedUserId appears only on success, so the
+// administrator knows which account a successful line refers to without a second
+// lookup (SC-016).
+type AdminGrantBatchResult struct {
+	Index          int        `json:"index"`
+	UserIdentifier string     `json:"userIdentifier"`
+	ResolvedUserID *uuid.UUID `json:"resolvedUserId,omitempty"`
+	PlanSlug       string     `json:"planSlug"`
+	Status         string     `json:"status"`
+	PlanName       string     `json:"planName,omitempty"`
+	ExpiresAt      *time.Time `json:"expiresAt,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
+	Message        string     `json:"message,omitempty"`
+}
+
+// AdminGrantBatchRes is the response body.
+type AdminGrantBatchRes struct {
+	Total     int                     `json:"total"`
+	Succeeded int                     `json:"succeeded"`
+	Skipped   int                     `json:"skipped"`
+	Failed    int                     `json:"failed"`
+	Results   []AdminGrantBatchResult `json:"results"`
+}
+
+// ---------------------------------------------------------------------------
+// AI entitlement restore tool (024 FR-088, FR-089)
+//
+// This is a REPAIR, not a grant: it changes nobody's plan, it only re-publishes
+// the signal so the AI service rebuilds an entitlement that should have existed.
+// ---------------------------------------------------------------------------
+
+// RestorePolicyGrantsReq asks for a rescan and a re-publish.
+//
+// DryRun DEFAULTS TO true. This is a bulk write into customer data, so an
+// operator has to see the result BEFORE applying it, not after. A wrong default
+// here is a dangerous default.
+type RestorePolicyGrantsReq struct {
+	DryRun *bool `json:"dryRun,omitempty" label:"chế độ chạy thử"`
+}
+
+// Per-account status within a restore run.
+const (
+	RestoreStatusSuccess = "success"
+	RestoreStatusSkipped = "skipped"
+	RestoreStatusError   = "error"
+)
+
+// Reason codes of a restore run.
+const (
+	// RestoreReasonPlanNotInCatalog: the plan named by the subscription record is
+	// no longer in the catalogue, so there is nothing to rebuild the entitlement from.
+	RestoreReasonPlanNotInCatalog = "plan_not_in_catalog"
+	// RestoreReasonSubscriptionExpired: the plan has expired. A restore run
+	// deliberately leaves these alone - publishing for an expired account would
+	// create an "active" entitlement whose end date is in the past, and nothing
+	// downstream would notice. Such an account belongs to the renewal and
+	// downgrade flows.
+	RestoreReasonSubscriptionExpired = "subscription_expired"
+	// RestoreReasonPublishFailed: the event could not be published for this account.
+	RestoreReasonPublishFailed = "publish_failed"
+	// RestoreReasonAlreadyRestored: an earlier run already restored this account.
+	// The event key is derived from the subscription's version - which a restore
+	// does not change - so a repeated run is skipped. That is what makes re-running
+	// safe.
+	RestoreReasonAlreadyRestored = "already_restored"
+)
+
+// RestoreResult is one account's outcome.
+type RestoreResult struct {
+	UserID   string `json:"userId"`
+	PlanSlug string `json:"planSlug"`
+	Status   string `json:"status"`
+	Reason   string `json:"reason,omitempty"`
+	Message  string `json:"message,omitempty"`
+}
+
+// RestorePolicyGrantsRes is the response body.
+type RestorePolicyGrantsRes struct {
+	DryRun   bool            `json:"dryRun"`
+	Scanned  int             `json:"scanned"`
+	Restored int             `json:"restored"`
+	Skipped  int             `json:"skipped"`
+	Failed   int             `json:"failed"`
+	Results  []RestoreResult `json:"results"`
+}

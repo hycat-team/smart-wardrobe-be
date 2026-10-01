@@ -69,9 +69,6 @@ func (f *fakeRenewalSubRepo) GetActiveExpiredSubscriptionsBatch(ctx context.Cont
 func (f *fakeRenewalSubRepo) GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error) {
 	return nil, nil
 }
-func (f *fakeRenewalSubRepo) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {
-	return nil
-}
 func (f *fakeRenewalSubRepo) ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error {
 	return nil
 }
@@ -180,10 +177,29 @@ type fakeRenewalEventRepo struct {
 
 func (f *fakeRenewalEventRepo) Create(ctx context.Context, event *entities.UserSubscriptionEvent) error {
 	f.creates++
+	// 024 T155: GORM assigns the primary key on insert and the receiver needs it as
+	// sourceEventId. A fake that skips this produces events the receiver would refuse.
+	if event.ID == uuid.Nil {
+		event.ID = uuid.New()
+	}
 	return nil
 }
 func (f *fakeRenewalEventRepo) GetByKey(ctx context.Context, key string) (*entities.UserSubscriptionEvent, error) {
 	return nil, nil
+}
+
+// CreateIfAbsent satisfies the interface added by 024 T148. This fake reports
+// every call as an insert because it holds no rows, which matches a fresh account.
+//
+// 024 T155: the id assignment matters here too - this is the method
+// PublishPlanChange actually calls, so skipping it produced events with no
+// sourceEventId, which the AI receiver refuses by design.
+func (f *fakeRenewalEventRepo) CreateIfAbsent(ctx context.Context, event *entities.UserSubscriptionEvent) (bool, error) {
+	f.creates++
+	if event.ID == uuid.Nil {
+		event.ID = uuid.New()
+	}
+	return true, nil
 }
 
 type fakeRenewalPlanRepo struct {
@@ -204,6 +220,12 @@ func (f *fakeRenewalPlanRepo) GetBySlug(ctx context.Context, slug string) (*enti
 }
 func (f *fakeRenewalPlanRepo) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
+}
+
+// GetBySlugsAnyStatus satisfies the interface added by 024 T150. The renewal path
+// loads plans by id, never by slug set, so nothing in these tests calls it.
+func (f *fakeRenewalPlanRepo) GetBySlugsAnyStatus(ctx context.Context, slugs []string) (map[string]*entities.SubscriptionPlan, error) {
+	return map[string]*entities.SubscriptionPlan{}, nil
 }
 func (f *fakeRenewalPlanRepo) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
 	return nil, nil
@@ -243,6 +265,12 @@ func (f *fakeRenewalNotif) SendByUserID(ctx context.Context, channel notificatio
 func renewalTestPlan() *entities.SubscriptionPlan {
 	days := 30
 	return &entities.SubscriptionPlan{
+		// 024 T155: a plan read from the database always has an id, and the
+		// subscription.plan.changed payload carries it as toPlanId. The AI receiver
+		// refuses a message without one, so a fixture without it is a fixture the
+		// receiver would reject - and any test that published through it was passing
+		// on an event that could never have been applied.
+		AuditableEntity:    entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: uuid.New()}},
 		Slug:               "premium",
 		Name:               "Premium",
 		IsActive:           true,
@@ -297,18 +325,43 @@ func newRenewalHarness(t *testing.T, autoRenew bool, walletBalance int64) *renew
 		plan:       plan,
 		now:        now,
 	}
+	// 024 T051: the expiry path now publishes through the single helper, so the
+	// harness wires the real publisher over the fakes. This is what makes the
+	// test able to catch a regression where the publish step is dropped.
+	publisher := NewPlanChangePublisher(h.events, &fakeRenewalPublisher{})
 	h.uc = &SubscriptionUseCase{
-		uow:                &fakeRenewalUow{},
-		userSubRepo:        h.subRepo,
-		walletRepo:         h.walletRepo,
-		statementRepo:      h.statements,
-		planRepo:           &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{freePlanID: {Slug: "free", IsActive: true}}},
-		eventRepo:          h.events,
-		renewalAttemptRepo: h.attempt,
-		notifContract:      h.notif,
-		log:                zap.NewNop(),
+		uow:           &fakeRenewalUow{},
+		userSubRepo:   h.subRepo,
+		walletRepo:    h.walletRepo,
+		statementRepo: h.statements,
+		// 024 T155: the map key IS the plan's id, so the value must carry it too.
+		// Without it the payload's toPlanId is the nil UUID and the AI receiver
+		// refuses the message - which is what used to happen here, silently, on every
+		// renewal test.
+		planRepo: &fakeRenewalPlanRepo{planByID: map[uuid.UUID]*entities.SubscriptionPlan{
+			freePlanID: {
+				AuditableEntity: entities.AuditableEntity{BaseEntity: entities.BaseEntity{ID: freePlanID}},
+				Slug:            "free",
+				IsActive:        true,
+			},
+		}},
+		eventRepo:           h.events,
+		renewalAttemptRepo:  h.attempt,
+		notifContract:       h.notif,
+		planChangePublisher: publisher,
+		log:                 zap.NewNop(),
 	}
 	return h
+}
+
+// fakeRenewalPublisher records published events without a broker.
+type fakeRenewalPublisher struct {
+	events []any
+}
+
+func (f *fakeRenewalPublisher) Publish(_ context.Context, _ string, payload any) error {
+	f.events = append(f.events, payload)
+	return nil
 }
 
 // ---- Tests ----

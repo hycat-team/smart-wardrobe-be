@@ -136,23 +136,27 @@ func EvaluateSubscriptionTransition(ctx TransitionContext, current EffectiveSubs
 	return UpgradeFinite
 }
 
-func RestoreLifetimeFallbackIfExpired(sub *entities.UserSubscription, at time.Time) bool {
-	if sub == nil || sub.CurrentPlanKind != plankind.Finite || sub.ExpiresAt == nil || sub.ExpiresAt.After(at) || sub.FallbackPlanID == nil {
-		return false
-	}
-	sub.SubscriptionPlanID = *sub.FallbackPlanID
-	sub.CurrentPlanCode = *sub.FallbackPlanCode
-	sub.CurrentTierRank = *sub.FallbackTierRank
-	sub.CurrentPlanKind = plankind.Lifetime
-	sub.CurrentBenefitSnapshot = sub.FallbackBenefitSnapshot
-	sub.StartedAt = *sub.ExpiresAt
-	sub.ExpiresAt = nil
-	clearFallback(sub)
-	sub.IsAutoRenewEnabled = false
-	sub.Version++
-	sub.UpdatedAt = at
-	return true
-}
+// 024 T178: `RestoreLifetimeFallbackIfExpired` and `expiryFor` are GONE, and this is
+// the note explaining why.
+//
+// RestoreLifetimeFallbackIfExpired MUTATED the subscription in place to swap a lapsed
+// finite plan back to its lifetime fallback. No production code called it, so the
+// behaviour it implements never ran; `ResolveEffectiveSubscription` is what actually
+// decides which plan an account is on, and it does not write. A mutation nobody performs
+// is worse than absent code, because the test that exercised it looked like coverage of
+// a working behaviour.
+//
+// It is also worth naming WHY it is safe to remove rather than wire up: a read path that
+// silently rewrote a subscription would be a write hidden inside a read, and it would
+// bump `version` on a row an administrator may be holding. If fallback restoration is
+// ever needed, it belongs in the same transaction as whatever decided to restore it.
+//
+// The private `expiryFor` went with it: no caller, and a duplicate of the entity's own
+// `u.expiryFor`, which is the one the account methods use. Two expiry calculations in a
+// codebase is how they drift apart — and FR-072 requires them to be ONE rule.
+//
+// The test that covered RestoreLifetimeFallbackIfExpired is removed too, rather than
+// left asserting a function that no longer exists.
 
 func ApplyTransition(sub *entities.UserSubscription, plan *entities.SubscriptionPlan, snapshot entities.JSONDocument, transition SubscriptionTransition, at time.Time) (benefitresolution.BenefitResolution, *entities.UserSubscriptionEvent, error) {
 	beforeCode, beforeTier, beforeExpiry := sub.CurrentPlanCode, sub.CurrentTierRank, sub.ExpiresAt
@@ -199,13 +203,8 @@ func ApplyTransition(sub *entities.UserSubscription, plan *entities.Subscription
 	return resolution, event, nil
 }
 
-func expiryFor(plan *entities.SubscriptionPlan, base time.Time) *time.Time {
-	if plan.PlanKind != plankind.Finite || plan.DurationDays == nil {
-		return nil
-	}
-	t := AddProductDays(base, *plan.DurationDays, base.Location())
-	return &t
-}
+// 024 T178: the private `expiryFor` that used to sit here is removed — see the note
+// above. The live calculation is the entity's own `u.expiryFor`.
 
 func AddProductDays(base time.Time, days int, location *time.Location) time.Time {
 	if location == nil {
@@ -213,11 +212,4 @@ func AddProductDays(base time.Time, days int, location *time.Location) time.Time
 	}
 	local := base.In(location)
 	return local.AddDate(0, 0, days)
-}
-func clearFallback(sub *entities.UserSubscription) {
-	sub.FallbackPlanID = nil
-	sub.FallbackPlanCode = nil
-	sub.FallbackTierRank = nil
-	sub.FallbackPlanKind = nil
-	sub.FallbackBenefitSnapshot = nil
 }

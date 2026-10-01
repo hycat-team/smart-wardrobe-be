@@ -52,6 +52,12 @@ func (f *fakeSubscriptionPlanRepository) GetBySlug(ctx context.Context, slug str
 func (f *fakeSubscriptionPlanRepository) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return nil, nil
 }
+
+// GetBySlugsAnyStatus satisfies the interface added by 024 T150. The catalog
+// validator walks a list rather than resolving a slug set, so no test here calls it.
+func (f *fakeSubscriptionPlanRepository) GetBySlugsAnyStatus(ctx context.Context, slugs []string) (map[string]*entities.SubscriptionPlan, error) {
+	return map[string]*entities.SubscriptionPlan{}, nil
+}
 func (f *fakeSubscriptionPlanRepository) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
 	return f.plans, nil
 }

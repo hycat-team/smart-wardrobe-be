@@ -11,6 +11,7 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 
 	"github.com/google/uuid"
 )
@@ -26,12 +27,16 @@ func NewUserQuotaUseCase(
 	quotaRepo repositories.IUserDailyQuotaRepository,
 	subRepo repositories.IUserSubscriptionRepository,
 	planRepo repositories.ISubscriptionPlanRepository,
+	planChangePublisher *subscription.PlanChangePublisher,
+	// 024 T126: the state support opens a transaction to provision the default
+	// subscription, so it needs the unit of work.
+	uow shared_repos.IUnitOfWork,
 ) uc_interfaces.IUserQuotaUseCase {
 	return &UserQuotaUseCase{
 		quotaRepo:    quotaRepo,
 		subRepo:      subRepo,
 		planRepo:     planRepo,
-		stateSupport: subscription.NewSubscriptionStateSupport(subRepo, planRepo, quotaRepo),
+		stateSupport: subscription.NewSubscriptionStateSupport(subRepo, planRepo, quotaRepo, planChangePublisher, uow),
 	}
 }
 

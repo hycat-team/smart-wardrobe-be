@@ -41,6 +41,7 @@ func NewOutboxEmailUseCase(
 		ntemplate.RenewalFailed:         template.Must(template.New("renewal_failed").Parse(templates.RenewalFailedTemplate)),
 		ntemplate.WalletWarning:         template.Must(template.New("wallet_warning").Parse(templates.WalletWarningTemplate)),
 		ntemplate.WalletPurchaseSuccess: template.Must(template.New("wallet_purchase_success").Parse(templates.WalletPurchaseSuccessTemplate)),
+		ntemplate.AdminGrant:            template.Must(template.New("admin_grant").Parse(templates.AdminGrantTemplate)),
 	}
 	return &OutboxEmailUseCase{
 		outboxRepo:        outboxRepo,
@@ -115,6 +116,11 @@ func resolveSubject(tmplEnum ntemplate.Template) string {
 		subject = "Cảnh báo số dư ví không đủ"
 	case ntemplate.WalletPurchaseSuccess:
 		subject = "Mua gói thành công qua ví nội bộ"
+	case ntemplate.AdminGrant:
+		// 024 FR-083: the wording must not reveal whether other accounts were
+		// part of the same administrator batch, and must not imply payment,
+		// because an administrative grant is not a purchase.
+		subject = "Gói của bạn đã được cấp thành công"
 	default:
 		subject = "Thông báo"
 	}

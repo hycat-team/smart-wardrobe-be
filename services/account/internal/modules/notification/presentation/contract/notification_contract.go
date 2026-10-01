@@ -27,6 +27,8 @@ const (
 	TemplateRenewalFailed         = template.RenewalFailed
 	TemplateWalletWarning         = template.WalletWarning
 	TemplateWalletPurchaseSuccess = template.WalletPurchaseSuccess
+	// TemplateAdminGrant is the administrator-grant notification (024 FR-083).
+	TemplateAdminGrant = template.AdminGrant
 )
 
 type INotificationContract interface {

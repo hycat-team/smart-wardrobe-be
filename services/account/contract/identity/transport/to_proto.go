@@ -21,6 +21,10 @@ func ContractDTOToUserBrief(d *identitydto.UserBriefContractDTO) *identityv1.Use
 		LastName:  d.LastName,
 		Gender:    int32(d.Gender),
 		Status:    int32(d.Status),
+		// 024 FR-056/FR-049: both fields must survive the round trip, or a
+		// remote caller cannot enforce the grant rules.
+		RoleSlug:  string(d.RoleSlug),
+		IsDeleted: d.IsDeleted,
 	}
 	if d.AvatarUrl != nil {
 		out.AvatarUrl = *d.AvatarUrl

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	subscriptionerrors "smart-wardrobe-be/services/account/internal/modules/subscription/application/errors"
@@ -12,25 +11,22 @@ import (
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/wallet"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/walletstatementtype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
-	"smart-wardrobe-be/shared/application/constants/eventconstants"
 	sharedmoney "smart-wardrobe-be/shared/domain/money"
 	"smart-wardrobe-be/shared/pkg/utils/timeutils"
 
 	"github.com/google/uuid"
 )
 
-// subscriptionPlanChangedPayload is the publisher-side schema for
-// TopicSubscriptionPlanChanged (020 DAG: Account never calls out — not even
-// via shared DTO types; the event bus is the boundary per §III). It MUST stay
-// wire-compatible with the AI consumer's PlanChangedEventPayload (same JSON).
-type subscriptionPlanChangedPayload struct {
-	UserID         string `json:"userId"`
-	EventType      string `json:"eventType"`
-	ToPlanCode     string `json:"toPlanCode"`
-	ToTierRank     int    `json:"toTierRank"`
-	AICostPolicyID string `json:"aiCostPolicyId"`
-	OccurredAt     string `json:"occurredAt"`
-}
+// subscriptionPlanChangedPayload was the hand-written six-field schema for
+// TopicSubscriptionPlanChanged. It is gone as of feature 024: it could not
+// carry toPlanId, effectiveTo or durationDays, so the AI receiver could not
+// fill ai_policy_grants.plan_id (NOT NULL, foreign key dropped) nor compute the
+// start of a renewal period. Every publish now goes through
+// subscription.PlanChangePublisher, which builds the full 14-field payload in
+// the subscription module's mapper.
+//
+// A DTO type is still never shared across services — the JSON is the contract.
+// The receiver keeps its own declaration in services/ai/dto/aiexecutor.
 
 func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Context, userID uuid.UUID, planSlug string) error {
 	plan, err := uc.planRepo.GetBySlug(ctx, planSlug)
@@ -42,7 +38,6 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 	}
 
 	now := timeutils.GetNow(uc.cfg.Database.TimeZone)
-	var subEvent *entities.UserSubscriptionEvent
 
 	if err := uc.uow.Execute(ctx, func(txCtx context.Context) error {
 		sub, isNewSub, err := uc.getOrInitLockedSubscriptionForPurchase(txCtx, userID, now)
@@ -142,20 +137,11 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		}
 
 		if innerSubEvent != nil {
-			if err := uc.eventRepo.Create(txCtx, innerSubEvent); err != nil {
-				return err
-			}
-			subEvent = innerSubEvent
-
-			payload := subscriptionPlanChangedPayload{
-				UserID:         userID.String(),
-				EventType:      subEvent.EventType,
-				ToPlanCode:     plan.Slug,
-				ToTierRank:     plan.TierRank,
-				AICostPolicyID: plan.AICostPolicyID.String(),
-				OccurredAt:     now.Format(time.RFC3339Nano),
-			}
-			if err := uc.eventPublisher.Publish(txCtx, eventconstants.TopicSubscriptionPlanChanged, payload); err != nil {
+			// 024 T045: one helper writes the history row and the outbox record
+			// in this transaction. The hand-written six-field payload that used
+			// to live here is gone — it could not carry toPlanId or the renewal
+			// window, so the receiver could not write a valid grant.
+			if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, innerSubEvent, sub, plan); err != nil {
 				return err
 			}
 		}
@@ -183,9 +169,12 @@ func (uc *SubscriptionPurchaseUseCase) PurchasePlanWithWallet(ctx context.Contex
 		return err
 	}
 
-	if uc.overviewCache != nil {
-		_ = uc.overviewCache.Invalidate(ctx, userID)
-	}
+	// 024 T154: was `_ = uc.overviewCache.Invalidate(ctx, userID)` - the same
+	// post-commit defect T151 fixed on the grant path, copied. The top-up has
+	// already committed here, so a cancelled client context or an expired deadline
+	// made the delete fail silently and the overview kept serving the old wallet and
+	// plan state until its TTL. Now shared with the other three call sites.
+	subscription.InvalidateOverviewCache(ctx, uc.log, uc.overviewCache, userID)
 
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	subscription_contract "smart-wardrobe-be/services/account/contract/subscription"
 	"smart-wardrobe-be/services/account/dto/identity"
 	identityiface "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/identity"
 	appsecurity "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/security"
@@ -101,7 +102,19 @@ func (f *fakeUoW) Execute(ctx context.Context, fn func(ctx context.Context) erro
 }
 
 func newGoogleUC(repo *mockUserRepo, verifier *fakeVerifier, session *fakeSession, state *fakeStateStore, blacklist *fakeBlacklist) uc_interfaces.IGoogleAuthUseCase {
-	return usecase.NewGoogleAuthUseCase(repo, session, verifier, state, blacklist, &config.Config{}, &fakeUoW{})
+	return usecase.NewGoogleAuthUseCase(repo, session, verifier, state, blacklist, &config.Config{}, &fakeUoW{}, &noopProvisioning{})
+}
+
+// noopProvisioning stands in for the subscription module in tests that are not
+// about 024 T196. It embeds the interface so only the method under test needs a
+// body, and panicking would be wrong here: most of these tests create an account,
+// so provisioning genuinely does run.
+type noopProvisioning struct {
+	subscription_contract.IUserSubscriptionProvisioningContract
+}
+
+func (noopProvisioning) EnsureDefaultSubscription(ctx context.Context, userID uuid.UUID) error {
+	return nil
 }
 
 func identityClaim() *appsecurity.GoogleIdentity {
@@ -319,7 +332,7 @@ func googleRedirectCfg() *config.Config {
 }
 
 func newGoogleUCWithConfig(cfg *config.Config, repo *mockUserRepo, session *fakeSession, state *fakeStateStore) uc_interfaces.IGoogleAuthUseCase {
-	return usecase.NewGoogleAuthUseCase(repo, session, &fakeVerifier{}, state, &fakeBlacklist{}, cfg, &fakeUoW{})
+	return usecase.NewGoogleAuthUseCase(repo, session, &fakeVerifier{}, state, &fakeBlacklist{}, cfg, &fakeUoW{}, &noopProvisioning{})
 }
 
 func TestGoogleStartRedirect_InvalidURL(t *testing.T) {

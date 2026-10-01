@@ -135,13 +135,6 @@ func (r *UserSubscriptionRepository) ProvisionDefault(ctx context.Context, sub *
 	return r.GetDB(ctx).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true}).Create(sub).Error
 }
 
-func (r *UserSubscriptionRepository) BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error {
-	if len(subs) == 0 {
-		return nil
-	}
-	return r.GetDB(ctx).Create(&subs).Error
-}
-
 func (r *UserSubscriptionRepository) GetDistributionByPlanCode(ctx context.Context) ([]dto.SubscriptionDistributionDTO, error) {
 	var rows []dto.SubscriptionDistributionDTO
 	err := r.GetDB(ctx).

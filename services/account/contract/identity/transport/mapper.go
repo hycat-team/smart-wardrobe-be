@@ -9,6 +9,7 @@ import (
 	identitydto "smart-wardrobe-be/services/account/dto/identity"
 	"smart-wardrobe-be/services/account/internal/modules/identity/domain/constants/userstatus"
 	"smart-wardrobe-be/shared/application/constants/apperror"
+	"smart-wardrobe-be/shared/domain/constants/roleslug"
 	"smart-wardrobe-be/shared/domain/constants/shared/gender"
 
 	"github.com/google/uuid"
@@ -34,6 +35,11 @@ func UserBriefToDTO(pb *identityv1.UserBrief) (*identitydto.UserBriefContractDTO
 		LastName:  pb.GetLastName(),
 		Gender:    gender.Gender(pb.GetGender()),
 		Status:    userstatus.UserStatus(pb.GetStatus()),
+		// 024 FR-056/FR-049: carried across the wire so a remote caller can
+		// enforce "an administrator is not a grant target" and report a
+		// soft-deleted account as deleted rather than as not found.
+		RoleSlug:  roleslug.RoleSlug(pb.GetRoleSlug()),
+		IsDeleted: pb.GetIsDeleted(),
 	}
 	if avatar := pb.GetAvatarUrl(); avatar != "" {
 		out.AvatarUrl = &avatar

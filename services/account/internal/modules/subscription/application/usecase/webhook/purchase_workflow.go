@@ -61,6 +61,13 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 		}
 	}
 	if sub.ExpiresAt != nil && !sub.ExpiresAt.After(now) && sub.FallbackPlanID != nil {
+		fallbackPlan, err := uc.planRepo.GetByID(txCtx, *sub.FallbackPlanID)
+		if err != nil {
+			return err
+		}
+		if fallbackPlan == nil {
+			return subscriptionerrors.ErrSubscriptionPlanNotFound()
+		}
 		subEvent, err := sub.RestoreFallback("", now)
 		if err != nil {
 			return err
@@ -68,16 +75,11 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 		if err := uc.userSubRepo.Update(txCtx, sub); err != nil {
 			return err
 		}
-		if subEvent != nil {
-			key := fmt.Sprintf("LIFETIME_FALLBACK_RESTORED:%s:%s", sub.UserID, sub.StartedAt.UTC().Format(time.RFC3339))
-			subEvent.EventKey = key
-			if existing, err := uc.subscriptionEventRepo.GetByKey(txCtx, key); err != nil {
-				return err
-			} else if existing == nil {
-				if err := uc.subscriptionEventRepo.Create(txCtx, subEvent); err != nil {
-					return err
-				}
-			}
+		// 024 T051: published through the single helper, so this path is no
+		// longer a fourth hand-rolled "write history, do nothing else".
+		subEvent.EventKey = fmt.Sprintf("LIFETIME_FALLBACK_RESTORED:%s:%s", sub.UserID, sub.StartedAt.UTC().Format(time.RFC3339))
+		if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, sub, fallbackPlan); err != nil {
+			return err
 		}
 	}
 	effective, err := subscription.ResolveEffectiveSubscription(sub, free, now)
@@ -112,12 +114,11 @@ func (uc *PaymentWebhookUseCase) executeDirectPurchaseWorkflow(txCtx context.Con
 	if subEvent != nil {
 		subEvent.EventKey = eventKey
 		subEvent.SourceDepositTransactionID = &tx.ID
-		if existing, err := uc.subscriptionEventRepo.GetByKey(txCtx, eventKey); err != nil {
+		// 024 T051: the payment settlement now publishes. This is the path a
+		// real purchase takes, so before this fix a paying customer received no
+		// AI entitlement from the payment that succeeded.
+		if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, sub, plan); err != nil {
 			return err
-		} else if existing == nil {
-			if err := uc.subscriptionEventRepo.Create(txCtx, subEvent); err != nil {
-				return err
-			}
 		}
 	}
 	after := sub.Version

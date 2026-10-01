@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	subscription_contract "smart-wardrobe-be/services/account/contract/subscription"
 	"smart-wardrobe-be/services/account/dto/identity"
 	identityerrors "smart-wardrobe-be/services/account/internal/modules/identity/application/errors"
 	identityiface "smart-wardrobe-be/services/account/internal/modules/identity/application/interface/identity"
@@ -44,6 +45,10 @@ type GoogleAuthUseCase struct {
 	tokenBlacklistService appsecurity.ITokenBlacklistService
 	cfg                   *config.Config
 	uow                   shared_repos.IUnitOfWork
+	// 024 T196: the narrow in-process subscription contract. Not nil-guarded on
+	// purpose - a nil contract here would silently skip provisioning and put the
+	// account back on the lazy path, which is the defect this task removes.
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
 }
 
 func NewGoogleAuthUseCase(
@@ -54,6 +59,7 @@ func NewGoogleAuthUseCase(
 	tokenBlacklistService appsecurity.ITokenBlacklistService,
 	cfg *config.Config,
 	uow shared_repos.IUnitOfWork,
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
 ) uc_interfaces.IGoogleAuthUseCase {
 	return &GoogleAuthUseCase{
 		userRepo:              userRepo,
@@ -63,6 +69,7 @@ func NewGoogleAuthUseCase(
 		tokenBlacklistService: tokenBlacklistService,
 		cfg:                   cfg,
 		uow:                   uow,
+		provisioningContract:  provisioningContract,
 	}
 }
 
@@ -231,7 +238,10 @@ func (uc *GoogleAuthUseCase) createGoogleUser(ctx context.Context, ident *appsec
 	user.IsDeleted = false
 
 	createFn := func(txCtx context.Context) error {
-		return uc.userRepo.Create(txCtx, user)
+		if err := uc.userRepo.Create(txCtx, user); err != nil {
+			return err
+		}
+		return uc.ensureDefaultSubscription(txCtx, user.ID)
 	}
 	if err := uc.uow.Execute(ctx, createFn); err != nil {
 		// Concurrent first login: another request may have created the account.
@@ -242,6 +252,15 @@ func (uc *GoogleAuthUseCase) createGoogleUser(ctx context.Context, ident *appsec
 	}
 
 	return uc.eligible(ctx, user)
+}
+
+// 024 T196: provision the default plan inside the transaction that just created
+// the user row, for the reason spelled out in CreateUserByAdmin - the
+// subscription row has a foreign key onto the user, so it cannot be written from
+// a second transaction. Idempotent, so a retried first login cannot produce a
+// second record.
+func (uc *GoogleAuthUseCase) ensureDefaultSubscription(ctx context.Context, userID uuid.UUID) error {
+	return uc.provisioningContract.EnsureDefaultSubscription(ctx, userID)
 }
 
 // eligible applies the same account-status/blacklist checks as password login.

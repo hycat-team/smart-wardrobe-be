@@ -18,6 +18,10 @@ type Router struct {
 	adminBillingHandler      *subscription_handler.AdminBillingHandler
 	adminSubscriptionHandler *subscription_handler.AdminSubscriptionHandler
 	auth                     identity_contract.IAuthMiddleware
+	// 024 T100: the bulk-grant limiter. It lives on the route rather than in the
+	// handler so it also covers requests rejected before the handler runs, and so
+	// the two-tier rule reads in one place next to the route it protects.
+	adminGrantRateLimiter *shared_middleware.AdminGrantRateLimitMiddleware
 }
 
 func NewRouter(
@@ -27,6 +31,7 @@ func NewRouter(
 	ab *subscription_handler.AdminBillingHandler,
 	as *subscription_handler.AdminSubscriptionHandler,
 	auth identity_contract.IAuthMiddleware,
+	adminGrantRateLimiter *shared_middleware.AdminGrantRateLimitMiddleware,
 ) *Router {
 	return &Router{
 		cfg:                      cfg,
@@ -35,6 +40,7 @@ func NewRouter(
 		adminBillingHandler:      ab,
 		adminSubscriptionHandler: as,
 		auth:                     auth,
+		adminGrantRateLimiter:    adminGrantRateLimiter,
 	}
 }
 
@@ -87,7 +93,45 @@ func (r *Router) Init(group *gin.RouterGroup) {
 	adminSubs.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
 	{
 		adminSubs.GET("", shared_pres.WrapHandler(r.adminSubscriptionHandler.ListSubscriptions))
+		// Cancel stays. It is not a grant, and removing a working revocation
+		// would leave an administrator no way to stop a subscription that was
+		// granted in error.
 		adminSubs.POST("/:userId/cancel", shared_pres.WrapHandler(r.adminSubscriptionHandler.CancelSubscription))
-		adminSubs.POST("/:userId/grant", shared_pres.WrapHandler(r.adminSubscriptionHandler.GrantSubscription))
+		// 024 T089/FR-060: POST /:userId/grant is GONE. It is replaced by the
+		// batch endpoint below, which takes a list - a single account is a list
+		// of one.
+		//
+		// ⚠️ THE NEW PATH CANNOT BE /admin/subscriptions/grants. `adminSubs`
+		// already holds `POST /:userId/cancel`, and Gin refuses to register a
+		// static segment ("grants") beside a parameter at the same level: the
+		// conflict panics at STARTUP, so the whole account service would refuse
+		// to boot. Hence a separate group. See research.md R5.
 	}
+
+	// 024 T089/FR-060: the one and only grant interface. Both limit tiers are
+	// counted per administrator (024 T099), and the limiter runs AFTER auth
+	// because the key IS the administrator's identity.
+	adminGrants := group.Group("/admin/subscription-grants")
+	adminGrants.Use(r.auth.Handle(), shared_middleware.RolesAuthorize(roleslug.Admin))
+	{
+		adminGrants.POST("", r.adminGrantRateLimit(), shared_pres.WrapHandler(r.adminSubscriptionHandler.GrantSubscriptionsBatch))
+		// 024 T110: the repair tool. It shares the administrator group, and
+		// therefore the same RolesAuthorize check (FR-089), but NOT the grant rate
+		// limiter: a restore is a single deliberate operation an operator runs
+		// once, not a request an administrator can repeat by accident.
+		adminGrants.POST("/restore", shared_pres.WrapHandler(r.adminSubscriptionHandler.RestorePolicyGrants))
+	}
+}
+
+// adminGrantRateLimit applies the two-tier administrator rule.
+//
+// The nil check is a wiring guard, not a feature: a nil limiter would panic on
+// the first request instead of failing the build. It cannot happen through Wire
+// — the constructor is a required parameter — so this exists only for tests and
+// for anyone assembling the router by hand.
+func (r *Router) adminGrantRateLimit() gin.HandlerFunc {
+	if r.adminGrantRateLimiter == nil {
+		return func(c *gin.Context) { c.Next() }
+	}
+	return r.adminGrantRateLimiter.Handle()
 }

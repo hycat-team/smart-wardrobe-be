@@ -11,6 +11,7 @@ import (
 	notificationContract "smart-wardrobe-be/services/account/internal/modules/notification/presentation/contract"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/payment"
 	ucInterfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/depositstatus"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/deposittransactiontype"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/constants/plankind"
@@ -166,6 +167,24 @@ func seedWebhookScenario(t *testing.T, dbConn *gorm.DB) uuid.UUID {
 	if err := txRepo.Create(ctx, tx); err != nil {
 		t.Fatalf("seed transaction: %v", err)
 	}
+	// `DepositTransaction.Status` carries `gorm:"...;default:3"`, and GORM omits a
+	// field from the INSERT when its value is the type's zero value and the column
+	// declares a default. `depositstatus.Pending` IS zero, so the status set above
+	// never reached the database and the row landed as `Creating` instead.
+	//
+	// That made this fixture lie about its own starting state, and the test below -
+	// which asserts an unsuccessful webhook changes nothing - failed against a
+	// status it never actually seeded. Production code always creates transactions as
+	// `Creating`, a non-zero value, so it is unaffected; only a fixture that wants
+	// `Pending` has to say so out of band.
+	//
+	// The update is deliberate rather than a `Select("*")` on the create: it makes
+	// the intent "this row starts as Pending" explicit at the point of reading.
+	if err := dbConn.Model(&entities.DepositTransaction{}).
+		Where("order_code = ?", webhookOrderCode).
+		Update("status", depositstatus.Pending).Error; err != nil {
+		t.Fatalf("force seeded transaction to Pending: %v", err)
+	}
 	return userID
 }
 
@@ -179,6 +198,14 @@ func buildWebhookPayload(orderCode int64, amount string) []byte {
 func newWebhookUseCase(dbConn *gorm.DB) ucInterfaces.IPaymentWebhookUseCase {
 	cfg := config.Config{}
 	cfg.Database.TimeZone = "Asia/Ho_Chi_Minh"
+	// 024 T051: the settlement path now publishes through the single helper, so
+	// the integration fixture wires the real publisher against the real
+	// repositories rather than a stub — that is what makes this test able to
+	// catch a regression in the publish step.
+	planChangePublisher := subscription.NewPlanChangePublisher(
+		persistence.NewUserSubscriptionEventRepository(dbConn),
+		&integrationPublisher{},
+	)
 	return NewPaymentWebhookUseCase(
 		&cfg,
 		persistence.NewUserWalletRepository(dbConn),
@@ -195,7 +222,18 @@ func newWebhookUseCase(dbConn *gorm.DB) ucInterfaces.IPaymentWebhookUseCase {
 		&integrationBrief{},
 		zap.NewNop(),
 		nil,
+		planChangePublisher,
 	)
+}
+
+// integrationPublisher records published events without touching a broker.
+type integrationPublisher struct {
+	events []any
+}
+
+func (p *integrationPublisher) Publish(_ context.Context, _ string, payload any) error {
+	p.events = append(p.events, payload)
+	return nil
 }
 
 // ---- Tests ----

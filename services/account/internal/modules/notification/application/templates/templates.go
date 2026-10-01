@@ -25,3 +25,6 @@ var WalletWarningTemplate string
 
 //go:embed WalletPurchaseSuccess.html
 var WalletPurchaseSuccessTemplate string
+
+//go:embed AdminGrant.html
+var AdminGrantTemplate string

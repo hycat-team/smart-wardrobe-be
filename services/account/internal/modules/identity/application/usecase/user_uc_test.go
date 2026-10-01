@@ -40,7 +40,7 @@ func TestUserUseCase_UpdateUserRole(t *testing.T) {
 	targetUserID := uuid.New()
 
 	t.Run("fails when updating self role", func(t *testing.T) {
-		uc := usecase.NewUserUseCase(nil, nil, nil, nil, nil, nil, &config.Config{}, nil, nil)
+		uc := usecase.NewUserUseCase(nil, nil, nil, nil, nil, &noopProvisioning{}, nil, nil, &config.Config{}, nil, nil)
 		_, err := uc.UpdateUserRole(ctx, adminID, adminID, dto.UpdateUserRoleReq{RoleSlug: roleslug.User})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Bạn không thể tự thay đổi vai trò tài khoản của chính mình.")
@@ -55,7 +55,7 @@ func TestUserUseCase_UpdateUserRole(t *testing.T) {
 
 		mockRepo.On("GetByID", ctx, targetUserID).Return(targetUser, nil)
 
-		uc := usecase.NewUserUseCase(mockRepo, nil, nil, nil, nil, nil, &config.Config{}, nil, nil)
+		uc := usecase.NewUserUseCase(mockRepo, nil, nil, nil, nil, &noopProvisioning{}, nil, nil, &config.Config{}, nil, nil)
 		_, err := uc.UpdateUserRole(ctx, adminID, targetUserID, dto.UpdateUserRoleReq{RoleSlug: roleslug.Admin})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Chỉ tài khoản admin seed mới được quyền phong hoặc tạo tài khoản admin.")
@@ -70,7 +70,7 @@ func TestUserUseCase_UpdateUserRole(t *testing.T) {
 
 		mockRepo.On("GetByID", ctx, targetUserID).Return(targetUser, nil)
 
-		uc := usecase.NewUserUseCase(mockRepo, nil, nil, nil, nil, nil, &config.Config{}, nil, nil)
+		uc := usecase.NewUserUseCase(mockRepo, nil, nil, nil, nil, &noopProvisioning{}, nil, nil, &config.Config{}, nil, nil)
 		_, err := uc.UpdateUserRole(ctx, adminID, targetUserID, dto.UpdateUserRoleReq{RoleSlug: roleslug.User})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Không thể thay đổi vai trò của tài khoản quản trị viên khác.")

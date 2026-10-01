@@ -103,10 +103,13 @@ func (uc *SubscriptionUseCase) completeRenewalExtension(
 		return err
 	}
 
-	if subEvent != nil {
-		if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
-			return err
-		}
+	// 024 T051: the renewal now publishes. Before this, an automatic renewal
+	// wrote a history row and no event, so the AI service never created the
+	// next period's entitlement — the customer kept paying and the grant simply
+	// stopped when the old period ended. This is the EXTENDED path the receiver
+	// used to ignore outright, so the gap was total.
+	if _, err := uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, plan); err != nil {
+		return err
 	}
 
 	key := result.RenewalAttemptKey

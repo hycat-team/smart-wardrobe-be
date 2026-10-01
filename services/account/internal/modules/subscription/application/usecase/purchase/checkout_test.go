@@ -42,6 +42,19 @@ func (f *fakePlanRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entiti
 func (f *fakePlanRepo) GetBySlugAnyStatus(ctx context.Context, slug string) (*entities.SubscriptionPlan, error) {
 	return f.plansBySlug[slug], nil
 }
+
+// GetBySlugsAnyStatus satisfies the interface added by 024 T150. Checkout never
+// resolves a set of slugs, so this exists for the compiler rather than for a test;
+// it answers the way the real repository does so a future caller is not misled.
+func (f *fakePlanRepo) GetBySlugsAnyStatus(ctx context.Context, slugs []string) (map[string]*entities.SubscriptionPlan, error) {
+	found := make(map[string]*entities.SubscriptionPlan, len(slugs))
+	for _, slug := range slugs {
+		if plan, ok := f.plansBySlug[slug]; ok && plan != nil {
+			found[slug] = plan
+		}
+	}
+	return found, nil
+}
 func (f *fakePlanRepo) ListAdmin(ctx context.Context) ([]*entities.SubscriptionPlan, error) {
 	return nil, nil
 }

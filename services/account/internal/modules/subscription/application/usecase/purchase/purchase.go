@@ -10,6 +10,7 @@ import (
 	subscriptioncaching "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/caching"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/payment"
 	uc_interfaces "smart-wardrobe-be/services/account/internal/modules/subscription/application/interface/usecase"
+	"smart-wardrobe-be/services/account/internal/modules/subscription/application/usecase/subscription"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/entities"
 	"smart-wardrobe-be/services/account/internal/modules/subscription/domain/repositories"
 	"smart-wardrobe-be/shared/application/event"
@@ -17,24 +18,30 @@ import (
 	"smart-wardrobe-be/shared/domain/constants/shared/currency"
 	sharedmoney "smart-wardrobe-be/shared/domain/money"
 	shared_repos "smart-wardrobe-be/shared/domain/repositories"
+	"smart-wardrobe-be/shared/pkg/logger"
 
 	"github.com/google/uuid"
 )
 
 type SubscriptionPurchaseUseCase struct {
-	walletRepo        repositories.IUserWalletRepository
-	depositTxRepo     repositories.IDepositTransactionRepository
-	statementRepo     repositories.IWalletStatementRepository
-	planRepo          repositories.ISubscriptionPlanRepository
-	userSubRepo       repositories.IUserSubscriptionRepository
-	eventRepo         repositories.IUserSubscriptionEventRepository
-	paymentGateway    payment.IPaymentGatewayService
-	eventPublisher    event.IEventPublisher
-	uow               shared_repos.IUnitOfWork
-	cfg               *config.Config
-	notifContract     notificationContract.INotificationContract
-	userBriefContract identity_contract.IUserBriefContract
-	overviewCache     subscriptioncaching.ISubscriptionOverviewCache
+	walletRepo     repositories.IUserWalletRepository
+	depositTxRepo  repositories.IDepositTransactionRepository
+	statementRepo  repositories.IWalletStatementRepository
+	planRepo       repositories.ISubscriptionPlanRepository
+	userSubRepo    repositories.IUserSubscriptionRepository
+	eventRepo      repositories.IUserSubscriptionEventRepository
+	paymentGateway payment.IPaymentGatewayService
+	eventPublisher event.IEventPublisher
+	// 024 T045: the single publish point for subscription.plan.changed.
+	planChangePublisher *subscription.PlanChangePublisher
+	uow                 shared_repos.IUnitOfWork
+	cfg                 *config.Config
+	notifContract       notificationContract.INotificationContract
+	userBriefContract   identity_contract.IUserBriefContract
+	overviewCache       subscriptioncaching.ISubscriptionOverviewCache
+	// 024 T154: needed by the shared post-commit cache invalidation helper, which logs
+	// instead of discarding the error. The purchase path had no logger of its own.
+	log logger.Interface
 }
 
 func NewSubscriptionPurchaseUseCase(
@@ -45,27 +52,31 @@ func NewSubscriptionPurchaseUseCase(
 	userSubRepo repositories.IUserSubscriptionRepository,
 	eventRepo repositories.IUserSubscriptionEventRepository,
 	eventPublisher event.IEventPublisher,
+	planChangePublisher *subscription.PlanChangePublisher,
 	paymentGateway payment.IPaymentGatewayService,
 	uow shared_repos.IUnitOfWork,
 	cfg *config.Config,
 	notifContract notificationContract.INotificationContract,
 	userBriefContract identity_contract.IUserBriefContract,
 	overviewCache subscriptioncaching.ISubscriptionOverviewCache,
+	log logger.Interface,
 ) uc_interfaces.ISubscriptionPurchaseUseCase {
 	return &SubscriptionPurchaseUseCase{
-		walletRepo:        walletRepo,
-		depositTxRepo:     depositTxRepo,
-		statementRepo:     statementRepo,
-		planRepo:          planRepo,
-		userSubRepo:       userSubRepo,
-		eventRepo:         eventRepo,
-		eventPublisher:    eventPublisher,
-		paymentGateway:    paymentGateway,
-		uow:               uow,
-		cfg:               cfg,
-		notifContract:     notifContract,
-		userBriefContract: userBriefContract,
-		overviewCache:     overviewCache,
+		walletRepo:          walletRepo,
+		depositTxRepo:       depositTxRepo,
+		statementRepo:       statementRepo,
+		planRepo:            planRepo,
+		userSubRepo:         userSubRepo,
+		eventRepo:           eventRepo,
+		eventPublisher:      eventPublisher,
+		planChangePublisher: planChangePublisher,
+		paymentGateway:      paymentGateway,
+		uow:                 uow,
+		cfg:                 cfg,
+		notifContract:       notifContract,
+		userBriefContract:   userBriefContract,
+		overviewCache:       overviewCache,
+		log:                 log,
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	shared_event "smart-wardrobe-be/shared/application/event"
 	"smart-wardrobe-be/shared/application/media"
 	"smart-wardrobe-be/shared/config"
+	shared_repos "smart-wardrobe-be/shared/domain/repositories"
 	"smart-wardrobe-be/shared/pkg/logger"
 )
 
@@ -17,10 +18,16 @@ type UserUseCase struct {
 	refreshTokenRepo      repositories.IRefreshTokenRepository
 	tokenBlacklistService security.ITokenBlacklistService
 	subscriptionContract  subscription_contract.IUserSubscriptionContract
-	mediaService          media.IMediaService
-	cfg                   *config.Config
-	eventPublisher        shared_event.IEventPublisher
-	logger                logger.Interface
+	// 024 T196: the account and its entitlement must commit together, so the
+	// administrator creation path needs a unit of work and the narrow
+	// provisioning contract. Neither is a new repository - it is the existing
+	// subscription provisioning body, reached through the module contract.
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract
+	uow                  shared_repos.IUnitOfWork
+	mediaService         media.IMediaService
+	cfg                  *config.Config
+	eventPublisher       shared_event.IEventPublisher
+	logger               logger.Interface
 }
 
 func NewUserUseCase(
@@ -29,6 +36,8 @@ func NewUserUseCase(
 	refreshTokenRepo repositories.IRefreshTokenRepository,
 	tokenBlacklistService security.ITokenBlacklistService,
 	subscriptionContract subscription_contract.IUserSubscriptionContract,
+	provisioningContract subscription_contract.IUserSubscriptionProvisioningContract,
+	uow shared_repos.IUnitOfWork,
 	mediaService media.IMediaService,
 	cfg *config.Config,
 	eventPublisher shared_event.IEventPublisher,
@@ -40,6 +49,8 @@ func NewUserUseCase(
 		refreshTokenRepo:      refreshTokenRepo,
 		tokenBlacklistService: tokenBlacklistService,
 		subscriptionContract:  subscriptionContract,
+		provisioningContract:  provisioningContract,
+		uow:                   uow,
 		mediaService:          mediaService,
 		cfg:                   cfg,
 		eventPublisher:        eventPublisher,

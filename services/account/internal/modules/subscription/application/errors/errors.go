@@ -171,3 +171,138 @@ func ErrAiChatQuotaExceeded() *apperror.Error {
 func ErrPlanSlugAlreadyExists() *apperror.Error {
 	return apperror.NewConflict("Mã định danh gói (slug) đã tồn tại trong hệ thống.")
 }
+
+// ErrAdminGrantIdempotencyKeyRequired (024 T088, FR-068).
+//
+// A batch grant has no natural duplicate key of its own: the administrator can
+// legitimately grant the same account the same plan twice, so the request cannot
+// be deduplicated by its contents. Without a caller-supplied key there is no way
+// to tell a retry from a second intentional grant, and a network retry would
+// quietly extend the subscription twice.
+func ErrAdminGrantIdempotencyKeyRequired() *apperror.Error {
+	return apperror.NewBadRequest("Thiếu tiêu đề Idempotency-Key. Vui lòng gửi khoá chống gửi lại để hệ thống nhận ra yêu cầu bị lặp.")
+}
+
+// ErrAdminGrantIdempotencyKeyTooLong (024, FR-068 + FR-085).
+//
+// The key becomes part of the event key `ADMIN_GRANT:{key}:{index}`, stored in a
+// `character varying(255)` column. An over-long key used to be accepted by the API and
+// only fail on INSERT, where it surfaced per item as `grant_failed` — the reason code
+// that tells an administrator the infrastructure failed, for a request they got
+// exactly right.
+//
+// The message gives the limit and tells them the fix, because the limit is a
+// consequence of the design rather than an arbitrary policy: stating the number is
+// the difference between a caller who shortens the key and one who gives up on the
+// feature.
+func ErrAdminGrantIdempotencyKeyTooLong(max, actual int) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf(
+		"Khoá Idempotency-Key dài %d ký tự, vượt giới hạn %d ký tự. "+
+			"Vì khoá này trở thành một phần của mã sự kiện nên bị giới hạn bởi độ dài cột lưu trữ. "+
+			"Vui lòng dùng khoá ngắn hơn, ví dụ một UUID.",
+		actual, max))
+}
+
+// ErrAdminGrantRateLimited (024 FR-078, FR-079).
+//
+// The limits are per administrator rather than per IP: on a shared office
+// connection one administrator could otherwise exhaust the budget of every other
+// administrator behind the same address, and a single administrator could keep
+// working from a rotating pool of addresses.
+func ErrAdminGrantRateLimited(retryAfterSeconds int) *apperror.Error {
+	return apperror.NewTooManyRequest(fmt.Sprintf("Bạn đang thao tác quá nhanh. Vui lòng thử lại sau %d giây.", retryAfterSeconds))
+}
+
+// ErrAdminGrantRateLimitUnavailable is returned when the limiter itself cannot
+// answer. A bulk write to customer entitlements is refused rather than performed
+// without a limit: the limit is what keeps one administrator from locking the
+// feature for everyone.
+func ErrAdminGrantRateLimitUnavailable() *apperror.Error {
+	return apperror.NewServiceUnavailable("Chưa thể kiểm tra giới hạn tần suất cấp gói. Vui lòng thử lại sau.")
+}
+
+// ErrAdminGrantEmptyBatch (024 FR-063).
+func ErrAdminGrantEmptyBatch() *apperror.Error {
+	return apperror.NewBadRequest("Danh sách cấp gói không được để trống.")
+}
+
+// ErrAdminGrantTooManyItems (024 FR-062).
+//
+// The wording matches contracts/admin-grant-api.md exactly. An administrator comparing
+// what they see against the contract should not have to guess which of two similar
+// sentences is the real one.
+func ErrAdminGrantTooManyItems(max int) *apperror.Error {
+	return apperror.NewBadRequest(fmt.Sprintf("Danh sách cấp gói tối đa %d tài khoản mỗi lần.", max))
+}
+
+// 024 T129: constitution §V requires business and system errors to be built by
+// `apperror` factories rather than inline in the application layer. The three
+// below replace the `errors.New` / `fmt.Errorf` calls that used to sit in the
+// grant use case.
+
+// ErrAdminGrantResolveUsersFailed wraps a failure of the one-pass identifier
+// resolution.
+//
+// Internal, not bad request: the identifiers were validated as well-formed
+// already, so a failure here means the identity contract or the database is
+// unavailable, and saying so would invite the caller to "fix" their input.
+func ErrAdminGrantResolveUsersFailed(cause error) *apperror.Error {
+	e := apperror.NewInternalError("Không thể tra cứu danh sách tài khoản.")
+	e.Cause = cause
+	return e
+}
+
+// ErrAdminGrantRecordAuditFailed wraps a failure to write the audit record.
+//
+// Deliberately fatal to the whole request rather than to one item: the audit row
+// is what makes the grant answerable later (FR-081, SC-021), so continuing after
+// it fails would produce a grant nobody can attribute.
+func ErrAdminGrantRecordAuditFailed(cause error) *apperror.Error {
+	e := apperror.NewInternalError("Không thể ghi nhận ký kiểm toán cho lần cấp gói.")
+	e.Cause = cause
+	return e
+}
+
+// ErrUserDailyQuotaNotFound (024 T148).
+//
+// Returned when `CreateIfAbsent` reported a conflict but the row is then not
+// readable. The conflict proves a row exists, so this cannot happen in practice -
+// it is here so the impossible case fails loudly instead of handing back a quota
+// object that was never persisted and would reset the customer's daily counters.
+func ErrUserDailyQuotaNotFound() *apperror.Error {
+	return apperror.NewInternalError("Không đọc được bộ đếm hằng ngày của tài khoản.")
+}
+
+// ErrAdminGrantConcurrentModification is the reason an item reports
+// `concurrent_modification`.
+//
+// It is a factory rather than a sentinel so the use case never creates a business
+// error inline. Callers compare with `errors.Is` against a fresh instance, which
+// works because `apperror` factories return distinct values with the same meaning
+// - so the comparison is made on the exported reason code, not on this error.
+func ErrAdminGrantConcurrentModification() *apperror.Error {
+	return apperror.NewConflict("Tài khoản vừa được thay đổi bởi một thao tác khác.")
+}
+
+// ErrProvisioningRequiresCallerTransaction (024 T202).
+//
+// Returned when eager default provisioning is reached on a context that carries no
+// transaction. `EnsureDefaultSubscription` writes three rows - the subscription,
+// its history and the outbox record - and takes the handle for all three from the
+// context. Without a transaction each write falls back to the base connection and
+// commits on its own, which is the exact failure 024 T126 removed on the lazy door:
+// an account ends up holding a plan whose event nobody ever heard about, and
+// nothing reports an error.
+//
+// It is also the state the FK would reject if the writes were attempted at all -
+// `user_subscriptions.user_id` points at `identity.users(id)`, and the account row
+// only exists inside the caller's uncommitted transaction - so failing here turns a
+// partial write into one clear error.
+//
+// The check lives in the module contract, not in the provisioning body: "run inside
+// the caller's transaction" is a rule about the ADAPTER that hands the context in,
+// and keeping it there means every production door is covered without the business
+// logic having to defend itself.
+func ErrProvisioningRequiresCallerTransaction() *apperror.Error {
+	return apperror.NewInternalError("Không thể cấp phát gói hội viên mặc định vì thiếu giao dịch của yêu cầu tạo tài khoản.")
+}

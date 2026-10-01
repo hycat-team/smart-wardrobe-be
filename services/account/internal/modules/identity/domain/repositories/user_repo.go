@@ -34,6 +34,13 @@ type IUserRepository interface {
 	IsUsernameExists(ctx context.Context, username string) (bool, error)
 	GetByUsernameOrEmail(ctx context.Context, loginName string) (*entities.User, error)
 	GetByUsernamesOrEmails(ctx context.Context, identifiers []string) ([]*entities.User, error)
+	// GetByUsernamesOrEmailsIncludingDeleted is the admin-grant-only variant that
+	// returns soft-deleted rows with their flag intact, so the caller can report
+	// `user_soft_deleted` instead of a misleading `user_not_found` (024 T136).
+	//
+	// Separate from GetByUsernamesOrEmails on purpose: that one is shared with
+	// commerce, which must keep excluding deleted accounts.
+	GetByUsernamesOrEmailsIncludingDeleted(ctx context.Context, identifiers []string) ([]*entities.User, error)
 	SearchByKeyword(ctx context.Context, keyword string, limit int) ([]*entities.User, error)
 	GetUsersForAdmin(ctx context.Context, filter UserFilter) (*UserListResult, error)
 	GetStyleProfile(ctx context.Context, userID uuid.UUID) (*UserStyleProfileRes, error)

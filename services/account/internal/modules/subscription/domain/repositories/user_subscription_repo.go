@@ -27,7 +27,11 @@ type IUserSubscriptionRepository interface {
 	GetActiveExpiredSubscriptionsBatch(ctx context.Context, now time.Time, lastUserID uuid.UUID, lastExpiresAt time.Time, limit int) ([]*entities.UserSubscription, error)
 	GetActiveExpiredSubscriptionByUserIDWithLock(ctx context.Context, userID uuid.UUID, now time.Time) (*entities.UserSubscription, error)
 	GetSubscriptionsExpiringWithin(ctx context.Context, from, to time.Time) ([]*entities.UserSubscription, error)
-	BulkCreate(ctx context.Context, subs []*entities.UserSubscription) error
+	// 024 T147: `BulkCreate` is GONE. FR-014 needs a history row for every account
+	// in a bulk provision, which `ProvisionDefault` plus `PlanChangePublisher` do per
+	// account inside one transaction. The plain bulk INSERT this replaced skipped
+	// both - no history row and no event - so it could not have satisfied FR-014
+	// even if something had called it, and nothing did.
 	ProvisionDefault(ctx context.Context, sub *entities.UserSubscription) error
 	GetDistributionByPlanCode(ctx context.Context) ([]SubscriptionDistributionDTO, error)
 	ListAdmin(ctx context.Context, filter AdminUserSubscriptionFilter, page, limit int) ([]*entities.UserSubscription, int64, error)

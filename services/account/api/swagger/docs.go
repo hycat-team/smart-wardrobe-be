@@ -117,6 +117,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/subscription-grants": {
+            "post": {
+                "description": "Cấp gói cho một danh sách tài khoản. Cấp cho một tài khoản là một danh sách một phần tử, dùng chung giao diện này. Mỗi phần tử độc lập: một phần tử lỗi không ảnh hưởng các phần tử còn lại.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Subscription"
+                ],
+                "summary": "Cấp gói hội viên cho danh sách tài khoản",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Khoá chống gửi lại, do quản trị viên sinh ra",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Danh sách tài khoản cần cấp gói",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/presentation.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscription-grants/restore": {
+            "post": {
+                "description": "Quét mọi tài khoản có bản ghi đăng ký và phát lại tín hiệu để dịch vụ AI dựng lại mức quyền. Mặc định dryRun=true. Chạy lại nhiều lần không gây tác dụng phụ.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Subscription"
+                ],
+                "summary": "Khôi phục mức quyền tính phí AI cho tài khoản thiếu bản ghi",
+                "parameters": [
+                    {
+                        "description": "Tuỳ chọn chạy thử hoặc thực thi",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/presentation.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/subscriptions": {
             "get": {
                 "description": "Lấy danh sách đăng ký gói hội viên của người dùng (lọc theo planCode, status).",
@@ -646,47 +756,6 @@ const docTemplate = `{
                         "name": "userId",
                         "in": "path",
                         "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/presentation.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/subscriptions/{userId}/grant": {
-            "post": {
-                "description": "Gán một gói hội viên cụ thể cho người dùng.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Subscription"
-                ],
-                "summary": "Cấp gói hội viên thủ công cho người dùng",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Thông tin gói cấp",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_subscription_presentation_handler.adminGrantPlanReq"
-                        }
                     }
                 ],
                 "responses": {
@@ -2253,17 +2322,6 @@ const docTemplate = `{
                 "Other"
             ]
         },
-        "internal_modules_subscription_presentation_handler.adminGrantPlanReq": {
-            "type": "object",
-            "required": [
-                "planId"
-            ],
-            "properties": {
-                "planId": {
-                    "type": "string"
-                }
-            }
-        },
         "internal_modules_subscription_presentation_handler.resolveRequest": {
             "type": "object",
             "properties": {
@@ -2972,6 +3030,83 @@ const docTemplate = `{
                 }
             }
         },
+        "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem": {
+            "type": "object",
+            "properties": {
+                "planSlug": {
+                    "type": "string"
+                },
+                "userIdentifier": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchReq": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchItem"
+                    }
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchRes": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult"
+                    }
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "succeeded": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.AdminGrantBatchResult": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "planName": {
+                    "type": "string"
+                },
+                "planSlug": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "resolvedUserId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userIdentifier": {
+                    "type": "string"
+                }
+            }
+        },
         "smart-wardrobe-be_services_account_dto_subscription.AdminUserSubscriptionItemDTO": {
             "type": "object",
             "properties": {
@@ -3203,6 +3338,60 @@ const docTemplate = `{
             ],
             "properties": {
                 "planSlug": {
+                    "type": "string"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsReq": {
+            "type": "object",
+            "properties": {
+                "dryRun": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.RestorePolicyGrantsRes": {
+            "type": "object",
+            "properties": {
+                "dryRun": {
+                    "type": "boolean"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "restored": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/smart-wardrobe-be_services_account_dto_subscription.RestoreResult"
+                    }
+                },
+                "scanned": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                }
+            }
+        },
+        "smart-wardrobe-be_services_account_dto_subscription.RestoreResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "planSlug": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userId": {
                     "type": "string"
                 }
             }

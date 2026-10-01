@@ -47,8 +47,22 @@ func (uc *SubscriptionUseCase) executeRenewalDowngrade(
 }
 
 // downgradeToFree updates the subscription record to the default free plan.
+//
+// 024 T051: both branches now publish. Expiry is the single most important
+// transition in the whole feature — it is what removes a customer's paid
+// entitlements — and it was writing a history row with no event, so the AI
+// service kept honouring a plan that had already ended.
 func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub *entities.UserSubscription, freePlanID uuid.UUID, now time.Time) error {
 	if lockedSub.FallbackPlanID != nil {
+		// The lifetime fallback plan is the one the account is returning to, so
+		// the payload has to name THAT plan, not the free plan.
+		fallbackPlan, err := uc.planRepo.GetByID(txCtx, *lockedSub.FallbackPlanID)
+		if err != nil {
+			return err
+		}
+		if fallbackPlan == nil {
+			return subscriptionerrors.ErrSubscriptionPlanNotFound()
+		}
 		subEvent, err := lockedSub.RestoreFallback("", now)
 		if err != nil {
 			return err
@@ -56,12 +70,8 @@ func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub 
 		if err := uc.userSubRepo.Update(txCtx, lockedSub); err != nil {
 			return err
 		}
-		if subEvent != nil {
-			if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
-				return err
-			}
-		}
-		return nil
+		_, err = uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, fallbackPlan)
+		return err
 	}
 
 	freePlan, err := uc.planRepo.GetByID(txCtx, freePlanID)
@@ -78,10 +88,6 @@ func (uc *SubscriptionUseCase) downgradeToFree(txCtx context.Context, lockedSub 
 		return err
 	}
 
-	if subEvent != nil {
-		if err := uc.eventRepo.Create(txCtx, subEvent); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err = uc.planChangePublisher.PublishPlanChange(txCtx, subEvent, lockedSub, freePlan)
+	return err
 }
