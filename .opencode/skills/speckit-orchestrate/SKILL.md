@@ -114,9 +114,10 @@ Cheap gate, run once at the end of each phase:
 A red gate is a hard stop. Report the failure verbatim. Do not loosen the gate,
 skip a test, or work around it to reach a commit.
 
-Note: this is a deliberate deviation from `AGENTS.md` §2, which requires the
-full `make wire && make lint && make test-race` to pass before every commit. The
-full gate runs in §7 before any push. Do not "fix" this section back.
+This is the same ladder as `AGENTS.md` §2 — read it there for the canonical
+version. `make test-race` is the race detector across all five workspace
+modules, so scope it inside a phase. The full `make check` runs once per
+feature in §7, before any push.
 
 ## §7 Loop C — converge and close out
 
@@ -174,6 +175,10 @@ Interrupt only where a wrong guess would be expensive or irreversible.
 5. The next action touches production: push, tag, or a migration on a live DB.
 6. An iteration cap in §4 or §7 is reached.
 
+Ask with the `question` tool, never prose: short label per option, consequence in
+the description, "(Recommended)" on the one you prefer, `multiple: true` only
+when the choices genuinely combine. Batch every question into one call.
+
 **Decide yourself, and record one line in the report:**
 
 - File placement, naming, helper extraction, test layout
@@ -187,7 +192,8 @@ When you decide alone, state what you decided and the reason. That is what makes
 the work auditable without you present.
 
 **Defer, never interrupt:** collect every non-blocking question, finish
-everything that does not depend on the answer, then ask once in the report.
+everything that does not depend on the answer, then ask once via `question`.
+Asking through the UI is a reason to ask well, not a reason to ask more.
 
 ## §10 Report
 
