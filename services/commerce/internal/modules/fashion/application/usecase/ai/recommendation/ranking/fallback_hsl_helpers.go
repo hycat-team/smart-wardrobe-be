@@ -102,6 +102,96 @@ func roleForItem(item *wardrobeDto.WardrobeItemContractDTO, fallback string, fas
 }
 
 // ============================================================================
+// Outerwear Layering Decision Helpers
+// ============================================================================
+
+// outerwearHotLikeTerms là các từ khóa cho thấy thời tiết nóng, không nên thêm lớp ngoài.
+var outerwearHotLikeTerms = []string{"nóng", "nong", "nắng", "nang", "hot", "sunny", "summer", "he"}
+
+// outerwearColdLikeTerms là các từ khóa cho thấy thời tiết lạnh hoặc mát, nên thêm lớp ngoài.
+var outerwearColdLikeTerms = []string{"lạnh", "lanh", "mát", "mat", "cold", "cool", "mưa", "mua", "rain"}
+
+// outerwearLayeringIntentTerms là các từ khóa thể hiện người dùng muốn phối đồ theo lớp.
+var outerwearLayeringIntentTerms = []string{"layer", "khoác", "khoac"}
+
+// shouldIncludeOuterwear quyết định outfit có nên thêm lớp ngoài (outerwear) hay không.
+//
+// Quy tắc:
+//  1. Thời tiết nóng hoặc mùa hè → false, tránh outerwear dày/nặng.
+//  2. Thời tiết lạnh/mát hoặc mùa đông/thu → true.
+//  3. Không có tín hiệu thời tiết → true chỉ khi ngữ cảnh yêu cầu có dấu hiệu layering.
+func shouldIncludeOuterwear(input dto.RecommendOutfitReq) bool {
+	if matchesAnyWeatherTerm(input, outerwearHotLikeTerms) || isSummerSeason(input) {
+		return false
+	}
+	if matchesAnyWeatherTerm(input, outerwearColdLikeTerms) || isColdSeason(input) {
+		return true
+	}
+	return hasLayeringIntent(input)
+}
+
+// isColdSeason kiểm tra mùa đông hoặc thu, dùng như tín hiệu thời tiết lạnh.
+func isColdSeason(input dto.RecommendOutfitReq) bool {
+	season := seasonValue(input)
+	return season == "winter" || season == "dong" || season == "autumn" || season == "fall" || season == "thu"
+}
+
+// isSummerSeason kiểm tra mùa hè, dùng như tín hiệu thời tiết nóng.
+func isSummerSeason(input dto.RecommendOutfitReq) bool {
+	season := seasonValue(input)
+	return season == "summer" || season == "he"
+}
+
+// seasonValue trả về giá trị mùa ở dạng chữ thường, chuỗi rỗng nếu không có.
+func seasonValue(input dto.RecommendOutfitReq) string {
+	if input.Season == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(string(*input.Season)))
+}
+
+// matchesAnyWeatherTerm kiểm tra chuỗi thời tiết do người dùng nhập có chứa bất kỳ từ khóa nào không.
+func matchesAnyWeatherTerm(input dto.RecommendOutfitReq, terms []string) bool {
+	if input.Weather == nil {
+		return false
+	}
+	weather := strings.ToLower(strings.TrimSpace(*input.Weather))
+	if weather == "" {
+		return false
+	}
+	for _, term := range terms {
+		if strings.Contains(weather, term) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasLayeringIntent kiểm tra ngữ cảnh yêu cầu (phong cách, dịp, ghi chú) có nhắc tới
+// phối đồ nhiều lớp hay không.
+func hasLayeringIntent(input dto.RecommendOutfitReq) bool {
+	contexts := make([]string, 0, 3)
+	if input.StyleTarget != nil {
+		contexts = append(contexts, *input.StyleTarget)
+	}
+	if input.Occasion != nil {
+		contexts = append(contexts, *input.Occasion)
+	}
+	if input.Details != nil {
+		contexts = append(contexts, *input.Details)
+	}
+	for _, value := range contexts {
+		normalized := strings.ToLower(value)
+		for _, term := range outerwearLayeringIntentTerms {
+			if strings.Contains(normalized, term) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ============================================================================
 // DTO Mapping & Group Builder Helpers
 // ============================================================================
 

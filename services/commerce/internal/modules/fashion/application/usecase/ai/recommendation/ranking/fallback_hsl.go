@@ -2,8 +2,6 @@
 package ranking
 
 import (
-	"strings"
-
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
@@ -15,12 +13,13 @@ import (
 // RunLocalHSLMatching thực hiện thuật toán so khớp màu sắc HSL cục bộ để tạo ra một gợi ý phối đồ dự phòng (fallback) khi AI bị lỗi.
 //
 // Hành vi:
-//  1. Phân loại các món đồ ứng viên thành các nhóm danh mục: Áo (tops), Quần và chân váy (bottoms), Giày (shoes), Áo khoác (outerwears), Đầm (dresses), Phụ kiện (accessories).
-//  2. Xác định thời tiết có lạnh hay mưa không dựa trên thông tin đầu vào.
+//  1. Phân loại các món đồ ứng viên thành các nhóm danh mục: Áo (tops), Quần và chân váy (bottoms), Giày (shoes), Áo khoác (outerwears), Đầm (dresses), Mũ (headwear), Phụ kiện (accessories).
+//  2. Quyết định có thêm lớp ngoài (outerwear) hay không qua [shouldIncludeOuterwear], dựa trên thời tiết, mùa và ý định layering của người dùng.
 //  3. Nếu có váy và giày, chọn váy làm món đồ chính, sau đó duyệt danh sách giày để tìm đôi giày có màu phối hợp tốt nhất qua [colorsMatch].
-//  4. Nếu có áo và quần, duyệt tìm cặp áo và quần đầu tiên phối hợp màu sắc hài hòa nhất làm đồ chính. Sau đó tìm giày và áo khoác (nếu trời lạnh) có màu hợp với áo hoặc quần chính.
+//  4. Nếu có áo và quần, duyệt tìm cặp áo và quần đầu tiên phối hợp màu sắc hài hòa nhất làm đồ chính. Sau đó tìm giày và áo khoác (nếu [shouldIncludeOuterwear] cho phép) có màu hợp với áo hoặc quần chính.
 //  5. Nếu không tìm được cặp phối hợp, chọn ngẫu nhiên món đồ đầu tiên của mỗi danh mục.
-//  6. Trả về cấu trúc [RecommendedOutfitRes] kèm tiêu đề và giải thích lý do phối màu.
+//  6. Thêm nhóm mũ (headwear) và phụ kiện (accessory) nếu tồn tại trong tủ và bộ lõi đã hợp lệ.
+//  7. Trả về cấu trúc [RecommendedOutfitRes] kèm tiêu đề và giải thích lý do phối màu.
 //
 // Đầu vào mẫu:
 //
@@ -35,7 +34,7 @@ func RunLocalHSLMatching(
 	input dto.RecommendOutfitReq,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) *dto.RecommendedOutfitRes {
-	var tops, bottoms, shoes, outerwears, dresses, accessories []*wardrobeDto.WardrobeItemContractDTO
+	var tops, bottoms, shoes, outerwears, dresses, headwear, accessories []*wardrobeDto.WardrobeItemContractDTO
 
 	for _, candidate := range candidates {
 		item := candidate.Item
@@ -52,23 +51,16 @@ func RunLocalHSLMatching(
 			outerwears = append(outerwears, item)
 		case "dam":
 			dresses = append(dresses, item)
+		case "mu":
+			headwear = append(headwear, item)
+		case "phu-kien":
+			accessories = append(accessories, item)
 		default:
 			accessories = append(accessories, item)
 		}
 	}
 
-	isCold := false
-	if input.Weather != nil {
-		weather := strings.ToLower(*input.Weather)
-		if strings.Contains(weather, "lạnh") ||
-			strings.Contains(weather, "mát") ||
-			strings.Contains(weather, "cold") ||
-			strings.Contains(weather, "cool") ||
-			strings.Contains(weather, "mưa") ||
-			strings.Contains(weather, "rain") {
-			isCold = true
-		}
-	}
+	includeOuterwear := shouldIncludeOuterwear(input)
 
 	candidateMap := map[uuid.UUID]types.CandidateForPrompt{}
 	for _, c := range candidates {
@@ -89,7 +81,7 @@ func RunLocalHSLMatching(
 		items = append(items, buildItemGroup(roleForItem(primaryDress, "dam", fashionItemMap), primaryDress, dresses, fashionItemMap, candidateMap))
 		items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("giay"), primaryShoes, shoes, fashionItemMap, candidateMap))
 
-		if isCold && len(outerwears) > 0 {
+		if includeOuterwear && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
 			for _, outerwear := range outerwears {
 				if colorsMatch(primaryDress, outerwear, fashionItemMap) {
@@ -130,7 +122,7 @@ func RunLocalHSLMatching(
 			items = append(items, buildItemGroup(roleForItem(primaryShoes, "giay", fashionItemMap), primaryShoes, shoes, fashionItemMap, candidateMap))
 		}
 
-		if isCold && len(outerwears) > 0 {
+		if includeOuterwear && len(outerwears) > 0 {
 			primaryOuter := outerwears[0]
 			for _, outerwear := range outerwears {
 				if colorsMatch(primaryTop, outerwear, fashionItemMap) || colorsMatch(primaryBottom, outerwear, fashionItemMap) {
@@ -152,8 +144,22 @@ func RunLocalHSLMatching(
 		}
 	}
 
+	// Lớp bổ sung (mũ, phụ kiện) là vai trò độc lập, không bị ràng buộc bởi cặp
+	// top/bottom hay fullbody. Chỉ thêm khi đã dựng được bộ lõi hợp lệ để không
+	// sinh ra outfit chỉ có mũ/phụ kiện mà thiếu trang phục chính. Vai trò được gán
+	// cố định theo nhóm danh mục để không phát sinh role "other" cho món chưa
+	// phân loại, nhờ vậy khớp với tập role mà LLM path được phép trả về.
+	if len(items) > 0 {
+		if len(headwear) > 0 {
+			items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("mu"), headwear[0], headwear, fashionItemMap, candidateMap))
+		}
+		if len(accessories) > 0 {
+			items = append(items, buildItemGroup(mapper.CategorySlugToWearingRole("phu-kien"), accessories[0], accessories, fashionItemMap, candidateMap))
+		}
+	}
+
 	explanation := msgFallbackHslExplain
-	if isCold {
+	if includeOuterwear && len(outerwears) > 0 {
 		explanation += msgFallbackHslExplainAddOuter
 	}
 

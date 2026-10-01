@@ -67,12 +67,13 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	builder.WriteString("Rules: aliases (A1, A2, ...) are internal IDs and MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation (no \"(A1)\", no bare \"A1\"); each item entry must contain role matching the wearing position (top, bottom, fullbody, outerwear, footwear, headwear, accessory); do not output markdown or prose outside JSON.\n")
 	builder.WriteString("Brand item rule: candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand partner items. Prefer including at least one of them as primary or alternative when they fit the style, occasion, and color harmony.\n")
 	builder.WriteString("Outfit rules:\n")
-	builder.WriteString("- A complete outfit MUST include exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
+	builder.WriteString("- CORE roles define a complete outfit: exactly one top (\"top\"), one bottom (\"bottom\"), and one footwear (\"footwear\"), OR one fullbody (\"fullbody\") plus one footwear.\n")
 	builder.WriteString("- Each role must appear at most once. Do NOT output two items with the same role.\n")
 	builder.WriteString("- If the recommended outfit contains a fullbody item (\"fullbody\"), it MUST NOT include any top (\"top\") or bottom (\"bottom\").\n")
 	builder.WriteString("- Outerwear (e.g., jackets, coats) can be layered over either a fullbody dress (\"fullbody\") OR a top-and-bottom combination (\"top\" + \"bottom\").\n")
-	builder.WriteString("- Shoes, bags, and other accessories are independent and not restricted by the dress or top-and-bottom pairing rules.\n")
 	builder.WriteString("- If no suitable top candidate exists for a top-and-bottom outfit, fall back to a fullbody outfit instead of omitting the top.\n")
+	builder.WriteString("Layering roles rule: headwear (\"headwear\") and accessory (\"accessory\") are OPTIONAL but HIGHLY EXPECTED. Whenever the candidate pool contains a suitable hat or accessory candidate, you MUST include that role in the outfit. Omitting them makes the outfit incomplete.\n")
+	builder.WriteString("Outerwear rule: outerwear (\"outerwear\") is an optional layer. Include it when the weather is cold/cool/rainy, when the season is autumn/winter, or when the context explicitly asks for a layered outfit. NEVER include heavy outerwear when the weather is hot or sunny.\n")
 
 	contextPayload := map[string]string{}
 	if input.Occasion != nil {
@@ -95,7 +96,7 @@ func buildRecommendationPrompt(candidates []types.CandidateForPrompt, input dto.
 	}
 
 	contextBytes, _ := json.Marshal(contextPayload)
-	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố thoải mái\",\"explanation\":\"Chiếc áo thun trắng nhẹ nhàng kết hợp cùng quần jeans xanh tạo tổng thể hài hòa và thoải mái.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]}]}\n")
+	builder.WriteString("Required JSON shape example: {\"title\":\"Bộ đồ dạo phố thoải mái\",\"explanation\":\"Chiếc áo thun trắng nhẹ nhàng kết hợp cùng quần jeans xanh tạo tổng thể hài hòa và thoải mái.\",\"items\":[{\"role\":\"top\",\"primary_id\":\"A1\",\"alternative_ids\":[]},{\"role\":\"bottom\",\"primary_id\":\"A2\",\"alternative_ids\":[\"A3\"]},{\"role\":\"footwear\",\"primary_id\":\"A4\",\"alternative_ids\":[]},{\"role\":\"headwear\",\"primary_id\":\"A5\",\"alternative_ids\":[]},{\"role\":\"accessory\",\"primary_id\":\"A6\",\"alternative_ids\":[]}]}\n")
 	builder.WriteString("CONTEXT=")
 	builder.Write(contextBytes)
 	builder.WriteString("\n")

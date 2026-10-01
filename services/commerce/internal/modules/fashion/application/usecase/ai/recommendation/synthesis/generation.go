@@ -51,7 +51,7 @@ func GenerateOutfitRecommendation(
 	}
 	responseText, err := aiService.GenerateRecommendationText(
 		ctx,
-		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. A valid outfit MUST be either a single fullbody item (dress) OR a combination of at least 1 top and 1 bottom item. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Internal candidate aliases (A1, A2, ...) MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony.",
+		"You are a senior fashion stylist and wardrobe editor. Recommend the most suitable outfit from the available items, stay faithful to the actual item attributes, and respond with exactly one valid minified JSON object. A valid outfit MUST contain either a single fullbody item (dress) OR a combination of at least 1 top and 1 bottom item, plus footwear. Beyond those core roles, headwear (\"headwear\") and accessory (\"accessory\") are optional but HIGHLY EXPECTED: whenever the candidate pool contains a suitable hat or accessory candidate, you MUST include that role. Outerwear (\"outerwear\") is an optional layer: include it when the weather is cold/cool/rainy, the season is autumn/winter, or the context asks for a layered outfit, and never include heavy outerwear when the weather is hot or sunny. The fields title and explanation must be written in natural Vietnamese with proper diacritics. Internal candidate aliases (A1, A2, ...) MUST appear ONLY in primary_id and alternative_ids fields; NEVER write aliases in title or explanation. Candidates tagged with [Fashion Tags: ..., source:brand-item, ...] are brand sample items — prefer including at least one of them in the outfit (as primary or alternative) when they fit the style, occasion, and color harmony.",
 		userPrompt,
 		aiexecutor_dto.OrchestratorOptions{MaxOutputTokens: cfg.AI.RecommendationMaxOutputTokens, Temperature: 0.1, ResponseMIMEType: "application/json", ResponseSchema: outfitResponseSchema(), UserID: userID, Operation: "outfit"},
 	)
@@ -119,8 +119,16 @@ func HasValidOutfitStructureGroups(groups []*dto.RecommendedItemGroup) bool {
 	return hasFullbody || (hasTop && hasBottom)
 }
 
+// outfitWearingRoles là tập wearing role hợp lệ mà LLM được phép trả về.
+// Khoá theo ENUM trong [outfitResponseSchema] để provider chặn giá trị bịa đặt.
+// Vai trò thực tế của món đồ vẫn được xác định lại từ category trong DB sau khi
+// parse, nên đây chỉ là ràng buộc đầu vào cho phía provider.
+var outfitWearingRoles = []string{
+	"top", "bottom", "fullbody", "outerwear", "footwear", "headwear", "accessory",
+}
+
 func outfitResponseSchema() any {
-	return map[string]any{"type": "OBJECT", "required": []string{"title", "explanation", "items"}, "properties": map[string]any{"title": map[string]any{"type": "STRING"}, "explanation": map[string]any{"type": "STRING"}, "items": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "OBJECT", "required": []string{"role", "primary_id", "alternative_ids"}, "properties": map[string]any{"role": map[string]any{"type": "STRING"}, "primary_id": map[string]any{"type": "STRING"}, "alternative_ids": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}}}}}}
+	return map[string]any{"type": "OBJECT", "required": []string{"title", "explanation", "items"}, "properties": map[string]any{"title": map[string]any{"type": "STRING"}, "explanation": map[string]any{"type": "STRING"}, "items": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "OBJECT", "required": []string{"role", "primary_id", "alternative_ids"}, "properties": map[string]any{"role": map[string]any{"type": "STRING", "enum": outfitWearingRoles}, "primary_id": map[string]any{"type": "STRING"}, "alternative_ids": map[string]any{"type": "ARRAY", "items": map[string]any{"type": "STRING"}}}}}}}
 }
 
 func resolveOutfitAliases(res *types.LlmOutfitResponse, candidates []types.CandidateForPrompt) {

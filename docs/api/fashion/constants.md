@@ -43,5 +43,6 @@ Danh mục 9 Category Slugs cố định hệ thống và bảng ánh xạ sang 
     - `ao-khoac` $\rightarrow$ `outerwear` (Áo khoác)
     - `giay` $\rightarrow$ `footwear` (Giày dép)
     - `mu` $\rightarrow$ `headwear` (Mũ nón)
-    - `phu-kien`, `other` $\rightarrow$ `accessory` / `other` (Phụ kiện & mục khác)
+    - `phu-kien` $\rightarrow$ `accessory` (Phụ kiện)
+    - `other` $\rightarrow$ `other` (Mục khác / chưa phân loại)
 

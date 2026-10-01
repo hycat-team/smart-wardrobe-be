@@ -98,6 +98,17 @@ To enforce core fashion domain validity, all outfit recommendations produced by 
 - **Structure 1 (One-piece Outfit):** Must contain exactly 1 item of category `dam` (`fullbody`). MUST NOT contain any item of category `ao`, `quan`, or `chan-vay`.
 - **Structure 2 (Separates Outfit):** Must contain exactly 1 item of category `ao` (`top`) AND 1 item of category `quan` or `chan-vay` (`bottom`). MUST NOT contain any item of category `dam`.
 
+Both structures also require 1 item of category `giay` (`footwear`).
+
+#### Optional Layering Roles
+
+The two structures above define only the outfit *core*. On top of the core, three wearing roles are treated as optional layers. Neither LLM synthesis nor HSL fallback may drop them merely because the core is already valid:
+
+- **`headwear`** (`mu`) and **`accessory`** (`phu-kien`): whenever the candidate pool contains a suitable candidate, the outfit SHOULD include that role. They are independent of the core pairing rules and may be added to either structure.
+- **`outerwear`** (`ao-khoac`): an optional layer over either structure. Include it when the weather is cold/cool/rainy, when the season is autumn/winter, or when the request context explicitly asks for a layered outfit. Never include heavy outerwear when the weather is hot or sunny.
+
+Because candidate diversification caps items per category and caps the total pool size, Stage 2 MUST backfill these optional roles from the scored pool after diversification, otherwise low-scoring hats and accessories never reach the prompt. The LLM response schema MUST constrain `role` to the fixed enum of all wearing roles so providers cannot return invented values.
+
 #### Early Guard & Error Reporting
 If a user's active wardrobe or query filters result in a candidate pool lacking the minimum body items (i.e. no `dam` AND no `ao` available, even after automatic candidate pool recovery), the system halts early in Stage 1/2 and returns `ErrInsufficientOutfitComponents` (HTTP 400 Bad Request) without deducting daily AI quota or invoking LLM generation.
 

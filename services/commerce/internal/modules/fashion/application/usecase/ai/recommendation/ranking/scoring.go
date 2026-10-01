@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/dto"
+	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/mapper"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/parser"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/retrieval"
 	"smart-wardrobe-be/services/commerce/internal/modules/fashion/application/usecase/ai/recommendation/types"
@@ -187,6 +188,14 @@ func ScoreCandidateItem(
 		reasonTags = append(reasonTags, "weather-appropriate:rainy")
 	}
 
+	// Mũ và phụ kiện là lớp bổ sung luôn hợp lệ với mọi outfit và không phụ thuộc
+	// thời tiết. Cộng nhẹ để chúng không bị đẩy xuống cuối pool bởi những tín hiệu
+	// không liên quan, nhờ vậy vẫn nằm trong cửa sổ prompt thay vì bị cắt từ đuôi.
+	if isAccessoryLayerItem(item, fashionItemMap) {
+		score += 0.05
+		reasonTags = append(reasonTags, "layer-role-bonus")
+	}
+
 	if penalty, tag := excludedWeatherPenalty(item, intent.ExcludedWeather, fashionItemMap); penalty > 0 {
 		score -= penalty
 		reasonTags = append(reasonTags, tag)
@@ -269,6 +278,20 @@ func isOuterwearItem(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap m
 		}
 	}
 	return false
+}
+
+// isAccessoryLayerItem kiểm tra món đồ có thuộc nhóm lớp phụ (mũ hoặc phụ kiện) hay không.
+func isAccessoryLayerItem(item *wardrobeDto.WardrobeItemContractDTO, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) bool {
+	fi := fashionForItemFromMap(item, fashionItemMap)
+	if fi == nil || fi.Category == nil {
+		return false
+	}
+	switch mapper.CategorySlugToWearingRole(fi.Category.Slug) {
+	case "headwear", "accessory":
+		return true
+	default:
+		return false
+	}
 }
 
 // CandidateMatchesAnyTerm kiểm tra xem tài liệu tìm kiếm của món đồ có chứa bất kỳ từ khóa nào trong danh sách hay không.

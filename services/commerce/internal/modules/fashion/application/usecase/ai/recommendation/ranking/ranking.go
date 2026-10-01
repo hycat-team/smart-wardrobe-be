@@ -287,36 +287,84 @@ func missingRankedRoles(candidates []types.RankedCandidate, fashionItemMap map[u
 	return need
 }
 
+// optionalLayeringRoles là các vai trò lớp phụ (không bắt buộc cho cấu trúc bộ)
+// vẫn phải được giữ lại trong pool sau khi đa dạng hóa, vì giới hạn theo danh mục
+// (categorySoftCap) và giới hạn tổng số ứng viên dễ loại chúng khỏi danh sách.
+var optionalLayeringRoles = []string{"headwear", "accessory", "outerwear"}
+
+// missingOptionalRoles trả về tập vai trò lớp phụ còn thiếu trong pool đã chọn.
+// Trả về nil nếu không còn vai trò lớp phụ nào cần bù.
+func missingOptionalRoles(candidates []types.RankedCandidate, fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO) map[string]bool {
+	present := make(map[string]bool, len(optionalLayeringRoles))
+	for _, candidate := range candidates {
+		if role := rankedWearingRole(candidate, fashionItemMap); role != "" {
+			present[role] = true
+		}
+	}
+	need := map[string]bool{}
+	for _, role := range optionalLayeringRoles {
+		if !present[role] {
+			need[role] = true
+		}
+	}
+	if len(need) == 0 {
+		return nil
+	}
+	return need
+}
+
+// backfillMissingRoles bổ sung ứng viên còn thiếu cho các role trong need từ pool
+// đã chấm điểm. Hàm không thay đổi các role đã hiện diện trong selected.
+func backfillMissingRoles(
+	selected []types.RankedCandidate,
+	all []types.RankedCandidate,
+	inSelected map[uuid.UUID]bool,
+	need map[string]bool,
+	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
+) []types.RankedCandidate {
+	if len(need) == 0 {
+		return selected
+	}
+	for _, candidate := range all {
+		if len(need) == 0 {
+			break
+		}
+		if candidate.Item == nil || inSelected[candidate.Item.ID] {
+			continue
+		}
+		role := rankedWearingRole(candidate, fashionItemMap)
+		if !need[role] {
+			continue
+		}
+		selected = append(selected, candidate)
+		inSelected[candidate.Item.ID] = true
+		delete(need, role)
+	}
+	return selected
+}
+
 // ensureRankedOutfitStructure bảo đảm danh sách đã diversify vẫn giữ cấu trúc bộ hợp lệ
 // bằng cách thêm lại các ứng viên còn thiếu role từ pool đã chấm điểm.
+//
+// Hành vi:
+//  1. Bù các vai trò lõi còn thiếu (top/bottom/fullbody) theo [missingRankedRoles].
+//  2. Bù các vai trò lớp phụ còn thiếu (headwear/accessory/outerwear) theo [missingOptionalRoles].
+//     Bước này chạy kể cả khi cấu trúc lõi đã hợp lệ, vì đa dạng hóa có thể đã loại
+//     các vai trò lớp phụ khỏi danh sách chỉ vì chạm trần theo danh mục.
 func ensureRankedOutfitStructure(
 	selected []types.RankedCandidate,
 	all []types.RankedCandidate,
 	fashionItemMap map[uuid.UUID]*dto.FashionItemContractDTO,
 ) []types.RankedCandidate {
-	if hasValidRankedStructure(selected, fashionItemMap) {
-		return selected
-	}
 	inSelected := map[uuid.UUID]bool{}
 	for _, candidate := range selected {
 		if candidate.Item != nil {
 			inSelected[candidate.Item.ID] = true
 		}
 	}
-	for _, candidate := range all {
-		need := missingRankedRoles(selected, fashionItemMap)
-		if need == nil {
-			break
-		}
-		if candidate.Item == nil || inSelected[candidate.Item.ID] {
-			continue
-		}
-		if !need[rankedWearingRole(candidate, fashionItemMap)] {
-			continue
-		}
-		selected = append(selected, candidate)
-		inSelected[candidate.Item.ID] = true
-	}
+	selected = backfillMissingRoles(selected, all, inSelected, missingRankedRoles(selected, fashionItemMap), fashionItemMap)
+	selected = backfillMissingRoles(selected, all, inSelected, missingOptionalRoles(selected, fashionItemMap), fashionItemMap)
+
 	sort.SliceStable(selected, func(i, j int) bool {
 		return RankedCandidateLess(selected[i], selected[j])
 	})
