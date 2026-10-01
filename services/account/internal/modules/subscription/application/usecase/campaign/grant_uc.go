@@ -17,6 +17,55 @@ import (
 	"go.uber.org/zap"
 )
 
+// grantOrigin names WHICH path handed the account to the shared rules.
+//
+// It is provenance, never a decision. The same account reaching `applyGrant` from
+// the queue and from the catch-up sweep must produce the same plan, the same
+// claim and the same audit content for every RULE — and it does, because both
+// paths call `ProcessUserCreated` and nothing here branches on the value. What
+// the value carries is the one fact an operator cannot infer from the grant
+// itself: a grant that arrived four hours late because the queue was backed up
+// looks identical to one that arrived in fifty milliseconds once it is written to
+// `audit_logs` (FR-082).
+//
+// FR-092 forbids a second event type, and FR-087 forbids widening the message
+// payload, so the audit row is the only place left that can carry the
+// distinction — which is also the artefact FR-038/FR-094 already made the answer
+// to "who granted this, from where".
+type grantOrigin string
+
+const (
+	// grantOriginMessage is the normal path: the `identity.user.created` message.
+	grantOriginMessage grantOrigin = "campaign"
+	// grantOriginSweep is the catch-up sweep (Phase 10), which reaches accounts
+	// the message path never settled.
+	grantOriginSweep grantOrigin = "campaign_sweep"
+)
+
+// grantOriginKey is a private type so nothing outside this package can collide
+// with the key or read the value by accident.
+type grantOriginKey struct{}
+
+// withGrantOrigin tags the context with the path the account arrived on.
+//
+// The context rather than a parameter because `ProcessUserCreated` has one
+// signature, and that signature is the point of FR-080: a second entry point
+// taking a second flag is a second door onto the rules, and rules behind two
+// doors drift. The value travels with the work instead of being spelled out
+// again at every call site, and `InjectTx` preserves it across the unit of work.
+func withGrantOrigin(ctx context.Context, origin grantOrigin) context.Context {
+	return context.WithValue(ctx, grantOriginKey{}, origin)
+}
+
+// grantOriginOf reads the tag back, defaulting to the message path so a caller
+// that forgets to tag is the safe interpretation rather than a blank field.
+func grantOriginOf(ctx context.Context) grantOrigin {
+	if origin, ok := ctx.Value(grantOriginKey{}).(grantOrigin); ok {
+		return origin
+	}
+	return grantOriginMessage
+}
+
 // applyGrant turns a granted quota decision into an actual plan (025 T051).
 //
 // It runs on the CALLER's transaction — the one `ProcessUserCreated` opened — so
@@ -112,7 +161,11 @@ func (uc *CampaignUseCase) applyGrant(
 			TargetType:  string(adminaudit.UserSubscription),
 			TargetID:    &payload.UserID,
 			Payload: map[string]any{
-				"grantSource":   "campaign",
+				// `grantSource` names the PATH, not the rule: the rules are the same
+				// on both paths (FR-080), so "campaign" vs "campaign_sweep" tells
+				// an operator that a grant came from the catch-up run — and
+				// therefore that the message path did not settle it (FR-082).
+				"grantSource":   string(grantOriginOf(txCtx)),
 				"campaignCode":  campaign.Code,
 				"planSlug":      plan.Slug,
 				"planName":      plan.Name,

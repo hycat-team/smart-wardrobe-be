@@ -28,6 +28,11 @@ var ProviderSet = wire.NewSet(
 	// because the resolver's dependency changed type, and Wire should say so
 	// instead of the resolver receiving a nil lookup at the first request.
 	identity_contract.NewAdminGrantLookup,
+	// 025 T099: the narrow identity view the catch-up sweep pages through. It is
+	// a SEPARATE provider from `NewAdminGrantLookup` because the two narrow views
+	// answer different questions, and widening either one to cover the other would
+	// put a campaign-specific filter into the administrator grant flow.
+	identity_contract.NewCampaignAccountLister,
 	router.NewRouter,
 	worker.NewSubscriptionRenewalWorker,
 	worker.NewPaymentReconciliationWorker,
@@ -37,4 +42,8 @@ var ProviderSet = wire.NewSet(
 	// DI-time check rather than a nil pointer on the first account created after a
 	// campaign opens.
 	worker.NewCampaignGrantWorker,
+	// 025 T099: the periodic catch-up sweep (FR-079, FR-083). Registered next to
+	// the grant worker because the two are one mechanism: the queue is the fast
+	// path and this is the one that guarantees the promise.
+	worker.NewCampaignSweepWorker,
 )

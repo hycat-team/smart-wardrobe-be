@@ -80,8 +80,8 @@ func (e *campaignEvaluator) evaluate(
 	// Condition 3 (FR-091): the account was created through the administrator
 	// endpoint. Its own reason code, because an administrator's test accounts are
 	// valid accounts and the campaign simply does not apply to them.
-	if createdByAdmin {
-		return eligibility{Reason: SkipCreatedByAdmin}
+	if reason := adminSkipReason(createdByAdmin); reason != "" {
+		return eligibility{Reason: reason}
 	}
 
 	// Condition 7 (FR-011): choose the candidate that starts LATEST. Evaluated
@@ -109,6 +109,29 @@ func (e *campaignEvaluator) evaluate(
 	_ = accountID
 	_ = ctx
 	return eligibility{Campaign: chosen}
+}
+
+// adminSkipReason is condition 3 of `data-model.md` §6, in ONE function (FR-080,
+// FR-091, FR-050).
+//
+// The catch-up sweep reaches the same rule from the other direction: it reads
+// `identity.users` through the account contract and sees accounts an
+// administrator created, where the message path learns the fact from the
+// payload. Two facts, one rule. If each path tested the flag itself, one of them
+// would eventually be edited without the other and the SAME account would be
+// granted by the sweep and refused by the message — which is exactly the drift
+// FR-080 forbids, and it is a drift nobody would notice because both answers look
+// reasonable in isolation.
+//
+// A function returning the REASON rather than a bool is deliberate: the reason
+// code is what FR-061 requires each path to record, so neither path has to
+// restate it, and the two cannot end up reporting different codes for the same
+// condition. An empty reason means "not an administrator account".
+func adminSkipReason(createdByAdmin bool) SkipReason {
+	if createdByAdmin {
+		return SkipCreatedByAdmin
+	}
+	return ""
 }
 
 // anyCampaignAwake reports whether at least one campaign is inside its window.

@@ -337,9 +337,9 @@ lưới an toàn duy nhất cho thông điệp bị rơi. Thiếu nó thì mọi
 không bao giờ được cấp gói, kể cả khi đã xử lý thủ công. Nó chỉ phụ thuộc Phase 2, 3, 4 — tức là
 làm **song song với Phase 6 và 7** được.
 
-- [ ] T097 Cài `sweep_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: duyệt tài khoản theo lô trong cửa sổ chiến dịch qua hợp đồng, bỏ qua tài khoản đã có lượt cấp, rồi chạy **cùng** bộ luật hạn mức của đường thông điệp (FR-079, FR-080)
-- [ ] T098 Cài `campaign_sweep_worker.go` trong `services/account/internal/modules/subscription/presentation/worker/` theo mẫu `subscription_renewal_worker.go`: `cron.New(cron.WithSeconds())`, chạy một lần lúc khởi động, khoảng thời gian lấy từ cấu hình chứ không viết cứng (FR-083)
-- [ ] T099 Đăng ký `CampaignSweepWorker` trong `services/account/internal/modules/subscription/provider.go`, `internal/di/wire.go` và trường `CampaignSweep` trong `services/account/internal/bootstrap/worker.go`; chạy `make wire`.
+- [x] T097 Cài `sweep_uc.go` trong `services/account/internal/modules/subscription/application/usecase/campaign/`: duyệt tài khoản theo lô trong cửa sổ chiến dịch qua hợp đồng, bỏ qua tài khoản đã có lượt cấp, rồi chạy **cùng** bộ luật hạn mức của đường thông điệp (FR-079, FR-080)
+- [x] T098 Cài `campaign_sweep_worker.go` trong `services/account/internal/modules/subscription/presentation/worker/` theo mẫu `subscription_renewal_worker.go`: `cron.New(cron.WithSeconds())`, chạy một lần lúc khởi động, khoảng thời gian lấy từ cấu hình chứ không viết cứng (FR-083)
+- [x] T099 Đăng ký `CampaignSweepWorker` trong `services/account/internal/modules/subscription/provider.go`, `internal/di/wire.go` và trường `CampaignSweep` trong `services/account/internal/bootstrap/worker.go`; chạy `make wire`.
   **⚠️ Tệp dùng chung**: không chạy song song với T057, T067, T083 — dễ mất thay đổi của nhau khi sinh lại cùng một tệp
 - [ ] T100 [P] [US3] Kiểm thử tính bất biến của mốc ưu tiên khi hai lần quét chạy song song: mốc **không** đổi giữa các lần (FR-030, SC-001)
 - [ ] T101 [P] [US1] Kiểm thử bù trễ: thông điệp tới muộn hơn 5 phút vẫn cấp gói, và sự kiện trễ được ghi nhận như sự kiện quan sát được (FR-078, FR-082, SC-015)

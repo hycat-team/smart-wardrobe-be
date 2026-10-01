@@ -28,7 +28,13 @@ type Workers struct {
 	// grant enqueues the email it will later deliver — starting them in this order
 	// means the email worker is already consuming by the time the first grant
 	// arrives.
-	CampaignGrant    *subscriptionworker.CampaignGrantWorker
+	CampaignGrant *subscriptionworker.CampaignGrantWorker
+	// CampaignSweep is the catch-up sweep (025 T099, FR-079). It starts AFTER
+	// CampaignGrant on purpose: the queue is the fast path, and a sweep that began
+	// while the consumer was still warming up would evaluate accounts the consumer
+	// is about to settle anyway — wasted transactions, and a report full of skips
+	// that says nothing about the mechanism.
+	CampaignSweep    *subscriptionworker.CampaignSweepWorker
 	Email            *notificationworker.EmailWorker
 	AuditLogConsumer *adminworker.AuditLogConsumerWorker
 	AuditCleanup     *adminworker.AuditCleanupWorker
@@ -45,6 +51,7 @@ func (w *Workers) All() []Worker {
 		w.PaymentReconciliation,
 		w.WebhookInbox,
 		w.CampaignGrant,
+		w.CampaignSweep,
 		w.Email,
 		w.AuditLogConsumer,
 		w.AuditCleanup,

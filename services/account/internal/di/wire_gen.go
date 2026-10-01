@@ -170,6 +170,9 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 	iCampaignClaimRepository := persistence2.NewCampaignClaimRepository(gormDB)
 	iCampaignUseCase := campaign.NewCampaignUseCase(cfg, iCampaignClaimRepository, iUserSubscriptionRepository, iSubscriptionPlanRepository, planChangePublisher, iAuditLogContract, iNotificationContract, iSubscriptionOverviewCache, iUnitOfWork, l)
 	campaignGrantWorker := worker.NewCampaignGrantWorker(rabbitMQClient, iCampaignUseCase, l)
+	campaignAccountLister := contract.NewCampaignAccountLister(userBriefContract)
+	iCampaignSweepUseCase := campaign.NewCampaignSweepUseCase(cfg, campaignAccountLister, iCampaignClaimRepository, iCampaignUseCase, l)
+	campaignSweepWorker := worker.NewCampaignSweepWorker(iCampaignSweepUseCase, cfg, l)
 	smtpSender := communication.NewSmtpSender(cfg)
 	iEmailUseCase := email.NewEmailUseCase(smtpSender)
 	emailWorker := worker2.NewEmailWorker(rabbitMQClient, iEmailUseCase, l)
@@ -187,6 +190,7 @@ func InitializeApp(cfg *config.Config, l logger.Interface) (*bootstrap.App, func
 		PaymentReconciliation: paymentReconciliationWorker,
 		WebhookInbox:          webhookInboxWorker,
 		CampaignGrant:         campaignGrantWorker,
+		CampaignSweep:         campaignSweepWorker,
 		Email:                 emailWorker,
 		AuditLogConsumer:      auditLogConsumerWorker,
 		AuditCleanup:          auditCleanupWorker,

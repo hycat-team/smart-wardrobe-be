@@ -183,7 +183,7 @@ func (uc *CampaignUseCase) ProcessUserCreated(ctx context.Context, payload ident
 	if !outcome.Granted {
 		return nil
 	}
-	uc.logGranted(payload.UserID, campaign, plan, outcome)
+	uc.logGranted(ctx, payload.UserID, campaign, plan, outcome)
 
 	// FR-040/T058: the cached overview still describes the OLD plan, so it is
 	// dropped HERE — after the transaction committed. Doing it inside the
@@ -217,12 +217,19 @@ func (uc *CampaignUseCase) logSkip(userID uuid.UUID, campaignCode string, reason
 
 // logGranted records a successful grant with the facts an operator needs later
 // (FR-060): which campaign, which plan, which account, when.
-func (uc *CampaignUseCase) logGranted(userID uuid.UUID, campaign sharedconfig.CampaignConfig, plan *entities.SubscriptionPlan, outcome quotaOutcome) {
+//
+// `grant_trigger` says which door the account came through — the queue or the
+// catch-up sweep. FR-060's fields are identical on both paths by design (FR-080),
+// so without this one field a grant recovered by the sweep is indistinguishable
+// from one the message path handled on time, and the FR-082 latency signal cannot
+// be read from the logs (see `grant_uc.go`).
+func (uc *CampaignUseCase) logGranted(ctx context.Context, userID uuid.UUID, campaign sharedconfig.CampaignConfig, plan *entities.SubscriptionPlan, outcome quotaOutcome) {
 	uc.log.Info("campaign plan granted",
 		zap.String("user_id", userID.String()),
 		zap.String("campaign_code", campaign.Code),
 		zap.String("plan_slug", plan.Slug),
 		zap.String("grant_bucket", string(outcome.Bucket)),
+		zap.String("grant_trigger", string(grantOriginOf(ctx))),
 		zap.Time("granted_at", outcome.ExpiresAt),
 	)
 }

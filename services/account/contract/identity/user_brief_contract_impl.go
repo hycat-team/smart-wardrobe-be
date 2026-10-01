@@ -109,6 +109,19 @@ type CampaignAccountLister interface {
 	ListCreatedInWindow(ctx context.Context, filter repositories.CampaignAccountFilter) (*CampaignAccountPage, error)
 }
 
+// CampaignAccountFilter re-exports the batch filter under the contract package's
+// own name so a consumer module never has to import `identity/domain/repositories`
+// to build one.
+//
+// The alias (not a defined type) is the point: this package is the single place
+// that is allowed to reach into the identity module's domain layer, and a defined
+// type would force a conversion at every call site in the consumer. constitution
+// §II and rule H4 forbid `subscription` from importing another module's
+// `domain/repositories` — so without this line the campaign sweep could not page
+// at all, and the natural fix (importing it anyway, as a "just for a struct"
+// exception) is how the boundary stops meaning anything.
+type CampaignAccountFilter = repositories.CampaignAccountFilter
+
 // NewCampaignAccountLister narrows the concrete contract to the campaign's view.
 func NewCampaignAccountLister(c *UserBriefContract) CampaignAccountLister { return c }
 

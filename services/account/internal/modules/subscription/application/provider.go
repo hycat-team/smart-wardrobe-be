@@ -59,4 +59,11 @@ var ProviderSet = wire.NewSet(
 	// that a missing dependency is a DI error at startup, not a nil use case
 	// discovered by the first account that registers after a campaign opens.
 	campaign.NewCampaignUseCase,
+
+	// 025 T097: the catch-up sweep. It depends on `ICampaignUseCase` rather than
+	// on the grant use case's dependencies, so registering it HERE is what forces
+	// the sweep to reach the rules through the shared entry point. A sweep wired
+	// to the repositories directly would be free to grow its own eligibility
+	// check, and FR-080's whole protection is that it cannot.
+	campaign.NewCampaignSweepUseCase,
 )

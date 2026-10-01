@@ -380,6 +380,22 @@ func ErrCampaignAccountsQueryFailed(campaignCode string) *apperror.Error {
 	return e
 }
 
+// ErrCampaignSweepAborted báo rằng một lần quét bù dừng giữa chừng vì quá nhiều
+// tài khoản lỗi liên tiếp (FR-079, FR-062).
+//
+// Dừng chứ không bỏ qua từng tài khoản là chủ ý: một tài khoản hỏng không được
+// làm bỏ rơi tất cả những tài khoản đứng sau nó, nhưng một lần quét mà cơ sở dữ
+// liệu đã hỏng thì tiếp tục chỉ tạo ra hàng trăm nghìn dòng nhật ký trong một
+// lần chạy. Ngưỡng ngắt chạy nằm trong mã quét bù (maxSweepConsecutiveFailures).
+//
+// Lỗi này là TẠM THỜI và lần quét sau sẽ làm lại phần chưa tới — đường cấp gói
+// dùng chung là idempotent (FR-012/FR-025) nên chạy lại không cấp hai lần.
+func ErrCampaignSweepAborted(consecutiveFailures int) *apperror.Error {
+	e := apperror.NewInternalError("Lần quét bù chiến dịch bị dừng vì quá nhiều tài khoản không xử lý được. Vui lòng thử lại sau.")
+	e.Cause = fmt.Errorf("campaign sweep aborted after %d consecutive failures", consecutiveFailures)
+	return e
+}
+
 // ErrCampaignMessageMalformed báo rằng thông điệp tạo tài khoản không đủ
 // trường để ra quyết định (FR-062).
 //
